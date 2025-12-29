@@ -70,7 +70,7 @@ pub fn get_base_branch_data(ctx: &Context) -> Result<BaseBranch> {
 
 #[instrument(skip(ctx), err(Debug))]
 fn go_back_to_integration(ctx: &Context, default_target: &Target) -> Result<BaseBranch> {
-    let gix_repo = ctx.open_repo_for_merging()?;
+    let gix_repo = ctx.clone_repo_for_merging()?;
     if ctx.settings().feature_flags.cv3 {
         let workspace_commit_to_checkout =
             but_workspace::legacy::remerged_workspace_commit_v2(ctx)?;
@@ -408,7 +408,6 @@ pub(crate) fn target_to_base_branch(ctx: &Context, target: &Target) -> Result<Ba
             .project_data_last_fetch
             .as_ref()
             .map(FetchResult::timestamp)
-            .copied()
             .map(|t| t.duration_since(time::UNIX_EPOCH).unwrap().as_millis()),
         conflicted,
         diverged,
