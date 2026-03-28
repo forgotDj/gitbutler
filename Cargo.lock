@@ -4198,7 +4198,6 @@ dependencies = [
  "bstr",
  "but-core",
  "but-ctx",
- "but-error",
  "but-gerrit",
  "but-oxidize",
  "but-settings",
