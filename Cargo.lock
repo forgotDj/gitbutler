@@ -4234,7 +4234,6 @@ dependencies = [
  "but-core",
  "but-ctx",
  "but-error",
- "but-oxidize",
  "git2",
  "gitbutler-git",
  "gitbutler-project",
