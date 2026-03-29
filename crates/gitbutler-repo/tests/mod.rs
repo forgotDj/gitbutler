@@ -5,3 +5,4 @@ mod managed_hooks_tests;
 mod read_file_from_workspace_security;
 mod rebase;
 mod remotes;
+mod support;
