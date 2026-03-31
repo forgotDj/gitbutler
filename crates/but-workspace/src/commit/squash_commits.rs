@@ -115,6 +115,11 @@ pub(crate) mod function {
         subject_commit: impl ToCommitSelector,
         target_commit: impl ToCommitSelector,
     ) -> Result<SquashCommitsOutcome<'ws, 'meta, M>> {
+        let repo = editor.repo().clone();
+        let successful_rebase = editor.rebase()?;
+        let workspace = successful_rebase.overlayed_graph()?.into_workspace()?;
+        let mut editor = successful_rebase.into_editor();
+
         let (subject_selector, subject) = editor.find_selectable_commit(subject_commit)?;
         let (target_selector, target) = editor.find_selectable_commit(target_commit)?;
 
@@ -130,9 +135,7 @@ pub(crate) mod function {
             bail!("Target commit must not be conflicted")
         }
 
-        let direction =
-            determine_reorder_direction(editor.workspace, editor.repo(), &subject, &target)?;
-        let mut editor = editor;
+        let direction = determine_reorder_direction(&workspace, &repo, &subject, &target)?;
 
         let mut combined_message = Vec::new();
         combined_message.extend_from_slice(subject.message.as_ref());
