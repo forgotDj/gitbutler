@@ -6,9 +6,9 @@ import {
 } from "$lib/dragging/draggables";
 import { type DiffService } from "$lib/hunks/diffService.svelte";
 import type { DropzoneHandler } from "$lib/dragging/handler";
-import type { HunkAssignmentTarget } from "$lib/hunks/hunk";
 import type { FileSelectionManager } from "$lib/selection/fileSelectionManager.svelte";
 import type { UncommittedService } from "$lib/selection/uncommittedService.svelte";
+import type { HunkAssignmentTarget } from "@gitbutler/but-sdk";
 
 export class AssignmentDropHandler implements DropzoneHandler {
 	constructor(

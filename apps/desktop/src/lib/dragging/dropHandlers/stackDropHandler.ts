@@ -14,10 +14,10 @@ import { chipToasts } from "@gitbutler/ui";
 import type { DropzoneHandler } from "$lib/dragging/handler";
 import type { ForgePrService } from "$lib/forge/interface/forgePrService";
 import type { DiffService } from "$lib/hunks/diffService.svelte";
-import type { HunkAssignmentTarget } from "$lib/hunks/hunk";
 import type { UncommittedService } from "$lib/selection/uncommittedService.svelte";
 import type { StackService } from "$lib/stacks/stackService.svelte";
 import type { UiState } from "$lib/state/uiState.svelte";
+import type { HunkAssignmentTarget } from "@gitbutler/but-sdk";
 
 /** Handler when drop changes on a special outside lanes dropzone. */
 export class OutsideLaneDzHandler implements DropzoneHandler {
