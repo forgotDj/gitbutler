@@ -113,7 +113,7 @@ export interface CommitSquashParams {
 
 export interface CommitMoveParams {
 	projectId: string;
-	subjectCommitId: string;
+	subjectCommitIds: Array<string>;
 	relativeTo: RelativeTo;
 	side: InsertSide;
 	dryRun: boolean;

@@ -1,8 +1,9 @@
+use anyhow::bail;
 use but_api_macros::but_api;
 use but_core::{DryRun, sync::RepoExclusive};
 use but_oplog::legacy::{OperationKind, SnapshotDetails};
 use but_rebase::graph_rebase::{
-    Editor,
+    Editor, LookupStep as _,
     mutate::{InsertSide, RelativeTo},
 };
 use tracing::instrument;
@@ -11,7 +12,7 @@ use crate::WorkspaceState;
 
 use super::types::CommitMoveResult;
 
-/// Moves `subject_commit_id` to `side` of `relative_to`.
+/// Moves `subject_commit_ids` to `side` of `relative_to`.
 ///
 /// This acquires exclusive worktree access from `ctx` before moving the
 /// commit.
@@ -22,7 +23,7 @@ use super::types::CommitMoveResult;
 #[but_api(try_from = crate::commit::json::CommitMoveResult)]
 pub fn commit_move_only(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     #[but_api(crate::commit::json::RelativeTo)] relative_to: RelativeTo,
     side: InsertSide,
     dry_run: DryRun,
@@ -30,7 +31,7 @@ pub fn commit_move_only(
     let mut guard = ctx.exclusive_worktree_access();
     commit_move_only_with_perm(
         ctx,
-        subject_commit_id,
+        subject_commit_ids,
         relative_to,
         side,
         dry_run,
@@ -38,7 +39,7 @@ pub fn commit_move_only(
     )
 }
 
-/// Move `subject_commit_id` to the `side` of `relative_to` under
+/// Move `subject_commit_ids` to the `side` of `relative_to` under
 /// caller-held exclusive repository access.
 ///
 /// This returns the post-operation workspace view without creating an oplog
@@ -47,24 +48,72 @@ pub fn commit_move_only(
 /// implementation details, see [`but_workspace::commit::move_commit()`].
 pub fn commit_move_only_with_perm(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     relative_to: RelativeTo,
     side: InsertSide,
     dry_run: DryRun,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitMoveResult> {
+    if subject_commit_ids.is_empty() {
+        bail!("No commits were provided to move")
+    }
+
     let mut meta = ctx.meta()?;
     let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
 
-    let rebase = but_workspace::commit::move_commit(editor, subject_commit_id, relative_to, side)?;
+    let ordered_selectors = editor.order_commit_selectors_by_parentage(subject_commit_ids)?;
+    let mut ordered_ids = ordered_selectors
+        .iter()
+        .map(|selector| editor.lookup_pick(*selector))
+        .collect::<anyhow::Result<Vec<_>>>()?;
+
+    let ordered_ids = if matches!(side, InsertSide::Above) {
+        ordered_ids.reverse();
+        ordered_ids
+    } else {
+        ordered_ids
+    };
+
+    let mut subjects = ordered_ids.into_iter();
+    let first_subject = subjects
+        .next()
+        .expect("non-empty commit list always has a first subject");
+
+    let mut rebase =
+        but_workspace::commit::move_commit(editor, first_subject, relative_to.clone(), side)?;
+
+    for original_subject_id in subjects {
+        let remapped_ids = rebase.history.commit_mappings();
+        let subject_id = remapped_ids
+            .get(&original_subject_id)
+            .copied()
+            .unwrap_or(original_subject_id);
+
+        let remapped_relative_to = match &relative_to {
+            RelativeTo::Commit(target_commit_id) => RelativeTo::Commit(
+                remapped_ids
+                    .get(target_commit_id)
+                    .copied()
+                    .unwrap_or(*target_commit_id),
+            ),
+            RelativeTo::Reference(reference_name) => RelativeTo::Reference(reference_name.clone()),
+        };
+
+        rebase = but_workspace::commit::move_commit(
+            rebase.into_editor(),
+            subject_id,
+            remapped_relative_to,
+            side,
+        )?;
+    }
 
     Ok(CommitMoveResult {
         workspace: WorkspaceState::from_successful_rebase(rebase, &repo, dry_run)?,
     })
 }
 
-/// Moves `subject_commit_id` to `side` of `relative_to` and records an oplog
+/// Moves `subject_commit_ids` to `side` of `relative_to` and records an oplog
 /// snapshot on success.
 ///
 /// This acquires exclusive worktree access from `ctx` before moving the
@@ -76,7 +125,7 @@ pub fn commit_move_only_with_perm(
 #[instrument(err(Debug))]
 pub fn commit_move(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     #[but_api(crate::commit::json::RelativeTo)] relative_to: RelativeTo,
     side: InsertSide,
     dry_run: DryRun,
@@ -84,7 +133,7 @@ pub fn commit_move(
     let mut guard = ctx.exclusive_worktree_access();
     commit_move_with_perm(
         ctx,
-        subject_commit_id,
+        subject_commit_ids,
         relative_to,
         side,
         dry_run,
@@ -92,7 +141,7 @@ pub fn commit_move(
     )
 }
 
-/// Moves `subject_commit_id` to `side` of `relative_to` under caller-held
+/// Moves `subject_commit_ids` to `side` of `relative_to` under caller-held
 /// exclusive repository access and records an oplog snapshot on success.
 ///
 /// It prepares a best-effort `MoveCommit` oplog snapshot, performs the move,
@@ -102,7 +151,7 @@ pub fn commit_move(
 /// [`but_workspace::commit::move_commit()`].
 pub fn commit_move_with_perm(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     relative_to: RelativeTo,
     side: InsertSide,
     dry_run: DryRun,
@@ -115,7 +164,7 @@ pub fn commit_move_with_perm(
         dry_run,
     );
 
-    let res = commit_move_only_with_perm(ctx, subject_commit_id, relative_to, side, dry_run, perm);
+    let res = commit_move_only_with_perm(ctx, subject_commit_ids, relative_to, side, dry_run, perm);
     if let Some(snapshot) = maybe_oplog_entry
         && res.is_ok()
     {

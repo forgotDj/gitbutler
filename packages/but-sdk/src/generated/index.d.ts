@@ -122,7 +122,7 @@ export declare function commitDiscard(projectId: string, subjectCommitId: string
 export declare function commitInsertBlank(projectId: string, relativeTo: RelativeTo, side: InsertSide, dryRun: boolean): Promise<CommitInsertBlankResult>
 
 /**
- * Moves `subject_commit_id` to `side` of `relative_to` and records an oplog
+ * Moves `subject_commit_ids` to `side` of `relative_to` and records an oplog
  * snapshot on success.
  *
  * This acquires exclusive worktree access from `ctx` before moving the
@@ -131,7 +131,7 @@ export declare function commitInsertBlank(projectId: string, relativeTo: Relativ
  * When `dry_run` is enabled, the returned workspace previews the moved commit
  * and no oplog entry is persisted. For details, see [`commit_move_with_perm()`].
  */
-export declare function commitMove(projectId: string, subjectCommitId: string, relativeTo: RelativeTo, side: InsertSide, dryRun: boolean): Promise<CommitMoveResult>
+export declare function commitMove(projectId: string, subjectCommitIds: Array<string>, relativeTo: RelativeTo, side: InsertSide, dryRun: boolean): Promise<CommitMoveResult>
 
 /**
  * Moves `changes` from `source_commit_id` to `destination_commit_id` and

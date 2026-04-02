@@ -286,7 +286,7 @@ export const useRunOperation = () => {
 				CommitMove: (operation) => {
 					commitMove.mutate({
 						projectId,
-						subjectCommitId: operation.subjectCommitId,
+						subjectCommitIds: operation.subjectCommitIds,
 						relativeTo: operation.relativeTo,
 						side: operation.side,
 						dryRun: operation.dryRun,
