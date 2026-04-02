@@ -319,6 +319,28 @@ impl Workspace {
         })
     }
 
+    /// Try to find the owning graph segment of `commit_id` in the workspace.
+    ///
+    /// This uses the stack segment's `commits_by_segment` offsets to map a projected
+    /// commit back to its source graph segment.
+    pub fn find_commit_segment_index(&self, commit_id: gix::ObjectId) -> Option<SegmentIndex> {
+        let (_, stack_segment, _) = self.find_commit_and_containers(commit_id)?;
+        let commit_offset = stack_segment
+            .commits
+            .iter()
+            .position(|c| c.id == commit_id)?;
+
+        let mut owning_segment = stack_segment.id;
+        for (segment_id, offset) in &stack_segment.commits_by_segment {
+            if *offset > commit_offset {
+                break;
+            }
+            owning_segment = *segment_id;
+        }
+
+        Some(owning_segment)
+    }
+
     /// Like [`Self::find_segment_and_stack_by_refname`], but fails with an error.
     pub fn try_find_segment_and_stack_by_refname(
         &self,
