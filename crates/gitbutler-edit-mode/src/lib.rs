@@ -58,12 +58,9 @@ fn get_commit_index(ctx: &Context, commit_id: gix::ObjectId) -> Result<git2::Ind
         }
         gix_to_git2_index(&index)
     } else {
-        #[expect(deprecated, reason = "index materialization boundary")]
-        let git2_repo = &*ctx.git2_repo.get()?;
-        let commit_tree = git2_repo.find_tree(commit.tree.to_git2())?;
-        let mut index = git2::Index::new()?;
-        index.read_tree(&commit_tree)?;
-        Ok(index)
+        let commit_tree_id = commit.tree_id_or_auto_resolution()?;
+        let index = repo.index_from_tree(&commit_tree_id)?;
+        gix_to_git2_index(&index)
     }
 }
 
@@ -365,12 +362,12 @@ pub(crate) fn starting_index_state(
     };
 
     let repo = &*ctx.repo.get()?;
-    let gix_commit = repo.find_commit(metadata.commit_oid)?;
-    let commit_parent_tree = if gix_commit.is_conflicted() {
-        repo.find_real_tree(&gix_commit, ConflictedTreeKey::Base)?
+    let commit = repo.find_commit(metadata.commit_oid)?;
+    let commit_parent_tree = if commit.is_conflicted() {
+        repo.find_real_tree(&commit, ConflictedTreeKey::Base)?
             .detach()
     } else {
-        gix_commit
+        commit
             .parent_ids()
             .next()
             .context("edited commit had no parent")?
@@ -412,7 +409,7 @@ pub(crate) fn starting_index_state(
     let tree_changes = but_core::diff::tree_changes(
         &repo,
         Some(commit_parent_tree),
-        repo.find_real_tree(&gix_commit, ConflictedTreeKey::Theirs)?
+        repo.find_real_tree(&commit, ConflictedTreeKey::Theirs)?
             .detach(),
     )?;
 
