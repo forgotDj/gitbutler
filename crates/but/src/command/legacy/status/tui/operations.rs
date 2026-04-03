@@ -356,6 +356,31 @@ pub(super) fn has_unassigned_changes(ctx: &mut Context) -> anyhow::Result<bool> 
         .any(|assignment| assignment.stack_id.is_none()))
 }
 
+pub(super) fn assigned_file_count_for_stack(
+    ctx: &mut Context,
+    stack_id: StackId,
+) -> anyhow::Result<usize> {
+    let context_lines = ctx.settings.context_lines;
+
+    let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
+    let changes = but_core::diff::ui::worktree_changes(&repo)?.changes;
+    let (assignments, _assignments_error) = but_hunk_assignment::assignments_with_fallback(
+        db.hunk_assignments_mut()?,
+        &repo,
+        &ws,
+        Some(changes),
+        context_lines,
+    )?;
+
+    let files = assignments
+        .into_iter()
+        .filter(|assignment| assignment.stack_id == Some(stack_id))
+        .map(|assignment| assignment.path_bytes.to_vec())
+        .collect::<std::collections::HashSet<_>>();
+
+    Ok(files.len())
+}
+
 pub(super) fn commit_is_empty(ctx: &mut Context, commit_id: gix::ObjectId) -> anyhow::Result<bool> {
     let commit_details = but_api::diff::commit_details(ctx, commit_id, ComputeLineStats::No)?;
     Ok(commit_details.diff_with_first_parent.is_empty())

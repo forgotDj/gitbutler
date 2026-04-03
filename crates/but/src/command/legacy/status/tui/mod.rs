@@ -677,7 +677,7 @@ impl App {
                 self.delayed_messages.push(*msg);
             }
             Message::Discard => {
-                self.handle_discard(messages);
+                self.handle_discard(ctx, messages);
             }
             Message::DropToBeDiscarded => {
                 self.to_be_discarded = None;
@@ -1069,7 +1069,26 @@ impl App {
         messages.push(Message::EnterNormalMode);
     }
 
-    fn handle_discard(&mut self, messages: &mut Vec<Message>) {
+    fn select_top_branch_for_stack_after_reload(
+        &self,
+        stack_id: StackId,
+    ) -> Option<SelectAfterReload> {
+        self.status_lines.iter().find_map(|line| {
+            let cli_id = line.data.cli_id()?;
+            if let CliId::Branch {
+                stack_id: Some(branch_stack_id),
+                ..
+            } = &**cli_id
+                && *branch_stack_id == stack_id
+            {
+                Some(SelectAfterReload::CliId(Arc::clone(cli_id)))
+            } else {
+                None
+            }
+        })
+    }
+
+    fn handle_discard(&mut self, ctx: &mut Context, messages: &mut Vec<Message>) {
         let Some(selection) = self.cursor.selected_line(&self.status_lines) else {
             return;
         };
@@ -1095,13 +1114,44 @@ impl App {
             CliId::Uncommitted(uncommitted) => {
                 self.to_be_discarded = Some(Arc::clone(cli_id));
                 let uncommitted = uncommitted.clone();
-                let select_after_reload = self
-                    .cursor
-                    .move_up(&self.status_lines, &self.mode, self.flags.show_files)
-                    .and_then(|cursor| cursor.selected_line(&self.status_lines))
-                    .and_then(|line| line.data.cli_id().cloned())
-                    .map(SelectAfterReload::CliId)
-                    .unwrap_or(SelectAfterReload::Unassigned);
+
+                let select_after_reload = if uncommitted.is_entire_file {
+                    // Discarding a whole file: handle stack-specific cursor fallback.
+                    if let Some(stack_id) = uncommitted.hunk_assignments.first().stack_id {
+                        // If this is the last file on the stack, jump to the stack's top branch.
+                        if operations::assigned_file_count_for_stack(ctx, stack_id)
+                            .is_ok_and(|count| count == 1)
+                        {
+                            self.select_top_branch_for_stack_after_reload(stack_id)
+                                .unwrap_or(SelectAfterReload::Stack(stack_id))
+                        } else {
+                            // Otherwise keep navigation local by selecting the previous selectable line.
+                            self.cursor
+                                .move_up(&self.status_lines, &self.mode, self.flags.show_files)
+                                .and_then(|cursor| cursor.selected_line(&self.status_lines))
+                                .and_then(|line| line.data.cli_id().cloned())
+                                .map(SelectAfterReload::CliId)
+                                .unwrap_or(SelectAfterReload::Unassigned)
+                        }
+                    } else {
+                        // Whole unassigned file: select the previous selectable line.
+                        self.cursor
+                            .move_up(&self.status_lines, &self.mode, self.flags.show_files)
+                            .and_then(|cursor| cursor.selected_line(&self.status_lines))
+                            .and_then(|line| line.data.cli_id().cloned())
+                            .map(SelectAfterReload::CliId)
+                            .unwrap_or(SelectAfterReload::Unassigned)
+                    }
+                } else {
+                    // Discarding only part of a file: select the previous selectable line.
+                    self.cursor
+                        .move_up(&self.status_lines, &self.mode, self.flags.show_files)
+                        .and_then(|cursor| cursor.selected_line(&self.status_lines))
+                        .and_then(|line| line.data.cli_id().cloned())
+                        .map(SelectAfterReload::CliId)
+                        .unwrap_or(SelectAfterReload::Unassigned)
+                };
+
                 let drop_to_be_discarded =
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
                 Confirm::new(
@@ -1122,13 +1172,16 @@ impl App {
             CliId::Stack { stack_id, .. } => {
                 self.to_be_discarded = Some(Arc::clone(cli_id));
                 let stack_id = *stack_id;
+                let select_after_reload = self
+                    .select_top_branch_for_stack_after_reload(stack_id)
+                    .unwrap_or(SelectAfterReload::Stack(stack_id));
                 let drop_to_be_discarded =
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
                 Confirm::new(
                     "Discard staged changes in this stack?",
                     run_after_confirmation_msg(move |_, ctx, messages| {
                         operations::discard_stack(ctx, stack_id)?;
-                        messages.push(Message::Reload(Some(SelectAfterReload::Stack(stack_id))));
+                        messages.push(Message::Reload(Some(select_after_reload)));
                         drop(drop_to_be_discarded);
                         Ok(())
                     }),
