@@ -19,7 +19,6 @@ pub(super) struct Confirm {
 }
 
 impl Confirm {
-    #[expect(dead_code)]
     pub(super) fn new(text: impl Into<Cow<'static, str>>, message_if_yes: Message) -> Self {
         Self {
             text: text.into(),

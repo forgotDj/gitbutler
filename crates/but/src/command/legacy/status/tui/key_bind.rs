@@ -371,6 +371,15 @@ fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
     });
 
     key_binds.register(StaticKeyBind {
+        short_description: "discard",
+        chord_display: "x",
+        key_matcher: press().code(KeyCode::Char('x')),
+        modes: Vec::from([ModeDiscriminant::Normal]),
+        message: Message::Discard,
+        hide_from_hotbar: false,
+    });
+
+    key_binds.register(StaticKeyBind {
         short_description: "command",
         chord_display: ":",
         key_matcher: press().code(KeyCode::Char(':')),

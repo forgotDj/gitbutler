@@ -191,6 +191,8 @@ impl Details {
             | Message::Quit
             | Message::EnterDetailsMode
             | Message::LeaveDetailsMode
+            | Message::Discard
+            | Message::DropToBeDiscarded
             | Message::ShowError(_)
             | Message::ShowToast { .. }
             | Message::Confirm(_)

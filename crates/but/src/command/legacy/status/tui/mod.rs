@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    cell::RefCell,
     ffi::OsString,
     iter::once,
     process::Command,
@@ -346,6 +347,7 @@ struct App {
     delayed_messages: Vec<Message>,
     incoming_out_of_band_messages: Vec<Rc<Receiver<Message>>>,
     fps: FpsCounter,
+    to_be_discarded: Option<Arc<CliId>>,
 }
 
 impl App {
@@ -383,6 +385,7 @@ impl App {
             highlight: Default::default(),
             delayed_messages: Default::default(),
             incoming_out_of_band_messages: Default::default(),
+            to_be_discarded: Default::default(),
             fps: FpsCounter::new(),
             confirm: None,
             details,
@@ -658,7 +661,9 @@ impl App {
                     .and_then(|confirm| confirm.handle_message(confirm_message, messages));
             }
             Message::RunAfterConfirmation(f) => {
-                (f.0)(self, ctx, messages)?;
+                if let Some(f) = f.0.try_borrow_mut().ok().and_then(|mut f| f.take()) {
+                    (f)(self, ctx, messages)?;
+                }
             }
             Message::Details(details_message) => {
                 let details_viewport = self.details_viewport(terminal_area);
@@ -670,6 +675,12 @@ impl App {
             }
             Message::WithOneFrameDelay(msg) => {
                 self.delayed_messages.push(*msg);
+            }
+            Message::Discard => {
+                self.handle_discard(messages);
+            }
+            Message::DropToBeDiscarded => {
+                self.to_be_discarded = None;
             }
         }
 
@@ -1055,6 +1066,38 @@ impl App {
         // ensure we always enter normal mode when something does wrong
         // so we don't get stuck in whatever mode we were in previously
         messages.push(Message::EnterNormalMode);
+    }
+
+    fn handle_discard(&mut self, messages: &mut Vec<Message>) {
+        let Some(selection) = self.cursor.selected_line(&self.status_lines) else {
+            return;
+        };
+        let Some(cli_id) = selection.data.cli_id() else {
+            return;
+        };
+
+        self.confirm = Some(match &**cli_id {
+            CliId::Unassigned { .. } => {
+                self.to_be_discarded = Some(Arc::clone(cli_id));
+                let drop_to_be_discarded =
+                    message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
+                Confirm::new(
+                    "Discard unassigned changes?",
+                    run_after_confirmation_msg(move |_, ctx, messages| {
+                        operations::discard_unassigned(ctx)?;
+                        messages.push(Message::Reload(Some(SelectAfterReload::Unassigned)));
+                        drop(drop_to_be_discarded);
+                        Ok(())
+                    }),
+                )
+            }
+            CliId::Uncommitted(..)
+            | CliId::PathPrefix { .. }
+            | CliId::CommittedFile { .. }
+            | CliId::Branch { .. }
+            | CliId::Commit { .. }
+            | CliId::Stack { .. } => return,
+        });
     }
 
     /// Handles creating an empty commit relative to the current selection.
@@ -1949,7 +1992,17 @@ impl App {
             line.extend(connector.clone());
         }
 
-        if is_selected {
+        let line_is_to_be_discarded =
+            self.to_be_discarded
+                .as_ref()
+                .is_some_and(|to_be_discarded| {
+                    data.cli_id()
+                        .is_some_and(|selection| to_be_discarded == selection)
+                });
+
+        if line_is_to_be_discarded {
+            line.extend([Span::raw("<< discard >>").black().on_red(), Span::raw(" ")]);
+        } else if is_selected {
             match &self.mode {
                 Mode::Normal | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
                 Mode::Rub(RubMode {
@@ -2033,7 +2086,7 @@ impl App {
             }
         }
 
-        let content_spans = match content {
+        let mut content_spans = match content {
             StatusOutputContent::Plain(spans) => spans.clone(),
             StatusOutputContent::Commit(CommitLineContent {
                 sha,
@@ -2091,6 +2144,13 @@ impl App {
             }
         };
 
+        if line_is_to_be_discarded {
+            content_spans = content_spans
+                .into_iter()
+                .map(|span| span.crossed_out())
+                .collect();
+        }
+
         match &self.mode {
             Mode::InlineReword(inline_reword_mode) => {
                 if is_selected {
@@ -2141,7 +2201,7 @@ impl App {
             }
         }
 
-        if is_selected && self.confirm.is_none() {
+        if is_selected {
             line = line.bg(*CURSOR_BG);
         }
 
@@ -2592,6 +2652,8 @@ enum Message {
         text: String,
     },
     Confirm(ConfirmMessage),
+    Discard,
+    DropToBeDiscarded,
 
     // Cursor movement
     MoveCursorUp,
@@ -2615,7 +2677,21 @@ enum Message {
     CopySelection,
     #[expect(clippy::type_complexity)]
     RunAfterConfirmation(
-        DebugAsType<Arc<dyn Fn(&mut App, &mut Context, &mut Vec<Message>) -> anyhow::Result<()>>>,
+        DebugAsType<
+            Rc<
+                RefCell<
+                    Option<
+                        Box<
+                            dyn FnOnce(
+                                &mut App,
+                                &mut Context,
+                                &mut Vec<Message>,
+                            ) -> anyhow::Result<()>,
+                        >,
+                    >,
+                >,
+            >,
+        >,
     ),
     RegisterMessageOnDrop(Rc<Receiver<Message>>),
     WithOneFrameDelay(Box<Message>),
@@ -2918,14 +2994,13 @@ enum MoveTarget<'a> {
     MergeBase,
 }
 
-#[expect(dead_code)]
 fn run_after_confirmation_msg<F>(f: F) -> Message
 where
-    F: Fn(&mut App, &mut Context, &mut Vec<Message>) -> anyhow::Result<()> + 'static,
+    F: FnOnce(&mut App, &mut Context, &mut Vec<Message>) -> anyhow::Result<()> + 'static,
 {
-    Message::RunAfterConfirmation(DebugAsType(Arc::new(move |app, ctx, messages| {
-        f(app, ctx, messages)
-    })))
+    Message::RunAfterConfirmation(DebugAsType(Rc::new(RefCell::new(Some(Box::new(
+        move |app, ctx, messages| f(app, ctx, messages),
+    ))))))
 }
 
 struct StatusLayout {
