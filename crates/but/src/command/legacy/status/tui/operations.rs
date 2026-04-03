@@ -479,3 +479,26 @@ pub(super) fn discard_unassigned(ctx: &mut Context) -> anyhow::Result<()> {
 
     Ok(())
 }
+
+pub(super) fn discard_stack(ctx: &mut Context, stack_id: StackId) -> anyhow::Result<()> {
+    let context_lines = ctx.settings.context_lines;
+    let stack_changes = {
+        let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
+        let changes = but_core::diff::ui::worktree_changes(&repo)?.changes;
+
+        let (assignments, _assignments_error) = but_hunk_assignment::assignments_with_fallback(
+            db.hunk_assignments_mut()?,
+            &repo,
+            &ws,
+            Some(changes),
+            context_lines,
+        )?;
+
+        assignments
+            .into_iter()
+            .filter(|assignment| assignment.stack_id == Some(stack_id))
+            .collect::<Vec<_>>()
+    };
+
+    discard_uncommitted(ctx, stack_changes)
+}

@@ -1119,11 +1119,25 @@ impl App {
                     }),
                 )
             }
+            CliId::Stack { stack_id, .. } => {
+                self.to_be_discarded = Some(Arc::clone(cli_id));
+                let stack_id = *stack_id;
+                let drop_to_be_discarded =
+                    message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
+                Confirm::new(
+                    "Discard staged changes in this stack?",
+                    run_after_confirmation_msg(move |_, ctx, messages| {
+                        operations::discard_stack(ctx, stack_id)?;
+                        messages.push(Message::Reload(Some(SelectAfterReload::Stack(stack_id))));
+                        drop(drop_to_be_discarded);
+                        Ok(())
+                    }),
+                )
+            }
             CliId::PathPrefix { .. }
             | CliId::CommittedFile { .. }
             | CliId::Branch { .. }
-            | CliId::Commit { .. }
-            | CliId::Stack { .. } => return,
+            | CliId::Commit { .. } => return,
         });
     }
 
