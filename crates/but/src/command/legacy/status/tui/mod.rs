@@ -1030,6 +1030,7 @@ impl App {
                     Cursor::select_first_file_in_commit(commit_id, &new_lines)
                 }
                 SelectAfterReload::Stack(stack_id) => Cursor::select_stack(stack_id, &new_lines),
+                SelectAfterReload::CliId(cli_id) => Cursor::restore(&cli_id, &new_lines),
             }
         } else {
             let default_restore = || {
@@ -1091,8 +1092,34 @@ impl App {
                     }),
                 )
             }
-            CliId::Uncommitted(..)
-            | CliId::PathPrefix { .. }
+            CliId::Uncommitted(uncommitted) => {
+                self.to_be_discarded = Some(Arc::clone(cli_id));
+                let uncommitted = uncommitted.clone();
+                let select_after_reload = self
+                    .cursor
+                    .move_up(&self.status_lines, &self.mode, self.flags.show_files)
+                    .and_then(|cursor| cursor.selected_line(&self.status_lines))
+                    .and_then(|line| line.data.cli_id().cloned())
+                    .map(SelectAfterReload::CliId)
+                    .unwrap_or(SelectAfterReload::Unassigned);
+                let drop_to_be_discarded =
+                    message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
+                Confirm::new(
+                    format!("Discard {}?", uncommitted.describe()),
+                    run_after_confirmation_msg(move |_, ctx, messages| {
+                        let hunk_assignments = uncommitted
+                            .hunk_assignments
+                            .iter()
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        operations::discard_uncommitted(ctx, hunk_assignments)?;
+                        messages.push(Message::Reload(Some(select_after_reload)));
+                        drop(drop_to_be_discarded);
+                        Ok(())
+                    }),
+                )
+            }
+            CliId::PathPrefix { .. }
             | CliId::CommittedFile { .. }
             | CliId::Branch { .. }
             | CliId::Commit { .. }
@@ -2765,6 +2792,7 @@ enum SelectAfterReload {
     FirstFileInCommit(gix::ObjectId),
     Branch(String),
     Stack(StackId),
+    CliId(Arc<CliId>),
     Unassigned,
 }
 
