@@ -1431,7 +1431,10 @@ impl App {
             // TODO(david): don't use a separate reword step, instead get message before creating
             // commit. However that requires computing the diff which I haven't yet figured out how
             // to do
-            .chain(with_message.then_some(Message::Reword(RewordMessage::WithEditor)))
+            .chain(
+                (with_message && commit_create_result.new_commit.is_some())
+                    .then_some(Message::Reword(RewordMessage::WithEditor)),
+            )
             .chain(rejected_specs_error_msg.map(|text| Message::ShowToast {
                 kind: ToastKind::Error,
                 text,
