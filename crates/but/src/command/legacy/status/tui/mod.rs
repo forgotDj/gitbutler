@@ -682,6 +682,12 @@ impl App {
             Message::DropToBeDiscarded => {
                 self.to_be_discarded = None;
             }
+            Message::AndThen { lhs, rhs } => {
+                Box::pin(self.try_handle_message(ctx, out, mode, terminal_guard, messages, *lhs))
+                    .await?;
+                Box::pin(self.try_handle_message(ctx, out, mode, terminal_guard, messages, *rhs))
+                    .await?;
+            }
         }
 
         self.ensure_cursor_visible(visible_height);
@@ -2797,12 +2803,25 @@ enum Message {
     ),
     RegisterMessageOnDrop(Rc<Receiver<Message>>),
     WithOneFrameDelay(Box<Message>),
+    AndThen {
+        lhs: Box<Message>,
+        rhs: Box<Message>,
+    },
 }
 
 impl Message {
     /// Delay a message so it wont be handled until the next frame.
     pub(super) fn with_one_frame_delay(self) -> Self {
         Self::WithOneFrameDelay(Box::new(self))
+    }
+
+    /// Send another message only if handling the first succeeds.
+    #[expect(dead_code)]
+    pub(super) fn and_then(self, other: Self) -> Self {
+        Self::AndThen {
+            lhs: Box::new(self),
+            rhs: Box::new(other),
+        }
     }
 }
 

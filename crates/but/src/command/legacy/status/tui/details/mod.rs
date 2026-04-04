@@ -245,6 +245,10 @@ impl Details {
                 | DetailsMessage::ScrollDown(_)
                 | DetailsMessage::ToggleVisibility => false,
             },
+
+            Message::AndThen { lhs, rhs } => {
+                self.needs_update_after_message(lhs) || self.needs_update_after_message(rhs)
+            }
         }
     }
 
