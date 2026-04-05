@@ -1136,6 +1136,7 @@ const CommitRow: FC<
 				type="button"
 				onClick={toggleDetails}
 				aria-expanded={mode._tag === "Details"}
+				aria-label={mode._tag === "Details" ? "Hide commit details" : "Show commit details"}
 			>
 				<ExpandCollapseIcon isExpanded={mode._tag === "Details"} />
 			</button>
@@ -1257,6 +1258,7 @@ const ChangeRow: FC<{
 		<button
 			type="button"
 			className={sharedStyles.rowAction}
+			aria-label="Absorb"
 			onClick={() => {
 				onAbsorbChanges({
 					type: "treeChanges",
@@ -1310,6 +1312,7 @@ const ChangesSectionRow: FC<{
 			type="button"
 			className={sharedStyles.rowAction}
 			disabled={changes.length === 0}
+			aria-label="Absorb"
 			onClick={() => {
 				onAbsorbChanges({
 					type: "treeChanges",
@@ -1342,7 +1345,7 @@ const ChangesSectionRow: FC<{
 								});
 							}}
 						>
-							Absorb all changes
+							Absorb
 						</Menu.Item>
 					</Menu.Popup>
 				</Menu.Positioner>
