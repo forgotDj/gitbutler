@@ -478,6 +478,44 @@ const createPreviewImperativeHandle = ({
 	},
 });
 
+const usePreviewDiffState = ({
+	projectId,
+	changes,
+	selectedHunk,
+	selectHunk,
+	ref,
+	getAssignments,
+}: {
+	projectId: string;
+	changes: Array<TreeChange>;
+	selectedHunk: string | null;
+	selectHunk: (key: string | null) => void;
+	ref?: Ref<PreviewImperativeHandle>;
+	getAssignments?: (path: string) => Array<HunkAssignment> | undefined;
+}) => {
+	const treeChangeDiffs = useSuspenseQueries({
+		queries: changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
+	}).map((result) => result.data);
+	const changesWithDiffs = pipe(changes, Array.zip(treeChangeDiffs));
+	const hunkKeys = changesWithDiffs.flatMap(([change, diff]) =>
+		hunkKeysFromChangeWithDiff([change, diff], getAssignments?.(change.path)),
+	);
+	const normalizedSelectedHunk = normalizeSelectedHunk({ hunkKeys, selectedHunk });
+
+	useImperativeHandle(
+		ref,
+		() =>
+			createPreviewImperativeHandle({
+				hunkKeys,
+				selectedHunk: normalizedSelectedHunk,
+				selectHunk,
+			}),
+		[normalizedSelectedHunk, hunkKeys, selectHunk],
+	);
+
+	return { changesWithDiffs, normalizedSelectedHunk };
+};
+
 const ChangesPreview: FC<{
 	projectId: string;
 	stackId: string | null;
@@ -510,24 +548,14 @@ const ChangesPreview: FC<{
 			? changes.find((candidate) => candidate.path === selectedFile)
 			: undefined;
 	const visibleChanges = selectedChange ? [selectedChange] : changes;
-	const treeChangeDiffs = useSuspenseQueries({
-		queries: visibleChanges.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
-	}).map((result) => result.data);
-	const changesWithDiffs = pipe(visibleChanges, Array.zip(treeChangeDiffs));
-	const hunkKeys = changesWithDiffs.flatMap(([change, diff]) =>
-		hunkKeysFromChangeWithDiff([change, diff], assignmentsByPath.get(change.path)),
-	);
-	const normalizedSelectedHunk = normalizeSelectedHunk({ hunkKeys, selectedHunk });
-	useImperativeHandle(
+	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
+		projectId,
+		changes: visibleChanges,
+		selectedHunk,
+		selectHunk,
 		ref,
-		() =>
-			createPreviewImperativeHandle({
-				hunkKeys,
-				selectedHunk: normalizedSelectedHunk,
-				selectHunk,
-			}),
-		[normalizedSelectedHunk, hunkKeys, selectHunk],
-	);
+		getAssignments: (path) => assignmentsByPath.get(path),
+	});
 
 	return (
 		<div>
@@ -604,24 +632,13 @@ const CommitPreview: FC<{
 			: undefined;
 	const visibleChanges =
 		selectedFile === undefined ? commitDetails.changes : selectedChange ? [selectedChange] : [];
-	const treeChangeDiffs = useSuspenseQueries({
-		queries: visibleChanges.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
-	}).map((result) => result.data);
-	const changesWithDiffs = pipe(visibleChanges, Array.zip(treeChangeDiffs));
-	const hunkKeys = changesWithDiffs.flatMap(([change, diff]) =>
-		hunkKeysFromChangeWithDiff([change, diff]),
-	);
-	const normalizedSelectedHunk = normalizeSelectedHunk({ hunkKeys, selectedHunk });
-	useImperativeHandle(
+	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
+		projectId,
+		changes: visibleChanges,
+		selectedHunk,
+		selectHunk,
 		ref,
-		() =>
-			createPreviewImperativeHandle({
-				hunkKeys,
-				selectedHunk: normalizedSelectedHunk,
-				selectHunk,
-			}),
-		[normalizedSelectedHunk, hunkKeys, selectHunk],
-	);
+	});
 
 	return (
 		<div>
@@ -696,24 +713,13 @@ const BranchPreview: FC<{
 			branchDiffQueryOptions({ projectId, branch: `refs/heads/${branchName}` }),
 		],
 	});
-	const treeChangeDiffs = useSuspenseQueries({
-		queries: branchDiff.changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
-	}).map((result) => result.data);
-	const changesWithDiffs = pipe(branchDiff.changes, Array.zip(treeChangeDiffs));
-	const hunkKeys = changesWithDiffs.flatMap(([change, diff]) =>
-		hunkKeysFromChangeWithDiff([change, diff]),
-	);
-	const normalizedSelectedHunk = normalizeSelectedHunk({ hunkKeys, selectedHunk });
-	useImperativeHandle(
+	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
+		projectId,
+		changes: branchDiff.changes,
+		selectedHunk,
+		selectHunk,
 		ref,
-		() =>
-			createPreviewImperativeHandle({
-				hunkKeys,
-				selectedHunk: normalizedSelectedHunk,
-				selectHunk,
-			}),
-		[normalizedSelectedHunk, hunkKeys, selectHunk],
-	);
+	});
 
 	return (
 		<div>
