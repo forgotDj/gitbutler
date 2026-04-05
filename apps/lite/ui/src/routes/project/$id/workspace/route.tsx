@@ -456,28 +456,6 @@ export type PreviewImperativeHandle = {
 	moveSelection: (offset: -1 | 1) => void;
 };
 
-const createPreviewImperativeHandle = ({
-	hunkKeys,
-	selectedHunk,
-	selectHunk,
-}: {
-	hunkKeys: Array<string>;
-	selectedHunk: string | undefined;
-	selectHunk: (key: string | null) => void;
-}): PreviewImperativeHandle => ({
-	moveSelection: (offset) => {
-		if (hunkKeys.length === 0) return;
-
-		const currentKey = selectedHunk ?? hunkKeys[0];
-		if (currentKey === undefined) return;
-
-		// We assume a valid key was provided.
-		const currentIndex = hunkKeys.indexOf(currentKey);
-
-		selectHunk(getRelative(hunkKeys, currentIndex, offset));
-	},
-});
-
 const usePreviewDiffState = ({
 	projectId,
 	changes,
@@ -504,12 +482,18 @@ const usePreviewDiffState = ({
 
 	useImperativeHandle(
 		ref,
-		() =>
-			createPreviewImperativeHandle({
-				hunkKeys,
-				selectedHunk: normalizedSelectedHunk,
-				selectHunk,
-			}),
+		(): PreviewImperativeHandle => ({
+			moveSelection: (offset) => {
+				if (hunkKeys.length === 0) return;
+
+				if (normalizedSelectedHunk === undefined) return;
+
+				// We assume a valid key was provided.
+				const currentIndex = hunkKeys.indexOf(normalizedSelectedHunk);
+
+				selectHunk(getRelative(hunkKeys, currentIndex, offset));
+			},
+		}),
 		[normalizedSelectedHunk, hunkKeys, selectHunk],
 	);
 
