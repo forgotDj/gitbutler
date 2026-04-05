@@ -1007,7 +1007,6 @@ const CommitRow: FC<
 		branchName,
 		commitId: commit.id,
 	});
-	const isEditing = mode._tag === "Reword";
 	const [optimisticMessage, setOptimisticMessage] = useOptimistic(
 		commit.message,
 		(_currentMessage, nextMessage: string) => nextMessage,
@@ -1082,7 +1081,7 @@ const CommitRow: FC<
 				isHighlighted && sharedStyles.itemHighlighted,
 			)}
 		>
-			{isEditing ? (
+			{mode._tag === "Reword" ? (
 				<InlineCommitMessageEditor
 					message={optimisticMessage}
 					onSubmit={saveNewMessage}
@@ -1600,7 +1599,6 @@ const SegmentRow: FC<
 		segmentIndex,
 		branchName,
 	});
-	const isEditing = mode._tag === "Rename";
 	const [optimisticBranchName, setOptimisticBranchName] = useOptimistic(
 		branchName,
 		(_currentBranchName, nextBranchName: string) => nextBranchName,
@@ -1656,7 +1654,7 @@ const SegmentRow: FC<
 				isSelected && sharedStyles.itemSelected,
 			)}
 		>
-			{isEditing && optimisticBranchName !== null ? (
+			{mode._tag === "Rename" && optimisticBranchName !== null ? (
 				<InlineBranchNameEditor
 					branchName={optimisticBranchName}
 					onSubmit={saveBranchName}
