@@ -1073,10 +1073,8 @@ const CommitRow: FC<
 	};
 
 	return (
-		<CommitSource
+		<div
 			{...restProps}
-			isEnabled={!isEditing}
-			commit={commitWithOptimisticMessage}
 			className={classes(
 				sharedStyles.row,
 				isSelected && sharedStyles.rowSelected,
@@ -1146,7 +1144,7 @@ const CommitRow: FC<
 					</Menu.Positioner>
 				</Menu.Portal>
 			</Menu.Root>
-		</CommitSource>
+		</div>
 	);
 };
 
@@ -1179,10 +1177,16 @@ const CommitC: FC<{
 	selectFile,
 	stackId,
 }) => (
-	<CommitTarget
-		commitId={commit.id}
-		previousCommitId={previousCommitId}
-		nextCommitId={nextCommitId}
+	<CommitSource
+		isEnabled={mode._tag !== "Reword"}
+		commit={commit}
+		render={
+			<CommitTarget
+				commitId={commit.id}
+				previousCommitId={previousCommitId}
+				nextCommitId={nextCommitId}
+			/>
+		}
 	>
 		<CommitRow
 			branchName={branchName}
@@ -1205,7 +1209,7 @@ const CommitC: FC<{
 				/>
 			</Suspense>
 		)}
-	</CommitTarget>
+	</CommitSource>
 );
 
 const ChangeRow: FC<{
