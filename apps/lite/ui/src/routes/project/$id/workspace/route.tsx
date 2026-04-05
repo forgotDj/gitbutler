@@ -1918,7 +1918,6 @@ const ProjectPage: FC = () => {
 	const selectFile = (nextSelectedFile: string | null) => {
 		dispatchProjectState({ _tag: "SelectFile", file: nextSelectedFile });
 	};
-
 	const selectHunk = (selectedHunk: string | null) => {
 		dispatchProjectState({ _tag: "SelectHunk", hunk: selectedHunk });
 	};
