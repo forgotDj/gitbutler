@@ -10,6 +10,7 @@ import {
 	segmentItem,
 } from "./-Item.ts";
 import { getRelative } from "../-shared.tsx";
+import { asSelectedItem, SelectedItem } from "./-SelectedItem.ts";
 
 const hasAssignmentsForPath = ({
 	assignments,
@@ -151,3 +152,6 @@ export const getAdjacentSection = (
 	if (adjacentSectionStartIndex === null) return null;
 	return index.items[adjacentSectionStartIndex] ?? null;
 };
+
+export const getDefaultSelectedItem = (navigationIndex: NavigationIndex): SelectedItem | null =>
+	navigationIndex.items[0] ? asSelectedItem(navigationIndex.items[0]) : null;

@@ -108,7 +108,11 @@ import {
 	selectedCommitItem,
 	selectedSegmentItem,
 } from "./-SelectedItem.ts";
-import { buildNavigationIndex, buildWorkspaceOutline } from "./-WorkspaceModel.ts";
+import {
+	buildNavigationIndex,
+	buildWorkspaceOutline,
+	getDefaultSelectedItem,
+} from "./-WorkspaceModel.ts";
 import {
 	renameBranchBindings,
 	handleRenameBranchKeyDown,
@@ -1911,12 +1915,10 @@ const ProjectPage: FC = () => {
 	});
 	const navigationIndex = buildNavigationIndex(workspaceOutline);
 
-	const defaultSelectedItem = () =>
-		navigationIndex.items[0] ? asSelectedItem(navigationIndex.items[0]) : null;
 	const selectedItem =
 		(workspaceSelection.item
 			? normalizeSelectedItem(workspaceSelection.item, headInfo, worktreeChanges)
-			: null) ?? defaultSelectedItem();
+			: null) ?? getDefaultSelectedItem(navigationIndex);
 
 	const selectItem = (nextSelectedItem: SelectedItem | null) => {
 		dispatchProjectState({ _tag: "SelectItem", item: nextSelectedItem });
