@@ -99,18 +99,17 @@ import {
 } from "react";
 import useLocalStorageState from "use-local-storage-state";
 import sharedStyles from "../-shared.module.css";
+import { baseCommitItem, changeItem, changesSectionItem } from "./-Item.ts";
 import {
-	baseCommitItem,
-	changeItem,
-	changesSectionItem,
-	commitItem,
 	type CommitMode,
+	asSelectedItem,
 	defaultCommitMode,
 	defaultSegmentMode,
-	type Item,
+	type SelectedItem,
 	type SegmentMode,
-	segmentItem,
-} from "./-Item.ts";
+	selectedCommitItem,
+	selectedSegmentItem,
+} from "./-SelectedItem.ts";
 import { buildNavigationIndex, buildWorkspaceOutline } from "./-WorkspaceModel.ts";
 import {
 	renameBranchBindings,
@@ -716,7 +715,7 @@ const BranchPreview: FC<{
 
 const Preview: FC<{
 	projectId: string;
-	selectedItem: Item;
+	selectedItem: SelectedItem;
 	onSelectHunk: (key: string) => void;
 	selectedHunk: string | null;
 	selectedFile: string | null;
@@ -966,7 +965,7 @@ const CommitRow: FC<
 		mode: CommitMode;
 		projectId: string;
 		segmentIndex: number;
-		selectItem: (item: Item | null) => void;
+		selectItem: (item: SelectedItem | null) => void;
 		stackId: string;
 	} & ComponentProps<"div">
 > = ({
@@ -981,7 +980,7 @@ const CommitRow: FC<
 	stackId,
 	...restProps
 }) => {
-	const defaultItem = commitItem({
+	const defaultItem = selectedCommitItem({
 		stackId,
 		segmentIndex,
 		branchName,
@@ -1000,7 +999,7 @@ const CommitRow: FC<
 
 	const openDetails = () => {
 		selectItem(
-			commitItem({
+			selectedCommitItem({
 				stackId,
 				segmentIndex,
 				branchName,
@@ -1019,7 +1018,7 @@ const CommitRow: FC<
 
 	const startEditing = () => {
 		selectItem(
-			commitItem({
+			selectedCommitItem({
 				stackId,
 				segmentIndex,
 				branchName,
@@ -1137,7 +1136,7 @@ const CommitC: FC<{
 	previousCommitId: string | undefined;
 	projectId: string;
 	segmentIndex: number;
-	selectItem: (item: Item | null) => void;
+	selectItem: (item: SelectedItem | null) => void;
 	selectedFile: string | null;
 	selectFile: (path: string | null) => void;
 	stackId: string;
@@ -1199,7 +1198,7 @@ const ChangeRow: FC<{
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	onDependencyHover: (commitIds: Array<string> | null) => void;
 	projectId: string;
-	selectItem: (item: Item | null) => void;
+	selectItem: (item: SelectedItem | null) => void;
 	stackId: string | null;
 }> = ({
 	change,
@@ -1223,7 +1222,7 @@ const ChangeRow: FC<{
 		<FileButton
 			change={change}
 			onClick={() => {
-				selectItem(changeItem(stackId, change.path));
+				selectItem(asSelectedItem(changeItem(stackId, change.path)));
 			}}
 		/>
 		<button
@@ -1289,7 +1288,7 @@ const ChangesSectionRow: FC<{
 	isSelected: boolean;
 	label: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	selectItem: (item: Item | null) => void;
+	selectItem: (item: SelectedItem | null) => void;
 	stackId: string | null;
 }> = ({ changes, isSelected, label, onAbsorbChanges, selectItem, stackId }) => (
 	<div
@@ -1306,7 +1305,7 @@ const ChangesSectionRow: FC<{
 						type="button"
 						className={styles.segmentButton}
 						onClick={() => {
-							selectItem(changesSectionItem(stackId));
+							selectItem(asSelectedItem(changesSectionItem(stackId)));
 						}}
 					>
 						{label}
@@ -1362,7 +1361,7 @@ const ChangesSectionRow: FC<{
 const BaseCommitRow: FC<{
 	commitId: string;
 	isSelected: boolean;
-	selectItem: (item: Item | null) => void;
+	selectItem: (item: SelectedItem | null) => void;
 }> = ({ commitId, isSelected, selectItem }) => (
 	<div
 		className={classes(
@@ -1375,7 +1374,7 @@ const BaseCommitRow: FC<{
 			type="button"
 			className={styles.commonBaseCommit}
 			onClick={() => {
-				selectItem(baseCommitItem(commitId));
+				selectItem(asSelectedItem(baseCommitItem(commitId)));
 			}}
 		>
 			{shortCommitId(commitId)} (common base commit)
@@ -1391,7 +1390,7 @@ const Changes: FC<{
 	selectedPath: string | null;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	onDependencyHover: (commitIds: Array<string> | null) => void;
-	selectItem: (item: Item | null) => void;
+	selectItem: (item: SelectedItem | null) => void;
 	className?: string;
 }> = ({
 	label,
@@ -1596,11 +1595,11 @@ const SegmentRow: FC<
 		segment: Segment;
 		stackId: string;
 		segmentIndex: number;
-		selectItem: (item: Item | null) => void;
+		selectItem: (item: SelectedItem | null) => void;
 	} & ComponentProps<"div">
 > = ({ isSelected, mode, projectId, segment, stackId, segmentIndex, selectItem, ...restProps }) => {
 	const branchName = segment.refName?.displayName ?? null;
-	const defaultItem = segmentItem({
+	const defaultItem = selectedSegmentItem({
 		stackId,
 		segmentIndex,
 		branchName,
@@ -1615,7 +1614,9 @@ const SegmentRow: FC<
 
 	const startEditing = () => {
 		if (branchName === null) return;
-		selectItem(segmentItem({ stackId, segmentIndex, branchName, mode: { _tag: "Rename" } }));
+		selectItem(
+			selectedSegmentItem({ stackId, segmentIndex, branchName, mode: { _tag: "Rename" } }),
+		);
 	};
 
 	const endEditing = () => {
@@ -1641,7 +1642,7 @@ const SegmentRow: FC<
 				return;
 			}
 			selectItem(
-				segmentItem({
+				selectedSegmentItem({
 					stackId,
 					segmentIndex,
 					branchName: trimmed,
@@ -1733,8 +1734,8 @@ const SegmentC: FC<{
 	projectId: string;
 	segment: Segment;
 	segmentIndex: number;
-	selectedItem: Item;
-	selectItem: (item: Item | null) => void;
+	selectedItem: SelectedItem;
+	selectItem: (item: SelectedItem | null) => void;
 	selectedFile: string | null;
 	selectFile: (path: string | null) => void;
 	stackId: string;
@@ -1808,8 +1809,8 @@ const StackC: FC<{
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	onDependencyHover: (commitIds: Array<string> | null) => void;
 	projectId: string;
-	selectedItem: Item;
-	selectItem: (item: Item | null) => void;
+	selectedItem: SelectedItem;
+	selectItem: (item: SelectedItem | null) => void;
 	selectedFile: string | null;
 	selectFile: (path: string | null) => void;
 	stack: Stack;
@@ -1921,7 +1922,7 @@ const ProjectPage: FC = () => {
 		worktreeChanges,
 		defaultItem: workspaceOutline[0].section,
 	});
-	const selectItem = (nextSelectedItem: Item | null) => {
+	const selectItem = (nextSelectedItem: SelectedItem | null) => {
 		dispatchProjectState({ _tag: "SelectItem", item: nextSelectedItem });
 	};
 	const selectFile = (nextSelectedFile: string | null) => {

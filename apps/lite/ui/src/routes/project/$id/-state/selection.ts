@@ -2,15 +2,16 @@ import { getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
 import { type RefInfo, type WorktreeChanges } from "@gitbutler/but-sdk";
 import { Match } from "effect";
 import { type Item } from "../workspace/-Item.ts";
+import { asSelectedItem, type SelectedItem } from "../workspace/-SelectedItem.ts";
 
 export type WorkspaceSelectionState = {
-	item: Item | null;
+	item: SelectedItem | null;
 	file: string | null;
 	hunk: string | null;
 };
 
 export type WorkspaceSelectionAction =
-	| { _tag: "SelectItem"; item: Item | null }
+	| { _tag: "SelectItem"; item: SelectedItem | null }
 	| { _tag: "SelectFile"; file: string | null }
 	| { _tag: "SelectHunk"; hunk: string | null };
 
@@ -44,10 +45,10 @@ export const workspaceSelectionReducer = (
 	);
 
 const normalizeSelectedItem = (
-	item: Item,
+	item: SelectedItem,
 	headInfo: RefInfo,
 	worktreeChanges: WorktreeChanges,
-): Item | null =>
+): SelectedItem | null =>
 	Match.value(item).pipe(
 		Match.tag("ChangesSection", (item) => item),
 		Match.tag("Change", (item) => {
@@ -94,10 +95,10 @@ export const resolveSelectedWorkspaceItem = ({
 	worktreeChanges: WorktreeChanges;
 	headInfo: RefInfo;
 	defaultItem: Item;
-}): Item =>
+}): SelectedItem =>
 	(workspaceSelection.item
 		? normalizeSelectedItem(workspaceSelection.item, headInfo, worktreeChanges)
-		: null) ?? defaultItem;
+		: null) ?? asSelectedItem(defaultItem);
 
 export const normalizeSelectedFile = ({
 	paths,
