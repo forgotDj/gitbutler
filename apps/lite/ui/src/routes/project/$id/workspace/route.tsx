@@ -981,6 +981,7 @@ const CommitRow: FC<
 		segmentIndex,
 		branchName,
 		commitId: commit.id,
+		mode: { _tag: "Default" },
 	});
 	const [optimisticMessage, setOptimisticMessage] = useOptimistic(
 		commit.message,
@@ -1597,6 +1598,7 @@ const SegmentRow: FC<
 		stackId,
 		segmentIndex,
 		branchName,
+		mode: { _tag: "Default" },
 	});
 	const [optimisticBranchName, setOptimisticBranchName] = useOptimistic(
 		branchName,
@@ -1640,6 +1642,7 @@ const SegmentRow: FC<
 					stackId,
 					segmentIndex,
 					branchName: trimmed,
+					mode: { _tag: "Default" },
 				}),
 			);
 		});

@@ -27,8 +27,8 @@ export const selectedSegmentItem = ({
 	stackId,
 	segmentIndex,
 	branchName,
-	mode = { _tag: "Default" },
-}: SegmentItem & { mode?: SegmentMode }): SelectedItem => ({
+	mode,
+}: SelectedSegmentItem): SelectedItem => ({
 	_tag: "Segment",
 	stackId,
 	segmentIndex,
@@ -41,8 +41,8 @@ export const selectedCommitItem = ({
 	segmentIndex,
 	branchName,
 	commitId,
-	mode = { _tag: "Default" },
-}: CommitItem & { mode?: CommitMode }): SelectedItem => ({
+	mode,
+}: SelectedCommitItem): SelectedItem => ({
 	_tag: "Commit",
 	stackId,
 	segmentIndex,
@@ -56,8 +56,8 @@ export const asSelectedItem = (item: Item): SelectedItem =>
 		Match.tagsExhaustive({
 			ChangesSection: (item) => item,
 			Change: (item) => item,
-			Segment: (item) => selectedSegmentItem(item),
-			Commit: (item) => selectedCommitItem(item),
+			Segment: (item) => selectedSegmentItem({ ...item, mode: { _tag: "Default" } }),
+			Commit: (item) => selectedCommitItem({ ...item, mode: { _tag: "Default" } }),
 			BaseCommit: (item) => item,
 		}),
 	);
