@@ -20,6 +20,7 @@ import {
 	type SelectedItem,
 	type SelectedSegmentItem,
 	asSelectedItem,
+	selectedChangesSectionItem,
 	selectedCommitItem,
 	selectedSegmentItem,
 } from "./-SelectedItem.ts";
@@ -35,6 +36,7 @@ type ItemSelectionAction =
 
 type PrimaryPanelAction =
 	| ItemSelectionAction
+	| { _tag: "SelectUnassignedChanges" }
 	| { _tag: "FocusPreview" }
 	| { _tag: "ToggleFullscreenPreview" }
 	| { _tag: "TogglePreview" };
@@ -134,6 +136,13 @@ const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
 
 const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 	...itemSelectionBindings,
+	{
+		id: "select-unassigned-changes",
+		description: "Unassigned changes",
+		keys: ["z"],
+		action: { _tag: "SelectUnassignedChanges" },
+		repeat: false,
+	},
 	focusPreviewBinding,
 	toggleFullscreenPreviewBinding,
 	togglePreviewBinding,
@@ -619,6 +628,11 @@ export const useWorkspaceShortcuts = ({
 	const handlePrimaryPanelAction = (action: PrimaryPanelAction, selectedItem: SelectedItem) =>
 		Match.value(action).pipe(
 			Match.tags({
+				SelectUnassignedChanges: () =>
+					dispatchProjectState({
+						_tag: "SelectItem",
+						item: selectedChangesSectionItem(null),
+					}),
 				FocusPreview: () => dispatchProjectState({ _tag: "FocusPreview" }),
 				ToggleFullscreenPreview: () => dispatchProjectState({ _tag: "ToggleFullscreenPreview" }),
 				TogglePreview: () => dispatchProjectState({ _tag: "TogglePreview" }),
