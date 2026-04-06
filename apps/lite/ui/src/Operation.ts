@@ -75,7 +75,12 @@ export const operationLabel = (operation: Operation): string | null =>
 			AssignHunk: (operation) =>
 				operation.assignments[0]?.stackId == null ? "Unassign" : "Assign",
 			CommitAmend: () => "Amend",
-			CommitCreate: () => "Commit changes here",
+			CommitCreate: ({ side }) =>
+				Match.value(side).pipe(
+					Match.when("above", () => "Create commit above"),
+					Match.when("below", () => "Create commit below"),
+					Match.exhaustive,
+				),
 			CommitCreateFromCommittedChanges: () => "Create commit here",
 			CommitMove: () => "Move commit here",
 			CommitMoveChangesBetween: () => "Amend",
