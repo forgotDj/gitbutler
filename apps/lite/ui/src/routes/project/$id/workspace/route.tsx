@@ -1838,7 +1838,7 @@ const StackC: FC<{
 	return (
 		<div className={styles.stack}>
 			<div>
-				<div className={styles.stackHeader}>
+				<div className={styles.stackActions}>
 					<Menu.Root>
 						<Menu.Trigger className={styles.stackMenuTrigger} aria-label="Stack menu">
 							<MenuTriggerIcon />
