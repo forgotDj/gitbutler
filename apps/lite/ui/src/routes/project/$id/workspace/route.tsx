@@ -1278,6 +1278,35 @@ const ChangeRow: FC<{
 	</ChangesFileSource>
 );
 
+const ChangesSectionMenuPopup: FC<{
+	changes: Array<TreeChange>;
+	onAbsorbChanges: (target: AbsorptionTarget) => void;
+	parts: typeof Menu | typeof ContextMenu;
+	stackId: string | null;
+}> = ({ changes, onAbsorbChanges, parts, stackId }) => {
+	const { Popup, Item } = parts;
+
+	return (
+		<Popup className={classes(uiStyles.popup, uiStyles.menuPopup)}>
+			<Item
+				className={uiStyles.menuItem}
+				disabled={changes.length === 0}
+				onClick={() => {
+					onAbsorbChanges({
+						type: "treeChanges",
+						subject: {
+							changes,
+							assigned_stack_id: stackId,
+						},
+					});
+				}}
+			>
+				Absorb
+			</Item>
+		</Popup>
+	);
+};
+
 const ChangesSectionRow: FC<{
 	changes: Array<TreeChange>;
 	isSelected: boolean;
@@ -1293,15 +1322,31 @@ const ChangesSectionRow: FC<{
 			isSelected && sharedStyles.itemRowSelected,
 		)}
 	>
-		<button
-			type="button"
-			className={styles.segmentButton}
-			onClick={() => {
-				selectItem(changesSectionItem(stackId));
-			}}
-		>
-			{label}
-		</button>
+		<ContextMenu.Root>
+			<ContextMenu.Trigger
+				render={
+					<button
+						type="button"
+						className={styles.segmentButton}
+						onClick={() => {
+							selectItem(changesSectionItem(stackId));
+						}}
+					>
+						{label}
+					</button>
+				}
+			/>
+			<ContextMenu.Portal>
+				<ContextMenu.Positioner>
+					<ChangesSectionMenuPopup
+						changes={changes}
+						onAbsorbChanges={onAbsorbChanges}
+						parts={ContextMenu}
+						stackId={stackId}
+					/>
+				</ContextMenu.Positioner>
+			</ContextMenu.Portal>
+		</ContextMenu.Root>
 		<button
 			type="button"
 			className={sharedStyles.rowAction}
@@ -1325,23 +1370,12 @@ const ChangesSectionRow: FC<{
 			</Menu.Trigger>
 			<Menu.Portal>
 				<Menu.Positioner align="end">
-					<Menu.Popup className={classes(uiStyles.popup, uiStyles.menuPopup)}>
-						<Menu.Item
-							className={uiStyles.menuItem}
-							disabled={changes.length === 0}
-							onClick={() => {
-								onAbsorbChanges({
-									type: "treeChanges",
-									subject: {
-										changes,
-										assigned_stack_id: stackId,
-									},
-								});
-							}}
-						>
-							Absorb
-						</Menu.Item>
-					</Menu.Popup>
+					<ChangesSectionMenuPopup
+						changes={changes}
+						onAbsorbChanges={onAbsorbChanges}
+						parts={Menu}
+						stackId={stackId}
+					/>
 				</Menu.Positioner>
 			</Menu.Portal>
 		</Menu.Root>
