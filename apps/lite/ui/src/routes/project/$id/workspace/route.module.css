@@ -24,9 +24,6 @@
 	width: 300px;
 }
 
-.assignedChanges {
-}
-
 .commitForm {
 	display: flex;
 	flex-direction: column;

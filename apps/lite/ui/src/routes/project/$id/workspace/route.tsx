@@ -1905,7 +1905,6 @@ const StackC: FC<{
 					onAbsorbChanges={onAbsorbChanges}
 					onDependencyHover={onDependencyHover}
 					selectItem={selectItem}
-					className={styles.assignedChanges}
 				/>
 				<CommitForm projectId={projectId} stack={stack} />
 			</div>
