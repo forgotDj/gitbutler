@@ -2,12 +2,7 @@ import { classes } from "#ui/classes.ts";
 import { type FileParent } from "#ui/domain/FileParent.ts";
 import { useDraggable } from "#ui/hooks/useDraggable.tsx";
 import { useDroppable } from "#ui/hooks/useDroppable.ts";
-import {
-	getInsertionSide,
-	isCombineOperation,
-	operationLabel,
-	type Operation,
-} from "#ui/Operation.ts";
+import { getInsertionSide, operationLabel, type Operation } from "#ui/Operation.ts";
 import {
 	CommitLabel,
 	decodeRefName,
@@ -281,7 +276,9 @@ export const CommitTarget: FC<
 		});
 	});
 
-	const targetTooltipOperation = operation && isCombineOperation(operation) ? operation : null;
+	const insertionSide = operation ? getInsertionSide(operation) : null;
+
+	const targetTooltipOperation = insertionSide === null ? operation : null;
 
 	const target = useRender({
 		render,
@@ -290,8 +287,6 @@ export const CommitTarget: FC<
 			className: classes(targetTooltipOperation && styles.activeTarget),
 		}),
 	});
-
-	const insertionSide = operation ? getInsertionSide(operation) : null;
 
 	return (
 		<div className={styles.commit}>
