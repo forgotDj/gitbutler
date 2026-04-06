@@ -30,7 +30,6 @@ import { stackRelativeTo } from "#ui/domain/Stack.ts";
 import { ProjectPreviewLayout } from "#ui/routes/project/$id/-ProjectPreviewLayout.tsx";
 import { getFocus } from "#ui/routes/project/$id/-state/layout.ts";
 import {
-	isValidSelectedItem,
 	normalizeSelectedFile,
 	normalizeSelectedHunk,
 } from "#ui/routes/project/$id/-state/selection.ts";
@@ -113,6 +112,7 @@ import {
 	buildNavigationIndex,
 	buildWorkspaceOutline,
 	getDefaultSelectedItem,
+	navigationIndexIncludes,
 } from "./-WorkspaceModel.ts";
 import {
 	renameBranchBindings,
@@ -1917,8 +1917,7 @@ const ProjectPage: FC = () => {
 	const navigationIndex = buildNavigationIndex(workspaceOutline);
 
 	const selectedItem =
-		workspaceSelection.item &&
-		isValidSelectedItem(workspaceSelection.item, headInfo, worktreeChanges)
+		workspaceSelection.item && navigationIndexIncludes(navigationIndex, workspaceSelection.item)
 			? workspaceSelection.item
 			: getDefaultSelectedItem(navigationIndex);
 

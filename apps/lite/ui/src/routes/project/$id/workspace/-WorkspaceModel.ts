@@ -153,5 +153,10 @@ export const getAdjacentSection = (
 	return index.items[adjacentSectionStartIndex] ?? null;
 };
 
+export const navigationIndexIncludes = (
+	navigationIndex: NavigationIndex,
+	item: Item | null,
+): boolean => (item ? navigationIndex.indexByKey.has(itemIdentityKey(item)) : false);
+
 export const getDefaultSelectedItem = (navigationIndex: NavigationIndex): SelectedItem | null =>
 	navigationIndex.items[0] ? asSelectedItem(navigationIndex.items[0]) : null;

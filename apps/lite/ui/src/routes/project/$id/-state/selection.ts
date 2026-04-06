@@ -1,5 +1,3 @@
-import { getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
-import { type RefInfo, type WorktreeChanges } from "@gitbutler/but-sdk";
 import { Match } from "effect";
 import { type SelectedItem } from "../workspace/-SelectedItem.ts";
 
@@ -41,47 +39,6 @@ export const workspaceSelectionReducer = (
 				hunk,
 			}),
 		}),
-	);
-
-export const isValidSelectedItem = (
-	item: SelectedItem,
-	headInfo: RefInfo,
-	worktreeChanges: WorktreeChanges,
-): boolean =>
-	Match.value(item).pipe(
-		Match.tag("ChangesSection", () => true),
-		Match.tag("Change", (item) => {
-			if (!worktreeChanges.changes.find((change) => change.path === item.path)) return false;
-			if (
-				!worktreeChanges.assignments.find(
-					(assignment) => assignment.stackId === item.stackId && assignment.path === item.path,
-				)
-			)
-				return false;
-			return true;
-		}),
-		Match.tag("Segment", (item) => {
-			const stack = headInfo.stacks.find((stack) => stack.id !== null && stack.id === item.stackId);
-			if (!stack) return false;
-			const segment = stack.segments[item.segmentIndex];
-			if (!segment) return false;
-			const branchName = segment.refName?.displayName ?? null;
-			if (branchName !== item.branchName) return false;
-			return true;
-		}),
-		Match.tag("Commit", (item) => {
-			const stack = headInfo.stacks.find((stack) => stack.id !== null && stack.id === item.stackId);
-			if (!stack) return false;
-			const segment = stack.segments[item.segmentIndex];
-			if (!segment) return false;
-			if (!segment.commits.some((commit) => commit.id === item.commitId)) return false;
-			return true;
-		}),
-		Match.tag("BaseCommit", (item) => {
-			const commonBaseCommitId = getCommonBaseCommitId(headInfo);
-			return commonBaseCommitId === item.commitId;
-		}),
-		Match.exhaustive,
 	);
 
 export const normalizeSelectedFile = ({
