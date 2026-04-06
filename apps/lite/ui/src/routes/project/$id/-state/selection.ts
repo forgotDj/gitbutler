@@ -43,43 +43,43 @@ export const workspaceSelectionReducer = (
 		}),
 	);
 
-export const normalizeSelectedItem = (
+export const isValidSelectedItem = (
 	item: SelectedItem,
 	headInfo: RefInfo,
 	worktreeChanges: WorktreeChanges,
-): SelectedItem | null =>
+): boolean =>
 	Match.value(item).pipe(
-		Match.tag("ChangesSection", (item) => item),
+		Match.tag("ChangesSection", () => true),
 		Match.tag("Change", (item) => {
-			if (!worktreeChanges.changes.find((change) => change.path === item.path)) return null;
+			if (!worktreeChanges.changes.find((change) => change.path === item.path)) return false;
 			if (
 				!worktreeChanges.assignments.find(
 					(assignment) => assignment.stackId === item.stackId && assignment.path === item.path,
 				)
 			)
-				return null;
-			return item;
+				return false;
+			return true;
 		}),
 		Match.tag("Segment", (item) => {
 			const stack = headInfo.stacks.find((stack) => stack.id !== null && stack.id === item.stackId);
-			if (!stack) return null;
+			if (!stack) return false;
 			const segment = stack.segments[item.segmentIndex];
-			if (!segment) return null;
+			if (!segment) return false;
 			const branchName = segment.refName?.displayName ?? null;
-			if (branchName !== item.branchName) return null;
-			return item;
+			if (branchName !== item.branchName) return false;
+			return true;
 		}),
 		Match.tag("Commit", (item) => {
 			const stack = headInfo.stacks.find((stack) => stack.id !== null && stack.id === item.stackId);
-			if (!stack) return null;
+			if (!stack) return false;
 			const segment = stack.segments[item.segmentIndex];
-			if (!segment) return null;
-			if (!segment.commits.some((commit) => commit.id === item.commitId)) return null;
-			return item;
+			if (!segment) return false;
+			if (!segment.commits.some((commit) => commit.id === item.commitId)) return false;
+			return true;
 		}),
 		Match.tag("BaseCommit", (item) => {
 			const commonBaseCommitId = getCommonBaseCommitId(headInfo);
-			return commonBaseCommitId === item.commitId ? item : null;
+			return commonBaseCommitId === item.commitId;
 		}),
 		Match.exhaustive,
 	);

@@ -36,7 +36,7 @@ import {
 import { CommitFileSource } from "#ui/routes/project/$id/workspace/-OperationSubjects.tsx";
 import uiStyles from "#ui/ui.module.css";
 import sharedStyles from "../-shared.module.css";
-import { getDefaultSelection, normalizeBranchSelection, Selection } from "./-Selection.ts";
+import { getDefaultSelection, isValidBranchSelection, Selection } from "./-Selection.ts";
 
 const FileDiff: FC<{
 	projectId: string;
@@ -638,8 +638,9 @@ const ProjectBranchesPage: FC = () => {
 	const sortedBranches = branches.slice().sort((a, b) => a.name.localeCompare(b.name));
 	const [_selection, select] = useState<Selection | null>(null);
 	const selection =
-		(_selection ? normalizeBranchSelection(_selection, sortedBranches) : null) ??
-		getDefaultSelection(sortedBranches);
+		_selection && isValidBranchSelection(_selection, sortedBranches)
+			? _selection
+			: getDefaultSelection(sortedBranches);
 	const selectedBranch = sortedBranches.find((branch) => branch.name === selection?.branchName);
 
 	if (!project) return <p>Project not found.</p>;

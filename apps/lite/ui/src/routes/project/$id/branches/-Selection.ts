@@ -9,13 +9,13 @@ export type Selection =
 	| ({ _tag: "Branch" } & BranchSelection)
 	| ({ _tag: "Commit" } & CommitSelection);
 
-export const normalizeBranchSelection = (
+export const isValidBranchSelection = (
 	selection: Selection,
 	branches: Array<BranchListing>,
-): Selection | null => {
+): boolean => {
 	const branch = branches.find((branch) => branch.name === selection.branchName);
-	if (!branch) return null;
-	return selection;
+	if (!branch) return false;
+	return true;
 };
 
 export const getDefaultSelection = (branches: Array<BranchListing>): Selection | null => {

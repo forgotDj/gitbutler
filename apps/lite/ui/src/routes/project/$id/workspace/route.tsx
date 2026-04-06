@@ -30,9 +30,9 @@ import { stackRelativeTo } from "#ui/domain/Stack.ts";
 import { ProjectPreviewLayout } from "#ui/routes/project/$id/-ProjectPreviewLayout.tsx";
 import { getFocus } from "#ui/routes/project/$id/-state/layout.ts";
 import {
+	isValidSelectedItem,
 	normalizeSelectedFile,
 	normalizeSelectedHunk,
-	normalizeSelectedItem,
 } from "#ui/routes/project/$id/-state/selection.ts";
 import { ProjectStateContext } from "#ui/routes/project/$id/-ProjectState.tsx";
 import {
@@ -1917,9 +1917,10 @@ const ProjectPage: FC = () => {
 	const navigationIndex = buildNavigationIndex(workspaceOutline);
 
 	const selectedItem =
-		(workspaceSelection.item
-			? normalizeSelectedItem(workspaceSelection.item, headInfo, worktreeChanges)
-			: null) ?? getDefaultSelectedItem(navigationIndex);
+		workspaceSelection.item &&
+		isValidSelectedItem(workspaceSelection.item, headInfo, worktreeChanges)
+			? workspaceSelection.item
+			: getDefaultSelectedItem(navigationIndex);
 
 	const selectItem = (nextSelectedItem: SelectedItem | null) => {
 		dispatchProjectState({ _tag: "SelectItem", item: nextSelectedItem });
