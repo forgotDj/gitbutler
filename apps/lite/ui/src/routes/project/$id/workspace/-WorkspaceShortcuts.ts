@@ -329,7 +329,7 @@ type Scope =
 			context: BaseCommitItem;
 	  }
 	| {
-			_tag: "Changes";
+			_tag: "ChangesSection";
 			bindings: Array<ShortcutBinding<ChangesAction>>;
 			context: ChangesSectionItem;
 	  }
@@ -391,9 +391,9 @@ export const getScope = ({
 
 	return Match.value(selectedItem).pipe(
 		Match.tag(
-			"Changes",
+			"ChangesSection",
 			(selectedItem): Scope => ({
-				_tag: "Changes",
+				_tag: "ChangesSection",
 				bindings: changesBindings,
 				context: selectedItem,
 			}),
@@ -468,7 +468,7 @@ export const getLabel = (scope: Scope): string =>
 			BaseCommit: () => "Base commit",
 			BranchRename: () => "Rename branch",
 			Change: () => "Change",
-			Changes: () => "Changes",
+			ChangesSection: () => "Changes",
 			CommitDetails: () => "Commit details",
 			CommitReword: () => "Reword commit",
 			CommitDefault: () => "Commit",
@@ -498,7 +498,9 @@ export const useWorkspaceShortcuts = ({
 	const queryClient = useQueryClient();
 
 	const requestAbsorptionPlanForSelection = (
-		selectedItem: ({ _tag: "Changes" } & ChangesSectionItem) | ({ _tag: "Change" } & ChangeItem),
+		selectedItem:
+			| ({ _tag: "ChangesSection" } & ChangesSectionItem)
+			| ({ _tag: "Change" } & ChangeItem),
 	) => {
 		const worktreeChanges = queryClient.getQueryData(
 			changesInWorktreeQueryOptions(projectId).queryKey,
@@ -518,7 +520,7 @@ export const useWorkspaceShortcuts = ({
 						},
 					});
 				},
-				Changes: ({ stackId }) => {
+				ChangesSection: ({ stackId }) => {
 					const assignmentsByPath = new Set(
 						worktreeChanges.assignments
 							.filter((assignment) => assignment.stackId === stackId)
@@ -626,7 +628,9 @@ export const useWorkspaceShortcuts = ({
 
 	const handleChangesAction = (
 		action: ChangesAction,
-		selectedItem: ({ _tag: "Changes" } & ChangesSectionItem) | ({ _tag: "Change" } & ChangeItem),
+		selectedItem:
+			| ({ _tag: "ChangesSection" } & ChangesSectionItem)
+			| ({ _tag: "Change" } & ChangeItem),
 	) =>
 		Match.value(action).pipe(
 			Match.tags({
@@ -691,11 +695,11 @@ export const useWorkspaceShortcuts = ({
 
 		Match.value(scope).pipe(
 			Match.tagsExhaustive({
-				Changes: (scope) => {
+				ChangesSection: (scope) => {
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handleChangesAction(action, { _tag: "Changes", ...scope.context });
+					handleChangesAction(action, { _tag: "ChangesSection", ...scope.context });
 				},
 				Change: (scope) => {
 					const action = getAction(scope.bindings, event);

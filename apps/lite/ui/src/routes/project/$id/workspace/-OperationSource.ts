@@ -43,7 +43,7 @@ export const getCombineOperation = ({
 			Commit: ({ commitId: sourceCommitId }) =>
 				Match.value(target).pipe(
 					Match.tagsExhaustive({
-						Changes: ({ stackId }): Operation => ({
+						ChangesSection: ({ stackId }): Operation => ({
 							_tag: "CommitUncommit",
 							commitId: sourceCommitId,
 							assignTo: stackId,
@@ -65,10 +65,10 @@ export const getCombineOperation = ({
 
 				return Match.value(parent).pipe(
 					Match.tagsExhaustive({
-						Changes: ({ stackId: sourceStackId }) =>
+						ChangesSection: ({ stackId: sourceStackId }) =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
-									Changes: ({ stackId: targetStackId }): Operation | null => {
+									ChangesSection: ({ stackId: targetStackId }): Operation | null => {
 										if (sourceStackId === targetStackId) return null;
 										return {
 											_tag: "AssignHunk",
@@ -91,7 +91,7 @@ export const getCombineOperation = ({
 						Commit: ({ commitId: sourceCommitId }) =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
-									Changes: ({ stackId }): Operation => ({
+									ChangesSection: ({ stackId }): Operation => ({
 										_tag: "CommitUncommitChanges",
 										commitId: sourceCommitId,
 										assignTo: stackId,
@@ -145,7 +145,7 @@ export const getBranchTargetOperation = ({
 			};
 		}),
 		Match.tag("TreeChanges", (source): Operation | null => {
-			if (branchRef === null || source.parent._tag !== "Changes") return null;
+			if (branchRef === null || source.parent._tag !== "ChangesSection") return null;
 			return {
 				_tag: "CommitCreate",
 				relativeTo: {
@@ -191,7 +191,10 @@ export const getCommitTargetOperation = ({
 					side,
 				};
 
-			if (operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Changes")
+			if (
+				operationSource._tag === "TreeChanges" &&
+				operationSource.parent._tag === "ChangesSection"
+			)
 				return {
 					_tag: "CommitCreate",
 					relativeTo: { type: "commit", subject: commitId },

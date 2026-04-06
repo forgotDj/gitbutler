@@ -422,7 +422,8 @@ const FileDiff: FC<{
 									isSelected={selectedHunk === fileHunkKey(change.path, hunk)}
 									isFocused={isFocused}
 									headerStart={
-										fileParent?._tag === "Changes" && isNonEmptyArray(dependencyCommitIds) ? (
+										fileParent?._tag === "ChangesSection" &&
+										isNonEmptyArray(dependencyCommitIds) ? (
 											<DependencyIndicator
 												projectId={projectId}
 												commitIds={dependencyCommitIds}
@@ -551,7 +552,7 @@ const ChangesPreview: FC<{
 						<li key={change.path}>
 							<ChangesFileSource
 								change={change}
-								fileParent={{ _tag: "Changes", stackId }}
+								fileParent={{ _tag: "ChangesSection", stackId }}
 								assignments={assignmentsByPath.get(change.path)}
 							>
 								<h4>{change.path}</h4>
@@ -559,7 +560,7 @@ const ChangesPreview: FC<{
 							<FileDiff
 								projectId={projectId}
 								change={change}
-								fileParent={{ _tag: "Changes", stackId }}
+								fileParent={{ _tag: "ChangesSection", stackId }}
 								editable
 								assignments={assignmentsByPath.get(change.path)}
 								hunkDependencyDiffs={hunkDependencyDiffsByPath.get(change.path)}
@@ -779,7 +780,7 @@ const Preview: FC<{
 					/>
 				);
 			},
-			Changes: ({ stackId }) => (
+			ChangesSection: ({ stackId }) => (
 				<ChangesPreview
 					projectId={projectId}
 					stackId={stackId}
@@ -1234,7 +1235,7 @@ const ChangeRow: FC<{
 }) => (
 	<ChangesFileSource
 		change={change}
-		fileParent={{ _tag: "Changes", stackId }}
+		fileParent={{ _tag: "ChangesSection", stackId }}
 		assignments={assignments}
 		className={classes(
 			sharedStyles.row,
@@ -1846,7 +1847,7 @@ const StackC: FC<{
 					label="Assigned changes"
 					projectId={projectId}
 					stackId={stack.id}
-					isSelected={selectedItem._tag === "Changes" && selectedItem.stackId === stackId}
+					isSelected={selectedItem._tag === "ChangesSection" && selectedItem.stackId === stackId}
 					selectedPath={
 						selectedItem._tag === "Change" && selectedItem.stackId === stackId
 							? selectedItem.path
@@ -1980,7 +1981,7 @@ const ProjectPage: FC = () => {
 					label="Unassigned changes"
 					projectId={project.id}
 					stackId={null}
-					isSelected={selectedItem._tag === "Changes" && selectedItem.stackId === null}
+					isSelected={selectedItem._tag === "ChangesSection" && selectedItem.stackId === null}
 					selectedPath={
 						selectedItem._tag === "Change" && selectedItem.stackId === null
 							? selectedItem.path

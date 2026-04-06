@@ -4,6 +4,6 @@ export type FileParent =
 			commitId: string;
 	  }
 	| {
-			_tag: "Changes";
+			_tag: "ChangesSection";
 			stackId: string | null;
 	  };

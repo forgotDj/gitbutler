@@ -170,7 +170,7 @@ export const ChangesSectionSource: FC<
 		getInitialData: () =>
 			getDragData({
 				_tag: "TreeChanges",
-				parent: { _tag: "Changes", stackId },
+				parent: { _tag: "ChangesSection", stackId },
 				changes: changes.map(({ change, assignments }) => ({
 					change,
 					hunkHeaders: hunkHeadersForAssignments(assignments),
@@ -266,7 +266,7 @@ export const ChangesSectionTarget: FC<
 		if (!operationSource) return null;
 		return getCombineOperation({
 			operationSource,
-			target: { _tag: "Changes", stackId },
+			target: { _tag: "ChangesSection", stackId },
 		});
 	});
 

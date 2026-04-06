@@ -21,14 +21,14 @@ export type CommitItem = SegmentItemBase & { commitId: string; mode: CommitMode 
 export type BaseCommitItem = { commitId: string };
 
 export type Item =
-	| ({ _tag: "Changes" } & ChangesSectionItem)
+	| ({ _tag: "ChangesSection" } & ChangesSectionItem)
 	| ({ _tag: "Change" } & ChangeItem)
 	| ({ _tag: "Segment" } & SegmentItem)
 	| ({ _tag: "Commit" } & CommitItem)
 	| ({ _tag: "BaseCommit" } & BaseCommitItem);
 
 export const changesSectionItem = (stackId: string | null): Item => ({
-	_tag: "Changes",
+	_tag: "ChangesSection",
 	stackId,
 });
 
@@ -76,7 +76,7 @@ export const baseCommitItem = (commitId: string): Item => ({
 export const itemIdentityKey = (item: Item): string =>
 	Match.value(item).pipe(
 		Match.tagsExhaustive({
-			Changes: (item) => JSON.stringify(["Changes", item.stackId]),
+			ChangesSection: (item) => JSON.stringify(["ChangesSection", item.stackId]),
 			Change: (item) => JSON.stringify(["Change", item.stackId, item.path]),
 			Segment: (item) =>
 				JSON.stringify(["Segment", item.stackId, item.segmentIndex, item.branchName]),
@@ -95,7 +95,7 @@ export const getParentSection = (item: Item): Item | null =>
 					branchName: item.branchName,
 				}),
 			Change: (item): Item | null => changesSectionItem(item.stackId),
-			Changes: () => null,
+			ChangesSection: () => null,
 			BaseCommit: () => null,
 			Segment: () => null,
 		}),

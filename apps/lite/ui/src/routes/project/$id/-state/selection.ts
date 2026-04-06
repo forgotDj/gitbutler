@@ -49,7 +49,7 @@ const normalizeSelectedItem = (
 	worktreeChanges: WorktreeChanges,
 ): Item | null =>
 	Match.value(item).pipe(
-		Match.tag("Changes", (item) => item),
+		Match.tag("ChangesSection", (item) => item),
 		Match.tag("Change", (item) => {
 			if (!worktreeChanges.changes.find((change) => change.path === item.path)) return null;
 			if (

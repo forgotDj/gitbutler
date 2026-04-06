@@ -72,14 +72,16 @@ export const getCommitTargetInstruction = ({
 					"reorder-before":
 						(operationSource._tag === "Commit" &&
 							!isNoOpCommitMove(operationSource.commitId, "above")) ||
-						(operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Changes") ||
+						(operationSource._tag === "TreeChanges" &&
+							operationSource.parent._tag === "ChangesSection") ||
 						(operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Commit")
 							? "available"
 							: "not-available",
 					"reorder-after":
 						(operationSource._tag === "Commit" &&
 							!isNoOpCommitMove(operationSource.commitId, "below")) ||
-						(operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Changes") ||
+						(operationSource._tag === "TreeChanges" &&
+							operationSource.parent._tag === "ChangesSection") ||
 						(operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Commit")
 							? "available"
 							: "not-available",
