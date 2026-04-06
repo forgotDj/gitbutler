@@ -10,13 +10,13 @@ import type {
 	PushResult,
 	RefInfo,
 	TreeChanges,
-	UICommitCreateResult,
-	UICommitDiscardResult,
-	UICommitInsertBlankResult,
-	UICommitMoveResult,
-	UICommitRewordResult,
-	UIMoveBranchResult,
-	UIMoveChangesResult,
+	CommitCreateResult,
+	CommitDiscardResult,
+	CommitInsertBlankResult,
+	CommitMoveResult,
+	CommitRewordResult,
+	MoveBranchResult,
+	MoveChangesResult,
 	UnifiedPatch,
 	WatcherEvent,
 	WorktreeChanges,
@@ -49,32 +49,29 @@ const api: LiteElectronApi = {
 	changesInWorktree: (projectId) =>
 		ipcRenderer.invoke("workspace:changes-in-worktree", projectId) as Promise<WorktreeChanges>,
 	commitAmend: (params) =>
-		ipcRenderer.invoke("workspace:commit-amend", params) as Promise<UICommitCreateResult>,
+		ipcRenderer.invoke("workspace:commit-amend", params) as Promise<CommitCreateResult>,
 	commitCreate: (params) =>
-		ipcRenderer.invoke("workspace:commit-create", params) as Promise<UICommitCreateResult>,
+		ipcRenderer.invoke("workspace:commit-create", params) as Promise<CommitCreateResult>,
 	commitDiscard: (params) =>
-		ipcRenderer.invoke("workspace:commit-discard", params) as Promise<UICommitDiscardResult>,
+		ipcRenderer.invoke("workspace:commit-discard", params) as Promise<CommitDiscardResult>,
 	commitDetailsWithLineStats: (params) =>
 		ipcRenderer.invoke(
 			"workspace:commit-details-with-line-stats",
 			params,
 		) as Promise<CommitDetails>,
 	commitInsertBlank: (params) =>
-		ipcRenderer.invoke(
-			"workspace:commit-insert-blank",
-			params,
-		) as Promise<UICommitInsertBlankResult>,
+		ipcRenderer.invoke("workspace:commit-insert-blank", params) as Promise<CommitInsertBlankResult>,
 	commitMove: (params) =>
-		ipcRenderer.invoke("workspace:commit-move", params) as Promise<UICommitMoveResult>,
+		ipcRenderer.invoke("workspace:commit-move", params) as Promise<CommitMoveResult>,
 	commitReword: (params) =>
-		ipcRenderer.invoke("workspace:commit-reword", params) as Promise<UICommitRewordResult>,
+		ipcRenderer.invoke("workspace:commit-reword", params) as Promise<CommitRewordResult>,
 	commitMoveChangesBetween: (params) =>
 		ipcRenderer.invoke(
 			"workspace:commit-move-changes-between",
 			params,
-		) as Promise<UIMoveChangesResult>,
+		) as Promise<MoveChangesResult>,
 	commitUncommitChanges: (params) =>
-		ipcRenderer.invoke("workspace:commit-uncommit-changes", params) as Promise<UIMoveChangesResult>,
+		ipcRenderer.invoke("workspace:commit-uncommit-changes", params) as Promise<MoveChangesResult>,
 	getVersion: () => ipcRenderer.invoke("lite:get-version") as Promise<string>,
 	headInfo: (projectId) => ipcRenderer.invoke("workspace:head-info", projectId) as Promise<RefInfo>,
 	listBranches: (projectId, filter) =>
@@ -83,11 +80,11 @@ const api: LiteElectronApi = {
 		>,
 	listProjects: () => ipcRenderer.invoke("projects:list") as Promise<Array<ProjectForFrontend>>,
 	moveBranch: (params) =>
-		ipcRenderer.invoke("workspace:move-branch", params) as Promise<UIMoveBranchResult>,
+		ipcRenderer.invoke("workspace:move-branch", params) as Promise<MoveBranchResult>,
 	updateBranchName: (params) =>
 		ipcRenderer.invoke("workspace:update-branch-name", params) as Promise<void>,
 	tearOffBranch: (params) =>
-		ipcRenderer.invoke("workspace:tear-off-branch", params) as Promise<UIMoveBranchResult>,
+		ipcRenderer.invoke("workspace:tear-off-branch", params) as Promise<MoveBranchResult>,
 	ping: (input) => ipcRenderer.invoke("lite:ping", input) as Promise<string>,
 	pushStackLegacy: (params) =>
 		ipcRenderer.invoke("workspace:push-stack-legacy", params) as Promise<PushResult>,

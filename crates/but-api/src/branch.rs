@@ -24,7 +24,7 @@ pub struct MoveBranchResult {
 pub mod json {
     use serde::Serialize;
 
-    use crate::{branch::MoveBranchResult, json::HexHash};
+    use crate::{branch::MoveBranchResult as InternalMoveBranchResult, json::HexHash};
 
     /// JSON sibling of [`but_workspace::branch::apply::Outcome`].
     #[derive(Debug, Serialize)]
@@ -63,8 +63,8 @@ pub mod json {
     #[derive(Debug, Serialize)]
     #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
     #[serde(rename_all = "camelCase")]
-    /// UI type for moving a branch.
-    pub struct UIMoveBranchResult {
+    /// JSON transport type for moving a branch.
+    pub struct MoveBranchResult {
         /// Commits that have been replaced after transplanting a branch.
         /// Maps `oldId → newId`.
         #[cfg_attr(
@@ -74,10 +74,10 @@ pub mod json {
         pub replaced_commits: std::collections::BTreeMap<HexHash, HexHash>,
     }
     #[cfg(feature = "export-schema")]
-    but_schemars::register_sdk_type!(UIMoveBranchResult);
+    but_schemars::register_sdk_type!(MoveBranchResult);
 
-    impl From<MoveBranchResult> for UIMoveBranchResult {
-        fn from(value: MoveBranchResult) -> Self {
+    impl From<InternalMoveBranchResult> for MoveBranchResult {
+        fn from(value: InternalMoveBranchResult) -> Self {
             Self {
                 replaced_commits: value
                     .replaced_commits
@@ -200,7 +200,7 @@ pub fn branch_diff(ctx: &Context, branch: String) -> anyhow::Result<TreeChanges>
 ///
 /// This acquires exclusive worktree access from `ctx`, moves `subject_branch`
 /// on top of `target_branch`, and records an oplog snapshot on success.
-#[but_api(napi, json::UIMoveBranchResult)]
+#[but_api(napi, json::MoveBranchResult)]
 #[instrument(err(Debug))]
 pub fn move_branch(
     ctx: &mut but_ctx::Context,
@@ -268,7 +268,7 @@ fn move_branch_impl_with_perm(
 ///
 /// This acquires exclusive worktree access from `ctx`, tears `subject_branch`
 /// out of its current stack, and records an oplog snapshot on success.
-#[but_api(napi, json::UIMoveBranchResult)]
+#[but_api(napi, json::MoveBranchResult)]
 #[instrument(err(Debug))]
 pub fn tear_off_branch(
     ctx: &mut but_ctx::Context,

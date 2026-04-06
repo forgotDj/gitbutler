@@ -15,7 +15,7 @@ use super::types::MoveChangesResult;
 /// changes.
 ///
 /// See [`commit_uncommit_changes_only_with_perm()`] for details.
-#[but_api(crate::commit::json::UIMoveChangesResult)]
+#[but_api(crate::commit::json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn commit_uncommit_changes_only(
     ctx: &mut but_ctx::Context,
@@ -114,7 +114,7 @@ pub fn commit_uncommit_changes_only_with_perm(
 /// changes.
 ///
 /// See [`commit_uncommit_changes_with_perm()`] for details.
-#[but_api(napi, crate::commit::json::UIMoveChangesResult)]
+#[but_api(napi, crate::commit::json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn commit_uncommit_changes(
     ctx: &mut but_ctx::Context,

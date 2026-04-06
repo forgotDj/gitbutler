@@ -17,7 +17,7 @@ use super::types::CommitCreateResult;
 /// This acquires exclusive worktree access from `ctx` before creating the
 /// commit. For lower-level implementation details, see
 /// [`but_workspace::commit::commit_create()`].
-#[but_api(crate::commit::json::UICommitCreateResult)]
+#[but_api(crate::commit::json::CommitCreateResult)]
 #[instrument(err(Debug))]
 pub fn commit_create_only(
     ctx: &mut but_ctx::Context,
@@ -91,7 +91,7 @@ pub(crate) fn commit_create_only_impl(
 /// a best-effort `CreateCommit` oplog snapshot using the same lock. For
 /// lower-level implementation details, see
 /// [`but_workspace::commit::commit_create()`].
-#[but_api(napi, crate::commit::json::UICommitCreateResult)]
+#[but_api(napi, crate::commit::json::CommitCreateResult)]
 #[instrument(skip_all, fields(relative_to, side, message), err(Debug))]
 pub fn commit_create(
     ctx: &mut but_ctx::Context,

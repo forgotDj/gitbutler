@@ -12,7 +12,7 @@ use super::types::CommitCreateResult;
 ///
 /// See [`but_workspace::commit::commit_amend()`] for lower-level implementation
 /// details.
-#[but_api(crate::commit::json::UICommitCreateResult)]
+#[but_api(crate::commit::json::CommitCreateResult)]
 #[instrument(err(Debug))]
 pub fn commit_amend_only(
     ctx: &mut but_ctx::Context,
@@ -70,7 +70,7 @@ pub(crate) fn commit_amend_only_impl(
 /// best-effort `AmendCommit` oplog entry if the operation succeeds. For
 /// lower-level implementation details, see
 /// [`but_workspace::commit::commit_amend()`].
-#[but_api(napi, crate::commit::json::UICommitCreateResult)]
+#[but_api(napi, crate::commit::json::CommitCreateResult)]
 #[instrument(err(Debug))]
 pub fn commit_amend(
     ctx: &mut but_ctx::Context,
