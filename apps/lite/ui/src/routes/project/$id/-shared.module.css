@@ -59,13 +59,13 @@
 	line-height: var(--row-line-height);
 }
 
-.itemSelected {
-	background-color: var(--color-item-selected-bg);
-	color: var(--color-item-selected-fg);
+.itemRowSelected {
+	background-color: var(--color-item-row-selected-bg);
+	color: var(--color-item-row-selected-fg);
 }
 
-.itemHighlighted {
-	background-color: var(--color-item-highlighted-bg);
+.itemRowHighlighted {
+	background-color: var(--color-item-row-highlighted-bg);
 	color: var(--color-text);
 }
 
@@ -80,10 +80,10 @@
 	padding-block: var(--row-block-padding);
 
 	&:enabled:hover {
-		background-color: var(--color-item-action-hover-bg);
+		background-color: var(--color-item-row-action-hover-bg);
 
 		.rowSelected & {
-			background-color: var(--color-item-selected-action-hover-bg);
+			background-color: var(--color-item-row-selected-action-hover-bg);
 		}
 	}
 
@@ -132,12 +132,12 @@
 	white-space: nowrap;
 }
 
-.file {
+.fileRow {
 	padding-left: 8px;
 }
 
-.fileSelected {
-	background-color: var(--color-file-selected-bg);
+.fileRowSelected {
+	background-color: var(--color-file-row-selected-bg);
 }
 
 .hunkHeaderRow {

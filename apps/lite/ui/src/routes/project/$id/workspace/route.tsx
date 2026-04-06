@@ -189,8 +189,8 @@ const CommitFileRow: FC<{
 		className={classes(
 			sharedStyles.row,
 			isSelected && sharedStyles.rowSelected,
-			sharedStyles.file,
-			isSelected && sharedStyles.fileSelected,
+			sharedStyles.fileRow,
+			isSelected && sharedStyles.fileRowSelected,
 		)}
 	>
 		<FileButton
@@ -1077,8 +1077,8 @@ const CommitRow: FC<
 			className={classes(
 				sharedStyles.row,
 				isSelected && sharedStyles.rowSelected,
-				isSelected && sharedStyles.itemSelected,
-				isHighlighted && sharedStyles.itemHighlighted,
+				isSelected && sharedStyles.itemRowSelected,
+				isHighlighted && sharedStyles.itemRowHighlighted,
 			)}
 		>
 			{mode._tag === "Reword" ? (
@@ -1239,7 +1239,7 @@ const ChangeRow: FC<{
 		className={classes(
 			sharedStyles.row,
 			isSelected && sharedStyles.rowSelected,
-			isSelected && sharedStyles.itemSelected,
+			isSelected && sharedStyles.itemRowSelected,
 		)}
 	>
 		<FileButton
@@ -1289,7 +1289,7 @@ const ChangesSectionRow: FC<{
 		className={classes(
 			sharedStyles.row,
 			isSelected && sharedStyles.rowSelected,
-			isSelected && sharedStyles.itemSelected,
+			isSelected && sharedStyles.itemRowSelected,
 		)}
 	>
 		<button
@@ -1356,7 +1356,7 @@ const BaseCommitRow: FC<{
 		className={classes(
 			sharedStyles.row,
 			isSelected && sharedStyles.rowSelected,
-			isSelected && sharedStyles.itemSelected,
+			isSelected && sharedStyles.itemRowSelected,
 		)}
 	>
 		<button
@@ -1651,7 +1651,7 @@ const SegmentRow: FC<
 				restProps.className,
 				sharedStyles.row,
 				isSelected && sharedStyles.rowSelected,
-				isSelected && sharedStyles.itemSelected,
+				isSelected && sharedStyles.itemRowSelected,
 			)}
 		>
 			{mode._tag === "Rename" && optimisticBranchName !== null ? (

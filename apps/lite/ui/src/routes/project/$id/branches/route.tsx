@@ -317,7 +317,7 @@ const BranchRow: FC<
 			className={classes(
 				sharedStyles.row,
 				(branchSelection || commitSelection) && sharedStyles.rowSelected,
-				(branchSelection || commitSelection) && sharedStyles.itemSelected,
+				(branchSelection || commitSelection) && sharedStyles.itemRowSelected,
 				className,
 			)}
 		>
@@ -407,8 +407,8 @@ const CommitRow: FC<{
 			className={classes(
 				sharedStyles.row,
 				commitSelection && sharedStyles.rowSelected,
-				commitSelection && sharedStyles.itemSelected,
-				isHighlighted && sharedStyles.itemHighlighted,
+				commitSelection && sharedStyles.itemRowSelected,
+				isHighlighted && sharedStyles.itemRowHighlighted,
 			)}
 			style={{ ...(isDetailsPending && { opacity: 0.5 }) }}
 			aria-busy={isDetailsPending}
@@ -480,8 +480,8 @@ const CommitC: FC<{
 									className={classes(
 										sharedStyles.row,
 										isSelected && sharedStyles.rowSelected,
-										sharedStyles.file,
-										isSelected && sharedStyles.fileSelected,
+										sharedStyles.fileRow,
+										isSelected && sharedStyles.fileRowSelected,
 									)}
 								>
 									<FileButton

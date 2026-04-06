@@ -164,7 +164,7 @@
 }
 
 .editorShortcut {
-	color: var(--color-item-selected-fg);
+	color: var(--color-item-row-selected-fg);
 	font-family: monospace;
 }
 
