@@ -18,9 +18,9 @@ impl TestCase<'_> {
     fn run(&self) -> Vec<(String, Vec<Credential>)> {
         setup_blackhole_store();
         let user: users::User = serde_json::from_str(if self.with_github_login {
-            include_str!("../tests/fixtures/users/with-github.v1")
+            include_str!("../../tests/fixtures/users/with-github.v1")
         } else {
-            include_str!("../tests/fixtures/users/login-only.v1")
+            include_str!("../../tests/fixtures/users/login-only.v1")
         })
         .expect("valid v1 sample user");
         gitbutler_user::set_user(&user).unwrap();

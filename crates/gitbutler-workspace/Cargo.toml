@@ -5,7 +5,6 @@ edition.workspace = true
 authors.workspace = true
 publish = false
 rust-version.workspace = true
-autotests = false
 
 [lib]
 doctest = false

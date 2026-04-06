@@ -5,7 +5,6 @@ edition.workspace = true
 authors.workspace = true
 publish = false
 rust-version.workspace = true
-autotests = false
 
 [lib]
 doctest = false
@@ -18,10 +17,6 @@ but-path.workspace = true
 anyhow.workspace = true
 serde.workspace = true
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
-
-[[test]]
-name = "user"
-path = "tests/mod.rs"
 
 [dev-dependencies]
 serial_test = "3.2.0"

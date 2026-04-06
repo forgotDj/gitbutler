@@ -5,7 +5,6 @@ edition.workspace = true
 authors.workspace = true
 publish = false
 rust-version.workspace = true
-autotests = false
 
 [features]
 export-schema = ["dep:schemars", "dep:but-schemars"]
@@ -24,10 +23,6 @@ bstr.workspace = true
 lazy_static = "1.4.0"
 schemars = { workspace = true, optional = true }
 but-schemars = { workspace = true, optional = true }
-
-[[test]]
-name = "branch"
-path = "tests/mod.rs"
 
 [lints]
 workspace = true
