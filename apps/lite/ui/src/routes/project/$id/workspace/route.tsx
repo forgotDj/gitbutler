@@ -713,7 +713,7 @@ const BranchPreview: FC<{
 
 const Preview: FC<{
 	projectId: string;
-	selectedItem: SelectedItem;
+	selectedItem: SelectedItem | null;
 	onSelectHunk: (key: string) => void;
 	selectedHunk: string | null;
 	selectedFile: string | null;
@@ -1731,7 +1731,7 @@ const SegmentC: FC<{
 	projectId: string;
 	segment: Segment;
 	segmentIndex: number;
-	selectedItem: SelectedItem;
+	selectedItem: SelectedItem | null;
 	selectItem: (item: SelectedItem | null) => void;
 	selectedFile: string | null;
 	selectFile: (path: string | null) => void;
@@ -1748,13 +1748,13 @@ const SegmentC: FC<{
 	stackId,
 }) => {
 	const selectedSegment =
-		selectedItem._tag === "Segment" &&
+		selectedItem?._tag === "Segment" &&
 		selectedItem.stackId === stackId &&
 		selectedItem.segmentIndex === segmentIndex
 			? selectedItem
 			: null;
 	const selectedCommit =
-		selectedItem._tag === "Commit" &&
+		selectedItem?._tag === "Commit" &&
 		selectedItem.stackId === stackId &&
 		selectedItem.segmentIndex === segmentIndex
 			? selectedItem
@@ -1804,7 +1804,7 @@ const StackC: FC<{
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	onDependencyHover: (commitIds: Array<string> | null) => void;
 	projectId: string;
-	selectedItem: SelectedItem;
+	selectedItem: SelectedItem | null;
 	selectItem: (item: SelectedItem | null) => void;
 	selectedFile: string | null;
 	selectFile: (path: string | null) => void;
@@ -1849,9 +1849,9 @@ const StackC: FC<{
 					label="Assigned changes"
 					projectId={projectId}
 					stackId={stack.id}
-					isSelected={selectedItem._tag === "ChangesSection" && selectedItem.stackId === stackId}
+					isSelected={selectedItem?._tag === "ChangesSection" && selectedItem.stackId === stackId}
 					selectedPath={
-						selectedItem._tag === "Change" && selectedItem.stackId === stackId
+						selectedItem?._tag === "Change" && selectedItem.stackId === stackId
 							? selectedItem.path
 							: null
 					}
@@ -1915,7 +1915,7 @@ const ProjectPage: FC = () => {
 		workspaceSelection,
 		headInfo,
 		worktreeChanges,
-		defaultItem: workspaceOutline[0].section,
+		defaultItem: navigationIndex.items[0],
 	});
 	const selectItem = (nextSelectedItem: SelectedItem | null) => {
 		dispatchProjectState({ _tag: "SelectItem", item: nextSelectedItem });
@@ -1983,9 +1983,9 @@ const ProjectPage: FC = () => {
 					label="Unassigned changes"
 					projectId={project.id}
 					stackId={null}
-					isSelected={selectedItem._tag === "ChangesSection" && selectedItem.stackId === null}
+					isSelected={selectedItem?._tag === "ChangesSection" && selectedItem.stackId === null}
 					selectedPath={
-						selectedItem._tag === "Change" && selectedItem.stackId === null
+						selectedItem?._tag === "Change" && selectedItem.stackId === null
 							? selectedItem.path
 							: null
 					}
@@ -2019,7 +2019,8 @@ const ProjectPage: FC = () => {
 							<BaseCommitRow
 								commitId={commonBaseCommitId}
 								isSelected={
-									selectedItem._tag === "BaseCommit" && selectedItem.commitId === commonBaseCommitId
+									selectedItem?._tag === "BaseCommit" &&
+									selectedItem.commitId === commonBaseCommitId
 								}
 								selectItem={selectItem}
 							/>

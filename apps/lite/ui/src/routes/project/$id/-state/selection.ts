@@ -94,11 +94,11 @@ export const resolveSelectedWorkspaceItem = ({
 	workspaceSelection: WorkspaceSelectionState;
 	worktreeChanges: WorktreeChanges;
 	headInfo: RefInfo;
-	defaultItem: Item;
-}): SelectedItem =>
+	defaultItem?: Item;
+}): SelectedItem | null =>
 	(workspaceSelection.item
 		? normalizeSelectedItem(workspaceSelection.item, headInfo, worktreeChanges)
-		: null) ?? asSelectedItem(defaultItem);
+		: null) ?? (defaultItem ? asSelectedItem(defaultItem) : null);
 
 export const normalizeSelectedFile = ({
 	paths,
