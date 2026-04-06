@@ -11,6 +11,7 @@ import {
 	type CommitUncommitChangesParams,
 	type MoveBranchParams,
 	type TearOffBranchParams,
+	CommitSquashParams,
 } from "#electron/ipc.ts";
 import { rejectedChangesToastOptions } from "#ui/components/RejectedChanges.tsx";
 import {
@@ -25,7 +26,6 @@ import {
 	commitUncommitMutationOptions,
 	moveBranchMutationOptions,
 	tearOffBranchMutationOptions,
-	CommitSquashParams,
 	CommitUncommitParams,
 } from "#ui/api/mutations.ts";
 import { InsertSide } from "@gitbutler/but-sdk";

@@ -7,13 +7,6 @@ export type CommitUncommitParams = {
 	assignTo: string | null;
 };
 
-// TODO: replace with generated type when it becomes available
-export type CommitSquashParams = {
-	projectId: string;
-	sourceCommitId: string;
-	destinationCommitId: string;
-};
-
 export const applyBranchMutationOptions = mutationOptions({
 	mutationFn: window.lite.apply,
 	onSuccess: async (_data, _input, _ctx, { client }) => {
@@ -68,8 +61,9 @@ export const commitMoveChangesBetweenMutationOptions = mutationOptions({
 });
 
 export const commitSquashMutationOptions = mutationOptions({
-	mutationFn: async (_input: CommitSquashParams) => {
-		throw new Error("Squashing has not been implemented yet.");
+	mutationFn: window.lite.commitSquash,
+	onSuccess: async (_data, _input, _ctx, { client }) => {
+		await client.invalidateQueries();
 	},
 });
 
