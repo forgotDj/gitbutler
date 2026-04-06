@@ -32,7 +32,7 @@ import { getFocus } from "#ui/routes/project/$id/-state/layout.ts";
 import {
 	normalizeSelectedFile,
 	normalizeSelectedHunk,
-	resolveSelectedWorkspaceItem,
+	normalizeSelectedItem,
 } from "#ui/routes/project/$id/-state/selection.ts";
 import { ProjectStateContext } from "#ui/routes/project/$id/-ProjectState.tsx";
 import {
@@ -1911,12 +1911,13 @@ const ProjectPage: FC = () => {
 	});
 	const navigationIndex = buildNavigationIndex(workspaceOutline);
 
-	const selectedItem = resolveSelectedWorkspaceItem({
-		workspaceSelection,
-		headInfo,
-		worktreeChanges,
-		defaultItem: navigationIndex.items[0],
-	});
+	const defaultSelectedItem = () =>
+		navigationIndex.items[0] ? asSelectedItem(navigationIndex.items[0]) : null;
+	const selectedItem =
+		(workspaceSelection.item
+			? normalizeSelectedItem(workspaceSelection.item, headInfo, worktreeChanges)
+			: null) ?? defaultSelectedItem();
+
 	const selectItem = (nextSelectedItem: SelectedItem | null) => {
 		dispatchProjectState({ _tag: "SelectItem", item: nextSelectedItem });
 	};
