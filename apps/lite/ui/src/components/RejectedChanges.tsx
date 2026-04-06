@@ -1,4 +1,4 @@
-import type { RejectionReason, UIRejectedChange } from "@gitbutler/but-sdk";
+import type { RejectionReason, RejectedChange } from "@gitbutler/but-sdk";
 import { type ToastManagerAddOptions } from "@base-ui/react";
 import { Array, pipe } from "effect";
 import { FC } from "react";
@@ -41,7 +41,7 @@ const readableRejectionReason = (reason: RejectionReason): string => {
 };
 
 const RejectedChanges: FC<{
-	rejectedChanges: Array<UIRejectedChange>;
+	rejectedChanges: Array<RejectedChange>;
 }> = ({ rejectedChanges }) => {
 	const pathsByReason = new Map<RejectionReason, Array<string>>();
 
@@ -71,7 +71,7 @@ export const rejectedChangesToastOptions = ({
 	rejectedChanges,
 }: {
 	newCommit?: string | null;
-	rejectedChanges: Array<UIRejectedChange>;
+	rejectedChanges: Array<RejectedChange>;
 }): ToastManagerAddOptions<never> => ({
 	title: newCommit != null ? "Some changes were not committed" : "Failed to create commit",
 	description: <RejectedChanges rejectedChanges={rejectedChanges} />,

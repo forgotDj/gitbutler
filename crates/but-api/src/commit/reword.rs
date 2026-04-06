@@ -15,7 +15,7 @@ use super::types::CommitRewordResult;
 /// `message` must be the full commit message payload: the title line, and when a
 /// body is present, `\n\n` followed by the body.
 /// See [`commit_reword_only_with_perm()`] for details.
-#[but_api(crate::commit::json::UICommitRewordResult)]
+#[but_api(crate::commit::json::CommitRewordResult)]
 #[instrument(err(Debug))]
 pub fn commit_reword_only(
     ctx: &mut but_ctx::Context,
@@ -60,7 +60,7 @@ pub fn commit_reword_only_with_perm(
 ///
 /// This acquires exclusive worktree access from `ctx` before rewriting the
 /// commit message and recording the oplog entry.
-#[but_api(napi, crate::commit::json::UICommitRewordResult)]
+#[but_api(napi, crate::commit::json::CommitRewordResult)]
 #[instrument(err(Debug))]
 pub fn commit_reword(
     ctx: &mut but_ctx::Context,

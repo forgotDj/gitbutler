@@ -1,18 +1,20 @@
 use bstr::ByteSlice;
 use serde::{Deserialize, Serialize};
 
-use crate::{commit::types::CommitDiscardResult, json::HexHash};
+use crate::{commit::types::CommitDiscardResult as EngineCommitDiscardResult, json::HexHash};
 
 use super::types::{
-    CommitCreateResult, CommitInsertBlankResult, CommitMoveResult, CommitRewordResult,
-    CommitSquashResult, MoveChangesResult,
+    CommitCreateResult as EngineCommitCreateResult,
+    CommitInsertBlankResult as EngineCommitInsertBlankResult,
+    CommitMoveResult as EngineCommitMoveResult, CommitRewordResult as EngineCommitRewordResult,
+    CommitSquashResult as EngineCommitSquashResult, MoveChangesResult as EngineMoveChangesResult,
 };
 
-/// UI type for a move changes between commits result.
+/// JSON transport type for moving changes between commits.
 #[derive(Debug, Serialize)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
-pub struct UIMoveChangesResult {
+pub struct MoveChangesResult {
     /// Commits that have been mapped from one thing to another.
     /// Maps `oldId -> newId`.
     #[cfg_attr(
@@ -23,11 +25,11 @@ pub struct UIMoveChangesResult {
 }
 
 #[cfg(feature = "export-schema")]
-but_schemars::register_sdk_type!(UIMoveChangesResult);
+but_schemars::register_sdk_type!(MoveChangesResult);
 
-impl From<MoveChangesResult> for UIMoveChangesResult {
-    fn from(value: MoveChangesResult) -> Self {
-        let MoveChangesResult { replaced_commits } = value;
+impl From<EngineMoveChangesResult> for MoveChangesResult {
+    fn from(value: EngineMoveChangesResult) -> Self {
+        let EngineMoveChangesResult { replaced_commits } = value;
 
         Self {
             replaced_commits: replaced_commits
@@ -42,7 +44,7 @@ impl From<MoveChangesResult> for UIMoveChangesResult {
 #[derive(Debug, Serialize)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
-pub struct UIRejectedChange {
+pub struct RejectedChange {
     /// The reason the change was rejected.
     pub reason: but_core::tree::create_tree::RejectionReason,
     /// The file path of the rejected change, potentially degenerated if it can't be represented in Unicode.
@@ -56,18 +58,18 @@ pub struct UIRejectedChange {
 }
 
 #[cfg(feature = "export-schema")]
-but_schemars::register_sdk_type!(UIRejectedChange);
+but_schemars::register_sdk_type!(RejectedChange);
 
-/// UI type for creating a commit in the rebase graph.
+/// JSON transport type for creating a commit in the rebase graph.
 #[derive(Debug, Serialize)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
-pub struct UICommitCreateResult {
+pub struct CommitCreateResult {
     /// The new commit if one was created.
     #[cfg_attr(feature = "export-schema", schemars(with = "Option<String>"))]
     pub new_commit: Option<HexHash>,
     /// Changes that were rejected during commit creation.
-    pub rejected_changes: Vec<UIRejectedChange>,
+    pub rejected_changes: Vec<RejectedChange>,
     /// Commits that have been replaced as a side-effect of the create/amend.
     /// Maps `oldId -> newId`.
     #[cfg_attr(
@@ -78,11 +80,11 @@ pub struct UICommitCreateResult {
 }
 
 #[cfg(feature = "export-schema")]
-but_schemars::register_sdk_type!(UICommitCreateResult);
+but_schemars::register_sdk_type!(CommitCreateResult);
 
-impl From<CommitCreateResult> for UICommitCreateResult {
-    fn from(value: CommitCreateResult) -> Self {
-        let CommitCreateResult {
+impl From<EngineCommitCreateResult> for CommitCreateResult {
+    fn from(value: EngineCommitCreateResult) -> Self {
+        let EngineCommitCreateResult {
             new_commit,
             rejected_specs,
             replaced_commits,
@@ -92,7 +94,7 @@ impl From<CommitCreateResult> for UICommitCreateResult {
             new_commit: new_commit.map(Into::into),
             rejected_changes: rejected_specs
                 .into_iter()
-                .map(|(reason, diff)| UIRejectedChange {
+                .map(|(reason, diff)| RejectedChange {
                     reason,
                     path: diff.path.to_str_lossy().into(),
                     path_bytes: diff.path,
@@ -106,11 +108,11 @@ impl From<CommitCreateResult> for UICommitCreateResult {
     }
 }
 
-/// UI type for rewording a commit.
+/// JSON transport type for rewording a commit.
 #[derive(Debug, Serialize)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
-pub struct UICommitRewordResult {
+pub struct CommitRewordResult {
     /// The new commit ID after rewording.
     #[cfg_attr(feature = "export-schema", schemars(with = "String"))]
     pub new_commit: HexHash,
@@ -124,11 +126,11 @@ pub struct UICommitRewordResult {
 }
 
 #[cfg(feature = "export-schema")]
-but_schemars::register_sdk_type!(UICommitRewordResult);
+but_schemars::register_sdk_type!(CommitRewordResult);
 
-impl From<CommitRewordResult> for UICommitRewordResult {
-    fn from(value: CommitRewordResult) -> Self {
-        let CommitRewordResult {
+impl From<EngineCommitRewordResult> for CommitRewordResult {
+    fn from(value: EngineCommitRewordResult) -> Self {
+        let EngineCommitRewordResult {
             new_commit,
             replaced_commits,
         } = value;
@@ -143,11 +145,11 @@ impl From<CommitRewordResult> for UICommitRewordResult {
     }
 }
 
-/// UI type for squashing commits.
+/// JSON transport type for squashing commits.
 #[derive(Debug, Serialize)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
-pub struct UICommitSquashResult {
+pub struct CommitSquashResult {
     /// The new commit ID after squashing.
     #[cfg_attr(feature = "export-schema", schemars(with = "String"))]
     pub new_commit: HexHash,
@@ -161,11 +163,11 @@ pub struct UICommitSquashResult {
 }
 
 #[cfg(feature = "export-schema")]
-but_schemars::register_sdk_type!(UICommitSquashResult);
+but_schemars::register_sdk_type!(CommitSquashResult);
 
-impl From<CommitSquashResult> for UICommitSquashResult {
-    fn from(value: CommitSquashResult) -> Self {
-        let CommitSquashResult {
+impl From<EngineCommitSquashResult> for CommitSquashResult {
+    fn from(value: EngineCommitSquashResult) -> Self {
+        let EngineCommitSquashResult {
             new_commit,
             replaced_commits,
         } = value;
@@ -180,11 +182,11 @@ impl From<CommitSquashResult> for UICommitSquashResult {
     }
 }
 
-/// UI type for inserting a blank commit.
+/// JSON transport type for inserting a blank commit.
 #[derive(Debug, Serialize)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
-pub struct UICommitInsertBlankResult {
+pub struct CommitInsertBlankResult {
     /// The new blank commit ID.
     #[cfg_attr(feature = "export-schema", schemars(with = "String"))]
     pub new_commit: HexHash,
@@ -198,11 +200,11 @@ pub struct UICommitInsertBlankResult {
 }
 
 #[cfg(feature = "export-schema")]
-but_schemars::register_sdk_type!(UICommitInsertBlankResult);
+but_schemars::register_sdk_type!(CommitInsertBlankResult);
 
-impl From<CommitInsertBlankResult> for UICommitInsertBlankResult {
-    fn from(value: CommitInsertBlankResult) -> Self {
-        let CommitInsertBlankResult {
+impl From<EngineCommitInsertBlankResult> for CommitInsertBlankResult {
+    fn from(value: EngineCommitInsertBlankResult) -> Self {
+        let EngineCommitInsertBlankResult {
             new_commit,
             replaced_commits,
         } = value;
@@ -217,11 +219,11 @@ impl From<CommitInsertBlankResult> for UICommitInsertBlankResult {
     }
 }
 
-/// UI type for moving a commit.
+/// JSON transport type for moving a commit.
 #[derive(Debug, Serialize)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
-pub struct UICommitMoveResult {
+pub struct CommitMoveResult {
     /// Commits that have been replaced as a side-effect of the move.
     /// Maps `oldId -> newId`.
     #[cfg_attr(
@@ -232,11 +234,11 @@ pub struct UICommitMoveResult {
 }
 
 #[cfg(feature = "export-schema")]
-but_schemars::register_sdk_type!(UICommitMoveResult);
+but_schemars::register_sdk_type!(CommitMoveResult);
 
-impl From<CommitMoveResult> for UICommitMoveResult {
-    fn from(value: CommitMoveResult) -> Self {
-        let CommitMoveResult { replaced_commits } = value;
+impl From<EngineCommitMoveResult> for CommitMoveResult {
+    fn from(value: EngineCommitMoveResult) -> Self {
+        let EngineCommitMoveResult { replaced_commits } = value;
 
         Self {
             replaced_commits: replaced_commits
@@ -246,11 +248,11 @@ impl From<CommitMoveResult> for UICommitMoveResult {
         }
     }
 }
-/// UI type for discarding a commit.
+/// JSON transport type for discarding a commit.
 #[derive(Debug, Serialize)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
-pub struct UICommitDiscardResult {
+pub struct CommitDiscardResult {
     /// The commit that was discarded as a result of this operation.
     #[cfg_attr(feature = "export-schema", schemars(with = "String"))]
     pub discarded_commit: HexHash,
@@ -264,11 +266,11 @@ pub struct UICommitDiscardResult {
 }
 
 #[cfg(feature = "export-schema")]
-but_schemars::register_sdk_type!(UICommitDiscardResult);
+but_schemars::register_sdk_type!(CommitDiscardResult);
 
-impl From<CommitDiscardResult> for UICommitDiscardResult {
-    fn from(value: CommitDiscardResult) -> Self {
-        let CommitDiscardResult {
+impl From<EngineCommitDiscardResult> for CommitDiscardResult {
+    fn from(value: EngineCommitDiscardResult) -> Self {
+        let EngineCommitDiscardResult {
             replaced_commits,
             discarded_commit,
         } = value;

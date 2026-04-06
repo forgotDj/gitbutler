@@ -15,13 +15,13 @@ import type {
 	RefInfo,
 	TreeChange,
 	TreeChanges,
-	UICommitCreateResult,
-	UICommitDiscardResult,
-	UICommitInsertBlankResult,
-	UICommitMoveResult,
-	UICommitRewordResult,
-	UIMoveBranchResult,
-	UIMoveChangesResult,
+	CommitCreateResult,
+	CommitDiscardResult,
+	CommitInsertBlankResult,
+	CommitMoveResult,
+	CommitRewordResult,
+	MoveBranchResult,
+	MoveChangesResult,
 	UnifiedPatch,
 	WatcherEvent,
 	WorktreeChanges,
@@ -170,17 +170,15 @@ export interface LiteElectronApi {
 	branchDetails: (params: BranchDetailsParams) => Promise<BranchDetails>;
 	branchDiff: (params: BranchDiffParams) => Promise<TreeChanges>;
 	changesInWorktree: (projectId: string) => Promise<WorktreeChanges>;
-	commitAmend: (params: CommitAmendParams) => Promise<UICommitCreateResult>;
-	commitCreate: (params: CommitCreateParams) => Promise<UICommitCreateResult>;
-	commitDiscard: (params: CommitDiscardParams) => Promise<UICommitDiscardResult>;
+	commitAmend: (params: CommitAmendParams) => Promise<CommitCreateResult>;
+	commitCreate: (params: CommitCreateParams) => Promise<CommitCreateResult>;
+	commitDiscard: (params: CommitDiscardParams) => Promise<CommitDiscardResult>;
 	commitDetailsWithLineStats: (params: CommitDetailsWithLineStatsParams) => Promise<CommitDetails>;
-	commitInsertBlank: (params: CommitInsertBlankParams) => Promise<UICommitInsertBlankResult>;
-	commitMove: (params: CommitMoveParams) => Promise<UICommitMoveResult>;
-	commitReword: (params: CommitRewordParams) => Promise<UICommitRewordResult>;
-	commitMoveChangesBetween: (
-		params: CommitMoveChangesBetweenParams,
-	) => Promise<UIMoveChangesResult>;
-	commitUncommitChanges: (params: CommitUncommitChangesParams) => Promise<UIMoveChangesResult>;
+	commitInsertBlank: (params: CommitInsertBlankParams) => Promise<CommitInsertBlankResult>;
+	commitMove: (params: CommitMoveParams) => Promise<CommitMoveResult>;
+	commitReword: (params: CommitRewordParams) => Promise<CommitRewordResult>;
+	commitMoveChangesBetween: (params: CommitMoveChangesBetweenParams) => Promise<MoveChangesResult>;
+	commitUncommitChanges: (params: CommitUncommitChangesParams) => Promise<MoveChangesResult>;
 	getVersion: () => Promise<string>;
 	headInfo: (projectId: string) => Promise<RefInfo>;
 	listBranches: (
@@ -188,9 +186,9 @@ export interface LiteElectronApi {
 		filter: BranchListingFilter | null,
 	) => Promise<Array<BranchListing>>;
 	listProjects: () => Promise<Array<ProjectForFrontend>>;
-	moveBranch: (params: MoveBranchParams) => Promise<UIMoveBranchResult>;
+	moveBranch: (params: MoveBranchParams) => Promise<MoveBranchResult>;
 	updateBranchName: (params: UpdateBranchNameParams) => Promise<void>;
-	tearOffBranch: (params: TearOffBranchParams) => Promise<UIMoveBranchResult>;
+	tearOffBranch: (params: TearOffBranchParams) => Promise<MoveBranchResult>;
 	ping: (input: string) => Promise<string>;
 	pushStackLegacy: (params: PushStackLegacyParams) => Promise<PushResult>;
 	treeChangeDiffs: (params: TreeChangeDiffParams) => Promise<UnifiedPatch | null>;

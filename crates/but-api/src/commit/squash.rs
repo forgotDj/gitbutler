@@ -12,7 +12,7 @@ use super::types::CommitSquashResult;
 /// commits.
 ///
 /// For details, see [`commit_squash_only_with_perm()`].
-#[but_api(crate::commit::json::UICommitSquashResult)]
+#[but_api(crate::commit::json::CommitSquashResult)]
 #[instrument(err(Debug))]
 pub fn commit_squash_only(
     ctx: &mut but_ctx::Context,
@@ -64,7 +64,7 @@ pub fn commit_squash_only_with_perm(
 /// commits.
 ///
 /// For details, see [`commit_squash_with_perm()`].
-#[but_api(napi, crate::commit::json::UICommitSquashResult)]
+#[but_api(napi, crate::commit::json::CommitSquashResult)]
 #[instrument(err(Debug))]
 pub fn commit_squash(
     ctx: &mut but_ctx::Context,

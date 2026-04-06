@@ -76,7 +76,7 @@ export declare function changesInWorktreeWithPerm(projectId: string): Promise<Wo
  * lower-level implementation details, see
  * [`but_workspace::commit::commit_amend()`].
  */
-export declare function commitAmend(projectId: string, commitId: string, changes: Array<DiffSpec>): Promise<UICommitCreateResult>
+export declare function commitAmend(projectId: string, commitId: string, changes: Array<DiffSpec>): Promise<CommitCreateResult>
 
 /**
  * Insert a new commit built from `changes` and record an oplog snapshot on
@@ -88,7 +88,7 @@ export declare function commitAmend(projectId: string, commitId: string, changes
  * lower-level implementation details, see
  * [`but_workspace::commit::commit_create()`].
  */
-export declare function commitCreate(projectId: string, relativeTo: RelativeTo, side: InsertSide, changes: Array<DiffSpec>, message: string): Promise<UICommitCreateResult>
+export declare function commitCreate(projectId: string, relativeTo: RelativeTo, side: InsertSide, changes: Array<DiffSpec>, message: string): Promise<CommitCreateResult>
 
 /**
  * Computes commit details for `commit_id` with line statistics enabled.
@@ -102,7 +102,7 @@ export declare function commitDetailsWithLineStats(projectId: string, commitId: 
  * Discard `subject_commit_id` using the behavior described by
  * [`commit_discard_with_perm()`].
  */
-export declare function commitDiscard(projectId: string, subjectCommitId: string): Promise<UICommitDiscardResult>
+export declare function commitDiscard(projectId: string, subjectCommitId: string): Promise<CommitDiscardResult>
 
 /**
  * Inserts a blank commit on `side` of `relative_to` and records an oplog
@@ -110,7 +110,7 @@ export declare function commitDiscard(projectId: string, subjectCommitId: string
  *
  * For details, see [`commit_insert_blank_with_perm()`].
  */
-export declare function commitInsertBlank(projectId: string, relativeTo: RelativeTo, side: InsertSide): Promise<UICommitInsertBlankResult>
+export declare function commitInsertBlank(projectId: string, relativeTo: RelativeTo, side: InsertSide): Promise<CommitInsertBlankResult>
 
 /**
  * Moves `subject_commit_id` to `side` of `relative_to` and records an oplog
@@ -121,7 +121,7 @@ export declare function commitInsertBlank(projectId: string, relativeTo: Relativ
  *
  * For details, see [`commit_move_with_perm()`].
  */
-export declare function commitMove(projectId: string, subjectCommitId: string, relativeTo: RelativeTo, side: InsertSide): Promise<UICommitMoveResult>
+export declare function commitMove(projectId: string, subjectCommitId: string, relativeTo: RelativeTo, side: InsertSide): Promise<CommitMoveResult>
 
 /**
  * Moves `changes` from `source_commit_id` to `destination_commit_id` and
@@ -132,7 +132,7 @@ export declare function commitMove(projectId: string, subjectCommitId: string, r
  *
  * For details, see [`commit_move_changes_between_with_perm()`].
  */
-export declare function commitMoveChangesBetween(projectId: string, sourceCommitId: string, destinationCommitId: string, changes: Array<DiffSpec>): Promise<UIMoveChangesResult>
+export declare function commitMoveChangesBetween(projectId: string, sourceCommitId: string, destinationCommitId: string, changes: Array<DiffSpec>): Promise<MoveChangesResult>
 
 /**
  * Reword `commit_id` to `message` using the behavior described by
@@ -141,7 +141,7 @@ export declare function commitMoveChangesBetween(projectId: string, sourceCommit
  * This acquires exclusive worktree access from `ctx` before rewriting the
  * commit message and recording the oplog entry.
  */
-export declare function commitReword(projectId: string, commitId: string, message: string): Promise<UICommitRewordResult>
+export declare function commitReword(projectId: string, commitId: string, message: string): Promise<CommitRewordResult>
 
 /**
  * Squash `subject_commit_id` into `target_commit_id` and record an oplog
@@ -152,7 +152,7 @@ export declare function commitReword(projectId: string, commitId: string, messag
  *
  * For details, see [`commit_squash_with_perm()`].
  */
-export declare function commitSquash(projectId: string, subjectCommitId: string, targetCommitId: string): Promise<UICommitSquashResult>
+export declare function commitSquash(projectId: string, subjectCommitId: string, targetCommitId: string): Promise<CommitSquashResult>
 
 /**
  * Extract `changes` from `commit_id` and record the rewrite in the oplog.
@@ -162,7 +162,7 @@ export declare function commitSquash(projectId: string, subjectCommitId: string,
  *
  * See [`commit_uncommit_changes_with_perm()`] for details.
  */
-export declare function commitUncommitChanges(projectId: string, commitId: string, changes: Array<DiffSpec>, assignTo: string | null): Promise<UIMoveChangesResult>
+export declare function commitUncommitChanges(projectId: string, commitId: string, changes: Array<DiffSpec>, assignTo: string | null): Promise<MoveChangesResult>
 
 /**
  * Get the forge provider name.
@@ -197,7 +197,7 @@ export declare function mergeReview(projectId: string, reviewId: number): Promis
  * This acquires exclusive worktree access from `ctx`, moves `subject_branch`
  * on top of `target_branch`, and records an oplog snapshot on success.
  */
-export declare function moveBranch(projectId: string, subjectBranch: string, targetBranch: string): Promise<UIMoveBranchResult>
+export declare function moveBranch(projectId: string, subjectBranch: string, targetBranch: string): Promise<MoveBranchResult>
 
 export declare function publishReview(projectId: string, params: CreateForgeReviewParams): Promise<ForgeReview>
 
@@ -240,7 +240,7 @@ export declare function setReviewTemplate(projectId: string, templatePath: strin
  * This acquires exclusive worktree access from `ctx`, tears `subject_branch`
  * out of its current stack, and records an oplog snapshot on success.
  */
-export declare function tearOffBranch(projectId: string, subjectBranch: string): Promise<UIMoveBranchResult>
+export declare function tearOffBranch(projectId: string, subjectBranch: string): Promise<MoveBranchResult>
 
 /**
  * Produces a unified patch for `change`.
@@ -592,6 +592,19 @@ export type CommitAbsorption = {
   reason: AbsorptionReason;
 };
 
+/** JSON transport type for creating a commit in the rebase graph. */
+export type CommitCreateResult = {
+  /** The new commit if one was created. */
+  newCommit?: string | null;
+  /** Changes that were rejected during commit creation. */
+  rejectedChanges: Array<RejectedChange>;
+  /**
+   * Commits that have been replaced as a side-effect of the create/amend.
+   * Maps `oldId -> newId`.
+   */
+  replacedCommits: Record<string, string>;
+};
+
 /** The JSON sibling of [but_core::diff::CommitDetails]. */
 export type CommitDetails = {
   /** The commit itself. */
@@ -602,6 +615,59 @@ export type CommitDetails = {
   stats?: LineStats | null;
   /** Conflicting entries in `commit` as stored in the conflict commit metadata. */
   conflictEntries?: ConflictEntries | null;
+};
+
+/** JSON transport type for discarding a commit. */
+export type CommitDiscardResult = {
+  /** The commit that was discarded as a result of this operation. */
+  discardedCommit: string;
+  /**
+   * Commits that have been replaced as a side-effect of the commit discard.
+   * Maps `oldId -> newId`.
+   */
+  replacedCommits: Record<string, string>;
+};
+
+/** JSON transport type for inserting a blank commit. */
+export type CommitInsertBlankResult = {
+  /** The new blank commit ID. */
+  newCommit: string;
+  /**
+   * Commits that have been replaced as a side-effect of the insertion.
+   * Maps `oldId -> newId`.
+   */
+  replacedCommits: Record<string, string>;
+};
+
+/** JSON transport type for moving a commit. */
+export type CommitMoveResult = {
+  /**
+   * Commits that have been replaced as a side-effect of the move.
+   * Maps `oldId -> newId`.
+   */
+  replacedCommits: Record<string, string>;
+};
+
+/** JSON transport type for rewording a commit. */
+export type CommitRewordResult = {
+  /** The new commit ID after rewording. */
+  newCommit: string;
+  /**
+   * Commits that have been replaced as a side-effect of the reword.
+   * Maps `oldId -> newId`.
+   */
+  replacedCommits: Record<string, string>;
+};
+
+/** JSON transport type for squashing commits. */
+export type CommitSquashResult = {
+  /** The new commit ID after squashing. */
+  newCommit: string;
+  /**
+   * Commits that have been replaced as a side-effect of the squash.
+   * Maps `oldId -> newId`.
+   */
+  replacedCommits: Record<string, string>;
 };
 
 /** Represents the state a commit could be in. */
@@ -988,6 +1054,24 @@ export type MetadataRefInfo = {
 
 export type ModeFlags = "ExecutableBitAdded" | "ExecutableBitRemoved" | "TypeChangeFileToLink" | "TypeChangeLinkToFile" | "TypeChange";
 
+/** JSON transport type for moving a branch. */
+export type MoveBranchResult = {
+  /**
+   * Commits that have been replaced after transplanting a branch.
+   * Maps `oldId → newId`.
+   */
+  replacedCommits: Record<string, string>;
+};
+
+/** JSON transport type for moving changes between commits. */
+export type MoveChangesResult = {
+  /**
+   * Commits that have been mapped from one thing to another.
+   * Maps `oldId -> newId`.
+   */
+  replacedCommits: Record<string, string>;
+};
+
 export type OperatingMode = {
   type: "OpenWorkspace";
 } | {
@@ -1114,6 +1198,16 @@ export type RefInfo = {
   isManagedCommit: boolean;
   /** The workspace represents what `HEAD` is pointing to. */
   isEntrypoint: boolean;
+};
+
+/** A change that was rejected during commit creation, with the reason for rejection. */
+export type RejectedChange = {
+  /** The reason the change was rejected. */
+  reason: RejectionReason;
+  /** The file path of the rejected change, potentially degenerated if it can't be represented in Unicode. */
+  path: string;
+  /** `path` without degeneration, as plain bytes. */
+  pathBytes: Array<number>;
 };
 
 /** Provide a description of why a [`crate::DiffSpec`] was rejected for application to the tree of a commit. */
@@ -1326,100 +1420,6 @@ export type TreeStatus = {
     state: ChangeState;
     flags?: ModeFlags | null;
   };
-};
-
-/** UI type for creating a commit in the rebase graph. */
-export type UICommitCreateResult = {
-  /** The new commit if one was created. */
-  newCommit?: string | null;
-  /** Changes that were rejected during commit creation. */
-  rejectedChanges: Array<UIRejectedChange>;
-  /**
-   * Commits that have been replaced as a side-effect of the create/amend.
-   * Maps `oldId -> newId`.
-   */
-  replacedCommits: Record<string, string>;
-};
-
-/** UI type for discarding a commit. */
-export type UICommitDiscardResult = {
-  /** The commit that was discarded as a result of this operation. */
-  discardedCommit: string;
-  /**
-   * Commits that have been replaced as a side-effect of the commit discard.
-   * Maps `oldId -> newId`.
-   */
-  replacedCommits: Record<string, string>;
-};
-
-/** UI type for inserting a blank commit. */
-export type UICommitInsertBlankResult = {
-  /** The new blank commit ID. */
-  newCommit: string;
-  /**
-   * Commits that have been replaced as a side-effect of the insertion.
-   * Maps `oldId -> newId`.
-   */
-  replacedCommits: Record<string, string>;
-};
-
-/** UI type for moving a commit. */
-export type UICommitMoveResult = {
-  /**
-   * Commits that have been replaced as a side-effect of the move.
-   * Maps `oldId -> newId`.
-   */
-  replacedCommits: Record<string, string>;
-};
-
-/** UI type for rewording a commit. */
-export type UICommitRewordResult = {
-  /** The new commit ID after rewording. */
-  newCommit: string;
-  /**
-   * Commits that have been replaced as a side-effect of the reword.
-   * Maps `oldId -> newId`.
-   */
-  replacedCommits: Record<string, string>;
-};
-
-/** UI type for squashing commits. */
-export type UICommitSquashResult = {
-  /** The new commit ID after squashing. */
-  newCommit: string;
-  /**
-   * Commits that have been replaced as a side-effect of the squash.
-   * Maps `oldId -> newId`.
-   */
-  replacedCommits: Record<string, string>;
-};
-
-/** UI type for moving a branch. */
-export type UIMoveBranchResult = {
-  /**
-   * Commits that have been replaced after transplanting a branch.
-   * Maps `oldId → newId`.
-   */
-  replacedCommits: Record<string, string>;
-};
-
-/** UI type for a move changes between commits result. */
-export type UIMoveChangesResult = {
-  /**
-   * Commits that have been mapped from one thing to another.
-   * Maps `oldId -> newId`.
-   */
-  replacedCommits: Record<string, string>;
-};
-
-/** A change that was rejected during commit creation, with the reason for rejection. */
-export type UIRejectedChange = {
-  /** The reason the change was rejected. */
-  reason: RejectionReason;
-  /** The file path of the rejected change, potentially degenerated if it can't be represented in Unicode. */
-  path: string;
-  /** `path` without degeneration, as plain bytes. */
-  pathBytes: Array<number>;
 };
 
 /**

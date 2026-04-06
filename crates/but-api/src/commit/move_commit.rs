@@ -15,7 +15,7 @@ use super::types::CommitMoveResult;
 /// commit.
 ///
 /// For details, see [`commit_move_only_with_perm()`].
-#[but_api(crate::commit::json::UICommitMoveResult)]
+#[but_api(crate::commit::json::CommitMoveResult)]
 pub fn commit_move_only(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
@@ -65,7 +65,7 @@ pub fn commit_move_only_with_perm(
 /// commit.
 ///
 /// For details, see [`commit_move_with_perm()`].
-#[but_api(napi, crate::commit::json::UICommitMoveResult)]
+#[but_api(napi, crate::commit::json::CommitMoveResult)]
 #[instrument(err(Debug))]
 pub fn commit_move(
     ctx: &mut but_ctx::Context,

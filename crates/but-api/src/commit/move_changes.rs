@@ -12,7 +12,7 @@ use super::types::MoveChangesResult;
 /// changes.
 ///
 /// For details, see [`commit_move_changes_between_only_with_perm()`].
-#[but_api(crate::commit::json::UIMoveChangesResult)]
+#[but_api(crate::commit::json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn commit_move_changes_between_only(
     ctx: &mut but_ctx::Context,
@@ -69,7 +69,7 @@ pub fn commit_move_changes_between_only_with_perm(
 /// changes.
 ///
 /// For details, see [`commit_move_changes_between_with_perm()`].
-#[but_api(napi, crate::commit::json::UIMoveChangesResult)]
+#[but_api(napi, crate::commit::json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn commit_move_changes_between(
     ctx: &mut but_ctx::Context,

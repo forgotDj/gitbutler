@@ -12,7 +12,7 @@ use super::types::CommitInsertBlankResult;
 /// Inserts a blank commit on `side` of `relative_to`.
 ///
 /// `side` chooses whether the blank commit lands before or after `relative_to`.
-#[but_api(crate::commit::json::UICommitInsertBlankResult)]
+#[but_api(crate::commit::json::CommitInsertBlankResult)]
 #[instrument(err(Debug))]
 pub fn commit_insert_blank_only(
     ctx: &mut but_ctx::Context,
@@ -50,7 +50,7 @@ pub(crate) fn commit_insert_blank_only_impl(
 /// snapshot on success.
 ///
 /// For details, see [`commit_insert_blank_with_perm()`].
-#[but_api(napi, crate::commit::json::UICommitInsertBlankResult)]
+#[but_api(napi, crate::commit::json::CommitInsertBlankResult)]
 #[instrument(err(Debug))]
 pub fn commit_insert_blank(
     ctx: &mut but_ctx::Context,

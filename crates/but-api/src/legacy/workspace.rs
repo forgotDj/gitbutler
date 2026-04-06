@@ -23,23 +23,22 @@ use tracing::instrument;
 use crate::json::HexHash;
 
 mod json {
-    use but_workspace::legacy::MoveChangesResult;
+    use but_workspace::legacy::MoveChangesResult as LegacyMoveChangesResult;
     use serde::Serialize;
 
     use crate::json::HexHash;
 
-    /// UI type for a move changes between commits result.
+    /// JSON transport type for moving changes between commits.
     #[derive(Debug, Serialize)]
     #[serde(rename_all = "camelCase")]
-    /// UI type for a move changes between commits result
-    pub struct UIMoveChangesResult {
+    pub struct MoveChangesResult {
         /// Commits that have been mapped from one thing to another
         pub replaced_commits: Vec<(HexHash, HexHash)>,
     }
 
-    impl From<MoveChangesResult> for UIMoveChangesResult {
-        fn from(value: MoveChangesResult) -> Self {
-            let MoveChangesResult { replaced_commits } = value;
+    impl From<LegacyMoveChangesResult> for MoveChangesResult {
+        fn from(value: LegacyMoveChangesResult) -> Self {
+            let LegacyMoveChangesResult { replaced_commits } = value;
 
             Self {
                 replaced_commits: replaced_commits
@@ -435,7 +434,7 @@ pub fn discard_worktree_changes(
     Ok(refused)
 }
 
-#[but_api(json::UIMoveChangesResult)]
+#[but_api(json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn move_changes_between_commits(
     ctx: &mut Context,
@@ -466,7 +465,7 @@ pub fn move_changes_between_commits(
     Ok(result)
 }
 
-#[but_api(json::UIMoveChangesResult)]
+#[but_api(json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn split_branch(
     ctx: &mut Context,
@@ -510,7 +509,7 @@ pub fn split_branch(
     Ok(move_changes_result)
 }
 
-#[but_api(json::UIMoveChangesResult)]
+#[but_api(json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn split_branch_into_dependent_branch(
     ctx: &mut but_ctx::Context,
@@ -545,7 +544,7 @@ pub fn split_branch_into_dependent_branch(
 /// If `assign_to` is provided, the changes will be assigned to the stack
 /// specified.
 /// If `assign_to` is not provided, the changes will be unassigned.
-#[but_api(json::UIMoveChangesResult)]
+#[but_api(json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn uncommit_changes(
     ctx: &mut Context,

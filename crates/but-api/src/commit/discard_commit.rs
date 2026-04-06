@@ -8,7 +8,7 @@ use crate::commit::types::CommitDiscardResult;
 
 /// Discard `subject_commit_id` using the behavior described by
 /// [`commit_discard_only_with_perm()`].
-#[but_api(crate::commit::json::UICommitDiscardResult)]
+#[but_api(crate::commit::json::CommitDiscardResult)]
 pub fn commit_discard_only(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
@@ -44,7 +44,7 @@ pub fn commit_discard_only_with_perm(
 
 /// Discard `subject_commit_id` using the behavior described by
 /// [`commit_discard_with_perm()`].
-#[but_api(napi, crate::commit::json::UICommitDiscardResult)]
+#[but_api(napi, crate::commit::json::CommitDiscardResult)]
 #[instrument(err(Debug))]
 pub fn commit_discard(
     ctx: &mut but_ctx::Context,
