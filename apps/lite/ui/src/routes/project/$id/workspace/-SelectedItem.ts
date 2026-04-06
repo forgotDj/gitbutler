@@ -9,12 +9,10 @@ import {
 } from "./-Item.ts";
 
 export type SegmentMode = { _tag: "Default" } | { _tag: "Rename" };
-export const defaultSegmentMode: SegmentMode = { _tag: "Default" };
 
 export type SelectedSegmentItem = SegmentItem & { mode: SegmentMode };
 
 export type CommitMode = { _tag: "Default" } | { _tag: "Details" } | { _tag: "Reword" };
-export const defaultCommitMode: CommitMode = { _tag: "Default" };
 
 export type SelectedCommitItem = CommitItem & { mode: CommitMode };
 
@@ -29,7 +27,7 @@ export const selectedSegmentItem = ({
 	stackId,
 	segmentIndex,
 	branchName,
-	mode = defaultSegmentMode,
+	mode = { _tag: "Default" },
 }: SegmentItem & { mode?: SegmentMode }): SelectedItem => ({
 	_tag: "Segment",
 	stackId,
@@ -43,7 +41,7 @@ export const selectedCommitItem = ({
 	segmentIndex,
 	branchName,
 	commitId,
-	mode = defaultCommitMode,
+	mode = { _tag: "Default" },
 }: CommitItem & { mode?: CommitMode }): SelectedItem => ({
 	_tag: "Commit",
 	stackId,
