@@ -23,6 +23,17 @@ export type SelectedItem =
 	| ({ _tag: "Commit" } & SelectedCommitItem)
 	| ({ _tag: "BaseCommit" } & BaseCommitItem);
 
+export const selectedChangesSectionItem = (stackId: string | null): SelectedItem => ({
+	_tag: "ChangesSection",
+	stackId,
+});
+
+export const selectedChangeItem = (stackId: string | null, path: string): SelectedItem => ({
+	_tag: "Change",
+	stackId,
+	path,
+});
+
 export const selectedSegmentItem = ({
 	stackId,
 	segmentIndex,
@@ -51,13 +62,18 @@ export const selectedCommitItem = ({
 	mode,
 });
 
+export const selectedBaseCommitItem = (commitId: string): SelectedItem => ({
+	_tag: "BaseCommit",
+	commitId,
+});
+
 export const asSelectedItem = (item: Item): SelectedItem =>
 	Match.value(item).pipe(
 		Match.tagsExhaustive({
-			ChangesSection: (item) => item,
-			Change: (item) => item,
+			ChangesSection: (item) => selectedChangesSectionItem(item.stackId),
+			Change: (item) => selectedChangeItem(item.stackId, item.path),
 			Segment: (item) => selectedSegmentItem({ ...item, mode: { _tag: "Default" } }),
 			Commit: (item) => selectedCommitItem({ ...item, mode: { _tag: "Default" } }),
-			BaseCommit: (item) => item,
+			BaseCommit: (item) => selectedBaseCommitItem(item.commitId),
 		}),
 	);

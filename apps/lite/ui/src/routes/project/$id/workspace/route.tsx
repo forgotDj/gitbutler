@@ -99,9 +99,10 @@ import {
 } from "react";
 import useLocalStorageState from "use-local-storage-state";
 import sharedStyles from "../-shared.module.css";
-import { baseCommitItem, changeItem, changesSectionItem } from "./-Item.ts";
 import {
-	asSelectedItem,
+	selectedBaseCommitItem,
+	selectedChangeItem,
+	selectedChangesSectionItem,
 	type SelectedCommitItem,
 	type SelectedItem,
 	type SelectedSegmentItem,
@@ -1222,7 +1223,7 @@ const ChangeRow: FC<{
 		<FileButton
 			change={change}
 			onClick={() => {
-				selectItem(asSelectedItem(changeItem(stackId, change.path)));
+				selectItem(selectedChangeItem(stackId, change.path));
 			}}
 		/>
 		<button
@@ -1305,7 +1306,7 @@ const ChangesSectionRow: FC<{
 						type="button"
 						className={styles.segmentButton}
 						onClick={() => {
-							selectItem(asSelectedItem(changesSectionItem(stackId)));
+							selectItem(selectedChangesSectionItem(stackId));
 						}}
 					>
 						{label}
@@ -1374,7 +1375,7 @@ const BaseCommitRow: FC<{
 			type="button"
 			className={styles.commonBaseCommit}
 			onClick={() => {
-				selectItem(asSelectedItem(baseCommitItem(commitId)));
+				selectItem(selectedBaseCommitItem(commitId));
 			}}
 		>
 			{shortCommitId(commitId)} (common base commit)
