@@ -64,6 +64,23 @@ export const assignedHunks = (
 	);
 };
 
+export const getAssignmentsByPath = (
+	assignments: Array<HunkAssignment>,
+	stackId: string | null,
+): Map<string, Array<HunkAssignment>> => {
+	const byPath = new Map<string, Array<HunkAssignment>>();
+
+	for (const assignment of assignments) {
+		if ((assignment.stackId ?? null) !== stackId) continue;
+
+		const pathAssignments = byPath.get(assignment.path);
+		if (pathAssignments) pathAssignments.push(assignment);
+		else byPath.set(assignment.path, [assignment]);
+	}
+
+	return byPath;
+};
+
 const lineEndingForDiff = (diff: string): string => (diff.includes("\r\n") ? "\r\n" : "\n");
 
 const patchHeaderForChange = (change: TreeChange, lineEnding: string): string =>

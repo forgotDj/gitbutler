@@ -16,7 +16,7 @@ import {
 } from "#ui/routes/project/$id/-shared.tsx";
 import uiStyles from "#ui/ui.module.css";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
-import { Commit, DiffHunk, HunkAssignment, HunkHeader, TreeChange } from "@gitbutler/but-sdk";
+import { Commit, DiffHunk, TreeChange } from "@gitbutler/but-sdk";
 import { Match, pipe } from "effect";
 import { FC } from "react";
 import {
@@ -31,21 +31,8 @@ import {
 	getBranchTargetOperation,
 	getCombineOperation,
 	getCommitTargetOperation,
+	useResolveOperationSource,
 } from "./-OperationSource.ts";
-
-export type TreeChangeWithAssignments = {
-	change: TreeChange;
-	assignments?: Array<HunkAssignment>;
-};
-
-const hunkHeadersForAssignments = (
-	assignments: Array<HunkAssignment> | undefined,
-): Array<HunkHeader> =>
-	assignments
-		? assignments.flatMap((assignment) =>
-				assignment.hunkHeader != null ? [assignment.hunkHeader] : [],
-			)
-		: [];
 
 export const BranchSource: FC<
 	{
@@ -103,17 +90,7 @@ export const CommitFileSource: FC<
 	} & useRender.ComponentProps<"div">
 > = ({ change, fileParent, render, ...props }) => {
 	const [isDragging, dragRef] = useDraggable({
-		getInitialData: () =>
-			getDragData({
-				_tag: "TreeChanges",
-				parent: fileParent,
-				changes: [
-					{
-						change,
-						hunkHeaders: [],
-					},
-				],
-			}),
+		getInitialData: () => getDragData({ _tag: "File", parent: fileParent, path: change.path }),
 		preview: <DragPreview>{change.path}</DragPreview>,
 	});
 	const isActive = isDragging;
@@ -131,21 +108,10 @@ export const ChangesFileSource: FC<
 	{
 		change: TreeChange;
 		fileParent: FileParent;
-		assignments: Array<HunkAssignment> | undefined;
 	} & useRender.ComponentProps<"div">
-> = ({ change, fileParent, assignments, render, ...props }) => {
+> = ({ change, fileParent, render, ...props }) => {
 	const [isDragging, dragRef] = useDraggable({
-		getInitialData: () =>
-			getDragData({
-				_tag: "TreeChanges",
-				parent: fileParent,
-				changes: [
-					{
-						change,
-						hunkHeaders: hunkHeadersForAssignments(assignments),
-					},
-				],
-			}),
+		getInitialData: () => getDragData({ _tag: "File", parent: fileParent, path: change.path }),
 		preview: <DragPreview>{change.path}</DragPreview>,
 	});
 	const isActive = isDragging;
@@ -163,21 +129,13 @@ export const ChangesSectionSource: FC<
 	{
 		stackId: string | null;
 		label: string;
-		changes: Array<TreeChangeWithAssignments>;
+		changeCount: number;
 	} & useRender.ComponentProps<"div">
-> = ({ stackId, label, changes, render, ...props }) => {
+> = ({ stackId, label, changeCount, render, ...props }) => {
 	const [isDragging, dragRef] = useDraggable({
-		getInitialData: () =>
-			getDragData({
-				_tag: "TreeChanges",
-				parent: { _tag: "ChangesSection", stackId },
-				changes: changes.map(({ change, assignments }) => ({
-					change,
-					hunkHeaders: hunkHeadersForAssignments(assignments),
-				})),
-			}),
+		getInitialData: () => getDragData({ _tag: "ChangesSection", stackId }),
 		preview: <DragPreview>{label}</DragPreview>,
-		canDrag: () => changes.length > 0,
+		canDrag: () => changeCount > 0,
 	});
 	const isActive = isDragging;
 
@@ -201,14 +159,10 @@ export const HunkSource: FC<
 	const [isDragging, dragRef] = useDraggable({
 		getInitialData: () =>
 			getDragData({
-				_tag: "TreeChanges",
+				_tag: "Hunk",
 				parent: fileParent,
-				changes: [
-					{
-						change,
-						hunkHeaders: [hunk],
-					},
-				],
+				path: change.path,
+				hunkHeader: hunk,
 			}),
 		preview: <DragPreview>Hunk {formatHunkHeader(hunk)}</DragPreview>,
 		canDrag: () => !patch.subject.isResultOfBinaryToTextConversion,
@@ -258,12 +212,18 @@ const OperationTooltip: FC<
 
 export const ChangesSectionTarget: FC<
 	{
+		projectId: string;
 		stackId: string | null;
 	} & useRender.ComponentProps<"div">
-> = ({ stackId, render, ...props }) => {
+> = ({ projectId, stackId, render, ...props }) => {
+	const resolveOperationSource = useResolveOperationSource(projectId);
 	const [operation, dropRef] = useDroppable(({ source }) => {
-		const operationSource = parseDragData(source.data);
+		const operationSourceRef = parseDragData(source.data);
+		if (!operationSourceRef) return null;
+
+		const operationSource = resolveOperationSource(operationSourceRef);
 		if (!operationSource) return null;
+
 		return getCombineOperation({
 			operationSource,
 			target: { _tag: "ChangesSection", stackId },
@@ -286,10 +246,15 @@ export const CommitTarget: FC<
 		commitId: string;
 		previousCommitId: string | undefined;
 		nextCommitId: string | undefined;
+		projectId: string;
 	} & useRender.ComponentProps<"div">
-> = ({ commitId, previousCommitId, nextCommitId, render, ...props }) => {
+> = ({ commitId, previousCommitId, nextCommitId, projectId, render, ...props }) => {
+	const resolveOperationSource = useResolveOperationSource(projectId);
 	const [operation, dropRef] = useDroppable(({ source, input, element }) => {
-		const operationSource = parseDragData(source.data);
+		const operationSourceRef = parseDragData(source.data);
+		if (!operationSourceRef) return null;
+
+		const operationSource = resolveOperationSource(operationSourceRef);
 		if (!operationSource) return null;
 
 		const instruction = getCommitTargetInstruction({
@@ -356,11 +321,17 @@ export const BranchTarget: FC<
 	{
 		branchRef: Array<number> | null;
 		firstCommitId: string | undefined;
+		projectId: string;
 	} & useRender.ComponentProps<"div">
-> = ({ branchRef, firstCommitId, render, ...props }) => {
+> = ({ branchRef, firstCommitId, projectId, render, ...props }) => {
+	const resolveOperationSource = useResolveOperationSource(projectId);
 	const [operation, dropRef] = useDroppable(({ source }) => {
-		const operationSource = parseDragData(source.data);
+		const operationSourceRef = parseDragData(source.data);
+		if (!operationSourceRef) return null;
+
+		const operationSource = resolveOperationSource(operationSourceRef);
 		if (!operationSource) return null;
+
 		return getBranchTargetOperation({ operationSource, branchRef, firstCommitId });
 	});
 
@@ -375,10 +346,21 @@ export const BranchTarget: FC<
 	return <OperationTooltip operation={operation} render={target} />;
 };
 
-export const TearOffBranchTarget: FC<useRender.ComponentProps<"div">> = ({ render, ...props }) => {
+export const TearOffBranchTarget: FC<{ projectId: string } & useRender.ComponentProps<"div">> = ({
+	projectId,
+	render,
+	...props
+}) => {
+	const resolveOperationSource = useResolveOperationSource(projectId);
 	const [operation, dropRef] = useDroppable(({ source }): Operation | null => {
-		const operationSource = parseDragData(source.data);
-		if (!operationSource || operationSource._tag !== "Branch") return null;
+		const operationSourceRef = parseDragData(source.data);
+		if (!operationSourceRef) return null;
+
+		const operationSource = resolveOperationSource(operationSourceRef);
+		if (!operationSource) return null;
+
+		if (operationSource._tag !== "Branch") return null;
+
 		return {
 			_tag: "TearOffBranch",
 			subjectBranch: decodeRefName(operationSource.ref),

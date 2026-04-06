@@ -46,10 +46,9 @@ import {
 	ChangesFileSource,
 	HunkSource,
 	TearOffBranchTarget,
-	TreeChangeWithAssignments,
 } from "#ui/routes/project/$id/workspace/-OperationSubjects.tsx";
 import { AbsorptionDialog, useAbsorption } from "#ui/routes/project/$id/workspace/-Absorption.tsx";
-import { useMonitorDraggedOperationSource } from "#ui/routes/project/$id/workspace/-DragAndDrop.tsx";
+import { useMonitorDraggedOperationSourceRef } from "#ui/routes/project/$id/workspace/-DragAndDrop.tsx";
 import {
 	CommitDetails as SharedCommitDetails,
 	CommitsList,
@@ -61,6 +60,7 @@ import {
 	shortCommitId,
 	assignedHunks,
 	assert,
+	getAssignmentsByPath,
 	getRelative,
 	hunkKey,
 } from "#ui/routes/project/$id/-shared.tsx";
@@ -259,23 +259,6 @@ const hunkContainsHunk = (a: HunkHeader, b: HunkHeader): boolean =>
 	a.oldStart + a.oldLines - 1 >= b.oldStart + b.oldLines - 1 &&
 	a.newStart <= b.newStart &&
 	a.newStart + a.newLines - 1 >= b.newStart + b.newLines - 1;
-
-const getAssignmentsByPath = (
-	assignments: Array<HunkAssignment>,
-	stackId: string | null,
-): Map<string, Array<HunkAssignment>> => {
-	const byPath = new Map<string, Array<HunkAssignment>>();
-
-	for (const assignment of assignments) {
-		if ((assignment.stackId ?? null) !== stackId) continue;
-
-		const pathAssignments = byPath.get(assignment.path);
-		if (pathAssignments) pathAssignments.push(assignment);
-		else byPath.set(assignment.path, [assignment]);
-	}
-
-	return byPath;
-};
 
 const getHunkDependencyDiffsByPath = (
 	hunkDependencyDiffs: Array<HunkDependencyDiff>,
@@ -550,11 +533,7 @@ const ChangesPreview: FC<{
 				<ul>
 					{changesWithDiffs.map(([change, diff]) => (
 						<li key={change.path}>
-							<ChangesFileSource
-								change={change}
-								fileParent={{ _tag: "ChangesSection", stackId }}
-								assignments={assignmentsByPath.get(change.path)}
-							>
+							<ChangesFileSource change={change} fileParent={{ _tag: "ChangesSection", stackId }}>
 								<h4>{change.path}</h4>
 							</ChangesFileSource>
 							<FileDiff
@@ -1182,6 +1161,7 @@ const CommitC: FC<{
 		commit={commit}
 		render={
 			<CommitTarget
+				projectId={projectId}
 				commitId={commit.id}
 				previousCommitId={previousCommitId}
 				nextCommitId={nextCommitId}
@@ -1213,7 +1193,6 @@ const CommitC: FC<{
 );
 
 const ChangeRow: FC<{
-	assignments: Array<HunkAssignment> | undefined;
 	change: TreeChange;
 	dependencyCommitIds: Array<string>;
 	isSelected: boolean;
@@ -1223,7 +1202,6 @@ const ChangeRow: FC<{
 	selectItem: (item: Item | null) => void;
 	stackId: string | null;
 }> = ({
-	assignments,
 	change,
 	dependencyCommitIds,
 	isSelected,
@@ -1236,7 +1214,6 @@ const ChangeRow: FC<{
 	<ChangesFileSource
 		change={change}
 		fileParent={{ _tag: "ChangesSection", stackId }}
-		assignments={assignments}
 		className={classes(
 			sharedStyles.row,
 			isSelected && sharedStyles.rowSelected,
@@ -1441,14 +1418,9 @@ const Changes: FC<{
 		<ChangesSectionSource
 			stackId={stackId}
 			label={label}
-			changes={changes.map(
-				(change): TreeChangeWithAssignments => ({
-					change,
-					assignments: assignmentsByPath.get(change.path),
-				}),
-			)}
+			changeCount={changes.length}
 			className={classes(className, isSectionSelected && sharedStyles.sectionSelected)}
-			render={<ChangesSectionTarget stackId={stackId} />}
+			render={<ChangesSectionTarget projectId={projectId} stackId={stackId} />}
 		>
 			<ChangesSectionRow
 				changes={changes}
@@ -1471,7 +1443,6 @@ const Changes: FC<{
 						return (
 							<li key={change.path}>
 								<ChangeRow
-									assignments={assignmentsByPath.get(change.path)}
 									change={change}
 									dependencyCommitIds={dependencyCommitIds}
 									isSelected={selectedPath === change.path}
@@ -1741,6 +1712,7 @@ const SegmentRow: FC<
 
 	return !isRenamePending && segment.refName != null ? (
 		<BranchTarget
+			projectId={projectId}
 			branchRef={segment.refName.fullNameBytes}
 			firstCommitId={segment.commits[0]?.id}
 			render={
@@ -1976,7 +1948,7 @@ const ProjectPage: FC = () => {
 		clearAbsorptionPlan,
 	} = useAbsorption(projectId);
 
-	useMonitorDraggedOperationSource({ projectId });
+	useMonitorDraggedOperationSourceRef({ projectId });
 
 	useWorkspaceShortcuts({
 		projectId,
@@ -2047,7 +2019,7 @@ const ProjectPage: FC = () => {
 					</div>
 
 					{commonBaseCommitId !== undefined && (
-						<TearOffBranchTarget className={styles.commonBaseCommitContainer}>
+						<TearOffBranchTarget projectId={projectId} className={styles.commonBaseCommitContainer}>
 							<BaseCommitRow
 								commitId={commonBaseCommitId}
 								isSelected={
@@ -2059,7 +2031,7 @@ const ProjectPage: FC = () => {
 					)}
 				</div>
 
-				<TearOffBranchTarget className={styles.emptyLane} />
+				<TearOffBranchTarget projectId={projectId} className={styles.emptyLane} />
 			</div>
 
 			<PositionedShortcutsBar
