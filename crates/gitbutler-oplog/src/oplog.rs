@@ -406,7 +406,7 @@ fn ignore_large_files_in_diffs(repo: &git2::Repository, limit_in_bytes: u64) -> 
                 .flatten()
         })
         .collect();
-    let ignore_list = files_to_exclude.join(" ");
+    let ignore_list = files_to_exclude.join("\n");
     repo.add_ignore_rule(&ignore_list)?;
     Ok(())
 }

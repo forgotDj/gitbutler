@@ -42,6 +42,13 @@ fn add_remote_writes_fetch_url_to_local_config() -> anyhow::Result<()> {
             .map(|url| url.to_bstring().to_string()),
         Some("https://example.com/repo.git".to_owned())
     );
+    let config = repo.config_snapshot();
+    assert_eq!(
+        config
+            .string("remote.origin.fetch")
+            .map(|value| value.to_string()),
+        Some("+refs/heads/*:refs/remotes/origin/*".to_owned())
+    );
     Ok(())
 }
 

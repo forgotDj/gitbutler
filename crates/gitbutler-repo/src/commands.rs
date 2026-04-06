@@ -3,7 +3,7 @@ use std::{path::Path, sync::Mutex};
 use anyhow::{Result, bail};
 use base64::engine::Engine as _;
 use but_core::commit::sign_buffer;
-use but_core::git_config::edit_repo_config;
+use but_core::git_config::{edit_repo_config, ensure_config_value};
 use but_ctx::Context;
 use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use ignore::WalkBuilder;
@@ -235,6 +235,11 @@ impl RepoCommands for Context {
         edit_repo_config(&repo, gix::config::Source::Local, |config| {
             let mut section = config.section_mut_or_create_new("remote", Some(name.into()))?;
             section.push("url".try_into()?, Some(url.into()));
+            ensure_config_value(
+                config,
+                &format!("remote.{name}.fetch"),
+                &format!("+refs/heads/*:refs/remotes/{name}/*"),
+            )?;
             Ok(())
         })?;
         Ok(())
