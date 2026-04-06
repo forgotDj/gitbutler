@@ -11,6 +11,7 @@ type SegmentItemBase = {
 
 export type SegmentItem = SegmentItemBase;
 export type CommitItem = SegmentItemBase & { commitId: string };
+export type CommitFileItem = CommitItem & { path: string };
 
 /**
  * A selectable item in the primary panel.
@@ -20,6 +21,7 @@ export type Item =
 	| ({ _tag: "Change" } & ChangeItem)
 	| ({ _tag: "Segment" } & SegmentItem)
 	| ({ _tag: "Commit" } & CommitItem)
+	| ({ _tag: "CommitFile" } & CommitFileItem)
 	| { _tag: "BaseCommit" };
 
 export const changesSectionItem = (stackId: string | null): Item => ({
@@ -48,6 +50,21 @@ export const commitItem = ({ stackId, segmentIndex, branchRef, commitId }: Commi
 	commitId,
 });
 
+export const commitFileItem = ({
+	stackId,
+	segmentIndex,
+	branchRef,
+	commitId,
+	path,
+}: CommitFileItem): Item => ({
+	_tag: "CommitFile",
+	stackId,
+	segmentIndex,
+	branchRef,
+	commitId,
+	path,
+});
+
 export const baseCommitItem: Item = {
 	_tag: "BaseCommit",
 };
@@ -60,9 +77,13 @@ export const itemIdentityKey = (item: Item): string =>
 			Segment: (item) =>
 				JSON.stringify(["Segment", item.stackId, item.segmentIndex, item.branchRef]),
 			Commit: (item) => JSON.stringify(["Commit", item.stackId, item.segmentIndex, item.commitId]),
+			CommitFile: (item) =>
+				JSON.stringify(["CommitFile", item.stackId, item.segmentIndex, item.commitId, item.path]),
 			BaseCommit: () => JSON.stringify(["BaseCommit"]),
 		}),
 	);
+
+export const itemEquals = (a: Item, b: Item): boolean => itemIdentityKey(a) === itemIdentityKey(b);
 
 export const getParentSection = (item: Item): Item | null =>
 	Match.value(item).pipe(
@@ -72,6 +93,13 @@ export const getParentSection = (item: Item): Item | null =>
 					stackId: item.stackId,
 					segmentIndex: item.segmentIndex,
 					branchRef: item.branchRef,
+				}),
+			CommitFile: (item): Item | null =>
+				commitItem({
+					stackId: item.stackId,
+					segmentIndex: item.segmentIndex,
+					branchRef: item.branchRef,
+					commitId: item.commitId,
 				}),
 			Change: (item): Item | null => changesSectionItem(item.stackId),
 			ChangesSection: () => null,

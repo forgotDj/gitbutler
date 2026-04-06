@@ -1,4 +1,10 @@
-.unassignedChanges {
+.changesContainer {
+	display: flex;
+	row-gap: 4px;
+	flex-direction: column;
+}
+
+.unassignedChangesLane {
 	flex-shrink: 0;
 	width: 300px;
 }
@@ -17,27 +23,6 @@
 .stackLanes {
 	display: flex;
 	column-gap: 8px;
-}
-
-.emptyLane {
-	flex-shrink: 0;
-	width: 300px;
-}
-
-.commitForm {
-	display: flex;
-	flex-direction: column;
-}
-
-.commitFormMessageInput {
-	border-radius: 8px;
-	field-sizing: content;
-	box-sizing: content-box;
-	min-height: calc(2lh);
-	padding-inline: var(--row-inline-padding);
-	padding-block: var(--row-block-padding);
-	background-color: var(--color-input-bg);
-	resize: vertical;
 }
 
 .segments {
@@ -93,9 +78,26 @@
 }
 
 .activeTarget {
+	/* Ensure outset outline appears above siblings. */
+	z-index: 1;
 	border-radius: 8px;
 	outline: 2px dashed var(--color-active-operation-target-outline);
 	outline-offset: 1px;
+}
+
+/* This might be applied to an element that already has its own background, so
+we must use an overlay for the background. */
+.activeSource {
+	position: relative;
+	&:after {
+		position: absolute;
+		inset: 0;
+		border-radius: 8px;
+		background-color: var(--color-gray-200);
+		content: "";
+		opacity: 0.5;
+		pointer-events: none;
+	}
 }
 
 .stack {
@@ -104,7 +106,7 @@
 	flex-direction: column;
 }
 
-.stackActions {
+.laneActions {
 	display: flex;
 	column-gap: 8px;
 	align-items: center;
@@ -122,7 +124,11 @@
 		height: var(--row-line-height);
 	}
 
-	&:hover,
+	&:disabled {
+		opacity: 0.5;
+	}
+
+	&:enabled:hover,
 	&[aria-expanded="true"] {
 		background-color: var(--color-button-hover-bg);
 	}
@@ -178,7 +184,23 @@
 	resize: none;
 }
 
-.activeSource {
+.operationModePreview {
+	z-index: 1;
+	/* Relative to panel */
+	position: absolute;
+	bottom: var(--panel-padding);
+	left: 50%;
+	max-width: 500px;
+	padding: 8px;
+	transform: translateX(-50%);
+	border: 1px solid light-dark(rgb(0 0 0 / 0.2), rgb(255 255 255 / 0.16));
 	border-radius: 8px;
-	opacity: 0.4;
+	background-color: var(--color-bg);
+	box-shadow: 0 12px 16px -8px light-dark(rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.4));
+}
+
+.operationTooltipPopup {
+	display: flex;
+	column-gap: 8px;
+	align-items: center;
 }

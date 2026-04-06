@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RegisteredRouter, RouterProvider } from "@tanstack/react-router";
 import { FC, StrictMode } from "react";
+import { Provider } from "react-redux";
+import { store } from "#ui/state/store.ts";
 import { classes } from "./classes";
 import styles from "./App.module.css";
 import uiStyles from "./ui.module.css";
@@ -41,18 +43,20 @@ export const App: React.FC<{
 	router: RegisteredRouter;
 }> = ({ queryClient, toastManager, router }) => (
 	<StrictMode>
-		<QueryClientProvider client={queryClient}>
-			<Toast.Provider toastManager={toastManager}>
-				<Tooltip.Provider
-					// Workaround for flicker issue when nesting tooltips
-					// https://github.com/mui/base-ui/issues/4499
-					delay={0}
-				>
-					<RouterProvider router={router} />
-					<Toasts />
-				</Tooltip.Provider>
-			</Toast.Provider>
-			<ReactQueryDevtools />
-		</QueryClientProvider>
+		<Provider store={store}>
+			<QueryClientProvider client={queryClient}>
+				<Toast.Provider toastManager={toastManager}>
+					<Tooltip.Provider
+						// Workaround for flicker issue when nesting tooltips
+						// https://github.com/mui/base-ui/issues/4499
+						delay={0}
+					>
+						<RouterProvider router={router} />
+						<Toasts />
+					</Tooltip.Provider>
+				</Toast.Provider>
+				<ReactQueryDevtools />
+			</QueryClientProvider>
+		</Provider>
 	</StrictMode>
 );

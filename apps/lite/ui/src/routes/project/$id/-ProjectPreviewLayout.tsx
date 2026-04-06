@@ -3,9 +3,12 @@ import { FC, ReactNode, use, useState } from "react";
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import { ShortcutButton } from "#ui/ShortcutButton.tsx";
 import { isPreviewPanelVisible, Panel as PanelType } from "#ui/routes/project/$id/-state/layout.ts";
-import { ProjectStateContext } from "#ui/routes/project/$id/-ProjectState.tsx";
+import {
+	projectActions,
+	selectProjectLayoutState,
+} from "#ui/routes/project/$id/-state/projectSlice.ts";
 import { ShortcutsBarPortalContext } from "#ui/routes/project/$id/-ShortcutsBar.tsx";
-import { assert } from "#ui/routes/project/$id/-shared.tsx";
+import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import uiStyles from "#ui/ui.module.css";
 import { closePreviewBinding } from "./workspace/-WorkspaceShortcuts.ts";
 import sharedStyles from "./-shared.module.css";
@@ -15,11 +18,12 @@ export const ProjectPreviewLayout: FC<{
 	children: ReactNode;
 	preview: ReactNode | null;
 }> = ({ children, projectId, preview }) => {
-	const [projectState, dispatchProjectState] = assert(use(ProjectStateContext));
+	const dispatch = useAppDispatch();
+	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
 	const inheritedShortcutsBarPortalNode = use(ShortcutsBarPortalContext);
 	const [dialogShortcutsBarPortalNode, setDialogShortcutsBarPortalNode] =
 		useState<HTMLElement | null>(null);
-	const panelIds: Array<PanelType> = isPreviewPanelVisible(projectState.layout)
+	const panelIds: Array<PanelType> = isPreviewPanelVisible(layoutState)
 		? ["primary", "preview"]
 		: ["primary"];
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
@@ -30,7 +34,7 @@ export const ProjectPreviewLayout: FC<{
 	return (
 		<ShortcutsBarPortalContext
 			value={
-				projectState.layout.isFullscreenPreviewOpen
+				layoutState.isFullscreenPreviewOpen
 					? (dialogShortcutsBarPortalNode ?? inheritedShortcutsBarPortalNode)
 					: inheritedShortcutsBarPortalNode
 			}
@@ -47,7 +51,7 @@ export const ProjectPreviewLayout: FC<{
 				>
 					{children}
 				</Panel>
-				{isPreviewPanelVisible(projectState.layout) && (
+				{isPreviewPanelVisible(layoutState) && (
 					<>
 						<Separator className={sharedStyles.previewResizeHandle} />
 						<Panel
@@ -58,19 +62,21 @@ export const ProjectPreviewLayout: FC<{
 						>
 							{
 								// There can only be one user of the ref at a time.
-								projectState.layout.isFullscreenPreviewOpen ? null : preview
+								layoutState.isFullscreenPreviewOpen ? null : preview
 							}
 						</Panel>
 					</>
 				)}
 			</Group>
-			{projectState.layout.isFullscreenPreviewOpen && (
+			{layoutState.isFullscreenPreviewOpen && (
 				<Dialog.Root
 					open
 					onOpenChange={(open) => {
-						dispatchProjectState({
-							_tag: open ? "OpenFullscreenPreview" : "CloseFullscreenPreview",
-						});
+						dispatch(
+							open
+								? projectActions.openFullscreenPreview({ projectId })
+								: projectActions.closeFullscreenPreview({ projectId }),
+						);
 					}}
 				>
 					<Dialog.Portal>
@@ -80,7 +86,7 @@ export const ProjectPreviewLayout: FC<{
 									binding={closePreviewBinding}
 									type="button"
 									className={uiStyles.button}
-									onClick={() => dispatchProjectState({ _tag: "ClosePreview" })}
+									onClick={() => dispatch(projectActions.closePreview({ projectId }))}
 								>
 									{closePreviewBinding.description}
 								</ShortcutButton>

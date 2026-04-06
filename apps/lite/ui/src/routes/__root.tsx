@@ -1,16 +1,16 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link, Outlet, useMatch, useNavigate } from "@tanstack/react-router";
-import { FC, use, useState } from "react";
+import { FC, useState } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext } from "@tanstack/react-router";
-import { assert } from "#ui/routes/project/$id/-shared.tsx";
 import { ShortcutButton } from "#ui/ShortcutButton.tsx";
 import { ShortcutsBarPortalContext } from "#ui/routes/project/$id/-ShortcutsBar.tsx";
 import { isPreviewPanelVisible } from "#ui/routes/project/$id/-state/layout.ts";
 import {
-	ProjectStateContext,
-	ProjectStateProvider,
-} from "#ui/routes/project/$id/-ProjectState.tsx";
+	projectActions,
+	selectProjectLayoutState,
+} from "#ui/routes/project/$id/-state/projectSlice.ts";
+import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import {
 	toggleFullscreenPreviewBinding,
 	togglePreviewBinding,
@@ -95,8 +95,11 @@ const SidebarNav: FC = () => {
 };
 
 const TopBarActions: FC = () => {
-	const [projectState, dispatchProjectState] = assert(use(ProjectStateContext));
-	const { layout: layoutState } = projectState;
+	const dispatch = useAppDispatch();
+	const projectId = useMatch({
+		from: "/project/$id",
+	}).params.id;
+	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
 
 	return (
 		<div className={styles.topBarActions}>
@@ -105,7 +108,7 @@ const TopBarActions: FC = () => {
 				type="button"
 				className={uiStyles.button}
 				aria-pressed={isPreviewPanelVisible(layoutState)}
-				onClick={() => dispatchProjectState({ _tag: "TogglePreview" })}
+				onClick={() => dispatch(projectActions.togglePreview({ projectId }))}
 			>
 				{togglePreviewBinding.description}
 			</ShortcutButton>
@@ -114,7 +117,7 @@ const TopBarActions: FC = () => {
 				type="button"
 				className={uiStyles.button}
 				aria-pressed={layoutState.isFullscreenPreviewOpen}
-				onClick={() => dispatchProjectState({ _tag: "ToggleFullscreenPreview" })}
+				onClick={() => dispatch(projectActions.toggleFullscreenPreview({ projectId }))}
 			>
 				{toggleFullscreenPreviewBinding.description}
 			</ShortcutButton>
@@ -138,12 +141,8 @@ const TopBar: FC = () => {
 
 function RootLayout() {
 	const [shortcutsBarPortalNode, setShortcutsBarPortalNode] = useState<HTMLElement | null>(null);
-	const projectMatch = useMatch({
-		from: "/project/$id",
-		shouldThrow: false,
-	});
 
-	const content = (
+	return (
 		<ShortcutsBarPortalContext value={shortcutsBarPortalNode}>
 			<main className={styles.layout}>
 				<TopBar />
@@ -157,10 +156,6 @@ function RootLayout() {
 			</main>
 		</ShortcutsBarPortalContext>
 	);
-
-	if (!projectMatch) return content;
-
-	return <ProjectStateProvider key={projectMatch.params.id}>{content}</ProjectStateProvider>;
 }
 
 export const Route = createRootRouteWithContext<RouteContext>()({

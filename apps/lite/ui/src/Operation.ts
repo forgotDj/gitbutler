@@ -68,7 +68,12 @@ export const operationLabel = (operation: Operation): string =>
 					Match.when("below", () => "Create commit below"),
 					Match.exhaustive,
 				),
-			CommitCreateFromCommittedChanges: () => "Create commit here",
+			CommitCreateFromCommittedChanges: ({ side }) =>
+				Match.value(side).pipe(
+					Match.when("above", () => "Create commit above"),
+					Match.when("below", () => "Create commit below"),
+					Match.exhaustive,
+				),
 			CommitMove: ({ side }) =>
 				Match.value(side).pipe(
 					Match.when("above", () => "Move commit above"),

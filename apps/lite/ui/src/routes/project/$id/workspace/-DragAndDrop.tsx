@@ -1,95 +1,33 @@
 import { type Operation, useRunOperation } from "#ui/Operation.ts";
 import { monitorForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
-import {
-	Availability,
-	Operation as ListItemOperation,
-} from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
 import { FC, type ReactNode, useEffect } from "react";
 import sharedStyles from "../-shared.module.css";
-import {
-	getCombineOperation,
-	getCommitTargetSideOperation,
-	type OperationSource,
-} from "./-OperationSource.ts";
-import { type OperationSourceRef } from "./-OperationSourceRef.ts";
+import { type OperationSource } from "./-OperationSource.ts";
 
-type DragData = {
-	operationSourceRef: OperationSourceRef;
+export type DragData = {
+	operationSource: OperationSource;
 };
 
-export const parseDragData = (data: unknown): OperationSourceRef | null => {
-	if (typeof data !== "object" || data === null || !("operationSourceRef" in data)) return null;
-	return (data as DragData).operationSourceRef;
+export const parseDragData = (data: unknown): OperationSource | null => {
+	if (typeof data !== "object" || data === null || !("operationSource" in data)) return null;
+	return (data as DragData).operationSource;
 };
 
-const parseDropTargetData = (data: unknown): Operation | null => {
-	if (typeof data !== "object" || data === null || !("_tag" in data)) return null;
-	return data as Operation;
+export type DropData = {
+	operation: Operation | null;
+	operationSource: OperationSource;
+} | null;
+
+const parseDropTargetData = (data: unknown): DropData | null => {
+	if (typeof data !== "object" || data === null || !("operation" in data)) return null;
+	return data as DropData;
 };
 
 export const DragPreview: FC<{ children: ReactNode }> = ({ children }) => (
 	<div className={sharedStyles.dragPreview}>{children}</div>
 );
 
-export const makeDragData = (operationSourceRef: OperationSourceRef): DragData => ({
-	operationSourceRef,
-});
-
-type ListItemOperations = {
-	[TKey in ListItemOperation]?: Availability;
-};
-
-export const getCommitTargetOperations = ({
-	operationSource,
-	commitId,
-	previousCommitId,
-	nextCommitId,
-}: {
-	operationSource: OperationSource;
-	commitId: string;
-	previousCommitId: string | undefined;
-	nextCommitId: string | undefined;
-}): ListItemOperations => {
-	const getSourceCommitId = (item: OperationSource): string | null =>
-		item._tag === "Commit"
-			? item.commitId
-			: item._tag === "TreeChanges" && item.parent._tag === "Commit"
-				? item.parent.commitId
-				: null;
-
-	return {
-		"reorder-before": getCommitTargetSideOperation({
-			operationSource,
-			commitId,
-			side: "above",
-			previousCommitId,
-			nextCommitId,
-		})
-			? "available"
-			: "not-available",
-		"reorder-after": getCommitTargetSideOperation({
-			operationSource,
-			commitId,
-			side: "below",
-			previousCommitId,
-			nextCommitId,
-		})
-			? "available"
-			: "not-available",
-		combine:
-			getCombineOperation({
-				operationSource,
-				target: { _tag: "Commit", commitId },
-			}) ||
-			// Allow cancelling by dropping back where we started, otherwise
-			// this would be interpreted as a reorder.
-			getSourceCommitId(operationSource) === commitId
-				? "available"
-				: "not-available",
-	};
-};
-
-export const useMonitorDraggedOperationSourceRef = ({ projectId }: { projectId: string }) => {
+export const useMonitorDraggedOperationSource = ({ projectId }: { projectId: string }) => {
 	const runOperation = useRunOperation();
 
 	useEffect(
@@ -97,13 +35,13 @@ export const useMonitorDraggedOperationSourceRef = ({ projectId }: { projectId: 
 			monitorForElements({
 				canMonitor: ({ source }) => parseDragData(source.data) !== null,
 				onDrop: ({ location }) => {
-					const operation = location.current.dropTargets
+					const dropData = location.current.dropTargets
 						.map((dropTarget) => parseDropTargetData(dropTarget.data))
 						.find((target) => target);
 
-					if (!operation) return;
+					if (!dropData?.operation) return;
 
-					runOperation(projectId, operation);
+					runOperation(projectId, dropData.operation);
 				},
 			}),
 		[runOperation, projectId],

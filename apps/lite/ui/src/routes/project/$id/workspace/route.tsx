@@ -1,5 +1,4 @@
 import {
-	commitCreateMutationOptions,
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
 	commitRewordMutationOptions,
@@ -22,33 +21,32 @@ import {
 	MenuTriggerIcon,
 	PushIcon,
 } from "#ui/components/icons.tsx";
-import { rejectedChangesToastOptions } from "#ui/components/RejectedChanges.tsx";
 import { type FileParent } from "#ui/domain/FileParent.ts";
 import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
-import { stackRelativeTo } from "#ui/domain/Stack.ts";
 import { ProjectPreviewLayout } from "#ui/routes/project/$id/-ProjectPreviewLayout.tsx";
 import { getFocus } from "#ui/routes/project/$id/-state/layout.ts";
 import {
-	normalizeSelectedItem,
-	normalizeSelectedHunk,
-} from "#ui/routes/project/$id/-state/selection.ts";
-import { ProjectStateContext } from "#ui/routes/project/$id/-ProjectState.tsx";
-import {
-	BranchSource,
-	BranchTarget,
-	ChangesSectionSource,
-	ChangesSectionTarget,
-	CommitFileSource,
-	CommitSource,
-	CommitTarget,
-	ChangesFileSource,
-	HunkSource,
-	TearOffBranchTarget,
-} from "#ui/routes/project/$id/workspace/-OperationSubjects.tsx";
+	projectActions,
+	selectProjectExpandedCommitId,
+	selectProjectHighlightedCommitIds,
+	selectProjectLayoutState,
+	selectProjectSelectedHunk,
+	selectProjectSelectedItem,
+	selectProjectWorkspaceModeState,
+} from "#ui/routes/project/$id/-state/projectSlice.ts";
+import { normalizeSelectedHunk } from "#ui/routes/project/$id/-state/workspace.ts";
 import { AbsorptionDialog, useAbsorption } from "#ui/routes/project/$id/workspace/-Absorption.tsx";
-import { useMonitorDraggedOperationSourceRef } from "#ui/routes/project/$id/workspace/-DragAndDrop.tsx";
+import { useMonitorDraggedOperationSource } from "#ui/routes/project/$id/workspace/-DragAndDrop.tsx";
+import { isOperationModeSourceOrTarget } from "#ui/routes/project/$id/workspace/-OperationMode.tsx";
+import { OperationSourceC } from "#ui/routes/project/$id/workspace/-OperationSourceC.tsx";
+import { useResolveOperationSource } from "#ui/routes/project/$id/workspace/-ResolvedOperationSource.ts";
 import {
-	CommitDetails as SharedCommitDetails,
+	CommitTarget,
+	OperationTarget,
+} from "#ui/routes/project/$id/workspace/-OperationTargets.tsx";
+import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/-OperationSourceLabel.tsx";
+import {
+	CommitFiles as SharedCommitFiles,
 	CommitsList,
 	FileButton,
 	formatHunkHeader,
@@ -57,7 +55,6 @@ import {
 	CommitLabel,
 	shortCommitId,
 	assignedHunks,
-	assert,
 	decodeRefName,
 	getAssignmentsByPath,
 	getRelative,
@@ -65,12 +62,11 @@ import {
 	encodeRefName,
 } from "#ui/routes/project/$id/-shared.tsx";
 import uiStyles from "#ui/ui.module.css";
-import { ContextMenu, Menu, mergeProps, Toast, Tooltip, useRender } from "@base-ui/react";
+import { ContextMenu, Menu, mergeProps, Tooltip, useRender } from "@base-ui/react";
 import {
 	AbsorptionTarget,
 	Commit,
 	DiffHunk,
-	DiffSpec,
 	HunkAssignment,
 	HunkDependencies,
 	HunkHeader,
@@ -79,7 +75,7 @@ import {
 	TreeChange,
 	UnifiedPatch,
 } from "@gitbutler/but-sdk";
-import { useMutation, useQuery, useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Array, Match, pipe } from "effect";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
@@ -90,30 +86,32 @@ import {
 	ReactNode,
 	Ref,
 	Suspense,
-	use,
 	useImperativeHandle,
 	useOptimistic,
 	useRef,
-	useState,
 	useTransition,
 } from "react";
-import useLocalStorageState from "use-local-storage-state";
+import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import sharedStyles from "../-shared.module.css";
 import {
-	selectedBaseCommitItem,
-	selectedChangeItem,
-	selectedChangesSectionItem,
-	type SelectedCommitItem,
-	type SelectedItem,
-	type SelectedSegmentItem,
-	selectedCommitItem,
-	selectedSegmentItem,
-} from "./-SelectedItem.ts";
+	baseCommitItem,
+	changeItem,
+	changesSectionItem,
+	CommitFileItem,
+	commitFileItem,
+	CommitItem,
+	commitItem,
+	type Item,
+	SegmentItem,
+	segmentItem,
+} from "./-Item.ts";
 import {
 	buildNavigationIndex,
-	buildWorkspaceOutline,
-	getDefaultSelectedItem,
+	filterNavigationIndex,
+	getDefaultItem,
 	navigationIndexIncludes,
+	type NavigationIndex,
+	useWorkspaceOutline,
 } from "./-WorkspaceModel.ts";
 import {
 	renameBranchBindings,
@@ -125,18 +123,35 @@ import {
 import { PositionedShortcutsBar } from "../-ShortcutsBar.tsx";
 import { formatShortcutKeys, ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import styles from "./route.module.css";
-import { createDiffSpec } from "#ui/domain/DiffSpec.ts";
+import { OperationSource, operationSourceFromItem } from "./-OperationSource.ts";
+import {
+	getOperationMode,
+	normalizeWorkspaceMode,
+	type OperationMode,
+	type WorkspaceMode,
+} from "./-WorkspaceMode.ts";
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 const fileHunkKey = (path: string, hunk: HunkHeader): string => `${path}:${hunkKey(hunk)}`;
+
+const ItemRow: FC<
+	{
+		isSelected?: boolean;
+	} & ComponentProps<"div">
+> = ({ className, isSelected, ...props }) => (
+	<div
+		{...props}
+		className={classes(className, sharedStyles.itemRow, isSelected && sharedStyles.itemRowSelected)}
+	/>
+);
 
 const DependencyIndicator: FC<
 	{
 		projectId: string;
 		commitIds: NonEmptyArray<string>;
-		onHover: (commitIds: Array<string> | null) => void;
 	} & useRender.ComponentProps<"button">
-> = ({ projectId, commitIds, onHover, render, ...props }) => {
+> = ({ projectId, commitIds, render, ...props }) => {
+	const dispatch = useAppDispatch();
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	// TODO: expensive
 	const branchNameByCommitId = getBranchNameByCommitId(headInfo);
@@ -152,10 +167,10 @@ const DependencyIndicator: FC<
 		defaultTagName: "button",
 		props: mergeProps<"button">(props, {
 			onMouseEnter: () => {
-				onHover(commitIds);
+				dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds }));
 			},
 			onMouseLeave: () => {
-				onHover(null);
+				dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds: null }));
 			},
 			"aria-label": tooltip,
 		}),
@@ -177,76 +192,6 @@ const DependencyIndicator: FC<
 		</Tooltip.Root>
 	);
 };
-
-const useNormalizedSelectedItem = ({
-	projectId,
-	selectedItem,
-}: {
-	projectId: string;
-	selectedItem: SelectedItem | null;
-}): SelectedItem | null => {
-	const { data: selectedCommitDetails } = useQuery({
-		...commitDetailsWithLineStatsQueryOptions({
-			projectId,
-			commitId: selectedItem?._tag === "Commit" ? selectedItem.commitId : "",
-		}),
-		enabled: selectedItem?._tag === "Commit" && selectedItem.mode._tag === "Details",
-	});
-
-	return selectedItem
-		? normalizeSelectedItem({
-				selectedItem,
-				commitPaths: selectedCommitDetails?.changes.map((change) => change.path),
-			})
-		: null;
-};
-
-const CommitFileRow: FC<{
-	change: TreeChange;
-	commitId: string;
-	isSelected: boolean;
-	selectPath: (path: string | null) => void;
-}> = ({ change, commitId, isSelected, selectPath }) => (
-	<CommitFileSource
-		change={change}
-		fileParent={{ _tag: "Commit", commitId }}
-		className={classes(
-			sharedStyles.row,
-			isSelected && sharedStyles.rowSelected,
-			sharedStyles.fileRow,
-			isSelected && sharedStyles.fileRowSelected,
-		)}
-	>
-		<FileButton
-			change={change}
-			onClick={() => {
-				selectPath(change.path);
-			}}
-		/>
-	</CommitFileSource>
-);
-
-// TODO: check this
-const assignedChangesDiffSpecs = (
-	changes: Array<TreeChange>,
-	assignmentsByPath: Map<string, Array<HunkAssignment>>,
-): Array<DiffSpec> =>
-	changes.flatMap((change) => {
-		const assignments = assignmentsByPath.get(change.path);
-		if (!assignments || assignments.length === 0) return [];
-
-		if (assignments.some((assignment) => assignment.hunkHeader == null))
-			return [createDiffSpec(change, [])];
-
-		return [
-			createDiffSpec(
-				change,
-				assignments.flatMap((assignment) =>
-					assignment.hunkHeader != null ? [assignment.hunkHeader] : [],
-				),
-			),
-		];
-	});
 
 const hunkContainsHunk = (a: HunkHeader, b: HunkHeader): boolean =>
 	a.oldStart <= b.oldStart &&
@@ -296,25 +241,28 @@ const dependencyCommitIdsForFile = (
 
 const Hunk: FC<{
 	patch: Patch;
+	operationMode: OperationMode | null;
+	projectId: string;
 	fileParent?: FileParent;
 	change: TreeChange;
 	hunk: DiffHunk;
 	editable: boolean;
 	headerStart?: ReactNode;
-	onSelectHunk?: (key: string) => void;
 	isSelected?: boolean;
 	isFocused: boolean;
 }> = ({
 	patch,
+	operationMode,
+	projectId,
 	fileParent,
 	change,
 	hunk,
 	editable,
 	headerStart,
-	onSelectHunk,
 	isSelected,
 	isFocused,
 }) => {
+	const dispatch = useAppDispatch();
 	const headerRow = (
 		<div className={sharedStyles.hunkHeaderRow}>
 			{headerStart}
@@ -325,25 +273,46 @@ const Hunk: FC<{
 	return (
 		// oxlint-disable-next-line jsx_a11y/click-events-have-key-events, jsx_a11y/no-static-element-interactions -- TODO
 		<div
-			onClick={() => onSelectHunk?.(fileHunkKey(change.path, hunk))}
+			onClick={() =>
+				dispatch(
+					projectActions.selectHunk({
+						projectId,
+						hunk: fileHunkKey(change.path, hunk),
+					}),
+				)
+			}
 			className={classes(
 				sharedStyles.previewHunk,
 				isSelected && isFocused && sharedStyles.previewHunkSelected,
 			)}
 		>
-			{fileParent && editable ? (
-				<HunkSource patch={patch} fileParent={fileParent} change={change} hunk={hunk}>
-					{headerRow}
-				</HunkSource>
-			) : (
-				headerRow
-			)}
+			{fileParent && editable
+				? (() => {
+						const source: OperationSource = {
+							_tag: "Hunk",
+							parent: fileParent,
+							path: change.path,
+							hunkHeader: hunk,
+						};
+						return (
+							<OperationSourceC
+								operationMode={operationMode}
+								projectId={projectId}
+								source={source}
+								canDrag={() => !patch.subject.isResultOfBinaryToTextConversion}
+							>
+								{headerRow}
+							</OperationSourceC>
+						);
+					})()
+				: headerRow}
 			<HunkDiff change={change} diff={hunk.diff} />
 		</div>
 	);
 };
 
 const FileDiff: FC<{
+	operationMode: OperationMode | null;
 	projectId: string;
 	change: TreeChange;
 	assignments?: Array<HunkAssignment>;
@@ -351,11 +320,10 @@ const FileDiff: FC<{
 	editable: boolean;
 	hunkDependencyDiffs?: Array<HunkDependencyDiff>;
 	diff: UnifiedPatch | null;
-	onDependencyHover: (commitIds: Array<string> | null) => void;
-	onSelectHunk: (key: string) => void;
 	selectedHunk: string | undefined;
 	isFocused: boolean;
 }> = ({
+	operationMode,
 	projectId,
 	change,
 	assignments,
@@ -363,8 +331,6 @@ const FileDiff: FC<{
 	editable,
 	hunkDependencyDiffs,
 	diff,
-	onDependencyHover,
-	onSelectHunk,
 	selectedHunk,
 	isFocused,
 }) =>
@@ -391,21 +357,18 @@ const FileDiff: FC<{
 							<li key={hunkKey(hunk)}>
 								<Hunk
 									patch={patch}
+									operationMode={operationMode}
+									projectId={projectId}
 									fileParent={fileParent}
 									change={change}
 									hunk={hunk}
 									editable={editable}
-									onSelectHunk={onSelectHunk}
 									isSelected={selectedHunk === fileHunkKey(change.path, hunk)}
 									isFocused={isFocused}
 									headerStart={
 										fileParent?._tag === "ChangesSection" &&
 										isNonEmptyArray(dependencyCommitIds) ? (
-											<DependencyIndicator
-												projectId={projectId}
-												commitIds={dependencyCommitIds}
-												onHover={onDependencyHover}
-											>
+											<DependencyIndicator projectId={projectId} commitIds={dependencyCommitIds}>
 												<DependencyIcon />
 											</DependencyIndicator>
 										) : undefined
@@ -437,18 +400,16 @@ export type PreviewImperativeHandle = {
 const usePreviewDiffState = ({
 	projectId,
 	changes,
-	selectedHunk,
-	selectHunk,
 	ref,
 	getAssignments,
 }: {
 	projectId: string;
 	changes: Array<TreeChange>;
-	selectedHunk: string | null;
-	selectHunk: (key: string | null) => void;
 	ref?: Ref<PreviewImperativeHandle>;
 	getAssignments?: (path: string) => Array<HunkAssignment> | undefined;
 }) => {
+	const dispatch = useAppDispatch();
+	const selectedHunk = useAppSelector((state) => selectProjectSelectedHunk(state, projectId));
 	const treeChangeDiffs = useSuspenseQueries({
 		queries: changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
 	}).map((result) => result.data);
@@ -469,36 +430,28 @@ const usePreviewDiffState = ({
 				// We assume a valid key was provided.
 				const currentIndex = hunkKeys.indexOf(normalizedSelectedHunk);
 
-				selectHunk(getRelative(hunkKeys, currentIndex, offset));
+				dispatch(
+					projectActions.selectHunk({
+						projectId,
+						hunk: getRelative(hunkKeys, currentIndex, offset),
+					}),
+				);
 			},
 		}),
-		[normalizedSelectedHunk, hunkKeys, selectHunk],
+		[dispatch, normalizedSelectedHunk, hunkKeys, projectId],
 	);
 
 	return { changesWithDiffs, normalizedSelectedHunk };
 };
 
 const ChangesPreview: FC<{
+	operationMode: OperationMode | null;
 	projectId: string;
 	stackId: string | null;
 	selectedPath?: string;
-	onSelectHunk: (key: string) => void;
-	selectedHunk: string | null;
 	isFocused: boolean;
-	selectHunk: (key: string | null) => void;
-	onDependencyHover: (commitIds: Array<string> | null) => void;
 	ref?: Ref<PreviewImperativeHandle>;
-}> = ({
-	projectId,
-	stackId,
-	selectedPath,
-	onSelectHunk,
-	selectedHunk,
-	isFocused,
-	selectHunk,
-	onDependencyHover,
-	ref,
-}) => {
+}> = ({ operationMode, projectId, stackId, selectedPath, isFocused, ref }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 	const assignmentsByPath = getAssignmentsByPath(worktreeChanges.assignments, stackId);
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
@@ -513,8 +466,6 @@ const ChangesPreview: FC<{
 	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
 		projectId,
 		changes: visibleChanges,
-		selectedHunk,
-		selectHunk,
 		ref,
 		getAssignments: (path) => assignmentsByPath.get(path),
 	});
@@ -525,26 +476,36 @@ const ChangesPreview: FC<{
 				<div>No file changes.</div>
 			) : (
 				<ul>
-					{changesWithDiffs.map(([change, diff]) => (
-						<li key={change.path}>
-							<ChangesFileSource change={change} fileParent={{ _tag: "ChangesSection", stackId }}>
-								<h4>{change.path}</h4>
-							</ChangesFileSource>
-							<FileDiff
-								projectId={projectId}
-								change={change}
-								fileParent={{ _tag: "ChangesSection", stackId }}
-								editable
-								assignments={assignmentsByPath.get(change.path)}
-								hunkDependencyDiffs={hunkDependencyDiffsByPath.get(change.path)}
-								diff={diff}
-								onDependencyHover={onDependencyHover}
-								onSelectHunk={onSelectHunk}
-								selectedHunk={normalizedSelectedHunk}
-								isFocused={isFocused}
-							/>
-						</li>
-					))}
+					{changesWithDiffs.map(([change, diff]) => {
+						const source: OperationSource = {
+							_tag: "File",
+							parent: { _tag: "ChangesSection", stackId },
+							path: change.path,
+						};
+						return (
+							<li key={change.path}>
+								<OperationSourceC
+									operationMode={operationMode}
+									projectId={projectId}
+									source={source}
+								>
+									<h4>{change.path}</h4>
+								</OperationSourceC>
+								<FileDiff
+									operationMode={operationMode}
+									projectId={projectId}
+									change={change}
+									fileParent={{ _tag: "ChangesSection", stackId }}
+									editable
+									assignments={assignmentsByPath.get(change.path)}
+									hunkDependencyDiffs={hunkDependencyDiffsByPath.get(change.path)}
+									diff={diff}
+									selectedHunk={normalizedSelectedHunk}
+									isFocused={isFocused}
+								/>
+							</li>
+						);
+					})}
 				</ul>
 			)}
 		</div>
@@ -552,28 +513,14 @@ const ChangesPreview: FC<{
 };
 
 const CommitPreview: FC<{
+	operationMode: OperationMode | null;
 	projectId: string;
 	commitId: string;
 	selectedPath?: string | null;
 	editable: boolean;
-	onSelectHunk: (key: string) => void;
-	selectedHunk: string | null;
 	isFocused: boolean;
-	selectHunk: (key: string | null) => void;
-	onDependencyHover: (commitIds: Array<string> | null) => void;
 	ref?: Ref<PreviewImperativeHandle>;
-}> = ({
-	projectId,
-	commitId,
-	selectedPath,
-	editable,
-	onSelectHunk,
-	selectedHunk,
-	isFocused,
-	selectHunk,
-	onDependencyHover,
-	ref,
-}) => {
+}> = ({ operationMode, projectId, commitId, selectedPath, editable, isFocused, ref }) => {
 	const { data: commitDetails } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
@@ -586,8 +533,6 @@ const CommitPreview: FC<{
 	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
 		projectId,
 		changes: visibleChanges,
-		selectedHunk,
-		selectHunk,
 		ref,
 	});
 
@@ -611,28 +556,38 @@ const CommitPreview: FC<{
 				<div>No file changes.</div>
 			) : (
 				<ul>
-					{changesWithDiffs.map(([change, diff]) => (
-						<li key={change.path}>
-							{editable ? (
-								<CommitFileSource change={change} fileParent={{ _tag: "Commit", commitId }}>
+					{changesWithDiffs.map(([change, diff]) => {
+						const source: OperationSource = {
+							_tag: "File",
+							parent: { _tag: "Commit", commitId },
+							path: change.path,
+						};
+						return (
+							<li key={change.path}>
+								{editable ? (
+									<OperationSourceC
+										operationMode={operationMode}
+										projectId={projectId}
+										source={source}
+									>
+										<h4>{change.path}</h4>
+									</OperationSourceC>
+								) : (
 									<h4>{change.path}</h4>
-								</CommitFileSource>
-							) : (
-								<h4>{change.path}</h4>
-							)}
-							<FileDiff
-								projectId={projectId}
-								change={change}
-								fileParent={{ _tag: "Commit", commitId }}
-								editable={editable}
-								diff={diff}
-								onDependencyHover={onDependencyHover}
-								onSelectHunk={onSelectHunk}
-								selectedHunk={normalizedSelectedHunk}
-								isFocused={isFocused}
-							/>
-						</li>
-					))}
+								)}
+								<FileDiff
+									operationMode={operationMode}
+									projectId={projectId}
+									change={change}
+									fileParent={{ _tag: "Commit", commitId }}
+									editable={editable}
+									diff={diff}
+									selectedHunk={normalizedSelectedHunk}
+									isFocused={isFocused}
+								/>
+							</li>
+						);
+					})}
 				</ul>
 			)}
 		</div>
@@ -640,24 +595,12 @@ const CommitPreview: FC<{
 };
 
 const BranchPreview: FC<{
+	operationMode: OperationMode | null;
 	projectId: string;
 	branchRef: Array<number>;
-	onSelectHunk: (key: string) => void;
-	selectedHunk: string | null;
 	isFocused: boolean;
-	selectHunk: (key: string | null) => void;
-	onDependencyHover: (commitIds: Array<string> | null) => void;
 	ref?: Ref<PreviewImperativeHandle>;
-}> = ({
-	projectId,
-	branchRef,
-	onSelectHunk,
-	selectedHunk,
-	isFocused,
-	selectHunk,
-	onDependencyHover,
-	ref,
-}) => {
+}> = ({ operationMode, projectId, branchRef, isFocused, ref }) => {
 	const branch = decodeRefName(branchRef);
 	const [{ data: branchDetails }, { data: branchDiff }] = useSuspenseQueries({
 		queries: [
@@ -673,8 +616,6 @@ const BranchPreview: FC<{
 	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
 		projectId,
 		changes: branchDiff.changes,
-		selectedHunk,
-		selectHunk,
 		ref,
 	});
 
@@ -690,12 +631,11 @@ const BranchPreview: FC<{
 						<li key={change.path}>
 							<h4>{change.path}</h4>
 							<FileDiff
+								operationMode={operationMode}
 								projectId={projectId}
 								change={change}
 								editable={false}
 								diff={diff}
-								onDependencyHover={onDependencyHover}
-								onSelectHunk={onSelectHunk}
 								selectedHunk={normalizedSelectedHunk}
 								isFocused={isFocused}
 							/>
@@ -708,24 +648,12 @@ const BranchPreview: FC<{
 };
 
 const Preview: FC<{
+	operationMode: OperationMode | null;
 	projectId: string;
-	selectedItem: SelectedItem | null;
-	onSelectHunk: (key: string) => void;
-	selectedHunk: string | null;
+	selectedItem: Item;
 	isFocused: boolean;
-	selectHunk: (key: string | null) => void;
-	onDependencyHover: (commitIds: Array<string> | null) => void;
 	ref?: Ref<PreviewImperativeHandle>;
-}> = ({
-	projectId,
-	selectedItem,
-	onSelectHunk,
-	selectedHunk,
-	isFocused,
-	selectHunk,
-	onDependencyHover,
-	ref,
-}) =>
+}> = ({ operationMode, projectId, selectedItem, isFocused, ref }) =>
 	Match.value(selectedItem).pipe(
 		Match.tagsExhaustive({
 			Segment: ({ branchRef }) => {
@@ -739,53 +667,51 @@ const Preview: FC<{
 
 				return (
 					<BranchPreview
+						operationMode={operationMode}
 						projectId={projectId}
 						branchRef={branchRef}
-						onSelectHunk={onSelectHunk}
-						selectedHunk={selectedHunk}
 						isFocused={isFocused}
-						selectHunk={selectHunk}
-						onDependencyHover={onDependencyHover}
 						ref={ref}
 					/>
 				);
 			},
 			ChangesSection: ({ stackId }) => (
 				<ChangesPreview
+					operationMode={operationMode}
 					projectId={projectId}
 					stackId={stackId}
-					onSelectHunk={onSelectHunk}
-					selectedHunk={selectedHunk}
 					isFocused={isFocused}
-					selectHunk={selectHunk}
-					onDependencyHover={onDependencyHover}
 					ref={ref}
 				/>
 			),
 			Change: ({ stackId, path }) => (
 				<ChangesPreview
+					operationMode={operationMode}
 					projectId={projectId}
 					stackId={stackId}
 					selectedPath={path}
-					onSelectHunk={onSelectHunk}
-					selectedHunk={selectedHunk}
 					isFocused={isFocused}
-					selectHunk={selectHunk}
-					onDependencyHover={onDependencyHover}
 					ref={ref}
 				/>
 			),
 			Commit: (selectedItem) => (
 				<CommitPreview
+					operationMode={operationMode}
 					projectId={projectId}
 					commitId={selectedItem.commitId}
-					selectedPath={selectedItem.mode._tag === "Details" ? selectedItem.mode.path : undefined}
 					editable
-					onSelectHunk={onSelectHunk}
-					selectedHunk={selectedHunk}
 					isFocused={isFocused}
-					selectHunk={selectHunk}
-					onDependencyHover={onDependencyHover}
+					ref={ref}
+				/>
+			),
+			CommitFile: ({ commitId, path }) => (
+				<CommitPreview
+					operationMode={operationMode}
+					projectId={projectId}
+					commitId={commitId}
+					selectedPath={path}
+					editable
+					isFocused={isFocused}
 					ref={ref}
 				/>
 			),
@@ -935,32 +861,41 @@ const CommitRow: FC<
 		branchRef: Array<number> | null;
 		commit: Commit;
 		commitMessageFormRef: Ref<HTMLFormElement>;
+		workspaceMode: WorkspaceMode;
+		isExpanded: boolean;
 		isHighlighted: boolean;
-		selected: SelectedCommitItem | null;
+		selected: CommitItem | null;
 		projectId: string;
 		segmentIndex: number;
-		selectItem: (item: SelectedItem | null) => void;
 		stackId: string;
+		navigationIndex: NavigationIndex;
 	} & ComponentProps<"div">
 > = ({
 	branchRef,
 	commit,
 	commitMessageFormRef,
+	workspaceMode,
+	isExpanded,
 	isHighlighted,
 	selected,
 	projectId,
 	segmentIndex,
-	selectItem,
 	stackId,
+	navigationIndex,
 	...restProps
 }) => {
-	const defaultItem = selectedCommitItem({
+	const dispatch = useAppDispatch();
+	const commitItemV: CommitItem = {
 		stackId,
 		segmentIndex,
 		branchRef,
 		commitId: commit.id,
-		mode: { _tag: "Default" },
-	});
+	};
+	const item = commitItem(commitItemV);
+	const isRewording =
+		selected !== null &&
+		workspaceMode._tag === "RewordCommit" &&
+		workspaceMode.commitId === commit.id;
 	const [optimisticMessage, setOptimisticMessage] = useOptimistic(
 		commit.message,
 		(_currentMessage, nextMessage: string) => nextMessage,
@@ -972,39 +907,15 @@ const CommitRow: FC<
 		message: optimisticMessage,
 	};
 
-	const openDetails = () => {
-		selectItem(
-			selectedCommitItem({
-				stackId,
-				segmentIndex,
-				branchRef,
-				commitId: commit.id,
-				mode: { _tag: "Details", path: null },
-			}),
-		);
-	};
-
-	const toggleDetails = () => {
-		if (selected?.mode._tag === "Details") selectItem(defaultItem);
-		else openDetails();
-	};
-
 	const commitReword = useMutation(commitRewordMutationOptions);
 
 	const startEditing = () => {
-		selectItem(
-			selectedCommitItem({
-				stackId,
-				segmentIndex,
-				branchRef,
-				commitId: commit.id,
-				mode: { _tag: "Reword" },
-			}),
-		);
+		dispatch(projectActions.startRewordCommit({ projectId, item: commitItemV }));
 	};
 
 	const endEditing = () => {
-		selectItem(defaultItem);
+		dispatch(projectActions.exitMode({ projectId }));
+		dispatch(projectActions.selectItem({ projectId, item }));
 	};
 
 	const saveNewMessage = (newMessage: string) => {
@@ -1028,16 +939,13 @@ const CommitRow: FC<
 	};
 
 	return (
-		<div
+		<ItemRow
 			{...restProps}
-			className={classes(
-				sharedStyles.row,
-				selected && sharedStyles.rowSelected,
-				selected && sharedStyles.itemRowSelected,
-				isHighlighted && sharedStyles.itemRowHighlighted,
-			)}
+			inert={!navigationIndexIncludes(navigationIndex, item)}
+			isSelected={selected !== null}
+			className={classes(restProps.className, isHighlighted && sharedStyles.itemRowHighlighted)}
 		>
-			{selected?.mode._tag === "Reword" ? (
+			{isRewording ? (
 				<InlineCommitMessageEditor
 					formRef={commitMessageFormRef}
 					message={optimisticMessage}
@@ -1045,77 +953,117 @@ const CommitRow: FC<
 					onCancel={endEditing}
 				/>
 			) : (
-				<ContextMenu.Root>
-					<ContextMenu.Trigger
-						render={
-							<button
-								type="button"
-								className={classes(
-									sharedStyles.commitButton,
-									isCommitMessagePending && sharedStyles.commitButtonPending,
-								)}
-								onClick={() => {
-									selectItem(defaultItem);
-								}}
-							>
-								<CommitLabel commit={commitWithOptimisticMessage} />
-							</button>
-						}
-					/>
-					<ContextMenu.Portal>
-						<ContextMenu.Positioner>
-							<CommitMenuPopup
-								projectId={projectId}
-								commitId={commit.id}
-								canReword={!isCommitMessagePending}
-								onReword={startEditing}
-								parts={ContextMenu}
-							/>
-						</ContextMenu.Positioner>
-					</ContextMenu.Portal>
-				</ContextMenu.Root>
-			)}
-			<Tooltip.Root
-				// Prevent tooltip from lingering while moving between nearby controls.
-				// [tag:tooltip-disable-hoverable-popup]
-				disableHoverablePopup
-			>
-				<Tooltip.Trigger
-					className={sharedStyles.rowAction}
-					type="button"
-					onClick={toggleDetails}
-					aria-expanded={selected?.mode._tag === "Details"}
-					aria-label={
-						selected?.mode._tag === "Details" ? "Hide commit details" : "Show commit details"
-					}
-				>
-					<ExpandCollapseIcon isExpanded={selected?.mode._tag === "Details"} />
-				</Tooltip.Trigger>
-				<Tooltip.Portal>
-					<Tooltip.Positioner sideOffset={8}>
-						<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
-							{selected?.mode._tag === "Details" ? "Hide commit details" : "Show commit details"}
-						</Tooltip.Popup>
-					</Tooltip.Positioner>
-				</Tooltip.Portal>
-			</Tooltip.Root>
-			<Menu.Root>
-				<Menu.Trigger className={sharedStyles.rowAction} aria-label="Commit menu">
-					<MenuTriggerIcon />
-				</Menu.Trigger>
-				<Menu.Portal>
-					<Menu.Positioner align="end">
-						<CommitMenuPopup
-							projectId={projectId}
-							commitId={commit.id}
-							canReword={!isCommitMessagePending}
-							onReword={startEditing}
-							parts={Menu}
+				<>
+					<ContextMenu.Root disabled={workspaceMode._tag !== "Default"}>
+						<ContextMenu.Trigger
+							render={
+								<button
+									type="button"
+									className={classes(
+										sharedStyles.commitButton,
+										isCommitMessagePending && sharedStyles.commitButtonPending,
+									)}
+									onClick={() => {
+										dispatch(projectActions.selectItem({ projectId, item }));
+									}}
+								>
+									<CommitLabel commit={commitWithOptimisticMessage} />
+								</button>
+							}
 						/>
-					</Menu.Positioner>
-				</Menu.Portal>
-			</Menu.Root>
-		</div>
+						<ContextMenu.Portal>
+							<ContextMenu.Positioner>
+								<CommitMenuPopup
+									projectId={projectId}
+									commitId={commit.id}
+									canReword={!isCommitMessagePending}
+									onReword={startEditing}
+									parts={ContextMenu}
+								/>
+							</ContextMenu.Positioner>
+						</ContextMenu.Portal>
+					</ContextMenu.Root>
+					{workspaceMode._tag === "Default" && (
+						<>
+							<Tooltip.Root
+								// Prevent tooltip from lingering while moving between nearby controls.
+								// [tag:tooltip-disable-hoverable-popup]
+								disableHoverablePopup
+							>
+								<Tooltip.Trigger
+									className={sharedStyles.itemRowAction}
+									type="button"
+									onClick={() =>
+										dispatch(projectActions.toggleCommitFiles({ projectId, item: commitItemV }))
+									}
+									aria-expanded={isExpanded}
+									aria-label={isExpanded ? "Hide commit files" : "Show commit files"}
+								>
+									<ExpandCollapseIcon isExpanded={isExpanded} />
+								</Tooltip.Trigger>
+								<Tooltip.Portal>
+									<Tooltip.Positioner sideOffset={8}>
+										<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
+											{isExpanded ? "Hide commit files" : "Show commit files"}
+										</Tooltip.Popup>
+									</Tooltip.Positioner>
+								</Tooltip.Portal>
+							</Tooltip.Root>
+							<Menu.Root>
+								<Menu.Trigger className={sharedStyles.itemRowAction} aria-label="Commit menu">
+									<MenuTriggerIcon />
+								</Menu.Trigger>
+								<Menu.Portal>
+									<Menu.Positioner align="end">
+										<CommitMenuPopup
+											projectId={projectId}
+											commitId={commit.id}
+											canReword={!isCommitMessagePending}
+											onReword={startEditing}
+											parts={Menu}
+										/>
+									</Menu.Positioner>
+								</Menu.Portal>
+							</Menu.Root>
+						</>
+					)}
+				</>
+			)}
+		</ItemRow>
+	);
+};
+
+const CommitFileRow: FC<{
+	change: TreeChange;
+	operationMode: OperationMode | null;
+	parentCommitItem: CommitItem;
+	isSelected: boolean;
+	navigationIndex: NavigationIndex;
+	projectId: string;
+}> = ({ change, operationMode, parentCommitItem, isSelected, navigationIndex, projectId }) => {
+	const dispatch = useAppDispatch();
+	const item = commitFileItem({ ...parentCommitItem, path: change.path });
+
+	return (
+		<OperationSourceC
+			operationMode={operationMode}
+			projectId={projectId}
+			source={operationSourceFromItem(item)}
+			render={
+				<ItemRow
+					inert={!navigationIndexIncludes(navigationIndex, item)}
+					isSelected={isSelected}
+					className={sharedStyles.fileRow}
+				/>
+			}
+		>
+			<FileButton
+				change={change}
+				onClick={() => {
+					dispatch(projectActions.selectItem({ projectId, item }));
+				}}
+			/>
+		</OperationSourceC>
 	);
 };
 
@@ -1123,79 +1071,85 @@ const CommitC: FC<{
 	branchRef: Array<number> | null;
 	commit: Commit;
 	commitMessageFormRef: Ref<HTMLFormElement>;
-	isHighlighted: boolean;
-	selected: SelectedCommitItem | null;
-	nextCommitId: string | undefined;
-	previousCommitId: string | undefined;
+	operationMode: OperationMode | null;
+	workspaceMode: WorkspaceMode;
+	selected: CommitItem | null;
+	selectedFile: CommitFileItem | null;
 	projectId: string;
 	segmentIndex: number;
-	selectItem: (item: SelectedItem | null) => void;
 	stackId: string;
+	navigationIndex: NavigationIndex;
 }> = ({
 	branchRef,
 	commit,
 	commitMessageFormRef,
-	isHighlighted,
+	operationMode,
+	workspaceMode,
 	selected,
-	nextCommitId,
-	previousCommitId,
+	selectedFile,
 	projectId,
 	segmentIndex,
-	selectItem,
 	stackId,
-}) => (
-	<CommitSource
-		isEnabled={selected?.mode._tag !== "Reword"}
-		commit={commit}
-		render={
-			<CommitTarget
-				projectId={projectId}
-				commitId={commit.id}
-				previousCommitId={previousCommitId}
-				nextCommitId={nextCommitId}
-			/>
-		}
-	>
-		<CommitRow
-			branchRef={branchRef}
-			commit={commit}
-			commitMessageFormRef={commitMessageFormRef}
-			isHighlighted={isHighlighted}
-			selected={selected}
+	navigationIndex,
+}) => {
+	const isExpanded = useAppSelector(
+		(state) => selectProjectExpandedCommitId(state, projectId) === commit.id,
+	);
+	const isHighlighted = useAppSelector((state) =>
+		selectProjectHighlightedCommitIds(state, projectId).includes(commit.id),
+	);
+	const commitItemV: CommitItem = { stackId, segmentIndex, branchRef, commitId: commit.id };
+	const item = commitItem(commitItemV);
+	return (
+		<OperationSourceC
+			operationMode={operationMode}
 			projectId={projectId}
-			segmentIndex={segmentIndex}
-			selectItem={selectItem}
-			stackId={stackId}
-		/>
-		{selected &&
-			Match.value(selected.mode).pipe(
-				Match.tag("Details", (mode) => (
-					<Suspense fallback={<div className={sharedStyles.rowEmpty}>Loading change details…</div>}>
-						<SharedCommitDetails
-							projectId={projectId}
-							commitId={commit.id}
-							renderFile={(change) => (
-								<CommitFileRow
-									change={change}
-									commitId={commit.id}
-									isSelected={mode.path === change.path}
-									selectPath={(path) => {
-										selectItem(
-											selectedCommitItem({
-												...selected,
-												mode: { _tag: "Details", path },
-											}),
-										);
-									}}
-								/>
-							)}
-						/>
-					</Suspense>
-				)),
-				Match.orElse(() => null),
+			source={operationSourceFromItem(item)}
+			canDrag={() => !selected || workspaceMode._tag !== "RewordCommit"}
+			render={
+				<CommitTarget
+					commitId={commit.id}
+					item={item}
+					projectId={projectId}
+					operationMode={operationMode}
+					selectedItem={selected ? item : null}
+				/>
+			}
+		>
+			<CommitRow
+				branchRef={branchRef}
+				commit={commit}
+				commitMessageFormRef={commitMessageFormRef}
+				workspaceMode={workspaceMode}
+				isExpanded={isExpanded}
+				isHighlighted={isHighlighted}
+				selected={selected}
+				projectId={projectId}
+				segmentIndex={segmentIndex}
+				stackId={stackId}
+				navigationIndex={navigationIndex}
+			/>
+			{isExpanded && (
+				<Suspense fallback={<div className={sharedStyles.itemRowEmpty}>Loading commit files…</div>}>
+					<SharedCommitFiles
+						projectId={projectId}
+						commitId={commit.id}
+						renderFile={(change) => (
+							<CommitFileRow
+								change={change}
+								operationMode={operationMode}
+								parentCommitItem={commitItemV}
+								isSelected={selectedFile?.path === change.path}
+								navigationIndex={navigationIndex}
+								projectId={projectId}
+							/>
+						)}
+					/>
+				</Suspense>
 			)}
-	</CommitSource>
-);
+		</OperationSourceC>
+	);
+};
 
 const ChangeRowMenuPopup: FC<{
 	change: TreeChange;
@@ -1228,79 +1182,81 @@ const ChangeRow: FC<{
 	change: TreeChange;
 	dependencyCommitIds: Array<string>;
 	isSelected: boolean;
+	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	onDependencyHover: (commitIds: Array<string> | null) => void;
+	operationMode: OperationMode | null;
 	projectId: string;
-	selectItem: (item: SelectedItem | null) => void;
 	stackId: string | null;
 }> = ({
 	change,
 	dependencyCommitIds,
 	isSelected,
+	navigationIndex,
 	onAbsorbChanges,
-	onDependencyHover,
+	operationMode,
 	projectId,
-	selectItem,
 	stackId,
-}) => (
-	<ChangesFileSource
-		change={change}
-		fileParent={{ _tag: "ChangesSection", stackId }}
-		className={classes(
-			sharedStyles.row,
-			isSelected && sharedStyles.rowSelected,
-			isSelected && sharedStyles.itemRowSelected,
-		)}
-	>
-		<ContextMenu.Root>
-			<ContextMenu.Trigger
-				render={
-					<FileButton
-						change={change}
-						onClick={() => {
-							selectItem(selectedChangeItem(stackId, change.path));
-						}}
-					/>
-				}
-			/>
-			<ContextMenu.Portal>
-				<ContextMenu.Positioner>
-					<ChangeRowMenuPopup
-						change={change}
-						onAbsorbChanges={onAbsorbChanges}
-						parts={ContextMenu}
-						stackId={stackId}
-					/>
-				</ContextMenu.Positioner>
-			</ContextMenu.Portal>
-		</ContextMenu.Root>
-		{isNonEmptyArray(dependencyCommitIds) && (
-			<DependencyIndicator
-				projectId={projectId}
-				commitIds={dependencyCommitIds}
-				onHover={onDependencyHover}
-				className={sharedStyles.rowAction}
-			>
-				<DependencyIcon />
-			</DependencyIndicator>
-		)}
-		<Menu.Root>
-			<Menu.Trigger className={sharedStyles.rowAction} aria-label={`${change.path} menu`}>
-				<MenuTriggerIcon />
-			</Menu.Trigger>
-			<Menu.Portal>
-				<Menu.Positioner align="end">
-					<ChangeRowMenuPopup
-						change={change}
-						onAbsorbChanges={onAbsorbChanges}
-						parts={Menu}
-						stackId={stackId}
-					/>
-				</Menu.Positioner>
-			</Menu.Portal>
-		</Menu.Root>
-	</ChangesFileSource>
-);
+}) => {
+	const dispatch = useAppDispatch();
+	const item = changeItem(stackId, change.path);
+	return (
+		<OperationSourceC
+			operationMode={operationMode}
+			projectId={projectId}
+			source={operationSourceFromItem(item)}
+			render={
+				<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected} />
+			}
+		>
+			<ContextMenu.Root>
+				<ContextMenu.Trigger
+					render={
+						<FileButton
+							change={change}
+							onClick={() => {
+								dispatch(projectActions.selectItem({ projectId, item }));
+							}}
+						/>
+					}
+				/>
+				<ContextMenu.Portal>
+					<ContextMenu.Positioner>
+						<ChangeRowMenuPopup
+							change={change}
+							onAbsorbChanges={onAbsorbChanges}
+							parts={ContextMenu}
+							stackId={stackId}
+						/>
+					</ContextMenu.Positioner>
+				</ContextMenu.Portal>
+			</ContextMenu.Root>
+			{isNonEmptyArray(dependencyCommitIds) && (
+				<DependencyIndicator
+					projectId={projectId}
+					commitIds={dependencyCommitIds}
+					className={sharedStyles.itemRowAction}
+				>
+					<DependencyIcon />
+				</DependencyIndicator>
+			)}
+			<Menu.Root>
+				<Menu.Trigger className={sharedStyles.itemRowAction} aria-label={`${change.path} menu`}>
+					<MenuTriggerIcon />
+				</Menu.Trigger>
+				<Menu.Portal>
+					<Menu.Positioner align="end">
+						<ChangeRowMenuPopup
+							change={change}
+							onAbsorbChanges={onAbsorbChanges}
+							parts={Menu}
+							stackId={stackId}
+						/>
+					</Menu.Positioner>
+				</Menu.Portal>
+			</Menu.Root>
+		</OperationSourceC>
+	);
+};
 
 const ChangesSectionRowMenuPopup: FC<{
 	changes: Array<TreeChange>;
@@ -1332,105 +1288,116 @@ const ChangesSectionRowMenuPopup: FC<{
 const ChangesSectionRow: FC<{
 	changes: Array<TreeChange>;
 	isSelected: boolean;
+	navigationIndex: NavigationIndex;
 	label: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	selectItem: (item: SelectedItem | null) => void;
+	projectId: string;
 	stackId: string | null;
-}> = ({ changes, isSelected, label, onAbsorbChanges, selectItem, stackId }) => (
-	<div
-		className={classes(
-			sharedStyles.row,
-			isSelected && sharedStyles.rowSelected,
-			isSelected && sharedStyles.itemRowSelected,
-		)}
-	>
-		<ContextMenu.Root>
-			<ContextMenu.Trigger
-				render={
-					<button
-						type="button"
-						className={styles.segmentButton}
-						onClick={() => {
-							selectItem(selectedChangesSectionItem(stackId));
-						}}
-					>
-						{label}
-					</button>
-				}
-			/>
-			<ContextMenu.Portal>
-				<ContextMenu.Positioner>
-					<ChangesSectionRowMenuPopup
-						changes={changes}
-						onAbsorbChanges={onAbsorbChanges}
-						parts={ContextMenu}
-						stackId={stackId}
-					/>
-				</ContextMenu.Positioner>
-			</ContextMenu.Portal>
-		</ContextMenu.Root>
-		<Menu.Root>
-			<Menu.Trigger className={sharedStyles.rowAction} aria-label={`${label} menu`}>
-				<MenuTriggerIcon />
-			</Menu.Trigger>
-			<Menu.Portal>
-				<Menu.Positioner align="end">
-					<ChangesSectionRowMenuPopup
-						changes={changes}
-						onAbsorbChanges={onAbsorbChanges}
-						parts={Menu}
-						stackId={stackId}
-					/>
-				</Menu.Positioner>
-			</Menu.Portal>
-		</Menu.Root>
-	</div>
-);
+}> = ({ changes, isSelected, navigationIndex, label, onAbsorbChanges, projectId, stackId }) => {
+	const dispatch = useAppDispatch();
 
-const BaseCommitRow: FC<{
-	commitId?: string;
-	isSelected: boolean;
-	selectItem: (item: SelectedItem | null) => void;
-}> = ({ commitId, isSelected, selectItem }) => (
-	<div
-		className={classes(
-			sharedStyles.row,
-			isSelected && sharedStyles.rowSelected,
-			isSelected && sharedStyles.itemRowSelected,
-		)}
-	>
-		<button
-			type="button"
-			className={styles.commonBaseCommit}
-			onClick={() => {
-				selectItem(selectedBaseCommitItem);
-			}}
+	return (
+		<ItemRow
+			inert={!navigationIndexIncludes(navigationIndex, changesSectionItem(stackId))}
+			isSelected={isSelected}
 		>
-			{commitId !== undefined ? `${shortCommitId(commitId)} (common base commit)` : "(base commit)"}
-		</button>
-	</div>
-);
+			<ContextMenu.Root>
+				<ContextMenu.Trigger
+					render={
+						<button
+							type="button"
+							className={styles.segmentButton}
+							onClick={() => {
+								dispatch(
+									projectActions.selectItem({ projectId, item: changesSectionItem(stackId) }),
+								);
+							}}
+						>
+							{label}
+						</button>
+					}
+				/>
+				<ContextMenu.Portal>
+					<ContextMenu.Positioner>
+						<ChangesSectionRowMenuPopup
+							changes={changes}
+							onAbsorbChanges={onAbsorbChanges}
+							parts={ContextMenu}
+							stackId={stackId}
+						/>
+					</ContextMenu.Positioner>
+				</ContextMenu.Portal>
+			</ContextMenu.Root>
+			<Menu.Root>
+				<Menu.Trigger className={sharedStyles.itemRowAction} aria-label={`${label} menu`}>
+					<MenuTriggerIcon />
+				</Menu.Trigger>
+				<Menu.Portal>
+					<Menu.Positioner align="end">
+						<ChangesSectionRowMenuPopup
+							changes={changes}
+							onAbsorbChanges={onAbsorbChanges}
+							parts={Menu}
+							stackId={stackId}
+						/>
+					</Menu.Positioner>
+				</Menu.Portal>
+			</Menu.Root>
+		</ItemRow>
+	);
+};
+
+const BaseCommitRow: FC<
+	{
+		commitId?: string;
+		isSelected: boolean;
+		navigationIndex: NavigationIndex;
+	} & ComponentProps<"div">
+> = ({ commitId, isSelected, navigationIndex, ...props }) => {
+	const dispatch = useAppDispatch();
+	const projectId = Route.useParams().id;
+
+	return (
+		<ItemRow
+			{...props}
+			inert={!navigationIndexIncludes(navigationIndex, baseCommitItem)}
+			isSelected={isSelected}
+		>
+			<button
+				type="button"
+				className={styles.commonBaseCommit}
+				onClick={() => {
+					dispatch(projectActions.selectItem({ projectId, item: baseCommitItem }));
+				}}
+			>
+				{commitId !== undefined
+					? `${shortCommitId(commitId)} (common base commit)`
+					: "(base commit)"}
+			</button>
+		</ItemRow>
+	);
+};
 
 const Changes: FC<{
 	label: string;
+	operationMode: OperationMode | null;
 	projectId: string;
 	stackId: string | null;
 	isSelected: boolean;
 	selectedPath: string | null;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	onDependencyHover: (commitIds: Array<string> | null) => void;
-	selectItem: (item: SelectedItem | null) => void;
 	className?: string;
+	navigationIndex: NavigationIndex;
 }> = ({
 	label,
+	operationMode,
 	projectId,
 	stackId,
 	isSelected,
 	selectedPath,
 	onAbsorbChanges,
-	onDependencyHover,
-	selectItem,
 	className,
+	navigationIndex,
 }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
@@ -1442,127 +1409,79 @@ const Changes: FC<{
 	const changes = worktreeChanges.changes.filter((change) => assignmentsByPath.has(change.path));
 	const isSectionSelected = isSelected || selectedPath !== null;
 
-	return (
-		<ChangesSectionSource
-			stackId={stackId}
-			label={label}
-			className={classes(
-				className,
-				sharedStyles.section,
-				isSectionSelected && sharedStyles.sectionSelected,
-			)}
-			render={<ChangesSectionTarget projectId={projectId} stackId={stackId} />}
-		>
-			<ChangesSectionRow
-				changes={changes}
-				isSelected={isSelected}
-				label={label}
-				onAbsorbChanges={onAbsorbChanges}
-				selectItem={selectItem}
-				stackId={stackId}
-			/>
-			{changes.length === 0 ? (
-				<div className={sharedStyles.rowEmpty}>No changes.</div>
-			) : (
-				<ul>
-					{changes.map((change) => {
-						const hunkDependencyDiffs = hunkDependencyDiffsByPath.get(change.path);
-						const dependencyCommitIds = hunkDependencyDiffs
-							? dependencyCommitIdsForFile(hunkDependencyDiffs)
-							: [];
+	const item = changesSectionItem(stackId);
 
-						return (
-							<li key={change.path}>
-								<ChangeRow
-									change={change}
-									dependencyCommitIds={dependencyCommitIds}
-									isSelected={selectedPath === change.path}
-									onAbsorbChanges={onAbsorbChanges}
-									onDependencyHover={onDependencyHover}
-									projectId={projectId}
-									selectItem={selectItem}
-									stackId={stackId}
-								/>
-							</li>
-						);
-					})}
-				</ul>
-			)}
-		</ChangesSectionSource>
-	);
-};
+	const dispatch = useAppDispatch();
 
-const CommitForm: FC<{
-	projectId: string;
-	stack: Stack;
-}> = ({ projectId, stack }) => {
-	const [message, setMessage] = useLocalStorageState(
-		// oxlint-disable-next-line typescript/no-non-null-assertion -- [ref:stack-id-required]
-		`project:${projectId}:commitMessage:${stack.id!}`,
-		{ defaultValue: "" },
-	);
-	const toastManager = Toast.useToastManager();
-	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
-
-	const relativeTo = stackRelativeTo(stack);
-	const assignmentsByPath = getAssignmentsByPath(worktreeChanges.assignments, stack.id);
-	const changes = worktreeChanges.changes.filter((change) => assignmentsByPath.has(change.path));
-	const diffSpecs = assignedChangesDiffSpecs(changes, assignmentsByPath);
-
-	const commitCreate = useMutation(commitCreateMutationOptions);
-
-	const disabled = commitCreate.isPending || !relativeTo;
+	const commit = () =>
+		dispatch(
+			projectActions.enterMoveMode({
+				projectId,
+				source: operationSourceFromItem(changesSectionItem(stackId)),
+			}),
+		);
 
 	return (
-		<form
-			className={styles.commitForm}
-			onSubmit={(event) => {
-				event.preventDefault();
-				if (disabled) return;
-				commitCreate.mutate(
-					{
-						projectId,
-						relativeTo,
-						side: "below",
-						changes: diffSpecs,
-						message: message.trim(),
-					},
-					{
-						onSuccess: (response) => {
-							if (response.rejectedChanges.length > 0)
-								toastManager.add(
-									rejectedChangesToastOptions({
-										newCommit: response.newCommit,
-										rejectedChanges: response.rejectedChanges,
-									}),
-								);
+		<div className={styles.changesContainer}>
+			<OperationSourceC
+				operationMode={operationMode}
+				projectId={projectId}
+				source={operationSourceFromItem(item)}
+				className={classes(
+					className,
+					sharedStyles.section,
+					isSectionSelected && sharedStyles.sectionSelected,
+				)}
+				render={
+					<OperationTarget
+						item={item}
+						projectId={projectId}
+						operationMode={operationMode}
+						selectedItem={isSelected ? item : null}
+					/>
+				}
+			>
+				<ChangesSectionRow
+					changes={changes}
+					isSelected={isSelected}
+					navigationIndex={navigationIndex}
+					label={label}
+					onAbsorbChanges={onAbsorbChanges}
+					projectId={projectId}
+					stackId={stackId}
+				/>
+				{changes.length === 0 ? (
+					<div className={sharedStyles.itemRowEmpty}>No changes.</div>
+				) : (
+					<ul>
+						{changes.map((change) => {
+							const hunkDependencyDiffs = hunkDependencyDiffsByPath.get(change.path);
+							const dependencyCommitIds = hunkDependencyDiffs
+								? dependencyCommitIdsForFile(hunkDependencyDiffs)
+								: [];
 
-							setMessage("");
-						},
-					},
-				);
-			}}
-		>
-			<textarea
-				// TODO: inline editor uses enter to submit, this doesn't
-				aria-label="Commit message"
-				className={styles.commitFormMessageInput}
-				placeholder="Commit message"
-				value={message}
-				onChange={(event) => {
-					setMessage(event.target.value);
-				}}
-				onKeyDown={(event) => {
-					if (event.key === "Enter" && event.metaKey) {
-						event.preventDefault();
-						if (!disabled) event.currentTarget.form?.requestSubmit();
-					}
-				}}
-			/>
-			<button type="submit" disabled={disabled} className={uiStyles.button}>
+							return (
+								<li key={change.path}>
+									<ChangeRow
+										change={change}
+										dependencyCommitIds={dependencyCommitIds}
+										isSelected={selectedPath === change.path}
+										navigationIndex={navigationIndex}
+										onAbsorbChanges={onAbsorbChanges}
+										operationMode={operationMode}
+										projectId={projectId}
+										stackId={stackId}
+									/>
+								</li>
+							);
+						})}
+					</ul>
+				)}
+			</OperationSourceC>
+			<button type="button" className={uiStyles.button} onClick={commit}>
 				Commit
 			</button>
-		</form>
+		</div>
 	);
 };
 
@@ -1616,31 +1535,41 @@ const InlineBranchNameEditor: FC<{
 const SegmentRow: FC<
 	{
 		branchRenameFormRef: Ref<HTMLFormElement>;
-		selected: SelectedSegmentItem | null;
+		operationMode: OperationMode | null;
+		selected: SegmentItem | null;
+		workspaceMode: WorkspaceMode;
 		projectId: string;
 		segment: Segment;
 		stackId: string;
 		segmentIndex: number;
-		selectItem: (item: SelectedItem | null) => void;
+		navigationIndex: NavigationIndex;
 	} & ComponentProps<"div">
 > = ({
 	branchRenameFormRef,
+	operationMode,
 	selected,
+	workspaceMode,
 	projectId,
 	segment,
 	stackId,
 	segmentIndex,
-	selectItem,
+	navigationIndex,
 	...restProps
 }) => {
+	const dispatch = useAppDispatch();
 	const branchName = segment.refName?.displayName ?? null;
 	const branchRef = segment.refName?.fullNameBytes ?? null;
-	const defaultItem = selectedSegmentItem({
+	const segmentItemV: SegmentItem = {
 		stackId,
 		segmentIndex,
 		branchRef,
-		mode: { _tag: "Default" },
-	});
+	};
+	const item = segmentItem(segmentItemV);
+	const isRenaming =
+		selected !== null &&
+		workspaceMode._tag === "RenameBranch" &&
+		workspaceMode.stackId === stackId &&
+		workspaceMode.segmentIndex === segmentIndex;
 	const [optimisticBranchName, setOptimisticBranchName] = useOptimistic(
 		branchName,
 		(_currentBranchName, nextBranchName: string) => nextBranchName,
@@ -1651,11 +1580,12 @@ const SegmentRow: FC<
 
 	const startEditing = () => {
 		if (branchName === null) return;
-		selectItem(selectedSegmentItem({ stackId, segmentIndex, branchRef, mode: { _tag: "Rename" } }));
+		dispatch(projectActions.startRenameBranch({ projectId, item: segmentItemV }));
 	};
 
 	const endEditing = () => {
-		selectItem(defaultItem);
+		dispatch(projectActions.exitMode({ projectId }));
+		dispatch(projectActions.selectItem({ projectId, item }));
 	};
 
 	const saveBranchName = (newBranchName: string) => {
@@ -1676,117 +1606,130 @@ const SegmentRow: FC<
 				// error boundaries.
 				return;
 			}
-			selectItem(
-				selectedSegmentItem({
-					stackId,
-					segmentIndex,
-					// TODO: ideally the API would return the new ref?
-					branchRef: encodeRefName(`refs/heads/${trimmed}`),
-					mode: { _tag: "Default" },
+			dispatch(
+				projectActions.selectItem({
+					projectId,
+					item: segmentItem({
+						stackId,
+						segmentIndex,
+						// TODO: ideally the API would return the new ref?
+						branchRef: encodeRefName(`refs/heads/${trimmed}`),
+					}),
 				}),
 			);
+			dispatch(projectActions.exitMode({ projectId }));
 		});
 	};
 
-	const children = (
-		<div
+	return (
+		<OperationTarget
 			{...restProps}
-			className={classes(
-				restProps.className,
-				sharedStyles.row,
-				selected && sharedStyles.rowSelected,
-				selected && sharedStyles.itemRowSelected,
-			)}
-		>
-			{selected?.mode._tag === "Rename" && optimisticBranchName !== null ? (
-				<InlineBranchNameEditor
-					branchName={optimisticBranchName}
-					formRef={branchRenameFormRef}
-					onSubmit={saveBranchName}
-					onExit={endEditing}
-				/>
-			) : (
-				<ContextMenu.Root>
-					<ContextMenu.Trigger
-						render={
-							<button
-								type="button"
-								className={styles.segmentButton}
-								onClick={() => selectItem(defaultItem)}
-							>
-								{optimisticBranchName ?? "Untitled"}
-							</button>
-						}
-					/>
-					<ContextMenu.Portal>
-						<ContextMenu.Positioner>
-							<SegmentMenuPopup
-								canRename={branchName !== null && !isRenamePending}
-								onRename={startEditing}
-								parts={ContextMenu}
-							/>
-						</ContextMenu.Positioner>
-					</ContextMenu.Portal>
-				</ContextMenu.Root>
-			)}
-			<button type="button" className={sharedStyles.rowAction} aria-label="Push branch" disabled>
-				<PushIcon />
-			</button>
-			<Menu.Root>
-				<Menu.Trigger className={sharedStyles.rowAction} aria-label="Branch menu">
-					<MenuTriggerIcon />
-				</Menu.Trigger>
-				<Menu.Portal>
-					<Menu.Positioner align="end">
-						<SegmentMenuPopup
-							canRename={branchName !== null && !isRenamePending}
-							onRename={startEditing}
-							parts={Menu}
-						/>
-					</Menu.Positioner>
-				</Menu.Portal>
-			</Menu.Root>
-		</div>
-	);
-
-	return !isRenamePending && segment.refName ? (
-		<BranchTarget
 			projectId={projectId}
-			branchRef={segment.refName.fullNameBytes}
-			firstCommitId={segment.commits[0]?.id}
+			item={item}
+			operationMode={operationMode}
+			selectedItem={selected ? item : null}
 			render={
-				<BranchSource
-					branchRef={segment.refName.fullNameBytes}
-					branchName={segment.refName.displayName}
-					render={children}
+				<OperationSourceC
+					operationMode={operationMode}
+					projectId={projectId}
+					source={operationSourceFromItem(item)}
+					render={
+						<ItemRow
+							inert={!navigationIndexIncludes(navigationIndex, item)}
+							isSelected={selected !== null}
+						>
+							{isRenaming && optimisticBranchName !== null ? (
+								<InlineBranchNameEditor
+									branchName={optimisticBranchName}
+									formRef={branchRenameFormRef}
+									onSubmit={saveBranchName}
+									onExit={endEditing}
+								/>
+							) : (
+								<>
+									<ContextMenu.Root disabled={workspaceMode._tag !== "Default"}>
+										<ContextMenu.Trigger
+											render={
+												<button
+													type="button"
+													className={styles.segmentButton}
+													onClick={() => dispatch(projectActions.selectItem({ projectId, item }))}
+												>
+													{optimisticBranchName ?? "Untitled"}
+												</button>
+											}
+										/>
+										<ContextMenu.Portal>
+											<ContextMenu.Positioner>
+												<SegmentMenuPopup
+													canRename={branchName !== null && !isRenamePending}
+													onRename={startEditing}
+													parts={ContextMenu}
+												/>
+											</ContextMenu.Positioner>
+										</ContextMenu.Portal>
+									</ContextMenu.Root>
+									{workspaceMode._tag === "Default" && (
+										<>
+											<button
+												type="button"
+												className={sharedStyles.itemRowAction}
+												aria-label="Push branch"
+												disabled
+											>
+												<PushIcon />
+											</button>
+											<Menu.Root>
+												<Menu.Trigger
+													className={sharedStyles.itemRowAction}
+													aria-label="Branch menu"
+												>
+													<MenuTriggerIcon />
+												</Menu.Trigger>
+												<Menu.Portal>
+													<Menu.Positioner align="end">
+														<SegmentMenuPopup
+															canRename={branchName !== null && !isRenamePending}
+															onRename={startEditing}
+															parts={Menu}
+														/>
+													</Menu.Positioner>
+												</Menu.Portal>
+											</Menu.Root>
+										</>
+									)}
+								</>
+							)}
+						</ItemRow>
+					}
 				/>
 			}
 		/>
-	) : (
-		children
 	);
 };
 
 const SegmentC: FC<{
 	branchRenameFormRef: Ref<HTMLFormElement>;
 	commitMessageFormRef: Ref<HTMLFormElement>;
-	highlightedCommitIds: Set<string>;
+	operationMode: OperationMode | null;
 	projectId: string;
+	selectedItem: Item | null;
 	segment: Segment;
 	segmentIndex: number;
-	selectedItem: SelectedItem | null;
-	selectItem: (item: SelectedItem | null) => void;
 	stackId: string;
+	workspaceMode: WorkspaceMode;
+	navigationIndex: NavigationIndex;
 }> = ({
 	branchRenameFormRef,
 	commitMessageFormRef,
-	highlightedCommitIds,
+	operationMode,
 	projectId,
 	segment,
 	segmentIndex,
 	selectedItem,
-	selectItem,
 	stackId,
+	workspaceMode,
+	navigationIndex,
 }) => {
 	const selectedSegment =
 		selectedItem?._tag === "Segment" &&
@@ -1800,7 +1743,14 @@ const SegmentC: FC<{
 		selectedItem.segmentIndex === segmentIndex
 			? selectedItem
 			: null;
-	const isSectionSelected = selectedSegment !== null || selectedCommit !== null;
+	const selectedCommitFile =
+		selectedItem?._tag === "CommitFile" &&
+		selectedItem.stackId === stackId &&
+		selectedItem.segmentIndex === segmentIndex
+			? selectedItem
+			: null;
+	const isSectionSelected =
+		selectedSegment !== null || selectedCommit !== null || selectedCommitFile !== null;
 
 	return (
 		<div
@@ -1812,30 +1762,32 @@ const SegmentC: FC<{
 		>
 			<SegmentRow
 				branchRenameFormRef={branchRenameFormRef}
+				operationMode={operationMode}
 				selected={selectedSegment}
+				workspaceMode={workspaceMode}
 				projectId={projectId}
 				segment={segment}
 				stackId={stackId}
 				segmentIndex={segmentIndex}
-				selectItem={selectItem}
+				navigationIndex={navigationIndex}
 			/>
 
 			<CommitsList commits={segment.commits}>
-				{(commit, index) => {
+				{(commit) => {
 					const isSelected = selectedCommit?.commitId === commit.id;
 					return (
 						<CommitC
 							branchRef={segment.refName?.fullNameBytes ?? null}
 							commit={commit}
 							commitMessageFormRef={commitMessageFormRef}
-							isHighlighted={highlightedCommitIds.has(commit.id)}
+							operationMode={operationMode}
+							workspaceMode={workspaceMode}
 							selected={isSelected ? selectedCommit : null}
-							nextCommitId={segment.commits[index + 1]?.id}
-							previousCommitId={segment.commits[index - 1]?.id}
+							selectedFile={selectedCommitFile?.commitId === commit.id ? selectedCommitFile : null}
 							projectId={projectId}
 							segmentIndex={segmentIndex}
-							selectItem={selectItem}
 							stackId={stackId}
+							navigationIndex={navigationIndex}
 						/>
 					);
 				}}
@@ -1847,23 +1799,23 @@ const SegmentC: FC<{
 const StackC: FC<{
 	branchRenameFormRef: Ref<HTMLFormElement>;
 	commitMessageFormRef: Ref<HTMLFormElement>;
-	highlightedCommitIds: Set<string>;
+	operationMode: OperationMode | null;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	onDependencyHover: (commitIds: Array<string> | null) => void;
 	projectId: string;
-	selectedItem: SelectedItem | null;
-	selectItem: (item: SelectedItem | null) => void;
+	selectedItem: Item | null;
 	stack: Stack;
+	workspaceMode: WorkspaceMode;
+	navigationIndex: NavigationIndex;
 }> = ({
 	branchRenameFormRef,
 	commitMessageFormRef,
-	highlightedCommitIds,
+	operationMode,
 	onAbsorbChanges,
-	onDependencyHover,
 	projectId,
 	selectedItem,
-	selectItem,
 	stack,
+	workspaceMode,
+	navigationIndex,
 }) => {
 	// From Caleb:
 	// > There shouldn't be a way within GitButler to end up with a stack without a
@@ -1878,7 +1830,7 @@ const StackC: FC<{
 	return (
 		<div className={styles.stack}>
 			<div>
-				<div className={styles.stackActions}>
+				<div className={styles.laneActions}>
 					<Menu.Root>
 						<Menu.Trigger className={styles.stackMenuTrigger} aria-label="Stack menu">
 							<MenuTriggerIcon />
@@ -1892,6 +1844,7 @@ const StackC: FC<{
 				</div>
 				<Changes
 					label="Assigned changes"
+					operationMode={operationMode}
 					projectId={projectId}
 					stackId={stack.id}
 					isSelected={selectedItem?._tag === "ChangesSection" && selectedItem.stackId === stackId}
@@ -1901,10 +1854,8 @@ const StackC: FC<{
 							: null
 					}
 					onAbsorbChanges={onAbsorbChanges}
-					onDependencyHover={onDependencyHover}
-					selectItem={selectItem}
+					navigationIndex={navigationIndex}
 				/>
-				<CommitForm projectId={projectId} stack={stack} />
 			</div>
 
 			<ul className={styles.segments}>
@@ -1914,13 +1865,14 @@ const StackC: FC<{
 						<SegmentC
 							branchRenameFormRef={branchRenameFormRef}
 							commitMessageFormRef={commitMessageFormRef}
-							highlightedCommitIds={highlightedCommitIds}
+							operationMode={operationMode}
 							projectId={projectId}
 							segment={segment}
 							segmentIndex={segmentIndex}
 							selectedItem={selectedItem}
-							selectItem={selectItem}
 							stackId={stackId}
+							workspaceMode={workspaceMode}
+							navigationIndex={navigationIndex}
 						/>
 					</li>
 				))}
@@ -1932,9 +1884,14 @@ const StackC: FC<{
 const ProjectPage: FC = () => {
 	const { id: projectId } = Route.useParams();
 
-	const [projectState, dispatchProjectState] = assert(use(ProjectStateContext));
-	const { layout: layoutState, workspaceSelection } = projectState;
-	const [highlightedCommitIds, setHighlightedCommitIds] = useState<Set<string>>(() => new Set());
+	const expandedCommitId = useAppSelector((state) =>
+		selectProjectExpandedCommitId(state, projectId),
+	);
+	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
+	const selectedItemState = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
+	const workspaceModeState = useAppSelector((state) =>
+		selectProjectWorkspaceModeState(state, projectId),
+	);
 
 	const branchRenameFormRef = useRef<HTMLFormElement | null>(null);
 	const commitMessageFormRef = useRef<HTMLFormElement | null>(null);
@@ -1946,39 +1903,38 @@ const ProjectPage: FC = () => {
 
 	// TODO: handle project not found error. or only run when project is not null? waterfall.
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const commonBaseCommitId = getCommonBaseCommitId(headInfo);
-	const workspaceOutline = buildWorkspaceOutline({
-		headInfo,
-		changes: worktreeChanges.changes,
-		assignments: worktreeChanges.assignments,
-	});
-	const navigationIndex = buildNavigationIndex(workspaceOutline);
 
-	const selectedItem = useNormalizedSelectedItem({
-		projectId,
-		selectedItem:
-			workspaceSelection.item && navigationIndexIncludes(navigationIndex, workspaceSelection.item)
-				? workspaceSelection.item
-				: getDefaultSelectedItem(navigationIndex),
+	const workspaceOutline = useWorkspaceOutline({ projectId, expandedCommitId });
+
+	const navigationIndexUnfiltered = buildNavigationIndex(workspaceOutline);
+
+	const resolveOperationSource = useResolveOperationSource(projectId);
+
+	const workspaceMode = normalizeWorkspaceMode({
+		mode: workspaceModeState,
+		navigationIndex: navigationIndexUnfiltered,
 	});
 
-	const selectItem = (nextSelectedItem: SelectedItem | null) => {
-		dispatchProjectState({ _tag: "SelectItem", item: nextSelectedItem });
-	};
-	const selectHunk = (selectedHunk: string | null) => {
-		dispatchProjectState({ _tag: "SelectHunk", hunk: selectedHunk });
-	};
+	const operationMode = getOperationMode(workspaceMode);
 
-	const highlightCommits = (commitIds: Array<string> | null) => {
-		setHighlightedCommitIds(commitIds ? new Set(commitIds) : new Set());
-	};
+	const navigationIndex = operationMode
+		? filterNavigationIndex(navigationIndexUnfiltered, (item) =>
+				isOperationModeSourceOrTarget({
+					item,
+					operationMode,
+					resolvedOperationSource: resolveOperationSource(operationMode.source),
+				}),
+			)
+		: navigationIndexUnfiltered;
 
-	const shortcutScope = getScope({
-		selectedItem,
-		layoutState,
-	});
+	const selectedItem =
+		selectedItemState && navigationIndexIncludes(navigationIndex, selectedItemState)
+			? selectedItemState
+			: getDefaultItem(navigationIndex);
+
+	const shortcutScope = getScope({ selectedItem, layoutState, workspaceMode });
 
 	const {
 		absorptionPlan,
@@ -1988,7 +1944,7 @@ const ProjectPage: FC = () => {
 		clearAbsorptionPlan,
 	} = useAbsorption(projectId);
 
-	useMonitorDraggedOperationSourceRef({ projectId });
+	useMonitorDraggedOperationSource({ projectId });
 
 	useWorkspaceShortcuts({
 		branchRenameFormRef,
@@ -1997,7 +1953,7 @@ const ProjectPage: FC = () => {
 		scope: shortcutScope,
 		navigationIndex,
 		requestAbsorptionPlan,
-		dispatchProjectState,
+		operationMode,
 		previewRef,
 	});
 
@@ -2008,36 +1964,44 @@ const ProjectPage: FC = () => {
 		<ProjectPreviewLayout
 			projectId={projectId}
 			preview={
-				<Suspense fallback={<div>Loading preview…</div>}>
-					<Preview
-						projectId={projectId}
-						selectedItem={selectedItem}
-						onSelectHunk={selectHunk}
-						selectedHunk={workspaceSelection.hunk}
-						isFocused={getFocus(layoutState) === "preview"}
-						selectHunk={selectHunk}
-						onDependencyHover={highlightCommits}
-						ref={previewRef}
-					/>
-				</Suspense>
+				selectedItem && (
+					<Suspense fallback={<div>Loading preview…</div>}>
+						<Preview
+							operationMode={operationMode}
+							projectId={projectId}
+							selectedItem={selectedItem}
+							isFocused={getFocus(layoutState) === "preview"}
+							ref={previewRef}
+						/>
+					</Suspense>
+				)
 			}
 		>
 			<div className={sharedStyles.lanes}>
-				<Changes
-					label="Unassigned changes"
-					projectId={project.id}
-					stackId={null}
-					isSelected={selectedItem?._tag === "ChangesSection" && selectedItem.stackId === null}
-					selectedPath={
-						selectedItem?._tag === "Change" && selectedItem.stackId === null
-							? selectedItem.path
-							: null
-					}
-					onAbsorbChanges={requestAbsorptionPlan}
-					onDependencyHover={highlightCommits}
-					selectItem={selectItem}
-					className={styles.unassignedChanges}
-				/>
+				<div className={styles.unassignedChangesLane}>
+					<div className={styles.laneActions}>
+						<Menu.Root>
+							<Menu.Trigger className={styles.stackMenuTrigger} aria-label="Menu" disabled>
+								<MenuTriggerIcon />
+							</Menu.Trigger>
+						</Menu.Root>
+					</div>
+
+					<Changes
+						label="Unassigned changes"
+						operationMode={operationMode}
+						projectId={projectId}
+						stackId={null}
+						isSelected={selectedItem?._tag === "ChangesSection" && selectedItem.stackId === null}
+						selectedPath={
+							selectedItem?._tag === "Change" && selectedItem.stackId === null
+								? selectedItem.path
+								: null
+						}
+						onAbsorbChanges={requestAbsorptionPlan}
+						navigationIndex={navigationIndex}
+					/>
+				</div>
 
 				<div className={styles.headInfo}>
 					<div className={styles.stackLanes}>
@@ -2046,34 +2010,46 @@ const ProjectPage: FC = () => {
 								<StackC
 									branchRenameFormRef={branchRenameFormRef}
 									commitMessageFormRef={commitMessageFormRef}
-									highlightedCommitIds={highlightedCommitIds}
+									operationMode={operationMode}
 									onAbsorbChanges={requestAbsorptionPlan}
-									onDependencyHover={highlightCommits}
 									projectId={project.id}
 									selectedItem={selectedItem}
-									selectItem={selectItem}
 									stack={stack}
+									workspaceMode={workspaceMode}
+									navigationIndex={navigationIndex}
 								/>
 							</div>
 						))}
 					</div>
 
-					<TearOffBranchTarget projectId={projectId} className={styles.commonBaseCommitContainer}>
-						<BaseCommitRow
-							commitId={commonBaseCommitId}
-							isSelected={selectedItem?._tag === "BaseCommit"}
-							selectItem={selectItem}
+					<div className={styles.commonBaseCommitContainer}>
+						<OperationTarget
+							projectId={projectId}
+							item={{ _tag: "BaseCommit" }}
+							operationMode={operationMode}
+							selectedItem={selectedItem?._tag === "BaseCommit" ? selectedItem : null}
+							render={
+								<BaseCommitRow
+									commitId={commonBaseCommitId}
+									isSelected={selectedItem?._tag === "BaseCommit"}
+									navigationIndex={navigationIndex}
+								/>
+							}
 						/>
-					</TearOffBranchTarget>
+					</div>
 				</div>
-
-				<TearOffBranchTarget projectId={projectId} className={styles.emptyLane} />
 			</div>
 
 			<PositionedShortcutsBar
 				label={shortcutScope ? getLabel(shortcutScope) : null}
 				items={shortcutScope?.bindings ?? []}
 			/>
+
+			{operationMode && (
+				<div className={styles.operationModePreview}>
+					<OperationSourceLabel headInfo={headInfo} source={operationMode.source} />
+				</div>
+			)}
 
 			{absorptionPlan !== null && (
 				<AbsorptionDialog

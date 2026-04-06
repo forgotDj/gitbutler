@@ -2,7 +2,7 @@ import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element
 import { type RefCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
 type LibParams = Parameters<typeof dropTargetForElements>[0];
-type GetDataParams = Parameters<NonNullable<LibParams["getData"]>>;
+export type GetDataParams = Parameters<NonNullable<LibParams["getData"]>>;
 
 export const useDroppable = <TData extends Record<string | symbol, unknown>>(
 	getDataProp: (...args: GetDataParams) => TData | null,
