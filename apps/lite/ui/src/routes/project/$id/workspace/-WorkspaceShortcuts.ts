@@ -103,7 +103,7 @@ const focusPrimaryBinding: ShortcutBinding<PreviewAction> = {
 	repeat: false,
 };
 
-const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
+const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
 	{
 		id: "move-up",
 		description: "up",
@@ -130,6 +130,10 @@ const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 		action: { _tag: "NextSection" },
 		showInShortcutsBar: false,
 	},
+];
+
+const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
+	...itemSelectionBindings,
 	focusPreviewBinding,
 	toggleFullscreenPreviewBinding,
 	togglePreviewBinding,
