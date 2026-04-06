@@ -42,7 +42,7 @@ pub fn commit_squash_only_with_perm(
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitSquashResult> {
     let mut meta = ctx.meta()?;
-    let (repo, mut ws, _, _cache) = ctx.workspace_mut_and_db_and_cache_with_perm(perm)?;
+    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
 
     let outcome =
