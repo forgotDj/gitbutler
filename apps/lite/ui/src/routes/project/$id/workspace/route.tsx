@@ -101,12 +101,10 @@ import useLocalStorageState from "use-local-storage-state";
 import sharedStyles from "../-shared.module.css";
 import { baseCommitItem, changeItem, changesSectionItem } from "./-Item.ts";
 import {
-	type CommitMode,
 	asSelectedItem,
-	defaultCommitMode,
-	defaultSegmentMode,
+	type SelectedCommitItem,
 	type SelectedItem,
-	type SegmentMode,
+	type SelectedSegmentItem,
 	selectedCommitItem,
 	selectedSegmentItem,
 } from "./-SelectedItem.ts";
@@ -960,9 +958,8 @@ const CommitRow: FC<
 	{
 		branchName: string | null;
 		commit: Commit;
-		isSelected: boolean;
 		isHighlighted: boolean;
-		mode: CommitMode;
+		selected: SelectedCommitItem | null;
 		projectId: string;
 		segmentIndex: number;
 		selectItem: (item: SelectedItem | null) => void;
@@ -971,9 +968,8 @@ const CommitRow: FC<
 > = ({
 	branchName,
 	commit,
-	isSelected,
 	isHighlighted,
-	mode,
+	selected,
 	projectId,
 	segmentIndex,
 	selectItem,
@@ -1010,7 +1006,7 @@ const CommitRow: FC<
 	};
 
 	const toggleDetails = () => {
-		if (mode._tag === "Details") selectItem(defaultItem);
+		if (selected?.mode._tag === "Details") selectItem(defaultItem);
 		else openDetails();
 	};
 
@@ -1055,12 +1051,12 @@ const CommitRow: FC<
 			{...restProps}
 			className={classes(
 				sharedStyles.row,
-				isSelected && sharedStyles.rowSelected,
-				isSelected && sharedStyles.itemRowSelected,
+				selected && sharedStyles.rowSelected,
+				selected && sharedStyles.itemRowSelected,
 				isHighlighted && sharedStyles.itemRowHighlighted,
 			)}
 		>
-			{mode._tag === "Reword" ? (
+			{selected?.mode._tag === "Reword" ? (
 				<InlineCommitMessageEditor
 					message={optimisticMessage}
 					onSubmit={saveNewMessage}
@@ -1101,10 +1097,12 @@ const CommitRow: FC<
 				className={sharedStyles.rowAction}
 				type="button"
 				onClick={toggleDetails}
-				aria-expanded={mode._tag === "Details"}
-				aria-label={mode._tag === "Details" ? "Hide commit details" : "Show commit details"}
+				aria-expanded={selected?.mode._tag === "Details"}
+				aria-label={
+					selected?.mode._tag === "Details" ? "Hide commit details" : "Show commit details"
+				}
 			>
-				<ExpandCollapseIcon isExpanded={mode._tag === "Details"} />
+				<ExpandCollapseIcon isExpanded={selected?.mode._tag === "Details"} />
 			</button>
 			<Menu.Root>
 				<Menu.Trigger className={sharedStyles.rowAction} aria-label="Commit menu">
@@ -1129,9 +1127,8 @@ const CommitRow: FC<
 const CommitC: FC<{
 	branchName: string | null;
 	commit: Commit;
-	isSelected: boolean;
 	isHighlighted: boolean;
-	mode: CommitMode;
+	selected: SelectedCommitItem | null;
 	nextCommitId: string | undefined;
 	previousCommitId: string | undefined;
 	projectId: string;
@@ -1143,9 +1140,8 @@ const CommitC: FC<{
 }> = ({
 	branchName,
 	commit,
-	isSelected,
 	isHighlighted,
-	mode,
+	selected,
 	nextCommitId,
 	previousCommitId,
 	projectId,
@@ -1156,7 +1152,7 @@ const CommitC: FC<{
 	stackId,
 }) => (
 	<CommitSource
-		isEnabled={mode._tag !== "Reword"}
+		isEnabled={selected?.mode._tag !== "Reword"}
 		commit={commit}
 		render={
 			<CommitTarget
@@ -1170,15 +1166,14 @@ const CommitC: FC<{
 		<CommitRow
 			branchName={branchName}
 			commit={commit}
-			isSelected={isSelected}
 			isHighlighted={isHighlighted}
-			mode={mode}
+			selected={selected}
 			projectId={projectId}
 			segmentIndex={segmentIndex}
 			selectItem={selectItem}
 			stackId={stackId}
 		/>
-		{mode._tag === "Details" && (
+		{selected?.mode._tag === "Details" && (
 			<Suspense fallback={<div className={sharedStyles.rowEmpty}>Loading change details…</div>}>
 				<CommitDetailsC
 					projectId={projectId}
@@ -1589,15 +1584,14 @@ const InlineBranchNameEditor: FC<{
 
 const SegmentRow: FC<
 	{
-		isSelected: boolean;
-		mode: SegmentMode;
+		selected: SelectedSegmentItem | null;
 		projectId: string;
 		segment: Segment;
 		stackId: string;
 		segmentIndex: number;
 		selectItem: (item: SelectedItem | null) => void;
 	} & ComponentProps<"div">
-> = ({ isSelected, mode, projectId, segment, stackId, segmentIndex, selectItem, ...restProps }) => {
+> = ({ selected, projectId, segment, stackId, segmentIndex, selectItem, ...restProps }) => {
 	const branchName = segment.refName?.displayName ?? null;
 	const defaultItem = selectedSegmentItem({
 		stackId,
@@ -1657,11 +1651,11 @@ const SegmentRow: FC<
 			className={classes(
 				restProps.className,
 				sharedStyles.row,
-				isSelected && sharedStyles.rowSelected,
-				isSelected && sharedStyles.itemRowSelected,
+				selected && sharedStyles.rowSelected,
+				selected && sharedStyles.itemRowSelected,
 			)}
 		>
-			{mode._tag === "Rename" && optimisticBranchName !== null ? (
+			{selected?.mode._tag === "Rename" && optimisticBranchName !== null ? (
 				<InlineBranchNameEditor
 					branchName={optimisticBranchName}
 					onSubmit={saveBranchName}
@@ -1767,8 +1761,7 @@ const SegmentC: FC<{
 	return (
 		<div className={classes(isSectionSelected && sharedStyles.sectionSelected)}>
 			<SegmentRow
-				isSelected={selectedSegment !== null}
-				mode={selectedSegment?.mode ?? defaultSegmentMode}
+				selected={selectedSegment}
 				projectId={projectId}
 				segment={segment}
 				stackId={stackId}
@@ -1783,9 +1776,8 @@ const SegmentC: FC<{
 						<CommitC
 							branchName={segment.refName?.displayName ?? null}
 							commit={commit}
-							isSelected={isSelected}
 							isHighlighted={highlightedCommitIds.has(commit.id)}
-							mode={isSelected ? selectedCommit.mode : defaultCommitMode}
+							selected={isSelected ? selectedCommit : null}
 							nextCommitId={segment.commits[index + 1]?.id}
 							previousCommitId={segment.commits[index - 1]?.id}
 							projectId={projectId}
