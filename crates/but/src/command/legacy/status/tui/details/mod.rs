@@ -191,6 +191,8 @@ impl Details {
             | Message::Quit
             | Message::EnterDetailsMode
             | Message::LeaveDetailsMode
+            | Message::Discard
+            | Message::DropToBeDiscarded
             | Message::ShowError(_)
             | Message::ShowToast { .. }
             | Message::Confirm(_)
@@ -243,6 +245,10 @@ impl Details {
                 | DetailsMessage::ScrollDown(_)
                 | DetailsMessage::ToggleVisibility => false,
             },
+
+            Message::AndThen { lhs, rhs } => {
+                self.needs_update_after_message(lhs) || self.needs_update_after_message(rhs)
+            }
         }
     }
 

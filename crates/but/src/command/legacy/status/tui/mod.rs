@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    cell::RefCell,
     ffi::OsString,
     iter::once,
     process::Command,
@@ -346,6 +347,7 @@ struct App {
     delayed_messages: Vec<Message>,
     incoming_out_of_band_messages: Vec<Rc<Receiver<Message>>>,
     fps: FpsCounter,
+    to_be_discarded: Option<Arc<CliId>>,
 }
 
 impl App {
@@ -383,6 +385,7 @@ impl App {
             highlight: Default::default(),
             delayed_messages: Default::default(),
             incoming_out_of_band_messages: Default::default(),
+            to_be_discarded: Default::default(),
             fps: FpsCounter::new(),
             confirm: None,
             details,
@@ -658,7 +661,9 @@ impl App {
                     .and_then(|confirm| confirm.handle_message(confirm_message, messages));
             }
             Message::RunAfterConfirmation(f) => {
-                (f.0)(self, ctx, messages)?;
+                if let Some(f) = f.0.try_borrow_mut().ok().and_then(|mut f| f.take()) {
+                    (f)(self, ctx, messages)?;
+                }
             }
             Message::Details(details_message) => {
                 let details_viewport = self.details_viewport(terminal_area);
@@ -670,6 +675,18 @@ impl App {
             }
             Message::WithOneFrameDelay(msg) => {
                 self.delayed_messages.push(*msg);
+            }
+            Message::Discard => {
+                self.handle_discard(ctx, messages);
+            }
+            Message::DropToBeDiscarded => {
+                self.to_be_discarded = None;
+            }
+            Message::AndThen { lhs, rhs } => {
+                Box::pin(self.try_handle_message(ctx, out, mode, terminal_guard, messages, *lhs))
+                    .await?;
+                Box::pin(self.try_handle_message(ctx, out, mode, terminal_guard, messages, *rhs))
+                    .await?;
             }
         }
 
@@ -1019,6 +1036,7 @@ impl App {
                     Cursor::select_first_file_in_commit(commit_id, &new_lines)
                 }
                 SelectAfterReload::Stack(stack_id) => Cursor::select_stack(stack_id, &new_lines),
+                SelectAfterReload::CliId(cli_id) => Cursor::restore(&cli_id, &new_lines),
             }
         } else {
             let default_restore = || {
@@ -1055,6 +1073,161 @@ impl App {
         // ensure we always enter normal mode when something does wrong
         // so we don't get stuck in whatever mode we were in previously
         messages.push(Message::EnterNormalMode);
+    }
+
+    fn select_top_branch_for_stack_after_reload(
+        &self,
+        stack_id: StackId,
+    ) -> Option<SelectAfterReload> {
+        self.status_lines.iter().find_map(|line| {
+            let cli_id = line.data.cli_id()?;
+            if let CliId::Branch {
+                stack_id: Some(branch_stack_id),
+                ..
+            } = &**cli_id
+                && *branch_stack_id == stack_id
+            {
+                Some(SelectAfterReload::CliId(Arc::clone(cli_id)))
+            } else {
+                None
+            }
+        })
+    }
+
+    fn handle_discard(&mut self, ctx: &mut Context, messages: &mut Vec<Message>) {
+        let Some(selection) = self.cursor.selected_line(&self.status_lines) else {
+            return;
+        };
+        let Some(cli_id) = selection.data.cli_id() else {
+            return;
+        };
+
+        self.confirm = Some(match &**cli_id {
+            CliId::Unassigned { .. } => {
+                self.to_be_discarded = Some(Arc::clone(cli_id));
+                let drop_to_be_discarded =
+                    message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
+                Confirm::new(
+                    "Discard unassigned changes?",
+                    run_after_confirmation_msg(move |_, ctx, messages| {
+                        operations::discard_unassigned_legacy(ctx)?;
+                        messages.push(Message::Reload(Some(SelectAfterReload::Unassigned)));
+                        drop(drop_to_be_discarded);
+                        Ok(())
+                    }),
+                )
+            }
+            CliId::Uncommitted(uncommitted) => {
+                self.to_be_discarded = Some(Arc::clone(cli_id));
+                let uncommitted = uncommitted.clone();
+
+                let select_after_reload = if uncommitted.is_entire_file
+                    // Discarding a whole file: handle stack-specific cursor fallback.
+                    && let Some(stack_id) = uncommitted.hunk_assignments.first().stack_id
+                    // If this is the last file on the stack, jump to the stack's top branch.
+                    && operations::assigned_file_count_for_stack(ctx, stack_id)
+                        .is_ok_and(|count| count == 1)
+                {
+                    self.select_top_branch_for_stack_after_reload(stack_id)
+                        .unwrap_or(SelectAfterReload::Stack(stack_id))
+                } else {
+                    // Discarding only part of a file: select the previous selectable line.
+                    self.cursor.select_previous_cli_id_or_unassigned(
+                        &self.status_lines,
+                        &self.mode,
+                        self.flags.show_files,
+                    )
+                };
+
+                let drop_to_be_discarded =
+                    message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
+                Confirm::new(
+                    format!("Discard {}?", uncommitted.describe()),
+                    run_after_confirmation_msg(move |_, ctx, messages| {
+                        let hunk_assignments = uncommitted
+                            .hunk_assignments
+                            .iter()
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        operations::discard_uncommitted_legacy(ctx, hunk_assignments)?;
+                        messages.push(Message::Reload(Some(select_after_reload)));
+                        drop(drop_to_be_discarded);
+                        Ok(())
+                    }),
+                )
+            }
+            CliId::Stack { stack_id, .. } => {
+                self.to_be_discarded = Some(Arc::clone(cli_id));
+                let stack_id = *stack_id;
+                let select_after_reload = self
+                    .select_top_branch_for_stack_after_reload(stack_id)
+                    .unwrap_or(SelectAfterReload::Stack(stack_id));
+                let drop_to_be_discarded =
+                    message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
+                Confirm::new(
+                    "Discard staged changes in this stack?",
+                    run_after_confirmation_msg(move |_, ctx, messages| {
+                        operations::discard_stack(ctx, stack_id)?;
+                        messages.push(Message::Reload(Some(select_after_reload)));
+                        drop(drop_to_be_discarded);
+                        Ok(())
+                    }),
+                )
+            }
+            CliId::Commit { commit_id, .. } => {
+                self.to_be_discarded = Some(Arc::clone(cli_id));
+                let commit_id = *commit_id;
+                let select_after_reload = self
+                    .cursor
+                    .select_after_discarded_commit(&self.status_lines);
+                let drop_to_be_discarded =
+                    message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
+                Confirm::new(
+                    format!("Discard commit {}?", commit_id.to_hex_with_len(7)),
+                    run_after_confirmation_msg(move |_, ctx, messages| {
+                        let discard_result = operations::commit_discard(ctx, commit_id)?;
+                        let select_after_reload =
+                            select_after_reload.map(|selection| match selection {
+                                SelectAfterReload::Commit(target_commit_id) => {
+                                    let remapped_target_commit_id = discard_result
+                                        .replaced_commits
+                                        .get(&target_commit_id)
+                                        .copied()
+                                        .unwrap_or(target_commit_id);
+                                    SelectAfterReload::Commit(remapped_target_commit_id)
+                                }
+                                other => other,
+                            });
+                        messages.push(Message::Reload(select_after_reload));
+                        drop(drop_to_be_discarded);
+                        Ok(())
+                    }),
+                )
+            }
+            CliId::Branch { name, stack_id, .. } => {
+                let Some(stack_id) = *stack_id else {
+                    return;
+                };
+
+                let name = name.to_owned();
+                self.to_be_discarded = Some(Arc::clone(cli_id));
+                let select_after_reload = self
+                    .cursor
+                    .select_after_discarded_branch(&self.status_lines);
+                let drop_to_be_discarded =
+                    message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
+                Confirm::new(
+                    format!("Discard branch {name}?"),
+                    run_after_confirmation_msg(move |_, ctx, messages| {
+                        operations::remove_branch_legacy(ctx, stack_id, name)?;
+                        messages.push(Message::Reload(select_after_reload));
+                        drop(drop_to_be_discarded);
+                        Ok(())
+                    }),
+                )
+            }
+            CliId::PathPrefix { .. } | CliId::CommittedFile { .. } => return,
+        });
     }
 
     /// Handles creating an empty commit relative to the current selection.
@@ -1280,7 +1453,10 @@ impl App {
             // TODO(david): don't use a separate reword step, instead get message before creating
             // commit. However that requires computing the diff which I haven't yet figured out how
             // to do
-            .chain(with_message.then_some(Message::Reword(RewordMessage::WithEditor)))
+            .chain(
+                (with_message && commit_create_result.new_commit.is_some())
+                    .then_some(Message::Reword(RewordMessage::WithEditor)),
+            )
             .chain(rejected_specs_error_msg.map(|text| Message::ShowToast {
                 kind: ToastKind::Error,
                 text,
@@ -1949,7 +2125,17 @@ impl App {
             line.extend(connector.clone());
         }
 
-        if is_selected {
+        let line_is_to_be_discarded =
+            self.to_be_discarded
+                .as_ref()
+                .is_some_and(|to_be_discarded| {
+                    data.cli_id()
+                        .is_some_and(|selection| to_be_discarded == selection)
+                });
+
+        if line_is_to_be_discarded {
+            line.extend([Span::raw("<< discard >>").black().on_red(), Span::raw(" ")]);
+        } else if is_selected {
             match &self.mode {
                 Mode::Normal | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
                 Mode::Rub(RubMode {
@@ -2033,7 +2219,7 @@ impl App {
             }
         }
 
-        let content_spans = match content {
+        let mut content_spans = match content {
             StatusOutputContent::Plain(spans) => spans.clone(),
             StatusOutputContent::Commit(CommitLineContent {
                 sha,
@@ -2091,6 +2277,13 @@ impl App {
             }
         };
 
+        if line_is_to_be_discarded {
+            content_spans = content_spans
+                .into_iter()
+                .map(|span| span.crossed_out())
+                .collect();
+        }
+
         match &self.mode {
             Mode::InlineReword(inline_reword_mode) => {
                 if is_selected {
@@ -2141,7 +2334,7 @@ impl App {
             }
         }
 
-        if is_selected && self.confirm.is_none() {
+        if is_selected {
             line = line.bg(*CURSOR_BG);
         }
 
@@ -2592,6 +2785,8 @@ enum Message {
         text: String,
     },
     Confirm(ConfirmMessage),
+    Discard,
+    DropToBeDiscarded,
 
     // Cursor movement
     MoveCursorUp,
@@ -2615,16 +2810,43 @@ enum Message {
     CopySelection,
     #[expect(clippy::type_complexity)]
     RunAfterConfirmation(
-        DebugAsType<Arc<dyn Fn(&mut App, &mut Context, &mut Vec<Message>) -> anyhow::Result<()>>>,
+        DebugAsType<
+            Rc<
+                RefCell<
+                    Option<
+                        Box<
+                            dyn FnOnce(
+                                &mut App,
+                                &mut Context,
+                                &mut Vec<Message>,
+                            ) -> anyhow::Result<()>,
+                        >,
+                    >,
+                >,
+            >,
+        >,
     ),
     RegisterMessageOnDrop(Rc<Receiver<Message>>),
     WithOneFrameDelay(Box<Message>),
+    AndThen {
+        lhs: Box<Message>,
+        rhs: Box<Message>,
+    },
 }
 
 impl Message {
     /// Delay a message so it wont be handled until the next frame.
     pub(super) fn with_one_frame_delay(self) -> Self {
         Self::WithOneFrameDelay(Box::new(self))
+    }
+
+    /// Send another message only if handling the first succeeds.
+    #[expect(dead_code)]
+    pub(super) fn and_then(self, other: Self) -> Self {
+        Self::AndThen {
+            lhs: Box::new(self),
+            rhs: Box::new(other),
+        }
     }
 }
 
@@ -2689,6 +2911,7 @@ enum SelectAfterReload {
     FirstFileInCommit(gix::ObjectId),
     Branch(String),
     Stack(StackId),
+    CliId(Arc<CliId>),
     Unassigned,
 }
 
@@ -2918,14 +3141,13 @@ enum MoveTarget<'a> {
     MergeBase,
 }
 
-#[expect(dead_code)]
 fn run_after_confirmation_msg<F>(f: F) -> Message
 where
-    F: Fn(&mut App, &mut Context, &mut Vec<Message>) -> anyhow::Result<()> + 'static,
+    F: FnOnce(&mut App, &mut Context, &mut Vec<Message>) -> anyhow::Result<()> + 'static,
 {
-    Message::RunAfterConfirmation(DebugAsType(Arc::new(move |app, ctx, messages| {
-        f(app, ctx, messages)
-    })))
+    Message::RunAfterConfirmation(DebugAsType(Rc::new(RefCell::new(Some(Box::new(
+        move |app, ctx, messages| f(app, ctx, messages),
+    ))))))
 }
 
 struct StatusLayout {
