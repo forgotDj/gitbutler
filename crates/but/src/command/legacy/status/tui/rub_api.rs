@@ -4,7 +4,9 @@
 //! `RubOperationDiscriminants`, and `route_operation`.
 
 use anyhow::Context as _;
-use but_api::commit::types::{CommitCreateResult, CommitMoveResult, MoveChangesResult};
+use but_api::commit::types::{
+    CommitCreateResult, CommitMoveResult, CommitSquashResult, MoveChangesResult,
+};
 use but_core::{DiffSpec, diff::tree_changes, ref_metadata::StackId};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignmentRequest;
@@ -19,56 +21,44 @@ use crate::{
             BranchToUnassignedOperation, CommittedFileToBranchOperation,
             CommittedFileToCommitOperation, CommittedFileToUnassignedOperation,
             MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
-            StackToBranchOperation, StackToStackOperation, StackToUnassignedOperation,
-            UnassignUncommittedOperation, UnassignedToBranchOperation, UnassignedToCommitOperation,
-            UnassignedToStackOperation, UncommittedToBranchOperation, UncommittedToCommitOperation,
-            UncommittedToStackOperation, UndoCommitOperation, route_operation,
+            SquashCommitsOperation, StackToBranchOperation, StackToStackOperation,
+            StackToUnassignedOperation, UnassignUncommittedOperation, UnassignedToBranchOperation,
+            UnassignedToCommitOperation, UnassignedToStackOperation, UncommittedToBranchOperation,
+            UncommittedToCommitOperation, UncommittedToStackOperation, UndoCommitOperation,
+            route_operation,
         },
         status::tui::SelectAfterReload,
     },
 };
 
-/// Describes whether a routed rub operation is currently available in the rub-api implementation.
-pub(super) enum RubOperationDisplay {
-    /// The operation is available and should be shown with the provided label.
-    Supported(&'static str),
-    /// The operation isn't available and should show an explanation label plus its discriminant.
-    NotSupported(#[expect(dead_code)] &'static str, RubOperationDiscriminants),
-}
-
 /// Returns a human-facing operation descriptor for the source/target pair.
-pub(super) fn rub_operation_display(source: &CliId, target: &CliId) -> Option<RubOperationDisplay> {
+pub(super) fn rub_operation_display(source: &CliId, target: &CliId) -> Option<&'static str> {
     if source == target {
-        return Some(RubOperationDisplay::Supported("noop"));
+        return Some("noop");
     }
 
     let operation = route_operation(source, target)?;
-    let discriminant = RubOperationDiscriminants::from(&operation);
     Some(match operation {
-        RubOperation::UnassignUncommitted(..) => RubOperationDisplay::Supported("unassign hunks"),
-        RubOperation::UncommittedToCommit(..) => RubOperationDisplay::Supported("amend"),
-        RubOperation::UncommittedToBranch(..) => RubOperationDisplay::Supported("assign hunks"),
-        RubOperation::UncommittedToStack(..) => RubOperationDisplay::Supported("assign hunks"),
-        RubOperation::StackToUnassigned(..) => RubOperationDisplay::Supported("unassign hunks"),
-        RubOperation::StackToStack(..) => RubOperationDisplay::Supported("reassign hunks"),
-        RubOperation::StackToBranch(..) => RubOperationDisplay::Supported("reassign hunks"),
-        RubOperation::UnassignedToCommit(..) => RubOperationDisplay::Supported("amend"),
-        RubOperation::UnassignedToBranch(..) => RubOperationDisplay::Supported("assign hunks"),
-        RubOperation::UnassignedToStack(..) => RubOperationDisplay::Supported("assign hunks"),
-        RubOperation::UndoCommit(..) => RubOperationDisplay::Supported("undo commit"),
-        RubOperation::SquashCommits(..) => {
-            RubOperationDisplay::NotSupported("squash", discriminant)
-        }
-        RubOperation::MoveCommitToBranch(..) => RubOperationDisplay::Supported("move commit"),
-        RubOperation::BranchToUnassigned(..) => RubOperationDisplay::Supported("unassign hunks"),
-        RubOperation::BranchToStack(..) => RubOperationDisplay::Supported("reassign hunks"),
-        RubOperation::BranchToCommit(..) => RubOperationDisplay::Supported("amend"),
-        RubOperation::BranchToBranch(..) => RubOperationDisplay::Supported("reassign hunks"),
-        RubOperation::CommittedFileToBranch(..) => RubOperationDisplay::Supported("uncommit file"),
-        RubOperation::CommittedFileToCommit(..) => RubOperationDisplay::Supported("move file"),
-        RubOperation::CommittedFileToUnassigned(..) => {
-            RubOperationDisplay::Supported("uncommit file")
-        }
+        RubOperation::UnassignUncommitted(..) => "unassign hunks",
+        RubOperation::UncommittedToCommit(..) => "amend",
+        RubOperation::UncommittedToBranch(..) => "assign hunks",
+        RubOperation::UncommittedToStack(..) => "assign hunks",
+        RubOperation::StackToUnassigned(..) => "unassign hunks",
+        RubOperation::StackToStack(..) => "reassign hunks",
+        RubOperation::StackToBranch(..) => "reassign hunks",
+        RubOperation::UnassignedToCommit(..) => "amend",
+        RubOperation::UnassignedToBranch(..) => "assign hunks",
+        RubOperation::UnassignedToStack(..) => "assign hunks",
+        RubOperation::UndoCommit(..) => "undo commit",
+        RubOperation::SquashCommits(..) => "squash",
+        RubOperation::MoveCommitToBranch(..) => "move commit",
+        RubOperation::BranchToUnassigned(..) => "unassign hunks",
+        RubOperation::BranchToStack(..) => "reassign hunks",
+        RubOperation::BranchToCommit(..) => "amend",
+        RubOperation::BranchToBranch(..) => "reassign hunks",
+        RubOperation::CommittedFileToBranch(..) => "uncommit file",
+        RubOperation::CommittedFileToCommit(..) => "move file",
+        RubOperation::CommittedFileToUnassigned(..) => "uncommit file",
     })
 }
 
@@ -122,7 +112,10 @@ pub(super) fn perform_operation(
             execute_undo_commit(ctx, operation)?;
             SelectAfterReload::Unassigned
         }
-        RubOperation::SquashCommits(_operation) => return Ok(None),
+        RubOperation::SquashCommits(operation) => {
+            let result = execute_squash_commits(ctx, operation)?;
+            SelectAfterReload::Commit(result.new_commit)
+        }
         RubOperation::MoveCommitToBranch(operation) => {
             execute_move_commit_to_branch(ctx, operation)?;
             SelectAfterReload::Branch(operation.name.to_string())
@@ -277,6 +270,18 @@ fn execute_undo_commit(
 ) -> anyhow::Result<MoveChangesResult> {
     let changes = changes_for_commit(ctx, operation.oid)?;
     but_api::commit::uncommit::commit_uncommit_changes(ctx, operation.oid, changes, None)
+}
+
+/// Executes `SquashCommits` by squashing source into target.
+fn execute_squash_commits(
+    ctx: &mut Context,
+    operation: &SquashCommitsOperation,
+) -> anyhow::Result<CommitSquashResult> {
+    let SquashCommitsOperation {
+        source,
+        destination,
+    } = operation;
+    but_api::commit::squash::commit_squash(ctx, *source, *destination)
 }
 
 /// Executes `MoveCommitToBranch` and returns the exact commit-move API result.
@@ -496,7 +501,7 @@ impl std::error::Error for OperationNotSupported {}
 mod tests {
     use bstr::BString;
 
-    use super::{RubOperationDisplay, rub_operation_display};
+    use super::rub_operation_display;
     use crate::CliId;
 
     /// Converts a hex object id into `gix::ObjectId` for test setup.
@@ -516,10 +521,7 @@ mod tests {
             id: "c0".into(),
         };
 
-        assert!(matches!(
-            rub_operation_display(&source, &target),
-            Some(RubOperationDisplay::Supported("amend"))
-        ));
+        assert_eq!(rub_operation_display(&source, &target).unwrap(), "amend");
     }
 
     #[test]
@@ -535,9 +537,9 @@ mod tests {
             stack_id: None,
         };
 
-        assert!(matches!(
-            rub_operation_display(&source, &target),
-            Some(RubOperationDisplay::Supported("uncommit file"))
-        ));
+        assert_eq!(
+            rub_operation_display(&source, &target).unwrap(),
+            "uncommit file"
+        );
     }
 }
