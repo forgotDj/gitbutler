@@ -24,7 +24,7 @@ export type TreeChangeWithHunkHeaders = {
 
 export type OperationSource =
 	| { _tag: "Commit"; commitId: string }
-	| { _tag: "Branch"; ref: Array<number> }
+	| { _tag: "Segment"; branchRef: Array<number> | null }
 	| {
 			_tag: "TreeChanges";
 			parent: FileParent;
@@ -64,8 +64,8 @@ const resolveOperationSource = ({
 	Match.value(operationSourceRef).pipe(
 		Match.tagsExhaustive({
 			Branch: (operationSourceRef): OperationSource => ({
-				_tag: "Branch",
-				ref: operationSourceRef.ref,
+				_tag: "Segment",
+				branchRef: operationSourceRef.ref,
 			}),
 			Commit: (operationSourceRef): OperationSource => ({
 				_tag: "Commit",
@@ -189,7 +189,7 @@ export const getCombineOperation = ({
 }): Operation | null =>
 	Match.value(operationSource).pipe(
 		Match.tagsExhaustive({
-			Branch: (): Operation | null => null,
+			Segment: (): Operation | null => null,
 			Commit: ({ commitId: sourceCommitId }) =>
 				Match.value(target).pipe(
 					Match.tagsExhaustive({
@@ -274,11 +274,16 @@ export const getBranchTargetOperation = ({
 	firstCommitId: string | undefined;
 }): Operation | null =>
 	Match.value(operationSource).pipe(
-		Match.tag("Branch", (source): Operation | null => {
-			if (branchRef === null || decodeRefName(branchRef) === decodeRefName(source.ref)) return null;
+		Match.tag("Segment", (source): Operation | null => {
+			if (
+				branchRef === null ||
+				source.branchRef === null ||
+				decodeRefName(branchRef) === decodeRefName(source.branchRef)
+			)
+				return null;
 			return {
 				_tag: "MoveBranch",
-				subjectBranch: decodeRefName(source.ref),
+				subjectBranch: decodeRefName(source.branchRef),
 				targetBranch: decodeRefName(branchRef),
 			};
 		}),

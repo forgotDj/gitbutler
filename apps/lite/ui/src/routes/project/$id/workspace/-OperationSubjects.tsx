@@ -359,11 +359,12 @@ export const TearOffBranchTarget: FC<{ projectId: string } & useRender.Component
 		const operationSource = resolveOperationSource(operationSourceRef);
 		if (!operationSource) return null;
 
-		if (operationSource._tag !== "Branch") return null;
+		if (operationSource._tag !== "Segment") return null;
+		if (operationSource.branchRef === null) return null;
 
 		return {
 			_tag: "TearOffBranch",
-			subjectBranch: decodeRefName(operationSource.ref),
+			subjectBranch: decodeRefName(operationSource.branchRef),
 		};
 	});
 
