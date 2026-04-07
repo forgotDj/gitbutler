@@ -1449,7 +1449,11 @@ const Changes: FC<{
 			stackId={stackId}
 			label={label}
 			changeCount={changes.length}
-			className={classes(className, isSectionSelected && sharedStyles.sectionSelected)}
+			className={classes(
+				className,
+				sharedStyles.section,
+				isSectionSelected && sharedStyles.sectionSelected,
+			)}
 			render={<ChangesSectionTarget projectId={projectId} stackId={stackId} />}
 		>
 			<ChangesSectionRow
@@ -1806,7 +1810,9 @@ const SegmentC: FC<{
 	const isSectionSelected = selectedSegment !== null || selectedCommit !== null;
 
 	return (
-		<div className={classes(isSectionSelected && sharedStyles.sectionSelected)}>
+		<div
+			className={classes(sharedStyles.section, isSectionSelected && sharedStyles.sectionSelected)}
+		>
 			<SegmentRow
 				branchRenameFormRef={branchRenameFormRef}
 				selected={selectedSegment}

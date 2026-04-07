@@ -36,6 +36,7 @@
 }
 
 .commitFormMessageInput {
+	border-radius: 8px;
 	field-sizing: content;
 	box-sizing: content-box;
 	min-height: calc(2lh);
@@ -93,6 +94,7 @@
 }
 
 .activeTarget {
+	border-radius: 8px;
 	outline: 2px dashed var(--color-active-operation-target-outline);
 	outline-offset: 1px;
 }
@@ -177,6 +179,7 @@
 }
 
 .activeSource {
+	border-radius: 8px;
 	background-color: var(--color-gray-200);
 	opacity: 0.4;
 }
