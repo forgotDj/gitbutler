@@ -63,8 +63,14 @@ const resolveOperationSource = ({
 }): OperationSource | null =>
 	Match.value(operationSourceRef).pipe(
 		Match.tagsExhaustive({
-			Branch: (operationSourceRef): OperationSource => operationSourceRef,
-			Commit: (operationSourceRef): OperationSource => operationSourceRef,
+			Branch: (operationSourceRef): OperationSource => ({
+				_tag: "Branch",
+				ref: operationSourceRef.ref,
+			}),
+			Commit: (operationSourceRef): OperationSource => ({
+				_tag: "Commit",
+				commitId: operationSourceRef.commitId,
+			}),
 			ChangesSection: ({ stackId }): OperationSource | null => {
 				if (!worktreeChanges) return null;
 
