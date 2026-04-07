@@ -55,3 +55,11 @@ pub struct CommitDiscardResult {
     /// Commits that were replaced by this operation. Maps `old_id -> new_id`.
     pub replaced_commits: BTreeMap<gix::ObjectId, gix::ObjectId>,
 }
+
+/// Outcome of undoing a commit.
+pub struct CommitUndoResult {
+    /// The ID of the commit that was undone.
+    pub undone_commit: gix::ObjectId,
+    /// Commits that were replaced by this operation. Maps `old_id -> new_id`.
+    pub replaced_commits: BTreeMap<gix::ObjectId, gix::ObjectId>,
+}

@@ -30,3 +30,6 @@ pub mod types;
 
 /// Functions for uncommitting changes from commits.
 pub mod uncommit;
+
+/// Functions for undoing commits.
+pub mod undo;
