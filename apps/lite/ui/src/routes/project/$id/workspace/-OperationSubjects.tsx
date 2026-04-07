@@ -281,11 +281,13 @@ export const CommitTarget: FC<
 		});
 	});
 
+	const targetTooltipOperation = operation && isCombineOperation(operation) ? operation : null;
+
 	const target = useRender({
 		render,
 		ref: dropRef,
 		props: mergeProps<"div">(props, {
-			className: classes(operation && isCombineOperation(operation) && styles.activeTarget),
+			className: classes(targetTooltipOperation && styles.activeTarget),
 		}),
 	});
 
@@ -293,10 +295,7 @@ export const CommitTarget: FC<
 
 	return (
 		<div className={styles.commit}>
-			<OperationTooltip
-				operation={operation && isCombineOperation(operation) ? operation : null}
-				render={target}
-			/>
+			<OperationTooltip operation={targetTooltipOperation} render={target} />
 
 			{insertionSide !== null && (
 				<OperationTooltip
