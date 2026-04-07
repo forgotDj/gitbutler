@@ -75,17 +75,19 @@ const resolveOperationSource = ({
 				if (!worktreeChanges) return null;
 
 				const assignmentsByPath = getAssignmentsByPath(worktreeChanges.assignments, stackId);
-				const changes = worktreeChanges.changes.flatMap((change) => {
-					const assignments = assignmentsByPath.get(change.path);
-					if (!assignments) return [];
+				const changes = worktreeChanges.changes.flatMap(
+					(change): Array<TreeChangeWithHunkHeaders> => {
+						const assignments = assignmentsByPath.get(change.path);
+						if (!assignments) return [];
 
-					return [
-						{
-							change,
-							hunkHeaders: hunkHeadersForAssignments(assignments),
-						},
-					];
-				});
+						return [
+							{
+								change,
+								hunkHeaders: hunkHeadersForAssignments(assignments),
+							},
+						];
+					},
+				);
 
 				return treeChangesOperationSource({
 					parent: { _tag: "ChangesSection", stackId },
