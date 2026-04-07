@@ -40,7 +40,7 @@ export const BranchSource: FC<
 		branchName: string;
 	} & useRender.ComponentProps<"div">
 > = ({ branchRef, branchName, render, ...props }) => {
-	const dragData = branchRef ? getDragData({ _tag: "Branch", ref: branchRef }) : null;
+	const dragData = branchRef ? getDragData({ _tag: "Segment", branchRef }) : null;
 	const [isDragging, dragRef] = useDraggable({
 		getInitialData: () => dragData ?? {},
 		preview: <DragPreview>{branchName}</DragPreview>,

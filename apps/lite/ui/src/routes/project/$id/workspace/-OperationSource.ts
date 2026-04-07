@@ -63,9 +63,9 @@ const resolveOperationSource = ({
 }): OperationSource | null =>
 	Match.value(operationSourceRef).pipe(
 		Match.tagsExhaustive({
-			Branch: (operationSourceRef): OperationSource => ({
+			Segment: (operationSourceRef): OperationSource => ({
 				_tag: "Segment",
-				branchRef: operationSourceRef.ref,
+				branchRef: operationSourceRef.branchRef,
 			}),
 			Commit: (operationSourceRef): OperationSource => ({
 				_tag: "Commit",
