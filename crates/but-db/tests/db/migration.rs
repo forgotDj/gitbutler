@@ -446,7 +446,7 @@ mod run {
         	`path` TEXT NOT NULL,
         	`path_bytes` BINARY NOT NULL,
         	`stack_id` TEXT,
-        	`id` TEXT, `branch_ref` TEXT,
+        	`id` TEXT, `branch_ref` BINARY,
         	PRIMARY KEY(`path`, `hunk_header`)
         );
 

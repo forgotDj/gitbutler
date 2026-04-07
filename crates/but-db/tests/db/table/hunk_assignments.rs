@@ -168,7 +168,7 @@ fn optional_fields() -> anyhow::Result<()> {
         path: "path/to/file.txt".to_string(),
         path_bytes: b"path/to/file.txt".to_vec(),
         stack_id: Some("stack1".to_string()),
-        branch_ref: None,
+        branch_ref_bytes: None,
     };
 
     let hunk_no_stack = HunkAssignment {
@@ -177,7 +177,7 @@ fn optional_fields() -> anyhow::Result<()> {
         path: "path/to/other.txt".to_string(),
         path_bytes: b"path/to/other.txt".to_vec(),
         stack_id: None,
-        branch_ref: None,
+        branch_ref_bytes: None,
     };
 
     let hunk_no_id = HunkAssignment {
@@ -186,7 +186,7 @@ fn optional_fields() -> anyhow::Result<()> {
         path: "path/to/third.txt".to_string(),
         path_bytes: b"path/to/third.txt".to_vec(),
         stack_id: Some("stack2".to_string()),
-        branch_ref: None,
+        branch_ref_bytes: None,
     };
 
     db.hunk_assignments_mut()?.set_all(vec![
@@ -214,7 +214,7 @@ fn non_utf8_path_bytes() -> anyhow::Result<()> {
         path: "valid/path.txt".to_string(),
         path_bytes: vec![0xFF, 0xFE, 0xFD, 0x00, 0x80],
         stack_id: Some("stack1".to_string()),
-        branch_ref: None,
+        branch_ref_bytes: None,
     };
 
     db.hunk_assignments_mut()?
@@ -232,7 +232,7 @@ fn non_utf8_path_bytes() -> anyhow::Result<()> {
 }
 
 #[test]
-fn branch_ref_roundtrip() -> anyhow::Result<()> {
+fn branch_ref_bytes_roundtrip() -> anyhow::Result<()> {
     let mut db = in_memory_db();
 
     let hunk_with_branch = hunk_assignment(
@@ -263,15 +263,15 @@ fn branch_ref_roundtrip() -> anyhow::Result<()> {
         .find(|a| a.id.as_deref() == Some("id1"))
         .unwrap();
     assert_eq!(
-        with_branch.branch_ref.as_deref(),
-        Some("refs/heads/feature")
+        with_branch.branch_ref_bytes.as_deref(),
+        Some(b"refs/heads/feature".as_slice())
     );
 
     let without_branch = assignments
         .iter()
         .find(|a| a.id.as_deref() == Some("id2"))
         .unwrap();
-    assert_eq!(without_branch.branch_ref, None);
+    assert_eq!(without_branch.branch_ref_bytes, None);
 
     Ok(())
 }
@@ -281,7 +281,7 @@ fn hunk_assignment(
     hunk_header: Option<&str>,
     path: &str,
     stack_id: Option<&str>,
-    branch_ref: Option<&str>,
+    branch_ref_bytes: Option<&str>,
 ) -> HunkAssignment {
     HunkAssignment {
         id: Some(id.to_string()),
@@ -289,6 +289,6 @@ fn hunk_assignment(
         path: path.to_string(),
         path_bytes: path.as_bytes().to_vec(),
         stack_id: stack_id.map(String::from),
-        branch_ref: branch_ref.map(String::from),
+        branch_ref_bytes: branch_ref_bytes.map(|s| s.as_bytes().to_vec()),
     }
 }

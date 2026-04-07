@@ -30,7 +30,7 @@ pub(crate) const M: &[M<'static>] = &[
     M::up(
         20260407120000,
         SchemaVersion::Zero,
-        "ALTER TABLE `hunk_assignments` ADD COLUMN `branch_ref` TEXT;",
+        "ALTER TABLE `hunk_assignments` ADD COLUMN `branch_ref` BINARY;",
     ),
 ];
 
@@ -42,7 +42,7 @@ pub struct HunkAssignment {
     pub path: String,
     pub path_bytes: Vec<u8>,
     pub stack_id: Option<String>,
-    pub branch_ref: Option<String>,
+    pub branch_ref_bytes: Option<Vec<u8>>,
 }
 
 impl DbHandle {
@@ -91,7 +91,7 @@ impl HunkAssignmentsHandle<'_> {
                 path: row.get(2)?,
                 path_bytes: row.get(3)?,
                 stack_id: row.get(4)?,
-                branch_ref: row.get(5)?,
+                branch_ref_bytes: row.get(5)?,
             })
         })?;
 
@@ -120,7 +120,7 @@ impl HunkAssignmentsHandleMut<'_> {
                     assignment.path,
                     assignment.path_bytes,
                     assignment.stack_id,
-                    assignment.branch_ref,
+                    assignment.branch_ref_bytes,
                 ],
             )?;
         }

@@ -111,7 +111,7 @@ pub(crate) fn assign_all(
     let (from_branch, from_stack_id) = match from {
         Some(AssignTarget::Branch(name)) => (
             Some(name.to_string()),
-            branch_name_to_stack_id(ctx, Some(name))?,
+            branch_name_to_stack_id(ctx, Some(normalize_branch_name_for_lookup(name)))?,
         ),
         Some(AssignTarget::Stack(stack_id)) => {
             (stack_id_to_branch_name(ctx, stack_id), Some(*stack_id))
@@ -122,7 +122,7 @@ pub(crate) fn assign_all(
     let (to_branch, to_stack_id) = match to {
         Some(AssignTarget::Branch(name)) => (
             Some(name.to_string()),
-            branch_name_to_stack_id(ctx, Some(name))?,
+            branch_name_to_stack_id(ctx, Some(normalize_branch_name_for_lookup(name)))?,
         ),
         Some(AssignTarget::Stack(stack_id)) => {
             (stack_id_to_branch_name(ctx, stack_id), Some(*stack_id))
@@ -153,7 +153,7 @@ fn assign_all_inner(
         context_lines,
     )?;
 
-    let to_branch_ref = match (to_stack_id, to_branch.as_ref()) {
+    let to_branch_ref_bytes = match (to_stack_id, to_branch.as_ref()) {
         (Some(_), Some(name)) => Some(to_full_ref_name(name)?),
         _ => None,
     };
@@ -164,7 +164,7 @@ fn assign_all_inner(
                 hunk_header: assignment.hunk_header,
                 path_bytes: assignment.path_bytes,
                 stack_id: to_stack_id,
-                branch_ref: to_branch_ref.clone(),
+                branch_ref_bytes: to_branch_ref_bytes.clone(),
             });
         }
     }
@@ -255,7 +255,7 @@ pub(crate) fn to_assignment_request(
 ) -> anyhow::Result<Vec<HunkAssignmentRequest>> {
     let normalized = branch_name.map(normalize_branch_name_for_lookup);
     let stack_id = branch_name_to_stack_id(ctx, normalized)?;
-    let branch_ref = match (stack_id, branch_name) {
+    let branch_ref_bytes = match (stack_id, branch_name) {
         (Some(_), Some(name)) => Some(to_full_ref_name(name)?),
         _ => None,
     };
@@ -266,7 +266,7 @@ pub(crate) fn to_assignment_request(
             hunk_header,
             path_bytes,
             stack_id,
-            branch_ref: branch_ref.clone(),
+            branch_ref_bytes: branch_ref_bytes.clone(),
         });
     }
     Ok(reqs)

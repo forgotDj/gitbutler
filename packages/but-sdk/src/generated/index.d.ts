@@ -939,10 +939,11 @@ export type HunkAssignment = {
   /** The stack to which the hunk is assigned. If None, the hunk is not assigned to any stack. */
   stackId: string | null;
   /**
-   * The branch within the stack. Full ref name (e.g. "refs/heads/my-branch").
-   * None means "topmost branch of the stack" (backward-compatible default).
+   * The branch within the stack, as a full ref name (e.g. `refs/heads/my-branch`).
+   * Serialized as bytes over the wire for non-UTF-8 safety.
+   * `None` means "topmost branch of the stack" (backward-compatible default).
    */
-  branchRef: Array<number> | null;
+  branchRefBytes: Array<number> | null;
   /** The line numbers that were added in this hunk. */
   lineNumsAdded?: Array<number> | null;
   /** The line numbers that were removed in this hunk. */
@@ -968,10 +969,11 @@ export type HunkAssignmentRequest = {
    */
   stackId: string | null;
   /**
-   * Optional: target a specific branch within the stack.
+   * Optional: target a specific branch within the stack, as a full ref name.
+   * Serialized as bytes over the wire for non-UTF-8 safety.
    * If not provided, auto-resolves to the topmost branch.
    */
-  branchRef: Array<number> | null;
+  branchRefBytes: Array<number> | null;
 };
 
 /**

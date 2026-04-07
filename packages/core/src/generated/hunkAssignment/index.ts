@@ -62,7 +62,7 @@ export type HunkAssignment = {
 	 * Serialized as bytes over the wire for non-UTF-8 safety.
 	 * `None` means "topmost branch of the stack" (backward-compatible default).
 	 */
-	branchRef: number[] | null;
+	branchRefBytes: number[] | null;
 	/**
 	 * The line numbers that were added in this hunk.
 	 */

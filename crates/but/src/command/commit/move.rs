@@ -283,7 +283,7 @@ mod tests {
                 path: "test.txt".to_string(),
                 path_bytes: BString::from("test.txt"),
                 stack_id: None,
-                branch_ref: None,
+                branch_ref_bytes: None,
                 line_nums_added: None,
                 line_nums_removed: None,
                 diff: None,

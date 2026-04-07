@@ -68,7 +68,7 @@ pub struct HunkAssignment {
         feature = "export-schema",
         schemars(schema_with = "but_schemars::fullname_bytes_opt")
     )]
-    pub branch_ref: Option<gix::refs::FullName>,
+    pub branch_ref_bytes: Option<gix::refs::FullName>,
     /// The line numbers that were added in this hunk.
     pub line_nums_added: Option<Vec<usize>>,
     /// The line numbers that were removed in this hunk.
@@ -104,11 +104,11 @@ impl TryFrom<but_db::HunkAssignment> for HunkAssignment {
             path: value.path,
             path_bytes: value.path_bytes.into(),
             stack_id,
-            branch_ref: value
-                .branch_ref
-                .map(gix::refs::FullName::try_from)
+            branch_ref_bytes: value
+                .branch_ref_bytes
+                .map(|b| gix::refs::FullName::try_from(BString::from(b)))
                 .transpose()
-                .map_err(|e| anyhow::anyhow!("Failed to parse branch_ref: {e}"))?,
+                .map_err(|e| anyhow::anyhow!("Failed to parse branch_ref_bytes: {e}"))?,
             line_nums_added: None,   // derived data (not persisted)
             line_nums_removed: None, // derived data (not persisted)
             diff: None,              // derived data (not persisted)
@@ -132,7 +132,7 @@ impl TryFrom<HunkAssignment> for but_db::HunkAssignment {
             path: value.path,
             path_bytes: value.path_bytes.into(),
             stack_id: value.stack_id.map(|id| id.to_string()),
-            branch_ref: value.branch_ref.map(|r| r.to_string()),
+            branch_ref_bytes: value.branch_ref_bytes.map(|r| r.into_inner().into()),
         })
     }
 }
@@ -314,7 +314,7 @@ pub struct HunkAssignmentRequest {
         feature = "export-schema",
         schemars(schema_with = "but_schemars::fullname_bytes_opt")
     )]
-    pub branch_ref: Option<gix::refs::FullName>,
+    pub branch_ref_bytes: Option<gix::refs::FullName>,
 }
 #[cfg(feature = "export-schema")]
 but_schemars::register_sdk_type!(HunkAssignmentRequest);
@@ -457,7 +457,7 @@ pub fn assign(
         true,
     );
 
-    auto_populate_branch_refs(&mut with_requests, workspace);
+    auto_populate_branch_ref_bytes(&mut with_requests, workspace);
     state::set_assignments(db, with_requests)?;
 
     Ok(())
@@ -505,7 +505,7 @@ fn reconcile_worktree_changes_with_worktree(
     }
     let mut reconciled = reconcile_with_worktree(db.to_ref(), workspace, &worktree_assignments)?;
 
-    auto_populate_branch_refs(&mut reconciled, workspace);
+    auto_populate_branch_ref_bytes(&mut reconciled, workspace);
     state::set_assignments(db, reconciled.clone())?;
     Ok(reconciled)
 }
@@ -548,13 +548,13 @@ fn reconcile_with_worktree(
     Ok(with_worktree)
 }
 
-/// For assignments that have a `stack_id` but no `branch_ref`, auto-populate `branch_ref`
+/// For assignments that have a `stack_id` but no `branch_ref_bytes`, auto-populate `branch_ref_bytes`
 /// with the topmost branch of that stack from the workspace projection.
-fn auto_populate_branch_refs(
+fn auto_populate_branch_ref_bytes(
     assignments: &mut [HunkAssignment],
     workspace: &but_graph::projection::Workspace,
 ) {
-    let branch_refs_by_stack: HashMap<StackId, gix::refs::FullName> = workspace
+    let branch_ref_bytes_by_stack: HashMap<StackId, gix::refs::FullName> = workspace
         .stacks
         .iter()
         .filter_map(|stack| {
@@ -566,10 +566,10 @@ fn auto_populate_branch_refs(
 
     for assignment in assignments.iter_mut() {
         if let Some(stack_id) = assignment.stack_id
-            && assignment.branch_ref.is_none()
-            && let Some(ref_name) = branch_refs_by_stack.get(&stack_id)
+            && assignment.branch_ref_bytes.is_none()
+            && let Some(ref_name) = branch_ref_bytes_by_stack.get(&stack_id)
         {
-            assignment.branch_ref = Some(ref_name.clone());
+            assignment.branch_ref_bytes = Some(ref_name.clone());
         }
     }
 }
@@ -585,7 +585,7 @@ fn diff_to_assignments(diff: Option<UnifiedPatch>, path: BString) -> Vec<HunkAss
                 path: path_str.into(),
                 path_bytes: path,
                 stack_id: None,
-                branch_ref: None,
+                branch_ref_bytes: None,
                 line_nums_added: None,
                 line_nums_removed: None,
                 diff: None,
@@ -596,7 +596,7 @@ fn diff_to_assignments(diff: Option<UnifiedPatch>, path: BString) -> Vec<HunkAss
                 path: path_str.into(),
                 path_bytes: path,
                 stack_id: None,
-                branch_ref: None,
+                branch_ref_bytes: None,
                 line_nums_added: None,
                 line_nums_removed: None,
                 diff: None,
@@ -614,7 +614,7 @@ fn diff_to_assignments(diff: Option<UnifiedPatch>, path: BString) -> Vec<HunkAss
                         path: path_str.into(),
                         path_bytes: path,
                         stack_id: None,
-                        branch_ref: None,
+                        branch_ref_bytes: None,
                         line_nums_added: None,
                         line_nums_removed: None,
                         diff: None,
@@ -631,7 +631,7 @@ fn diff_to_assignments(diff: Option<UnifiedPatch>, path: BString) -> Vec<HunkAss
                                 path: path_str.clone().into(),
                                 path_bytes: path.clone(),
                                 stack_id: None,
-                                branch_ref: None,
+                                branch_ref_bytes: None,
                                 line_nums_added: Some(line_nums_added_new),
                                 line_nums_removed: Some(line_nums_removed_old),
                                 diff: Some(hunk.diff.clone()),
@@ -648,7 +648,7 @@ fn diff_to_assignments(diff: Option<UnifiedPatch>, path: BString) -> Vec<HunkAss
             path: path_str.into(),
             path_bytes: path.clone(),
             stack_id: None,
-            branch_ref: None,
+            branch_ref_bytes: None,
             line_nums_added: None,
             line_nums_removed: None,
             diff: None,
@@ -708,7 +708,7 @@ fn requests_to_assignments(request: Vec<HunkAssignmentRequest>) -> Vec<HunkAssig
             path: req.path_bytes.to_str_lossy().into(),
             path_bytes: req.path_bytes,
             stack_id: req.stack_id,
-            branch_ref: req.branch_ref,
+            branch_ref_bytes: req.branch_ref_bytes,
             line_nums_added: None,
             line_nums_removed: None,
             diff: None,
@@ -725,7 +725,7 @@ pub fn assignments_to_requests(assignments: Vec<HunkAssignment>) -> Vec<HunkAssi
             hunk_header: assignment.hunk_header,
             path_bytes: assignment.path_bytes,
             stack_id: assignment.stack_id,
-            branch_ref: assignment.branch_ref,
+            branch_ref_bytes: assignment.branch_ref_bytes,
         })
         .collect()
 }
@@ -819,16 +819,16 @@ mod tests {
                 path: path.to_string(),
                 path_bytes: BString::from(path),
                 stack_id: stack_id.map(stack_id_seq),
-                branch_ref: None,
+                branch_ref_bytes: None,
                 line_nums_added: None,
                 line_nums_removed: None,
                 diff: None,
             }
         }
 
-        /// Like `new()`, but also sets `branch_ref`.
-        pub fn with_branch_ref(mut self, branch_ref: Option<&str>) -> Self {
-            self.branch_ref = branch_ref.map(|s| {
+        /// Like `new()`, but also sets `branch_ref_bytes`.
+        pub fn with_branch_ref_bytes(mut self, branch_ref_bytes: Option<&str>) -> Self {
+            self.branch_ref_bytes = branch_ref_bytes.map(|s| {
                 gix::refs::FullName::try_from(s.to_string())
                     .expect("test branch ref should be valid")
             });
@@ -852,7 +852,7 @@ mod tests {
                 }),
                 path_bytes: BString::from(path),
                 stack_id: stack_id.map(stack_id_seq),
-                branch_ref: None,
+                branch_ref_bytes: None,
             }
         }
     }
@@ -872,7 +872,7 @@ mod tests {
             && a.path == b.path
             && a.path_bytes == b.path_bytes
             && a.stack_id == b.stack_id
-            && a.branch_ref == b.branch_ref
+            && a.branch_ref_bytes == b.branch_ref_bytes
     }
     fn assert_eq(a: Vec<HunkAssignment>, b: Vec<HunkAssignment>) {
         assert!(
@@ -1041,7 +1041,7 @@ mod tests {
             path: "image.png".to_string(),
             path_bytes: BString::from("image.png"),
             stack_id: Some(stack_id_seq(1)),
-            branch_ref: None,
+            branch_ref_bytes: None,
             line_nums_added: None,
             line_nums_removed: None,
             diff: None,
@@ -1053,7 +1053,7 @@ mod tests {
             path: "image.png".to_string(),
             path_bytes: BString::from("image.png"),
             stack_id: None,
-            branch_ref: None,
+            branch_ref_bytes: None,
             line_nums_added: None,
             line_nums_removed: None,
             diff: None,
@@ -1080,7 +1080,7 @@ mod tests {
             path: "file.txt".to_string(),
             path_bytes: BString::from("file.txt"),
             stack_id: None,
-            branch_ref: None,
+            branch_ref_bytes: None,
             line_nums_added: None,
             line_nums_removed: None,
             diff: None,
@@ -1105,7 +1105,7 @@ mod tests {
             path: "image1.png".to_string(),
             path_bytes: BString::from("image1.png"),
             stack_id: Some(stack_id_seq(1)),
-            branch_ref: None,
+            branch_ref_bytes: None,
             line_nums_added: None,
             line_nums_removed: None,
             diff: None,
@@ -1117,7 +1117,7 @@ mod tests {
             path: "image2.png".to_string(),
             path_bytes: BString::from("image2.png"),
             stack_id: None,
-            branch_ref: None,
+            branch_ref_bytes: None,
             line_nums_added: None,
             line_nums_removed: None,
             diff: None,
@@ -1142,7 +1142,7 @@ mod tests {
                 path: "logo.png".to_string(),
                 path_bytes: BString::from("logo.png"),
                 stack_id: Some(stack_id_seq(1)),
-                branch_ref: None,
+                branch_ref_bytes: None,
                 line_nums_added: None,
                 line_nums_removed: None,
                 diff: None,
@@ -1159,7 +1159,7 @@ mod tests {
                 path: "logo.png".to_string(),
                 path_bytes: BString::from("logo.png"),
                 stack_id: None,
-                branch_ref: None,
+                branch_ref_bytes: None,
                 line_nums_added: None,
                 line_nums_removed: None,
                 diff: None,
@@ -1206,7 +1206,7 @@ mod tests {
             path: "data.file".to_string(),
             path_bytes: BString::from("data.file"),
             stack_id: None,
-            branch_ref: None,
+            branch_ref_bytes: None,
             line_nums_added: None,
             line_nums_removed: None,
             diff: None,
@@ -1228,10 +1228,10 @@ mod tests {
     }
 
     #[test]
-    fn test_reconcile_preserves_branch_ref() {
+    fn test_reconcile_preserves_branch_ref_bytes() {
         let previous_assignments = vec![
             HunkAssignment::new("foo.rs", 10, 5, Some(1), Some(1))
-                .with_branch_ref(Some("refs/heads/feature")),
+                .with_branch_ref_bytes(Some("refs/heads/feature")),
         ];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 10, 5, None, None)];
         let applied_stacks = vec![stack_id_seq(1)];
@@ -1245,18 +1245,18 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].stack_id, Some(stack_id_seq(1)));
         assert_eq!(
-            result[0].branch_ref.as_ref().map(|r| r.to_string()),
+            result[0].branch_ref_bytes.as_ref().map(|r| r.to_string()),
             Some("refs/heads/feature".to_string()),
-            "branch_ref should be preserved through reconciliation"
+            "branch_ref_bytes should be preserved through reconciliation"
         );
     }
 
     #[test]
-    fn test_reconcile_clears_branch_ref_with_stack() {
-        // When a stack is unapplied, both stack_id and branch_ref should be cleared.
+    fn test_reconcile_clears_branch_ref_bytes_with_stack() {
+        // When a stack is unapplied, both stack_id and branch_ref_bytes should be cleared.
         let previous_assignments = vec![
             HunkAssignment::new("foo.rs", 10, 5, Some(1), Some(1))
-                .with_branch_ref(Some("refs/heads/feature")),
+                .with_branch_ref_bytes(Some("refs/heads/feature")),
         ];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 10, 5, None, None)];
         // Stack 1 is NOT in the applied stacks
@@ -1274,19 +1274,19 @@ mod tests {
             "stack_id should be cleared when stack is unapplied"
         );
         assert_eq!(
-            result[0].branch_ref, None,
-            "branch_ref should be cleared when stack_id is cleared"
+            result[0].branch_ref_bytes, None,
+            "branch_ref_bytes should be cleared when stack_id is cleared"
         );
     }
 
     #[test]
-    fn test_double_overlap_set_none_clears_branch_ref() {
-        // When SetNone triggers due to conflicting stacks, branch_ref should also be cleared.
+    fn test_double_overlap_set_none_clears_branch_ref_bytes() {
+        // When SetNone triggers due to conflicting stacks, branch_ref_bytes should also be cleared.
         let previous_assignments = vec![
             HunkAssignment::new("foo.rs", 5, 15, Some(1), Some(1))
-                .with_branch_ref(Some("refs/heads/feature-a")),
+                .with_branch_ref_bytes(Some("refs/heads/feature-a")),
             HunkAssignment::new("foo.rs", 17, 25, Some(2), Some(2))
-                .with_branch_ref(Some("refs/heads/feature-b")),
+                .with_branch_ref_bytes(Some("refs/heads/feature-b")),
         ];
         let applied_stacks = vec![stack_id_seq(1), stack_id_seq(2)];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 5, 18, None, None)];
@@ -1303,17 +1303,17 @@ mod tests {
             "stack_id should be None on conflicting multi-overlap"
         );
         assert_eq!(
-            result[0].branch_ref, None,
-            "branch_ref should be None on conflicting multi-overlap"
+            result[0].branch_ref_bytes, None,
+            "branch_ref_bytes should be None on conflicting multi-overlap"
         );
     }
 
     #[test]
-    fn test_reconcile_branch_ref_not_updated_when_unassigned_and_flag_off() {
-        // When update_unassigned is false, branch_ref should not be propagated to unassigned hunks.
+    fn test_reconcile_branch_ref_bytes_not_updated_when_unassigned_and_flag_off() {
+        // When update_unassigned is false, branch_ref_bytes should not be propagated to unassigned hunks.
         let previous_assignments = vec![
             HunkAssignment::new("foo.rs", 10, 15, Some(1), None)
-                .with_branch_ref(Some("refs/heads/feature")),
+                .with_branch_ref_bytes(Some("refs/heads/feature")),
         ];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 12, 17, None, None)];
         let applied_stacks = vec![stack_id_seq(1)];
@@ -1326,6 +1326,6 @@ mod tests {
         );
         assert_eq!(result.len(), 1);
         // With update_unassigned=false, worktree hunk has no stack_id, so it should NOT adopt from previous
-        assert_eq!(result[0].branch_ref, None);
+        assert_eq!(result[0].branch_ref_bytes, None);
     }
 }
