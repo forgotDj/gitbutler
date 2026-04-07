@@ -3,6 +3,7 @@ use but_core::{sync::RepoExclusive, ui::TreeChange};
 use but_ctx::Context;
 use but_hunk_assignment::{HunkAssignmentRequest, WorktreeChanges};
 use but_hunk_dependency::ui::hunk_dependencies_for_workspace_changes_by_worktree_dir;
+use but_oplog::legacy::{OperationKind, SnapshotDetails};
 use gix::prelude::ObjectIdExt;
 use tracing::instrument;
 
@@ -178,14 +179,30 @@ pub fn assign_hunk(
     ctx: &mut Context,
     assignments: Vec<HunkAssignmentRequest>,
 ) -> anyhow::Result<()> {
-    let context_lines = ctx.settings.context_lines;
-    let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
-    but_hunk_assignment::assign(
-        db.hunk_assignments_mut()?,
-        &repo,
-        &ws,
-        assignments,
-        context_lines,
-    )?;
+    let mut guard = ctx.exclusive_worktree_access();
+
+    let maybe_oplog_entry = but_oplog::UnmaterializedOplogSnapshot::from_details_with_perm(
+        ctx,
+        SnapshotDetails::new(OperationKind::MoveHunk),
+        guard.read_permission(),
+    )
+    .ok();
+
+    {
+        let context_lines = ctx.settings.context_lines;
+        let (repo, ws, mut db) = ctx.workspace_and_db_mut_with_perm(guard.read_permission())?;
+        but_hunk_assignment::assign(
+            db.hunk_assignments_mut()?,
+            &repo,
+            &ws,
+            assignments,
+            context_lines,
+        )?;
+    }
+
+    if let Some(snapshot) = maybe_oplog_entry {
+        snapshot.commit(ctx, guard.write_permission()).ok();
+    }
+
     Ok(())
 }
