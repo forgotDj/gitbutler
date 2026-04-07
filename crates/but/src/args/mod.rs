@@ -1155,7 +1155,7 @@ pub enum Subcommands {
     EvalHook,
 
     /// Show an interactive TUI.
-    #[clap(verbatim_doc_comment, hide = true)]
+    #[clap(verbatim_doc_comment)]
     #[cfg(feature = "legacy")]
     Tui {
         /// Show debug pane with selected-line metadata.
