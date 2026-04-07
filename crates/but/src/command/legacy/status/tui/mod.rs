@@ -1115,41 +1115,22 @@ impl App {
                 self.to_be_discarded = Some(Arc::clone(cli_id));
                 let uncommitted = uncommitted.clone();
 
-                let select_after_reload = if uncommitted.is_entire_file {
+                let select_after_reload = if uncommitted.is_entire_file
                     // Discarding a whole file: handle stack-specific cursor fallback.
-                    if let Some(stack_id) = uncommitted.hunk_assignments.first().stack_id {
-                        // If this is the last file on the stack, jump to the stack's top branch.
-                        if operations::assigned_file_count_for_stack(ctx, stack_id)
-                            .is_ok_and(|count| count == 1)
-                        {
-                            self.select_top_branch_for_stack_after_reload(stack_id)
-                                .unwrap_or(SelectAfterReload::Stack(stack_id))
-                        } else {
-                            // Otherwise keep navigation local by selecting the previous selectable line.
-                            self.cursor
-                                .move_up(&self.status_lines, &self.mode, self.flags.show_files)
-                                .and_then(|cursor| cursor.selected_line(&self.status_lines))
-                                .and_then(|line| line.data.cli_id().cloned())
-                                .map(SelectAfterReload::CliId)
-                                .unwrap_or(SelectAfterReload::Unassigned)
-                        }
-                    } else {
-                        // Whole unassigned file: select the previous selectable line.
-                        self.cursor
-                            .move_up(&self.status_lines, &self.mode, self.flags.show_files)
-                            .and_then(|cursor| cursor.selected_line(&self.status_lines))
-                            .and_then(|line| line.data.cli_id().cloned())
-                            .map(SelectAfterReload::CliId)
-                            .unwrap_or(SelectAfterReload::Unassigned)
-                    }
+                    && let Some(stack_id) = uncommitted.hunk_assignments.first().stack_id
+                    // If this is the last file on the stack, jump to the stack's top branch.
+                    && operations::assigned_file_count_for_stack(ctx, stack_id)
+                        .is_ok_and(|count| count == 1)
+                {
+                    self.select_top_branch_for_stack_after_reload(stack_id)
+                        .unwrap_or(SelectAfterReload::Stack(stack_id))
                 } else {
                     // Discarding only part of a file: select the previous selectable line.
-                    self.cursor
-                        .move_up(&self.status_lines, &self.mode, self.flags.show_files)
-                        .and_then(|cursor| cursor.selected_line(&self.status_lines))
-                        .and_then(|line| line.data.cli_id().cloned())
-                        .map(SelectAfterReload::CliId)
-                        .unwrap_or(SelectAfterReload::Unassigned)
+                    self.cursor.select_previous_cli_id_or_unassigned(
+                        &self.status_lines,
+                        &self.mode,
+                        self.flags.show_files,
+                    )
                 };
 
                 let drop_to_be_discarded =

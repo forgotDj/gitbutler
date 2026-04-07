@@ -178,6 +178,23 @@ impl Cursor {
         lines.get(self.0)
     }
 
+    /// Selects the previous selectable row and returns it as a reload target.
+    ///
+    /// Falls back to selecting the unassigned section if there is no previous
+    /// selectable row.
+    pub(super) fn select_previous_cli_id_or_unassigned(
+        self,
+        lines: &[StatusOutputLine],
+        mode: &Mode,
+        show_files: FilesStatusFlag,
+    ) -> SelectAfterReload {
+        self.move_up(lines, mode, show_files)
+            .and_then(|cursor| cursor.selected_line(lines))
+            .and_then(|line| line.data.cli_id().cloned())
+            .map(SelectAfterReload::CliId)
+            .unwrap_or(SelectAfterReload::Unassigned)
+    }
+
     pub(super) fn selection_cli_id_for_reload(
         self,
         lines: &[StatusOutputLine],
