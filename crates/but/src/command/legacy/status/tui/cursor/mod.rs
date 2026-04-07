@@ -7,7 +7,10 @@ use crate::{
     command::legacy::status::{
         FilesStatusFlag, StatusOutputLine,
         output::StatusOutputLineData,
-        tui::{Mode, branch_operation_display, commit_operation_display, move_operation_display},
+        tui::{
+            Mode, SelectAfterReload, branch_operation_display, commit_operation_display,
+            move_operation_display,
+        },
     },
 };
 
@@ -64,6 +67,48 @@ impl Cursor {
             }
         })?;
         Some(Self(idx))
+    }
+
+    /// Selects what should be focused after discarding the currently selected commit.
+    pub(super) fn select_after_discarded_commit(
+        self,
+        lines: &[StatusOutputLine],
+    ) -> Option<SelectAfterReload> {
+        if self.0 >= lines.len() {
+            return None;
+        }
+
+        for line in lines.iter().skip(self.0 + 1) {
+            if is_discard_commit_boundary(line) {
+                break;
+            }
+
+            if let Some(CliId::Commit { commit_id, .. }) = line.data.cli_id().map(|id| &**id) {
+                return Some(SelectAfterReload::Commit(*commit_id));
+            }
+        }
+
+        for line in lines.iter().take(self.0).rev() {
+            if is_discard_commit_boundary(line) {
+                break;
+            }
+
+            if let Some(CliId::Commit { commit_id, .. }) = line.data.cli_id().map(|id| &**id) {
+                return Some(SelectAfterReload::Commit(*commit_id));
+            }
+        }
+
+        for line in lines.iter().take(self.0 + 1).rev() {
+            if let StatusOutputLineData::Branch { cli_id } = &line.data {
+                return Some(SelectAfterReload::CliId(Arc::clone(cli_id)));
+            }
+
+            if is_discard_commit_boundary(line) {
+                break;
+            }
+        }
+
+        None
     }
 
     pub(super) fn select_first_file_in_commit(
@@ -362,6 +407,28 @@ fn branch_index_for_stack(
             false
         }
     })
+}
+
+/// Returns true if a line marks the boundary of a commit list within a branch section.
+fn is_discard_commit_boundary(line: &StatusOutputLine) -> bool {
+    match &line.data {
+        StatusOutputLineData::Branch { .. }
+        | StatusOutputLineData::StagedChanges { .. }
+        | StatusOutputLineData::UnassignedChanges { .. }
+        | StatusOutputLineData::MergeBase => true,
+        StatusOutputLineData::UpdateNotice
+        | StatusOutputLineData::Connector
+        | StatusOutputLineData::StagedFile { .. }
+        | StatusOutputLineData::UnassignedFile { .. }
+        | StatusOutputLineData::Commit { .. }
+        | StatusOutputLineData::CommitMessage
+        | StatusOutputLineData::EmptyCommitMessage
+        | StatusOutputLineData::File { .. }
+        | StatusOutputLineData::UpstreamChanges
+        | StatusOutputLineData::Warning
+        | StatusOutputLineData::Hint
+        | StatusOutputLineData::NoAssignmentsUnstaged => false,
+    }
 }
 
 /// Returns true if a line is a section header row.

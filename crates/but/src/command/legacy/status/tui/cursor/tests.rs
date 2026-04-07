@@ -12,7 +12,7 @@ use crate::{
         output::{StatusOutputContent, StatusOutputLine, StatusOutputLineData},
         tui::{
             CommitMode, CommitSource, InlineRewordMode, Mode, RubMode, RubSource,
-            mode::UnassignedCommitSource,
+            SelectAfterReload, mode::UnassignedCommitSource,
         },
     },
 };
@@ -212,6 +212,111 @@ fn select_uses_first_matching_commit_when_object_id_appears_multiple_times() {
         Cursor::select_commit(commit_id(wanted), &lines),
         Some(Cursor(0))
     );
+}
+
+#[test]
+fn select_after_discarded_commit_selects_commit_below_when_on_top_commit() {
+    let top = "1111111111111111111111111111111111111111";
+    let below = "2222222222222222222222222222222222222222";
+    let lines = vec![
+        line(StatusOutputLineData::Branch {
+            cli_id: branch_cli_id("main", "b0", None),
+        }),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id(top, "c0"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
+        }),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id(below, "c1"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
+        }),
+    ];
+
+    assert!(matches!(
+        Cursor(1).select_after_discarded_commit(&lines),
+        Some(SelectAfterReload::Commit(target_commit_id)) if target_commit_id == commit_id(below)
+    ));
+}
+
+#[test]
+fn select_after_discarded_commit_selects_commit_above_when_on_bottom_commit() {
+    let above = "1111111111111111111111111111111111111111";
+    let bottom = "2222222222222222222222222222222222222222";
+    let lines = vec![
+        line(StatusOutputLineData::Branch {
+            cli_id: branch_cli_id("main", "b0", None),
+        }),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id(above, "c0"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
+        }),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id(bottom, "c1"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
+        }),
+    ];
+
+    assert!(matches!(
+        Cursor(2).select_after_discarded_commit(&lines),
+        Some(SelectAfterReload::Commit(target_commit_id)) if target_commit_id == commit_id(above)
+    ));
+}
+
+#[test]
+fn select_after_discarded_commit_selects_branch_when_commit_is_only_one_in_branch() {
+    let only = "1111111111111111111111111111111111111111";
+    let lines = vec![
+        line(StatusOutputLineData::Branch {
+            cli_id: branch_cli_id("main", "b0", None),
+        }),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id(only, "c0"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
+        }),
+    ];
+
+    assert!(matches!(
+        Cursor(1).select_after_discarded_commit(&lines),
+        Some(SelectAfterReload::CliId(cli_id))
+            if matches!(&*cli_id, CliId::Branch { id, .. } if id == "b0")
+    ));
+}
+
+#[test]
+fn select_after_discarded_commit_selects_commit_below_when_on_middle_commit() {
+    let above = "1111111111111111111111111111111111111111";
+    let middle = "2222222222222222222222222222222222222222";
+    let below = "3333333333333333333333333333333333333333";
+    let lines = vec![
+        line(StatusOutputLineData::Branch {
+            cli_id: branch_cli_id("main", "b0", None),
+        }),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id(above, "c0"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
+        }),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id(middle, "c1"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
+        }),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id(below, "c2"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
+        }),
+    ];
+
+    assert!(matches!(
+        Cursor(2).select_after_discarded_commit(&lines),
+        Some(SelectAfterReload::Commit(target_commit_id)) if target_commit_id == commit_id(below)
+    ));
 }
 
 #[test]

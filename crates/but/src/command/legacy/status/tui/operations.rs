@@ -7,7 +7,9 @@
 use anyhow::Context as _;
 use bstr::BString;
 use but_api::{
-    commit::types::{CommitCreateResult, CommitInsertBlankResult, CommitRewordResult},
+    commit::types::{
+        CommitCreateResult, CommitDiscardResult, CommitInsertBlankResult, CommitRewordResult,
+    },
     diff::ComputeLineStats,
 };
 use but_core::DiffSpec;
@@ -526,4 +528,11 @@ pub(super) fn discard_stack(ctx: &mut Context, stack_id: StackId) -> anyhow::Res
     };
 
     discard_uncommitted(ctx, stack_changes)
+}
+
+pub(super) fn commit_discard(
+    ctx: &mut Context,
+    commit_id: gix::ObjectId,
+) -> anyhow::Result<CommitDiscardResult> {
+    but_api::commit::discard_commit::commit_discard(ctx, commit_id)
 }

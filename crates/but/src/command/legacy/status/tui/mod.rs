@@ -1187,10 +1187,37 @@ impl App {
                     }),
                 )
             }
-            CliId::PathPrefix { .. }
-            | CliId::CommittedFile { .. }
-            | CliId::Branch { .. }
-            | CliId::Commit { .. } => return,
+            CliId::Commit { commit_id, .. } => {
+                self.to_be_discarded = Some(Arc::clone(cli_id));
+                let commit_id = *commit_id;
+                let select_after_reload = self
+                    .cursor
+                    .select_after_discarded_commit(&self.status_lines);
+                let drop_to_be_discarded =
+                    message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
+                Confirm::new(
+                    format!("Discard commit {}", commit_id.to_hex_with_len(7)),
+                    run_after_confirmation_msg(move |_, ctx, messages| {
+                        let discard_result = operations::commit_discard(ctx, commit_id)?;
+                        let select_after_reload =
+                            select_after_reload.map(|selection| match selection {
+                                SelectAfterReload::Commit(target_commit_id) => {
+                                    let remapped_target_commit_id = discard_result
+                                        .replaced_commits
+                                        .get(&target_commit_id)
+                                        .copied()
+                                        .unwrap_or(target_commit_id);
+                                    SelectAfterReload::Commit(remapped_target_commit_id)
+                                }
+                                other => other,
+                            });
+                        messages.push(Message::Reload(select_after_reload));
+                        drop(drop_to_be_discarded);
+                        Ok(())
+                    }),
+                )
+            }
+            CliId::PathPrefix { .. } | CliId::CommittedFile { .. } | CliId::Branch { .. } => return,
         });
     }
 
