@@ -273,18 +273,18 @@ fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
         key_matcher: press().code(KeyCode::Char('r')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Rub(RubMessage::Start {
-            using_but_api: false,
+            using_but_api: true,
         }),
         hide_from_hotbar: false,
     });
 
     key_binds.register(StaticKeyBind {
-        short_description: "rub (but-api)",
+        short_description: "rub (legacy)",
         chord_display: "shift+r",
         key_matcher: press().shift().code(KeyCode::Char('R')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Rub(RubMessage::Start {
-            using_but_api: true,
+            using_but_api: false,
         }),
         hide_from_hotbar: true,
     });

@@ -2533,8 +2533,8 @@ impl App {
             "  {}  ",
             match self.mode {
                 Mode::Normal => "normal",
-                Mode::Rub(..) => "rub",
-                Mode::RubButApi(..) => "rub (api)",
+                Mode::Rub(..) => "rub (legacy)",
+                Mode::RubButApi(..) => "rub",
                 Mode::InlineReword(..) => "reword",
                 Mode::Command(..) => "command",
                 Mode::Commit(..) => "commit",
