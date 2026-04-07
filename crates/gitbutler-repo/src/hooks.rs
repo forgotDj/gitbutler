@@ -185,14 +185,6 @@ pub fn pre_push(
     .spawn()?;
 
     {
-        // Wait for the child process to be ready before writing to stdin.
-        // Check if the process has already exited unexpectedly.
-        if let Some(status) = child.try_wait()? {
-            // Process already exited, don't write to stdin.
-            let error = format!("pre-push hook exited early with status: {status}");
-            return Ok(HookResult::Failure(ErrorData { error }));
-        }
-
         let remote_commit = repo
             .try_find_reference(&remote_tracking_branch.to_string())?
             .map(|mut reference| reference.peel_to_id().map(|id| id.detach()))
@@ -203,10 +195,16 @@ pub fn pre_push(
         let local_tracking_branch_deduced =
             format!("refs/heads/{}", remote_tracking_branch.branch());
         let stdin = child.stdin.as_mut().expect("configured");
-        stdin.write_all(
-            format!("{local_tracking_branch_deduced} {local_commit} {remote_tracking_branch} {remote_commit}\n")
-                .as_bytes(),
-        )?;
+        let refspec = format!(
+            "{local_tracking_branch_deduced} {local_commit} {remote_tracking_branch} {remote_commit}\n"
+        );
+        // Hooks may exit before reading stdin if they don't need the refspec info.
+        // The actual success/failure is determined by the exit code via wait_with_output() below.
+        if let Err(err) = stdin.write_all(refspec.as_bytes())
+            && err.kind() != std::io::ErrorKind::BrokenPipe
+        {
+            return Err(err.into());
+        }
     }
 
     let output = child.wait_with_output()?;
