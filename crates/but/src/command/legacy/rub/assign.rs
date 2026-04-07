@@ -160,6 +160,7 @@ fn assign_all_inner(
                 hunk_header: assignment.hunk_header,
                 path_bytes: assignment.path_bytes,
                 stack_id: to_stack_id,
+                branch_ref: to_branch.as_ref().map(|n| to_full_ref_name(n)),
             });
         }
     }
@@ -225,12 +226,23 @@ fn stack_id_to_branch_name(ctx: &Context, stack_id: &StackId) -> Option<String> 
         .and_then(|s| s.heads.first().map(|h| h.name.to_string()))
 }
 
+/// Normalize a branch name to a full ref name (e.g. "foo" → "refs/heads/foo").
+/// If the name is already a full ref, it is returned as-is.
+fn to_full_ref_name(name: &str) -> String {
+    if name.starts_with("refs/") {
+        name.to_string()
+    } else {
+        format!("refs/heads/{name}")
+    }
+}
+
 pub(crate) fn to_assignment_request(
     ctx: &mut Context,
     assignments: impl Iterator<Item = (Option<HunkHeader>, BString)>,
     branch_name: Option<&str>,
 ) -> anyhow::Result<Vec<HunkAssignmentRequest>> {
     let stack_id = branch_name_to_stack_id(ctx, branch_name)?;
+    let branch_ref = branch_name.map(to_full_ref_name);
 
     let mut reqs = Vec::new();
     for (hunk_header, path_bytes) in assignments {
@@ -238,6 +250,7 @@ pub(crate) fn to_assignment_request(
             hunk_header,
             path_bytes,
             stack_id,
+            branch_ref: branch_ref.clone(),
         });
     }
     Ok(reqs)

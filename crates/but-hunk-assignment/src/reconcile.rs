@@ -32,10 +32,12 @@ impl HunkAssignment {
         match self.stack_id {
             Some(_) => {
                 self.stack_id = other.stack_id;
+                self.branch_ref = other.branch_ref.clone();
             }
             None => {
                 if update_unassigned {
                     self.stack_id = other.stack_id;
+                    self.branch_ref = other.branch_ref.clone();
                 }
             }
         }
@@ -44,6 +46,10 @@ impl HunkAssignment {
             && !applied_stack_ids.contains(&stack_id)
         {
             self.stack_id = None;
+        }
+        // Invariant: if stack_id was cleared, branch_ref must also be cleared
+        if self.stack_id.is_none() {
+            self.branch_ref = None;
         }
     }
 }
@@ -85,6 +91,7 @@ pub(crate) fn assignments(
                     && unique_stack_ids.count() > 1
                 {
                     new_assignment.stack_id = None;
+                    new_assignment.branch_ref = None;
                 }
             }
         }

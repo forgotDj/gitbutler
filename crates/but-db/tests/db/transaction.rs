@@ -20,6 +20,7 @@ fn deferred() -> anyhow::Result<()> {
         path: "ha1".into(),
         path_bytes: vec![],
         stack_id: None,
+        branch_ref: None,
     }];
     ha1.set_all(assignments.clone())
         .expect("first transaction gets the lock");
@@ -161,6 +162,7 @@ fn deferred_savepoint_write_after_concurrent_commit_returns_busy_snapshot() -> a
         path: "from_t1".into(),
         path_bytes: vec![],
         stack_id: None,
+        branch_ref: None,
     }];
     t1.hunk_assignments_mut()?.set_all(assignments.clone())?;
     t1.commit()?;

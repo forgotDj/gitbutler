@@ -91,6 +91,7 @@ pub fn commit_uncommit_changes_only_with_perm(
                 hunk_header: assignment.hunk_header,
                 path_bytes: assignment.path_bytes,
                 stack_id: Some(stack_id),
+                branch_ref: None,
             })
             .collect();
 

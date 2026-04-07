@@ -613,6 +613,7 @@ pub fn uncommit_changes(
                 hunk_header: a.hunk_header,
                 path_bytes: a.path_bytes,
                 stack_id: Some(stack_id),
+                branch_ref: None,
             })
             .collect::<Vec<_>>();
 
