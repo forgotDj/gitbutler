@@ -28,11 +28,13 @@ export declare function absorptionPlan(projectId: string, target: AbsorptionTarg
 export declare function apply(projectId: string, existingBranch: string): Promise<ApplyOutcome>
 
 /**
- * Persists `assignments` for the current workspace.
+ * Persists `assignments` for the current workspace and records an oplog
+ * snapshot on success.
  *
- * `assignments` is applied against the current workspace state and stored in
- * the hunk-assignment database. For lower-level implementation details, see
- * [`but_hunk_assignment::assign()`].
+ * This acquires exclusive worktree access from `ctx` before writing
+ * assignments.
+ *
+ * See [`assign_hunk_with_perm()`] for details.
  */
 export declare function assignHunk(projectId: string, assignments: Array<HunkAssignmentRequest>): Promise<void>
 
@@ -163,6 +165,9 @@ export declare function commitSquash(projectId: string, subjectCommitId: string,
  * See [`commit_uncommit_changes_with_perm()`] for details.
  */
 export declare function commitUncommitChanges(projectId: string, commitId: string, changes: Array<DiffSpec>, assignTo: string | null): Promise<MoveChangesResult>
+
+/** Undo `subject_commit_id` using the behavior described by [`commit_undo_only_with_perm()`]. */
+export declare function commitUndo(projectId: string, subjectCommitId: string): Promise<CommitUndoResult>
 
 /**
  * Get the forge provider name.
@@ -678,6 +683,14 @@ export type CommitState = {
   subject: string;
 } | {
   type: "Integrated";
+};
+
+/** JSON transport type for undoing a commit. */
+export type CommitUndoResult = {
+  /** The ID of the commit that was undone. */
+  undoneCommit: string;
+  /** Commits that were replaced by this operation. Maps `old_id -> new_id`. */
+  replacedCommits: Record<string, string>;
 };
 
 /** Represents what was causing a particular commit to conflict when rebased. */
