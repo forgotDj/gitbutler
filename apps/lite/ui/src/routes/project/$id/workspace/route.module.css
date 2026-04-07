@@ -121,7 +121,7 @@
 
 	&:hover,
 	&[aria-expanded="true"] {
-		background-color: var(--color-button-bg);
+		background-color: var(--color-button-hover-bg);
 	}
 }
 
