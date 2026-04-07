@@ -11,6 +11,7 @@ import {
 	getParentSection,
 	type ChangesSectionItem,
 	type BaseCommitItem,
+	Item,
 } from "./-Item.ts";
 import {
 	type SelectedCommitItem,
@@ -470,12 +471,8 @@ export const useWorkspaceShortcuts = ({
 	const queryClient = useQueryClient();
 	const resolveOperationSource = useResolveOperationSource(projectId);
 
-	const requestAbsorptionPlanForSelection = (
-		selectedItem:
-			| ({ _tag: "ChangesSection" } & ChangesSectionItem)
-			| ({ _tag: "Change" } & ChangeItem),
-	) => {
-		const operationSourceRef = operationSourceRefFromItem(selectedItem);
+	const requestAbsorptionPlanForItem = (item: Item) => {
+		const operationSourceRef = operationSourceRefFromItem(item);
 
 		const operationSource = resolveOperationSource(operationSourceRef);
 		if (operationSource?._tag !== "TreeChanges") return;
@@ -590,15 +587,10 @@ export const useWorkspaceShortcuts = ({
 			Match.orElse((action) => handleHunkSelectionAction(action)),
 		);
 
-	const handleChangesAction = (
-		action: ChangesAction,
-		selectedItem:
-			| ({ _tag: "ChangesSection" } & ChangesSectionItem)
-			| ({ _tag: "Change" } & ChangeItem),
-	) =>
+	const handleChangesAction = (action: ChangesAction, selectedItem: SelectedItem) =>
 		Match.value(action).pipe(
 			Match.tags({
-				Absorb: () => requestAbsorptionPlanForSelection(selectedItem),
+				Absorb: () => requestAbsorptionPlanForItem(selectedItem),
 			}),
 			Match.orElse((action) => handlePrimaryPanelAction(action, selectedItem)),
 		);
