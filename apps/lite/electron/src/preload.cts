@@ -15,6 +15,7 @@ import type {
 	CommitInsertBlankResult,
 	CommitMoveResult,
 	CommitRewordResult,
+	CommitSquashResult,
 	MoveBranchResult,
 	MoveChangesResult,
 	UnifiedPatch,
@@ -63,6 +64,8 @@ const api: LiteElectronApi = {
 		ipcRenderer.invoke("workspace:commit-insert-blank", params) as Promise<CommitInsertBlankResult>,
 	commitMove: (params) =>
 		ipcRenderer.invoke("workspace:commit-move", params) as Promise<CommitMoveResult>,
+	commitSquash: (params) =>
+		ipcRenderer.invoke("workspace:commit-squash", params) as Promise<CommitSquashResult>,
 	commitReword: (params) =>
 		ipcRenderer.invoke("workspace:commit-reword", params) as Promise<CommitRewordResult>,
 	commitMoveChangesBetween: (params) =>

@@ -9,14 +9,15 @@ import { type InsertSide } from "@gitbutler/but-sdk";
 import { FC, type ReactNode, useEffect } from "react";
 import sharedStyles from "../-shared.module.css";
 import { getCombineOperation, type OperationSource } from "./-OperationSource.ts";
+import { type OperationSourceRef } from "./-OperationSourceRef.ts";
 
 type DragData = {
-	operationSource: OperationSource;
+	operationSourceRef: OperationSourceRef;
 };
 
-export const parseDragData = (data: unknown): OperationSource | null => {
-	if (typeof data !== "object" || data === null || !("operationSource" in data)) return null;
-	return (data as DragData).operationSource;
+export const parseDragData = (data: unknown): OperationSourceRef | null => {
+	if (typeof data !== "object" || data === null || !("operationSourceRef" in data)) return null;
+	return (data as DragData).operationSourceRef;
 };
 
 const parseDropTargetData = (data: unknown): Operation | null => {
@@ -28,7 +29,9 @@ export const DragPreview: FC<{ children: ReactNode }> = ({ children }) => (
 	<div className={sharedStyles.dragPreview}>{children}</div>
 );
 
-export const getDragData = (operationSource: OperationSource): DragData => ({ operationSource });
+export const getDragData = (operationSourceRef: OperationSourceRef): DragData => ({
+	operationSourceRef,
+});
 
 export const getCommitTargetInstruction = ({
 	operationSource,
@@ -72,14 +75,16 @@ export const getCommitTargetInstruction = ({
 					"reorder-before":
 						(operationSource._tag === "Commit" &&
 							!isNoOpCommitMove(operationSource.commitId, "above")) ||
-						(operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Changes") ||
+						(operationSource._tag === "TreeChanges" &&
+							operationSource.parent._tag === "ChangesSection") ||
 						(operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Commit")
 							? "available"
 							: "not-available",
 					"reorder-after":
 						(operationSource._tag === "Commit" &&
 							!isNoOpCommitMove(operationSource.commitId, "below")) ||
-						(operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Changes") ||
+						(operationSource._tag === "TreeChanges" &&
+							operationSource.parent._tag === "ChangesSection") ||
 						(operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Commit")
 							? "available"
 							: "not-available",
@@ -93,7 +98,7 @@ export const getCommitTargetInstruction = ({
 	);
 };
 
-export const useMonitorDraggedOperationSource = ({ projectId }: { projectId: string }) => {
+export const useMonitorDraggedOperationSourceRef = ({ projectId }: { projectId: string }) => {
 	const runOperation = useRunOperation(projectId);
 
 	useEffect(

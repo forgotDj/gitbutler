@@ -102,7 +102,7 @@
 	flex-direction: column;
 }
 
-.stackHeader {
+.stackActions {
 	display: flex;
 	column-gap: 8px;
 	align-items: center;
@@ -121,7 +121,7 @@
 
 	&:hover,
 	&[aria-expanded="true"] {
-		background-color: var(--color-button-bg);
+		background-color: var(--color-button-hover-bg);
 	}
 }
 
@@ -164,7 +164,7 @@
 }
 
 .editorShortcut {
-	color: var(--color-item-selected-fg);
+	color: var(--color-item-row-selected-fg);
 	font-family: monospace;
 }
 

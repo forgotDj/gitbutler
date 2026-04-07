@@ -10,6 +10,7 @@ import {
 	segmentItem,
 } from "./-Item.ts";
 import { getRelative } from "../-shared.tsx";
+import { asSelectedItem, SelectedItem } from "./-SelectedItem.ts";
 
 const hasAssignmentsForPath = ({
 	assignments,
@@ -26,7 +27,7 @@ const hasAssignmentsForPath = ({
 
 type WorkspaceSection = {
 	section: Item;
-	items: Array<Item>;
+	children: Array<Item>;
 };
 
 type WorkspaceOutline = NonEmptyArray<WorkspaceSection>;
@@ -46,7 +47,7 @@ export const buildWorkspaceOutline = ({
 }: BuildWorkspaceOutlineArgs): WorkspaceOutline => {
 	const changesSection = (stackId: string | null): WorkspaceSection => ({
 		section: changesSectionItem(stackId),
-		items: changes.flatMap((change) =>
+		children: changes.flatMap((change) =>
 			hasAssignmentsForPath({ assignments, stackId, path: change.path })
 				? [changeItem(stackId, change.path)]
 				: [],
@@ -61,7 +62,7 @@ export const buildWorkspaceOutline = ({
 		const branchName = segment.refName?.displayName ?? null;
 		return {
 			section: segmentItem({ stackId, segmentIndex, branchName }),
-			items: segment.commits.map((commit) =>
+			children: segment.commits.map((commit) =>
 				commitItem({ stackId, segmentIndex, branchName, commitId: commit.id }),
 			),
 		};
@@ -69,7 +70,7 @@ export const buildWorkspaceOutline = ({
 
 	const baseCommitSection = (commitId: string): WorkspaceSection => ({
 		section: baseCommitItem(commitId),
-		items: [],
+		children: [],
 	});
 
 	return [
@@ -111,12 +112,12 @@ export const buildNavigationIndex = (outline: WorkspaceOutline): NavigationIndex
 		model.items.push(item);
 	};
 
-	for (const { section, items } of outline) {
+	for (const { section, children } of outline) {
 		const sectionIndex = model.sectionStartIndexes.length;
 		model.sectionStartIndexes.push(model.items.length);
 		addItem(section, sectionIndex);
 
-		for (const item of items) addItem(item, sectionIndex);
+		for (const item of children) addItem(item, sectionIndex);
 	}
 
 	return model;
@@ -151,3 +152,11 @@ export const getAdjacentSection = (
 	if (adjacentSectionStartIndex === null) return null;
 	return index.items[adjacentSectionStartIndex] ?? null;
 };
+
+export const navigationIndexIncludes = (
+	navigationIndex: NavigationIndex,
+	item: Item | null,
+): boolean => (item ? navigationIndex.indexByKey.has(itemIdentityKey(item)) : false);
+
+export const getDefaultSelectedItem = (navigationIndex: NavigationIndex): SelectedItem | null =>
+	navigationIndex.items[0] ? asSelectedItem(navigationIndex.items[0]) : null;

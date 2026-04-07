@@ -20,6 +20,7 @@ import type {
 	CommitInsertBlankResult,
 	CommitMoveResult,
 	CommitRewordResult,
+	CommitSquashResult,
 	MoveBranchResult,
 	MoveChangesResult,
 	UnifiedPatch,
@@ -95,6 +96,12 @@ export interface CommitMoveChangesBetweenParams {
 	sourceCommitId: string;
 	destinationCommitId: string;
 	changes: Array<DiffSpec>;
+}
+
+export interface CommitSquashParams {
+	projectId: string;
+	sourceCommitId: string;
+	destinationCommitId: string;
 }
 
 export interface CommitMoveParams {
@@ -176,6 +183,7 @@ export interface LiteElectronApi {
 	commitDetailsWithLineStats: (params: CommitDetailsWithLineStatsParams) => Promise<CommitDetails>;
 	commitInsertBlank: (params: CommitInsertBlankParams) => Promise<CommitInsertBlankResult>;
 	commitMove: (params: CommitMoveParams) => Promise<CommitMoveResult>;
+	commitSquash: (params: CommitSquashParams) => Promise<CommitSquashResult>;
 	commitReword: (params: CommitRewordParams) => Promise<CommitRewordResult>;
 	commitMoveChangesBetween: (params: CommitMoveChangesBetweenParams) => Promise<MoveChangesResult>;
 	commitUncommitChanges: (params: CommitUncommitChangesParams) => Promise<MoveChangesResult>;
@@ -212,6 +220,7 @@ export const liteIpcChannels = {
 	commitDetailsWithLineStats: "workspace:commit-details-with-line-stats",
 	commitInsertBlank: "workspace:commit-insert-blank",
 	commitMove: "workspace:commit-move",
+	commitSquash: "workspace:commit-squash",
 	commitReword: "workspace:commit-reword",
 	commitMoveChangesBetween: "workspace:commit-move-changes-between",
 	commitUncommitChanges: "workspace:commit-uncommit-changes",

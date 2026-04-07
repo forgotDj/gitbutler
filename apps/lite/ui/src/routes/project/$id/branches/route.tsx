@@ -36,7 +36,7 @@ import {
 import { CommitFileSource } from "#ui/routes/project/$id/workspace/-OperationSubjects.tsx";
 import uiStyles from "#ui/ui.module.css";
 import sharedStyles from "../-shared.module.css";
-import { getDefaultSelection, normalizeBranchSelection, Selection } from "./-Selection.ts";
+import { getDefaultSelection, isValidBranchSelection, Selection } from "./-Selection.ts";
 
 const FileDiff: FC<{
 	projectId: string;
@@ -317,7 +317,7 @@ const BranchRow: FC<
 			className={classes(
 				sharedStyles.row,
 				(branchSelection || commitSelection) && sharedStyles.rowSelected,
-				(branchSelection || commitSelection) && sharedStyles.itemSelected,
+				(branchSelection || commitSelection) && sharedStyles.itemRowSelected,
 				className,
 			)}
 		>
@@ -407,8 +407,8 @@ const CommitRow: FC<{
 			className={classes(
 				sharedStyles.row,
 				commitSelection && sharedStyles.rowSelected,
-				commitSelection && sharedStyles.itemSelected,
-				isHighlighted && sharedStyles.itemHighlighted,
+				commitSelection && sharedStyles.itemRowSelected,
+				isHighlighted && sharedStyles.itemRowHighlighted,
 			)}
 			style={{ ...(isDetailsPending && { opacity: 0.5 }) }}
 			aria-busy={isDetailsPending}
@@ -480,8 +480,8 @@ const CommitC: FC<{
 									className={classes(
 										sharedStyles.row,
 										isSelected && sharedStyles.rowSelected,
-										sharedStyles.file,
-										isSelected && sharedStyles.fileSelected,
+										sharedStyles.fileRow,
+										isSelected && sharedStyles.fileRowSelected,
 									)}
 								>
 									<FileButton
@@ -638,8 +638,9 @@ const ProjectBranchesPage: FC = () => {
 	const sortedBranches = branches.slice().sort((a, b) => a.name.localeCompare(b.name));
 	const [_selection, select] = useState<Selection | null>(null);
 	const selection =
-		(_selection ? normalizeBranchSelection(_selection, sortedBranches) : null) ??
-		getDefaultSelection(sortedBranches);
+		_selection && isValidBranchSelection(_selection, sortedBranches)
+			? _selection
+			: getDefaultSelection(sortedBranches);
 	const selectedBranch = sortedBranches.find((branch) => branch.name === selection?.branchName);
 
 	if (!project) return <p>Project not found.</p>;

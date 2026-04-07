@@ -12,6 +12,7 @@ import {
 	type CommitDetailsWithLineStatsParams,
 	type CommitInsertBlankParams,
 	type CommitMoveParams,
+	type CommitSquashParams,
 	type CommitRewordParams,
 	type CommitMoveChangesBetweenParams,
 	type CommitUncommitChangesParams,
@@ -37,6 +38,7 @@ import {
 	commitCreate,
 	commitDiscard,
 	commitInsertBlank,
+	commitSquash,
 	commitReword,
 	commitUncommitChanges,
 	headInfo,
@@ -115,6 +117,11 @@ function registerIpcHandlers(): void {
 		liteIpcChannels.commitMove,
 		(_e, { projectId, subjectCommitId, relativeTo, side }: CommitMoveParams) =>
 			commitMove(projectId, subjectCommitId, relativeTo, side),
+	);
+	ipcMain.handle(
+		liteIpcChannels.commitSquash,
+		(_e, { projectId, sourceCommitId, destinationCommitId }: CommitSquashParams) =>
+			commitSquash(projectId, sourceCommitId, destinationCommitId),
 	);
 	ipcMain.handle(
 		liteIpcChannels.commitReword,
