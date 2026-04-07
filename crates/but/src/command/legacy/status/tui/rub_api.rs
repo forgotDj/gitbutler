@@ -5,7 +5,7 @@
 
 use anyhow::Context as _;
 use but_api::commit::types::{
-    CommitCreateResult, CommitMoveResult, CommitSquashResult, MoveChangesResult,
+    CommitCreateResult, CommitMoveResult, CommitSquashResult, CommitUndoResult, MoveChangesResult,
 };
 use but_core::{DiffSpec, diff::tree_changes, ref_metadata::StackId};
 use but_ctx::Context;
@@ -267,9 +267,9 @@ fn execute_unassigned_to_stack(
 fn execute_undo_commit(
     ctx: &mut Context,
     operation: &UndoCommitOperation,
-) -> anyhow::Result<MoveChangesResult> {
-    let changes = changes_for_commit(ctx, operation.oid)?;
-    but_api::commit::uncommit::commit_uncommit_changes(ctx, operation.oid, changes, None)
+) -> anyhow::Result<CommitUndoResult> {
+    let UndoCommitOperation { oid } = operation;
+    but_api::commit::undo::commit_undo(ctx, *oid)
 }
 
 /// Executes `SquashCommits` by squashing source into target.
@@ -445,19 +445,6 @@ fn stack_id_for_branch_name(
     Ok(ws
         .find_segment_and_stack_by_refname(target_branch_full_name.as_ref())
         .and_then(|(stack, _segment)| stack.id))
-}
-
-/// Computes diff specs for all changes in `commit_oid` relative to its first parent.
-fn changes_for_commit(ctx: &Context, commit_oid: gix::ObjectId) -> anyhow::Result<Vec<DiffSpec>> {
-    let repo = ctx.repo.get()?;
-    let source_commit = repo.find_commit(commit_oid)?;
-    let source_commit_parent_id = source_commit.parent_ids().next().context("no parents")?;
-
-    let tree_changes = tree_changes(&repo, Some(source_commit_parent_id.detach()), commit_oid)?;
-    Ok(tree_changes
-        .into_iter()
-        .map(DiffSpec::from)
-        .collect::<Vec<_>>())
 }
 
 /// Computes diff specs for changes to `path` in `commit_oid` relative to its first parent.
