@@ -1811,7 +1811,11 @@ const SegmentC: FC<{
 
 	return (
 		<div
-			className={classes(sharedStyles.section, isSectionSelected && sharedStyles.sectionSelected)}
+			className={classes(
+				sharedStyles.section,
+				styles.segment,
+				isSectionSelected && sharedStyles.sectionSelected,
+			)}
 		>
 			<SegmentRow
 				branchRenameFormRef={branchRenameFormRef}
