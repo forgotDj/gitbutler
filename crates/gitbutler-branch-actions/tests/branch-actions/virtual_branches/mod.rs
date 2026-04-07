@@ -418,13 +418,11 @@ pub fn create_commit(
 
     let meta = ctx.legacy_meta()?;
     let stacks = {
-        let mut cache = ctx.cache.get_cache_mut()?;
         but_workspace::legacy::stacks_v3(
             &repo,
             &meta,
             but_workspace::legacy::StacksFilter::InWorkspace,
             None,
-            &mut cache,
         )?
     };
 

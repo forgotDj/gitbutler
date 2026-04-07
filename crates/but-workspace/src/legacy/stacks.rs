@@ -168,7 +168,6 @@ pub fn stacks_v3(
     meta: &impl RefMetadata,
     filter: StacksFilter,
     ref_name_override: Option<&gix::refs::FullNameRef>,
-    cache: &mut but_db::CacheHandle,
 ) -> anyhow::Result<Vec<StackEntry>> {
     // TODO: See if this works at all once VirtualBranches.toml isn't the backing anymore.
     //       Probably needs to change, maybe even alongside the notion of 'unapplied'.
@@ -228,8 +227,8 @@ pub fn stacks_v3(
         traversal: but_graph::init::Options::limited(),
     };
     let info = match ref_name_override {
-        None => head_info(repo, meta, options, cache),
-        Some(ref_name) => ref_info(repo.find_reference(ref_name)?, meta, options, cache),
+        None => head_info(repo, meta, options),
+        Some(ref_name) => ref_info(repo.find_reference(ref_name)?, meta, options),
     }?;
     let stack_ids_by_ref_name = stack_ids_by_ref_name(meta)?;
 
@@ -289,7 +288,6 @@ pub fn stack_details_v3(
     stack_id: Option<StackId>,
     repo: &gix::Repository,
     meta: &impl RefMetadata,
-    cache: &mut but_db::CacheHandle,
 ) -> anyhow::Result<ui::StackDetails> {
     // Prefer the current `HEAD` projection if it can still see the requested stack, and only fall
     // back to resolving from a surviving ref when that stack is no longer reachable from `HEAD`.
@@ -311,7 +309,7 @@ pub fn stack_details_v3(
             // would otherwise be returned. The problem is that then the workspace might not be correct, but there isn't
             // another way that still allows to extend the range via gas-stations. Maybe one day we won't need this.
             ref_info_options.traversal.hard_limit = Some(500);
-            let mut info = head_info(repo, meta, ref_info_options, cache)?;
+            let mut info = head_info(repo, meta, ref_info_options)?;
             if info.is_entrypoint {
                 if info.stacks.len() != 1 {
                     bail!(
@@ -329,10 +327,9 @@ pub fn stack_details_v3(
             }
         }
         Some(stack_id) => {
-            if let Some(stack) = stack_by_id(
-                head_info(repo, meta, ref_info_options.clone(), cache)?,
-                stack_id,
-            ) {
+            if let Some(stack) =
+                stack_by_id(head_info(repo, meta, ref_info_options.clone())?, stack_id)
+            {
                 stack
             } else {
                 let branch_names_by_stack_id = branch_names_by_stack_id(meta)?;
@@ -345,7 +342,7 @@ pub fn stack_details_v3(
                     .with_context(|| {
                         format!("Couldn't find any refs for stack {stack_id} in the repository")
                     })?;
-                let ref_info = ref_info(existing_ref, meta, ref_info_options, cache)?;
+                let ref_info = ref_info(existing_ref, meta, ref_info_options)?;
                 stack_by_id(ref_info, stack_id).with_context(|| {
                     format!("Really couldn't find {stack_id} in the current workspace projection")
                 })?

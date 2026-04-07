@@ -113,7 +113,6 @@ fn collect_stacks(
     repo: &gix::Repository,
 ) -> anyhow::Result<Vec<StackInfo>> {
     let meta = ctx.meta()?;
-    let mut cache = ctx.cache.get_cache_mut()?;
     let info = but_workspace::head_info(
         repo,
         &meta,
@@ -121,7 +120,6 @@ fn collect_stacks(
             expensive_commit_info: false,
             ..Default::default()
         },
-        &mut cache,
     )?;
     Ok(info
         .stacks

@@ -1,23 +1,18 @@
 use but_core::ChangeId;
 use but_workspace::{legacy::StacksFilter, ref_info};
-use gix::prelude::ObjectIdExt;
+use gix::{ObjectId, prelude::ObjectIdExt};
 
 use crate::ref_info::utils::{read_only_in_memory_scenario, standard_options};
 
 /// All tests that use a workspace commit for a fully managed, explicit workspace.
 pub(crate) mod with_workspace_commit;
 
-pub fn in_memory_cache() -> but_db::CacheHandle {
-    but_db::CacheHandle::new_at_path(":memory:")
-}
-
 pub fn head_info(
     repo: &gix::Repository,
     meta: &but_meta::VirtualBranchesTomlMetadata,
     opts: but_workspace::ref_info::Options,
 ) -> anyhow::Result<but_workspace::RefInfo> {
-    let mut cache = in_memory_cache();
-    but_workspace::head_info(repo, meta, opts, &mut cache)
+    but_workspace::head_info(repo, meta, opts)
 }
 
 pub fn stacks_v3(
@@ -26,8 +21,7 @@ pub fn stacks_v3(
     filter: StacksFilter,
     ref_name_override: Option<&gix::refs::FullNameRef>,
 ) -> anyhow::Result<Vec<but_workspace::legacy::ui::StackEntry>> {
-    let mut cache = in_memory_cache();
-    but_workspace::legacy::stacks_v3(repo, meta, filter, ref_name_override, &mut cache)
+    but_workspace::legacy::stacks_v3(repo, meta, filter, ref_name_override)
 }
 
 pub fn stack_details_v3(
@@ -35,8 +29,7 @@ pub fn stack_details_v3(
     repo: &gix::Repository,
     meta: &but_meta::VirtualBranchesTomlMetadata,
 ) -> anyhow::Result<but_workspace::ui::StackDetails> {
-    let mut cache = in_memory_cache();
-    but_workspace::legacy::stack_details_v3(stack_id, repo, meta, &mut cache)
+    but_workspace::legacy::stack_details_v3(stack_id, repo, meta)
 }
 
 fn first_commit(info: &but_workspace::RefInfo) -> &but_workspace::ref_info::LocalCommit {
@@ -44,30 +37,22 @@ fn first_commit(info: &but_workspace::RefInfo) -> &but_workspace::ref_info::Loca
 }
 
 #[test]
-fn assigns_and_persists_change_id_for_headerless_commit() -> anyhow::Result<()> {
+fn assigns_deterministic_change_id_for_headerless_commit() -> anyhow::Result<()> {
     let (repo, meta) = read_only_in_memory_scenario("single-branch-10-commits")?;
-    let mut cache = in_memory_cache();
-
-    let info = but_workspace::head_info(&repo, &*meta, standard_options(), &mut cache)?;
+    let info = but_workspace::head_info(&repo, &*meta, standard_options())?;
     let commit = first_commit(&info);
-    let change_id = commit.change_id.clone().expect("change id assigned");
-
     assert_eq!(
-        cache
-            .commit_metadata()
-            .change_ids_for_commits([commit.id])?,
-        vec![(commit.id, Some(change_id))]
+        commit.change_id,
+        Some(synthetic_change_id_from_commit_id(commit.id))
     );
 
     Ok(())
 }
 
 #[test]
-fn reuses_cached_change_id_across_ref_info_calls() -> anyhow::Result<()> {
+fn reuses_deterministic_change_id_across_ref_info_calls() -> anyhow::Result<()> {
     let (repo, meta) = read_only_in_memory_scenario("single-branch-10-commits")?;
-    let mut cache = in_memory_cache();
-
-    let first = but_workspace::head_info(&repo, &*meta, standard_options(), &mut cache)?;
+    let first = but_workspace::head_info(&repo, &*meta, standard_options())?;
     let first_local_commit = first_commit(&first);
     let first_id = first_local_commit.id;
     let first_change_id = first_local_commit
@@ -75,21 +60,21 @@ fn reuses_cached_change_id_across_ref_info_calls() -> anyhow::Result<()> {
         .clone()
         .expect("change id assigned");
 
-    let second = but_workspace::head_info(&repo, &*meta, standard_options(), &mut cache)?;
+    let second = but_workspace::head_info(&repo, &*meta, standard_options())?;
     let second_commit = first_commit(&second);
 
     assert_eq!(second_commit.id, first_id);
     assert_eq!(
         second_commit.change_id,
         Some(first_change_id),
-        "it re-uses change-ids from the cache"
+        "it derives the same synthetic change-id from the commit id"
     );
 
     Ok(())
 }
 
 #[test]
-fn commit_header_change_id_overrides_conflicting_cache_entry() -> anyhow::Result<()> {
+fn commit_header_change_id_is_preferred_to_synthetic_fallback() -> anyhow::Result<()> {
     let (repo, meta) =
         crate::ref_info::with_workspace_commit::utils::named_read_only_in_memory_scenario(
             "journey03",
@@ -100,24 +85,23 @@ fn commit_header_change_id_overrides_conflicting_cache_entry() -> anyhow::Result
         .headers()
         .and_then(|headers| headers.change_id)
         .expect("fixture commit has change id in header");
-
-    let mut cache = in_memory_cache();
-    cache
-        .commit_metadata_mut()?
-        .set_change_ids([(commit_id, ChangeId::from_number_for_testing(999))])?;
-
-    let info = but_workspace::ref_info(
-        repo.find_reference("A")?,
-        &*meta,
-        standard_options(),
-        &mut cache,
-    )?;
+    let info = but_workspace::ref_info(repo.find_reference("A")?, &*meta, standard_options())?;
     let commit = first_commit(&info);
 
     assert_eq!(commit.id, commit_id);
     assert_eq!(commit.change_id, Some(header_change_id));
 
     Ok(())
+}
+
+// TODO: move to common place in `but-core` so it can be reused. Make `.change_id` fields mandatory.
+fn synthetic_change_id_from_commit_id(commit_id: ObjectId) -> ChangeId {
+    let bytes: Vec<_> = commit_id.as_bytes()[4..20]
+        .iter()
+        .rev()
+        .map(|byte| byte.reverse_bits())
+        .collect();
+    ChangeId::from_bytes(&bytes)
 }
 
 #[test]

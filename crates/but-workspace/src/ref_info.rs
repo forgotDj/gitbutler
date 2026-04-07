@@ -337,8 +337,6 @@ impl std::fmt::Debug for Segment {
 }
 
 pub(crate) mod function {
-    use std::collections::{HashMap, HashSet};
-
     use anyhow::bail;
     use but_core::{is_workspace_ref_name, ref_metadata::ValueInfo};
     use but_graph::{
@@ -363,7 +361,6 @@ pub(crate) mod function {
         repo: &gix::Repository,
         meta: &impl but_core::RefMetadata,
         opts: super::Options,
-        cache: &mut but_db::CacheHandle,
     ) -> anyhow::Result<RefInfo> {
         let graph = Graph::from_head(repo, meta, opts.traversal.clone())?;
         if graph.hard_limit_hit() {
@@ -371,7 +368,7 @@ pub(crate) mod function {
                 "Commit-graph traversal might be incorrect as it was stopped too early due to hard limit",
             );
         }
-        graph_to_ref_info(graph, repo, opts, cache)
+        graph_to_ref_info(graph, repo, opts)
     }
 
     /// Gather information about the commit at `existing_ref` and the workspace that might be associated with it,
@@ -387,7 +384,6 @@ pub(crate) mod function {
         mut existing_ref: gix::Reference<'_>,
         meta: &impl but_core::RefMetadata,
         opts: super::Options,
-        cache: &mut but_db::CacheHandle,
     ) -> anyhow::Result<RefInfo> {
         let id = existing_ref.peel_to_id()?;
         let repo = id.repo;
@@ -397,7 +393,7 @@ pub(crate) mod function {
             meta,
             opts.traversal.clone(),
         )?;
-        graph_to_ref_info(graph, repo, opts, cache)
+        graph_to_ref_info(graph, repo, opts)
     }
 
     pub(crate) fn find_ancestor_workspace_commit(
@@ -444,7 +440,6 @@ pub(crate) mod function {
         graph: Graph,
         repo: &gix::Repository,
         opts: super::Options,
-        cache: &mut but_db::CacheHandle,
     ) -> anyhow::Result<RefInfo> {
         let but_graph::projection::Workspace {
             graph,
@@ -513,65 +508,28 @@ pub(crate) mod function {
             msg.push_str(&format!("    git reset --soft {ws_commit_id}"));
             bail!("{msg}");
         }
-        resolve_change_ids(&mut info, cache)?;
+        resolve_change_ids(&mut info);
         info.compute_similarity(&graph, repo, opts.expensive_commit_info)?;
         Ok(info)
     }
 
-    fn resolve_change_ids(
-        info: &mut RefInfo,
-        cache: &mut but_db::CacheHandle,
-    ) -> anyhow::Result<()> {
-        let mut seen_pending = HashSet::<gix::ObjectId>::new();
-        let pending: Vec<_> = visit_ref_info_commits_mut_iter(info)
-            .filter_map(|commit| {
-                (commit.change_id.is_none() && seen_pending.insert(commit.id)).then_some(commit.id)
-            })
-            .collect();
-        if pending.is_empty() {
-            return Ok(());
-        }
-
-        let resolved = but_db::backoff(|| -> Result<_, but_db::Error> {
-            let mut generated = Vec::<(gix::ObjectId, but_core::ChangeId)>::new();
-            let mut trans = cache.deferred_transaction().map_err(but_db::map_err)?;
-            trans.set_nonblocking().map_err(but_db::map_err)?;
-            let looked_up = trans
-                .commit_metadata()
-                .change_ids_for_commits(pending.iter().copied())
-                .map_err(but_db::map_err)?;
-            let mut resolved = HashMap::<gix::ObjectId, but_core::ChangeId>::new();
-            for (commit_id, change_id) in looked_up {
-                let change_id = match change_id {
-                    Some(change_id) => change_id,
-                    None => {
-                        let change_id = but_core::ChangeId::generate();
-                        generated.push((commit_id, change_id.clone()));
-                        change_id
-                    }
-                };
-                resolved.insert(commit_id, change_id);
-            }
-
-            if !generated.is_empty() {
-                trans
-                    .commit_metadata_mut()
-                    .map_err(but_db::map_err)?
-                    .set_change_ids(generated)
-                    .map_err(but_db::map_err)?;
-                trans.commit().map_err(but_db::map_err)?;
-            }
-
-            Ok(resolved)
-        })?;
-
+    /// Keep existing commit change-ids or synthesize them from their hash, deterministically.
+    fn resolve_change_ids(info: &mut RefInfo) {
         for commit in visit_ref_info_commits_mut_iter(info) {
-            if commit.change_id.is_none() {
-                commit.change_id = resolved.get(&commit.id).cloned();
-            }
+            commit
+                .change_id
+                .get_or_insert_with(|| synthetic_change_id_from_commit_id(&commit.id));
         }
+    }
 
-        Ok(())
+    /// These are JJ compatible, and the SHA-256 support is similarly implemented there.
+    fn synthetic_change_id_from_commit_id(commit_id: &gix::ObjectId) -> but_core::ChangeId {
+        let bytes: Vec<_> = commit_id.as_bytes()[4..commit_id.kind().len_in_bytes()]
+            .iter()
+            .rev()
+            .map(|byte| byte.reverse_bits())
+            .collect();
+        but_core::ChangeId::from_bytes(&bytes)
     }
 
     /// Return an iterator over all  commits in `info` for mutation.

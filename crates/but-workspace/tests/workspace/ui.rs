@@ -1,8 +1,6 @@
 mod changes_in_branch {
     use but_graph::init::Options;
-    use but_testsupport::{
-        seed_cache_with_stable_change_ids_for_all_commits, visualize_commit_graph_all,
-    };
+    use but_testsupport::visualize_commit_graph_all;
     use but_workspace::ui;
 
     use crate::{ref_info::with_workspace_commit::utils::read_only_in_memory_scenario, utils::r};
@@ -139,11 +137,8 @@ mod changes_in_branch {
             "passing strange ref-names still causes an error - they must exist"
         );
 
-        let mut ref_info: ui::RefInfo = {
-            let mut cache = crate::ref_info::in_memory_cache();
-            seed_cache_with_stable_change_ids_for_all_commits(&repo, &mut cache)?;
-            but_workspace::head_info(&repo, &*meta, Default::default(), &mut cache)?.try_into()?
-        };
+        let mut ref_info: ui::RefInfo =
+            but_workspace::head_info(&repo, &*meta, Default::default())?.try_into()?;
         ref_info = ref_info.pruned_to_entrypoint();
         insta::assert_json_snapshot!(&ref_info, @r#"
         {
@@ -250,7 +245,7 @@ mod changes_in_branch {
                         "email": "author@example.com",
                         "gravatarUrl": "https://www.gravatar.com/avatar/5c1e6d6e64e12aca17657581a48005d1?s=100&r=g&d=retro"
                       },
-                      "changeId": "msqoopqtzoyyxmomxumvuqxynvsllmpx",
+                      "changeId": "mvvzyyvvvuosslxwrvqpxopvomovrrmz",
                       "gerritReviewUrl": null
                     }
                   ],
@@ -264,7 +259,7 @@ mod changes_in_branch {
                         "email": "author@example.com",
                         "gravatarUrl": "https://www.gravatar.com/avatar/5c1e6d6e64e12aca17657581a48005d1?s=100&r=g&d=retro"
                       },
-                      "changeId": "rqnnxmwzwuyvtuvlqnpoxmzuoqpkzrov"
+                      "changeId": "rwzxluzvxmyzkuqmpzovmuwqsxptxrpn"
                     }
                   ],
                   "commitsOutside": null,
@@ -435,7 +430,7 @@ mod changes_in_branch {
                         "email": "author@example.com",
                         "gravatarUrl": "https://www.gravatar.com/avatar/5c1e6d6e64e12aca17657581a48005d1?s=100&r=g&d=retro"
                       },
-                      "changeId": "msqoopqtzoyyxmomxumvuqxynvsllmpx",
+                      "changeId": "mvvzyyvvvuosslxwrvqpxopvomovrrmz",
                       "gerritReviewUrl": null
                     }
                   ],
@@ -449,7 +444,7 @@ mod changes_in_branch {
                         "email": "author@example.com",
                         "gravatarUrl": "https://www.gravatar.com/avatar/5c1e6d6e64e12aca17657581a48005d1?s=100&r=g&d=retro"
                       },
-                      "changeId": "rqnnxmwzwuyvtuvlqnpoxmzuoqpkzrov"
+                      "changeId": "rwzxluzvxmyzkuqmpzovmuwqsxptxrpn"
                     }
                   ],
                   "commitsOutside": null,
