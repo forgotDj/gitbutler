@@ -1183,7 +1183,7 @@ impl App {
                 let drop_to_be_discarded =
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
                 Confirm::new(
-                    format!("Discard commit {}", commit_id.to_hex_with_len(7)),
+                    format!("Discard commit {}?", commit_id.to_hex_with_len(7)),
                     run_after_confirmation_msg(move |_, ctx, messages| {
                         let discard_result = operations::commit_discard(ctx, commit_id)?;
                         let select_after_reload =
@@ -1204,7 +1204,29 @@ impl App {
                     }),
                 )
             }
-            CliId::PathPrefix { .. } | CliId::CommittedFile { .. } | CliId::Branch { .. } => return,
+            CliId::Branch { name, stack_id, .. } => {
+                let Some(stack_id) = *stack_id else {
+                    return;
+                };
+
+                let name = name.to_owned();
+                self.to_be_discarded = Some(Arc::clone(cli_id));
+                let select_after_reload = self
+                    .cursor
+                    .select_after_discarded_branch(&self.status_lines);
+                let drop_to_be_discarded =
+                    message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
+                Confirm::new(
+                    format!("Discard branch {name}?"),
+                    run_after_confirmation_msg(move |_, ctx, messages| {
+                        operations::remove_branch_legacy(ctx, stack_id, name)?;
+                        messages.push(Message::Reload(select_after_reload));
+                        drop(drop_to_be_discarded);
+                        Ok(())
+                    }),
+                )
+            }
+            CliId::PathPrefix { .. } | CliId::CommittedFile { .. } => return,
         });
     }
 

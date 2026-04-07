@@ -111,6 +111,39 @@ impl Cursor {
         None
     }
 
+    /// Selects what should be focused after discarding the currently selected branch.
+    pub(super) fn select_after_discarded_branch(
+        self,
+        lines: &[StatusOutputLine],
+    ) -> Option<SelectAfterReload> {
+        if self.0 >= lines.len() {
+            return None;
+        }
+
+        let Some(StatusOutputLineData::Branch { .. }) = lines.get(self.0).map(|line| &line.data)
+        else {
+            return None;
+        };
+
+        for line in lines.iter().skip(self.0 + 1) {
+            if let Some(CliId::Branch { name, .. }) = line.data.cli_id().map(|id| &**id) {
+                return Some(SelectAfterReload::Branch(name.clone()));
+            }
+        }
+
+        for line in lines.iter().take(self.0).rev() {
+            if let Some(CliId::Branch { name, .. }) = line.data.cli_id().map(|id| &**id) {
+                return Some(SelectAfterReload::Branch(name.clone()));
+            }
+        }
+
+        if Self::select_unassigned(lines).is_some() {
+            return Some(SelectAfterReload::Unassigned);
+        }
+
+        None
+    }
+
     pub(super) fn select_first_file_in_commit(
         object_id: gix::ObjectId,
         lines: &[StatusOutputLine],

@@ -320,6 +320,73 @@ fn select_after_discarded_commit_selects_commit_below_when_on_middle_commit() {
 }
 
 #[test]
+fn select_after_discarded_branch_selects_branch_below_when_available() {
+    let lines = vec![
+        line(StatusOutputLineData::Branch {
+            cli_id: branch_cli_id("one", "b0", None),
+        }),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id("1111111111111111111111111111111111111111", "c0"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
+        }),
+        line(StatusOutputLineData::Branch {
+            cli_id: branch_cli_id("two", "b1", None),
+        }),
+    ];
+
+    assert!(matches!(
+        Cursor(0).select_after_discarded_branch(&lines),
+        Some(SelectAfterReload::Branch(name)) if name == "two"
+    ));
+}
+
+#[test]
+fn select_after_discarded_branch_selects_branch_above_when_no_branch_below() {
+    let lines = vec![
+        line(StatusOutputLineData::Branch {
+            cli_id: branch_cli_id("one", "b0", None),
+        }),
+        line(StatusOutputLineData::Branch {
+            cli_id: branch_cli_id("two", "b1", None),
+        }),
+    ];
+
+    assert!(matches!(
+        Cursor(1).select_after_discarded_branch(&lines),
+        Some(SelectAfterReload::Branch(name)) if name == "one"
+    ));
+}
+
+#[test]
+fn select_after_discarded_branch_selects_unassigned_when_it_is_the_only_branch() {
+    let lines = vec![
+        line(StatusOutputLineData::UnassignedChanges {
+            cli_id: unassigned("u0"),
+        }),
+        line(StatusOutputLineData::Branch {
+            cli_id: branch_cli_id("one", "b0", None),
+        }),
+    ];
+
+    assert!(matches!(
+        Cursor(1).select_after_discarded_branch(&lines),
+        Some(SelectAfterReload::Unassigned)
+    ));
+}
+
+#[test]
+fn select_after_discarded_branch_returns_none_if_selection_is_not_a_branch() {
+    let lines = vec![line(StatusOutputLineData::Commit {
+        cli_id: commit_cli_id("1111111111111111111111111111111111111111", "c0"),
+        stack_id: None,
+        classification: CommitClassification::LocalOnly,
+    })];
+
+    assert!(Cursor(0).select_after_discarded_branch(&lines).is_none());
+}
+
+#[test]
 fn select_first_file_in_commit_finds_first_file_for_matching_commit() {
     let wanted = "1111111111111111111111111111111111111111";
     let lines = vec![
