@@ -17,7 +17,6 @@ import {
 } from "#ui/api/queries.ts";
 import { classes } from "#ui/classes.ts";
 import {
-	AbsorbIcon,
 	DependencyIcon,
 	ExpandCollapseIcon,
 	MenuTriggerIcon,
@@ -1040,15 +1039,17 @@ const CommitRow: FC<
 		if (trimmed === initialMessage) return;
 		startCommitMessageTransition(async () => {
 			setOptimisticMessage(trimmed);
-			await commitReword
-				.mutateAsync({
+			try {
+				await commitReword.mutateAsync({
 					projectId,
 					commitId: commit.id,
 					message: trimmed,
-				})
+				});
+			} catch {
 				// Use the global mutation error handler (shows toast) instead of React
 				// error boundaries.
-				.catch(() => {});
+				return;
+			}
 		});
 	};
 
@@ -1192,6 +1193,33 @@ const CommitC: FC<{
 	</CommitSource>
 );
 
+const ChangeRowMenuPopup: FC<{
+	change: TreeChange;
+	onAbsorbChanges: (target: AbsorptionTarget) => void;
+	parts: typeof Menu | typeof ContextMenu;
+	stackId: string | null;
+}> = ({ change, onAbsorbChanges, parts, stackId }) => {
+	const { Popup, Item } = parts;
+
+	const absorb = () => {
+		onAbsorbChanges({
+			type: "treeChanges",
+			subject: {
+				changes: [change],
+				assigned_stack_id: stackId,
+			},
+		});
+	};
+
+	return (
+		<Popup className={classes(uiStyles.popup, uiStyles.menuPopup)}>
+			<Item className={uiStyles.menuItem} onClick={absorb}>
+				Absorb
+			</Item>
+		</Popup>
+	);
+};
+
 const ChangeRow: FC<{
 	change: TreeChange;
 	dependencyCommitIds: Array<string>;
@@ -1220,28 +1248,28 @@ const ChangeRow: FC<{
 			isSelected && sharedStyles.itemRowSelected,
 		)}
 	>
-		<FileButton
-			change={change}
-			onClick={() => {
-				selectItem(selectedChangeItem(stackId, change.path));
-			}}
-		/>
-		<button
-			type="button"
-			className={sharedStyles.rowAction}
-			aria-label="Absorb"
-			onClick={() => {
-				onAbsorbChanges({
-					type: "treeChanges",
-					subject: {
-						changes: [change],
-						assigned_stack_id: stackId,
-					},
-				});
-			}}
-		>
-			<AbsorbIcon />
-		</button>
+		<ContextMenu.Root>
+			<ContextMenu.Trigger
+				render={
+					<FileButton
+						change={change}
+						onClick={() => {
+							selectItem(selectedChangeItem(stackId, change.path));
+						}}
+					/>
+				}
+			/>
+			<ContextMenu.Portal>
+				<ContextMenu.Positioner>
+					<ChangeRowMenuPopup
+						change={change}
+						onAbsorbChanges={onAbsorbChanges}
+						parts={ContextMenu}
+						stackId={stackId}
+					/>
+				</ContextMenu.Positioner>
+			</ContextMenu.Portal>
+		</ContextMenu.Root>
 		{isNonEmptyArray(dependencyCommitIds) && (
 			<DependencyIndicator
 				projectId={projectId}
@@ -1252,10 +1280,25 @@ const ChangeRow: FC<{
 				<DependencyIcon />
 			</DependencyIndicator>
 		)}
+		<Menu.Root>
+			<Menu.Trigger className={sharedStyles.rowAction} aria-label={`${change.path} menu`}>
+				<MenuTriggerIcon />
+			</Menu.Trigger>
+			<Menu.Portal>
+				<Menu.Positioner align="end">
+					<ChangeRowMenuPopup
+						change={change}
+						onAbsorbChanges={onAbsorbChanges}
+						parts={Menu}
+						stackId={stackId}
+					/>
+				</Menu.Positioner>
+			</Menu.Portal>
+		</Menu.Root>
 	</ChangesFileSource>
 );
 
-const ChangesSectionMenuPopup: FC<{
+const ChangesSectionRowMenuPopup: FC<{
 	changes: Array<TreeChange>;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	parts: typeof Menu | typeof ContextMenu;
@@ -1263,21 +1306,19 @@ const ChangesSectionMenuPopup: FC<{
 }> = ({ changes, onAbsorbChanges, parts, stackId }) => {
 	const { Popup, Item } = parts;
 
+	const absorb = () => {
+		onAbsorbChanges({
+			type: "treeChanges",
+			subject: {
+				changes,
+				assigned_stack_id: stackId,
+			},
+		});
+	};
+
 	return (
 		<Popup className={classes(uiStyles.popup, uiStyles.menuPopup)}>
-			<Item
-				className={uiStyles.menuItem}
-				disabled={changes.length === 0}
-				onClick={() => {
-					onAbsorbChanges({
-						type: "treeChanges",
-						subject: {
-							changes,
-							assigned_stack_id: stackId,
-						},
-					});
-				}}
-			>
+			<Item className={uiStyles.menuItem} disabled={changes.length === 0} onClick={absorb}>
 				Absorb
 			</Item>
 		</Popup>
@@ -1315,7 +1356,7 @@ const ChangesSectionRow: FC<{
 			/>
 			<ContextMenu.Portal>
 				<ContextMenu.Positioner>
-					<ChangesSectionMenuPopup
+					<ChangesSectionRowMenuPopup
 						changes={changes}
 						onAbsorbChanges={onAbsorbChanges}
 						parts={ContextMenu}
@@ -1324,30 +1365,13 @@ const ChangesSectionRow: FC<{
 				</ContextMenu.Positioner>
 			</ContextMenu.Portal>
 		</ContextMenu.Root>
-		<button
-			type="button"
-			className={sharedStyles.rowAction}
-			disabled={changes.length === 0}
-			aria-label="Absorb"
-			onClick={() => {
-				onAbsorbChanges({
-					type: "treeChanges",
-					subject: {
-						changes,
-						assigned_stack_id: stackId,
-					},
-				});
-			}}
-		>
-			<AbsorbIcon />
-		</button>
 		<Menu.Root>
 			<Menu.Trigger className={sharedStyles.rowAction} aria-label={`${label} menu`}>
 				<MenuTriggerIcon />
 			</Menu.Trigger>
 			<Menu.Portal>
 				<Menu.Positioner align="end">
-					<ChangesSectionMenuPopup
+					<ChangesSectionRowMenuPopup
 						changes={changes}
 						onAbsorbChanges={onAbsorbChanges}
 						parts={Menu}
