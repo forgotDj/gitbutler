@@ -1,7 +1,6 @@
 .unassignedChanges {
 	flex-shrink: 0;
 	width: 300px;
-	border: 1px dotted var(--color-separator);
 }
 
 .stackLane {
@@ -27,7 +26,6 @@
 
 .assignedChanges {
 	min-height: 80px;
-	border: 1px dotted var(--color-separator);
 }
 
 .commitForm {
