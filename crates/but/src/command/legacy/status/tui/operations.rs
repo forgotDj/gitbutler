@@ -397,7 +397,7 @@ pub(super) fn reword_branch_inline_legacy(
     gitbutler_branch_actions::stack::update_branch_name(ctx, stack_id, branch_name, new_name)
 }
 
-pub(super) fn discard_uncommitted(
+pub(super) fn discard_uncommitted_legacy(
     ctx: &mut Context,
     hunk_assignments: Vec<but_hunk_assignment::HunkAssignment>,
 ) -> anyhow::Result<()> {
@@ -448,7 +448,7 @@ pub(super) fn discard_uncommitted(
     Ok(())
 }
 
-pub(super) fn discard_unassigned(ctx: &mut Context) -> anyhow::Result<()> {
+pub(super) fn discard_unassigned_legacy(ctx: &mut Context) -> anyhow::Result<()> {
     let context_lines = ctx.settings.context_lines;
     let unassigned_changes = {
         let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
@@ -527,7 +527,7 @@ pub(super) fn discard_stack(ctx: &mut Context, stack_id: StackId) -> anyhow::Res
             .collect::<Vec<_>>()
     };
 
-    discard_uncommitted(ctx, stack_changes)
+    discard_uncommitted_legacy(ctx, stack_changes)
 }
 
 pub(super) fn commit_discard(

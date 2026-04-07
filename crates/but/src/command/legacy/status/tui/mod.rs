@@ -1110,7 +1110,7 @@ impl App {
                 Confirm::new(
                     "Discard unassigned changes?",
                     run_after_confirmation_msg(move |_, ctx, messages| {
-                        operations::discard_unassigned(ctx)?;
+                        operations::discard_unassigned_legacy(ctx)?;
                         messages.push(Message::Reload(Some(SelectAfterReload::Unassigned)));
                         drop(drop_to_be_discarded);
                         Ok(())
@@ -1149,7 +1149,7 @@ impl App {
                             .iter()
                             .cloned()
                             .collect::<Vec<_>>();
-                        operations::discard_uncommitted(ctx, hunk_assignments)?;
+                        operations::discard_uncommitted_legacy(ctx, hunk_assignments)?;
                         messages.push(Message::Reload(Some(select_after_reload)));
                         drop(drop_to_be_discarded);
                         Ok(())
