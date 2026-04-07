@@ -41,8 +41,12 @@ export const ProjectPreviewLayout: FC<{
 				defaultLayout={defaultLayout}
 				onLayoutChange={onLayoutChanged}
 			>
-				<Panel id={"primary" satisfies PanelType} minSize={500}>
-					<div className={sharedStyles.primaryPanel}>{children}</div>
+				<Panel
+					id={"primary" satisfies PanelType}
+					minSize={500}
+					className={sharedStyles.primaryPanel}
+				>
+					{children}
 				</Panel>
 				{isPreviewPanelVisible(layoutState) && (
 					<>
