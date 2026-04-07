@@ -219,6 +219,7 @@ export const getCombineOperation = ({
 													pathBytes: change.pathBytes,
 													hunkHeader,
 													stackId: targetStackId,
+													branchRef: null,
 												})),
 											),
 										};

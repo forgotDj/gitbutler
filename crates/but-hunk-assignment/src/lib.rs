@@ -59,11 +59,16 @@ pub struct HunkAssignment {
         schemars(schema_with = "but_schemars::stack_id_opt")
     )]
     pub stack_id: Option<StackId>,
-    /// The branch within the stack. Full ref name (e.g. "refs/heads/my-branch").
-    /// None means "topmost branch of the stack" (backward-compatible default).
-    #[cfg_attr(feature = "export-ts", ts(type = "string | null"))]
-    #[cfg_attr(feature = "export-schema", schemars(with = "Option<String>"))]
-    pub branch_ref: Option<String>,
+    /// The branch within the stack, as a full ref name (e.g. `refs/heads/my-branch`).
+    /// Serialized as bytes over the wire for non-UTF-8 safety.
+    /// `None` means "topmost branch of the stack" (backward-compatible default).
+    #[serde(with = "but_serde::fullname_bytes_opt")]
+    #[cfg_attr(feature = "export-ts", ts(type = "number[] | null"))]
+    #[cfg_attr(
+        feature = "export-schema",
+        schemars(schema_with = "but_schemars::fullname_bytes_opt")
+    )]
+    pub branch_ref: Option<gix::refs::FullName>,
     /// The line numbers that were added in this hunk.
     pub line_nums_added: Option<Vec<usize>>,
     /// The line numbers that were removed in this hunk.
@@ -99,7 +104,11 @@ impl TryFrom<but_db::HunkAssignment> for HunkAssignment {
             path: value.path,
             path_bytes: value.path_bytes.into(),
             stack_id,
-            branch_ref: value.branch_ref,
+            branch_ref: value
+                .branch_ref
+                .map(gix::refs::FullName::try_from)
+                .transpose()
+                .map_err(|e| anyhow::anyhow!("Failed to parse branch_ref: {e}"))?,
             line_nums_added: None,   // derived data (not persisted)
             line_nums_removed: None, // derived data (not persisted)
             diff: None,              // derived data (not persisted)
@@ -123,7 +132,7 @@ impl TryFrom<HunkAssignment> for but_db::HunkAssignment {
             path: value.path,
             path_bytes: value.path_bytes.into(),
             stack_id: value.stack_id.map(|id| id.to_string()),
-            branch_ref: value.branch_ref,
+            branch_ref: value.branch_ref.map(|r| r.to_string()),
         })
     }
 }
@@ -297,10 +306,15 @@ pub struct HunkAssignmentRequest {
         schemars(schema_with = "but_schemars::stack_id_opt")
     )]
     pub stack_id: Option<StackId>,
-    /// Optional: target a specific branch within the stack.
+    /// Optional: target a specific branch within the stack, as a full ref name.
+    /// Serialized as bytes over the wire for non-UTF-8 safety.
     /// If not provided, auto-resolves to the topmost branch.
-    #[cfg_attr(feature = "export-schema", schemars(with = "Option<String>"))]
-    pub branch_ref: Option<String>,
+    #[serde(with = "but_serde::fullname_bytes_opt")]
+    #[cfg_attr(
+        feature = "export-schema",
+        schemars(schema_with = "but_schemars::fullname_bytes_opt")
+    )]
+    pub branch_ref: Option<gix::refs::FullName>,
 }
 #[cfg(feature = "export-schema")]
 but_schemars::register_sdk_type!(HunkAssignmentRequest);
@@ -540,13 +554,13 @@ fn auto_populate_branch_refs(
     assignments: &mut [HunkAssignment],
     workspace: &but_graph::projection::Workspace,
 ) {
-    let branch_refs_by_stack: HashMap<StackId, String> = workspace
+    let branch_refs_by_stack: HashMap<StackId, gix::refs::FullName> = workspace
         .stacks
         .iter()
         .filter_map(|stack| {
             let stack_id = stack.id?;
             let ref_name = stack.ref_name()?;
-            Some((stack_id, ref_name.to_string()))
+            Some((stack_id, ref_name.to_owned()))
         })
         .collect();
 
@@ -814,7 +828,10 @@ mod tests {
 
         /// Like `new()`, but also sets `branch_ref`.
         pub fn with_branch_ref(mut self, branch_ref: Option<&str>) -> Self {
-            self.branch_ref = branch_ref.map(String::from);
+            self.branch_ref = branch_ref.map(|s| {
+                gix::refs::FullName::try_from(s.to_string())
+                    .expect("test branch ref should be valid")
+            });
             self
         }
     }
@@ -1228,8 +1245,8 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].stack_id, Some(stack_id_seq(1)));
         assert_eq!(
-            result[0].branch_ref.as_deref(),
-            Some("refs/heads/feature"),
+            result[0].branch_ref.as_ref().map(|r| r.to_string()),
+            Some("refs/heads/feature".to_string()),
             "branch_ref should be preserved through reconciliation"
         );
     }
