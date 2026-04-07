@@ -6,7 +6,7 @@ export type ChangeItem = ChangesSectionItem & { path: string };
 type SegmentItemBase = {
 	stackId: string;
 	segmentIndex: number;
-	branchName: string | null;
+	branchRef: Array<number> | null;
 };
 
 export type SegmentItem = SegmentItemBase;
@@ -32,18 +32,18 @@ export const changeItem = (stackId: string | null, path: string): Item => ({
 	path,
 });
 
-export const segmentItem = ({ stackId, segmentIndex, branchName }: SegmentItem): Item => ({
+export const segmentItem = ({ stackId, segmentIndex, branchRef }: SegmentItem): Item => ({
 	_tag: "Segment",
 	stackId,
 	segmentIndex,
-	branchName,
+	branchRef,
 });
 
-export const commitItem = ({ stackId, segmentIndex, branchName, commitId }: CommitItem): Item => ({
+export const commitItem = ({ stackId, segmentIndex, branchRef, commitId }: CommitItem): Item => ({
 	_tag: "Commit",
 	stackId,
 	segmentIndex,
-	branchName,
+	branchRef,
 	commitId,
 });
 
@@ -58,7 +58,7 @@ export const itemIdentityKey = (item: Item): string =>
 			ChangesSection: (item) => JSON.stringify(["ChangesSection", item.stackId]),
 			Change: (item) => JSON.stringify(["Change", item.stackId, item.path]),
 			Segment: (item) =>
-				JSON.stringify(["Segment", item.stackId, item.segmentIndex, item.branchName]),
+				JSON.stringify(["Segment", item.stackId, item.segmentIndex, item.branchRef]),
 			Commit: (item) => JSON.stringify(["Commit", item.stackId, item.segmentIndex, item.commitId]),
 			BaseCommit: (item) => JSON.stringify(["BaseCommit", item.commitId]),
 		}),
@@ -71,7 +71,7 @@ export const getParentSection = (item: Item): Item | null =>
 				segmentItem({
 					stackId: item.stackId,
 					segmentIndex: item.segmentIndex,
-					branchName: item.branchName,
+					branchRef: item.branchRef,
 				}),
 			Change: (item): Item | null => changesSectionItem(item.stackId),
 			ChangesSection: () => null,

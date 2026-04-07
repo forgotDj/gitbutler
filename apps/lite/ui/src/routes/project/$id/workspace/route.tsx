@@ -58,9 +58,11 @@ import {
 	shortCommitId,
 	assignedHunks,
 	assert,
+	decodeRefName,
 	getAssignmentsByPath,
 	getRelative,
 	hunkKey,
+	encodeRefName,
 } from "#ui/routes/project/$id/-shared.tsx";
 import uiStyles from "#ui/ui.module.css";
 import { ContextMenu, Menu, mergeProps, Toast, Tooltip, useRender } from "@base-ui/react";
@@ -653,7 +655,7 @@ const CommitPreview: FC<{
 
 const BranchPreview: FC<{
 	projectId: string;
-	branchName: string;
+	branchRef: Array<number>;
 	onSelectHunk: (key: string) => void;
 	selectedHunk: string | null;
 	isFocused: boolean;
@@ -662,7 +664,7 @@ const BranchPreview: FC<{
 	ref?: Ref<PreviewImperativeHandle>;
 }> = ({
 	projectId,
-	branchName,
+	branchRef,
 	onSelectHunk,
 	selectedHunk,
 	isFocused,
@@ -670,10 +672,16 @@ const BranchPreview: FC<{
 	onDependencyHover,
 	ref,
 }) => {
+	const branch = decodeRefName(branchRef);
 	const [{ data: branchDetails }, { data: branchDiff }] = useSuspenseQueries({
 		queries: [
-			branchDetailsQueryOptions({ projectId, branchName, remote: null }),
-			branchDiffQueryOptions({ projectId, branch: `refs/heads/${branchName}` }),
+			branchDetailsQueryOptions({
+				projectId,
+				// https://linear.app/gitbutler/issue/GB-1226/unify-branch-identifiers
+				branchName: branch.replace(/^refs\/heads\//, ""),
+				remote: null,
+			}),
+			branchDiffQueryOptions({ projectId, branch }),
 		],
 	});
 	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
@@ -736,8 +744,8 @@ const Preview: FC<{
 }) =>
 	Match.value(selectedItem).pipe(
 		Match.tagsExhaustive({
-			Segment: ({ branchName }) => {
-				if (branchName == null)
+			Segment: ({ branchRef }) => {
+				if (branchRef == null)
 					return (
 						<div>
 							TODO: the API doesn't provide a way to show details/diffs for segments that don't have
@@ -748,7 +756,7 @@ const Preview: FC<{
 				return (
 					<BranchPreview
 						projectId={projectId}
-						branchName={branchName}
+						branchRef={branchRef}
 						onSelectHunk={onSelectHunk}
 						selectedHunk={selectedHunk}
 						isFocused={isFocused}
@@ -952,7 +960,7 @@ const CommitMenuPopup: FC<{
 
 const CommitRow: FC<
 	{
-		branchName: string | null;
+		branchRef: Array<number> | null;
 		commit: Commit;
 		commitMessageFormRef: Ref<HTMLFormElement>;
 		isHighlighted: boolean;
@@ -963,7 +971,7 @@ const CommitRow: FC<
 		stackId: string;
 	} & ComponentProps<"div">
 > = ({
-	branchName,
+	branchRef,
 	commit,
 	commitMessageFormRef,
 	isHighlighted,
@@ -977,7 +985,7 @@ const CommitRow: FC<
 	const defaultItem = selectedCommitItem({
 		stackId,
 		segmentIndex,
-		branchName,
+		branchRef,
 		commitId: commit.id,
 		mode: { _tag: "Default" },
 	});
@@ -997,7 +1005,7 @@ const CommitRow: FC<
 			selectedCommitItem({
 				stackId,
 				segmentIndex,
-				branchName,
+				branchRef,
 				commitId: commit.id,
 				mode: { _tag: "Details" },
 			}),
@@ -1016,7 +1024,7 @@ const CommitRow: FC<
 			selectedCommitItem({
 				stackId,
 				segmentIndex,
-				branchName,
+				branchRef,
 				commitId: commit.id,
 				mode: { _tag: "Reword" },
 			}),
@@ -1127,7 +1135,7 @@ const CommitRow: FC<
 };
 
 const CommitC: FC<{
-	branchName: string | null;
+	branchRef: Array<number> | null;
 	commit: Commit;
 	commitMessageFormRef: Ref<HTMLFormElement>;
 	isHighlighted: boolean;
@@ -1141,7 +1149,7 @@ const CommitC: FC<{
 	selectFile: (path: string | null) => void;
 	stackId: string;
 }> = ({
-	branchName,
+	branchRef,
 	commit,
 	commitMessageFormRef,
 	isHighlighted,
@@ -1168,7 +1176,7 @@ const CommitC: FC<{
 		}
 	>
 		<CommitRow
-			branchName={branchName}
+			branchRef={branchRef}
 			commit={commit}
 			commitMessageFormRef={commitMessageFormRef}
 			isHighlighted={isHighlighted}
@@ -1625,10 +1633,11 @@ const SegmentRow: FC<
 	...restProps
 }) => {
 	const branchName = segment.refName?.displayName ?? null;
+	const branchRef = segment.refName?.fullNameBytes ?? null;
 	const defaultItem = selectedSegmentItem({
 		stackId,
 		segmentIndex,
-		branchName,
+		branchRef,
 		mode: { _tag: "Default" },
 	});
 	const [optimisticBranchName, setOptimisticBranchName] = useOptimistic(
@@ -1641,9 +1650,7 @@ const SegmentRow: FC<
 
 	const startEditing = () => {
 		if (branchName === null) return;
-		selectItem(
-			selectedSegmentItem({ stackId, segmentIndex, branchName, mode: { _tag: "Rename" } }),
-		);
+		selectItem(selectedSegmentItem({ stackId, segmentIndex, branchRef, mode: { _tag: "Rename" } }));
 	};
 
 	const endEditing = () => {
@@ -1672,7 +1679,8 @@ const SegmentRow: FC<
 				selectedSegmentItem({
 					stackId,
 					segmentIndex,
-					branchName: trimmed,
+					// TODO: ideally the API would return the new ref?
+					branchRef: encodeRefName(`refs/heads/${trimmed}`),
 					mode: { _tag: "Default" },
 				}),
 			);
@@ -1814,7 +1822,7 @@ const SegmentC: FC<{
 					const isSelected = selectedCommit?.commitId === commit.id;
 					return (
 						<CommitC
-							branchName={segment.refName?.displayName ?? null}
+							branchRef={segment.refName?.fullNameBytes ?? null}
 							commit={commit}
 							commitMessageFormRef={commitMessageFormRef}
 							isHighlighted={highlightedCommitIds.has(commit.id)}

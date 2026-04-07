@@ -414,7 +414,7 @@ export const getScope = ({
 							bindings: renameBranchBindings,
 							context: selectedItem,
 						}
-					: selectedItem.branchName === null
+					: selectedItem.branchRef === null
 						? {
 								_tag: "Segment",
 								bindings: primaryPanelBindings,
