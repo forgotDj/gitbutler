@@ -476,7 +476,6 @@ export const useWorkspaceShortcuts = ({
 			| ({ _tag: "Change" } & ChangeItem),
 	) => {
 		const operationSourceRef = operationSourceRefFromItem(selectedItem);
-		if (!operationSourceRef) return;
 
 		const operationSource = resolveOperationSource(operationSourceRef);
 		if (operationSource?._tag !== "TreeChanges") return;
