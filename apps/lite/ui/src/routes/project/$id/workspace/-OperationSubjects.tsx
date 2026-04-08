@@ -11,7 +11,7 @@ import {
 } from "#ui/routes/project/$id/-shared.tsx";
 import uiStyles from "#ui/ui.module.css";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
-import { Commit, DiffHunk, TreeChange } from "@gitbutler/but-sdk";
+import { Commit, DiffHunk, InsertSide, TreeChange } from "@gitbutler/but-sdk";
 import { Match, pipe } from "effect";
 import { FC } from "react";
 import {
@@ -273,7 +273,11 @@ export const CommitTarget: FC<
 				getCommitTargetSideOperation({
 					operationSource,
 					commitId,
-					side: action === "reorder-before" ? "above" : "below",
+					side: Match.value(action).pipe(
+						Match.when("reorder-before", (): InsertSide => "above"),
+						Match.when("reorder-after", (): InsertSide => "below"),
+						Match.exhaustive,
+					),
 				}),
 			),
 			Match.exhaustive,
