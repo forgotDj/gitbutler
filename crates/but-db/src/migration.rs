@@ -1,6 +1,6 @@
 use tracing::instrument;
 
-use crate::{M, SchemaVersion};
+use crate::{M, SchemaVersion, cache};
 
 /// The error produced when running migrations.
 pub type Error = crate::Error;
@@ -125,7 +125,7 @@ fn set_db_forward_compatibility_version(
 fn highest_application_schema_version(migrations: &[M]) -> u32 {
     migrations
         .iter()
-        .map(|migration| migration.schema_version as u32)
+        .map(|migration| migration.schema_version)
         .max()
         .unwrap_or(SchemaVersion::Zero as u32)
 }
@@ -183,7 +183,22 @@ impl<'a> M<'a> {
         M {
             up: up_sql,
             up_created_at: created_at_for_sorting,
-            schema_version,
+            schema_version: schema_version as u32,
+        }
+    }
+
+    /// Create a new migration with `created_at_for_sorting` in a format like `20250529110746`,
+    /// a documented forward-compatibility `schema_version`, and the `up_sql` which is Sqlite
+    /// compatible SQL to create or update tables.
+    pub const fn up_project_cache(
+        created_at_for_sorting: u64,
+        schema_version: cache::SchemaVersion,
+        up_sql: &'a str,
+    ) -> Self {
+        M {
+            up: up_sql,
+            up_created_at: created_at_for_sorting,
+            schema_version: schema_version as u32,
         }
     }
 }

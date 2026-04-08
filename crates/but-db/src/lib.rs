@@ -154,7 +154,7 @@ pub struct M<'a> {
     /// The creation time of the `up` field, in a format like `20250529110746`, so it's suitable for sorting
     up_created_at: u64,
     /// The forward-compatibility schema version after this migration has been applied.
-    schema_version: SchemaVersion,
+    schema_version: u32,
 }
 
 /// Documents the forward-compatibility boundary associated with a migration.
