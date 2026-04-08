@@ -1,4 +1,6 @@
 //! A version of `tauri::AppHandle::path()` for use outside `tauri`.
+#[cfg(target_os = "linux")]
+use std::process::Command;
 use std::{env, path::PathBuf};
 
 use anyhow::{Context, bail};
@@ -157,7 +159,38 @@ impl AppChannel {
 
         let mut cmd_errors = Vec::new();
 
-        for mut cmd in open::commands(url) {
+        #[cfg(target_os = "linux")]
+        let cmds = {
+            // On Linux, we don't currently want to rely on the scheme being properly registered
+            // with the Tauri app. The mechanism by which the scheme is registered relies on the
+            // bundled Desktop entry, and different desktop environments have pretty wildly
+            // different handling of such entries.
+            //
+            // Adding insult to injury, even if that desktop entry is resolved, it in turn just has
+            // an exec line with the name `gitbutler-tauri` and the URL is provided as a command
+            // line argument. Therefore, after the roundabout trip to the desktop entry via the
+            // custom scheme, we _still_ just resolve `gitbutler-tauri` from PATH.
+            //
+            // Even more annoying is that the desktop entry does not have a placeholder for the
+            // command line argument, causing some stricter environments such as KDE to just error
+            // out, while some more lenient environments simply append the URL to the exec line.
+            //
+            // For these reasons, it's way more reliable and simpler to just try to call
+            // `gitbutler-tauri` directly, completely circumventing any issues with scheme
+            // registration.
+            //
+            // As the binary is always called `gitbutler-tauri`, there's currently no way to
+            // distinguish between release, nightly and dev. We'll just have to try to launch
+            // whatever we find. This can be fixed by giving the binaries different names, but as
+            // so few users use nightly builds, it's just not worth the effort.
+            let mut cmd = Command::new("gitbutler-tauri");
+            cmd.arg(url);
+            vec![cmd]
+        };
+        #[cfg(not(target_os = "linux"))]
+        let cmds = open::commands(url);
+
+        for mut cmd in cmds {
             let cleaned_vars = clean_env_vars(&[
                 "APPDIR",
                 "GDK_PIXBUF_MODULE_FILE",

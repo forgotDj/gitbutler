@@ -324,7 +324,19 @@ fn spawn_background_sync(
     operations: SyncOperations,
     silent: bool,
 ) {
-    let binary_path = std::env::current_exe().unwrap_or_default();
+    #[cfg(windows)]
+    let binary_path = std::env::current_exe().unwrap();
+    #[cfg(unix)]
+    // std::env::current_exe() resolves symlinks on many UNIX implementations, which breaks the
+    // builtin-but behavior that relies on being able to tell that a `but` symlink was used to start
+    // `gitbutler-tauri`. Getting the actual OS argument used to invoke the program circumvents this
+    // issue.
+    //
+    // It would in theory be possible to just fork the current process, instead of fork-exec like we
+    // currently do here. But that would split the implementation across UNIX and Windows (which
+    // does not have fork), and I'm also uncertain how the Tokio runtime would behave with a fork.
+    let binary_path = std::env::args_os().next().unwrap();
+
     let mut cmd = tokio::process::Command::new(binary_path);
     cmd.arg("-C")
         .arg(&args.current_dir)
