@@ -282,16 +282,18 @@ const getCommitTargetSideOperation = ({
 				relativeTo: { type: "commit", subject: commitId },
 				side,
 			}),
-			TreeChanges: ({ parent, changes }): Operation =>
-				Match.value(parent).pipe(
+			TreeChanges: ({ parent, changes: sourceChanges }): Operation => {
+				const changes = sourceChanges.map(({ change, hunkHeaders }) =>
+					createDiffSpec(change, hunkHeaders),
+				);
+
+				return Match.value(parent).pipe(
 					Match.tags({
 						ChangesSection: (): Operation => ({
 							_tag: "CommitCreate",
 							relativeTo: { type: "commit", subject: commitId },
 							side,
-							changes: changes.map(({ change, hunkHeaders }) =>
-								createDiffSpec(change, hunkHeaders),
-							),
+							changes,
 							message: "",
 						}),
 						Commit: ({ commitId: sourceCommitId }): Operation => ({
@@ -299,13 +301,12 @@ const getCommitTargetSideOperation = ({
 							sourceCommitId,
 							relativeTo: { type: "commit", subject: commitId },
 							side,
-							changes: changes.map(({ change, hunkHeaders }) =>
-								createDiffSpec(change, hunkHeaders),
-							),
+							changes,
 						}),
 					}),
 					Match.exhaustive,
-				),
+				);
+			},
 		}),
 		Match.orElse(() => null),
 	);
