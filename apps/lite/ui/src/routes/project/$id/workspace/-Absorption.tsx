@@ -7,9 +7,10 @@ import { AbsorptionReason, AbsorptionTarget, CommitAbsorption } from "@gitbutler
 import { useMutation } from "@tanstack/react-query";
 import { FC, useState } from "react";
 import styles from "./-Absorption.module.css";
+import { dedupe } from "effect/Array";
 
 const uniqueAbsorptionPaths = (commitAbsorption: CommitAbsorption): Array<string> =>
-	globalThis.Array.from(new Set(commitAbsorption.files.map((file) => file.path)));
+	dedupe(commitAbsorption.files.map((file) => file.path));
 
 const describeAbsorptionReason = (reason: AbsorptionReason): string | null => {
 	switch (reason) {
