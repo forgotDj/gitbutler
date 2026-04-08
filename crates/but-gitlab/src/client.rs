@@ -451,6 +451,7 @@ pub struct MergeMergeRequestParams {
     pub squash: Option<bool>,
 }
 
+#[derive(Debug, Clone)]
 pub struct SetMergeRequestDraftStateParams {
     pub project_id: GitLabProjectId,
     pub mr_iid: i64,
@@ -476,25 +477,33 @@ fn update_draft_state_in_title(title: &str, is_draft: bool) -> String {
 }
 
 fn has_draft_prefix(title: &str) -> bool {
-    let Some((prefix, _)) = title.split_once(':') else {
-        return false;
-    };
-
-    let prefix = prefix.trim();
-    prefix.eq_ignore_ascii_case("draft") || prefix.eq_ignore_ascii_case("wip")
+    split_draft_prefix(title).is_some()
 }
 
 fn remove_draft_prefix(title: &str) -> &str {
-    let Some((prefix, rest)) = title.split_once(':') else {
-        return title;
-    };
+    split_draft_prefix(title).unwrap_or(title)
+}
 
-    let prefix = prefix.trim();
-    if prefix.eq_ignore_ascii_case("draft") || prefix.eq_ignore_ascii_case("wip") {
-        rest.trim_start()
-    } else {
-        title
+fn split_draft_prefix(title: &str) -> Option<&str> {
+    let title = title.trim_start();
+
+    if let Some((prefix, rest)) = title.split_once(':') {
+        let prefix = prefix.trim();
+        if prefix.eq_ignore_ascii_case("draft") || prefix.eq_ignore_ascii_case("wip") {
+            return Some(rest.trim_start());
+        }
     }
+
+    if let Some(bracketed) = title.strip_prefix('[')
+        && let Some((prefix, rest)) = bracketed.split_once(']')
+    {
+        let prefix = prefix.trim();
+        if prefix.eq_ignore_ascii_case("draft") || prefix.eq_ignore_ascii_case("wip") {
+            return Some(rest.trim_start());
+        }
+    }
+
+    None
 }
 
 #[derive(Debug, Serialize)]
@@ -687,6 +696,14 @@ mod tests {
             update_draft_state_in_title("Wip: Add API validation", true),
             "Wip: Add API validation"
         );
+        assert_eq!(
+            update_draft_state_in_title("[Draft] Add API validation", true),
+            "[Draft] Add API validation"
+        );
+        assert_eq!(
+            update_draft_state_in_title("[wip] Add API validation", true),
+            "[wip] Add API validation"
+        );
     }
 
     #[test]
@@ -701,6 +718,22 @@ mod tests {
     fn removes_wip_prefix_for_ready_state() {
         assert_eq!(
             update_draft_state_in_title("WIP: Add API validation", false),
+            "Add API validation"
+        );
+    }
+
+    #[test]
+    fn removes_bracketed_draft_prefix_for_ready_state() {
+        assert_eq!(
+            update_draft_state_in_title("[Draft] Add API validation", false),
+            "Add API validation"
+        );
+    }
+
+    #[test]
+    fn removes_bracketed_wip_prefix_for_ready_state() {
+        assert_eq!(
+            update_draft_state_in_title("[WIP] Add API validation", false),
             "Add API validation"
         );
     }
