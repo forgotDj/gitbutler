@@ -3,18 +3,15 @@ import { type SelectedItem } from "../workspace/-SelectedItem.ts";
 
 export type WorkspaceSelectionState = {
 	item: SelectedItem | null;
-	file: string | null;
 	hunk: string | null;
 };
 
 export type WorkspaceSelectionAction =
 	| { _tag: "SelectItem"; item: SelectedItem | null }
-	| { _tag: "SelectFile"; file: string | null }
 	| { _tag: "SelectHunk"; hunk: string | null };
 
 export const initialWorkspaceSelectionState: WorkspaceSelectionState = {
 	item: null,
-	file: null,
 	hunk: null,
 };
 
@@ -26,12 +23,6 @@ export const workspaceSelectionReducer = (
 		Match.tagsExhaustive({
 			SelectItem: ({ item }): WorkspaceSelectionState => ({
 				item,
-				file: null,
-				hunk: null,
-			}),
-			SelectFile: ({ file }): WorkspaceSelectionState => ({
-				...state,
-				file,
 				hunk: null,
 			}),
 			SelectHunk: ({ hunk }): WorkspaceSelectionState => ({

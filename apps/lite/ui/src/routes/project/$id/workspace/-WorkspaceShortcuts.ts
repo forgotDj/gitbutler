@@ -444,7 +444,6 @@ export const useWorkspaceShortcuts = ({
 	commitMessageFormRef,
 	projectId,
 	scope,
-	selectedFile,
 	navigationIndex,
 	requestAbsorptionPlan,
 	dispatchProjectState,
@@ -454,7 +453,6 @@ export const useWorkspaceShortcuts = ({
 	commitMessageFormRef: RefObject<HTMLFormElement | null>;
 	projectId: string;
 	scope: Scope | null;
-	selectedFile: string | null;
 	navigationIndex: NavigationIndex;
 	requestAbsorptionPlan: (target: AbsorptionTarget) => void;
 	dispatchProjectState: Dispatch<ProjectStateAction>;
@@ -491,13 +489,19 @@ export const useWorkspaceShortcuts = ({
 		if (!commitDetails) return;
 
 		const paths = commitDetails.changes.map((change) => change.path);
-		const currentPath = normalizeSelectedFile({ paths: paths, selectedFile });
+		const currentPath = normalizeSelectedFile({
+			paths,
+			selectedFile: selectedItem.mode.path,
+		});
 		const nextPath = getAdjacentPath({ paths, currentPath, offset });
 		if (nextPath === null) return;
 
 		dispatchProjectState({
-			_tag: "SelectFile",
-			file: nextPath,
+			_tag: "SelectItem",
+			item: selectedCommitItem({
+				...selectedItem,
+				mode: { _tag: "Details", path: nextPath },
+			}),
 		});
 	};
 
@@ -506,7 +510,7 @@ export const useWorkspaceShortcuts = ({
 			_tag: "SelectItem",
 			item: selectedCommitItem({
 				...selectedItem,
-				mode: { _tag: "Details" },
+				mode: { _tag: "Details", path: null },
 			}),
 		});
 	};

@@ -11,7 +11,10 @@ export type SegmentMode = { _tag: "Default" } | { _tag: "Rename" };
 
 export type SelectedSegmentItem = SegmentItem & { mode: SegmentMode };
 
-export type CommitMode = { _tag: "Default" } | { _tag: "Details" } | { _tag: "Reword" };
+export type CommitMode =
+	| { _tag: "Default" }
+	| { _tag: "Details"; path: string | null }
+	| { _tag: "Reword" };
 
 export type SelectedCommitItem = CommitItem & { mode: CommitMode };
 
