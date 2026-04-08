@@ -421,11 +421,7 @@ pub fn assign(
     requests: Vec<HunkAssignmentRequest>,
     context_lines: u32,
 ) -> Result<()> {
-    let identifiable_stacks = workspace
-        .stacks
-        .iter()
-        .filter_map(|s| s.id)
-        .collect::<Vec<_>>();
+    let (identifiable_stacks, branches_by_stack) = workspace_stack_and_branch_info(workspace);
 
     let worktree_changes: Vec<but_core::TreeChange> =
         but_core::diff::worktree_changes(repo)?.changes;
@@ -444,6 +440,7 @@ pub fn assign(
         &worktree_assignments,
         &persisted_assignments,
         &identifiable_stacks,
+        &branches_by_stack,
         MultipleOverlapping::SetMostLines,
         true,
     );
@@ -453,6 +450,7 @@ pub fn assign(
         &with_worktree,
         &requests_to_assignments(requests),
         &identifiable_stacks,
+        &branches_by_stack,
         MultipleOverlapping::SetMostLines,
         true,
     );
@@ -530,22 +528,39 @@ fn reconcile_with_worktree(
     workspace: &but_graph::projection::Workspace,
     worktree_assignments: &[HunkAssignment],
 ) -> Result<Vec<HunkAssignment>> {
-    let identifiable_stacks = workspace
-        .stacks
-        .iter()
-        .filter_map(|s| s.id)
-        .collect::<Vec<_>>();
+    let (identifiable_stacks, branches_by_stack) = workspace_stack_and_branch_info(workspace);
 
     let persisted_assignments = state::assignments(db)?;
     let with_worktree = reconcile::assignments(
         worktree_assignments,
         &persisted_assignments,
         &identifiable_stacks,
+        &branches_by_stack,
         MultipleOverlapping::SetMostLines,
         true,
     );
 
     Ok(with_worktree)
+}
+
+/// Collect applied stack IDs and a mapping of stack→branches from the workspace for reconciliation.
+fn workspace_stack_and_branch_info(
+    workspace: &but_graph::projection::Workspace,
+) -> (Vec<StackId>, HashMap<StackId, Vec<gix::refs::FullName>>) {
+    let mut stack_ids = Vec::new();
+    let mut branches_by_stack = HashMap::new();
+    for stack in &workspace.stacks {
+        if let Some(id) = stack.id {
+            stack_ids.push(id);
+            let branch_refs: Vec<gix::refs::FullName> = stack
+                .segments
+                .iter()
+                .filter_map(|s| s.ref_name().map(|r| r.to_owned()))
+                .collect();
+            branches_by_stack.insert(id, branch_refs);
+        }
+    }
+    (stack_ids, branches_by_stack)
 }
 
 /// For assignments that have a `stack_id` but no `branch_ref_bytes`, auto-populate `branch_ref_bytes`
@@ -909,6 +924,7 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
         );
@@ -930,6 +946,7 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
         );
@@ -948,6 +965,7 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
         );
@@ -969,6 +987,7 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
         );
@@ -990,6 +1009,7 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &HashMap::new(),
             MultipleOverlapping::SetNone,
             true,
         );
@@ -1008,6 +1028,7 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             false,
         );
@@ -1172,6 +1193,7 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
         );
@@ -1216,6 +1238,7 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
         );
@@ -1229,6 +1252,8 @@ mod tests {
 
     #[test]
     fn test_reconcile_preserves_branch_ref_bytes() {
+        let feature_ref = gix::refs::FullName::try_from("refs/heads/feature".to_string()).unwrap();
+        let branches = HashMap::from([(stack_id_seq(1), vec![feature_ref])]);
         let previous_assignments = vec![
             HunkAssignment::new("foo.rs", 10, 5, Some(1), Some(1))
                 .with_branch_ref_bytes(Some("refs/heads/feature")),
@@ -1239,6 +1264,7 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &branches,
             MultipleOverlapping::SetMostLines,
             true,
         );
@@ -1265,6 +1291,7 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
         );
@@ -1294,6 +1321,7 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &HashMap::new(),
             MultipleOverlapping::SetNone,
             true,
         );
@@ -1321,11 +1349,46 @@ mod tests {
             &worktree_assignments,
             &previous_assignments,
             &applied_stacks,
+            &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             false,
         );
         assert_eq!(result.len(), 1);
         // With update_unassigned=false, worktree hunk has no stack_id, so it should NOT adopt from previous
         assert_eq!(result[0].branch_ref_bytes, None);
+    }
+
+    #[test]
+    fn test_reconcile_clears_stale_branch_ref_bytes() {
+        // When a branch is deleted from the workspace but the stack remains,
+        // branch_ref_bytes should be cleared while stack_id is preserved.
+        let previous_assignments = vec![
+            HunkAssignment::new("foo.rs", 10, 5, Some(1), Some(1))
+                .with_branch_ref_bytes(Some("refs/heads/deleted-branch")),
+        ];
+        let worktree_assignments = vec![HunkAssignment::new("foo.rs", 10, 5, None, None)];
+        let applied_stacks = vec![stack_id_seq(1)];
+        // The stack exists but only has a different branch — "deleted-branch" is gone
+        let other_ref =
+            gix::refs::FullName::try_from("refs/heads/other-branch".to_string()).unwrap();
+        let branches = HashMap::from([(stack_id_seq(1), vec![other_ref])]);
+        let result = reconcile::assignments(
+            &worktree_assignments,
+            &previous_assignments,
+            &applied_stacks,
+            &branches,
+            MultipleOverlapping::SetMostLines,
+            true,
+        );
+        assert_eq!(result.len(), 1);
+        assert_eq!(
+            result[0].stack_id,
+            Some(stack_id_seq(1)),
+            "stack_id should be preserved when stack is still applied"
+        );
+        assert_eq!(
+            result[0].branch_ref_bytes, None,
+            "branch_ref_bytes should be cleared when branch is no longer in workspace"
+        );
     }
 }
