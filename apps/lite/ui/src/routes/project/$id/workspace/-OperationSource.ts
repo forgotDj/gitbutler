@@ -338,40 +338,41 @@ export const getCommitTargetOperation = ({
 		Match.whenOr("insertAbove", "insertBelow", (action): Operation | null => {
 			const side = action === "insertAbove" ? "above" : "below";
 
-			if (operationSource._tag === "Commit")
-				return {
-					_tag: "CommitMove",
-					subjectCommitId: operationSource.commitId,
-					relativeTo: { type: "commit", subject: commitId },
-					side,
-				};
-
-			if (
-				operationSource._tag === "TreeChanges" &&
-				operationSource.parent._tag === "ChangesSection"
-			)
-				return {
-					_tag: "CommitCreate",
-					relativeTo: { type: "commit", subject: commitId },
-					side,
-					changes: operationSource.changes.map(({ change, hunkHeaders }) =>
-						createDiffSpec(change, hunkHeaders),
-					),
-					message: "",
-				};
-
-			if (operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Commit")
-				return {
-					_tag: "CommitCreateFromCommittedChanges",
-					sourceCommitId: operationSource.parent.commitId,
-					relativeTo: { type: "commit", subject: commitId },
-					side,
-					changes: operationSource.changes.map(({ change, hunkHeaders }) =>
-						createDiffSpec(change, hunkHeaders),
-					),
-				};
-
-			return null;
+			return Match.value(operationSource).pipe(
+				Match.tags({
+					Commit: ({ commitId: subjectCommitId }): Operation => ({
+						_tag: "CommitMove",
+						subjectCommitId,
+						relativeTo: { type: "commit", subject: commitId },
+						side,
+					}),
+					TreeChanges: ({ parent, changes }): Operation =>
+						Match.value(parent).pipe(
+							Match.tags({
+								ChangesSection: (): Operation => ({
+									_tag: "CommitCreate",
+									relativeTo: { type: "commit", subject: commitId },
+									side,
+									changes: changes.map(({ change, hunkHeaders }) =>
+										createDiffSpec(change, hunkHeaders),
+									),
+									message: "",
+								}),
+								Commit: ({ commitId: sourceCommitId }): Operation => ({
+									_tag: "CommitCreateFromCommittedChanges",
+									sourceCommitId,
+									relativeTo: { type: "commit", subject: commitId },
+									side,
+									changes: changes.map(({ change, hunkHeaders }) =>
+										createDiffSpec(change, hunkHeaders),
+									),
+								}),
+							}),
+							Match.exhaustive,
+						),
+				}),
+				Match.orElse(() => null),
+			);
 		}),
 		Match.exhaustive,
 	);
