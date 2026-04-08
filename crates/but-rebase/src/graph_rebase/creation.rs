@@ -7,22 +7,19 @@ use petgraph::{Direction, visit::EdgeRef as _};
 
 use crate::graph_rebase::{
     Checkout, Edge, Editor, Pick, RevisionHistory, Selector, Step, StepGraph, StepGraphIndex,
-    SuccessfulRebase, cherry_pick::PickMode, util,
+    SuccessfulRebase, util,
 };
 
 #[derive(Clone, Copy)]
 /// Options for the editor.
 pub struct GraphEditorOptions {
-    /// Determines when picks are cherry-picked during a rebase.
-    pub default_pick_mode: PickMode,
-    /// Determines how resulting commits are signed.
+    /// Determines how cherry-picked commits are signed.
     pub default_sign_commit: SignCommit,
 }
 
 impl Default for GraphEditorOptions {
     fn default() -> Self {
         Self {
-            default_pick_mode: PickMode::IfChanged,
             default_sign_commit: SignCommit::IfSignCommitsEnabled,
         }
     }
@@ -120,7 +117,6 @@ impl<'ws, 'meta, M: RefMetadata> Editor<'ws, 'meta, M> {
                         Pick::new_workspace_pick(commit.id)
                     } else {
                         let mut pick = Pick::new_pick(commit.id);
-                        pick.pick_mode = options.default_pick_mode;
                         pick.sign_commit = options.default_sign_commit;
                         pick
                     };
