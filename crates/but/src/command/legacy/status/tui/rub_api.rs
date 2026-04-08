@@ -190,6 +190,7 @@ fn execute_uncommitted_to_commit(
         .cloned()
         .map(DiffSpec::from)
         .collect::<Vec<_>>();
+    let changes = but_workspace::flatten_diff_specs(changes);
     but_api::commit::amend::commit_amend(ctx, operation.oid, changes)
 }
 
@@ -420,12 +421,13 @@ fn changes_for_stack_assignment(
     ctx: &mut Context,
     stack_id: Option<StackId>,
 ) -> anyhow::Result<Vec<DiffSpec>> {
-    Ok(but_api::diff::changes_in_worktree(ctx)?
+    let changes = but_api::diff::changes_in_worktree(ctx)?
         .assignments
         .into_iter()
         .filter(|assignment| assignment.stack_id == stack_id)
         .map(DiffSpec::from)
-        .collect())
+        .collect();
+    Ok(but_workspace::flatten_diff_specs(changes))
 }
 
 /// Resolves a branch name into its workspace stack id, if any.
