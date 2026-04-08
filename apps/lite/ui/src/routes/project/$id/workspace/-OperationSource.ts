@@ -271,16 +271,12 @@ export const getBranchTargetOperation = ({
 	firstCommitId,
 }: {
 	operationSource: OperationSource;
-	branchRef: Array<number> | null;
+	branchRef: Array<number>;
 	firstCommitId: string | undefined;
 }): Operation | null =>
 	Match.value(operationSource).pipe(
 		Match.tag("Segment", (source): Operation | null => {
-			if (
-				branchRef === null ||
-				source.branchRef === null ||
-				decodeRefName(branchRef) === decodeRefName(source.branchRef)
-			)
+			if (source.branchRef === null || decodeRefName(branchRef) === decodeRefName(source.branchRef))
 				return null;
 			return {
 				_tag: "MoveBranch",
@@ -289,7 +285,7 @@ export const getBranchTargetOperation = ({
 			};
 		}),
 		Match.tag("Commit", ({ commitId }): Operation | null => {
-			if (branchRef === null || commitId === firstCommitId) return null;
+			if (commitId === firstCommitId) return null;
 			return {
 				_tag: "CommitMove",
 				subjectCommitId: commitId,
@@ -301,8 +297,6 @@ export const getBranchTargetOperation = ({
 			};
 		}),
 		Match.tag("TreeChanges", (source): Operation | null => {
-			if (branchRef === null) return null;
-
 			const changes = source.changes.map(({ change, hunkHeaders }) =>
 				createDiffSpec(change, hunkHeaders),
 			);

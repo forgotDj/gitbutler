@@ -313,7 +313,7 @@ export const CommitTarget: FC<
 
 export const BranchTarget: FC<
 	{
-		branchRef: Array<number> | null;
+		branchRef: Array<number>;
 		firstCommitId: string | undefined;
 		projectId: string;
 	} & useRender.ComponentProps<"div">
