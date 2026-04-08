@@ -36,14 +36,12 @@ type BuildWorkspaceOutlineArgs = {
 	headInfo: RefInfo;
 	changes: Array<TreeChange>;
 	assignments: Array<HunkAssignment>;
-	commonBaseCommitId?: string;
 };
 
 export const buildWorkspaceOutline = ({
 	headInfo,
 	changes,
 	assignments,
-	commonBaseCommitId,
 }: BuildWorkspaceOutlineArgs): WorkspaceOutline => {
 	const changesSection = (stackId: string | null): WorkspaceSection => ({
 		section: changesSectionItem(stackId),
@@ -68,10 +66,10 @@ export const buildWorkspaceOutline = ({
 		};
 	};
 
-	const baseCommitSection = (commitId: string): WorkspaceSection => ({
-		section: baseCommitItem(commitId),
+	const baseCommitSection: WorkspaceSection = {
+		section: baseCommitItem,
 		children: [],
-	});
+	};
 
 	return [
 		changesSection(null),
@@ -87,7 +85,7 @@ export const buildWorkspaceOutline = ({
 			];
 		}),
 
-		...(commonBaseCommitId !== undefined ? [baseCommitSection(commonBaseCommitId)] : []),
+		baseCommitSection,
 	];
 };
 

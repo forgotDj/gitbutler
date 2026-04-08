@@ -21,7 +21,7 @@ import { FC } from "react";
 import {
 	DragPreview,
 	getCommitTargetOperations,
-	getDragData,
+	makeDragData,
 	parseDragData,
 } from "./-DragAndDrop.tsx";
 import styles from "./route.module.css";
@@ -34,15 +34,14 @@ import {
 
 export const BranchSource: FC<
 	{
-		branchRef: Array<number> | null;
+		branchRef: Array<number>;
 		branchName: string;
 	} & useRender.ComponentProps<"div">
 > = ({ branchRef, branchName, render, ...props }) => {
-	const dragData = branchRef ? getDragData({ _tag: "Segment", branchRef }) : null;
+	const dragData = makeDragData({ _tag: "Segment", branchRef });
 	const [isDragging, dragRef] = useDraggable({
-		getInitialData: () => dragData ?? {},
+		getInitialData: () => dragData,
 		preview: <DragPreview>{branchName}</DragPreview>,
-		canDrag: () => dragData !== null,
 	});
 	const isActive = isDragging;
 
@@ -62,7 +61,7 @@ export const CommitSource: FC<
 	} & useRender.ComponentProps<"div">
 > = ({ commit, isEnabled = true, render, ...props }) => {
 	const [isDragging, dragRef] = useDraggable({
-		getInitialData: () => getDragData({ _tag: "Commit", commitId: commit.id }),
+		getInitialData: () => makeDragData({ _tag: "Commit", commitId: commit.id }),
 		preview: (
 			<DragPreview>
 				<CommitLabel commit={commit} />
@@ -88,7 +87,7 @@ export const CommitFileSource: FC<
 	} & useRender.ComponentProps<"div">
 > = ({ change, fileParent, render, ...props }) => {
 	const [isDragging, dragRef] = useDraggable({
-		getInitialData: () => getDragData({ _tag: "File", parent: fileParent, path: change.path }),
+		getInitialData: () => makeDragData({ _tag: "File", parent: fileParent, path: change.path }),
 		preview: <DragPreview>{change.path}</DragPreview>,
 	});
 	const isActive = isDragging;
@@ -109,7 +108,7 @@ export const ChangesFileSource: FC<
 	} & useRender.ComponentProps<"div">
 > = ({ change, fileParent, render, ...props }) => {
 	const [isDragging, dragRef] = useDraggable({
-		getInitialData: () => getDragData({ _tag: "File", parent: fileParent, path: change.path }),
+		getInitialData: () => makeDragData({ _tag: "File", parent: fileParent, path: change.path }),
 		preview: <DragPreview>{change.path}</DragPreview>,
 	});
 	const isActive = isDragging;
@@ -127,13 +126,11 @@ export const ChangesSectionSource: FC<
 	{
 		stackId: string | null;
 		label: string;
-		changeCount: number;
 	} & useRender.ComponentProps<"div">
-> = ({ stackId, label, changeCount, render, ...props }) => {
+> = ({ stackId, label, render, ...props }) => {
 	const [isDragging, dragRef] = useDraggable({
-		getInitialData: () => getDragData({ _tag: "ChangesSection", stackId }),
+		getInitialData: () => makeDragData({ _tag: "ChangesSection", stackId }),
 		preview: <DragPreview>{label}</DragPreview>,
-		canDrag: () => changeCount > 0,
 	});
 	const isActive = isDragging;
 
@@ -156,7 +153,7 @@ export const HunkSource: FC<
 > = ({ patch, fileParent, change, hunk, render, ...props }) => {
 	const [isDragging, dragRef] = useDraggable({
 		getInitialData: () =>
-			getDragData({
+			makeDragData({
 				_tag: "Hunk",
 				parent: fileParent,
 				path: change.path,
@@ -263,14 +260,7 @@ export const CommitTarget: FC<
 		});
 
 		const instruction = extractInstruction(
-			attachInstruction(
-				{ operationSource },
-				{
-					input,
-					element,
-					operations,
-				},
-			),
+			attachInstruction({ operationSource }, { input, element, operations }),
 		);
 
 		if (!instruction) return null;

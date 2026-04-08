@@ -24,9 +24,6 @@
 	width: 300px;
 }
 
-.assignedChanges {
-}
-
 .commitForm {
 	display: flex;
 	flex-direction: column;
@@ -182,6 +179,5 @@
 
 .activeSource {
 	border-radius: 8px;
-	background-color: var(--color-gray-200);
 	opacity: 0.4;
 }

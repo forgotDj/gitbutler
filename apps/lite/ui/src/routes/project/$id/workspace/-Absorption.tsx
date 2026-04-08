@@ -7,9 +7,7 @@ import { AbsorptionReason, AbsorptionTarget, CommitAbsorption } from "@gitbutler
 import { useMutation } from "@tanstack/react-query";
 import { FC, useState } from "react";
 import styles from "./-Absorption.module.css";
-
-const uniqueAbsorptionPaths = (commitAbsorption: CommitAbsorption): Array<string> =>
-	globalThis.Array.from(new Set(commitAbsorption.files.map((file) => file.path)));
+import { dedupe } from "effect/Array";
 
 const describeAbsorptionReason = (reason: AbsorptionReason): string | null => {
 	switch (reason) {
@@ -48,7 +46,7 @@ export const AbsorptionDialog: FC<{
 								<dt>Paths</dt>
 								<dd>
 									<ul>
-										{uniqueAbsorptionPaths(commitAbsorption).map((path) => (
+										{dedupe(commitAbsorption.files.map((file) => file.path)).map((path) => (
 											<li key={path}>{path}</li>
 										))}
 									</ul>

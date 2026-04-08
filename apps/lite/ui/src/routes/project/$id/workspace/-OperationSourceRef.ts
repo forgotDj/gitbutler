@@ -5,6 +5,7 @@ import { Item } from "./-Item.ts";
 
 export type OperationSourceRef =
 	| { _tag: "Segment"; branchRef: Array<number> | null }
+	| { _tag: "BaseCommit" }
 	| { _tag: "Commit"; commitId: string }
 	| { _tag: "ChangesSection"; stackId: string | null }
 	| { _tag: "File"; parent: FileParent; path: string }
@@ -21,6 +22,6 @@ export const operationSourceRefFromItem = (item: Item): OperationSourceRef =>
 				path,
 			}),
 			Commit: ({ commitId }): OperationSourceRef => ({ _tag: "Commit", commitId }),
-			BaseCommit: ({ commitId }): OperationSourceRef => ({ _tag: "Commit", commitId }),
+			BaseCommit: (): OperationSourceRef => ({ _tag: "BaseCommit" }),
 		}),
 	);

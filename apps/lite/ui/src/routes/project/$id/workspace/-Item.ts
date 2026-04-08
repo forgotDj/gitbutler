@@ -12,14 +12,12 @@ type SegmentItemBase = {
 export type SegmentItem = SegmentItemBase;
 export type CommitItem = SegmentItemBase & { commitId: string };
 
-export type BaseCommitItem = { commitId: string };
-
 export type Item =
 	| ({ _tag: "ChangesSection" } & ChangesSectionItem)
 	| ({ _tag: "Change" } & ChangeItem)
 	| ({ _tag: "Segment" } & SegmentItem)
 	| ({ _tag: "Commit" } & CommitItem)
-	| ({ _tag: "BaseCommit" } & BaseCommitItem);
+	| { _tag: "BaseCommit" };
 
 export const changesSectionItem = (stackId: string | null): Item => ({
 	_tag: "ChangesSection",
@@ -47,10 +45,9 @@ export const commitItem = ({ stackId, segmentIndex, branchRef, commitId }: Commi
 	commitId,
 });
 
-export const baseCommitItem = (commitId: string): Item => ({
+export const baseCommitItem: Item = {
 	_tag: "BaseCommit",
-	commitId,
-});
+};
 
 export const itemIdentityKey = (item: Item): string =>
 	Match.value(item).pipe(
@@ -60,7 +57,7 @@ export const itemIdentityKey = (item: Item): string =>
 			Segment: (item) =>
 				JSON.stringify(["Segment", item.stackId, item.segmentIndex, item.branchRef]),
 			Commit: (item) => JSON.stringify(["Commit", item.stackId, item.segmentIndex, item.commitId]),
-			BaseCommit: (item) => JSON.stringify(["BaseCommit", item.commitId]),
+			BaseCommit: () => JSON.stringify(["BaseCommit"]),
 		}),
 	);
 

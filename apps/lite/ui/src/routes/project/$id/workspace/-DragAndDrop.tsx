@@ -31,7 +31,7 @@ export const DragPreview: FC<{ children: ReactNode }> = ({ children }) => (
 	<div className={sharedStyles.dragPreview}>{children}</div>
 );
 
-export const getDragData = (operationSourceRef: OperationSourceRef): DragData => ({
+export const makeDragData = (operationSourceRef: OperationSourceRef): DragData => ({
 	operationSourceRef,
 });
 

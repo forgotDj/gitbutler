@@ -1,7 +1,7 @@
 import { type RelativeTo, type Stack } from "@gitbutler/but-sdk";
 
 export const stackRelativeTo = (stack: Stack): RelativeTo | null => {
-	const segmentWithRef = stack.segments.find((segment) => segment.refName != null);
+	const segmentWithRef = stack.segments.find((segment) => segment.refName);
 	if (segmentWithRef?.refName)
 		return {
 			type: "referenceBytes",

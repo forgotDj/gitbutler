@@ -1,6 +1,5 @@
 import { Match } from "effect";
 import {
-	type BaseCommitItem,
 	type ChangeItem,
 	type ChangesSectionItem,
 	type CommitItem,
@@ -21,7 +20,7 @@ export type SelectedItem =
 	| ({ _tag: "Change" } & ChangeItem)
 	| ({ _tag: "Segment" } & SelectedSegmentItem)
 	| ({ _tag: "Commit" } & SelectedCommitItem)
-	| ({ _tag: "BaseCommit" } & BaseCommitItem);
+	| { _tag: "BaseCommit" };
 
 export const selectedChangesSectionItem = (stackId: string | null): SelectedItem => ({
 	_tag: "ChangesSection",
@@ -62,10 +61,9 @@ export const selectedCommitItem = ({
 	mode,
 });
 
-export const selectedBaseCommitItem = (commitId: string): SelectedItem => ({
+export const selectedBaseCommitItem: SelectedItem = {
 	_tag: "BaseCommit",
-	commitId,
-});
+};
 
 export const asSelectedItem = (item: Item): SelectedItem =>
 	Match.value(item).pipe(
@@ -74,6 +72,6 @@ export const asSelectedItem = (item: Item): SelectedItem =>
 			Change: (item) => selectedChangeItem(item.stackId, item.path),
 			Segment: (item) => selectedSegmentItem({ ...item, mode: { _tag: "Default" } }),
 			Commit: (item) => selectedCommitItem({ ...item, mode: { _tag: "Default" } }),
-			BaseCommit: (item) => selectedBaseCommitItem(item.commitId),
+			BaseCommit: () => selectedBaseCommitItem,
 		}),
 	);
