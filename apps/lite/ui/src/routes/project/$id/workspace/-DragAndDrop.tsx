@@ -58,11 +58,6 @@ export const getCommitTargetInstruction = ({
 				? item.parent.commitId
 				: null;
 
-	const combineOperation = getCombineOperation({
-		operationSource,
-		target: { _tag: "Commit", commitId },
-	});
-
 	return extractInstruction(
 		attachInstruction(
 			{ operationSource },
@@ -89,7 +84,10 @@ export const getCommitTargetInstruction = ({
 						? "available"
 						: "not-available",
 					combine:
-						combineOperation ||
+						getCombineOperation({
+							operationSource,
+							target: { _tag: "Commit", commitId },
+						}) ||
 						// Allow cancelling by dropping back where we started, otherwise
 						// this would be interpreted as a reorder.
 						getSourceCommitId(operationSource) === commitId
