@@ -9,9 +9,6 @@ import { FC, useState } from "react";
 import styles from "./-Absorption.module.css";
 import { dedupe } from "effect/Array";
 
-const uniqueAbsorptionPaths = (commitAbsorption: CommitAbsorption): Array<string> =>
-	dedupe(commitAbsorption.files.map((file) => file.path));
-
 const describeAbsorptionReason = (reason: AbsorptionReason): string | null => {
 	switch (reason) {
 		case "hunk_dependency":
@@ -49,7 +46,7 @@ export const AbsorptionDialog: FC<{
 								<dt>Paths</dt>
 								<dd>
 									<ul>
-										{uniqueAbsorptionPaths(commitAbsorption).map((path) => (
+										{dedupe(commitAbsorption.files.map((file) => file.path)).map((path) => (
 											<li key={path}>{path}</li>
 										))}
 									</ul>
