@@ -1190,8 +1190,8 @@ mod with_workspace {
         .unwrap_err();
         assert_eq!(
             err.to_string(),
-            "Reference 'extra' cannot be created as segment at 3183e43ff482a2c4c8ff531d595453b64f58d90b",
-            "The simulation catches the issue first, note how it wants to create it at the base"
+            "Reference 'extra' already exists and is outside the workspace",
+            "Existing refs outside the workspace should fail explicitly instead of surfacing the generic segment error"
         );
         assert!(
             meta.branch(outside_ref.as_ref())?.is_default(),

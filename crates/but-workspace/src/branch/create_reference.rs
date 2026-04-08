@@ -269,6 +269,11 @@ pub(super) mod function {
             workspace.try_find_owner_indexes_by_commit_id(ref_target_id)?;
         }
 
+        let existing_ref_target_id = repo
+            .try_find_reference(ref_name)?
+            .map(|mut reference| reference.peel_to_id().map(|id| id.detach()))
+            .transpose()?;
+
         let graph_with_new_ref = {
             // Always update the metadata, this may help disambiguating.
             let mut branch_md = meta.branch(ref_name)?;
@@ -300,6 +305,15 @@ pub(super) mod function {
             .find_segment_and_stack_by_refname(ref_name)
             .is_some();
         if !has_new_ref_as_standalone_segment {
+            if existing_ref_target_id.is_some()
+                && !workspace.refname_is_segment(ref_name)
+                && workspace.ref_name() != Some(ref_name)
+            {
+                bail!(
+                    "Reference '{}' already exists and is outside the workspace",
+                    ref_name.shorten()
+                )
+            }
             // TODO: this should probably be easier to understand for the UI, with error codes maybe?
             bail!(
                 "Reference '{}' cannot be created as segment at {ref_target_id}",
