@@ -3,7 +3,7 @@
 use std::process::Command;
 use std::{env, path::PathBuf};
 
-use anyhow::{Context, bail};
+use anyhow::Context;
 
 /// The directory to store application-wide data in, like logs, **one per channel**.
 ///
@@ -136,6 +136,9 @@ impl AppChannel {
     /// Open the GitButler GUI application for `possibly_project_dir`.
     ///
     /// This uses the deeplink URL scheme registered for the specific channel.
+    ///
+    /// Note: On Linux, we don't have a good way of distinguishing between channels in the installed
+    /// binaries, so we always just resolve `gitbutler-tauri`.
     pub fn open(&self, possibly_project_dir: &std::path::Path) -> anyhow::Result<()> {
         let scheme = match self {
             AppChannel::Nightly => "but-nightly",
@@ -157,10 +160,29 @@ impl AppChannel {
             timestamp
         );
 
-        let mut cmd_errors = Vec::new();
+        let cleaned_vars: Vec<(&str, String)> = clean_env_vars(&[
+            "APPDIR",
+            "GDK_PIXBUF_MODULE_FILE",
+            "GIO_EXTRA_MODULES",
+            "GSETTINGS_SCHEMA_DIR",
+            "GST_PLUGIN_SYSTEM_PATH",
+            "GST_PLUGIN_SYSTEM_PATH_1_0",
+            "GTK_DATA_PREFIX",
+            "GTK_EXE_PREFIX",
+            "GTK_IM_MODULE_FILE",
+            "GTK_PATH",
+            "LD_LIBRARY_PATH",
+            "PATH",
+            "PERLLIB",
+            "PYTHONHOME",
+            "PYTHONPATH",
+            "QT_PLUGIN_PATH",
+            "XDG_DATA_DIRS",
+        ])
+        .collect();
 
         #[cfg(target_os = "linux")]
-        let cmds = {
+        {
             // On Linux, we don't currently want to rely on the scheme being properly registered
             // with the Tauri app. The mechanism by which the scheme is registered relies on the
             // bundled Desktop entry, and different desktop environments have pretty wildly
@@ -184,44 +206,41 @@ impl AppChannel {
             // whatever we find. This can be fixed by giving the binaries different names, but as
             // so few users use nightly builds, it's just not worth the effort.
             let mut cmd = Command::new("gitbutler-tauri");
-            cmd.arg(url);
-            vec![cmd]
-        };
-        #[cfg(not(target_os = "linux"))]
-        let cmds = open::commands(url);
-
-        for mut cmd in cmds {
-            let cleaned_vars = clean_env_vars(&[
-                "APPDIR",
-                "GDK_PIXBUF_MODULE_FILE",
-                "GIO_EXTRA_MODULES",
-                "GIO_EXTRA_MODULES",
-                "GSETTINGS_SCHEMA_DIR",
-                "GST_PLUGIN_SYSTEM_PATH",
-                "GST_PLUGIN_SYSTEM_PATH_1_0",
-                "GTK_DATA_PREFIX",
-                "GTK_EXE_PREFIX",
-                "GTK_IM_MODULE_FILE",
-                "GTK_PATH",
-                "LD_LIBRARY_PATH",
-                "PATH",
-                "PERLLIB",
-                "PYTHONHOME",
-                "PYTHONPATH",
-                "QT_PLUGIN_PATH",
-                "XDG_DATA_DIRS",
-            ]);
-
-            cmd.envs(cleaned_vars);
+            cmd.arg(&url);
             cmd.current_dir(env::temp_dir());
-            if cmd.status().is_ok() {
-                return Ok(());
-            } else {
-                cmd_errors.push(anyhow::anyhow!("Failed to execute command {cmd:?}"));
+            cmd.envs(cleaned_vars.clone());
+
+            // Unset all io to not pollute the terminal with output.
+            cmd.stdin(std::process::Stdio::null());
+            cmd.stdout(std::process::Stdio::null());
+            cmd.stderr(std::process::Stdio::null());
+
+            // We spawn this fire-and-forget style. The process will be re-parented to init when
+            // the caller exits (and that caller is typically the `but` CLI). This allows you to
+            // e.g. run `but gui` in a terminal, and then keep using that terminal.
+            //
+            // This is only necessary on cold start, i.e. when the GUI isn't already running, as
+            // then this process becomes the GUI process. If the GUI is already running, this
+            // process effectively just sends the deep link to the already running GUI and then
+            // exits.
+            cmd.spawn()?;
+        };
+
+        #[cfg(not(target_os = "linux"))]
+        {
+            let mut cmd_errors = Vec::new();
+            for mut cmd in open::commands(&url) {
+                cmd.envs(cleaned_vars.clone());
+                cmd.current_dir(env::temp_dir());
+                if cmd.status().is_ok() {
+                    return Ok(());
+                } else {
+                    cmd_errors.push(anyhow::anyhow!("Failed to execute command {cmd:?}"));
+                }
             }
-        }
-        if !cmd_errors.is_empty() {
-            bail!("Errors occurred: {cmd_errors:?}");
+            if !cmd_errors.is_empty() {
+                anyhow::bail!("Errors occurred: {cmd_errors:?}");
+            }
         }
         Ok(())
     }
