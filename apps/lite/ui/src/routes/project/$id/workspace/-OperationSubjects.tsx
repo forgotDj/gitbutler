@@ -263,16 +263,16 @@ export const CommitTarget: FC<
 		if (!instruction) return null;
 
 		return Match.value(instruction.operation).pipe(
-			Match.when("combine", (): Operation | null =>
+			Match.when("combine", () =>
 				getCombineOperation({
 					operationSource,
 					target: { _tag: "Commit", commitId },
 				}),
 			),
-			Match.when("reorder-before", (): Operation | null =>
+			Match.when("reorder-before", () =>
 				getCommitTargetSideOperation({ operationSource, commitId, side: "above" }),
 			),
-			Match.when("reorder-after", (): Operation | null =>
+			Match.when("reorder-after", () =>
 				getCommitTargetSideOperation({ operationSource, commitId, side: "below" }),
 			),
 			Match.exhaustive,
