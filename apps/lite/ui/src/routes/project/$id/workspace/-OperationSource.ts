@@ -265,6 +265,51 @@ export const getCombineOperation = ({
 		}),
 	);
 
+const getCommitTargetSideOperation = ({
+	operationSource,
+	commitId,
+	side,
+}: {
+	operationSource: OperationSource;
+	commitId: string;
+	side: InsertSide;
+}) =>
+	Match.value(operationSource).pipe(
+		Match.tags({
+			Commit: ({ commitId: subjectCommitId }): Operation => ({
+				_tag: "CommitMove",
+				subjectCommitId,
+				relativeTo: { type: "commit", subject: commitId },
+				side,
+			}),
+			TreeChanges: ({ parent, changes }): Operation =>
+				Match.value(parent).pipe(
+					Match.tags({
+						ChangesSection: (): Operation => ({
+							_tag: "CommitCreate",
+							relativeTo: { type: "commit", subject: commitId },
+							side,
+							changes: changes.map(({ change, hunkHeaders }) =>
+								createDiffSpec(change, hunkHeaders),
+							),
+							message: "",
+						}),
+						Commit: ({ commitId: sourceCommitId }): Operation => ({
+							_tag: "CommitCreateFromCommittedChanges",
+							sourceCommitId,
+							relativeTo: { type: "commit", subject: commitId },
+							side,
+							changes: changes.map(({ change, hunkHeaders }) =>
+								createDiffSpec(change, hunkHeaders),
+							),
+						}),
+					}),
+					Match.exhaustive,
+				),
+		}),
+		Match.orElse(() => null),
+	);
+
 export const getBranchTargetOperation = ({
 	operationSource,
 	branchRef,
@@ -352,44 +397,12 @@ export const getCommitTargetOperation = ({
 				target: { _tag: "Commit", commitId },
 			}),
 		),
-		Match.whenOr("insertAbove", "insertBelow", (action): Operation | null => {
-			const side: InsertSide = action === "insertAbove" ? "above" : "below";
-
-			return Match.value(operationSource).pipe(
-				Match.tags({
-					Commit: ({ commitId: subjectCommitId }): Operation => ({
-						_tag: "CommitMove",
-						subjectCommitId,
-						relativeTo: { type: "commit", subject: commitId },
-						side,
-					}),
-					TreeChanges: ({ parent, changes }): Operation =>
-						Match.value(parent).pipe(
-							Match.tags({
-								ChangesSection: (): Operation => ({
-									_tag: "CommitCreate",
-									relativeTo: { type: "commit", subject: commitId },
-									side,
-									changes: changes.map(({ change, hunkHeaders }) =>
-										createDiffSpec(change, hunkHeaders),
-									),
-									message: "",
-								}),
-								Commit: ({ commitId: sourceCommitId }): Operation => ({
-									_tag: "CommitCreateFromCommittedChanges",
-									sourceCommitId,
-									relativeTo: { type: "commit", subject: commitId },
-									side,
-									changes: changes.map(({ change, hunkHeaders }) =>
-										createDiffSpec(change, hunkHeaders),
-									),
-								}),
-							}),
-							Match.exhaustive,
-						),
-				}),
-				Match.orElse(() => null),
-			);
-		}),
+		Match.whenOr("insertAbove", "insertBelow", (action): Operation | null =>
+			getCommitTargetSideOperation({
+				operationSource,
+				commitId,
+				side: action === "insertAbove" ? "above" : "below",
+			}),
+		),
 		Match.exhaustive,
 	);
