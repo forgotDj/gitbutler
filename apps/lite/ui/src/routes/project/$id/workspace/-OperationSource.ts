@@ -8,6 +8,7 @@ import { type FileParent } from "#ui/domain/FileParent.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	CommitDetails,
+	InsertSide,
 	WorktreeChanges,
 	type HunkAssignment,
 	type HunkHeader,
@@ -264,22 +265,77 @@ export const getCombineOperation = ({
 		}),
 	);
 
+export const getCommitTargetSideOperation = ({
+	operationSource,
+	commitId,
+	side,
+	previousCommitId,
+	nextCommitId,
+}: {
+	operationSource: OperationSource;
+	commitId: string;
+	side: InsertSide;
+	previousCommitId: string | undefined;
+	nextCommitId: string | undefined;
+}) =>
+	Match.value(operationSource).pipe(
+		Match.tags({
+			Commit: ({ commitId: subjectCommitId }): Operation | null => {
+				if (
+					subjectCommitId === commitId ||
+					(side === "above" && previousCommitId === subjectCommitId) ||
+					(side === "below" && nextCommitId === subjectCommitId)
+				)
+					return null;
+
+				return {
+					_tag: "CommitMove",
+					subjectCommitId,
+					relativeTo: { type: "commit", subject: commitId },
+					side,
+				};
+			},
+			TreeChanges: ({ parent, changes: sourceChanges }): Operation => {
+				const changes = sourceChanges.map(({ change, hunkHeaders }) =>
+					createDiffSpec(change, hunkHeaders),
+				);
+
+				return Match.value(parent).pipe(
+					Match.tags({
+						ChangesSection: (): Operation => ({
+							_tag: "CommitCreate",
+							relativeTo: { type: "commit", subject: commitId },
+							side,
+							changes,
+							message: "",
+						}),
+						Commit: ({ commitId: sourceCommitId }): Operation => ({
+							_tag: "CommitCreateFromCommittedChanges",
+							sourceCommitId,
+							relativeTo: { type: "commit", subject: commitId },
+							side,
+							changes,
+						}),
+					}),
+					Match.exhaustive,
+				);
+			},
+		}),
+		Match.orElse(() => null),
+	);
+
 export const getBranchTargetOperation = ({
 	operationSource,
 	branchRef,
 	firstCommitId,
 }: {
 	operationSource: OperationSource;
-	branchRef: Array<number> | null;
+	branchRef: Array<number>;
 	firstCommitId: string | undefined;
 }): Operation | null =>
 	Match.value(operationSource).pipe(
 		Match.tag("Segment", (source): Operation | null => {
-			if (
-				branchRef === null ||
-				source.branchRef === null ||
-				decodeRefName(branchRef) === decodeRefName(source.branchRef)
-			)
+			if (source.branchRef === null || decodeRefName(branchRef) === decodeRefName(source.branchRef))
 				return null;
 			return {
 				_tag: "MoveBranch",
@@ -288,7 +344,7 @@ export const getBranchTargetOperation = ({
 			};
 		}),
 		Match.tag("Commit", ({ commitId }): Operation | null => {
-			if (branchRef === null || commitId === firstCommitId) return null;
+			if (commitId === firstCommitId) return null;
 			return {
 				_tag: "CommitMove",
 				subjectCommitId: commitId,
@@ -300,78 +356,39 @@ export const getBranchTargetOperation = ({
 			};
 		}),
 		Match.tag("TreeChanges", (source): Operation | null => {
-			if (branchRef === null || source.parent._tag !== "ChangesSection") return null;
-			return {
-				_tag: "CommitCreate",
-				relativeTo: {
-					type: "referenceBytes",
-					subject: branchRef,
-				},
-				side: "below",
-				changes: source.changes.map(({ change, hunkHeaders }) =>
-					createDiffSpec(change, hunkHeaders),
+			const changes = source.changes.map(({ change, hunkHeaders }) =>
+				createDiffSpec(change, hunkHeaders),
+			);
+
+			return Match.value(source.parent).pipe(
+				Match.tag(
+					"ChangesSection",
+					(): Operation => ({
+						_tag: "CommitCreate",
+						relativeTo: {
+							type: "referenceBytes",
+							subject: branchRef,
+						},
+						side: "below",
+						changes,
+						message: "",
+					}),
 				),
-				message: "",
-			};
+				Match.tag(
+					"Commit",
+					({ commitId: sourceCommitId }): Operation => ({
+						_tag: "CommitCreateFromCommittedChanges",
+						sourceCommitId,
+						relativeTo: {
+							type: "referenceBytes",
+							subject: branchRef,
+						},
+						side: "below",
+						changes,
+					}),
+				),
+				Match.exhaustive,
+			);
 		}),
 		Match.orElse(() => null),
-	);
-
-export type CommitTargetAction = "combine" | "insertAbove" | "insertBelow";
-
-export const getCommitTargetOperation = ({
-	operationSource,
-	commitId,
-	action,
-}: {
-	operationSource: OperationSource;
-	commitId: string;
-	action: CommitTargetAction;
-}): Operation | null =>
-	Match.value(action).pipe(
-		Match.when("combine", (): Operation | null =>
-			getCombineOperation({
-				operationSource,
-				target: { _tag: "Commit", commitId },
-			}),
-		),
-		Match.whenOr("insertAbove", "insertBelow", (action): Operation | null => {
-			const side = action === "insertAbove" ? "above" : "below";
-
-			if (operationSource._tag === "Commit")
-				return {
-					_tag: "CommitMove",
-					subjectCommitId: operationSource.commitId,
-					relativeTo: { type: "commit", subject: commitId },
-					side,
-				};
-
-			if (
-				operationSource._tag === "TreeChanges" &&
-				operationSource.parent._tag === "ChangesSection"
-			)
-				return {
-					_tag: "CommitCreate",
-					relativeTo: { type: "commit", subject: commitId },
-					side,
-					changes: operationSource.changes.map(({ change, hunkHeaders }) =>
-						createDiffSpec(change, hunkHeaders),
-					),
-					message: "",
-				};
-
-			if (operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Commit")
-				return {
-					_tag: "CommitCreateFromCommittedChanges",
-					sourceCommitId: operationSource.parent.commitId,
-					relativeTo: { type: "commit", subject: commitId },
-					side,
-					changes: operationSource.changes.map(({ change, hunkHeaders }) =>
-						createDiffSpec(change, hunkHeaders),
-					),
-				};
-
-			return null;
-		}),
-		Match.exhaustive,
 	);

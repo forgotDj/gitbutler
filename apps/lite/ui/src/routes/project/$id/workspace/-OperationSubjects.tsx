@@ -1,3 +1,7 @@
+import {
+	attachInstruction,
+	extractInstruction,
+} from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
 import { classes } from "#ui/classes.ts";
 import { type FileParent } from "#ui/domain/FileParent.ts";
 import { useDraggable } from "#ui/hooks/useDraggable.tsx";
@@ -16,16 +20,15 @@ import { Match, pipe } from "effect";
 import { FC } from "react";
 import {
 	DragPreview,
-	getCommitTargetInstruction,
+	getCommitTargetOperations,
 	getDragData,
 	parseDragData,
 } from "./-DragAndDrop.tsx";
 import styles from "./route.module.css";
 import {
-	CommitTargetAction,
 	getBranchTargetOperation,
 	getCombineOperation,
-	getCommitTargetOperation,
+	getCommitTargetSideOperation,
 	useResolveOperationSource,
 } from "./-OperationSource.ts";
 
@@ -252,28 +255,53 @@ export const CommitTarget: FC<
 		const operationSource = resolveOperationSource(operationSourceRef);
 		if (!operationSource) return null;
 
-		const instruction = getCommitTargetInstruction({
+		const operations = getCommitTargetOperations({
 			operationSource,
 			commitId,
 			previousCommitId,
 			nextCommitId,
-			input,
-			element,
 		});
+
+		const instruction = extractInstruction(
+			attachInstruction(
+				{ operationSource },
+				{
+					input,
+					element,
+					operations,
+				},
+			),
+		);
 
 		if (!instruction) return null;
 
-		return getCommitTargetOperation({
-			operationSource,
-			commitId,
-			action: Match.value(instruction.operation).pipe(
-				Match.withReturnType<CommitTargetAction>(),
-				Match.when("combine", () => "combine"),
-				Match.when("reorder-before", () => "insertAbove"),
-				Match.when("reorder-after", () => "insertBelow"),
-				Match.exhaustive,
+		return Match.value(instruction.operation).pipe(
+			Match.when("combine", () =>
+				getCombineOperation({
+					operationSource,
+					target: { _tag: "Commit", commitId },
+				}),
 			),
-		});
+			Match.when("reorder-before", () =>
+				getCommitTargetSideOperation({
+					operationSource,
+					commitId,
+					side: "above",
+					previousCommitId,
+					nextCommitId,
+				}),
+			),
+			Match.when("reorder-after", () =>
+				getCommitTargetSideOperation({
+					operationSource,
+					commitId,
+					side: "below",
+					previousCommitId,
+					nextCommitId,
+				}),
+			),
+			Match.exhaustive,
+		);
 	});
 
 	const insertionSide = operation ? getInsertionSide(operation) : null;
@@ -313,7 +341,7 @@ export const CommitTarget: FC<
 
 export const BranchTarget: FC<
 	{
-		branchRef: Array<number> | null;
+		branchRef: Array<number>;
 		firstCommitId: string | undefined;
 		projectId: string;
 	} & useRender.ComponentProps<"div">

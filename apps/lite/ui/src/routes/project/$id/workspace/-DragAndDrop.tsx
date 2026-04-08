@@ -1,14 +1,16 @@
 import { type Operation, useRunOperation } from "#ui/Operation.ts";
 import { monitorForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import {
-	attachInstruction,
-	extractInstruction,
-	Instruction,
+	Availability,
+	Operation as ListItemOperation,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
-import { type InsertSide } from "@gitbutler/but-sdk";
 import { FC, type ReactNode, useEffect } from "react";
 import sharedStyles from "../-shared.module.css";
-import { getCombineOperation, type OperationSource } from "./-OperationSource.ts";
+import {
+	getCombineOperation,
+	getCommitTargetSideOperation,
+	type OperationSource,
+} from "./-OperationSource.ts";
 import { type OperationSourceRef } from "./-OperationSourceRef.ts";
 
 type DragData = {
@@ -33,26 +35,21 @@ export const getDragData = (operationSourceRef: OperationSourceRef): DragData =>
 	operationSourceRef,
 });
 
-export const getCommitTargetInstruction = ({
+type ListItemOperations = {
+	[TKey in ListItemOperation]?: Availability;
+};
+
+export const getCommitTargetOperations = ({
 	operationSource,
 	commitId,
 	previousCommitId,
 	nextCommitId,
-	input,
-	element,
 }: {
 	operationSource: OperationSource;
 	commitId: string;
 	previousCommitId: string | undefined;
 	nextCommitId: string | undefined;
-	input: Parameters<typeof attachInstruction>[1]["input"];
-	element: Element;
-}): Instruction | null => {
-	const isNoOpCommitMove = (sourceCommitId: string, side: InsertSide): boolean =>
-		sourceCommitId === commitId ||
-		(side === "above" && previousCommitId === sourceCommitId) ||
-		(side === "below" && nextCommitId === sourceCommitId);
-
+}): ListItemOperations => {
 	const getSourceCommitId = (item: OperationSource): string | null =>
 		item._tag === "Commit"
 			? item.commitId
@@ -60,42 +57,36 @@ export const getCommitTargetInstruction = ({
 				? item.parent.commitId
 				: null;
 
-	const combineOperation = getCombineOperation({
-		operationSource,
-		target: { _tag: "Commit", commitId },
-	});
-
-	return extractInstruction(
-		attachInstruction(
-			{ operationSource },
-			{
-				input,
-				element,
-				operations: {
-					"reorder-before":
-						(operationSource._tag === "Commit" &&
-							!isNoOpCommitMove(operationSource.commitId, "above")) ||
-						(operationSource._tag === "TreeChanges" &&
-							operationSource.parent._tag === "ChangesSection") ||
-						(operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Commit")
-							? "available"
-							: "not-available",
-					"reorder-after":
-						(operationSource._tag === "Commit" &&
-							!isNoOpCommitMove(operationSource.commitId, "below")) ||
-						(operationSource._tag === "TreeChanges" &&
-							operationSource.parent._tag === "ChangesSection") ||
-						(operationSource._tag === "TreeChanges" && operationSource.parent._tag === "Commit")
-							? "available"
-							: "not-available",
-					combine:
-						combineOperation || getSourceCommitId(operationSource) === commitId
-							? "available"
-							: "not-available",
-				},
-			},
-		),
-	);
+	return {
+		"reorder-before": getCommitTargetSideOperation({
+			operationSource,
+			commitId,
+			side: "above",
+			previousCommitId,
+			nextCommitId,
+		})
+			? "available"
+			: "not-available",
+		"reorder-after": getCommitTargetSideOperation({
+			operationSource,
+			commitId,
+			side: "below",
+			previousCommitId,
+			nextCommitId,
+		})
+			? "available"
+			: "not-available",
+		combine:
+			getCombineOperation({
+				operationSource,
+				target: { _tag: "Commit", commitId },
+			}) ||
+			// Allow cancelling by dropping back where we started, otherwise
+			// this would be interpreted as a reorder.
+			getSourceCommitId(operationSource) === commitId
+				? "available"
+				: "not-available",
+	};
 };
 
 export const useMonitorDraggedOperationSourceRef = ({ projectId }: { projectId: string }) => {
