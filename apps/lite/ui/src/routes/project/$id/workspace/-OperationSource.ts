@@ -301,19 +301,41 @@ export const getBranchTargetOperation = ({
 			};
 		}),
 		Match.tag("TreeChanges", (source): Operation | null => {
-			if (branchRef === null || source.parent._tag !== "ChangesSection") return null;
-			return {
-				_tag: "CommitCreate",
-				relativeTo: {
-					type: "referenceBytes",
-					subject: branchRef,
-				},
-				side: "below",
-				changes: source.changes.map(({ change, hunkHeaders }) =>
-					createDiffSpec(change, hunkHeaders),
+			if (branchRef === null) return null;
+
+			const changes = source.changes.map(({ change, hunkHeaders }) =>
+				createDiffSpec(change, hunkHeaders),
+			);
+
+			return Match.value(source.parent).pipe(
+				Match.tag(
+					"ChangesSection",
+					(): Operation => ({
+						_tag: "CommitCreate",
+						relativeTo: {
+							type: "referenceBytes",
+							subject: branchRef,
+						},
+						side: "below",
+						changes,
+						message: "",
+					}),
 				),
-				message: "",
-			};
+				Match.tag(
+					"Commit",
+					({ commitId: sourceCommitId }): Operation => ({
+						_tag: "CommitCreateFromCommittedChanges",
+						sourceCommitId,
+						relativeTo: {
+							type: "referenceBytes",
+							subject: branchRef,
+						},
+						side: "below",
+						changes,
+					}),
+				),
+				Match.exhaustive,
+			);
 		}),
 		Match.orElse(() => null),
 	);
