@@ -46,7 +46,6 @@
 .row {
 	display: flex;
 	align-items: start;
-	overflow: clip;
 	border-radius: 8px;
 
 	&:where(:hover) {
@@ -84,6 +83,7 @@
 	visibility: hidden;
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
+	border-radius: 8px;
 
 	&:enabled:hover {
 		background-color: var(--color-item-row-action-hover-bg);
