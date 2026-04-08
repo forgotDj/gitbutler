@@ -68,10 +68,10 @@ export const buildWorkspaceOutline = ({
 		};
 	};
 
-	const baseCommitSection = (commitId: string): WorkspaceSection => ({
-		section: baseCommitItem(commitId),
+	const baseCommitSection: WorkspaceSection = {
+		section: baseCommitItem,
 		children: [],
-	});
+	};
 
 	return [
 		changesSection(null),
@@ -87,7 +87,7 @@ export const buildWorkspaceOutline = ({
 			];
 		}),
 
-		...(commonBaseCommitId !== undefined ? [baseCommitSection(commonBaseCommitId)] : []),
+		...(commonBaseCommitId !== undefined ? [baseCommitSection] : []),
 	];
 };
 

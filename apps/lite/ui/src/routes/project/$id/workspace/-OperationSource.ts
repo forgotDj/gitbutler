@@ -24,6 +24,7 @@ export type TreeChangeWithHunkHeaders = {
 };
 
 export type OperationSource =
+	| { _tag: "BaseCommit" }
 	| { _tag: "Commit"; commitId: string }
 	| { _tag: "Segment"; branchRef: Array<number> | null }
 	| {
@@ -68,6 +69,7 @@ const resolveOperationSource = ({
 				_tag: "Segment",
 				branchRef: operationSourceRef.branchRef,
 			}),
+			BaseCommit: (): OperationSource => ({ _tag: "BaseCommit" }),
 			Commit: (operationSourceRef): OperationSource => ({
 				_tag: "Commit",
 				commitId: operationSourceRef.commitId,
@@ -191,6 +193,7 @@ export const getCombineOperation = ({
 	Match.value(operationSource).pipe(
 		Match.tagsExhaustive({
 			Segment: (): Operation | null => null,
+			BaseCommit: (): Operation | null => null,
 			Commit: ({ commitId: sourceCommitId }) =>
 				Match.value(target).pipe(
 					Match.tagsExhaustive({

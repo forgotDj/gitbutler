@@ -805,19 +805,7 @@ const Preview: FC<{
 					ref={ref}
 				/>
 			),
-			BaseCommit: ({ commitId }) => (
-				<CommitPreview
-					projectId={projectId}
-					commitId={commitId}
-					editable={false}
-					onSelectHunk={onSelectHunk}
-					selectedHunk={selectedHunk}
-					isFocused={isFocused}
-					selectHunk={selectHunk}
-					onDependencyHover={onDependencyHover}
-					ref={ref}
-				/>
-			),
+			BaseCommit: () => null,
 		}),
 	);
 
@@ -1405,7 +1393,7 @@ const BaseCommitRow: FC<{
 			type="button"
 			className={styles.commonBaseCommit}
 			onClick={() => {
-				selectItem(selectedBaseCommitItem(commitId));
+				selectItem(selectedBaseCommitItem);
 			}}
 		>
 			{shortCommitId(commitId)} (common base commit)
@@ -2085,10 +2073,7 @@ const ProjectPage: FC = () => {
 						<TearOffBranchTarget projectId={projectId} className={styles.commonBaseCommitContainer}>
 							<BaseCommitRow
 								commitId={commonBaseCommitId}
-								isSelected={
-									selectedItem?._tag === "BaseCommit" &&
-									selectedItem.commitId === commonBaseCommitId
-								}
+								isSelected={selectedItem?._tag === "BaseCommit"}
 								selectItem={selectItem}
 							/>
 						</TearOffBranchTarget>

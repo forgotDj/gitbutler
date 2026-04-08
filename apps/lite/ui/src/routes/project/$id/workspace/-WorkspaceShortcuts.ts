@@ -6,13 +6,7 @@ import { AbsorptionTarget } from "@gitbutler/but-sdk";
 import { useQueryClient } from "@tanstack/react-query";
 import { Match } from "effect";
 import { Dispatch, RefObject, useEffect, useEffectEvent } from "react";
-import {
-	type ChangeItem,
-	getParentSection,
-	type ChangesSectionItem,
-	type BaseCommitItem,
-	Item,
-} from "./-Item.ts";
+import { type ChangeItem, getParentSection, type ChangesSectionItem, Item } from "./-Item.ts";
 import {
 	type SelectedCommitItem,
 	type SelectedItem,
@@ -295,7 +289,6 @@ type Scope =
 	| {
 			_tag: "BaseCommit";
 			bindings: Array<ShortcutBinding<PrimaryPanelAction>>;
-			context: BaseCommitItem;
 	  }
 	| {
 			_tag: "ChangesSection";
@@ -400,10 +393,9 @@ export const getScope = ({
 		),
 		Match.tag(
 			"BaseCommit",
-			(selectedItem): Scope => ({
+			(): Scope => ({
 				_tag: "BaseCommit",
 				bindings: primaryPanelBindings,
-				context: selectedItem,
 			}),
 		),
 		Match.tag(
@@ -706,7 +698,7 @@ export const useWorkspaceShortcuts = ({
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handlePrimaryPanelAction(action, { _tag: "BaseCommit", ...scope.context });
+					handlePrimaryPanelAction(action, { _tag: "BaseCommit" });
 				},
 				Segment: (scope) => {
 					const action = getAction(scope.bindings, event);
