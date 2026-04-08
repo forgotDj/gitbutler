@@ -1752,7 +1752,7 @@ const SegmentRow: FC<
 		</div>
 	);
 
-	return !isRenamePending && segment.refName != null ? (
+	return !isRenamePending && segment.refName ? (
 		<BranchTarget
 			projectId={projectId}
 			branchRef={segment.refName.fullNameBytes}
