@@ -270,10 +270,22 @@ export const CommitTarget: FC<
 				}),
 			),
 			Match.when("reorder-before", () =>
-				getCommitTargetSideOperation({ operationSource, commitId, side: "above" }),
+				getCommitTargetSideOperation({
+					operationSource,
+					commitId,
+					side: "above",
+					previousCommitId,
+					nextCommitId,
+				}),
 			),
 			Match.when("reorder-after", () =>
-				getCommitTargetSideOperation({ operationSource, commitId, side: "below" }),
+				getCommitTargetSideOperation({
+					operationSource,
+					commitId,
+					side: "below",
+					previousCommitId,
+					nextCommitId,
+				}),
 			),
 			Match.exhaustive,
 		);

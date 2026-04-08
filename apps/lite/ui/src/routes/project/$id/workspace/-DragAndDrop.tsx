@@ -5,7 +5,6 @@ import {
 	extractInstruction,
 	Instruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
-import { type InsertSide } from "@gitbutler/but-sdk";
 import { FC, type ReactNode, useEffect } from "react";
 import sharedStyles from "../-shared.module.css";
 import {
@@ -52,11 +51,6 @@ export const getCommitTargetInstruction = ({
 	input: Parameters<typeof attachInstruction>[1]["input"];
 	element: Element;
 }): Instruction | null => {
-	const isNoOpCommitMove = (sourceCommitId: string, side: InsertSide): boolean =>
-		sourceCommitId === commitId ||
-		(side === "above" && previousCommitId === sourceCommitId) ||
-		(side === "below" && nextCommitId === sourceCommitId);
-
 	const getSourceCommitId = (item: OperationSource): string | null =>
 		item._tag === "Commit"
 			? item.commitId
@@ -76,20 +70,24 @@ export const getCommitTargetInstruction = ({
 				input,
 				element,
 				operations: {
-					"reorder-before":
-						getCommitTargetSideOperation({ operationSource, commitId, side: "above" }) &&
-						(operationSource._tag === "Commit"
-							? !isNoOpCommitMove(operationSource.commitId, "above")
-							: true)
-							? "available"
-							: "not-available",
-					"reorder-after":
-						getCommitTargetSideOperation({ operationSource, commitId, side: "below" }) &&
-						(operationSource._tag === "Commit"
-							? !isNoOpCommitMove(operationSource.commitId, "below")
-							: true)
-							? "available"
-							: "not-available",
+					"reorder-before": getCommitTargetSideOperation({
+						operationSource,
+						commitId,
+						side: "above",
+						previousCommitId,
+						nextCommitId,
+					})
+						? "available"
+						: "not-available",
+					"reorder-after": getCommitTargetSideOperation({
+						operationSource,
+						commitId,
+						side: "below",
+						previousCommitId,
+						nextCommitId,
+					})
+						? "available"
+						: "not-available",
 					combine:
 						combineOperation ||
 						// Allow cancelling by dropping back where we started, otherwise

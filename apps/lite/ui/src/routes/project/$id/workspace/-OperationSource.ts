@@ -269,19 +269,32 @@ export const getCommitTargetSideOperation = ({
 	operationSource,
 	commitId,
 	side,
+	previousCommitId,
+	nextCommitId,
 }: {
 	operationSource: OperationSource;
 	commitId: string;
 	side: InsertSide;
+	previousCommitId: string | undefined;
+	nextCommitId: string | undefined;
 }) =>
 	Match.value(operationSource).pipe(
 		Match.tags({
-			Commit: ({ commitId: subjectCommitId }): Operation => ({
-				_tag: "CommitMove",
-				subjectCommitId,
-				relativeTo: { type: "commit", subject: commitId },
-				side,
-			}),
+			Commit: ({ commitId: subjectCommitId }): Operation | null => {
+				if (
+					subjectCommitId === commitId ||
+					(side === "above" && previousCommitId === subjectCommitId) ||
+					(side === "below" && nextCommitId === subjectCommitId)
+				)
+					return null;
+
+				return {
+					_tag: "CommitMove",
+					subjectCommitId,
+					relativeTo: { type: "commit", subject: commitId },
+					side,
+				};
+			},
 			TreeChanges: ({ parent, changes: sourceChanges }): Operation => {
 				const changes = sourceChanges.map(({ change, hunkHeaders }) =>
 					createDiffSpec(change, hunkHeaders),
