@@ -22,10 +22,9 @@ import {
 } from "./-DragAndDrop.tsx";
 import styles from "./route.module.css";
 import {
-	CommitTargetAction,
 	getBranchTargetOperation,
 	getCombineOperation,
-	getCommitTargetOperation,
+	getCommitTargetSideOperation,
 	useResolveOperationSource,
 } from "./-OperationSource.ts";
 
@@ -263,17 +262,22 @@ export const CommitTarget: FC<
 
 		if (!instruction) return null;
 
-		return getCommitTargetOperation({
-			operationSource,
-			commitId,
-			action: Match.value(instruction.operation).pipe(
-				Match.withReturnType<CommitTargetAction>(),
-				Match.when("combine", () => "combine"),
-				Match.when("reorder-before", () => "insertAbove"),
-				Match.when("reorder-after", () => "insertBelow"),
-				Match.exhaustive,
+		return Match.value(instruction.operation).pipe(
+			Match.when("combine", (): Operation | null =>
+				getCombineOperation({
+					operationSource,
+					target: { _tag: "Commit", commitId },
+				}),
 			),
-		});
+			Match.whenOr("reorder-before", "reorder-after", (action): Operation | null =>
+				getCommitTargetSideOperation({
+					operationSource,
+					commitId,
+					side: action === "reorder-before" ? "above" : "below",
+				}),
+			),
+			Match.exhaustive,
+		);
 	});
 
 	const insertionSide = operation ? getInsertionSide(operation) : null;

@@ -379,31 +379,3 @@ export const getBranchTargetOperation = ({
 		}),
 		Match.orElse(() => null),
 	);
-
-export type CommitTargetAction = "combine" | "insertAbove" | "insertBelow";
-
-export const getCommitTargetOperation = ({
-	operationSource,
-	commitId,
-	action,
-}: {
-	operationSource: OperationSource;
-	commitId: string;
-	action: CommitTargetAction;
-}): Operation | null =>
-	Match.value(action).pipe(
-		Match.when("combine", (): Operation | null =>
-			getCombineOperation({
-				operationSource,
-				target: { _tag: "Commit", commitId },
-			}),
-		),
-		Match.whenOr("insertAbove", "insertBelow", (action): Operation | null =>
-			getCommitTargetSideOperation({
-				operationSource,
-				commitId,
-				side: action === "insertAbove" ? "above" : "below",
-			}),
-		),
-		Match.exhaustive,
-	);
