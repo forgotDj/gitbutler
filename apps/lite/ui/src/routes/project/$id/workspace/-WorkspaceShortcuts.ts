@@ -11,6 +11,7 @@ import {
 	getParentSection,
 	type ChangesSectionItem,
 	type BaseCommitItem,
+	Item,
 } from "./-Item.ts";
 import {
 	type SelectedCommitItem,
@@ -32,6 +33,35 @@ type ItemSelectionAction =
 	| { _tag: "Move"; offset: -1 | 1 }
 	| { _tag: "PreviousSection" }
 	| { _tag: "NextSection" };
+
+const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
+	{
+		id: "move-up",
+		description: "up",
+		keys: ["ArrowUp", "k"],
+		action: { _tag: "Move", offset: -1 },
+	},
+	{
+		id: "move-down",
+		description: "down",
+		keys: ["ArrowDown", "j"],
+		action: { _tag: "Move", offset: 1 },
+	},
+	{
+		id: "previous-section",
+		description: "Previous section",
+		keys: ["Shift+ArrowUp", "Shift+k"],
+		action: { _tag: "PreviousSection" },
+		showInShortcutsBar: false,
+	},
+	{
+		id: "next-section",
+		description: "Next section",
+		keys: ["Shift+ArrowDown", "Shift+j"],
+		action: { _tag: "NextSection" },
+		showInShortcutsBar: false,
+	},
+];
 
 type PrimaryPanelAction =
 	| ItemSelectionAction
@@ -103,35 +133,6 @@ const focusPrimaryBinding: ShortcutBinding<PreviewAction> = {
 	action: { _tag: "FocusPrimary" },
 	repeat: false,
 };
-
-const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
-	{
-		id: "move-up",
-		description: "up",
-		keys: ["ArrowUp", "k"],
-		action: { _tag: "Move", offset: -1 },
-	},
-	{
-		id: "move-down",
-		description: "down",
-		keys: ["ArrowDown", "j"],
-		action: { _tag: "Move", offset: 1 },
-	},
-	{
-		id: "previous-section",
-		description: "Previous section",
-		keys: ["Shift+ArrowUp", "Shift+k"],
-		action: { _tag: "PreviousSection" },
-		showInShortcutsBar: false,
-	},
-	{
-		id: "next-section",
-		description: "Next section",
-		keys: ["Shift+ArrowDown", "Shift+j"],
-		action: { _tag: "NextSection" },
-		showInShortcutsBar: false,
-	},
-];
 
 const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 	...itemSelectionBindings,
@@ -271,28 +272,6 @@ export const commitEditingMessageBindings: Array<ShortcutBinding<CommitEditingMe
 	},
 ];
 
-export const handleCommitEditingMessageKeyDown = ({
-	event,
-	onSave,
-	onCancel,
-}: {
-	event: KeyboardEvent;
-	onSave: () => void;
-	onCancel: () => void;
-}) => {
-	const action = getAction(commitEditingMessageBindings, event);
-	if (!action) return;
-
-	event.preventDefault();
-
-	Match.value(action).pipe(
-		Match.tagsExhaustive({
-			Save: onSave,
-			Cancel: onCancel,
-		}),
-	);
-};
-
 type RenameBranchAction = { _tag: "Save" } | { _tag: "Cancel" };
 
 export const renameBranchBindings: Array<ShortcutBinding<RenameBranchAction>> = [
@@ -311,32 +290,6 @@ export const renameBranchBindings: Array<ShortcutBinding<RenameBranchAction>> = 
 		repeat: false,
 	},
 ];
-
-export const handleRenameBranchKeyDown = ({
-	event,
-	onSave,
-	onCancel,
-}: {
-	event: KeyboardEvent;
-	onSave: () => void;
-	onCancel: () => void;
-}) => {
-	const action = getAction(renameBranchBindings, event);
-	if (!action) return;
-
-	Match.value(action).pipe(
-		Match.tagsExhaustive({
-			Save: () => {
-				event.preventDefault();
-				onSave();
-			},
-			Cancel: () => {
-				event.preventDefault();
-				onCancel();
-			},
-		}),
-	);
-};
 
 type Scope =
 	| {
@@ -462,7 +415,7 @@ export const getScope = ({
 							bindings: renameBranchBindings,
 							context: selectedItem,
 						}
-					: selectedItem.branchName === null
+					: selectedItem.branchRef === null
 						? {
 								_tag: "Segment",
 								bindings: primaryPanelBindings,
@@ -495,6 +448,8 @@ export const getLabel = (scope: Scope): string =>
 	);
 
 export const useWorkspaceShortcuts = ({
+	branchRenameFormRef,
+	commitMessageFormRef,
 	projectId,
 	scope,
 	selectedFile,
@@ -503,6 +458,8 @@ export const useWorkspaceShortcuts = ({
 	dispatchProjectState,
 	previewRef,
 }: {
+	branchRenameFormRef: RefObject<HTMLFormElement | null>;
+	commitMessageFormRef: RefObject<HTMLFormElement | null>;
 	projectId: string;
 	scope: Scope | null;
 	selectedFile: string | null;
@@ -514,13 +471,8 @@ export const useWorkspaceShortcuts = ({
 	const queryClient = useQueryClient();
 	const resolveOperationSource = useResolveOperationSource(projectId);
 
-	const requestAbsorptionPlanForSelection = (
-		selectedItem:
-			| ({ _tag: "ChangesSection" } & ChangesSectionItem)
-			| ({ _tag: "Change" } & ChangeItem),
-	) => {
-		const operationSourceRef = operationSourceRefFromItem(selectedItem);
-		if (!operationSourceRef) return;
+	const requestAbsorptionPlanForItem = (item: Item) => {
+		const operationSourceRef = operationSourceRefFromItem(item);
 
 		const operationSource = resolveOperationSource(operationSourceRef);
 		if (operationSource?._tag !== "TreeChanges") return;
@@ -635,15 +587,10 @@ export const useWorkspaceShortcuts = ({
 			Match.orElse((action) => handleHunkSelectionAction(action)),
 		);
 
-	const handleChangesAction = (
-		action: ChangesAction,
-		selectedItem:
-			| ({ _tag: "ChangesSection" } & ChangesSectionItem)
-			| ({ _tag: "Change" } & ChangeItem),
-	) =>
+	const handleChangesAction = (action: ChangesAction, selectedItem: SelectedItem) =>
 		Match.value(action).pipe(
 			Match.tags({
-				Absorb: () => requestAbsorptionPlanForSelection(selectedItem),
+				Absorb: () => requestAbsorptionPlanForItem(selectedItem),
 			}),
 			Match.orElse((action) => handlePrimaryPanelAction(action, selectedItem)),
 		);
@@ -684,6 +631,21 @@ export const useWorkspaceShortcuts = ({
 			),
 		);
 
+	const handleCommitEditingMessageAction = (
+		action: CommitEditingMessageAction,
+		selectedItem: SelectedCommitItem,
+	) =>
+		Match.value(action).pipe(
+			Match.tagsExhaustive({
+				Save: () => commitMessageFormRef.current?.requestSubmit(),
+				Cancel: () =>
+					dispatchProjectState({
+						_tag: "SelectItem",
+						item: selectedCommitItem({ ...selectedItem, mode: { _tag: "Default" } }),
+					}),
+			}),
+		);
+
 	const handleBranchAction = (action: BranchAction, selectedItem: SelectedSegmentItem) =>
 		Match.value(action).pipe(
 			Match.tags({
@@ -701,11 +663,30 @@ export const useWorkspaceShortcuts = ({
 			),
 		);
 
+	const handleRenameBranchAction = (
+		action: RenameBranchAction,
+		selectedItem: SelectedSegmentItem,
+	) =>
+		Match.value(action).pipe(
+			Match.tagsExhaustive({
+				Save: () => branchRenameFormRef.current?.requestSubmit(),
+				Cancel: () =>
+					dispatchProjectState({
+						_tag: "SelectItem",
+						item: selectedSegmentItem({ ...selectedItem, mode: { _tag: "Default" } }),
+					}),
+			}),
+		);
+
 	const handleKeyDown = useEffectEvent((event: KeyboardEvent) => {
 		if (event.defaultPrevented) return;
-		if (isTypingTarget(event.target)) return;
-
 		if (!scope) return;
+		if (
+			scope._tag !== "CommitReword" &&
+			scope._tag !== "BranchRename" &&
+			isTypingTarget(event.target)
+		)
+			return;
 
 		Match.value(scope).pipe(
 			Match.tagsExhaustive({
@@ -745,7 +726,12 @@ export const useWorkspaceShortcuts = ({
 					event.preventDefault();
 					handlePreviewAction(action);
 				},
-				BranchRename: () => undefined,
+				BranchRename: (scope) => {
+					const action = getAction(scope.bindings, event);
+					if (!action) return;
+					event.preventDefault();
+					handleRenameBranchAction(action, scope.context);
+				},
 				CommitDefault: (scope) => {
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
@@ -758,7 +744,12 @@ export const useWorkspaceShortcuts = ({
 					event.preventDefault();
 					handleCommitDetailsAction(action, scope.context);
 				},
-				CommitReword: () => undefined,
+				CommitReword: (scope) => {
+					const action = getAction(scope.bindings, event);
+					if (!action) return;
+					event.preventDefault();
+					handleCommitEditingMessageAction(action, scope.context);
+				},
 			}),
 		);
 	});

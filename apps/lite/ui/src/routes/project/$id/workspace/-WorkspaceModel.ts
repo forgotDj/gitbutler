@@ -59,11 +59,11 @@ export const buildWorkspaceOutline = ({
 		segmentIndex: number,
 		segment: Segment,
 	): WorkspaceSection => {
-		const branchName = segment.refName?.displayName ?? null;
+		const branchRef = segment.refName?.fullNameBytes ?? null;
 		return {
-			section: segmentItem({ stackId, segmentIndex, branchName }),
+			section: segmentItem({ stackId, segmentIndex, branchRef }),
 			children: segment.commits.map((commit) =>
-				commitItem({ stackId, segmentIndex, branchName, commitId: commit.id }),
+				commitItem({ stackId, segmentIndex, branchRef, commitId: commit.id }),
 			),
 		};
 	};

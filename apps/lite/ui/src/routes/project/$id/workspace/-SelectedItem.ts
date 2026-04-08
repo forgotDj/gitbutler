@@ -37,27 +37,27 @@ export const selectedChangeItem = (stackId: string | null, path: string): Select
 export const selectedSegmentItem = ({
 	stackId,
 	segmentIndex,
-	branchName,
+	branchRef,
 	mode,
 }: SelectedSegmentItem): SelectedItem => ({
 	_tag: "Segment",
 	stackId,
 	segmentIndex,
-	branchName,
+	branchRef,
 	mode,
 });
 
 export const selectedCommitItem = ({
 	stackId,
 	segmentIndex,
-	branchName,
+	branchRef,
 	commitId,
 	mode,
 }: SelectedCommitItem): SelectedItem => ({
 	_tag: "Commit",
 	stackId,
 	segmentIndex,
-	branchName,
+	branchRef,
 	commitId,
 	mode,
 });

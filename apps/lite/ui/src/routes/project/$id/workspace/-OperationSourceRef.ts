@@ -4,15 +4,16 @@ import { Match } from "effect";
 import { Item } from "./-Item.ts";
 
 export type OperationSourceRef =
-	| { _tag: "Branch"; ref: Array<number> }
+	| { _tag: "Segment"; branchRef: Array<number> | null }
 	| { _tag: "Commit"; commitId: string }
 	| { _tag: "ChangesSection"; stackId: string | null }
 	| { _tag: "File"; parent: FileParent; path: string }
 	| { _tag: "Hunk"; parent: FileParent; path: string; hunkHeader: HunkHeader };
 
-export const operationSourceRefFromItem = (item: Item): OperationSourceRef | null =>
+export const operationSourceRefFromItem = (item: Item): OperationSourceRef =>
 	Match.value(item).pipe(
-		Match.tags({
+		Match.tagsExhaustive({
+			Segment: ({ branchRef }): OperationSourceRef => ({ _tag: "Segment", branchRef }),
 			ChangesSection: ({ stackId }): OperationSourceRef => ({ _tag: "ChangesSection", stackId }),
 			Change: ({ stackId, path }): OperationSourceRef => ({
 				_tag: "File",
@@ -22,5 +23,4 @@ export const operationSourceRefFromItem = (item: Item): OperationSourceRef | nul
 			Commit: ({ commitId }): OperationSourceRef => ({ _tag: "Commit", commitId }),
 			BaseCommit: ({ commitId }): OperationSourceRef => ({ _tag: "Commit", commitId }),
 		}),
-		Match.orElse(() => null),
 	);

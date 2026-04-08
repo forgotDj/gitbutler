@@ -24,7 +24,7 @@ export type TreeChangeWithHunkHeaders = {
 
 export type OperationSource =
 	| { _tag: "Commit"; commitId: string }
-	| { _tag: "Branch"; ref: Array<number> }
+	| { _tag: "Segment"; branchRef: Array<number> | null }
 	| {
 			_tag: "TreeChanges";
 			parent: FileParent;
@@ -63,9 +63,9 @@ const resolveOperationSource = ({
 }): OperationSource | null =>
 	Match.value(operationSourceRef).pipe(
 		Match.tagsExhaustive({
-			Branch: (operationSourceRef): OperationSource => ({
-				_tag: "Branch",
-				ref: operationSourceRef.ref,
+			Segment: (operationSourceRef): OperationSource => ({
+				_tag: "Segment",
+				branchRef: operationSourceRef.branchRef,
 			}),
 			Commit: (operationSourceRef): OperationSource => ({
 				_tag: "Commit",
@@ -75,17 +75,19 @@ const resolveOperationSource = ({
 				if (!worktreeChanges) return null;
 
 				const assignmentsByPath = getAssignmentsByPath(worktreeChanges.assignments, stackId);
-				const changes = worktreeChanges.changes.flatMap((change) => {
-					const assignments = assignmentsByPath.get(change.path);
-					if (!assignments) return [];
+				const changes = worktreeChanges.changes.flatMap(
+					(change): Array<TreeChangeWithHunkHeaders> => {
+						const assignments = assignmentsByPath.get(change.path);
+						if (!assignments) return [];
 
-					return [
-						{
-							change,
-							hunkHeaders: hunkHeadersForAssignments(assignments),
-						},
-					];
-				});
+						return [
+							{
+								change,
+								hunkHeaders: hunkHeadersForAssignments(assignments),
+							},
+						];
+					},
+				);
 
 				return treeChangesOperationSource({
 					parent: { _tag: "ChangesSection", stackId },
@@ -187,7 +189,7 @@ export const getCombineOperation = ({
 }): Operation | null =>
 	Match.value(operationSource).pipe(
 		Match.tagsExhaustive({
-			Branch: (): Operation | null => null,
+			Segment: (): Operation | null => null,
 			Commit: ({ commitId: sourceCommitId }) =>
 				Match.value(target).pipe(
 					Match.tagsExhaustive({
@@ -272,11 +274,16 @@ export const getBranchTargetOperation = ({
 	firstCommitId: string | undefined;
 }): Operation | null =>
 	Match.value(operationSource).pipe(
-		Match.tag("Branch", (source): Operation | null => {
-			if (branchRef === null || decodeRefName(branchRef) === decodeRefName(source.ref)) return null;
+		Match.tag("Segment", (source): Operation | null => {
+			if (
+				branchRef === null ||
+				source.branchRef === null ||
+				decodeRefName(branchRef) === decodeRefName(source.branchRef)
+			)
+				return null;
 			return {
 				_tag: "MoveBranch",
-				subjectBranch: decodeRefName(source.ref),
+				subjectBranch: decodeRefName(source.branchRef),
 				targetBranch: decodeRefName(branchRef),
 			};
 		}),

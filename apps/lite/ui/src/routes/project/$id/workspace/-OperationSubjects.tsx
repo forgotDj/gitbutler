@@ -2,12 +2,7 @@ import { classes } from "#ui/classes.ts";
 import { type FileParent } from "#ui/domain/FileParent.ts";
 import { useDraggable } from "#ui/hooks/useDraggable.tsx";
 import { useDroppable } from "#ui/hooks/useDroppable.ts";
-import {
-	getInsertionSide,
-	isCombineOperation,
-	operationLabel,
-	type Operation,
-} from "#ui/Operation.ts";
+import { getInsertionSide, operationLabel, type Operation } from "#ui/Operation.ts";
 import {
 	CommitLabel,
 	decodeRefName,
@@ -40,7 +35,7 @@ export const BranchSource: FC<
 		branchName: string;
 	} & useRender.ComponentProps<"div">
 > = ({ branchRef, branchName, render, ...props }) => {
-	const dragData = branchRef ? getDragData({ _tag: "Branch", ref: branchRef }) : null;
+	const dragData = branchRef ? getDragData({ _tag: "Segment", branchRef }) : null;
 	const [isDragging, dragRef] = useDraggable({
 		getInitialData: () => dragData ?? {},
 		preview: <DragPreview>{branchName}</DragPreview>,
@@ -281,22 +276,21 @@ export const CommitTarget: FC<
 		});
 	});
 
+	const insertionSide = operation ? getInsertionSide(operation) : null;
+
+	const targetTooltipOperation = insertionSide === null ? operation : null;
+
 	const target = useRender({
 		render,
 		ref: dropRef,
 		props: mergeProps<"div">(props, {
-			className: classes(operation && isCombineOperation(operation) && styles.activeTarget),
+			className: classes(targetTooltipOperation && styles.activeTarget),
 		}),
 	});
 
-	const insertionSide = operation ? getInsertionSide(operation) : null;
-
 	return (
 		<div className={styles.commit}>
-			<OperationTooltip
-				operation={operation && isCombineOperation(operation) ? operation : null}
-				render={target}
-			/>
+			<OperationTooltip operation={targetTooltipOperation} render={target} />
 
 			{insertionSide !== null && (
 				<OperationTooltip
@@ -359,11 +353,12 @@ export const TearOffBranchTarget: FC<{ projectId: string } & useRender.Component
 		const operationSource = resolveOperationSource(operationSourceRef);
 		if (!operationSource) return null;
 
-		if (operationSource._tag !== "Branch") return null;
+		if (operationSource._tag !== "Segment") return null;
+		if (operationSource.branchRef === null) return null;
 
 		return {
 			_tag: "TearOffBranch",
-			subjectBranch: decodeRefName(operationSource.ref),
+			subjectBranch: decodeRefName(operationSource.branchRef),
 		};
 	});
 

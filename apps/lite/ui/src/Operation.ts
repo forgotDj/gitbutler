@@ -46,19 +46,6 @@ export type Operation =
 	| ({ _tag: "MoveBranch" } & Omit<MoveBranchParams, "projectId">)
 	| ({ _tag: "TearOffBranch" } & Omit<TearOffBranchParams, "projectId">);
 
-export const isCombineOperation = (operation: Operation): boolean =>
-	Match.value(operation).pipe(
-		Match.tags({
-			AssignHunk: () => true,
-			CommitAmend: () => true,
-			CommitMoveChangesBetween: () => true,
-			CommitSquash: () => true,
-			CommitUncommit: () => true,
-			CommitUncommitChanges: () => true,
-		}),
-		Match.orElse(() => false),
-	);
-
 export const getInsertionSide = (operation: Operation): InsertSide | null =>
 	Match.value(operation).pipe(
 		Match.tags({
@@ -92,7 +79,7 @@ export const operationLabel = (operation: Operation): string | null =>
 		}),
 	);
 
-export const useRunOperation = (projectId: string) => {
+export const useRunOperation = () => {
 	const toastManager = Toast.useToastManager();
 	const assignHunk = useMutation(assignHunkMutationOptions);
 	const commitAmend = useMutation(commitAmendMutationOptions);
@@ -106,7 +93,7 @@ export const useRunOperation = (projectId: string) => {
 	const moveBranch = useMutation(moveBranchMutationOptions);
 	const tearOffBranch = useMutation(tearOffBranchMutationOptions);
 
-	return (operation: Operation): void => {
+	return (projectId: string, operation: Operation): void => {
 		Match.value(operation).pipe(
 			Match.tag("AssignHunk", (operation) => {
 				assignHunk.mutate({

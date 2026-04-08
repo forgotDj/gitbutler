@@ -46,6 +46,8 @@
 .row {
 	display: flex;
 	align-items: start;
+	overflow: clip;
+	border-radius: 8px;
 
 	&:where(:hover) {
 		background-color: var(--color-row-hover-bg);
@@ -67,6 +69,10 @@
 .itemRowHighlighted {
 	background-color: var(--color-item-row-highlighted-bg);
 	color: var(--color-text);
+}
+
+.section {
+	border-radius: 8px;
 }
 
 .sectionSelected {
