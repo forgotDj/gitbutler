@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::HashMap};
 
 use but_core::ref_metadata::StackId;
 use itertools::Itertools;
@@ -12,7 +12,13 @@ pub enum MultipleOverlapping {
 }
 
 impl HunkAssignment {
-    fn set_from(&mut self, other: &Self, applied_stack_ids: &[StackId], update_unassigned: bool) {
+    fn set_from(
+        &mut self,
+        other: &Self,
+        applied_stack_ids: &[StackId],
+        branches_by_stack: &HashMap<StackId, Vec<gix::refs::FullName>>,
+        update_unassigned: bool,
+    ) {
         // Always set the path from the other assignment
         self.path = other.path.clone();
         // Override the id only if the other assignment has an id
@@ -47,6 +53,17 @@ impl HunkAssignment {
         {
             self.stack_id = None;
         }
+        // If branch_ref_bytes is set, ensure it belongs to the assignment's own stack.
+        // A branch that moved to a different stack should not retain its old association.
+        if let Some(branch_ref) = &self.branch_ref_bytes {
+            let is_valid = self
+                .stack_id
+                .and_then(|sid| branches_by_stack.get(&sid))
+                .is_some_and(|branches| branches.contains(branch_ref));
+            if !is_valid {
+                self.branch_ref_bytes = None;
+            }
+        }
         // Invariant: if stack_id was cleared, branch_ref_bytes must also be cleared
         if self.stack_id.is_none() {
             self.branch_ref_bytes = None;
@@ -58,6 +75,7 @@ pub(crate) fn assignments(
     new: &[HunkAssignment],
     old: &[HunkAssignment],
     applied_stack_ids: &[StackId],
+    branches_by_stack: &HashMap<StackId, Vec<gix::refs::FullName>>,
     multiple_overlapping_resolution: MultipleOverlapping,
     update_unassigned: bool,
 ) -> Vec<HunkAssignment> {
@@ -74,7 +92,12 @@ pub(crate) fn assignments(
                 // No intersection - do nothing, the None assignment is kept
             }
             Ordering::Equal => {
-                new_assignment.set_from(intersecting[0], applied_stack_ids, update_unassigned);
+                new_assignment.set_from(
+                    intersecting[0],
+                    applied_stack_ids,
+                    branches_by_stack,
+                    update_unassigned,
+                );
             }
             Ordering::Greater => {
                 // Pick the hunk with the most lines to adopt the assignment info from.
@@ -82,7 +105,12 @@ pub(crate) fn assignments(
                     .iter()
                     .max_by_key(|h| h.hunk_header.as_ref().map(|h| h.new_lines));
                 if let Some(other) = biggest_hunk {
-                    new_assignment.set_from(other, applied_stack_ids, update_unassigned);
+                    new_assignment.set_from(
+                        other,
+                        applied_stack_ids,
+                        branches_by_stack,
+                        update_unassigned,
+                    );
                 }
 
                 // If requested, reset stack_id to none on multiple overlapping

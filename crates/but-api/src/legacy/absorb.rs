@@ -16,7 +16,7 @@ use but_hunk_dependency::ui::{
     hunk_dependencies_for_workspace_changes_by_worktree_dir,
 };
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
-use but_workspace::ui::StackDetails;
+use but_workspace::ui::{BranchDetails, StackDetails};
 use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
@@ -367,6 +367,21 @@ fn find_top_most_lock<'a>(
     None
 }
 
+/// Resolve the target branch in stack details: match `branch_ref` if set, otherwise use the topmost branch.
+fn find_target_branch<'a>(
+    stack_details: &'a StackDetails,
+    branch_ref: Option<&gix::refs::FullName>,
+) -> Option<&'a BranchDetails> {
+    branch_ref
+        .and_then(|branch_ref| {
+            stack_details
+                .branch_details
+                .iter()
+                .find(|b| &b.reference == branch_ref)
+        })
+        .or_else(|| stack_details.branch_details.first())
+}
+
 /// Determine the target commit for an assignment based on dependencies and assignments
 fn determine_target_commit(
     ctx: &mut Context,
@@ -395,20 +410,17 @@ fn determine_target_commit(
 
     // Priority 2: Use the assignment's stack ID if available
     if let Some(stack_id) = assignment.stack_id {
-        // We need to find the topmost commit in this stack
-        let stack_details = crate::legacy::workspace::stack_details(ctx, Some(stack_id))?;
+        let branch_ref = assignment.branch_ref_bytes.as_ref();
 
-        // Find the topmost commit in the first branch
-        if let Some(branch) = stack_details.branch_details.first()
+        let stack_details = crate::legacy::workspace::stack_details(ctx, Some(stack_id))?;
+        if let Some(branch) = find_target_branch(&stack_details, branch_ref)
             && let Some(commit) = branch.commits.first()
         {
             return Ok((stack_id, commit.id, AbsorptionReason::StackAssignment));
         }
 
-        // If there are no commits in the stack, create a blank commit first
-        let branch = stack_details
-            .branch_details
-            .first()
+        // If there are no commits in the target branch, create a blank commit first
+        let branch = find_target_branch(&stack_details, branch_ref)
             .ok_or_else(|| anyhow::anyhow!("Stack has no branches"))?;
         commit_insert_blank_only_impl(
             ctx,
@@ -417,9 +429,9 @@ fn determine_target_commit(
             perm,
         )?;
 
-        // Now fetch the stack details again to get the newly created commit
+        // Fetch again to get the newly created commit
         let stack_details = crate::legacy::workspace::stack_details(ctx, Some(stack_id))?;
-        if let Some(branch) = stack_details.branch_details.first()
+        if let Some(branch) = find_target_branch(&stack_details, branch_ref)
             && let Some(commit) = branch.commits.first()
         {
             return Ok((stack_id, commit.id, AbsorptionReason::StackAssignment));
