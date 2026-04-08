@@ -1378,7 +1378,7 @@ const ChangesSectionRow: FC<{
 );
 
 const BaseCommitRow: FC<{
-	commitId: string;
+	commitId?: string;
 	isSelected: boolean;
 	selectItem: (item: SelectedItem | null) => void;
 }> = ({ commitId, isSelected, selectItem }) => (
@@ -1396,7 +1396,7 @@ const BaseCommitRow: FC<{
 				selectItem(selectedBaseCommitItem);
 			}}
 		>
-			{shortCommitId(commitId)} (common base commit)
+			{commitId !== undefined ? `${shortCommitId(commitId)} (common base commit)` : "(base commit)"}
 		</button>
 	</div>
 );
@@ -1959,7 +1959,6 @@ const ProjectPage: FC = () => {
 		headInfo,
 		changes: worktreeChanges.changes,
 		assignments: worktreeChanges.assignments,
-		commonBaseCommitId,
 	});
 	const navigationIndex = buildNavigationIndex(workspaceOutline);
 
@@ -2069,15 +2068,13 @@ const ProjectPage: FC = () => {
 						))}
 					</div>
 
-					{commonBaseCommitId !== undefined && (
-						<TearOffBranchTarget projectId={projectId} className={styles.commonBaseCommitContainer}>
-							<BaseCommitRow
-								commitId={commonBaseCommitId}
-								isSelected={selectedItem?._tag === "BaseCommit"}
-								selectItem={selectItem}
-							/>
-						</TearOffBranchTarget>
-					)}
+					<TearOffBranchTarget projectId={projectId} className={styles.commonBaseCommitContainer}>
+						<BaseCommitRow
+							commitId={commonBaseCommitId}
+							isSelected={selectedItem?._tag === "BaseCommit"}
+							selectItem={selectItem}
+						/>
+					</TearOffBranchTarget>
 				</div>
 
 				<TearOffBranchTarget projectId={projectId} className={styles.emptyLane} />
