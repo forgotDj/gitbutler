@@ -2,6 +2,8 @@ import { type Operation, useRunOperation } from "#ui/Operation.ts";
 import { monitorForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import {
 	attachInstruction,
+	Availability,
+	Operation as ListItemOperation,
 	extractInstruction,
 	Instruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
@@ -58,42 +60,46 @@ export const getCommitTargetInstruction = ({
 				? item.parent.commitId
 				: null;
 
+	const operations: {
+		[TKey in ListItemOperation]?: Availability;
+	} = {
+		"reorder-before": getCommitTargetSideOperation({
+			operationSource,
+			commitId,
+			side: "above",
+			previousCommitId,
+			nextCommitId,
+		})
+			? "available"
+			: "not-available",
+		"reorder-after": getCommitTargetSideOperation({
+			operationSource,
+			commitId,
+			side: "below",
+			previousCommitId,
+			nextCommitId,
+		})
+			? "available"
+			: "not-available",
+		combine:
+			getCombineOperation({
+				operationSource,
+				target: { _tag: "Commit", commitId },
+			}) ||
+			// Allow cancelling by dropping back where we started, otherwise
+			// this would be interpreted as a reorder.
+			getSourceCommitId(operationSource) === commitId
+				? "available"
+				: "not-available",
+	};
+
 	return extractInstruction(
 		attachInstruction(
 			{ operationSource },
 			{
 				input,
 				element,
-				operations: {
-					"reorder-before": getCommitTargetSideOperation({
-						operationSource,
-						commitId,
-						side: "above",
-						previousCommitId,
-						nextCommitId,
-					})
-						? "available"
-						: "not-available",
-					"reorder-after": getCommitTargetSideOperation({
-						operationSource,
-						commitId,
-						side: "below",
-						previousCommitId,
-						nextCommitId,
-					})
-						? "available"
-						: "not-available",
-					combine:
-						getCombineOperation({
-							operationSource,
-							target: { _tag: "Commit", commitId },
-						}) ||
-						// Allow cancelling by dropping back where we started, otherwise
-						// this would be interpreted as a reorder.
-						getSourceCommitId(operationSource) === commitId
-							? "available"
-							: "not-available",
-				},
+				operations,
 			},
 		),
 	);
