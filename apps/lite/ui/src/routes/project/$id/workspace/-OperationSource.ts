@@ -8,6 +8,7 @@ import { type FileParent } from "#ui/domain/FileParent.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	CommitDetails,
+	InsertSide,
 	WorktreeChanges,
 	type HunkAssignment,
 	type HunkHeader,
@@ -336,7 +337,7 @@ export const getCommitTargetOperation = ({
 			}),
 		),
 		Match.whenOr("insertAbove", "insertBelow", (action): Operation | null => {
-			const side = action === "insertAbove" ? "above" : "below";
+			const side: InsertSide = action === "insertAbove" ? "above" : "below";
 
 			return Match.value(operationSource).pipe(
 				Match.tags({
