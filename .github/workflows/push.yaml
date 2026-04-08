@@ -44,6 +44,7 @@ jobs:
               - *workflows
               - 'apps/**'
               - 'packages/**'
+              - 'e2e/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
             ui:
