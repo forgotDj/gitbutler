@@ -1,5 +1,5 @@
 //! In place of commands.rs
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Result, bail};
 use bstr::ByteSlice;
 use but_api_macros::but_api;
 use but_core::git_config::{
@@ -80,6 +80,7 @@ pub fn delete_all_data() -> Result<()> {
 #[but_api]
 #[instrument(err(Debug))]
 pub fn git_set_global_config(key: String, value: String) -> Result<String> {
+    validate_gitbutler_global_key(&key)?;
     _ = edit_config(None, gix::config::Source::User, |config| {
         set_config_value(config, &key, &value)?;
         Ok(())
@@ -90,6 +91,7 @@ pub fn git_set_global_config(key: String, value: String) -> Result<String> {
 #[but_api]
 #[instrument(err(Debug))]
 pub fn git_remove_global_config(key: String) -> Result<()> {
+    validate_gitbutler_global_key(&key)?;
     _ = edit_config(None, gix::config::Source::User, |config| {
         remove_config_value(config, &key)?;
         Ok(())
@@ -106,4 +108,11 @@ pub fn git_get_global_config(key: String) -> Result<Option<String>> {
 
 fn get_config_string(config: &gix::config::File<'_>, key: &str) -> Option<String> {
     config.string(key).map(|s| s.to_string())
+}
+
+fn validate_gitbutler_global_key(key: &str) -> Result<()> {
+    if !key.starts_with("gitbutler.") {
+        bail!("Invalid section for global key: {key}")
+    }
+    Ok(())
 }
