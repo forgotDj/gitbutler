@@ -85,7 +85,10 @@ export const getCommitTargetInstruction = ({
 							? "available"
 							: "not-available",
 					combine:
-						combineOperation || getSourceCommitId(operationSource) === commitId
+						combineOperation ||
+						// Allow cancelling by dropping back where we started, otherwise
+						// this would be interpreted as a reorder.
+						getSourceCommitId(operationSource) === commitId
 							? "available"
 							: "not-available",
 				},
