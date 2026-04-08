@@ -1618,6 +1618,7 @@ mod tests {
             path: path.to_owned(),
             path_bytes: BString::from(path),
             stack_id,
+            branch_ref_bytes: None,
             line_nums_added: None,
             line_nums_removed: None,
             diff: None,

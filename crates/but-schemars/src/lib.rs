@@ -125,6 +125,20 @@ pub fn fullname_lossy(generate: &mut schemars::SchemaGenerator) -> schemars::Sch
     generate.subschema_for::<String>()
 }
 
+/// Like [`fullname_lossy`], but for `Option<gix::refs::FullName>` fields.
+///
+/// ```rust
+/// #[derive(serde::Serialize, schemars::JsonSchema)]
+/// struct Example {
+///     #[serde(with = "but_serde::fullname_lossy_opt")]
+///     #[schemars(schema_with = "but_schemars::fullname_lossy_opt")]
+///     reference: Option<gix::refs::FullName>,
+/// }
+/// ```
+pub fn fullname_lossy_opt(generate: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    generate.subschema_for::<Option<String>>()
+}
+
 /// Use on `gix::refs::FullName` fields serialized to bytes
 ///
 /// ```rust
@@ -136,6 +150,20 @@ pub fn fullname_lossy(generate: &mut schemars::SchemaGenerator) -> schemars::Sch
 /// ```
 pub fn fullname_bytes(generate: &mut schemars::SchemaGenerator) -> schemars::Schema {
     generate.subschema_for::<Vec<u8>>()
+}
+
+/// Like [`fullname_bytes`], but for `Option<gix::refs::FullName>` fields.
+///
+/// ```rust
+/// #[derive(serde::Serialize, schemars::JsonSchema)]
+/// struct Example {
+///     #[serde(with = "but_serde::fullname_bytes_opt")]
+///     #[schemars(schema_with = "but_schemars::fullname_bytes_opt")]
+///     reference: Option<gix::refs::FullName>,
+/// }
+/// ```
+pub fn fullname_bytes_opt(generate: &mut schemars::SchemaGenerator) -> schemars::Schema {
+    generate.subschema_for::<Option<Vec<u8>>>()
 }
 
 /// Use on `url::Url` fields that should appear as strings in schema output.

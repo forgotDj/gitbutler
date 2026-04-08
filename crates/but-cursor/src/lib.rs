@@ -200,6 +200,7 @@ pub async fn handle_after_edit(read: impl std::io::Read) -> anyhow::Result<Curso
             hunk_header: a.hunk_header,
             path_bytes: a.path_bytes,
             stack_id: Some(stack_id),
+            branch_ref_bytes: None,
         })
         .collect();
 

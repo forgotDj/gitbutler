@@ -772,6 +772,7 @@ mod tests {
                     path: path.to_owned(),
                     path_bytes: path.as_bytes().into(),
                     stack_id: None,
+                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,

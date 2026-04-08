@@ -11,18 +11,21 @@ fn insert_and_read() -> anyhow::Result<()> {
         Some("@@ -1,3 +1,4 @@"),
         "path/to/file.txt",
         Some("stack1"),
+        None,
     );
     let hunk2 = hunk_assignment(
         "id2",
         Some("@@ -10,5 +11,6 @@"),
         "path/to/file.txt",
         Some("stack1"),
+        None,
     );
     let hunk3 = hunk_assignment(
         "id3",
         Some("@@ -20,2 +21,3 @@"),
         "path/to/other.txt",
         Some("stack2"),
+        None,
     );
 
     db.hunk_assignments_mut()?
@@ -46,18 +49,21 @@ fn set_all_replaces_existing() -> anyhow::Result<()> {
         Some("@@ -1,3 +1,4 @@"),
         "path/to/file.txt",
         Some("stack1"),
+        None,
     );
     let hunk2 = hunk_assignment(
         "id2",
         Some("@@ -10,5 +11,6 @@"),
         "path/to/file.txt",
         Some("stack1"),
+        None,
     );
     let hunk3 = hunk_assignment(
         "id3",
         Some("@@ -1,3 +1,4 @@"),
         "different.txt",
         Some("stack2"),
+        None,
     );
 
     db.hunk_assignments_mut()?
@@ -89,18 +95,21 @@ fn set_all_replaces_existing_with_outer_transaction_and_rollback() -> anyhow::Re
         Some("@@ -1,3 +1,4 @@"),
         "path/to/file.txt",
         Some("stack1"),
+        None,
     );
     let hunk2 = hunk_assignment(
         "id2",
         Some("@@ -10,5 +11,6 @@"),
         "path/to/file.txt",
         Some("stack1"),
+        None,
     );
     let hunk3 = hunk_assignment(
         "id3",
         Some("@@ -1,3 +1,4 @@"),
         "different.txt",
         Some("stack2"),
+        None,
     );
 
     trans
@@ -133,6 +142,7 @@ fn set_empty_clears_the_table() -> anyhow::Result<()> {
         Some("@@ -1,3 +1,4 @@"),
         "path/to/file.txt",
         Some("stack1"),
+        None,
     );
 
     db.hunk_assignments_mut()?.set_all(vec![hunk1])?;
@@ -158,6 +168,7 @@ fn optional_fields() -> anyhow::Result<()> {
         path: "path/to/file.txt".to_string(),
         path_bytes: b"path/to/file.txt".to_vec(),
         stack_id: Some("stack1".to_string()),
+        branch_ref_bytes: None,
     };
 
     let hunk_no_stack = HunkAssignment {
@@ -166,6 +177,7 @@ fn optional_fields() -> anyhow::Result<()> {
         path: "path/to/other.txt".to_string(),
         path_bytes: b"path/to/other.txt".to_vec(),
         stack_id: None,
+        branch_ref_bytes: None,
     };
 
     let hunk_no_id = HunkAssignment {
@@ -174,6 +186,7 @@ fn optional_fields() -> anyhow::Result<()> {
         path: "path/to/third.txt".to_string(),
         path_bytes: b"path/to/third.txt".to_vec(),
         stack_id: Some("stack2".to_string()),
+        branch_ref_bytes: None,
     };
 
     db.hunk_assignments_mut()?.set_all(vec![
@@ -201,6 +214,7 @@ fn non_utf8_path_bytes() -> anyhow::Result<()> {
         path: "valid/path.txt".to_string(),
         path_bytes: vec![0xFF, 0xFE, 0xFD, 0x00, 0x80],
         stack_id: Some("stack1".to_string()),
+        branch_ref_bytes: None,
     };
 
     db.hunk_assignments_mut()?
@@ -217,11 +231,57 @@ fn non_utf8_path_bytes() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn branch_ref_bytes_roundtrip() -> anyhow::Result<()> {
+    let mut db = in_memory_db();
+
+    let hunk_with_branch = hunk_assignment(
+        "id1",
+        Some("@@ -1,3 +1,4 @@"),
+        "path/to/file.txt",
+        Some("stack1"),
+        Some("refs/heads/feature"),
+    );
+    let hunk_without_branch = hunk_assignment(
+        "id2",
+        Some("@@ -10,5 +11,6 @@"),
+        "path/to/file.txt",
+        Some("stack1"),
+        None,
+    );
+
+    db.hunk_assignments_mut()?
+        .set_all(vec![hunk_with_branch.clone(), hunk_without_branch.clone()])?;
+
+    let assignments = db.hunk_assignments().list_all()?;
+    assert_eq!(assignments.len(), 2);
+    assert!(assignments.contains(&hunk_with_branch));
+    assert!(assignments.contains(&hunk_without_branch));
+
+    let with_branch = assignments
+        .iter()
+        .find(|a| a.id.as_deref() == Some("id1"))
+        .unwrap();
+    assert_eq!(
+        with_branch.branch_ref_bytes.as_deref(),
+        Some(b"refs/heads/feature".as_slice())
+    );
+
+    let without_branch = assignments
+        .iter()
+        .find(|a| a.id.as_deref() == Some("id2"))
+        .unwrap();
+    assert_eq!(without_branch.branch_ref_bytes, None);
+
+    Ok(())
+}
+
 fn hunk_assignment(
     id: &str,
     hunk_header: Option<&str>,
     path: &str,
     stack_id: Option<&str>,
+    branch_ref_bytes: Option<&str>,
 ) -> HunkAssignment {
     HunkAssignment {
         id: Some(id.to_string()),
@@ -229,5 +289,6 @@ fn hunk_assignment(
         path: path.to_string(),
         path_bytes: path.as_bytes().to_vec(),
         stack_id: stack_id.map(String::from),
+        branch_ref_bytes: branch_ref_bytes.map(|s| s.as_bytes().to_vec()),
     }
 }

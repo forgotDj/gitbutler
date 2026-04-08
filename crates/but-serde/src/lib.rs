@@ -73,6 +73,76 @@ pub mod fullname_lossy {
     }
 }
 
+/// Like [`fullname_lossy`], but for `Option<gix::refs::FullName>` fields.
+///
+/// ```rust
+/// #[derive(serde::Serialize, serde::Deserialize)]
+/// struct Example {
+///     #[serde(with = "but_serde::fullname_lossy_opt")]
+///     reference: Option<gix::refs::FullName>,
+/// }
+/// ```
+pub mod fullname_lossy_opt {
+    use bstr::ByteSlice;
+    use serde::{Deserialize, Deserializer, Serialize};
+
+    pub fn serialize<S>(v: &Option<gix::refs::FullName>, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        v.as_ref().map(|v| v.as_bstr().to_str_lossy()).serialize(s)
+    }
+
+    pub fn deserialize<'de, D>(d: D) -> Result<Option<gix::refs::FullName>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let string = <Option<String> as Deserialize>::deserialize(d)?;
+        string
+            .map(|v| {
+                gix::refs::FullName::try_from(v)
+                    .map_err(|err| serde::de::Error::custom(err.to_string()))
+            })
+            .transpose()
+    }
+}
+
+/// Like [`fullname_lossy`], but serializes as bytes and wraps `Option<gix::refs::FullName>`.
+///
+/// ```rust
+/// #[derive(serde::Serialize, serde::Deserialize)]
+/// struct Example {
+///     #[serde(with = "but_serde::fullname_bytes_opt")]
+///     reference: Option<gix::refs::FullName>,
+/// }
+/// ```
+pub mod fullname_bytes_opt {
+    use bstr::ByteSlice;
+    use serde::{Deserialize, Deserializer, Serialize};
+
+    pub fn serialize<S>(v: &Option<gix::refs::FullName>, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        v.as_ref()
+            .map(|v| v.as_bstr().as_bytes().to_vec())
+            .serialize(s)
+    }
+
+    pub fn deserialize<'de, D>(d: D) -> Result<Option<gix::refs::FullName>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bytes = <Option<Vec<u8>> as Deserialize>::deserialize(d)?;
+        bytes
+            .map(|v| {
+                gix::refs::FullName::try_from(bstr::BString::from(v))
+                    .map_err(|err| serde::de::Error::custom(err.to_string()))
+            })
+            .transpose()
+    }
+}
+
 /// Use on `Vec<BString>` fields that should serialize as `string[]`.
 ///
 /// ```rust

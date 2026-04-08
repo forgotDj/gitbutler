@@ -111,7 +111,7 @@ pub(crate) fn assign_all(
     let (from_branch, from_stack_id) = match from {
         Some(AssignTarget::Branch(name)) => (
             Some(name.to_string()),
-            branch_name_to_stack_id(ctx, Some(name))?,
+            branch_name_to_stack_id(ctx, Some(normalize_branch_name_for_lookup(name)))?,
         ),
         Some(AssignTarget::Stack(stack_id)) => {
             (stack_id_to_branch_name(ctx, stack_id), Some(*stack_id))
@@ -122,7 +122,7 @@ pub(crate) fn assign_all(
     let (to_branch, to_stack_id) = match to {
         Some(AssignTarget::Branch(name)) => (
             Some(name.to_string()),
-            branch_name_to_stack_id(ctx, Some(name))?,
+            branch_name_to_stack_id(ctx, Some(normalize_branch_name_for_lookup(name)))?,
         ),
         Some(AssignTarget::Stack(stack_id)) => {
             (stack_id_to_branch_name(ctx, stack_id), Some(*stack_id))
@@ -153,6 +153,10 @@ fn assign_all_inner(
         context_lines,
     )?;
 
+    let to_branch_ref_bytes = match (to_stack_id, to_branch.as_ref()) {
+        (Some(_), Some(name)) => Some(to_full_ref_name(name)?),
+        _ => None,
+    };
     let mut reqs = Vec::new();
     for assignment in assignments {
         if assignment.stack_id == from_stack_id {
@@ -160,6 +164,7 @@ fn assign_all_inner(
                 hunk_header: assignment.hunk_header,
                 path_bytes: assignment.path_bytes,
                 stack_id: to_stack_id,
+                branch_ref_bytes: to_branch_ref_bytes.clone(),
             });
         }
     }
@@ -225,12 +230,35 @@ fn stack_id_to_branch_name(ctx: &Context, stack_id: &StackId) -> Option<String> 
         .and_then(|s| s.heads.first().map(|h| h.name.to_string()))
 }
 
+/// Normalize a branch name to a full ref name (e.g. "foo" → "refs/heads/foo").
+/// If the name is already a full ref, it is returned as-is.
+fn to_full_ref_name(name: &str) -> anyhow::Result<gix::refs::FullName> {
+    let full = if name.starts_with("refs/") {
+        name.to_string()
+    } else {
+        format!("refs/heads/{name}")
+    };
+    gix::refs::FullName::try_from(full).map_err(|e| anyhow::anyhow!("invalid ref name: {e}"))
+}
+
+/// Normalize a branch name for stack lookup.
+/// Local branch refs like "refs/heads/foo" are converted to "foo" because stack heads
+/// are stored as shortened branch names.
+fn normalize_branch_name_for_lookup(name: &str) -> &str {
+    name.strip_prefix("refs/heads/").unwrap_or(name)
+}
+
 pub(crate) fn to_assignment_request(
     ctx: &mut Context,
     assignments: impl Iterator<Item = (Option<HunkHeader>, BString)>,
     branch_name: Option<&str>,
 ) -> anyhow::Result<Vec<HunkAssignmentRequest>> {
-    let stack_id = branch_name_to_stack_id(ctx, branch_name)?;
+    let normalized = branch_name.map(normalize_branch_name_for_lookup);
+    let stack_id = branch_name_to_stack_id(ctx, normalized)?;
+    let branch_ref_bytes = match (stack_id, branch_name) {
+        (Some(_), Some(name)) => Some(to_full_ref_name(name)?),
+        _ => None,
+    };
 
     let mut reqs = Vec::new();
     for (hunk_header, path_bytes) in assignments {
@@ -238,6 +266,7 @@ pub(crate) fn to_assignment_request(
             hunk_header,
             path_bytes,
             stack_id,
+            branch_ref_bytes: branch_ref_bytes.clone(),
         });
     }
     Ok(reqs)

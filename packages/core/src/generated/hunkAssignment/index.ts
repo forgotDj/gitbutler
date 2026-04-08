@@ -58,6 +58,12 @@ export type HunkAssignment = {
 	 */
 	stackId: string | null;
 	/**
+	 * The branch within the stack, as a full ref name (e.g. `refs/heads/my-branch`).
+	 * Serialized as bytes over the wire for non-UTF-8 safety.
+	 * `None` means "topmost branch of the stack" (backward-compatible default).
+	 */
+	branchRefBytes: number[] | null;
+	/**
 	 * The line numbers that were added in this hunk.
 	 */
 	lineNumsAdded: Array<number> | null;

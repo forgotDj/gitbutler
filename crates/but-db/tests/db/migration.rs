@@ -446,7 +446,7 @@ mod run {
         	`path` TEXT NOT NULL,
         	`path_bytes` BINARY NOT NULL,
         	`stack_id` TEXT,
-        	`id` TEXT,
+        	`id` TEXT, `branch_ref` BINARY,
         	PRIMARY KEY(`path`, `hunk_header`)
         );
 
@@ -584,9 +584,10 @@ mod run {
         Text("20260101223932")
         Text("20260105095934")
         Text("20260219130000")
+        Text("20260407120000")
 
         Table: hunk_assignments
-        hunk_header | path | path_bytes | stack_id | id
+        hunk_header | path | path_bytes | stack_id | id | branch_ref
 
         Table: butler_actions
         id | created_at | handler | snapshot_before | snapshot_after | response | error | external_summary | external_prompt | source
