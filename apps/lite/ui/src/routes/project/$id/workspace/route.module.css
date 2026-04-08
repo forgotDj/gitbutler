@@ -115,6 +115,7 @@
 	margin-left: auto;
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
+	border-radius: 8px;
 
 	svg {
 		width: var(--row-line-height);
