@@ -1,5 +1,11 @@
 import { setConfig } from "./config.ts";
-import { BUT_SERVER, BUT_SERVER_PORT, BUT_TESTING, DESKTOP_PORT, GIT_CONFIG_GLOBAL } from "./env.ts";
+import {
+	BUT_SERVER,
+	BUT_SERVER_PORT,
+	BUT_TESTING,
+	DESKTOP_PORT,
+	GIT_CONFIG_GLOBAL,
+} from "./env.ts";
 import { type BrowserContext } from "@playwright/test";
 import { ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
@@ -100,21 +106,18 @@ class GitButlerManager implements GitButler {
 			const shutdownTimeoutMs = 5000;
 			let settled = false;
 
-			const finish = () => {
+			function finish() {
 				if (settled) return;
 				settled = true;
 				clearTimeout(forceKillTimer);
 				resolve();
-			};
+			}
 
 			this.butServerProcess.once("close", finish);
 
 			const forceKillTimer = setTimeout(() => {
 				if (settled) return;
-				log(
-					`but-server did not stop after ${shutdownTimeoutMs}ms, sending SIGKILL...`,
-					colors.red,
-				);
+				log(`but-server did not stop after ${shutdownTimeoutMs}ms, sending SIGKILL...`, colors.red);
 				try {
 					this.butServerProcess.kill("SIGKILL");
 				} catch {
