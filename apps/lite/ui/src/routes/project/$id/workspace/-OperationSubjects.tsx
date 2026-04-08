@@ -260,14 +260,7 @@ export const CommitTarget: FC<
 		});
 
 		const instruction = extractInstruction(
-			attachInstruction(
-				{ operationSource },
-				{
-					input,
-					element,
-					operations,
-				},
-			),
+			attachInstruction({ operationSource }, { input, element, operations }),
 		);
 
 		if (!instruction) return null;
