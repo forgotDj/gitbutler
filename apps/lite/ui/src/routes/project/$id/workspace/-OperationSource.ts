@@ -265,7 +265,7 @@ export const getCombineOperation = ({
 		}),
 	);
 
-const getCommitTargetSideOperation = ({
+export const getCommitTargetSideOperation = ({
 	operationSource,
 	commitId,
 	side,

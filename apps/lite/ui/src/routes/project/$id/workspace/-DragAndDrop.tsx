@@ -8,7 +8,11 @@ import {
 import { type InsertSide } from "@gitbutler/but-sdk";
 import { FC, type ReactNode, useEffect } from "react";
 import sharedStyles from "../-shared.module.css";
-import { getCombineOperation, type OperationSource } from "./-OperationSource.ts";
+import {
+	getCombineOperation,
+	getCommitTargetSideOperation,
+	type OperationSource,
+} from "./-OperationSource.ts";
 import { type OperationSourceRef } from "./-OperationSourceRef.ts";
 
 type DragData = {
@@ -73,15 +77,17 @@ export const getCommitTargetInstruction = ({
 				element,
 				operations: {
 					"reorder-before":
-						(operationSource._tag === "Commit" &&
-							!isNoOpCommitMove(operationSource.commitId, "above")) ||
-						operationSource._tag === "TreeChanges"
+						getCommitTargetSideOperation({ operationSource, commitId, side: "above" }) &&
+						(operationSource._tag === "Commit"
+							? !isNoOpCommitMove(operationSource.commitId, "above")
+							: true)
 							? "available"
 							: "not-available",
 					"reorder-after":
-						(operationSource._tag === "Commit" &&
-							!isNoOpCommitMove(operationSource.commitId, "below")) ||
-						operationSource._tag === "TreeChanges"
+						getCommitTargetSideOperation({ operationSource, commitId, side: "below" }) &&
+						(operationSource._tag === "Commit"
+							? !isNoOpCommitMove(operationSource.commitId, "below")
+							: true)
 							? "available"
 							: "not-available",
 					combine:
