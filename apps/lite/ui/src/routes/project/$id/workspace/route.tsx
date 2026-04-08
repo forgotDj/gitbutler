@@ -1436,7 +1436,6 @@ const Changes: FC<{
 		<ChangesSectionSource
 			stackId={stackId}
 			label={label}
-			changeCount={changes.length}
 			className={classes(
 				className,
 				sharedStyles.section,

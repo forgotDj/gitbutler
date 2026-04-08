@@ -126,13 +126,11 @@ export const ChangesSectionSource: FC<
 	{
 		stackId: string | null;
 		label: string;
-		changeCount: number;
 	} & useRender.ComponentProps<"div">
-> = ({ stackId, label, changeCount, render, ...props }) => {
+> = ({ stackId, label, render, ...props }) => {
 	const [isDragging, dragRef] = useDraggable({
 		getInitialData: () => getDragData({ _tag: "ChangesSection", stackId }),
 		preview: <DragPreview>{label}</DragPreview>,
-		canDrag: () => changeCount > 0,
 	});
 	const isActive = isDragging;
 
