@@ -32,14 +32,14 @@ export const workspaceSelectionReducer = (
 		}),
 	);
 
-export const normalizeSelectedFile = ({
+export const normalizeSelectedPath = ({
 	paths,
-	selectedFile,
+	selectedPath,
 }: {
 	paths: Array<string>;
-	selectedFile: string | null | undefined;
+	selectedPath: string | null | undefined;
 }): string | undefined => {
-	if (selectedFile != null && paths.includes(selectedFile)) return selectedFile;
+	if (selectedPath != null && paths.includes(selectedPath)) return selectedPath;
 	return paths[0];
 };
 

@@ -1,6 +1,6 @@
 import { commitDetailsWithLineStatsQueryOptions } from "#ui/api/queries.ts";
 import { getAction, type ShortcutBinding } from "#ui/shortcuts.ts";
-import { normalizeSelectedFile } from "#ui/routes/project/$id/-state/selection.ts";
+import { normalizeSelectedPath } from "#ui/routes/project/$id/-state/selection.ts";
 import { isTypingTarget } from "#ui/routes/project/$id/-shared.tsx";
 import { AbsorptionTarget } from "@gitbutler/but-sdk";
 import { useQueryClient } from "@tanstack/react-query";
@@ -477,7 +477,7 @@ export const useWorkspaceShortcuts = ({
 		});
 	};
 
-	const moveCommitDetailsFile = (offset: -1 | 1, selectedItem: SelectedCommitItem) => {
+	const moveCommitDetailsPath = (offset: -1 | 1, selectedItem: SelectedCommitItem) => {
 		if (selectedItem.mode._tag !== "Details") return;
 
 		const commitDetails = queryClient.getQueryData(
@@ -489,9 +489,9 @@ export const useWorkspaceShortcuts = ({
 		if (!commitDetails) return;
 
 		const paths = commitDetails.changes.map((change) => change.path);
-		const currentPath = normalizeSelectedFile({
+		const currentPath = normalizeSelectedPath({
 			paths,
-			selectedFile: selectedItem.mode.path,
+			selectedPath: selectedItem.mode.path,
 		});
 		const nextPath = getAdjacentPath({ paths, currentPath, offset });
 		if (nextPath === null) return;
@@ -615,7 +615,7 @@ export const useWorkspaceShortcuts = ({
 	) =>
 		Match.value(action).pipe(
 			Match.tags({
-				Move: ({ offset }) => moveCommitDetailsFile(offset, selectedItem),
+				Move: ({ offset }) => moveCommitDetailsPath(offset, selectedItem),
 				CloseDetails: () =>
 					dispatchProjectState({
 						_tag: "SelectItem",

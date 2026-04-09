@@ -29,7 +29,7 @@ import { stackRelativeTo } from "#ui/domain/Stack.ts";
 import { ProjectPreviewLayout } from "#ui/routes/project/$id/-ProjectPreviewLayout.tsx";
 import { getFocus } from "#ui/routes/project/$id/-state/layout.ts";
 import {
-	normalizeSelectedFile,
+	normalizeSelectedPath,
 	normalizeSelectedHunk,
 } from "#ui/routes/project/$id/-state/selection.ts";
 import { ProjectStateContext } from "#ui/routes/project/$id/-ProjectState.tsx";
@@ -182,8 +182,8 @@ const CommitFileRow: FC<{
 	change: TreeChange;
 	commitId: string;
 	isSelected: boolean;
-	selectFile: (path: string | null) => void;
-}> = ({ change, commitId, isSelected, selectFile }) => (
+	selectPath: (path: string | null) => void;
+}> = ({ change, commitId, isSelected, selectPath }) => (
 	<CommitFileSource
 		change={change}
 		fileParent={{ _tag: "Commit", commitId }}
@@ -197,7 +197,7 @@ const CommitFileRow: FC<{
 		<FileButton
 			change={change}
 			onClick={() => {
-				selectFile(change.path);
+				selectPath(change.path);
 			}}
 		/>
 	</CommitFileSource>
@@ -206,15 +206,15 @@ const CommitFileRow: FC<{
 const CommitDetailsC: FC<{
 	commitId: string;
 	projectId: string;
-	selectedFile: string | null;
-	selectFile: (path: string | null) => void;
-}> = ({ commitId, projectId, selectedFile, selectFile }) => {
+	selectedPath: string | null;
+	selectPath: (path: string | null) => void;
+}> = ({ commitId, projectId, selectedPath, selectPath }) => {
 	const { data: commitDetails } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
-	const normalizedSelectedFile = normalizeSelectedFile({
+	const normalizedSelectedPath = normalizeSelectedPath({
 		paths: commitDetails.changes.map((change) => change.path),
-		selectedFile,
+		selectedPath,
 	});
 
 	return (
@@ -225,8 +225,8 @@ const CommitDetailsC: FC<{
 				<CommitFileRow
 					change={change}
 					commitId={commitId}
-					isSelected={normalizedSelectedFile === change.path}
-					selectFile={selectFile}
+					isSelected={normalizedSelectedPath === change.path}
+					selectPath={selectPath}
 				/>
 			)}
 		/>
@@ -488,7 +488,7 @@ const usePreviewDiffState = ({
 const ChangesPreview: FC<{
 	projectId: string;
 	stackId: string | null;
-	selectedFile?: string;
+	selectedPath?: string;
 	onSelectHunk: (key: string) => void;
 	selectedHunk: string | null;
 	isFocused: boolean;
@@ -498,7 +498,7 @@ const ChangesPreview: FC<{
 }> = ({
 	projectId,
 	stackId,
-	selectedFile,
+	selectedPath,
 	onSelectHunk,
 	selectedHunk,
 	isFocused,
@@ -513,8 +513,8 @@ const ChangesPreview: FC<{
 	);
 	const changes = worktreeChanges.changes.filter((change) => assignmentsByPath.has(change.path));
 	const selectedChange =
-		selectedFile !== undefined
-			? changes.find((candidate) => candidate.path === selectedFile)
+		selectedPath !== undefined
+			? changes.find((candidate) => candidate.path === selectedPath)
 			: undefined;
 	const visibleChanges = selectedChange ? [selectedChange] : changes;
 	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
@@ -561,7 +561,7 @@ const ChangesPreview: FC<{
 const CommitPreview: FC<{
 	projectId: string;
 	commitId: string;
-	selectedFile?: string | null;
+	selectedPath?: string | null;
 	editable: boolean;
 	onSelectHunk: (key: string) => void;
 	selectedHunk: string | null;
@@ -572,7 +572,7 @@ const CommitPreview: FC<{
 }> = ({
 	projectId,
 	commitId,
-	selectedFile,
+	selectedPath,
 	editable,
 	onSelectHunk,
 	selectedHunk,
@@ -584,19 +584,19 @@ const CommitPreview: FC<{
 	const { data: commitDetails } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
-	const normalizedSelectedFile =
-		selectedFile === undefined
+	const normalizedSelectedPath =
+		selectedPath === undefined
 			? undefined
-			: normalizeSelectedFile({
+			: normalizeSelectedPath({
 					paths: commitDetails.changes.map((change) => change.path),
-					selectedFile,
+					selectedPath,
 				});
 	const selectedChange =
-		normalizedSelectedFile !== undefined
-			? commitDetails.changes.find((candidate) => candidate.path === normalizedSelectedFile)
+		normalizedSelectedPath !== undefined
+			? commitDetails.changes.find((candidate) => candidate.path === normalizedSelectedPath)
 			: undefined;
 	const visibleChanges =
-		selectedFile === undefined ? commitDetails.changes : selectedChange ? [selectedChange] : [];
+		selectedPath === undefined ? commitDetails.changes : selectedChange ? [selectedChange] : [];
 	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
 		projectId,
 		changes: visibleChanges,
@@ -607,7 +607,7 @@ const CommitPreview: FC<{
 
 	return (
 		<div>
-			{normalizedSelectedFile === undefined && (
+			{normalizedSelectedPath === undefined && (
 				<>
 					<h3>
 						<CommitLabel commit={commitDetails.commit} />
@@ -780,7 +780,7 @@ const Preview: FC<{
 				<ChangesPreview
 					projectId={projectId}
 					stackId={stackId}
-					selectedFile={path}
+					selectedPath={path}
 					onSelectHunk={onSelectHunk}
 					selectedHunk={selectedHunk}
 					isFocused={isFocused}
@@ -793,7 +793,7 @@ const Preview: FC<{
 				<CommitPreview
 					projectId={projectId}
 					commitId={selectedItem.commitId}
-					selectedFile={selectedItem.mode._tag === "Details" ? selectedItem.mode.path : undefined}
+					selectedPath={selectedItem.mode._tag === "Details" ? selectedItem.mode.path : undefined}
 					editable
 					onSelectHunk={onSelectHunk}
 					selectedHunk={selectedHunk}
@@ -1173,8 +1173,8 @@ const CommitC: FC<{
 				<CommitDetailsC
 					projectId={projectId}
 					commitId={commit.id}
-					selectedFile={selected.mode.path}
-					selectFile={(path) => {
+					selectedPath={selected.mode.path}
+					selectPath={(path) => {
 						selectItem(
 							selectedCommitItem({
 								...selected,
