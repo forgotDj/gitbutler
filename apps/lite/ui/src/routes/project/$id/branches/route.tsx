@@ -6,7 +6,7 @@ import {
 } from "#ui/api/queries.ts";
 import { classes } from "#ui/classes.ts";
 import { ExpandCollapseIcon, MenuTriggerIcon } from "#ui/components/icons.tsx";
-import { ContextMenu, Menu } from "@base-ui/react";
+import { ContextMenu, Menu, Tooltip } from "@base-ui/react";
 import { BranchDetails, BranchListing, Commit, DiffHunk, TreeChange } from "@gitbutler/but-sdk";
 import {
 	useMutation,
@@ -401,7 +401,6 @@ const CommitRow: FC<{
 			);
 		});
 	};
-
 	return (
 		<div
 			className={classes(
@@ -427,17 +426,32 @@ const CommitRow: FC<{
 			>
 				<CommitLabel commit={commit} />
 			</button>
-			<button
-				className={sharedStyles.rowAction}
-				type="button"
-				onClick={toggleDetails}
-				aria-expanded={commitSelection?.mode._tag === "Details"}
-				aria-label={
-					commitSelection?.mode._tag === "Details" ? "Hide commit details" : "Show commit details"
-				}
+			<Tooltip.Root
+				// Prevent tooltip from lingering while moving between nearby controls.
+				// [tag:tooltip-disable-hoverable-popup]
+				disableHoverablePopup
 			>
-				<ExpandCollapseIcon isExpanded={commitSelection?.mode._tag === "Details"} />
-			</button>
+				<Tooltip.Trigger
+					className={sharedStyles.rowAction}
+					type="button"
+					onClick={toggleDetails}
+					aria-expanded={commitSelection?.mode._tag === "Details"}
+					aria-label={
+						commitSelection?.mode._tag === "Details" ? "Hide commit details" : "Show commit details"
+					}
+				>
+					<ExpandCollapseIcon isExpanded={commitSelection?.mode._tag === "Details"} />
+				</Tooltip.Trigger>
+				<Tooltip.Portal>
+					<Tooltip.Positioner sideOffset={8}>
+						<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
+							{commitSelection?.mode._tag === "Details"
+								? "Hide commit details"
+								: "Show commit details"}
+						</Tooltip.Popup>
+					</Tooltip.Positioner>
+				</Tooltip.Portal>
+			</Tooltip.Root>
 		</div>
 	);
 };

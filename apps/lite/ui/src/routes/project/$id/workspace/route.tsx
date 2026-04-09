@@ -1075,17 +1075,30 @@ const CommitRow: FC<
 					</ContextMenu.Portal>
 				</ContextMenu.Root>
 			)}
-			<button
-				className={sharedStyles.rowAction}
-				type="button"
-				onClick={toggleDetails}
-				aria-expanded={selected?.mode._tag === "Details"}
-				aria-label={
-					selected?.mode._tag === "Details" ? "Hide commit details" : "Show commit details"
-				}
+			<Tooltip.Root
+				// Prevent tooltip from lingering while moving between nearby controls.
+				// [tag:tooltip-disable-hoverable-popup]
+				disableHoverablePopup
 			>
-				<ExpandCollapseIcon isExpanded={selected?.mode._tag === "Details"} />
-			</button>
+				<Tooltip.Trigger
+					className={sharedStyles.rowAction}
+					type="button"
+					onClick={toggleDetails}
+					aria-expanded={selected?.mode._tag === "Details"}
+					aria-label={
+						selected?.mode._tag === "Details" ? "Hide commit details" : "Show commit details"
+					}
+				>
+					<ExpandCollapseIcon isExpanded={selected?.mode._tag === "Details"} />
+				</Tooltip.Trigger>
+				<Tooltip.Portal>
+					<Tooltip.Positioner sideOffset={8}>
+						<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
+							{selected?.mode._tag === "Details" ? "Hide commit details" : "Show commit details"}
+						</Tooltip.Popup>
+					</Tooltip.Positioner>
+				</Tooltip.Portal>
+			</Tooltip.Root>
 			<Menu.Root>
 				<Menu.Trigger className={sharedStyles.rowAction} aria-label="Commit menu">
 					<MenuTriggerIcon />
