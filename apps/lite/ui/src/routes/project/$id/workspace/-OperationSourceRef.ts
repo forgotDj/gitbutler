@@ -3,6 +3,10 @@ import { type HunkHeader } from "@gitbutler/but-sdk";
 import { Match } from "effect";
 import { Item } from "./-Item.ts";
 
+/**
+ * The source of an operation before it has been materialized into data that can
+ * be sent to the backend (`OperationSource`).
+ */
 export type OperationSourceRef =
 	| { _tag: "Segment"; branchRef: Array<number> | null }
 	| { _tag: "BaseCommit" }

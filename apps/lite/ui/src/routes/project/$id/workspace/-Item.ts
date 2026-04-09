@@ -12,6 +12,9 @@ type SegmentItemBase = {
 export type SegmentItem = SegmentItemBase;
 export type CommitItem = SegmentItemBase & { commitId: string };
 
+/**
+ * A selectable item in the primary panel.
+ */
 export type Item =
 	| ({ _tag: "ChangesSection" } & ChangesSectionItem)
 	| ({ _tag: "Change" } & ChangeItem)

@@ -18,6 +18,10 @@ export type CommitMode =
 
 export type SelectedCommitItem = CommitItem & { mode: CommitMode };
 
+/**
+ * The user’s currently selected primary-panel item, with extra state that only
+ * exists while selected (e.g. the mode).
+ */
 export type SelectedItem =
 	| ({ _tag: "ChangesSection" } & ChangesSectionItem)
 	| ({ _tag: "Change" } & ChangeItem)

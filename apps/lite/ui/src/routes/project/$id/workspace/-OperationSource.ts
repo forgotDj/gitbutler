@@ -23,6 +23,9 @@ export type TreeChangeWithHunkHeaders = {
 	hunkHeaders: Array<HunkHeader>;
 };
 
+/**
+ * The source of an operation in a form that can be sent to the backend.
+ */
 export type OperationSource =
 	| { _tag: "BaseCommit" }
 	| { _tag: "Commit"; commitId: string }
