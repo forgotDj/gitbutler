@@ -14,10 +14,9 @@ use crate::{
     CliId,
     command::legacy::{
         rub::{
-            BranchToBranchOperation, BranchToCommitOperation, BranchToStackOperation,
-            CommittedFileToBranchOperation, CommittedFileToCommitOperation,
-            CommittedFileToUnassignedOperation, RubOperation, RubOperationDiscriminants,
-            route_operation,
+            BranchToBranchOperation, BranchToCommitOperation, CommittedFileToBranchOperation,
+            CommittedFileToCommitOperation, CommittedFileToUnassignedOperation, RubOperation,
+            RubOperationDiscriminants, route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -117,7 +116,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Unassigned
         }
         RubOperation::BranchToStack(operation) => {
-            execute_branch_to_stack(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
         }
         RubOperation::BranchToCommit(operation) => {
@@ -151,15 +150,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `BranchToStack` by moving all branch-assigned hunks into the target stack.
-fn execute_branch_to_stack(
-    ctx: &mut Context,
-    operation: &BranchToStackOperation<'_>,
-) -> anyhow::Result<()> {
-    let source_stack_id = stack_id_for_branch_name(ctx, operation.from)?;
-    reassign_all_from_stack_to_stack(ctx, source_stack_id, Some(operation.to))
 }
 
 /// Executes `BranchToCommit` and returns the exact commit-amend API result.

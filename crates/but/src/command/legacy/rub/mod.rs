@@ -610,13 +610,26 @@ impl<'a> BranchToUnassignedOperation<'a> {
 impl<'a> BranchToStackOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(
-            ctx,
-            Some(assign::AssignTarget::Branch(self.from)),
-            Some(assign::AssignTarget::Stack(self.to)),
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged all {} changes to {}.",
+                format!("[{}]", self.from).green(),
+                stack_id_to_branch_name(ctx, self.to)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".to_string().bold()),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `BranchToStack` by moving all branch-assigned hunks into the target stack.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let source_stack_id = stack_id_for_branch_name(ctx, self.from)?;
+        reassign_all_from_stack_to_stack(ctx, source_stack_id, Some(self.to))
     }
 }
 

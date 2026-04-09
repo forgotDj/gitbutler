@@ -13,8 +13,6 @@ use crate::utils::OutputChannel;
 pub enum AssignTarget<'a> {
     /// A branch, identified by its name.
     Branch(&'a str),
-    /// A stack, identified by its [`StackId`].
-    Stack(StackId),
 }
 
 pub(crate) fn assign_all(
@@ -28,10 +26,6 @@ pub(crate) fn assign_all(
             Some(name.to_string()),
             branch_name_to_stack_id(ctx, Some(normalize_branch_name_for_lookup(name)))?,
         ),
-        Some(AssignTarget::Stack(stack_id)) => {
-            (stack_id_to_branch_name(ctx, stack_id), Some(stack_id))
-        }
-
         None => (None, None),
     };
     let (to_branch, to_stack_id) = match to {
@@ -39,9 +33,6 @@ pub(crate) fn assign_all(
             Some(name.to_string()),
             branch_name_to_stack_id(ctx, Some(normalize_branch_name_for_lookup(name)))?,
         ),
-        Some(AssignTarget::Stack(stack_id)) => {
-            (stack_id_to_branch_name(ctx, stack_id), Some(stack_id))
-        }
         None => (None, None),
     };
     assign_all_inner(ctx, from_branch, from_stack_id, to_branch, to_stack_id, out)
