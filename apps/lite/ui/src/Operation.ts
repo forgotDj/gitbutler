@@ -56,7 +56,7 @@ export const getInsertionSide = (operation: Operation): InsertSide | null =>
 		Match.orElse(() => null),
 	);
 
-export const operationLabel = (operation: Operation): string | null =>
+export const operationLabel = (operation: Operation): string =>
 	Match.value(operation).pipe(
 		Match.tagsExhaustive({
 			AssignHunk: (operation) =>
