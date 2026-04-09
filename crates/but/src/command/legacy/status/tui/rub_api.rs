@@ -4,9 +4,7 @@
 //! `RubOperationDiscriminants`, and `route_operation`.
 
 use anyhow::Context as _;
-use but_api::commit::types::{
-    CommitCreateResult, CommitMoveResult, CommitSquashResult, MoveChangesResult,
-};
+use but_api::commit::types::{CommitCreateResult, CommitMoveResult, MoveChangesResult};
 use but_core::{DiffSpec, diff::tree_changes, ref_metadata::StackId};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignmentRequest;
@@ -20,8 +18,7 @@ use crate::{
             BranchToBranchOperation, BranchToCommitOperation, BranchToStackOperation,
             BranchToUnassignedOperation, CommittedFileToBranchOperation,
             CommittedFileToCommitOperation, CommittedFileToUnassignedOperation,
-            MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
-            SquashCommitsOperation, route_operation,
+            MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants, route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -109,7 +106,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Unassigned
         }
         RubOperation::SquashCommits(operation) => {
-            let result = execute_squash_commits(ctx, operation)?;
+            let result = operation.execute_inner(ctx)?;
             SelectAfterReload::Commit(result.new_commit)
         }
         RubOperation::MoveCommitToBranch(operation) => {
@@ -155,18 +152,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `SquashCommits` by squashing source into target.
-fn execute_squash_commits(
-    ctx: &mut Context,
-    operation: &SquashCommitsOperation,
-) -> anyhow::Result<CommitSquashResult> {
-    let SquashCommitsOperation {
-        source,
-        destination,
-    } = operation;
-    but_api::commit::squash::commit_squash(ctx, *source, *destination)
 }
 
 /// Executes `MoveCommitToBranch` and returns the exact commit-move API result.

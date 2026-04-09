@@ -18,27 +18,6 @@ use crate::{
     utils::{OutputChannel, shorten_object_id},
 };
 
-pub(crate) fn commits(
-    ctx: &mut Context,
-    source: ObjectId,
-    destination: ObjectId,
-    custom_message: Option<&str>,
-    out: &mut OutputChannel,
-) -> anyhow::Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    // Delegate to the shared squashing logic
-    squash_commits_internal(
-        ctx,
-        vec![source],
-        destination,
-        false,
-        custom_message,
-        None,
-        guard.write_permission(),
-        out,
-    )
-}
-
 /// Handler for `but squash` command with support for:
 /// 1. Multiple commits: `but squash <commit1> <commit2> <commit3>` - squashes 1 and 2 into 3
 /// 2. Commit range: `but squash <commit1>..<commit4>` - squashes all in range into last

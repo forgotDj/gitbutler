@@ -1,6 +1,6 @@
 use anyhow::bail;
 use bstr::BStr;
-use but_api::commit::types::{CommitCreateResult, CommitUndoResult};
+use but_api::commit::types::{CommitCreateResult, CommitSquashResult, CommitUndoResult};
 use but_core::{DiffSpec, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignmentRequest;
@@ -528,8 +528,28 @@ impl UndoCommitOperation {
 impl SquashCommitsOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::SquashCommit);
-        squash::commits(ctx, self.source, self.destination, None, out)
+        let result = self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            writeln!(
+                out,
+                "Squashed {} → {}",
+                shorten_object_id(&repo, self.source).blue(),
+                shorten_object_id(&repo, result.new_commit).blue(),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({
+                "ok": true,
+                "new_commit_id": result.new_commit.to_string(),
+                "squashed_count": 1,
+            }))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `SquashCommits` by squashing source into target.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitSquashResult> {
+        but_api::commit::squash::commit_squash(ctx, self.source, self.destination)
     }
 }
 
