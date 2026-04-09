@@ -7,16 +7,15 @@ use anyhow::Context as _;
 use but_api::commit::types::MoveChangesResult;
 use but_core::{DiffSpec, diff::tree_changes, ref_metadata::StackId};
 use but_ctx::Context;
-use but_hunk_assignment::HunkAssignmentRequest;
 use gix::refs::FullName;
 
 use crate::{
     CliId,
     command::legacy::{
         rub::{
-            BranchToBranchOperation, CommittedFileToBranchOperation,
-            CommittedFileToCommitOperation, CommittedFileToUnassignedOperation, RubOperation,
-            RubOperationDiscriminants, route_operation,
+            CommittedFileToBranchOperation, CommittedFileToCommitOperation,
+            CommittedFileToUnassignedOperation, RubOperation, RubOperationDiscriminants,
+            route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -127,7 +126,7 @@ pub(super) fn perform_operation(
                 .unwrap_or(SelectAfterReload::Branch(operation.name.to_string()))
         }
         RubOperation::BranchToBranch(operation) => {
-            execute_branch_to_branch(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Branch(operation.to.to_string())
         }
         RubOperation::CommittedFileToBranch(operation) => {
@@ -150,16 +149,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `BranchToBranch` by reassigning all hunks from one branch stack to another.
-fn execute_branch_to_branch(
-    ctx: &mut Context,
-    operation: &BranchToBranchOperation<'_>,
-) -> anyhow::Result<()> {
-    let source_stack_id = stack_id_for_branch_name(ctx, operation.from)?;
-    let target_stack_id = stack_id_for_branch_name(ctx, operation.to)?;
-    reassign_all_from_stack_to_stack(ctx, source_stack_id, target_stack_id)
 }
 
 /// Executes `CommittedFileToBranch` and returns the exact uncommit API result.
@@ -206,27 +195,6 @@ fn execute_committed_file_to_unassigned(
         relevant_changes,
         None,
     )
-}
-
-/// Reassigns all current worktree assignments from `source_stack_id` to `target_stack_id`.
-fn reassign_all_from_stack_to_stack(
-    ctx: &mut Context,
-    source_stack_id: Option<StackId>,
-    target_stack_id: Option<StackId>,
-) -> anyhow::Result<()> {
-    let requests = but_api::diff::changes_in_worktree(ctx)?
-        .assignments
-        .into_iter()
-        .filter(|assignment| assignment.stack_id == source_stack_id)
-        .map(|assignment| HunkAssignmentRequest {
-            hunk_header: assignment.hunk_header,
-            path_bytes: assignment.path_bytes,
-            stack_id: target_stack_id,
-            branch_ref_bytes: None,
-        })
-        .collect::<Vec<_>>();
-
-    but_api::diff::assign_hunk(ctx, requests)
 }
 
 /// Resolves a branch name into its workspace stack id, if any.

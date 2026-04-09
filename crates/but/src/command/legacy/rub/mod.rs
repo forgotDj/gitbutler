@@ -676,13 +676,25 @@ impl<'a> BranchToCommitOperation<'a> {
 impl<'a> BranchToBranchOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(
-            ctx,
-            Some(assign::AssignTarget::Branch(self.from)),
-            Some(assign::AssignTarget::Branch(self.to)),
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged all {} changes to {}.",
+                format!("[{}]", self.from).green(),
+                format!("[{}]", self.to).green(),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `BranchToBranch` by reassigning all hunks from one branch stack to another.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let source_stack_id = stack_id_for_branch_name(ctx, self.from)?;
+        let target_stack_id = stack_id_for_branch_name(ctx, self.to)?;
+        reassign_all_from_stack_to_stack(ctx, source_stack_id, target_stack_id)
     }
 }
 
