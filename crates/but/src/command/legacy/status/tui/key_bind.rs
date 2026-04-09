@@ -193,7 +193,6 @@ fn register_detail_key_binds(key_binds: &mut KeyBinds) {
         message: Message::EnterNormalMode,
         hide_from_hotbar: true,
     });
-
     register_quit_key_binds(key_binds, Vec::from([ModeDiscriminant::Details]));
 }
 
@@ -462,6 +461,15 @@ fn register_rub_but_api_mode_key_binds(key_binds: &mut KeyBinds) {
         modes: Vec::from([ModeDiscriminant::RubButApi]),
         message: Message::EnterNormalMode,
         hide_from_hotbar: false,
+    });
+
+    key_binds.register(StaticKeyBind {
+        short_description: "back",
+        chord_display: "r",
+        key_matcher: press().code(KeyCode::Char('r')),
+        modes: Vec::from([ModeDiscriminant::RubButApi]),
+        message: Message::EnterNormalMode,
+        hide_from_hotbar: true,
     });
 }
 
