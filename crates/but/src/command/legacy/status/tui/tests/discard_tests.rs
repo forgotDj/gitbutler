@@ -11,7 +11,7 @@ fn discard_prompt_can_be_cancelled() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -34,7 +34,7 @@ fn discard_unassigned_confirm_yes_discards_changes() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -47,7 +47,7 @@ fn discard_unassigned_confirm_yes_discards_changes() {
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
 
-    let status = tui.env.invoke_git("status --porcelain");
+    let status = tui.env().invoke_git("status --porcelain");
     assert_eq!(status, "");
 
     tui.input_then_render(None)
@@ -63,7 +63,7 @@ fn discard_unassigned_cancel_keeps_changes() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -76,7 +76,7 @@ fn discard_unassigned_cancel_keeps_changes() {
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
 
-    let status = tui.env.invoke_git("status --porcelain");
+    let status = tui.env().invoke_git("status --porcelain");
     assert!(
         status.contains("test.txt"),
         "expected unassigned changes to remain, got: {status:?}"
@@ -105,7 +105,7 @@ fn discard_commit_confirm_yes_removes_commit() {
     tui.input_then_render('y');
     tui.input_then_render(None);
 
-    let log = tui.env.invoke_git("log --oneline");
+    let log = tui.env().invoke_git("log --oneline");
     assert!(
         !log.contains("add A"),
         "expected discarded commit to be removed from history, got:\n{log}"
@@ -124,7 +124,7 @@ fn discard_stack_confirm_yes_discards_staged_changes() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -153,7 +153,7 @@ fn discard_stack_confirm_yes_discards_staged_changes() {
     tui.input_then_render(None)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    let status = tui.env.invoke_git("status --porcelain");
+    let status = tui.env().invoke_git("status --porcelain");
     assert_eq!(status, "");
 
     tui.input_then_render(None)
@@ -169,7 +169,7 @@ fn discard_stack_cancel_keeps_staged_changes() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -197,7 +197,7 @@ fn discard_stack_cancel_keeps_staged_changes() {
     tui.input_then_render(None)
         .assert_current_line_eq(str!["┊  ╭┄[..] [staged to A]"]);
 
-    let status = tui.env.invoke_git("status --porcelain");
+    let status = tui.env().invoke_git("status --porcelain");
     assert!(
         status.contains("test.txt"),
         "expected staged changes to remain, got: {status:?}"
@@ -234,7 +234,7 @@ fn discard_branch_confirm_yes_removes_branch() {
     tui.input_then_render(None)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    let branches = tui.env.invoke_git("branch --list");
+    let branches = tui.env().invoke_git("branch --list");
     assert!(
         !branches.contains("c-branch-1"),
         "expected branch c-branch-1 to be removed, got: {branches:?}"
@@ -270,7 +270,7 @@ fn discard_branch_cancel_keeps_branch() {
     tui.input_then_render(None)
         .assert_current_line_eq(str!["┊╭┄br [c-branch-1] (no commits)"]);
 
-    let branches = tui.env.invoke_git("branch --list");
+    let branches = tui.env().invoke_git("branch --list");
     assert!(
         branches.contains("c-branch-1"),
         "expected branch c-branch-1 to remain, got: {branches:?}"
