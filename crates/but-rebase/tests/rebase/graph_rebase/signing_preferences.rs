@@ -219,7 +219,7 @@ fn force_picked_commit_with_sign_yes_is_signed_when_otherwise_unchanged() -> Res
 
     let after = visualize_commit_graph_all(&repo)?;
     insta::assert_snapshot!(after, @"
-    * e2bc726 (HEAD -> main, top) top
+    * 9500d40 (HEAD -> main, top) top
     * 135e6ba (mid) mid
     * 7a5aacf (base) base
     ");
@@ -289,8 +289,8 @@ fn force_picked_ancestor_does_not_sign_descendants_picked_with_sign_commit_no() 
 
     let after = visualize_commit_graph_all(&repo)?;
     insta::assert_snapshot!(after, @"
-    * c30be65 (HEAD -> main, top) top
-    * 7814cd3 (mid) mid
+    * 4b4fbf0 (HEAD -> main, top) top
+    * b8cd8b5 (mid) mid
     * 7a5aacf (base) base
     ");
 
@@ -375,8 +375,8 @@ fn force_picked_ancestor_triggers_cascading_signatures_on_descendants_picked_wit
 
     let after = visualize_commit_graph_all(&repo)?;
     insta::assert_snapshot!(after, @"
-    * 02d967f (HEAD -> main, top) top
-    * 7814cd3 (mid) mid
+    * c29936f (HEAD -> main, top) top
+    * b8cd8b5 (mid) mid
     * 7a5aacf (base) base
     ");
 

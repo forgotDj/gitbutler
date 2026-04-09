@@ -8,9 +8,12 @@
 
 set -eu -o pipefail
 
+source "${BASH_SOURCE[0]%/*}/shared.sh"
+
+create_consistent_signing_key_at signature.key
+
 git init
 
-ssh-keygen -t rsa -b 2048 -C "test@example.com" -N "" -f signature.key
 git config gpg.format ssh
 git config user.signingKey "$PWD/signature.key"
 echo "*.key*" >.gitignore
