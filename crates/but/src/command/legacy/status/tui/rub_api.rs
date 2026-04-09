@@ -5,7 +5,7 @@
 
 use anyhow::Context as _;
 use but_api::commit::types::{
-    CommitCreateResult, CommitMoveResult, CommitSquashResult, CommitUndoResult, MoveChangesResult,
+    CommitCreateResult, CommitMoveResult, CommitSquashResult, MoveChangesResult,
 };
 use but_core::{DiffSpec, diff::tree_changes, ref_metadata::StackId};
 use but_ctx::Context;
@@ -21,7 +21,7 @@ use crate::{
             BranchToUnassignedOperation, CommittedFileToBranchOperation,
             CommittedFileToCommitOperation, CommittedFileToUnassignedOperation,
             MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
-            SquashCommitsOperation, UndoCommitOperation, route_operation,
+            SquashCommitsOperation, route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -105,7 +105,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Unassigned
         }
         RubOperation::UndoCommit(operation) => {
-            execute_undo_commit(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
         }
         RubOperation::SquashCommits(operation) => {
@@ -155,15 +155,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `UndoCommit` by uncommitting all changes from the selected commit.
-fn execute_undo_commit(
-    ctx: &mut Context,
-    operation: &UndoCommitOperation,
-) -> anyhow::Result<CommitUndoResult> {
-    let UndoCommitOperation { oid } = operation;
-    but_api::commit::undo::commit_undo(ctx, *oid)
 }
 
 /// Executes `SquashCommits` by squashing source into target.

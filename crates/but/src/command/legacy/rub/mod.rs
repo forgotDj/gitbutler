@@ -1,6 +1,6 @@
 use anyhow::bail;
 use bstr::BStr;
-use but_api::commit::types::CommitCreateResult;
+use but_api::commit::types::{CommitCreateResult, CommitUndoResult};
 use but_core::{DiffSpec, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignmentRequest;
@@ -505,8 +505,23 @@ impl UnassignedToStackOperation {
 impl UndoCommitOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::UndoCommit);
-        undo::commit(ctx, self.oid, out)
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            writeln!(
+                out,
+                "Uncommitted {}",
+                shorten_object_id(&repo, self.oid).blue()
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `UndoCommit` by uncommitting all changes from the selected commit.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitUndoResult> {
+        but_api::commit::undo::commit_undo(ctx, self.oid)
     }
 }
 
