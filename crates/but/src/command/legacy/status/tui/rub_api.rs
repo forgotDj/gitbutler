@@ -22,10 +22,9 @@ use crate::{
             CommittedFileToCommitOperation, CommittedFileToUnassignedOperation,
             MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
             SquashCommitsOperation, StackToBranchOperation, StackToStackOperation,
-            StackToUnassignedOperation, UnassignUncommittedOperation, UnassignedToBranchOperation,
-            UnassignedToCommitOperation, UnassignedToStackOperation, UncommittedToBranchOperation,
-            UncommittedToCommitOperation, UncommittedToStackOperation, UndoCommitOperation,
-            route_operation,
+            StackToUnassignedOperation, UnassignedToBranchOperation, UnassignedToCommitOperation,
+            UnassignedToStackOperation, UncommittedToBranchOperation, UncommittedToCommitOperation,
+            UncommittedToStackOperation, UndoCommitOperation, route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -69,7 +68,7 @@ pub(super) fn perform_operation(
 ) -> anyhow::Result<Option<SelectAfterReload>> {
     let selection = match operation {
         RubOperation::UnassignUncommitted(operation) => {
-            execute_unassign_uncommitted(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
         }
         RubOperation::UncommittedToCommit(operation) => {
@@ -159,16 +158,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `UnassignUncommitted` by writing explicit unassigned requests via the rub API.
-fn execute_unassign_uncommitted(
-    ctx: &mut Context,
-    operation: &UnassignUncommittedOperation<'_>,
-) -> anyhow::Result<()> {
-    let requests =
-        assignment_requests_for_selected_hunks(operation.hunk_assignments.iter().copied(), None);
-    but_api::diff::assign_hunk(ctx, requests)
 }
 
 /// Executes `UncommittedToCommit` and returns the exact commit-amend API result.

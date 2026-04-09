@@ -69,28 +69,6 @@ pub(crate) fn assign_uncommitted_to_stack(
     Ok(())
 }
 
-pub(crate) fn unassign_uncommitted(
-    ctx: &mut Context,
-    hunk_assignments: NonEmpty<&HunkAssignment>,
-    description: String,
-    out: &mut OutputChannel,
-) -> anyhow::Result<()> {
-    let assignments = hunk_assignments.into_iter().map(|hunk_assignment| {
-        (
-            hunk_assignment.hunk_header,
-            hunk_assignment.path_bytes.to_owned(),
-        )
-    });
-    let reqs = to_assignment_request(ctx, assignments, None)?;
-    do_assignments(ctx, reqs)?;
-    if let Some(out) = out.for_human() {
-        writeln!(out, "Unstaged {description}")?;
-    } else if let Some(out) = out.for_json() {
-        out.write_value(serde_json::json!({"ok": true}))?;
-    }
-    Ok(())
-}
-
 /// Target for hunk assignment operations.
 ///
 /// This enum identifies where hunks should be assigned or moved to/from:

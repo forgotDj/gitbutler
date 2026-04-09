@@ -2,6 +2,7 @@ use anyhow::bail;
 use bstr::BStr;
 use but_core::{ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
+use but_hunk_assignment::HunkAssignmentRequest;
 use colored::Colorize;
 mod amend;
 mod assign;
@@ -231,8 +232,20 @@ pub(crate) enum RubOperation<'a> {
 impl<'a> UnassignUncommittedOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::unassign_uncommitted(ctx, self.hunk_assignments, self.description, out)
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(out, "Unstaged {}", self.description)?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes this operation without writing any output.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let requests =
+            assignment_requests_for_selected_hunks(self.hunk_assignments.iter().copied(), None);
+        but_api::diff::assign_hunk(ctx, requests)
     }
 }
 
@@ -1193,6 +1206,21 @@ pub(crate) fn handle_unstage(
 
     // Call the main rub handler with "zz" as target to unassign
     handle(ctx, out, file_or_hunk_str, "zz")
+}
+
+/// Builds assignment requests for selected hunks and assigns them to `target_stack_id`.
+fn assignment_requests_for_selected_hunks<'a>(
+    hunks: impl Iterator<Item = &'a but_hunk_assignment::HunkAssignment>,
+    target_stack_id: Option<StackId>,
+) -> Vec<HunkAssignmentRequest> {
+    hunks
+        .map(|assignment| HunkAssignmentRequest {
+            hunk_header: assignment.hunk_header,
+            path_bytes: assignment.path_bytes.to_owned(),
+            stack_id: target_stack_id,
+            branch_ref_bytes: None,
+        })
+        .collect()
 }
 
 #[cfg(test)]
