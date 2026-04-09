@@ -5,17 +5,15 @@
 
 use anyhow::Context as _;
 use but_api::commit::types::MoveChangesResult;
-use but_core::{DiffSpec, diff::tree_changes, ref_metadata::StackId};
+use but_core::{DiffSpec, diff::tree_changes};
 use but_ctx::Context;
-use gix::refs::FullName;
 
 use crate::{
     CliId,
     command::legacy::{
         rub::{
-            CommittedFileToBranchOperation, CommittedFileToCommitOperation,
-            CommittedFileToUnassignedOperation, RubOperation, RubOperationDiscriminants,
-            route_operation,
+            CommittedFileToCommitOperation, CommittedFileToUnassignedOperation, RubOperation,
+            RubOperationDiscriminants, route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -130,7 +128,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Branch(operation.to.to_string())
         }
         RubOperation::CommittedFileToBranch(operation) => {
-            execute_committed_file_to_branch(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Branch(operation.name.to_string())
         }
         RubOperation::CommittedFileToCommit(operation) => {
@@ -149,24 +147,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `CommittedFileToBranch` and returns the exact uncommit API result.
-///
-/// When the target branch is not associated with a stack, this uncommits file
-/// changes into unassigned to match legacy `but rub` behavior.
-fn execute_committed_file_to_branch(
-    ctx: &mut Context,
-    operation: &CommittedFileToBranchOperation<'_>,
-) -> anyhow::Result<MoveChangesResult> {
-    let stack_id = stack_id_for_branch_name(ctx, operation.name)?;
-    let relevant_changes = file_changes_from_commit(ctx, operation.commit_oid, operation.path)?;
-    but_api::commit::uncommit::commit_uncommit_changes(
-        ctx,
-        operation.commit_oid,
-        relevant_changes,
-        stack_id,
-    )
 }
 
 /// Executes `CommittedFileToCommit` and returns the exact move-changes API result.
@@ -195,18 +175,6 @@ fn execute_committed_file_to_unassigned(
         relevant_changes,
         None,
     )
-}
-
-/// Resolves a branch name into its workspace stack id, if any.
-fn stack_id_for_branch_name(
-    ctx: &mut Context,
-    branch_name: &str,
-) -> anyhow::Result<Option<StackId>> {
-    let target_branch_full_name = FullName::try_from(format!("refs/heads/{branch_name}"))?;
-    let (_guard, _repo, ws, _db) = ctx.workspace_and_db()?;
-    Ok(ws
-        .find_segment_and_stack_by_refname(target_branch_full_name.as_ref())
-        .and_then(|(stack, _segment)| stack.id))
 }
 
 /// Computes diff specs for changes to `path` in `commit_oid` relative to its first parent.

@@ -1,7 +1,7 @@
-use anyhow::bail;
+use anyhow::{Context as _, bail};
 use bstr::BStr;
 use but_api::commit::types::{
-    CommitCreateResult, CommitMoveResult, CommitSquashResult, CommitUndoResult,
+    CommitCreateResult, CommitMoveResult, CommitSquashResult, CommitUndoResult, MoveChangesResult,
 };
 use but_core::{DiffSpec, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
@@ -701,13 +701,27 @@ impl<'a> BranchToBranchOperation<'a> {
 impl<'a> CommittedFileToBranchOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::FileChanges);
-        crate::command::commit::file::uncommit_file(
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(out, "Uncommitted changes")?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `CommittedFileToBranch` and returns the exact uncommit API result.
+    ///
+    /// When the target branch is not associated with a stack, this uncommits file
+    /// changes into unassigned to match legacy `but rub` behavior.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<MoveChangesResult> {
+        let stack_id = stack_id_for_branch_name(ctx, self.name)?;
+        let relevant_changes = file_changes_from_commit(ctx, self.commit_oid, self.path)?;
+        but_api::commit::uncommit::commit_uncommit_changes(
             ctx,
-            self.path,
             self.commit_oid,
-            Some(self.name),
-            out,
+            relevant_changes,
+            stack_id,
         )
     }
 }
@@ -1548,6 +1562,25 @@ fn changes_for_stack_assignment(
         .map(DiffSpec::from)
         .collect();
     Ok(but_workspace::flatten_diff_specs(changes))
+}
+
+/// Computes diff specs for changes to `path` in `commit_oid` relative to its first parent.
+fn file_changes_from_commit(
+    ctx: &Context,
+    commit_oid: gix::ObjectId,
+    path: &bstr::BStr,
+) -> anyhow::Result<Vec<DiffSpec>> {
+    let repo = ctx.repo.get()?;
+    let source_commit = repo.find_commit(commit_oid)?;
+    let source_commit_parent_id = source_commit.parent_ids().next().context("no parents")?;
+
+    let tree_changes =
+        but_core::diff::tree_changes(&repo, Some(source_commit_parent_id.detach()), commit_oid)?;
+    Ok(tree_changes
+        .into_iter()
+        .filter(|tc| tc.path == path)
+        .map(DiffSpec::from)
+        .collect::<Vec<_>>())
 }
 
 #[cfg(test)]
