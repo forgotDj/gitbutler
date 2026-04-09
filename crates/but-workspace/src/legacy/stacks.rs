@@ -160,8 +160,9 @@ fn try_from_stack_v3(
 /// Returns the list of stacks that pass `filter`, in unspecified order.
 ///
 /// Use `repo` and `meta` to read branches data
-/// Use `ref_name` to forcefully pretend the HEAD is looking at something else. Only used in testing to avoid needing
-/// multiple fixtures just with a different HEAD position.
+/// Use `ref_name_override` to read from a specific ref instead of HEAD. Used in production by
+/// `stacks_v3_from_ctx` to anchor queries to the workspace ref (during edit mode, HEAD points
+/// elsewhere), and in tests to avoid needing multiple fixtures with different HEAD positions.
 // TODO: See if the UI can migrate to `head_info()` or a variant of it so the information is only called once.
 pub fn stacks_v3(
     repo: &gix::Repository,
