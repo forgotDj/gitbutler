@@ -21,9 +21,9 @@ use crate::{
             BranchToUnassignedOperation, CommittedFileToBranchOperation,
             CommittedFileToCommitOperation, CommittedFileToUnassignedOperation,
             MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
-            SquashCommitsOperation, StackToBranchOperation, StackToStackOperation,
-            UnassignedToBranchOperation, UnassignedToCommitOperation,
-            UnassignedToStackOperation, UndoCommitOperation, route_operation,
+            SquashCommitsOperation, StackToBranchOperation, UnassignedToBranchOperation,
+            UnassignedToCommitOperation, UnassignedToStackOperation, UndoCommitOperation,
+            route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -87,7 +87,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Unassigned
         }
         RubOperation::StackToStack(operation) => {
-            execute_stack_to_stack(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
         }
         RubOperation::StackToBranch(operation) => {
@@ -157,14 +157,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `StackToStack` by reassigning all hunks from one stack to another.
-fn execute_stack_to_stack(
-    ctx: &mut Context,
-    operation: &StackToStackOperation,
-) -> anyhow::Result<()> {
-    reassign_all_from_stack_to_stack(ctx, Some(operation.from), Some(operation.to))
 }
 
 /// Executes `StackToBranch` by reassigning all hunks from the source stack to the target branch stack.

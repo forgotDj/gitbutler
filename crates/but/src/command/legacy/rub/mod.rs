@@ -371,13 +371,27 @@ impl StackToUnassignedOperation {
 impl StackToStackOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(
-            ctx,
-            Some(assign::AssignTarget::Stack(self.from)),
-            Some(assign::AssignTarget::Stack(self.to)),
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged all {} changes to {}.",
+                stack_id_to_branch_name(ctx, self.from)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".to_string().bold()),
+                stack_id_to_branch_name(ctx, self.to)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".to_string().bold())
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `StackToStack` by reassigning all hunks from one stack to another.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        reassign_all_from_stack_to_stack(ctx, Some(self.from), Some(self.to))
     }
 }
 
