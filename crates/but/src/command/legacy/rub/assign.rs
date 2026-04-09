@@ -1,73 +1,10 @@
 use bstr::BString;
 use but_core::{HunkHeader, ref_metadata::StackId};
 use but_ctx::Context;
-use but_hunk_assignment::{HunkAssignment, HunkAssignmentRequest};
+use but_hunk_assignment::HunkAssignmentRequest;
 use colored::Colorize;
-use nonempty::NonEmpty;
 
 use crate::utils::OutputChannel;
-
-pub(crate) fn assign_uncommitted_to_branch(
-    ctx: &mut Context,
-    hunk_assignments: NonEmpty<&HunkAssignment>,
-    description: String,
-    branch_name: &str,
-    out: &mut OutputChannel,
-) -> anyhow::Result<()> {
-    let assignments = hunk_assignments.into_iter().map(|hunk_assignment| {
-        (
-            hunk_assignment.hunk_header,
-            hunk_assignment.path_bytes.to_owned(),
-        )
-    });
-    let reqs = to_assignment_request(ctx, assignments, Some(branch_name))?;
-    do_assignments(ctx, reqs)?;
-    if let Some(out) = out.for_human() {
-        writeln!(
-            out,
-            "Staged {} → {}.",
-            description,
-            format!("[{branch_name}]").green()
-        )?;
-    } else if let Some(out) = out.for_json() {
-        out.write_value(serde_json::json!({"ok": true}))?;
-    }
-    Ok(())
-}
-
-pub(crate) fn assign_uncommitted_to_stack(
-    ctx: &mut Context,
-    hunk_assignments: NonEmpty<&HunkAssignment>,
-    description: String,
-    stack_id: &StackId,
-    out: &mut OutputChannel,
-) -> anyhow::Result<()> {
-    let assignments = hunk_assignments.into_iter().map(|hunk_assignment| {
-        (
-            hunk_assignment.hunk_header,
-            hunk_assignment.path_bytes.to_owned(),
-        )
-    });
-    let reqs = to_assignment_request(ctx, assignments, None)?
-        .into_iter()
-        .map(|mut req| {
-            req.stack_id = Some(*stack_id);
-            req
-        })
-        .collect();
-    do_assignments(ctx, reqs)?;
-    if let Some(out) = out.for_human() {
-        writeln!(
-            out,
-            "Staged {} → stack {}.",
-            description,
-            format!("[{stack_id}]").green()
-        )?;
-    } else if let Some(out) = out.for_json() {
-        out.write_value(serde_json::json!({"ok": true}))?;
-    }
-    Ok(())
-}
 
 /// Target for hunk assignment operations.
 ///

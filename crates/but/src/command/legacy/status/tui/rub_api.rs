@@ -23,8 +23,7 @@ use crate::{
             MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
             SquashCommitsOperation, StackToBranchOperation, StackToStackOperation,
             StackToUnassignedOperation, UnassignedToBranchOperation, UnassignedToCommitOperation,
-            UnassignedToStackOperation, UncommittedToStackOperation, UndoCommitOperation,
-            route_operation,
+            UnassignedToStackOperation, UndoCommitOperation, route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -80,7 +79,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Branch(operation.name.to_string())
         }
         RubOperation::UncommittedToStack(operation) => {
-            execute_uncommitted_to_stack(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
         }
         RubOperation::StackToUnassigned(operation) => {
@@ -158,18 +157,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `UncommittedToStack` by assigning selected hunks to the target stack.
-fn execute_uncommitted_to_stack(
-    ctx: &mut Context,
-    operation: &UncommittedToStackOperation<'_>,
-) -> anyhow::Result<()> {
-    let requests = assignment_requests_for_selected_hunks(
-        operation.hunk_assignments.iter().copied(),
-        Some(operation.stack_id),
-    );
-    but_api::diff::assign_hunk(ctx, requests)
 }
 
 /// Executes `StackToUnassigned` by reassigning all hunks from the source stack into unassigned.
@@ -343,21 +330,6 @@ fn execute_committed_file_to_unassigned(
         relevant_changes,
         None,
     )
-}
-
-/// Builds assignment requests for selected hunks and assigns them to `target_stack_id`.
-fn assignment_requests_for_selected_hunks<'a>(
-    hunks: impl Iterator<Item = &'a but_hunk_assignment::HunkAssignment>,
-    target_stack_id: Option<StackId>,
-) -> Vec<HunkAssignmentRequest> {
-    hunks
-        .map(|assignment| HunkAssignmentRequest {
-            hunk_header: assignment.hunk_header,
-            path_bytes: assignment.path_bytes.to_owned(),
-            stack_id: target_stack_id,
-            branch_ref_bytes: None,
-        })
-        .collect()
 }
 
 /// Reassigns all current worktree assignments from `source_stack_id` to `target_stack_id`.
