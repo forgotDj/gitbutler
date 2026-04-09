@@ -6,7 +6,7 @@
 		type StagingBehavior,
 	} from "$lib/config/uiFeatureFlags";
 	import { persisted } from "@gitbutler/shared/persisted";
-	import { CardGroup, RadioButton, Toggle } from "@gitbutler/ui";
+	import { CardGroup, RadioButton, Toggle, Spacer } from "@gitbutler/ui";
 
 	const addToLeftmost = persisted<boolean>(false, "branch-placement-leftmost");
 	function onStagingBehaviorFormChange(form: HTMLFormElement) {
@@ -69,15 +69,36 @@
 	</CardGroup.Item>
 </CardGroup>
 
+<Spacer />
+
+<div class="stack-v gap-8">
+	<h2 class="text-15 text-bold">Commit staging behavior</h2>
+	<p class="text-12 text-body clr-text-2">
+		Controls which files are pre-selected when opening the staging view.
+		<br />
+		You can always change the selection manually.
+	</p>
+</div>
+
 <CardGroup>
 	<form class="stack-v" onchange={(e) => onStagingBehaviorFormChange(e.currentTarget)}>
-		<CardGroup.Item labelFor="stage-all">
+		<!-- <CardGroup.Item>
 			{#snippet title()}
-				All assigned files
+				Commit staging behavior
 			{/snippet}
 			{#snippet caption()}
-				Select all files assigned to this branch. If none are assigned, select all unassigned files
-				instead.
+				Choose how files are pre-selected when you open the staging view for a branch. This only
+				affects the default selection - you can always manually change which files are included in
+				the commit.
+			{/snippet}
+		</CardGroup.Item> -->
+		<CardGroup.Item labelFor="stage-all">
+			{#snippet title()}
+				Auto-select all assigned files
+			{/snippet}
+			{#snippet caption()}
+				Pre-selects all files assigned to this branch. Falls back to unassigned files if none are
+				assigned.
 			{/snippet}
 			{#snippet actions()}
 				<RadioButton
@@ -91,11 +112,11 @@
 
 		<CardGroup.Item labelFor="stage-selection">
 			{#snippet title()}
-				Only selected files
+				Auto-select only your picked files
 			{/snippet}
 			{#snippet caption()}
-				Only include files you've already selected. If nothing is selected, falls back to all
-				assigned files, then all unassigned files.
+				Pre-selects only the files you have already picked. Falls back to assigned files, then
+				unassigned, if nothing is picked.
 			{/snippet}
 			{#snippet actions()}
 				<RadioButton
@@ -109,10 +130,10 @@
 
 		<CardGroup.Item labelFor="stage-none">
 			{#snippet title()}
-				Manual selection
+				No auto-selection
 			{/snippet}
 			{#snippet caption()}
-				Don't auto-select any files. You choose what to commit each time.
+				Nothing is pre-selected. You manually pick what to include in each commit.
 			{/snippet}
 			{#snippet actions()}
 				<RadioButton
