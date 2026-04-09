@@ -23,8 +23,8 @@ use crate::{
             MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
             SquashCommitsOperation, StackToBranchOperation, StackToStackOperation,
             StackToUnassignedOperation, UnassignedToBranchOperation, UnassignedToCommitOperation,
-            UnassignedToStackOperation, UncommittedToBranchOperation, UncommittedToStackOperation,
-            UndoCommitOperation, route_operation,
+            UnassignedToStackOperation, UncommittedToStackOperation, UndoCommitOperation,
+            route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -76,7 +76,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Commit(result.new_commit.context("api returned no new commit")?)
         }
         RubOperation::UncommittedToBranch(operation) => {
-            execute_uncommitted_to_branch(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Branch(operation.name.to_string())
         }
         RubOperation::UncommittedToStack(operation) => {
@@ -158,19 +158,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `UncommittedToBranch` by assigning selected hunks to the target branch stack.
-fn execute_uncommitted_to_branch(
-    ctx: &mut Context,
-    operation: &UncommittedToBranchOperation<'_>,
-) -> anyhow::Result<()> {
-    let stack_id = stack_id_for_branch_name(ctx, operation.name)?;
-    let requests = assignment_requests_for_selected_hunks(
-        operation.hunk_assignments.iter().copied(),
-        stack_id,
-    );
-    but_api::diff::assign_hunk(ctx, requests)
 }
 
 /// Executes `UncommittedToStack` by assigning selected hunks to the target stack.

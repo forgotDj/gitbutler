@@ -14,6 +14,7 @@ use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
 };
+use gix::refs::FullName;
 use nonempty::NonEmpty;
 
 use crate::{
@@ -291,14 +292,26 @@ impl<'a> UncommittedToCommitOperation<'a> {
 impl<'a> UncommittedToBranchOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_uncommitted_to_branch(
-            ctx,
-            self.hunk_assignments,
-            self.description,
-            self.name,
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged {} → {}.",
+                self.description,
+                format!("[{}]", self.name).green()
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `UncommittedToBranch` by assigning selected hunks to the target branch stack.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let stack_id = stack_id_for_branch_name(ctx, self.name)?;
+        let requests =
+            assignment_requests_for_selected_hunks(self.hunk_assignments.iter().copied(), stack_id);
+        but_api::diff::assign_hunk(ctx, requests)
     }
 }
 
@@ -1252,6 +1265,18 @@ fn assignment_requests_for_selected_hunks<'a>(
             branch_ref_bytes: None,
         })
         .collect()
+}
+
+/// Resolves a branch name into its workspace stack id, if any.
+fn stack_id_for_branch_name(
+    ctx: &mut Context,
+    branch_name: &str,
+) -> anyhow::Result<Option<StackId>> {
+    let target_branch_full_name = FullName::try_from(format!("refs/heads/{branch_name}"))?;
+    let (_guard, _repo, ws, _db) = ctx.workspace_and_db()?;
+    Ok(ws
+        .find_segment_and_stack_by_refname(target_branch_full_name.as_ref())
+        .and_then(|(stack, _segment)| stack.id))
 }
 
 #[cfg(test)]
