@@ -450,7 +450,7 @@ fn esc_leaves_rub_mode() {
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -472,7 +472,7 @@ fn mode_toggle_key_r_enters_and_leaves_rub_mode() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
@@ -494,7 +494,7 @@ fn mode_toggle_key_c_enters_and_leaves_commit_mode() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render('c')
         .assert_rendered_term_svg_eq(file![
@@ -554,7 +554,7 @@ fn rubbing() {
         .assert_rendered_term_svg_eq(file!["snapshots/rubbing_001.svg"])
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_rendered_term_svg_eq(file!["snapshots/rubbing_002.svg"])
@@ -580,7 +580,7 @@ fn rubbing() {
 
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str![
-            "┊●   << amend commit >> [..] (no commit message) (no changes)"
+            "┊●   << amend >> [..] (no commit message) (no changes)"
         ]);
 
     tui.input_then_render(KeyCode::Enter);

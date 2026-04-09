@@ -24,10 +24,12 @@ use crate::{
 pub(super) struct TestTui {
     pub(super) app: App,
     terminal: Terminal<TestBackend>,
-    pub(super) env: Sandbox,
+    env: Option<Sandbox>,
     out: OutputChannel,
     mode: OperatingMode,
     async_runtime: tokio::runtime::Runtime,
+    width: u16,
+    height: u16,
 }
 
 pub(super) fn test_tui(env: Sandbox) -> TestTui {
@@ -75,14 +77,22 @@ pub(super) fn test_tui_with_size(env: Sandbox, width: u16, height: u16) -> TestT
     TestTui {
         app,
         terminal,
-        env,
+        env: Some(env),
         out,
         mode,
         async_runtime,
+        width,
+        height,
     }
 }
 
 impl TestTui {
+    #[track_caller]
+    pub(super) fn env(&self) -> &Sandbox {
+        self.env.as_ref().unwrap()
+    }
+
+    #[track_caller]
     pub(super) fn input_then_render<E>(&mut self, event: E) -> TestTuiInputThenRenderResult<'_>
     where
         E: EventPolling,
@@ -90,6 +100,7 @@ impl TestTui {
         self.render_with_messages(event, Vec::from([Message::Reload(None)]))
     }
 
+    #[track_caller]
     pub(super) fn render_with_messages<E>(
         &mut self,
         event: E,
@@ -98,7 +109,7 @@ impl TestTui {
     where
         E: EventPolling,
     {
-        let mut ctx = self.env.context().expect("failed to create context");
+        let mut ctx = self.env().context().expect("failed to create context");
         let mut other_messages = Vec::new();
 
         with_var("GIT_AUTHOR_DATE", Some("2000-01-01T00:00:00Z"), || {
@@ -119,6 +130,54 @@ impl TestTui {
         });
 
         TestTuiInputThenRenderResult(self)
+    }
+
+    #[track_caller]
+    pub(super) fn recreate(mut self) -> Self {
+        let env = self.env.take().expect(
+            "env already removed?! This shouldn't happen, only TestTui::recreate removes the env",
+        );
+        self = test_tui_with_size(env, self.width, self.height);
+        self
+    }
+}
+
+impl Drop for TestTui {
+    fn drop(&mut self) {
+        use colored::Colorize;
+
+        if self.env.is_none() {
+            // `TestTui::recreate` was called, in which case we'll print the state of the new tui
+            // when that is dropped
+            return;
+        }
+
+        // Print the state of the terminal backend on test failures. If the test succeeds then
+        // cargo discards the test output. This makes it easier to debug test failures because so
+        // much of it depends on getting the cursor on the right line.
+
+        let render_result = self.input_then_render(None);
+        let selected_row = render_result.selected_row() as usize;
+
+        eprintln!("\nCurrent terminal state:");
+
+        for (idx, line) in render_result.output().lines().enumerate() {
+            let line = line.trim_matches('"');
+            if idx == selected_row {
+                colored::control::set_override(true);
+                eprintln!(
+                    "\"{}\"",
+                    line.on_custom_color(colored::CustomColor {
+                        r: 69,
+                        g: 71,
+                        b: 90
+                    })
+                );
+                colored::control::unset_override();
+            } else {
+                eprintln!("\"{line}\"");
+            }
+        }
     }
 }
 
@@ -141,7 +200,7 @@ pub(super) struct TestTuiInputThenRenderResult<'a>(&'a mut TestTui);
 impl TestTuiInputThenRenderResult<'_> {
     #[track_caller]
     pub(super) fn assert_rendered_contains(self, expected: &str) -> Self {
-        let output = self.0.terminal.backend().to_string();
+        let output = self.output();
         assert!(
             output.contains(expected),
             "expected rendered output to contain {expected:?}, got:\n{output}"
@@ -150,21 +209,31 @@ impl TestTuiInputThenRenderResult<'_> {
         self
     }
 
-    #[track_caller]
-    pub(super) fn assert_current_line_eq(self, expected: impl snapbox::IntoData) -> Self {
+    pub(super) fn output(&self) -> String {
+        self.0.terminal.backend().to_string()
+    }
+
+    fn selected_row(&self) -> u16 {
         let backend = self.0.terminal.backend();
         let buffer = backend.buffer();
         let area = *buffer.area();
         let selected_bg = *super::super::CURSOR_BG;
 
-        let selected_row = (area.y..area.y.saturating_add(area.height))
+        (area.y..area.y.saturating_add(area.height))
             .find(|&y| {
                 (area.x..area.x.saturating_add(area.width))
                     .any(|x| buffer[(x, y)].bg == selected_bg)
             })
-            .unwrap_or_else(|| {
-                panic!("failed to find selected row in rendered output:\n{backend}")
-            });
+            .unwrap_or_else(|| panic!("failed to find selected row in rendered output:\n{backend}"))
+    }
+
+    #[track_caller]
+    pub(super) fn assert_current_line_eq(self, expected: impl snapbox::IntoData) -> Self {
+        let backend = self.0.terminal.backend();
+        let buffer = backend.buffer();
+        let area = *buffer.area();
+
+        let selected_row = self.selected_row();
 
         let mut line = String::new();
         for x in area.x..area.x.saturating_add(area.width) {
