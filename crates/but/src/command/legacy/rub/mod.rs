@@ -587,13 +587,23 @@ impl<'a> MoveCommitToBranchOperation<'a> {
 impl<'a> BranchToUnassignedOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(
-            ctx,
-            Some(assign::AssignTarget::Branch(self.from)),
-            None,
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Unstaged all {} changes.",
+                format!("[{}]", self.from).green(),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `BranchToUnassigned` by moving all branch-assigned hunks into unassigned.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let source_stack_id = stack_id_for_branch_name(ctx, self.from)?;
+        reassign_all_from_stack_to_stack(ctx, source_stack_id, None)
     }
 }
 

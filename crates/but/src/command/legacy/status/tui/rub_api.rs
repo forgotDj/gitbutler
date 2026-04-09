@@ -15,9 +15,9 @@ use crate::{
     command::legacy::{
         rub::{
             BranchToBranchOperation, BranchToCommitOperation, BranchToStackOperation,
-            BranchToUnassignedOperation, CommittedFileToBranchOperation,
-            CommittedFileToCommitOperation, CommittedFileToUnassignedOperation,
-            RubOperation, RubOperationDiscriminants, route_operation,
+            CommittedFileToBranchOperation, CommittedFileToCommitOperation,
+            CommittedFileToUnassignedOperation, RubOperation, RubOperationDiscriminants,
+            route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -113,7 +113,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Branch(operation.name.to_string())
         }
         RubOperation::BranchToUnassigned(operation) => {
-            execute_branch_to_unassigned(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
         }
         RubOperation::BranchToStack(operation) => {
@@ -151,15 +151,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `BranchToUnassigned` by moving all branch-assigned hunks into unassigned.
-fn execute_branch_to_unassigned(
-    ctx: &mut Context,
-    operation: &BranchToUnassignedOperation<'_>,
-) -> anyhow::Result<()> {
-    let source_stack_id = stack_id_for_branch_name(ctx, operation.from)?;
-    reassign_all_from_stack_to_stack(ctx, source_stack_id, None)
 }
 
 /// Executes `BranchToStack` by moving all branch-assigned hunks into the target stack.
