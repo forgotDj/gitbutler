@@ -1174,23 +1174,27 @@ const CommitC: FC<{
 			selectItem={selectItem}
 			stackId={stackId}
 		/>
-		{selected?.mode._tag === "Details" && (
-			<Suspense fallback={<div className={sharedStyles.rowEmpty}>Loading change details…</div>}>
-				<CommitDetailsC
-					projectId={projectId}
-					commitId={commit.id}
-					selectedPath={selected.mode.path}
-					selectPath={(path) => {
-						selectItem(
-							selectedCommitItem({
-								...selected,
-								mode: { _tag: "Details", path },
-							}),
-						);
-					}}
-				/>
-			</Suspense>
-		)}
+		{selected &&
+			Match.value(selected.mode).pipe(
+				Match.tag("Details", (mode) => (
+					<Suspense fallback={<div className={sharedStyles.rowEmpty}>Loading change details…</div>}>
+						<CommitDetailsC
+							projectId={projectId}
+							commitId={commit.id}
+							selectedPath={mode.path}
+							selectPath={(path) => {
+								selectItem(
+									selectedCommitItem({
+										...selected,
+										mode: { _tag: "Details", path },
+									}),
+								);
+							}}
+						/>
+					</Suspense>
+				)),
+				Match.orElse(() => null),
+			)}
 	</CommitSource>
 );
 
