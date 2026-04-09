@@ -82,16 +82,6 @@
 
 <CardGroup>
 	<form class="stack-v" onchange={(e) => onStagingBehaviorFormChange(e.currentTarget)}>
-		<!-- <CardGroup.Item>
-			{#snippet title()}
-				Commit staging behavior
-			{/snippet}
-			{#snippet caption()}
-				Choose how files are pre-selected when you open the staging view for a branch. This only
-				affects the default selection - you can always manually change which files are included in
-				the commit.
-			{/snippet}
-		</CardGroup.Item> -->
 		<CardGroup.Item labelFor="stage-all">
 			{#snippet title()}
 				Auto-select all assigned files
