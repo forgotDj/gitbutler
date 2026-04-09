@@ -21,8 +21,8 @@ use crate::{
             BranchToUnassignedOperation, CommittedFileToBranchOperation,
             CommittedFileToCommitOperation, CommittedFileToUnassignedOperation,
             MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
-            SquashCommitsOperation, UnassignedToBranchOperation, UnassignedToCommitOperation,
-            UnassignedToStackOperation, UndoCommitOperation, route_operation,
+            SquashCommitsOperation, UnassignedToBranchOperation, UnassignedToStackOperation,
+            UndoCommitOperation, route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -94,7 +94,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Branch(operation.to.to_string())
         }
         RubOperation::UnassignedToCommit(operation) => {
-            let result = execute_unassigned_to_commit(ctx, operation)?;
+            let result = operation.execute_inner(ctx)?;
             SelectAfterReload::Commit(result.new_commit.context("api returned no new commit")?)
         }
         RubOperation::UnassignedToBranch(operation) => {
@@ -156,15 +156,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `UnassignedToCommit` and returns the exact commit-amend API result.
-fn execute_unassigned_to_commit(
-    ctx: &mut Context,
-    operation: &UnassignedToCommitOperation,
-) -> anyhow::Result<CommitCreateResult> {
-    let changes = changes_for_stack_assignment(ctx, None)?;
-    but_api::commit::amend::commit_amend(ctx, operation.oid, changes)
 }
 
 /// Executes `UnassignedToBranch` by assigning unassigned hunks to the target branch stack.
