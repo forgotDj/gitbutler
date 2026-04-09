@@ -4,11 +4,10 @@
 //! `RubOperationDiscriminants`, and `route_operation`.
 
 use anyhow::Context as _;
-use but_api::commit::types::{CommitCreateResult, CommitMoveResult, MoveChangesResult};
+use but_api::commit::types::{CommitCreateResult, MoveChangesResult};
 use but_core::{DiffSpec, diff::tree_changes, ref_metadata::StackId};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignmentRequest;
-use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
 use gix::refs::FullName;
 
 use crate::{
@@ -18,7 +17,7 @@ use crate::{
             BranchToBranchOperation, BranchToCommitOperation, BranchToStackOperation,
             BranchToUnassignedOperation, CommittedFileToBranchOperation,
             CommittedFileToCommitOperation, CommittedFileToUnassignedOperation,
-            MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants, route_operation,
+            RubOperation, RubOperationDiscriminants, route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -110,7 +109,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Commit(result.new_commit)
         }
         RubOperation::MoveCommitToBranch(operation) => {
-            execute_move_commit_to_branch(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Branch(operation.name.to_string())
         }
         RubOperation::BranchToUnassigned(operation) => {
@@ -152,20 +151,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `MoveCommitToBranch` and returns the exact commit-move API result.
-fn execute_move_commit_to_branch(
-    ctx: &mut Context,
-    operation: &MoveCommitToBranchOperation<'_>,
-) -> anyhow::Result<CommitMoveResult> {
-    let target_full_name = FullName::try_from(format!("refs/heads/{}", operation.name))?;
-    but_api::commit::move_commit::commit_move(
-        ctx,
-        operation.oid,
-        RelativeTo::Reference(target_full_name),
-        InsertSide::Below,
-    )
 }
 
 /// Executes `BranchToUnassigned` by moving all branch-assigned hunks into unassigned.

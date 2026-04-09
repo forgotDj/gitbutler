@@ -1,9 +1,12 @@
 use anyhow::bail;
 use bstr::BStr;
-use but_api::commit::types::{CommitCreateResult, CommitSquashResult, CommitUndoResult};
+use but_api::commit::types::{
+    CommitCreateResult, CommitMoveResult, CommitSquashResult, CommitUndoResult,
+};
 use but_core::{DiffSpec, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignmentRequest;
+use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
 use colored::Colorize;
 mod amend;
 mod assign;
@@ -19,9 +22,7 @@ use nonempty::NonEmpty;
 
 use crate::{
     CliId, IdMap,
-    command::{
-        commit::r#move::move_commit_to_branch, legacy::rub::assign::stack_id_to_branch_name,
-    },
+    command::legacy::rub::assign::stack_id_to_branch_name,
     id::parser::{parse_sources_with_disambiguation, prompt_for_disambiguation},
     utils::{OutputChannel, shorten_object_id, split_short_id},
 };
@@ -556,7 +557,30 @@ impl SquashCommitsOperation {
 impl<'a> MoveCommitToBranchOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        move_commit_to_branch(ctx, self.oid, self.name, out)
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            writeln!(
+                out,
+                "Moved {} → {}",
+                shorten_object_id(&repo, self.oid).blue(),
+                format!("[{}]", self.name).green()
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `MoveCommitToBranch` and returns the exact commit-move API result.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitMoveResult> {
+        let target_full_name = FullName::try_from(format!("refs/heads/{}", self.name))?;
+        but_api::commit::move_commit::commit_move(
+            ctx,
+            self.oid,
+            RelativeTo::Reference(target_full_name),
+            InsertSide::Below,
+        )
     }
 }
 
