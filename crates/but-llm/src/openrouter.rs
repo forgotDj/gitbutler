@@ -62,15 +62,15 @@ impl OpenRouterProvider {
 
     fn retrieve_api_key() -> Option<Sensitive<String>> {
         // Try secret storage first, then fall back to env var
-        if let Ok(Some(key)) = secret::retrieve("aiOpenRouterKey", secret::Namespace::Global) {
-            if !key.0.trim().is_empty() {
-                return Some(key);
-            }
+        if let Ok(Some(key)) = secret::retrieve("aiOpenRouterKey", secret::Namespace::Global)
+            && !key.0.trim().is_empty()
+        {
+            return Some(key);
         }
-        if let Ok(val) = std::env::var("OPENROUTER_API_KEY") {
-            if !val.trim().is_empty() {
-                return Some(Sensitive(val));
-            }
+        if let Ok(val) = std::env::var("OPENROUTER_API_KEY")
+            && !val.trim().is_empty()
+        {
+            return Some(Sensitive(val));
         }
         None
     }
