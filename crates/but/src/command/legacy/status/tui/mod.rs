@@ -2446,14 +2446,7 @@ impl App {
 
         let display = match source {
             RubSource::CliId(source) => {
-                match rub_api::rub_operation_display(source, target)
-                    .unwrap_or(rub_api::RubOperationDisplay::Supported("invalid"))
-                {
-                    rub_api::RubOperationDisplay::Supported(display) => Cow::Borrowed(display),
-                    rub_api::RubOperationDisplay::NotSupported(_, discriminant) => {
-                        Cow::Owned(format!("{discriminant:?}"))
-                    }
-                }
+                Cow::Borrowed(rub_api::rub_operation_display(source, target).unwrap_or("invalid"))
             }
             RubSource::CommittedHunk(hunk) => Cow::Borrowed(
                 rub_from_detail_view::rub_operation_display(hunk, target).unwrap_or("invalid"),
@@ -2540,8 +2533,8 @@ impl App {
             "  {}  ",
             match self.mode {
                 Mode::Normal => "normal",
-                Mode::Rub(..) => "rub",
-                Mode::RubButApi(..) => "rub (api)",
+                Mode::Rub(..) => "rub (legacy)",
+                Mode::RubButApi(..) => "rub",
                 Mode::InlineReword(..) => "reword",
                 Mode::Command(..) => "command",
                 Mode::Commit(..) => "commit",

@@ -90,8 +90,7 @@ fn move_commit_above_other_commit_reorders_tui() {
     tui.input_then_render(KeyCode::Enter)
         .assert_current_line_eq(str!["┊●   [..] add A"]);
 
-    let env = tui.env;
-    let mut tui = test_tui(env);
+    tui = tui.recreate();
     tui.input_then_render(None)
         .assert_rendered_term_svg_eq(file![
             "snapshots/move_commit_above_other_commit_reorders_tui_final.svg"
@@ -132,8 +131,7 @@ fn move_commit_below_other_commit_reorders_tui() {
     tui.input_then_render(KeyCode::Enter)
         .assert_current_line_eq(str!["┊●   [..] add A"]);
 
-    let env = tui.env;
-    let mut tui = test_tui(env);
+    tui = tui.recreate();
     tui.input_then_render(None)
         .assert_rendered_term_svg_eq(file![
             "snapshots/move_commit_below_other_commit_reorders_tui_final.svg"
@@ -165,8 +163,7 @@ fn move_branch_onto_other_branch_reorders_stacks() {
     tui.input_then_render(KeyCode::Enter)
         .assert_current_line_eq(str!["┊├┄[..] [A]"]);
 
-    let env = tui.env;
-    let mut tui = test_tui(env);
+    tui = tui.recreate();
     tui.input_then_render(None)
         .assert_rendered_term_svg_eq(file![
             "snapshots/move_branch_onto_other_branch_reorders_stacks_final.svg"
@@ -200,8 +197,7 @@ fn move_branch_to_merge_base_tears_off_branch() {
     tui.input_then_render(KeyCode::Enter)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
 
-    let env = tui.env;
-    let mut tui = test_tui(env);
+    tui = tui.recreate();
     tui.render_with_messages(
         None,
         Vec::from([Message::EnterNormalMode, Message::Reload(None)]),

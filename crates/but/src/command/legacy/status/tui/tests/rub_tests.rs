@@ -15,7 +15,7 @@ fn rub_api_unassigned_to_commit() {
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -32,7 +32,7 @@ fn rub_api_unassigned_to_commit() {
     tui.input_then_render([KeyCode::Up, KeyCode::Up])
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
@@ -59,7 +59,7 @@ fn rub_api_unassigned_to_branch_operation() {
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unstaged changes]"]);
 
     tui.input_then_render(KeyCode::Down)
@@ -74,7 +74,7 @@ fn rub_api_unassign_uncommitted_operation() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -82,7 +82,7 @@ fn rub_api_unassign_uncommitted_operation() {
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊   [..] A test.txt"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> [..] A test.txt"]);
 
     tui.input_then_render(KeyCode::Up)
@@ -97,7 +97,7 @@ fn rub_api_uncommitted_to_branch_operation() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -105,7 +105,7 @@ fn rub_api_uncommitted_to_branch_operation() {
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊   [..] A test.txt"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> [..] A test.txt"]);
 
     tui.input_then_render(KeyCode::Down)
@@ -120,7 +120,7 @@ fn rub_api_uncommitted_to_commit_operation() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -128,7 +128,7 @@ fn rub_api_uncommitted_to_commit_operation() {
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊   [..] A test.txt"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> [..] A test.txt"]);
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
@@ -149,7 +149,7 @@ fn rub_api_branch_to_unassigned_operation() {
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄[..] [A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊╭┄<< source >> << noop >> [..] [A]"]);
 
     tui.input_then_render(KeyCode::Up)
@@ -170,7 +170,7 @@ fn rub_api_branch_to_commit_operation() {
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄[..] [A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊╭┄<< source >> << noop >> [..] [A]"]);
 
     tui.input_then_render(KeyCode::Down)
@@ -191,7 +191,7 @@ fn rub_api_branch_to_branch_operation() {
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄[..] [A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊╭┄<< source >> << noop >> [..] [A]"]);
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
@@ -212,7 +212,7 @@ fn rub_api_move_commit_to_branch_operation() {
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   [..] add A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊●   << source >> << noop >> [..] add A"]);
 
     tui.input_then_render(KeyCode::Up)
@@ -233,7 +233,7 @@ fn rub_api_undo_commit_operation() {
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   [..] add A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊●   << source >> << noop >> [..] add A"]);
 
     tui.input_then_render([KeyCode::Up, KeyCode::Up])
@@ -254,11 +254,11 @@ fn rub_api_squash_commits_operation() {
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   [..] add A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊●   << source >> << noop >> [..] add A"]);
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down, KeyCode::Down, KeyCode::Down])
-        .assert_current_line_eq(str!["┊●   << SquashCommits >> d3e2ba3 add B"]);
+        .assert_current_line_eq(str!["┊●   << squash >> [..] add B"]);
 }
 
 // Tests RubOperation::CommittedFileToCommit.
@@ -281,7 +281,7 @@ fn rub_api_committed_file_to_commit_operation() {
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊│     [..] A A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊│     << source >> << noop >> [..] A A"]);
 
     tui.input_then_render(KeyCode::Up)
@@ -308,7 +308,7 @@ fn rub_api_committed_file_to_branch_operation() {
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊│     [..] A A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊│     << source >> << noop >> [..] A A"]);
 
     tui.input_then_render([KeyCode::Up, KeyCode::Up])
@@ -335,7 +335,7 @@ fn rub_api_committed_file_to_unassigned_operation() {
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊│     [..] A A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊│     << source >> << noop >> [..] A A"]);
 
     tui.input_then_render([KeyCode::Up, KeyCode::Up, KeyCode::Up])
@@ -350,8 +350,8 @@ fn rub_api_unassigned_to_stack_operation() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("a.txt", "content");
-    tui.env.file("z.txt", "content");
+    tui.env().file("a.txt", "content");
+    tui.env().file("z.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -371,7 +371,7 @@ fn rub_api_unassigned_to_stack_operation() {
     tui.input_then_render([KeyCode::Up, KeyCode::Up, KeyCode::Up, KeyCode::Up])
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unstaged changes]"]);
 
     tui.input_then_render(KeyCode::Down)
@@ -386,8 +386,8 @@ fn rub_api_uncommitted_to_stack_operation() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("a.txt", "content");
-    tui.env.file("z.txt", "content");
+    tui.env().file("a.txt", "content");
+    tui.env().file("z.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -407,7 +407,7 @@ fn rub_api_uncommitted_to_stack_operation() {
     tui.input_then_render([KeyCode::Up, KeyCode::Up, KeyCode::Up])
         .assert_current_line_eq(str!["┊   [..] A z.txt"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> [..] A z.txt"]);
 
     tui.input_then_render(KeyCode::Down)
@@ -422,7 +422,7 @@ fn rub_api_branch_to_stack_operation() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("a.txt", "content");
+    tui.env().file("a.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -439,7 +439,7 @@ fn rub_api_branch_to_stack_operation() {
     tui.input_then_render(KeyCode::Enter)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊╭┄<< source >> << noop >> g0 [A]"]);
 
     tui.input_then_render(KeyCode::Up)
@@ -454,7 +454,7 @@ fn rub_api_stack_to_unassigned_operation() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -477,7 +477,7 @@ fn rub_api_stack_to_unassigned_operation() {
     tui.input_then_render(KeyCode::Up)
         .assert_current_line_eq(str!["┊  ╭┄[..] [staged to A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊  ╭┄<< source >> << noop >> [..] [staged to A]"]);
 
     tui.input_then_render(KeyCode::Up)
@@ -492,7 +492,7 @@ fn rub_api_stack_to_branch_operation() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -515,7 +515,7 @@ fn rub_api_stack_to_branch_operation() {
     tui.input_then_render(KeyCode::Up)
         .assert_current_line_eq(str!["┊  ╭┄[..] [staged to A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊  ╭┄<< source >> << noop >> [..] [staged to A]"]);
 
     tui.input_then_render(KeyCode::Down)
@@ -530,8 +530,8 @@ fn rub_api_stack_to_stack_operation() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("A", "content");
-    tui.env.file("B", "content");
+    tui.env().file("A", "content");
+    tui.env().file("B", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -574,7 +574,7 @@ fn rub_api_stack_to_stack_operation() {
     tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('K')))
         .assert_current_line_eq(str!["┊  ╭┄[..] [staged to B]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+    tui.input_then_render('r')
         .assert_current_line_eq(str!["┊  ╭┄<< source >> << noop >> [..] [staged to B]"]);
 
     tui.input_then_render([KeyCode::Up, KeyCode::Up])

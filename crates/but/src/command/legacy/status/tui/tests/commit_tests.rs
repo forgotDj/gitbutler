@@ -14,7 +14,7 @@ fn commit_mode_enter_and_escape() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -37,7 +37,7 @@ fn commit_confirm_on_source_is_noop() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -92,7 +92,7 @@ fn commit_from_unstaged_changes_creates_commit_visible_in_tui() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -135,7 +135,7 @@ fn commit_from_unstaged_changes_with_multiple_hunks_in_same_file_commits_all_cha
 
     let mut tui = test_tui(env);
 
-    tui.env.file("multi-hunk.txt", &base);
+    tui.env().file("multi-hunk.txt", &base);
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -162,7 +162,7 @@ fn commit_from_unstaged_changes_with_multiple_hunks_in_same_file_commits_all_cha
         .collect::<Vec<_>>()
         .join("\n")
         + "\n";
-    tui.env.file("multi-hunk.txt", changed);
+    tui.env().file("multi-hunk.txt", changed);
 
     tui.input_then_render(None);
     tui.input_then_render(std::array::repeat::<_, 20>(KeyCode::Up));
@@ -180,7 +180,7 @@ fn commit_from_unstaged_changes_with_multiple_hunks_in_same_file_commits_all_cha
             .assert_current_line_eq(str!["┊●   [..] commit from tui test[..]"]);
     });
 
-    let status = tui.env.invoke_git("status --porcelain");
+    let status = tui.env().invoke_git("status --porcelain");
     assert_eq!(
         status, "",
         "expected all zz changes to be committed, but worktree still has:\n{status}"
@@ -194,7 +194,7 @@ fn commit_mode_shows_commit_above_on_commit_rows() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -216,7 +216,7 @@ fn commit_mode_can_toggle_commit_target_insert_side() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -251,7 +251,7 @@ fn commit_to_commit_above_creates_commit_visible_in_tui() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -288,7 +288,7 @@ fn commit_to_commit_below_creates_commit_visible_in_tui() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -321,7 +321,7 @@ fn commit_mode_from_staged_changes_stays_within_current_stack() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
@@ -371,7 +371,7 @@ fn staged_source_commit_cannot_be_forced_to_other_stack_target() {
 
     let mut tui = test_tui(env);
 
-    tui.env.file("test.txt", "content");
+    tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
         .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
