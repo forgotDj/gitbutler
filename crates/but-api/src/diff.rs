@@ -235,6 +235,8 @@ pub fn assign_hunk_with_perm(
     assignments: Vec<HunkAssignmentRequest>,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<()> {
+    // this oplog entry is currently a noop (i.e. restoring it does nothing) but we do wanna
+    // support it in the future so leaving it here for consistency
     let maybe_oplog_entry = but_oplog::UnmaterializedOplogSnapshot::from_details_with_perm(
         ctx,
         SnapshotDetails::new(OperationKind::MoveHunk),
