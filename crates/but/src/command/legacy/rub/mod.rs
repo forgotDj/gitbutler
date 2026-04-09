@@ -20,8 +20,7 @@ use nonempty::NonEmpty;
 use crate::{
     CliId, IdMap,
     command::{
-        commit::r#move::move_commit_to_branch,
-        legacy::rub::assign::{normalize_branch_name_for_lookup, stack_id_to_branch_name},
+        commit::r#move::move_commit_to_branch, legacy::rub::assign::stack_id_to_branch_name,
     },
     id::parser::{parse_sources_with_disambiguation, prompt_for_disambiguation},
     utils::{OutputChannel, shorten_object_id, split_short_id},
@@ -457,8 +456,24 @@ impl UnassignedToCommitOperation {
 impl<'a> UnassignedToBranchOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(ctx, None, Some(assign::AssignTarget::Branch(self.to)), out)
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged all {} changes to {}.",
+                "unstaged".to_string().bold(),
+                format!("[{}]", self.to).green(),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `UnassignedToBranch` by assigning unassigned hunks to the target branch stack.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let target_stack_id = stack_id_for_branch_name(ctx, self.to)?;
+        reassign_all_from_stack_to_stack(ctx, None, target_stack_id)
     }
 }
 

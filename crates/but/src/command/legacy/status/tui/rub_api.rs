@@ -21,8 +21,8 @@ use crate::{
             BranchToUnassignedOperation, CommittedFileToBranchOperation,
             CommittedFileToCommitOperation, CommittedFileToUnassignedOperation,
             MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
-            SquashCommitsOperation, UnassignedToBranchOperation, UnassignedToStackOperation,
-            UndoCommitOperation, route_operation,
+            SquashCommitsOperation, UnassignedToStackOperation, UndoCommitOperation,
+            route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -98,7 +98,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Commit(result.new_commit.context("api returned no new commit")?)
         }
         RubOperation::UnassignedToBranch(operation) => {
-            execute_unassigned_to_branch(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Branch(operation.to.to_string())
         }
         RubOperation::UnassignedToStack(operation) => {
@@ -156,15 +156,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `UnassignedToBranch` by assigning unassigned hunks to the target branch stack.
-fn execute_unassigned_to_branch(
-    ctx: &mut Context,
-    operation: &UnassignedToBranchOperation<'_>,
-) -> anyhow::Result<()> {
-    let target_stack_id = stack_id_for_branch_name(ctx, operation.to)?;
-    reassign_all_from_stack_to_stack(ctx, None, target_stack_id)
 }
 
 /// Executes `UnassignedToStack` by assigning unassigned hunks to the target stack.

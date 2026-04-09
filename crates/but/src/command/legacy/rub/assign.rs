@@ -159,7 +159,7 @@ fn to_full_ref_name(name: &str) -> anyhow::Result<gix::refs::FullName> {
 /// Normalize a branch name for stack lookup.
 /// Local branch refs like "refs/heads/foo" are converted to "foo" because stack heads
 /// are stored as shortened branch names.
-pub(crate) fn normalize_branch_name_for_lookup(name: &str) -> &str {
+fn normalize_branch_name_for_lookup(name: &str) -> &str {
     name.strip_prefix("refs/heads/").unwrap_or(name)
 }
 
