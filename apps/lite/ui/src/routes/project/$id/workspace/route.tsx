@@ -29,7 +29,7 @@ import { stackRelativeTo } from "#ui/domain/Stack.ts";
 import { ProjectPreviewLayout } from "#ui/routes/project/$id/-ProjectPreviewLayout.tsx";
 import { getFocus } from "#ui/routes/project/$id/-state/layout.ts";
 import {
-	normalizeSelectedPath,
+	normalizeSelectedItem,
 	normalizeSelectedHunk,
 } from "#ui/routes/project/$id/-state/selection.ts";
 import { ProjectStateContext } from "#ui/routes/project/$id/-ProjectState.tsx";
@@ -79,7 +79,7 @@ import {
 	TreeChange,
 	UnifiedPatch,
 } from "@gitbutler/but-sdk";
-import { useMutation, useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Array, Match, pipe } from "effect";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
@@ -178,6 +178,29 @@ const DependencyIndicator: FC<
 	);
 };
 
+const useNormalizedSelectedItem = ({
+	projectId,
+	selectedItem,
+}: {
+	projectId: string;
+	selectedItem: SelectedItem | null;
+}): SelectedItem | null => {
+	const { data: selectedCommitDetails } = useQuery({
+		...commitDetailsWithLineStatsQueryOptions({
+			projectId,
+			commitId: selectedItem?._tag === "Commit" ? selectedItem.commitId : "",
+		}),
+		enabled: selectedItem?._tag === "Commit" && selectedItem.mode._tag === "Details",
+	});
+
+	return selectedItem
+		? normalizeSelectedItem({
+				selectedItem,
+				commitPaths: selectedCommitDetails?.changes.map((change) => change.path),
+			})
+		: null;
+};
+
 const CommitFileRow: FC<{
 	change: TreeChange;
 	commitId: string;
@@ -208,30 +231,20 @@ const CommitDetailsC: FC<{
 	projectId: string;
 	selectedPath: string | null;
 	selectPath: (path: string | null) => void;
-}> = ({ commitId, projectId, selectedPath, selectPath }) => {
-	const { data: commitDetails } = useSuspenseQuery(
-		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
-	);
-	const normalizedSelectedPath = normalizeSelectedPath({
-		paths: commitDetails.changes.map((change) => change.path),
-		selectedPath,
-	});
-
-	return (
-		<SharedCommitDetails
-			projectId={projectId}
-			commitId={commitId}
-			renderFile={(change) => (
-				<CommitFileRow
-					change={change}
-					commitId={commitId}
-					isSelected={normalizedSelectedPath === change.path}
-					selectPath={selectPath}
-				/>
-			)}
-		/>
-	);
-};
+}> = ({ commitId, projectId, selectedPath, selectPath }) => (
+	<SharedCommitDetails
+		projectId={projectId}
+		commitId={commitId}
+		renderFile={(change) => (
+			<CommitFileRow
+				change={change}
+				commitId={commitId}
+				isSelected={selectedPath === change.path}
+				selectPath={selectPath}
+			/>
+		)}
+	/>
+);
 
 // TODO: check this
 const assignedChangesDiffSpecs = (
@@ -584,16 +597,9 @@ const CommitPreview: FC<{
 	const { data: commitDetails } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
-	const normalizedSelectedPath =
-		selectedPath === undefined
-			? undefined
-			: normalizeSelectedPath({
-					paths: commitDetails.changes.map((change) => change.path),
-					selectedPath,
-				});
 	const selectedChange =
-		normalizedSelectedPath !== undefined
-			? commitDetails.changes.find((candidate) => candidate.path === normalizedSelectedPath)
+		selectedPath !== undefined
+			? commitDetails.changes.find((candidate) => candidate.path === selectedPath)
 			: undefined;
 	const visibleChanges =
 		selectedPath === undefined ? commitDetails.changes : selectedChange ? [selectedChange] : [];
@@ -607,7 +613,7 @@ const CommitPreview: FC<{
 
 	return (
 		<div>
-			{normalizedSelectedPath === undefined && (
+			{selectedPath === undefined && (
 				<>
 					<h3>
 						<CommitLabel commit={commitDetails.commit} />
@@ -1947,10 +1953,13 @@ const ProjectPage: FC = () => {
 	});
 	const navigationIndex = buildNavigationIndex(workspaceOutline);
 
-	const selectedItem =
-		workspaceSelection.item && navigationIndexIncludes(navigationIndex, workspaceSelection.item)
-			? workspaceSelection.item
-			: getDefaultSelectedItem(navigationIndex);
+	const selectedItem = useNormalizedSelectedItem({
+		projectId,
+		selectedItem:
+			workspaceSelection.item && navigationIndexIncludes(navigationIndex, workspaceSelection.item)
+				? workspaceSelection.item
+				: getDefaultSelectedItem(navigationIndex),
+	});
 
 	const selectItem = (nextSelectedItem: SelectedItem | null) => {
 		dispatchProjectState({ _tag: "SelectItem", item: nextSelectedItem });

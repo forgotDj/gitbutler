@@ -1,5 +1,5 @@
 import { Match } from "effect";
-import { type SelectedItem } from "../workspace/-SelectedItem.ts";
+import { selectedCommitItem, type SelectedItem } from "../workspace/-SelectedItem.ts";
 
 export type WorkspaceSelectionState = {
 	item: SelectedItem | null;
@@ -42,6 +42,39 @@ export const normalizeSelectedPath = ({
 	if (selectedPath != null && paths.includes(selectedPath)) return selectedPath;
 	return paths[0];
 };
+
+export const normalizeSelectedItem = ({
+	selectedItem,
+	commitPaths,
+}: {
+	selectedItem: SelectedItem;
+	commitPaths?: Array<string>;
+}): SelectedItem =>
+	Match.value(selectedItem).pipe(
+		Match.tag(
+			"Commit",
+			(selectedItem): SelectedItem =>
+				Match.value(selectedItem.mode).pipe(
+					Match.tag("Details", (mode) => {
+						if (commitPaths === undefined) return selectedItem;
+
+						return selectedCommitItem({
+							...selectedItem,
+							mode: {
+								_tag: "Details",
+								path:
+									normalizeSelectedPath({
+										paths: commitPaths,
+										selectedPath: mode.path,
+									}) ?? null,
+							},
+						});
+					}),
+					Match.orElse(() => selectedItem),
+				),
+		),
+		Match.orElse(() => selectedItem),
+	);
 
 export const normalizeSelectedHunk = ({
 	hunkKeys,

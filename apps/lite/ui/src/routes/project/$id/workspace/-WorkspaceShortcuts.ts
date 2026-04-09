@@ -1,6 +1,5 @@
 import { commitDetailsWithLineStatsQueryOptions } from "#ui/api/queries.ts";
 import { getAction, type ShortcutBinding } from "#ui/shortcuts.ts";
-import { normalizeSelectedPath } from "#ui/routes/project/$id/-state/selection.ts";
 import { isTypingTarget } from "#ui/routes/project/$id/-shared.tsx";
 import { AbsorptionTarget } from "@gitbutler/but-sdk";
 import { useQueryClient } from "@tanstack/react-query";
@@ -489,10 +488,7 @@ export const useWorkspaceShortcuts = ({
 		if (!commitDetails) return;
 
 		const paths = commitDetails.changes.map((change) => change.path);
-		const currentPath = normalizeSelectedPath({
-			paths,
-			selectedPath: selectedItem.mode.path,
-		});
+		const currentPath = selectedItem.mode.path ?? undefined;
 		const nextPath = getAdjacentPath({ paths, currentPath, offset });
 		if (nextPath === null) return;
 
