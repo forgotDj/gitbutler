@@ -4,7 +4,7 @@
 //! `RubOperationDiscriminants`, and `route_operation`.
 
 use anyhow::Context as _;
-use but_api::commit::types::{CommitCreateResult, MoveChangesResult};
+use but_api::commit::types::MoveChangesResult;
 use but_core::{DiffSpec, diff::tree_changes, ref_metadata::StackId};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignmentRequest;
@@ -14,7 +14,7 @@ use crate::{
     CliId,
     command::legacy::{
         rub::{
-            BranchToBranchOperation, BranchToCommitOperation, CommittedFileToBranchOperation,
+            BranchToBranchOperation, CommittedFileToBranchOperation,
             CommittedFileToCommitOperation, CommittedFileToUnassignedOperation, RubOperation,
             RubOperationDiscriminants, route_operation,
         },
@@ -120,7 +120,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Unassigned
         }
         RubOperation::BranchToCommit(operation) => {
-            let result = execute_branch_to_commit(ctx, operation)?;
+            let result = operation.execute_inner(ctx)?;
             result
                 .new_commit
                 .map(SelectAfterReload::Commit)
@@ -150,19 +150,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `BranchToCommit` and returns the exact commit-amend API result.
-///
-/// When the source branch is not associated with a stack, this amends currently
-/// unassigned hunks to match legacy `but rub` behavior.
-fn execute_branch_to_commit(
-    ctx: &mut Context,
-    operation: &BranchToCommitOperation<'_>,
-) -> anyhow::Result<CommitCreateResult> {
-    let stack_id = stack_id_for_branch_name(ctx, operation.name)?;
-    let changes = changes_for_stack_assignment(ctx, stack_id)?;
-    but_api::commit::amend::commit_amend(ctx, operation.oid, changes)
 }
 
 /// Executes `BranchToBranch` by reassigning all hunks from one branch stack to another.
@@ -240,20 +227,6 @@ fn reassign_all_from_stack_to_stack(
         .collect::<Vec<_>>();
 
     but_api::diff::assign_hunk(ctx, requests)
-}
-
-/// Collects worktree diff specs that are currently assigned to `stack_id`.
-fn changes_for_stack_assignment(
-    ctx: &mut Context,
-    stack_id: Option<StackId>,
-) -> anyhow::Result<Vec<DiffSpec>> {
-    let changes = but_api::diff::changes_in_worktree(ctx)?
-        .assignments
-        .into_iter()
-        .filter(|assignment| assignment.stack_id == stack_id)
-        .map(DiffSpec::from)
-        .collect();
-    Ok(but_workspace::flatten_diff_specs(changes))
 }
 
 /// Resolves a branch name into its workspace stack id, if any.

@@ -636,8 +636,40 @@ impl<'a> BranchToStackOperation<'a> {
 impl<'a> BranchToCommitOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::AmendCommit);
-        amend::assignments_to_commit(ctx, Some(self.name), self.oid, out)
+        let result = self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            let new_commit = result
+                .new_commit
+                .map(|c| {
+                    let short = shorten_object_id(&repo, c);
+                    let (lead, rest) = split_short_id(&short, 2);
+                    format!("{}{}", lead.blue().bold(), rest.blue())
+                })
+                .unwrap_or_default();
+            writeln!(
+                out,
+                "Amended assigned files {} → {}",
+                format!("[{}]", self.name).green(),
+                new_commit,
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({
+                "ok": true,
+                "new_commit_id": result.new_commit.map(|c| c.to_string()),
+            }))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `BranchToCommit` and returns the exact commit-amend API result.
+    ///
+    /// When the source branch is not associated with a stack, this amends currently
+    /// unassigned hunks to match legacy `but rub` behavior.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitCreateResult> {
+        let stack_id = stack_id_for_branch_name(ctx, self.name)?;
+        let changes = changes_for_stack_assignment(ctx, stack_id)?;
+        but_api::commit::amend::commit_amend(ctx, self.oid, changes)
     }
 }
 
