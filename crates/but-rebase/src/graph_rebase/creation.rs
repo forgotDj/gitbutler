@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::{Result, bail};
-use but_core::RefMetadata;
+use but_core::{RefMetadata, commit::SignCommit};
 use but_graph::{Commit, SegmentIndex};
 use petgraph::{Direction, visit::EdgeRef as _};
 
@@ -10,13 +10,38 @@ use crate::graph_rebase::{
     SuccessfulRebase, util,
 };
 
+#[derive(Clone, Copy)]
+/// Options for the editor.
+pub struct GraphEditorOptions {
+    /// Determines how cherry-picked commits are signed.
+    pub default_sign_commit: SignCommit,
+}
+
+impl Default for GraphEditorOptions {
+    fn default() -> Self {
+        Self {
+            default_sign_commit: SignCommit::IfSignCommitsEnabled,
+        }
+    }
+}
+
 /// Creates an editor out of the workspace graph.
 impl<'ws, 'meta, M: RefMetadata> Editor<'ws, 'meta, M> {
-    /// Creates an editor out of the workspace graph.
+    /// Creates an editor out of the workspace graph with the default options.
     pub fn create(
         workspace: &'ws mut but_graph::projection::Workspace,
         meta: &'meta mut M,
         repo: &gix::Repository,
+    ) -> Result<Self> {
+        Self::create_with_opts(workspace, meta, repo, &GraphEditorOptions::default())
+    }
+
+    /// Creates an editor out of the workspace graph with the specified options.
+    pub fn create_with_opts(
+        workspace: &'ws mut but_graph::projection::Workspace,
+        meta: &'meta mut M,
+        repo: &gix::Repository,
+        options: &GraphEditorOptions,
     ) -> Result<Self> {
         // This first creates runs of nodes and associates them with the
         // but-graph segments. We then do a second pass over all the segments
@@ -91,7 +116,9 @@ impl<'ws, 'meta, M: RefMetadata> Editor<'ws, 'meta, M> {
                     let pick = if workspace_commit_id == Some(commit.id) {
                         Pick::new_workspace_pick(commit.id)
                     } else {
-                        Pick::new_pick(commit.id)
+                        let mut pick = Pick::new_pick(commit.id);
+                        pick.sign_commit = options.default_sign_commit;
+                        pick
                     };
                     let ix = graph.add_node(Step::Pick(pick));
                     commit_to_pick_ix.insert(commit.id, ix);
