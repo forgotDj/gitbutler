@@ -1110,7 +1110,12 @@ fn rub_matrix_uncommitted_to_commit_smoke() -> anyhow::Result<()> {
 
     env.but(format!("rub uncommitted-to-commit.txt {target_commit}"))
         .assert()
-        .success();
+        .success()
+        .stdout_eq(str![[r#"
+Amended [..] → [..]
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1134,7 +1139,12 @@ fn rub_matrix_uncommitted_to_stack_smoke() -> anyhow::Result<()> {
 
     env.but("rub uncommitted-to-stack.txt A@{stack}")
         .assert()
-        .success();
+        .success()
+        .stdout_eq(str![[r#"
+Staged the only hunk in uncommitted-to-stack.txt in the unassigned area → stack [..].
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1152,7 +1162,14 @@ fn rub_matrix_unassigned_to_branch_smoke() -> anyhow::Result<()> {
 
     env.file("zz-to-branch.txt", "content\n");
 
-    env.but("rub zz A").assert().success();
+    env.but("rub zz A")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged all unstaged changes to [A].
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1179,7 +1196,12 @@ fn rub_matrix_unassigned_to_commit_smoke() -> anyhow::Result<()> {
 
     env.but(format!("rub zz {target_commit}"))
         .assert()
-        .success();
+        .success()
+        .stdout_eq(str![[r#"
+Amended unassigned files → [..]
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1201,7 +1223,14 @@ fn rub_matrix_unassigned_to_stack_smoke() -> anyhow::Result<()> {
 
     env.file("zz-to-stack.txt", "content\n");
 
-    env.but("rub zz A@{stack}").assert().success();
+    env.but("rub zz A@{stack}")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged all unstaged changes to [A].
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1229,7 +1258,12 @@ fn rub_matrix_commit_to_unassigned_smoke() -> anyhow::Result<()> {
 
     env.but(format!("rub {source_commit} zz"))
         .assert()
-        .success();
+        .success()
+        .stdout_eq(str![[r#"
+Uncommitted [..]
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     let commits_after = branch_commit_ids(&after, "A");
@@ -1267,7 +1301,12 @@ fn rub_matrix_commit_to_commit_smoke() -> anyhow::Result<()> {
 
     env.but(format!("rub {source_commit} {target_commit}"))
         .assert()
-        .success();
+        .success()
+        .stdout_eq(str![[r#"
+Squashed [..] → [..]
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     let commits_after = branch_commit_ids(&after, "A");
@@ -1291,7 +1330,14 @@ fn rub_matrix_commit_to_branch_smoke() -> anyhow::Result<()> {
     let source_commit = branch_commit_ids(&before, "A")[0].clone();
     let branch_b_count_before = branch_commit_ids(&before, "B").len();
 
-    env.but(format!("rub {source_commit} B")).assert().success();
+    env.but(format!("rub {source_commit} B"))
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Moved [..] → [B]
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     let branch_b_count_after = branch_commit_ids(&after, "B").len();
@@ -1309,9 +1355,23 @@ fn rub_matrix_branch_to_unassigned_smoke() -> anyhow::Result<()> {
     env.setup_metadata(&["A", "B"])?;
 
     env.file("branch-to-zz.txt", "content\n");
-    env.but("rub branch-to-zz.txt A").assert().success();
+    env.but("rub branch-to-zz.txt A")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged the only hunk in branch-to-zz.txt in the unassigned area → [A].
 
-    env.but("rub A zz").assert().success();
+"#]])
+        .stderr_eq(str![""]);
+
+    env.but("rub A zz")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Unstaged all [A] changes.
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1328,9 +1388,23 @@ fn rub_matrix_branch_to_stack_smoke() -> anyhow::Result<()> {
     env.setup_metadata(&["A", "B"])?;
 
     env.file("branch-to-stack.txt", "content\n");
-    env.but("rub branch-to-stack.txt A").assert().success();
+    env.but("rub branch-to-stack.txt A")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged the only hunk in branch-to-stack.txt in the unassigned area → [A].
 
-    env.but("rub A B@{stack}").assert().success();
+"#]])
+        .stderr_eq(str![""]);
+
+    env.but("rub A B@{stack}")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged all [A] changes to [B].
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1347,12 +1421,26 @@ fn rub_matrix_branch_to_commit_smoke() -> anyhow::Result<()> {
     env.setup_metadata(&["A", "B"])?;
 
     env.file("branch-to-commit.txt", "content\n");
-    env.but("rub branch-to-commit.txt A").assert().success();
+    env.but("rub branch-to-commit.txt A")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged the only hunk in branch-to-commit.txt in the unassigned area → [A].
+
+"#]])
+        .stderr_eq(str![""]);
 
     let before = status_json(&env)?;
     let target_commit = branch_commit_ids(&before, "A")[0].clone();
 
-    env.but(format!("rub A {target_commit}")).assert().success();
+    env.but(format!("rub A {target_commit}"))
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Amended assigned files [A] → [..]
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1369,9 +1457,23 @@ fn rub_matrix_branch_to_branch_smoke() -> anyhow::Result<()> {
     env.setup_metadata(&["A", "B"])?;
 
     env.file("branch-to-branch.txt", "content\n");
-    env.but("rub branch-to-branch.txt A").assert().success();
+    env.but("rub branch-to-branch.txt A")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged the only hunk in branch-to-branch.txt in the unassigned area → [A].
 
-    env.but("rub A B").assert().success();
+"#]])
+        .stderr_eq(str![""]);
+
+    env.but("rub A B")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged all [A] changes to [B].
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1388,9 +1490,23 @@ fn rub_matrix_stack_to_unassigned_smoke() -> anyhow::Result<()> {
     env.setup_metadata(&["A", "B"])?;
 
     env.file("stack-to-zz.txt", "content\n");
-    env.but("rub stack-to-zz.txt A").assert().success();
+    env.but("rub stack-to-zz.txt A")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged the only hunk in stack-to-zz.txt in the unassigned area → [A].
 
-    env.but("rub A@{stack} zz").assert().success();
+"#]])
+        .stderr_eq(str![""]);
+
+    env.but("rub A@{stack} zz")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Unstaged all [A] changes.
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1407,9 +1523,23 @@ fn rub_matrix_stack_to_stack_smoke() -> anyhow::Result<()> {
     env.setup_metadata(&["A", "B"])?;
 
     env.file("stack-to-stack.txt", "content\n");
-    env.but("rub stack-to-stack.txt A").assert().success();
+    env.but("rub stack-to-stack.txt A")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged the only hunk in stack-to-stack.txt in the unassigned area → [A].
 
-    env.but("rub A@{stack} B@{stack}").assert().success();
+"#]])
+        .stderr_eq(str![""]);
+
+    env.but("rub A@{stack} B@{stack}")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged all [A] changes to [B].
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1426,9 +1556,23 @@ fn rub_matrix_stack_to_branch_smoke() -> anyhow::Result<()> {
     env.setup_metadata(&["A", "B"])?;
 
     env.file("stack-to-branch.txt", "content\n");
-    env.but("rub stack-to-branch.txt A").assert().success();
+    env.but("rub stack-to-branch.txt A")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged the only hunk in stack-to-branch.txt in the unassigned area → [A].
 
-    env.but("rub A@{stack} B").assert().success();
+"#]])
+        .stderr_eq(str![""]);
+
+    env.but("rub A@{stack} B")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged all [A] changes to [B].
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1451,7 +1595,12 @@ fn rub_matrix_committed_file_to_branch_smoke() -> anyhow::Result<()> {
 
     env.but(format!("rub {source_commit}:a.txt B"))
         .assert()
-        .success();
+        .success()
+        .stdout_eq(str![[r#"
+Uncommitted changes
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
@@ -1478,7 +1627,12 @@ fn rub_matrix_committed_file_to_commit_smoke() -> anyhow::Result<()> {
 
     env.but(format!("rub {source_commit}:source-a.txt {target_commit}"))
         .assert()
-        .success();
+        .success()
+        .stdout_eq(str![[r#"
+Moved files between commits!
+
+"#]])
+        .stderr_eq(str![""]);
 
     let after = status_json(&env)?;
     assert!(
