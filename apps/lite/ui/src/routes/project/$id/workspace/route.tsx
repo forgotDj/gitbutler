@@ -226,26 +226,6 @@ const CommitFileRow: FC<{
 	</CommitFileSource>
 );
 
-const CommitDetailsC: FC<{
-	commitId: string;
-	projectId: string;
-	selectedPath: string | null;
-	selectPath: (path: string | null) => void;
-}> = ({ commitId, projectId, selectedPath, selectPath }) => (
-	<SharedCommitDetails
-		projectId={projectId}
-		commitId={commitId}
-		renderFile={(change) => (
-			<CommitFileRow
-				change={change}
-				commitId={commitId}
-				isSelected={selectedPath === change.path}
-				selectPath={selectPath}
-			/>
-		)}
-	/>
-);
-
 // TODO: check this
 const assignedChangesDiffSpecs = (
 	changes: Array<TreeChange>,
@@ -1178,18 +1158,24 @@ const CommitC: FC<{
 			Match.value(selected.mode).pipe(
 				Match.tag("Details", (mode) => (
 					<Suspense fallback={<div className={sharedStyles.rowEmpty}>Loading change details…</div>}>
-						<CommitDetailsC
+						<SharedCommitDetails
 							projectId={projectId}
 							commitId={commit.id}
-							selectedPath={mode.path}
-							selectPath={(path) => {
-								selectItem(
-									selectedCommitItem({
-										...selected,
-										mode: { _tag: "Details", path },
-									}),
-								);
-							}}
+							renderFile={(change) => (
+								<CommitFileRow
+									change={change}
+									commitId={commit.id}
+									isSelected={mode.path === change.path}
+									selectPath={(path) => {
+										selectItem(
+											selectedCommitItem({
+												...selected,
+												mode: { _tag: "Details", path },
+											}),
+										);
+									}}
+								/>
+							)}
 						/>
 					</Suspense>
 				)),
