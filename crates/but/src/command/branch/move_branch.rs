@@ -1,4 +1,4 @@
-use but_core::sync::RepoExclusive;
+use but_core::{DryRun, sync::RepoExclusive};
 
 use crate::{CliId, IdMap, id::parser::parse_sources, utils::OutputChannel};
 use anyhow::{Context, bail};
@@ -40,6 +40,7 @@ pub(crate) fn move_branch_by_name_with_perm(
         ctx,
         branch_ref_name_str.try_into()?,
         target_ref_name_str.try_into()?,
+        DryRun::No,
         perm,
     )?;
 
@@ -74,7 +75,12 @@ pub(crate) fn tear_off_branch_by_name_with_perm(
 ) -> anyhow::Result<()> {
     let branch_ref_name_str = &format!("refs/heads/{branch_name}");
 
-    but_api::branch::tear_off_branch_with_perm(ctx, branch_ref_name_str.try_into()?, perm)?;
+    but_api::branch::tear_off_branch_with_perm(
+        ctx,
+        branch_ref_name_str.try_into()?,
+        DryRun::No,
+        perm,
+    )?;
 
     if let Some(out) = out.for_human() {
         writeln!(out, "Unstacked branch '{branch_name}'.")?;

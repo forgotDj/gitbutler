@@ -29,6 +29,7 @@ use crate::{
     commit::insert_blank::commit_insert_blank_only_impl,
     legacy::workspace::amend_commit_and_count_failures,
 };
+use but_core::DryRun;
 
 /// Absorb the changes described by `absorption_plan` using the behavior documented by
 /// [`absorb_with_perm()`].
@@ -426,6 +427,7 @@ fn determine_target_commit(
             ctx,
             RelativeTo::Reference(branch.reference.clone()),
             InsertSide::Below,
+            DryRun::No,
             perm,
         )?;
 
@@ -461,6 +463,7 @@ fn determine_target_commit(
             ctx,
             RelativeTo::Reference(branch.reference.clone()),
             InsertSide::Below,
+            DryRun::No,
             perm,
         )?;
 

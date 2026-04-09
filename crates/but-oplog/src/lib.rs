@@ -58,13 +58,18 @@
 /// This works only if that effect is known to only apply in full, or not at all (at least in 99.9% of the cases).
 ///
 /// NOTE: if this utility type should really take a `Context` as parameter, it should be in `but-api`.
-pub struct UnmaterializedOplogSnapshot {
-    /// The tree containing all snapshot information.
-    #[cfg(feature = "legacy")]
-    tree_id: gix::ObjectId,
-    /// Details to pass when committing the snapshot.
-    #[cfg(feature = "legacy")]
-    details: gitbutler_oplog::entry::SnapshotDetails,
+pub enum UnmaterializedOplogSnapshot {
+    /// The details of a snapshot to be taken
+    Snapshot {
+        /// The tree containing all snapshot information.
+        #[cfg(feature = "legacy")]
+        tree_id: gix::ObjectId,
+        /// Details to pass when committing the snapshot.
+        #[cfg(feature = "legacy")]
+        details: gitbutler_oplog::entry::SnapshotDetails,
+    },
+    /// An unmaterialized snapshot entry which will never be persisted.
+    DryRun,
 }
 
 /// legacy types for easy of use, all provided by `gitbutler-oplog`.
@@ -75,6 +80,7 @@ pub mod legacy {
 
 #[cfg(feature = "legacy")]
 mod oplog_snapshot {
+    use but_core::DryRun;
     use but_ctx::{
         Context,
         access::{RepoExclusive, RepoShared},
@@ -87,34 +93,30 @@ mod oplog_snapshot {
     impl UnmaterializedOplogSnapshot {
         /// Create a new instance from `details`, which is a snapshot that isn't committed to the oplog yet.
         /// This fails if the snapshot creation fails.
-        // TODO: deprecate this in favor of `_with_perm` version
-        pub fn from_details(
-            ctx: &but_ctx::Context,
-            details: gitbutler_oplog::entry::SnapshotDetails,
-        ) -> anyhow::Result<Self> {
-            // TODO: these guards are probably something to remove as they don't belong into a plumbing crate, neither does Context.
-            let guard = ctx.shared_worktree_access();
-            let tree_id = ctx.prepare_snapshot(guard.read_permission())?;
-            Ok(Self { tree_id, details })
-        }
-
-        /// Create a new instance from `details`, which is a snapshot that isn't committed to the oplog yet.
-        /// This fails if the snapshot creation fails.
         pub fn from_details_with_perm(
             ctx: &but_ctx::Context,
             details: gitbutler_oplog::entry::SnapshotDetails,
             perm: &RepoShared,
+            dry_run: DryRun,
         ) -> anyhow::Result<Self> {
-            let tree_id = ctx.prepare_snapshot(perm)?;
-            Ok(Self { tree_id, details })
+            if dry_run.into() {
+                Ok(Self::DryRun)
+            } else {
+                let tree_id = ctx.prepare_snapshot(perm)?;
+                Ok(Self::Snapshot { tree_id, details })
+            }
         }
     }
 
     impl UnmaterializedOplogSnapshot {
         /// Call this method only if the main effect succeeded so the snapshot should be added to the operation log,
         /// using `ctx` with granted edit `perm`ission.
+        ///
+        /// If the snapshot has been created with `DryRun::Yes`, it will not be committed to the oplog.
         pub fn commit(self, ctx: &Context, perm: &mut RepoExclusive) -> anyhow::Result<()> {
-            let _commit_id = ctx.commit_snapshot(self.tree_id, self.details, perm)?;
+            if let Self::Snapshot { tree_id, details } = self {
+                let _commit_id = ctx.commit_snapshot(tree_id, details, perm)?;
+            }
             Ok(())
         }
     }

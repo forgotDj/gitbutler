@@ -40,4 +40,4 @@ pub mod panic_capture;
 #[cfg(feature = "export-schema")]
 pub mod watcher;
 
-pub mod types;
+mod workspace_state;

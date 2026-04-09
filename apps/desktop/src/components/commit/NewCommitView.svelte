@@ -124,6 +124,7 @@
 					message: finalMessage,
 					stackBranchName: finalBranchName,
 					worktreeChanges,
+					dryRun: false,
 				},
 				{ properties: analyticsProperties },
 			);

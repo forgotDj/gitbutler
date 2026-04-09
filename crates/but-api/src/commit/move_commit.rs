@@ -1,11 +1,13 @@
 use but_api_macros::but_api;
-use but_core::sync::RepoExclusive;
+use but_core::{DryRun, sync::RepoExclusive};
 use but_oplog::legacy::{OperationKind, SnapshotDetails};
 use but_rebase::graph_rebase::{
     Editor,
     mutate::{InsertSide, RelativeTo},
 };
 use tracing::instrument;
+
+use crate::workspace_state::WorkspaceState;
 
 use super::types::CommitMoveResult;
 
@@ -15,12 +17,13 @@ use super::types::CommitMoveResult;
 /// commit.
 ///
 /// For details, see [`commit_move_only_with_perm()`].
-#[but_api(crate::commit::json::CommitMoveResult)]
+#[but_api(try_from = crate::commit::json::CommitMoveResult)]
 pub fn commit_move_only(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
     #[but_api(crate::commit::json::RelativeTo)] relative_to: RelativeTo,
     side: InsertSide,
+    dry_run: DryRun,
 ) -> anyhow::Result<CommitMoveResult> {
     let mut guard = ctx.exclusive_worktree_access();
     commit_move_only_with_perm(
@@ -28,6 +31,7 @@ pub fn commit_move_only(
         subject_commit_id,
         relative_to,
         side,
+        dry_run,
         guard.write_permission(),
     )
 }
@@ -35,14 +39,15 @@ pub fn commit_move_only(
 /// Move `subject_commit_id` to the `side` of `relative_to` under
 /// caller-held exclusive repository access.
 ///
-/// This materializes the rebase and returns the commit-ID mapping for rewritten
-/// descendants. This variant does not create an oplog entry. For lower-level
-/// implementation details, see [`but_workspace::commit::move_commit()`].
+/// This returns the post-operation workspace view without creating an oplog
+/// entry. For lower-level implementation details, see
+/// [`but_workspace::commit::move_commit()`].
 pub fn commit_move_only_with_perm(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
     relative_to: RelativeTo,
     side: InsertSide,
+    dry_run: DryRun,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitMoveResult> {
     let mut meta = ctx.meta()?;
@@ -51,10 +56,8 @@ pub fn commit_move_only_with_perm(
 
     let rebase = but_workspace::commit::move_commit(editor, subject_commit_id, relative_to, side)?;
 
-    let materialized = rebase.materialize()?;
-
     Ok(CommitMoveResult {
-        replaced_commits: materialized.history.commit_mappings(),
+        workspace: WorkspaceState::from_successful_rebase(rebase, &repo, dry_run)?,
     })
 }
 
@@ -65,13 +68,14 @@ pub fn commit_move_only_with_perm(
 /// commit.
 ///
 /// For details, see [`commit_move_with_perm()`].
-#[but_api(napi, crate::commit::json::CommitMoveResult)]
+#[but_api(napi, try_from = crate::commit::json::CommitMoveResult)]
 #[instrument(err(Debug))]
 pub fn commit_move(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
     #[but_api(crate::commit::json::RelativeTo)] relative_to: RelativeTo,
     side: InsertSide,
+    dry_run: DryRun,
 ) -> anyhow::Result<CommitMoveResult> {
     let mut guard = ctx.exclusive_worktree_access();
     commit_move_with_perm(
@@ -79,6 +83,7 @@ pub fn commit_move(
         subject_commit_id,
         relative_to,
         side,
+        dry_run,
         guard.write_permission(),
     )
 }
@@ -94,18 +99,22 @@ pub fn commit_move_with_perm(
     subject_commit_id: gix::ObjectId,
     relative_to: RelativeTo,
     side: InsertSide,
+    dry_run: DryRun,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitMoveResult> {
     let maybe_oplog_entry = but_oplog::UnmaterializedOplogSnapshot::from_details_with_perm(
         ctx,
         SnapshotDetails::new(OperationKind::MoveCommit),
         perm.read_permission(),
+        dry_run,
     )
     .ok();
 
-    let res = commit_move_only_with_perm(ctx, subject_commit_id, relative_to, side, perm);
-    if let Some(snapshot) = maybe_oplog_entry.filter(|_| res.is_ok()) {
+    let res = commit_move_only_with_perm(ctx, subject_commit_id, relative_to, side, dry_run, perm);
+    if let Some(snapshot) = maybe_oplog_entry
+        && res.is_ok()
+    {
         snapshot.commit(ctx, perm).ok();
-    };
+    }
     res
 }

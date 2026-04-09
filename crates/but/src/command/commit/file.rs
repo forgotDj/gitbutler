@@ -2,7 +2,7 @@ use crate::utils::OutputChannel;
 use anyhow::{Context as _, Result};
 use bstr::BStr;
 use bstr::ByteSlice;
-use but_core::{DiffSpec, diff::tree_changes, sync::RepoExclusive};
+use but_core::{DiffSpec, DryRun, diff::tree_changes, sync::RepoExclusive};
 use but_ctx::Context;
 
 pub fn commited_file_to_another_commit_with_perm(
@@ -20,6 +20,7 @@ pub fn commited_file_to_another_commit_with_perm(
         source_id,
         target_id,
         relevant_changes,
+        DryRun::No,
         perm,
     )?;
 
@@ -68,6 +69,7 @@ pub fn uncommit_file_and_discard_with_perm(
         source_id,
         relevant_changes.clone(),
         None,
+        DryRun::No,
         perm,
     )?;
 

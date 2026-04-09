@@ -45,6 +45,8 @@ chardetng = "0.1.17"
 # for `id`
 uuid.workspace = true
 
+boolean-enums.workspace = true
+
 # for `sync`
 fslock = "0.2.1"
 parking_lot = { workspace = true, features = ["arc_lock"] }

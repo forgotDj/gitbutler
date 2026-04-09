@@ -217,6 +217,7 @@
 							projectId,
 							relativeTo: { type: "reference", subject: contextData.branch.reference },
 							side: "below",
+							dryRun: false,
 						});
 						close();
 					}}

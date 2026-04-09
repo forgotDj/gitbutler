@@ -375,11 +375,6 @@ pub(crate) mod function {
         opts: super::Options,
     ) -> anyhow::Result<RefInfo> {
         let graph = Graph::from_head(repo, meta, opts.traversal.clone())?;
-        if graph.hard_limit_hit() {
-            tracing::warn!(hard_limit=?opts.traversal.hard_limit,
-                "Commit-graph traversal might be incorrect as it was stopped too early due to hard limit",
-            );
-        }
         graph_to_ref_info(graph, repo, opts)
     }
 
@@ -448,11 +443,21 @@ pub(crate) mod function {
         })
     }
 
-    fn graph_to_ref_info(
+    /// Gather information about graph and the workspace that might be associated with it,
+    /// based on data in `repo` and `meta`. Use `options` to further configure the call.
+    ///
+    /// For details, see [`ref_info()`].
+    pub fn graph_to_ref_info(
         graph: Graph,
         repo: &gix::Repository,
         opts: super::Options,
     ) -> anyhow::Result<RefInfo> {
+        if graph.hard_limit_hit() {
+            tracing::warn!(hard_limit=?opts.traversal.hard_limit,
+                "Commit-graph traversal might be incorrect as it was stopped too early due to hard limit",
+            );
+        }
+
         let but_graph::projection::Workspace {
             graph,
             id,

@@ -1,5 +1,5 @@
 use anyhow::bail;
-use but_core::sync::RepoExclusive;
+use but_core::{DryRun, sync::RepoExclusive};
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
 use colored::Colorize;
@@ -138,6 +138,7 @@ pub fn move_commit_to_commit_with_perm(
         source,
         RelativeTo::Commit(target),
         side,
+        DryRun::No,
         perm,
     )?;
 
@@ -170,6 +171,7 @@ pub fn move_commit_to_branch_with_perm(
         source,
         RelativeTo::Reference(target_full_name),
         InsertSide::Below,
+        DryRun::No,
         perm,
     )?;
 

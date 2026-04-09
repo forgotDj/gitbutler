@@ -20,7 +20,6 @@ import type {
 } from "$lib/stacks/stack";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
 import type { RejectionReason } from "$lib/state/uiState.svelte";
-import type { DiffSpec } from "@gitbutler/but-sdk";
 import type {
 	StackOrder,
 	AbsorptionTarget,
@@ -33,6 +32,11 @@ import type {
 	TreeStats,
 	TreeChanges,
 	CommitDetails,
+	DiffSpec,
+	MoveChangesResult,
+	CommitCreateResult,
+	CommitRewordResult,
+	CommitInsertBlankResult,
 } from "@gitbutler/but-sdk";
 
 export type BranchParams = {
@@ -47,6 +51,7 @@ export type CreateCommitRequest = {
 	parentId: string | undefined;
 	stackBranchName: string;
 	worktreeChanges: DiffSpec[];
+	dryRun: boolean;
 };
 
 export type CreateCommitRequestWorktreeChanges = DiffSpec;
@@ -92,30 +97,10 @@ type BackendRejectedChange = {
 	path: string;
 };
 
-type BackendCreateCommitOutcome = {
-	newCommit?: string | null;
-	rejectedChanges: BackendRejectedChange[];
-	replacedCommits: Record<string, string>;
-};
-
 export type CreateCommitOutcome = {
 	newCommit: string | null;
 	rejectedChanges: BackendRejectedChange[];
 	commitMapping: ReplacedCommit[];
-};
-
-type BackendCommitRewordResult = {
-	newCommit: string;
-	replacedCommits: Record<string, string>;
-};
-
-type BackendCommitInsertBlankResult = {
-	newCommit: string;
-	replacedCommits: Record<string, string>;
-};
-
-type BackendMoveChangesResult = {
-	replacedCommits: Record<string, string>;
 };
 
 export type RelativeTo =
@@ -128,13 +113,11 @@ export type RelativeTo =
 			subject: string;
 	  };
 
-export function normalizeCreateCommitOutcome(
-	response: BackendCreateCommitOutcome,
-): CreateCommitOutcome {
+export function normalizeCreateCommitOutcome(response: CommitCreateResult): CreateCommitOutcome {
 	return {
 		newCommit: response.newCommit ?? null,
 		rejectedChanges: response.rejectedChanges,
-		commitMapping: Object.entries(response.replacedCommits),
+		commitMapping: Object.entries(response.workspace.replacedCommits),
 	};
 }
 
@@ -384,6 +367,7 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 					side,
 					changes: args.worktreeChanges,
 					message: args.message,
+					dryRun: args.dryRun,
 				};
 			},
 			transformResponse: normalizeCreateCommitOutcome,
@@ -453,14 +437,20 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 		}),
 		updateCommitMessage: build.mutation<
 			string,
-			{ projectId: string; stackId: string; commitId: string; message: string }
+			{ projectId: string; stackId: string; commitId: string; message: string; dryRun: boolean }
 		>({
 			extraOptions: {
 				command: "commit_reword",
 				actionName: "Update Commit Message",
 			},
-			query: (args) => args,
-			transformResponse: (response: BackendCommitRewordResult) => response.newCommit,
+			query: ({ projectId, stackId, commitId, message, dryRun }) => ({
+				projectId,
+				stackId,
+				commitId,
+				message,
+				dryRun,
+			}),
+			transformResponse: (response: CommitRewordResult) => response.newCommit,
 			invalidatesTags: (_result, _error, { stackId }) => [
 				invalidatesList(ReduxTag.HeadSha),
 				invalidatesItem(ReduxTag.StackDetails, stackId),
@@ -519,18 +509,20 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				projectId: string;
 				commitId: string;
 				worktreeChanges: DiffSpec[];
+				dryRun: boolean;
 			}
 		>({
 			extraOptions: {
 				command: "commit_amend",
 				actionName: "Amend Commit",
 			},
-			query: ({ projectId, commitId, worktreeChanges }) => ({
+			query: ({ projectId, commitId, worktreeChanges, dryRun }) => ({
 				projectId,
 				commitId,
 				changes: worktreeChanges,
+				dryRun,
 			}),
-			transformResponse: (response: BackendCreateCommitOutcome) => {
+			transformResponse: (response: CommitCreateResult) => {
 				const normalizedResponse = normalizeCreateCommitOutcome(response);
 				if (normalizedResponse.newCommit) {
 					return normalizedResponse.newCommit;
@@ -569,14 +561,20 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				projectId: string;
 				relativeTo: RelativeTo;
 				side: "above" | "below";
+				dryRun: boolean;
 			}
 		>({
 			extraOptions: {
 				command: "commit_insert_blank",
 				actionName: "Insert Blank Commit",
 			},
-			query: (args) => args,
-			transformResponse: (response: BackendCommitInsertBlankResult) => response.newCommit,
+			query: ({ projectId, relativeTo, side, dryRun }) => ({
+				projectId,
+				relativeTo,
+				side,
+				dryRun,
+			}),
+			transformResponse: (response: CommitInsertBlankResult) => response.newCommit,
 			invalidatesTags: [invalidatesList(ReduxTag.HeadSha)],
 		}),
 		discardChanges: build.mutation<DiffSpec[], { projectId: string; worktreeChanges: DiffSpec[] }>({
@@ -618,23 +616,25 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			},
 		}),
 		commitMoveChangesBetween: build.mutation<
-			{
-				replacedCommits: ReplacedCommit[];
-			},
+			MoveChangesResult,
 			{
 				projectId: string;
 				changes: DiffSpec[];
 				sourceCommitId: string;
 				destinationCommitId: string;
+				dryRun: boolean;
 			}
 		>({
 			extraOptions: {
 				command: "commit_move_changes_between",
 				actionName: "Move Changes Between Commits",
 			},
-			query: (args) => args,
-			transformResponse: (a: BackendMoveChangesResult) => ({
-				replacedCommits: Object.entries(a.replacedCommits),
+			query: ({ projectId, changes, sourceCommitId, destinationCommitId, dryRun }) => ({
+				projectId,
+				changes,
+				sourceCommitId,
+				destinationCommitId,
+				dryRun,
 			}),
 			invalidatesTags: [
 				invalidatesList(ReduxTag.HeadSha),
@@ -666,23 +666,25 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			},
 		}),
 		commitUncommitChanges: build.mutation<
-			{
-				replacedCommits: ReplacedCommit[];
-			},
+			MoveChangesResult,
 			{
 				projectId: string;
 				changes: DiffSpec[];
 				commitId: string;
 				assignTo?: string;
+				dryRun: boolean;
 			}
 		>({
 			extraOptions: {
 				command: "commit_uncommit_changes",
 				actionName: "Uncommit Changes",
 			},
-			query: (args) => args,
-			transformResponse: (a: BackendMoveChangesResult) => ({
-				replacedCommits: Object.entries(a.replacedCommits),
+			query: ({ projectId, changes, commitId, assignTo, dryRun }) => ({
+				projectId,
+				changes,
+				commitId,
+				assignTo,
+				dryRun,
 			}),
 			invalidatesTags() {
 				return [

@@ -1100,6 +1100,7 @@ name = "but-core"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "boolean-enums",
  "bstr",
  "but-error",
  "but-oxidize",
@@ -1448,6 +1449,7 @@ name = "but-oplog"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "but-core",
  "but-ctx",
  "gitbutler-oplog",
  "gix",
