@@ -286,7 +286,11 @@ fn rebase(
                         None if commit.parents.is_empty() => {
                             let mut new_commit = commit;
                             if let Some(new_message) = new_message {
-                                new_commit.message = new_message;
+                                new_commit.message =
+                                    but_core::commit::rewrite_conflict_markers_on_message_change(
+                                        new_commit.message.as_ref(),
+                                        new_message,
+                                    );
                             }
                             cursor = Some(commit::create(
                                 repo,
@@ -325,7 +329,11 @@ fn rebase(
                 let mut new_commit = repo.find_commit(new_commit)?.decode()?.to_owned()?;
                 new_commit.parents = base_commit.parent_ids().map(|id| id.detach()).collect();
                 if let Some(new_message) = new_message {
-                    new_commit.message = new_message;
+                    new_commit.message =
+                        but_core::commit::rewrite_conflict_markers_on_message_change(
+                            new_commit.message.as_ref(),
+                            new_message,
+                        );
                 }
                 *cursor = commit::create(
                     repo,
@@ -371,7 +379,10 @@ fn reword_commit(
     new_message: BString,
 ) -> Result<gix::ObjectId> {
     let mut new_commit = repo.find_commit(oid)?.decode()?.to_owned()?;
-    new_commit.message = new_message;
+    new_commit.message = but_core::commit::rewrite_conflict_markers_on_message_change(
+        new_commit.message.as_ref(),
+        new_message,
+    );
     Ok(commit::create(
         repo,
         new_commit,
