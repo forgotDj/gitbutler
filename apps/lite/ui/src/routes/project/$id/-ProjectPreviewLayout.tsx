@@ -16,11 +16,10 @@ export const ProjectPreviewLayout: FC<{
 	preview: ReactNode | null;
 }> = ({ children, projectId, preview }) => {
 	const [projectState, dispatchProjectState] = assert(use(ProjectStateContext));
-	const { layout: layoutState } = projectState;
 	const inheritedShortcutsBarPortalNode = use(ShortcutsBarPortalContext);
 	const [dialogShortcutsBarPortalNode, setDialogShortcutsBarPortalNode] =
 		useState<HTMLElement | null>(null);
-	const panelIds: Array<PanelType> = isPreviewPanelVisible(layoutState)
+	const panelIds: Array<PanelType> = isPreviewPanelVisible(projectState.layout)
 		? ["primary", "preview"]
 		: ["primary"];
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
@@ -31,7 +30,7 @@ export const ProjectPreviewLayout: FC<{
 	return (
 		<ShortcutsBarPortalContext
 			value={
-				layoutState.isFullscreenPreviewOpen
+				projectState.layout.isFullscreenPreviewOpen
 					? (dialogShortcutsBarPortalNode ?? inheritedShortcutsBarPortalNode)
 					: inheritedShortcutsBarPortalNode
 			}
@@ -48,7 +47,7 @@ export const ProjectPreviewLayout: FC<{
 				>
 					{children}
 				</Panel>
-				{isPreviewPanelVisible(layoutState) && (
+				{isPreviewPanelVisible(projectState.layout) && (
 					<>
 						<Separator className={sharedStyles.previewResizeHandle} />
 						<Panel
@@ -59,13 +58,13 @@ export const ProjectPreviewLayout: FC<{
 						>
 							{
 								// There can only be one user of the ref at a time.
-								layoutState.isFullscreenPreviewOpen ? null : preview
+								projectState.layout.isFullscreenPreviewOpen ? null : preview
 							}
 						</Panel>
 					</>
 				)}
 			</Group>
-			{layoutState.isFullscreenPreviewOpen && (
+			{projectState.layout.isFullscreenPreviewOpen && (
 				<Dialog.Root
 					open
 					onOpenChange={(open) => {
