@@ -10,24 +10,6 @@ use nonempty::NonEmpty;
 use super::assign::branch_name_to_stack_id;
 use crate::utils::{OutputChannel, shorten_object_id, split_short_id};
 
-pub(crate) fn uncommitted_to_commit(
-    ctx: &mut Context,
-    hunk_assignments: NonEmpty<&HunkAssignment>,
-    description: String,
-    oid: ObjectId,
-    out: &mut OutputChannel,
-) -> anyhow::Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    uncommitted_to_commit_with_perm(
-        ctx,
-        hunk_assignments,
-        description,
-        oid,
-        out,
-        guard.write_permission(),
-    )
-}
-
 pub(crate) fn uncommitted_to_commit_with_perm(
     ctx: &mut Context,
     hunk_assignments: NonEmpty<&HunkAssignment>,

@@ -23,8 +23,8 @@ use crate::{
             MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
             SquashCommitsOperation, StackToBranchOperation, StackToStackOperation,
             StackToUnassignedOperation, UnassignedToBranchOperation, UnassignedToCommitOperation,
-            UnassignedToStackOperation, UncommittedToBranchOperation, UncommittedToCommitOperation,
-            UncommittedToStackOperation, UndoCommitOperation, route_operation,
+            UnassignedToStackOperation, UncommittedToBranchOperation, UncommittedToStackOperation,
+            UndoCommitOperation, route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -72,7 +72,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Unassigned
         }
         RubOperation::UncommittedToCommit(operation) => {
-            let result = execute_uncommitted_to_commit(ctx, operation)?;
+            let result = operation.execute_inner(ctx)?;
             SelectAfterReload::Commit(result.new_commit.context("api returned no new commit")?)
         }
         RubOperation::UncommittedToBranch(operation) => {
@@ -158,22 +158,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `UncommittedToCommit` and returns the exact commit-amend API result.
-fn execute_uncommitted_to_commit(
-    ctx: &mut Context,
-    operation: &UncommittedToCommitOperation<'_>,
-) -> anyhow::Result<CommitCreateResult> {
-    let changes = operation
-        .hunk_assignments
-        .iter()
-        .copied()
-        .cloned()
-        .map(DiffSpec::from)
-        .collect::<Vec<_>>();
-    let changes = but_workspace::flatten_diff_specs(changes);
-    but_api::commit::amend::commit_amend(ctx, operation.oid, changes)
 }
 
 /// Executes `UncommittedToBranch` by assigning selected hunks to the target branch stack.

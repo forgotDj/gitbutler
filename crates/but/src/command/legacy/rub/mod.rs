@@ -1,6 +1,7 @@
 use anyhow::bail;
 use bstr::BStr;
-use but_core::{ref_metadata::StackId, sync::RepoExclusive};
+use but_api::commit::types::CommitCreateResult;
+use but_core::{DiffSpec, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignmentRequest;
 use colored::Colorize;
@@ -19,7 +20,7 @@ use crate::{
     CliId, IdMap,
     command::commit::r#move::move_commit_to_branch,
     id::parser::{parse_sources_with_disambiguation, prompt_for_disambiguation},
-    utils::{OutputChannel, shorten_object_id},
+    utils::{OutputChannel, shorten_object_id, split_short_id},
 };
 
 /// A description of a set of hunks.
@@ -252,8 +253,38 @@ impl<'a> UnassignUncommittedOperation<'a> {
 impl<'a> UncommittedToCommitOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::AmendCommit);
-        amend::uncommitted_to_commit(ctx, self.hunk_assignments, self.description, self.oid, out)
+        let result = self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            let new_commit = result
+                .new_commit
+                .map(|c| {
+                    let short = shorten_object_id(&repo, c);
+                    let (lead, rest) = split_short_id(&short, 2);
+                    format!("{}{}", lead.blue().bold(), rest.blue())
+                })
+                .unwrap_or_default();
+            writeln!(out, "Amended {} → {new_commit}", self.description)?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({
+                "ok": true,
+                "new_commit_id": result.new_commit.map(|c| c.to_string()),
+            }))?;
+        }
+        Ok(())
+    }
+
+    /// Executes this operation without writing any output.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitCreateResult> {
+        let changes = self
+            .hunk_assignments
+            .iter()
+            .copied()
+            .cloned()
+            .map(DiffSpec::from)
+            .collect::<Vec<_>>();
+        let changes = but_workspace::flatten_diff_specs(changes);
+        but_api::commit::amend::commit_amend(ctx, self.oid, changes)
     }
 }
 
