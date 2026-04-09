@@ -21,8 +21,7 @@ use crate::{
             BranchToUnassignedOperation, CommittedFileToBranchOperation,
             CommittedFileToCommitOperation, CommittedFileToUnassignedOperation,
             MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
-            SquashCommitsOperation, UnassignedToStackOperation, UndoCommitOperation,
-            route_operation,
+            SquashCommitsOperation, UndoCommitOperation, route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -102,7 +101,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Branch(operation.to.to_string())
         }
         RubOperation::UnassignedToStack(operation) => {
-            execute_unassigned_to_stack(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
         }
         RubOperation::UndoCommit(operation) => {
@@ -156,14 +155,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `UnassignedToStack` by assigning unassigned hunks to the target stack.
-fn execute_unassigned_to_stack(
-    ctx: &mut Context,
-    operation: &UnassignedToStackOperation,
-) -> anyhow::Result<()> {
-    reassign_all_from_stack_to_stack(ctx, None, Some(operation.to))
 }
 
 /// Executes `UndoCommit` by uncommitting all changes from the selected commit.
