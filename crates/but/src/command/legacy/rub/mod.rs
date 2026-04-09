@@ -19,7 +19,9 @@ use nonempty::NonEmpty;
 
 use crate::{
     CliId, IdMap,
-    command::commit::r#move::move_commit_to_branch,
+    command::{
+        commit::r#move::move_commit_to_branch, legacy::rub::assign::stack_id_to_branch_name,
+    },
     id::parser::{parse_sources_with_disambiguation, prompt_for_disambiguation},
     utils::{OutputChannel, shorten_object_id, split_short_id},
 };
@@ -345,13 +347,24 @@ impl<'a> UncommittedToStackOperation<'a> {
 impl StackToUnassignedOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(
-            ctx,
-            Some(assign::AssignTarget::Stack(&self.stack_id)),
-            None,
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Unstaged all {} changes.",
+                stack_id_to_branch_name(ctx, self.stack_id)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".to_string().bold())
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `StackToUnassigned` by reassigning all hunks from the source stack into unassigned.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        reassign_all_from_stack_to_stack(ctx, Some(self.stack_id), None)
     }
 }
 
@@ -361,8 +374,8 @@ impl StackToStackOperation {
         create_snapshot(ctx, OperationKind::MoveHunk);
         assign::assign_all(
             ctx,
-            Some(assign::AssignTarget::Stack(&self.from)),
-            Some(assign::AssignTarget::Stack(&self.to)),
+            Some(assign::AssignTarget::Stack(self.from)),
+            Some(assign::AssignTarget::Stack(self.to)),
             out,
         )
     }
@@ -374,7 +387,7 @@ impl<'a> StackToBranchOperation<'a> {
         create_snapshot(ctx, OperationKind::MoveHunk);
         assign::assign_all(
             ctx,
-            Some(assign::AssignTarget::Stack(&self.from)),
+            Some(assign::AssignTarget::Stack(self.from)),
             Some(assign::AssignTarget::Branch(self.to)),
             out,
         )
@@ -401,7 +414,7 @@ impl UnassignedToStackOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(ctx, None, Some(assign::AssignTarget::Stack(&self.to)), out)
+        assign::assign_all(ctx, None, Some(assign::AssignTarget::Stack(self.to)), out)
     }
 }
 
@@ -448,7 +461,7 @@ impl<'a> BranchToStackOperation<'a> {
         assign::assign_all(
             ctx,
             Some(assign::AssignTarget::Branch(self.from)),
-            Some(assign::AssignTarget::Stack(&self.to)),
+            Some(assign::AssignTarget::Stack(self.to)),
             out,
         )
     }
@@ -1290,6 +1303,27 @@ fn stack_id_for_branch_name(
     Ok(ws
         .find_segment_and_stack_by_refname(target_branch_full_name.as_ref())
         .and_then(|(stack, _segment)| stack.id))
+}
+
+/// Reassigns all current worktree assignments from `source_stack_id` to `target_stack_id`.
+fn reassign_all_from_stack_to_stack(
+    ctx: &mut Context,
+    source_stack_id: Option<StackId>,
+    target_stack_id: Option<StackId>,
+) -> anyhow::Result<()> {
+    let requests = but_api::diff::changes_in_worktree(ctx)?
+        .assignments
+        .into_iter()
+        .filter(|assignment| assignment.stack_id == source_stack_id)
+        .map(|assignment| HunkAssignmentRequest {
+            hunk_header: assignment.hunk_header,
+            path_bytes: assignment.path_bytes,
+            stack_id: target_stack_id,
+            branch_ref_bytes: None,
+        })
+        .collect::<Vec<_>>();
+
+    but_api::diff::assign_hunk(ctx, requests)
 }
 
 #[cfg(test)]

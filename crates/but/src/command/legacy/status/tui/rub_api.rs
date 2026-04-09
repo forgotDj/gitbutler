@@ -22,7 +22,7 @@ use crate::{
             CommittedFileToCommitOperation, CommittedFileToUnassignedOperation,
             MoveCommitToBranchOperation, RubOperation, RubOperationDiscriminants,
             SquashCommitsOperation, StackToBranchOperation, StackToStackOperation,
-            StackToUnassignedOperation, UnassignedToBranchOperation, UnassignedToCommitOperation,
+            UnassignedToBranchOperation, UnassignedToCommitOperation,
             UnassignedToStackOperation, UndoCommitOperation, route_operation,
         },
         status::tui::SelectAfterReload,
@@ -83,7 +83,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Unassigned
         }
         RubOperation::StackToUnassigned(operation) => {
-            execute_stack_to_unassigned(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
         }
         RubOperation::StackToStack(operation) => {
@@ -157,14 +157,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `StackToUnassigned` by reassigning all hunks from the source stack into unassigned.
-fn execute_stack_to_unassigned(
-    ctx: &mut Context,
-    operation: &StackToUnassignedOperation,
-) -> anyhow::Result<()> {
-    reassign_all_from_stack_to_stack(ctx, Some(operation.stack_id), None)
 }
 
 /// Executes `StackToStack` by reassigning all hunks from one stack to another.

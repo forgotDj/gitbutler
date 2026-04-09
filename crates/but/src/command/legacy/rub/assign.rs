@@ -14,7 +14,7 @@ pub enum AssignTarget<'a> {
     /// A branch, identified by its name.
     Branch(&'a str),
     /// A stack, identified by its [`StackId`].
-    Stack(&'a StackId),
+    Stack(StackId),
 }
 
 pub(crate) fn assign_all(
@@ -29,7 +29,7 @@ pub(crate) fn assign_all(
             branch_name_to_stack_id(ctx, Some(normalize_branch_name_for_lookup(name)))?,
         ),
         Some(AssignTarget::Stack(stack_id)) => {
-            (stack_id_to_branch_name(ctx, stack_id), Some(*stack_id))
+            (stack_id_to_branch_name(ctx, stack_id), Some(stack_id))
         }
 
         None => (None, None),
@@ -40,7 +40,7 @@ pub(crate) fn assign_all(
             branch_name_to_stack_id(ctx, Some(normalize_branch_name_for_lookup(name)))?,
         ),
         Some(AssignTarget::Stack(stack_id)) => {
-            (stack_id_to_branch_name(ctx, stack_id), Some(*stack_id))
+            (stack_id_to_branch_name(ctx, stack_id), Some(stack_id))
         }
         None => (None, None),
     };
@@ -137,11 +137,11 @@ pub(crate) fn branch_name_to_stack_id(
     Ok(stack_id)
 }
 
-fn stack_id_to_branch_name(ctx: &Context, stack_id: &StackId) -> Option<String> {
+pub(crate) fn stack_id_to_branch_name(ctx: &Context, stack_id: StackId) -> Option<String> {
     crate::legacy::commits::stacks(ctx)
         .ok()?
         .into_iter()
-        .find(|s| s.id.as_ref() == Some(stack_id))
+        .find(|s| s.id.as_ref() == Some(&stack_id))
         .and_then(|s| s.heads.first().map(|h| h.name.to_string()))
 }
 
