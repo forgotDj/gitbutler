@@ -1,7 +1,10 @@
 use bstr::ByteSlice;
 use serde::{Deserialize, Serialize};
 
-use crate::{commit::types::CommitDiscardResult as EngineCommitDiscardResult, json::HexHash};
+use crate::{
+    commit::types::CommitDiscardResult as EngineCommitDiscardResult,
+    commit::types::CommitUndoResult as EngineCommitUndoResult, json::HexHash,
+};
 
 use super::types::{
     CommitCreateResult as EngineCommitCreateResult,
@@ -277,6 +280,42 @@ impl From<EngineCommitDiscardResult> for CommitDiscardResult {
 
         Self {
             discarded_commit: discarded_commit.into(),
+            replaced_commits: replaced_commits
+                .into_iter()
+                .map(|(old, new)| (old.into(), new.into()))
+                .collect(),
+        }
+    }
+}
+
+/// JSON transport type for undoing a commit.
+#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
+#[serde(rename_all = "camelCase")]
+pub struct CommitUndoResult {
+    /// The ID of the commit that was undone.
+    #[cfg_attr(feature = "export-schema", schemars(with = "String"))]
+    pub undone_commit: HexHash,
+    /// Commits that were replaced by this operation. Maps `old_id -> new_id`.
+    #[cfg_attr(
+        feature = "export-schema",
+        schemars(with = "std::collections::BTreeMap<String, String>")
+    )]
+    pub replaced_commits: std::collections::BTreeMap<HexHash, HexHash>,
+}
+
+#[cfg(feature = "export-schema")]
+but_schemars::register_sdk_type!(CommitUndoResult);
+
+impl From<EngineCommitUndoResult> for CommitUndoResult {
+    fn from(value: EngineCommitUndoResult) -> Self {
+        let EngineCommitUndoResult {
+            undone_commit,
+            replaced_commits,
+        } = value;
+
+        Self {
+            undone_commit: undone_commit.into(),
             replaced_commits: replaced_commits
                 .into_iter()
                 .map(|(old, new)| (old.into(), new.into()))
