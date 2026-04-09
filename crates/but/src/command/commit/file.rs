@@ -5,24 +5,6 @@ use bstr::ByteSlice;
 use but_core::{DiffSpec, diff::tree_changes, sync::RepoExclusive};
 use but_ctx::Context;
 
-pub fn commited_file_to_another_commit(
-    ctx: &mut Context,
-    path: &BStr,
-    source_id: gix::ObjectId,
-    target_id: gix::ObjectId,
-    out: &mut OutputChannel,
-) -> Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    commited_file_to_another_commit_with_perm(
-        ctx,
-        path,
-        source_id,
-        target_id,
-        out,
-        guard.write_permission(),
-    )
-}
-
 pub fn commited_file_to_another_commit_with_perm(
     ctx: &mut Context,
     path: &BStr,

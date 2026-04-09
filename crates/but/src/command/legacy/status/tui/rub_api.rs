@@ -12,8 +12,8 @@ use crate::{
     CliId,
     command::legacy::{
         rub::{
-            CommittedFileToCommitOperation, CommittedFileToUnassignedOperation, RubOperation,
-            RubOperationDiscriminants, route_operation,
+            CommittedFileToUnassignedOperation, RubOperation, RubOperationDiscriminants,
+            route_operation,
         },
         status::tui::SelectAfterReload,
     },
@@ -132,7 +132,7 @@ pub(super) fn perform_operation(
             SelectAfterReload::Branch(operation.name.to_string())
         }
         RubOperation::CommittedFileToCommit(operation) => {
-            let result = execute_committed_file_to_commit(ctx, operation)?;
+            let result = operation.execute_inner(ctx)?;
             let destination_to_select = result
                 .replaced_commits
                 .get(&operation.oid)
@@ -147,20 +147,6 @@ pub(super) fn perform_operation(
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `CommittedFileToCommit` and returns the exact move-changes API result.
-fn execute_committed_file_to_commit(
-    ctx: &mut Context,
-    operation: &CommittedFileToCommitOperation<'_>,
-) -> anyhow::Result<MoveChangesResult> {
-    let relevant_changes = file_changes_from_commit(ctx, operation.commit_oid, operation.path)?;
-    but_api::commit::move_changes::commit_move_changes_between(
-        ctx,
-        operation.commit_oid,
-        operation.oid,
-        relevant_changes,
-    )
 }
 
 /// Executes `CommittedFileToUnassigned` and returns the exact uncommit API result.
