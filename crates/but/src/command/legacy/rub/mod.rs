@@ -753,8 +753,24 @@ impl<'a> CommittedFileToCommitOperation<'a> {
 impl<'a> CommittedFileToUnassignedOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::FileChanges);
-        crate::command::commit::file::uncommit_file(ctx, self.path, self.commit_oid, None, out)
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(out, "Uncommitted changes")?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `CommittedFileToUnassigned` and returns the exact uncommit API result.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<MoveChangesResult> {
+        let relevant_changes = file_changes_from_commit(ctx, self.commit_oid, self.path)?;
+        but_api::commit::uncommit::commit_uncommit_changes(
+            ctx,
+            self.commit_oid,
+            relevant_changes,
+            None,
+        )
     }
 }
 

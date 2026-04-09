@@ -4,17 +4,12 @@
 //! `RubOperationDiscriminants`, and `route_operation`.
 
 use anyhow::Context as _;
-use but_api::commit::types::MoveChangesResult;
-use but_core::{DiffSpec, diff::tree_changes};
 use but_ctx::Context;
 
 use crate::{
     CliId,
     command::legacy::{
-        rub::{
-            CommittedFileToUnassignedOperation, RubOperation, RubOperationDiscriminants,
-            route_operation,
-        },
+        rub::{RubOperation, RubOperationDiscriminants, route_operation},
         status::tui::SelectAfterReload,
     },
 };
@@ -141,44 +136,12 @@ pub(super) fn perform_operation(
             SelectAfterReload::Commit(destination_to_select)
         }
         RubOperation::CommittedFileToUnassigned(operation) => {
-            execute_committed_file_to_unassigned(ctx, operation)?;
+            operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
         }
     };
 
     Ok(Some(selection))
-}
-
-/// Executes `CommittedFileToUnassigned` and returns the exact uncommit API result.
-fn execute_committed_file_to_unassigned(
-    ctx: &mut Context,
-    operation: &CommittedFileToUnassignedOperation<'_>,
-) -> anyhow::Result<MoveChangesResult> {
-    let relevant_changes = file_changes_from_commit(ctx, operation.commit_oid, operation.path)?;
-    but_api::commit::uncommit::commit_uncommit_changes(
-        ctx,
-        operation.commit_oid,
-        relevant_changes,
-        None,
-    )
-}
-
-/// Computes diff specs for changes to `path` in `commit_oid` relative to its first parent.
-fn file_changes_from_commit(
-    ctx: &Context,
-    commit_oid: gix::ObjectId,
-    path: &bstr::BStr,
-) -> anyhow::Result<Vec<DiffSpec>> {
-    let repo = ctx.repo.get()?;
-    let source_commit = repo.find_commit(commit_oid)?;
-    let source_commit_parent_id = source_commit.parent_ids().next().context("no parents")?;
-
-    let tree_changes = tree_changes(&repo, Some(source_commit_parent_id.detach()), commit_oid)?;
-    Ok(tree_changes
-        .into_iter()
-        .filter(|tc| tc.path == path)
-        .map(DiffSpec::from)
-        .collect::<Vec<_>>())
 }
 
 /// Error raised when a routed operation has no implementation in this rub-api module.
