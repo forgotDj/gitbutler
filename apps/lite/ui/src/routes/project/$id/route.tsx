@@ -1,8 +1,11 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createRoute, notFound } from "@tanstack/react-router";
 
+import { Route as rootRoute } from "#ui/routes/__root.tsx";
 import { handleWatcher } from "#ui/watcher.ts";
 
-export const Route = createFileRoute("/project/$id")({
+export const Route = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "project/$id",
 	beforeLoad: ({ matches, routeId }) => {
 		// We don't want an index route.
 		if (matches.at(-1)?.routeId === routeId) throw notFound();

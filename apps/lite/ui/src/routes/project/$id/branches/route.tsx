@@ -14,7 +14,7 @@ import {
 	useSuspenseQueries,
 	useSuspenseQuery,
 } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { Match } from "effect";
 import { ComponentProps, FC, ReactNode, Suspense, useState, useTransition } from "react";
 import styles from "./route.module.css";
@@ -36,6 +36,7 @@ import {
 } from "#ui/routes/project/$id/-shared.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/-OperationSourceC.tsx";
 import { fileOperationSource } from "#ui/routes/project/$id/workspace/-OperationSource.ts";
+import { Route as projectRoute } from "#ui/routes/project/$id/route.tsx";
 import uiStyles from "#ui/ui.module.css";
 import sharedStyles from "../-shared.module.css";
 import {
@@ -730,6 +731,8 @@ const ProjectBranchesPage: FC = () => {
 	);
 };
 
-export const Route = createFileRoute("/project/$id/branches")({
+export const Route = createRoute({
+	getParentRoute: () => projectRoute,
+	path: "branches",
 	component: ProjectBranchesPage,
 });

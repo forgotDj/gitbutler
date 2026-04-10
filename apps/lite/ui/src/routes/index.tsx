@@ -1,11 +1,13 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createRoute, redirect } from "@tanstack/react-router";
 import { FC } from "react";
 
-import { lastOpenedProjectKey } from "#ui/routes/__root.tsx";
+import { lastOpenedProjectKey, Route as rootRoute } from "#ui/routes/__root.tsx";
 
 const IndexPage: FC = () => <p>Select a project.</p>;
 
-export const Route = createFileRoute("/")({
+export const Route = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/",
 	loader: async () => {
 		const projects = await window.lite.listProjects();
 		const persistedId = window.localStorage.getItem(lastOpenedProjectKey);

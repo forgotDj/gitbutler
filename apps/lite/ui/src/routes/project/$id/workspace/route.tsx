@@ -80,7 +80,7 @@ import {
 	UnifiedPatch,
 } from "@gitbutler/but-sdk";
 import { useMutation, useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createRoute } from "@tanstack/react-router";
 import { Array, Match, pipe } from "effect";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
 import {
@@ -95,6 +95,7 @@ import {
 	useRef,
 	useTransition,
 } from "react";
+import { Route as projectRoute } from "#ui/routes/project/$id/route.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import sharedStyles from "../-shared.module.css";
 import {
@@ -2070,6 +2071,8 @@ const ProjectPage: FC = () => {
 	);
 };
 
-export const Route = createFileRoute("/project/$id/workspace")({
+export const Route = createRoute({
+	getParentRoute: () => projectRoute,
+	path: "workspace",
 	component: ProjectPage,
 });
