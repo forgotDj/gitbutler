@@ -24,16 +24,8 @@ const initialState: ProjectSliceState = {
 };
 
 const createProjectState = (): ProjectState => ({
-	layout: {
-		...layout.initialState,
-		panelLayout: { ...layout.initialState.panelLayout },
-	},
-	workspace: {
-		...workspace.initialState,
-		selection: { ...workspace.initialWorkspaceSelectionState },
-		mode: { ...workspace.initialState.mode },
-		highlightedCommitIds: [...workspace.initialState.highlightedCommitIds],
-	},
+	layout: layout.createInitialState(),
+	workspace: workspace.createInitialState(),
 });
 
 const ensureProjectState = (state: ProjectSliceState, projectId: string): ProjectState => {

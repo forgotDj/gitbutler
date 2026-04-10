@@ -7,10 +7,12 @@ export type ProjectLayoutState = {
 	panelLayout: PanelLayout;
 };
 
-export const initialState: ProjectLayoutState = {
+export const createInitialState = (): ProjectLayoutState => ({
 	isFullscreenPreviewOpen: false,
 	panelLayout: { _tag: "Split", focus: "primary" },
-};
+});
+
+export const initialState: ProjectLayoutState = createInitialState();
 
 export const closeFullscreenPreview = (state: ProjectLayoutState) => {
 	state.isFullscreenPreviewOpen = false;

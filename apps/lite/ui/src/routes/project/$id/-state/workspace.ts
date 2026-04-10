@@ -13,10 +13,10 @@ export type WorkspaceSelectionState = {
 	item: Item | null;
 };
 
-export const initialWorkspaceSelectionState: WorkspaceSelectionState = {
+const createInitialWorkspaceSelectionState = (): WorkspaceSelectionState => ({
 	hunk: null,
 	item: null,
-};
+});
 
 export type WorkspaceState = {
 	expandedCommitId: string | null;
@@ -25,12 +25,14 @@ export type WorkspaceState = {
 	selection: WorkspaceSelectionState;
 };
 
-export const initialState: WorkspaceState = {
+export const createInitialState = (): WorkspaceState => ({
 	expandedCommitId: null,
 	highlightedCommitIds: [],
 	mode: { _tag: "Default" },
-	selection: initialWorkspaceSelectionState,
-};
+	selection: createInitialWorkspaceSelectionState(),
+});
+
+export const initialState: WorkspaceState = createInitialState();
 
 const normalizeModeForSelectedItem = (mode: WorkspaceMode, item: Item | null): WorkspaceMode =>
 	(mode._tag === "RewordCommit" &&
