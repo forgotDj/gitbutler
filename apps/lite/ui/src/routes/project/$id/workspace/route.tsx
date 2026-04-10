@@ -1199,7 +1199,7 @@ const ChangeRow: FC<{
 	stackId,
 }) => {
 	const dispatch = useAppDispatch();
-	const item = changeItem(stackId, change.path);
+	const item = changeItem({ stackId, path: change.path });
 	return (
 		<OperationSourceC
 			operationMode={operationMode}
@@ -1299,7 +1299,7 @@ const ChangesSectionRow: FC<{
 
 	return (
 		<ItemRow
-			inert={!navigationIndexIncludes(navigationIndex, changesSectionItem(stackId))}
+			inert={!navigationIndexIncludes(navigationIndex, changesSectionItem({ stackId }))}
 			isSelected={isSelected}
 		>
 			<ContextMenu.Root>
@@ -1310,7 +1310,10 @@ const ChangesSectionRow: FC<{
 							className={styles.segmentButton}
 							onClick={() => {
 								dispatch(
-									projectActions.selectItem({ projectId, item: changesSectionItem(stackId) }),
+									projectActions.selectItem({
+										projectId,
+										item: changesSectionItem({ stackId }),
+									}),
 								);
 							}}
 						>
@@ -1410,7 +1413,7 @@ const Changes: FC<{
 	const changes = worktreeChanges.changes.filter((change) => assignmentsByPath.has(change.path));
 	const isSectionSelected = isSelected || selectedPath !== null;
 
-	const item = changesSectionItem(stackId);
+	const item = changesSectionItem({ stackId });
 
 	const dispatch = useAppDispatch();
 
@@ -1418,7 +1421,7 @@ const Changes: FC<{
 		dispatch(
 			projectActions.enterMoveMode({
 				projectId,
-				source: operationSourceFromItem(changesSectionItem(stackId)),
+				source: operationSourceFromItem(changesSectionItem({ stackId })),
 			}),
 		);
 

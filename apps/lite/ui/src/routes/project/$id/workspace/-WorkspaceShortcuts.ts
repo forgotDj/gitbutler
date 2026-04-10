@@ -602,7 +602,7 @@ export const useWorkspaceShortcuts = ({
 		Match.value(action).pipe(
 			Match.tags({
 				FocusPreview: () => dispatch(projectActions.focusPreview({ projectId })),
-				SelectUnassignedChanges: () => selectItem(changesSectionItem(null)),
+				SelectUnassignedChanges: () => selectItem(changesSectionItem({ stackId: null })),
 				ToggleFullscreenPreview: () =>
 					dispatch(projectActions.toggleFullscreenPreview({ projectId })),
 				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),

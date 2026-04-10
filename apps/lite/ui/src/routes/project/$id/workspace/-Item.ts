@@ -22,12 +22,12 @@ export type Item =
 	| ({ _tag: "CommitFile" } & CommitFileItem)
 	| { _tag: "BaseCommit" };
 
-export const changesSectionItem = (stackId: string | null): Item => ({
+export const changesSectionItem = ({ stackId }: ChangesSectionItem): Item => ({
 	_tag: "ChangesSection",
 	stackId,
 });
 
-export const changeItem = (stackId: string | null, path: string): Item => ({
+export const changeItem = ({ stackId, path }: ChangeItem): Item => ({
 	_tag: "Change",
 	stackId,
 	path,
@@ -99,7 +99,7 @@ export const getParentSection = (item: Item): Item | null =>
 					branchRef: item.branchRef,
 					commitId: item.commitId,
 				}),
-			Change: (item): Item | null => changesSectionItem(item.stackId),
+			Change: (item): Item | null => changesSectionItem({ stackId: item.stackId }),
 			ChangesSection: () => null,
 			BaseCommit: () => null,
 			Segment: () => null,
