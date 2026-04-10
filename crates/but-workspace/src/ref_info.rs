@@ -40,6 +40,10 @@ pub struct Commit {
     pub has_conflicts: bool,
     /// The GitButler assigned change-id that we hold on to for convenience to avoid duplicate decoding of commits
     /// when trying to associate remote commits with local ones.
+    ///
+    /// It's either based on the stored Commit header named `change-id` or `gitbutler-change-id`, in that order, or `None`
+    /// if it's not stored in the Commit. Use [`Self::change_id()`] to always get the change id,
+    /// if necessary, by deriving it from the commit hash itself.
     pub change_id: Option<but_core::ChangeId>,
 }
 
@@ -74,6 +78,14 @@ impl From<but_core::Commit<'_>> for Commit {
 }
 
 impl Commit {
+    /// Return the stored change-id if present (via [`Cow::Borrowed`]), or derive a deterministic fallback from the commit hash (via [`Cow::Owned`]).
+    pub fn change_id(&self) -> Cow<'_, but_core::ChangeId> {
+        self.change_id.as_ref().map_or_else(
+            || Cow::Owned(but_core::commit::Headers::synthetic_change_id_from_commit_id(self.id)),
+            Cow::Borrowed,
+        )
+    }
+
     /// A special constructor for very specific case.
     pub(crate) fn from_commit_ahead_of_workspace_commit(
         commit: gix::objs::Commit,
@@ -508,57 +520,8 @@ pub(crate) mod function {
             msg.push_str(&format!("    git reset --soft {ws_commit_id}"));
             bail!("{msg}");
         }
-        resolve_change_ids(&mut info);
         info.compute_similarity(&graph, repo, opts.expensive_commit_info)?;
         Ok(info)
-    }
-
-    /// Keep existing commit change-ids or synthesize them from their hash, deterministically.
-    fn resolve_change_ids(info: &mut RefInfo) {
-        for commit in visit_ref_info_commits_mut_iter(info) {
-            commit
-                .change_id
-                .get_or_insert_with(|| synthetic_change_id_from_commit_id(&commit.id));
-        }
-    }
-
-    /// These are JJ compatible, and the SHA-256 support is similarly implemented there.
-    fn synthetic_change_id_from_commit_id(commit_id: &gix::ObjectId) -> but_core::ChangeId {
-        let bytes: Vec<_> = commit_id.as_bytes()[4..commit_id.kind().len_in_bytes()]
-            .iter()
-            .rev()
-            .map(|byte| byte.reverse_bits())
-            .collect();
-        but_core::ChangeId::from_bytes(&bytes)
-    }
-
-    /// Return an iterator over all  commits in `info` for mutation.
-    fn visit_ref_info_commits_mut_iter(
-        info: &mut RefInfo,
-    ) -> impl Iterator<Item = &mut crate::ref_info::Commit> {
-        let stacks = info.stacks.iter_mut().flat_map(|stack| {
-            stack.segments.iter_mut().flat_map(|segment| {
-                segment
-                    .commits
-                    .iter_mut()
-                    .map(|commit| &mut commit.inner)
-                    .chain(segment.commits_on_remote.iter_mut())
-                    .chain(
-                        segment
-                            .commits_outside
-                            .iter_mut()
-                            .flat_map(|commits| commits.iter_mut()),
-                    )
-            })
-        });
-        let ancestor_workspace_commit =
-            info.ancestor_workspace_commit
-                .iter_mut()
-                .flat_map(|ancestor_workspace_commit| {
-                    ancestor_workspace_commit.commits_outside.iter_mut()
-                });
-
-        stacks.chain(ancestor_workspace_commit)
     }
 
     impl branch::Stack {

@@ -1,6 +1,7 @@
-use but_core::ChangeId;
+use std::borrow::Cow;
+
 use but_workspace::{legacy::StacksFilter, ref_info};
-use gix::{ObjectId, prelude::ObjectIdExt};
+use gix::prelude::ObjectIdExt;
 
 use crate::ref_info::utils::{read_only_in_memory_scenario, standard_options};
 
@@ -37,37 +38,20 @@ fn first_commit(info: &but_workspace::RefInfo) -> &but_workspace::ref_info::Loca
 }
 
 #[test]
-fn assigns_deterministic_change_id_for_headerless_commit() -> anyhow::Result<()> {
-    let (repo, meta) = read_only_in_memory_scenario("single-branch-10-commits")?;
-    let info = but_workspace::head_info(&repo, &*meta, standard_options())?;
-    let commit = first_commit(&info);
+fn commit_change_id_derives_fallback_for_headerless_commit() -> anyhow::Result<()> {
+    let (repo, _meta) = read_only_in_memory_scenario("single-branch-10-commits")?;
+    let commit = but_core::Commit::from_id(repo.head_commit()?.id())?;
+    let commit = but_workspace::ref_info::Commit::from(commit);
+
+    assert_eq!(commit.change_id, None);
+    let actual = commit.change_id();
     assert_eq!(
-        commit.change_id,
-        Some(synthetic_change_id_from_commit_id(commit.id))
+        actual.as_ref(),
+        &but_core::commit::Headers::synthetic_change_id_from_commit_id(commit.id)
     );
-
-    Ok(())
-}
-
-#[test]
-fn reuses_deterministic_change_id_across_ref_info_calls() -> anyhow::Result<()> {
-    let (repo, meta) = read_only_in_memory_scenario("single-branch-10-commits")?;
-    let first = but_workspace::head_info(&repo, &*meta, standard_options())?;
-    let first_local_commit = first_commit(&first);
-    let first_id = first_local_commit.id;
-    let first_change_id = first_local_commit
-        .change_id
-        .clone()
-        .expect("change id assigned");
-
-    let second = but_workspace::head_info(&repo, &*meta, standard_options())?;
-    let second_commit = first_commit(&second);
-
-    assert_eq!(second_commit.id, first_id);
-    assert_eq!(
-        second_commit.change_id,
-        Some(first_change_id),
-        "it derives the same synthetic change-id from the commit id"
+    assert!(
+        matches!(actual, Cow::Owned(_)),
+        "owned because it was created on the fly"
     );
 
     Ok(())
@@ -94,14 +78,28 @@ fn commit_header_change_id_is_preferred_to_synthetic_fallback() -> anyhow::Resul
     Ok(())
 }
 
-// TODO: move to common place in `but-core` so it can be reused. Make `.change_id` fields mandatory.
-fn synthetic_change_id_from_commit_id(commit_id: ObjectId) -> ChangeId {
-    let bytes: Vec<_> = commit_id.as_bytes()[4..20]
-        .iter()
-        .rev()
-        .map(|byte| byte.reverse_bits())
-        .collect();
-    ChangeId::from_bytes(&bytes)
+#[test]
+fn commit_change_id_prefers_stored_header_value() -> anyhow::Result<()> {
+    let (repo, _meta) =
+        crate::ref_info::with_workspace_commit::utils::named_read_only_in_memory_scenario(
+            "journey03",
+            "01-with-local-amended-after-integration",
+        )?;
+    let commit_id = repo.find_reference("A")?.peel_to_id()?;
+    let commit = but_workspace::ref_info::Commit::from(but_core::Commit::from_id(commit_id)?);
+    let header_change_id = commit
+        .change_id
+        .as_ref()
+        .expect("fixture commit has change id");
+
+    let actual = commit.change_id();
+    assert_eq!(actual.as_ref(), header_change_id);
+    assert!(
+        matches!(actual, Cow::Borrowed(_)),
+        "borrowed because it's stored on the commit"
+    );
+
+    Ok(())
 }
 
 #[test]
