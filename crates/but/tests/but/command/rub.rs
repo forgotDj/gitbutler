@@ -85,6 +85,17 @@ fn unassigned_contains_file(status: &serde_json::Value, file_path: &str) -> bool
         .any(|change| change["filePath"].as_str().unwrap() == file_path)
 }
 
+fn unassigned_cli_id_for_file(status: &serde_json::Value, file_path: &str) -> Option<String> {
+    status["unassignedChanges"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find_map(|change| {
+            (change["filePath"].as_str().unwrap() == file_path)
+                .then(|| change["cliId"].as_str().unwrap().to_string())
+        })
+}
+
 fn branch_commits_contain_file(
     status: &serde_json::Value,
     branch_name: &str,
@@ -1211,6 +1222,109 @@ Amended unassigned files → [..]
     assert!(
         branch_commits_contain_file(&after, "A", "zz-to-commit.txt"),
         "file should appear in commits on branch A"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn rub_matrix_unassigned_to_commit_consumes_renames() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
+    env.setup_metadata(&["A", "B"])?;
+
+    let original = (1..=120)
+        .map(|line| line.to_string())
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
+    env.file("rename-source.txt", &original);
+    env.but("commit A -m 'seed rename source'")
+        .assert()
+        .success();
+
+    std::fs::rename(
+        env.projects_root().join("rename-source.txt"),
+        env.projects_root().join("rename-target.txt"),
+    )?;
+    env.file(
+        "rename-target.txt",
+        original.replace("40\n41\n42\n", "40\nchanged\n42\n"),
+    );
+
+    let before = status_json(&env)?;
+    let target_commit = branch_commit_ids(&before, "A")[0].clone();
+
+    env.but(format!("rub zz {target_commit}"))
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Amended unassigned files → [..]
+
+"#]])
+        .stderr_eq(str![""]);
+
+    let after = status_json(&env)?;
+    assert!(
+        !unassigned_contains_file(&after, "rename-target.txt"),
+        "renamed file should no longer be unassigned"
+    );
+    assert_eq!(
+        env.invoke_git("status --porcelain"),
+        "",
+        "expected all zz changes to be committed"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn rub_matrix_unassigned_file_to_commit_consumes_renames() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
+    env.setup_metadata(&["A", "B"])?;
+
+    let original = (1..=120)
+        .map(|line| line.to_string())
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
+    env.file("rename-source-single.txt", &original);
+    env.but("commit A -m 'seed rename source single'")
+        .assert()
+        .success();
+
+    std::fs::rename(
+        env.projects_root().join("rename-source-single.txt"),
+        env.projects_root().join("rename-target-single.txt"),
+    )?;
+    env.file(
+        "rename-target-single.txt",
+        original.replace("70\n71\n72\n", "70\nchanged\n72\n"),
+    );
+
+    let before = status_json(&env)?;
+    let source_file_id = unassigned_cli_id_for_file(&before, "rename-target-single.txt")
+        .expect("renamed unassigned file should be present in status");
+    let target_commit = branch_commit_ids(&before, "A")[0].clone();
+
+    env.but(format!("rub {source_file_id} {target_commit}"))
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Amended the only hunk in rename-target-single.txt in the unassigned area → [..]
+
+"#]])
+        .stderr_eq(str![""]);
+
+    let after = status_json(&env)?;
+    assert!(
+        !unassigned_contains_file(&after, "rename-target-single.txt"),
+        "renamed file should no longer be unassigned"
+    );
+
+    let remaining = env.invoke_git("status --porcelain");
+    assert_eq!(
+        remaining, "",
+        "expected selected renamed file to be committed; remaining status:\n{remaining}"
     );
 
     Ok(())

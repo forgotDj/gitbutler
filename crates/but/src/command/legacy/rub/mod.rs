@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use anyhow::{Context as _, bail};
 use bstr::BStr;
 use but_api::commit::types::{
@@ -5,7 +7,7 @@ use but_api::commit::types::{
 };
 use but_core::{DiffSpec, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
-use but_hunk_assignment::HunkAssignmentRequest;
+use but_hunk_assignment::{HunkAssignment, HunkAssignmentRequest};
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
 use colored::Colorize;
 mod amend;
@@ -34,7 +36,7 @@ type Description = String;
 #[derive(Debug)]
 pub(crate) struct UnassignUncommittedOperation<'a> {
     /// The uncommitted hunk assignments to unassign.
-    pub(crate) hunk_assignments: NonEmpty<&'a but_hunk_assignment::HunkAssignment>,
+    pub(crate) hunk_assignments: NonEmpty<&'a HunkAssignment>,
     /// A human-readable description of the selected hunks.
     pub(crate) description: Description,
 }
@@ -43,7 +45,7 @@ pub(crate) struct UnassignUncommittedOperation<'a> {
 #[derive(Debug)]
 pub(crate) struct UncommittedToCommitOperation<'a> {
     /// The uncommitted hunk assignments to amend.
-    pub(crate) hunk_assignments: NonEmpty<&'a but_hunk_assignment::HunkAssignment>,
+    pub(crate) hunk_assignments: NonEmpty<&'a HunkAssignment>,
     /// A human-readable description of the selected hunks.
     pub(crate) description: Description,
     /// The destination commit id.
@@ -54,7 +56,7 @@ pub(crate) struct UncommittedToCommitOperation<'a> {
 #[derive(Debug)]
 pub(crate) struct UncommittedToBranchOperation<'a> {
     /// The uncommitted hunk assignments to assign.
-    pub(crate) hunk_assignments: NonEmpty<&'a but_hunk_assignment::HunkAssignment>,
+    pub(crate) hunk_assignments: NonEmpty<&'a HunkAssignment>,
     /// A human-readable description of the selected hunks.
     pub(crate) description: Description,
     /// The destination branch name.
@@ -65,7 +67,7 @@ pub(crate) struct UncommittedToBranchOperation<'a> {
 #[derive(Debug)]
 pub(crate) struct UncommittedToStackOperation<'a> {
     /// The uncommitted hunk assignments to assign.
-    pub(crate) hunk_assignments: NonEmpty<&'a but_hunk_assignment::HunkAssignment>,
+    pub(crate) hunk_assignments: NonEmpty<&'a HunkAssignment>,
     /// A human-readable description of the selected hunks.
     pub(crate) description: Description,
     /// The destination stack id.
@@ -280,13 +282,13 @@ impl<'a> UncommittedToCommitOperation<'a> {
 
     /// Executes this operation without writing any output.
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitCreateResult> {
-        let changes = self
-            .hunk_assignments
-            .iter()
-            .copied()
-            .cloned()
-            .map(DiffSpec::from)
-            .collect::<Vec<_>>();
+        let worktree_changes = but_api::diff::changes_in_worktree(ctx)?;
+        let rename_previous_path_by_path = rename_previous_path_by_path(&worktree_changes);
+
+        let changes = diff_specs_from_assignments_with_rename_metadata(
+            self.hunk_assignments.iter().copied().cloned(),
+            &rename_previous_path_by_path,
+        );
         let changes = but_workspace::flatten_diff_specs(changes);
         but_api::commit::amend::commit_amend(ctx, self.oid, changes)
     }
@@ -1530,7 +1532,7 @@ pub(crate) fn handle_unstage(
 
 /// Builds assignment requests for selected hunks and assigns them to `target_stack_id`.
 fn assignment_requests_for_selected_hunks<'a>(
-    hunks: impl Iterator<Item = &'a but_hunk_assignment::HunkAssignment>,
+    hunks: impl Iterator<Item = &'a HunkAssignment>,
     target_stack_id: Option<StackId>,
 ) -> Vec<HunkAssignmentRequest> {
     hunks
@@ -1581,13 +1583,49 @@ fn changes_for_stack_assignment(
     ctx: &mut Context,
     stack_id: Option<StackId>,
 ) -> anyhow::Result<Vec<DiffSpec>> {
-    let changes = but_api::diff::changes_in_worktree(ctx)?
-        .assignments
-        .into_iter()
-        .filter(|assignment| assignment.stack_id == stack_id)
-        .map(DiffSpec::from)
-        .collect();
+    let worktree_changes = but_api::diff::changes_in_worktree(ctx)?;
+    let rename_previous_path_by_path = rename_previous_path_by_path(&worktree_changes);
+
+    let changes = diff_specs_from_assignments_with_rename_metadata(
+        worktree_changes
+            .assignments
+            .into_iter()
+            .filter(|assignment| assignment.stack_id == stack_id),
+        &rename_previous_path_by_path,
+    );
     Ok(but_workspace::flatten_diff_specs(changes))
+}
+
+fn rename_previous_path_by_path(
+    worktree_changes: &but_hunk_assignment::WorktreeChanges,
+) -> BTreeMap<bstr::BString, bstr::BString> {
+    worktree_changes
+        .worktree_changes
+        .changes
+        .iter()
+        .filter_map(|change| match &change.status {
+            but_core::ui::TreeStatus::Rename {
+                previous_path_bytes,
+                ..
+            } => Some((change.path_bytes.clone(), previous_path_bytes.clone())),
+            _ => None,
+        })
+        .collect()
+}
+
+fn diff_specs_from_assignments_with_rename_metadata(
+    assignments: impl IntoIterator<Item = HunkAssignment>,
+    rename_previous_path_by_path: &BTreeMap<bstr::BString, bstr::BString>,
+) -> Vec<DiffSpec> {
+    assignments
+        .into_iter()
+        .map(|assignment| {
+            let path_bytes = assignment.path_bytes.clone();
+            let mut spec = DiffSpec::from(assignment);
+            spec.previous_path = rename_previous_path_by_path.get(&path_bytes).cloned();
+            spec
+        })
+        .collect()
 }
 
 /// Computes diff specs for changes to `path` in `commit_oid` relative to its first parent.
