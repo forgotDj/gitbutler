@@ -3,14 +3,12 @@ import { Match } from "effect";
 export type ChangesSectionItem = { stackId: string | null };
 export type ChangeItem = ChangesSectionItem & { path: string };
 
-type SegmentItemBase = {
+export type SegmentItem = {
 	stackId: string;
 	segmentIndex: number;
 	branchRef: Array<number> | null;
 };
-
-export type SegmentItem = SegmentItemBase;
-export type CommitItem = SegmentItemBase & { commitId: string };
+export type CommitItem = SegmentItem & { commitId: string };
 export type CommitFileItem = CommitItem & { path: string };
 
 /**
