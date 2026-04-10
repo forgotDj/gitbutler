@@ -131,6 +131,10 @@ pub(super) struct CommitMode {
     /// Note this is only respected when inserting at a commit. If inserting at a branch we'll
     /// always use [`InsertSide::Below`].
     pub(super) insert_side: InsertSide,
+    /// Create the commit with an empty message.
+    ///
+    /// By default an editor is opened for the user to write a commit message.
+    pub(super) empty_message: bool,
 }
 
 /// A subset of [`CliId`] that supports being committed

@@ -506,7 +506,7 @@ fn register_commit_mode_key_binds(key_binds: &mut KeyBinds) {
         chord_display: "enter",
         key_matcher: press().code(KeyCode::Enter),
         modes: Vec::from([ModeDiscriminant::Commit]),
-        message: Message::Commit(CommitMessage::Confirm { with_message: true }),
+        message: Message::Commit(CommitMessage::Confirm),
         hide_from_hotbar: false,
     });
 
@@ -525,6 +525,15 @@ fn register_commit_mode_key_binds(key_binds: &mut KeyBinds) {
         key_matcher: press().code(KeyCode::Char('b')),
         modes: Vec::from([ModeDiscriminant::Commit]),
         message: Message::Commit(CommitMessage::SetInsertSide(InsertSide::Below)),
+        hide_from_hotbar: false,
+    });
+
+    key_binds.register(StaticKeyBind {
+        short_description: "empty message",
+        chord_display: "e",
+        key_matcher: press().code(KeyCode::Char('e')),
+        modes: Vec::from([ModeDiscriminant::Commit]),
+        message: Message::Commit(CommitMessage::ToggleEmptyMessage),
         hide_from_hotbar: false,
     });
 

@@ -621,6 +621,9 @@ impl App {
                 CommitMessage::SetInsertSide(insert_side) => {
                     self.handle_commit_set_insert_side(insert_side);
                 }
+                CommitMessage::ToggleEmptyMessage => {
+                    self.handle_commit_toggle_empty_message();
+                }
             },
             Message::Reword(reword_message) => match reword_message {
                 RewordMessage::WithEditor => {
@@ -1323,12 +1326,12 @@ impl App {
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
-        with_message: bool,
     ) -> anyhow::Result<()> {
         let Mode::Commit(CommitMode {
             source,
             scope_to_stack,
             insert_side,
+            empty_message,
         }) = &self.mode
         else {
             return Ok(());
@@ -1430,7 +1433,7 @@ impl App {
             // commit. However that requires computing the diff which I haven't yet figured out how
             // to do
             .chain(
-                (with_message && commit_create_result.new_commit.is_some())
+                (!empty_message && commit_create_result.new_commit.is_some())
                     .then_some(Message::Reword(RewordMessage::WithEditor)),
             )
             .chain(rejected_specs_error_msg.map(|text| Message::ShowToast {
@@ -2411,19 +2414,31 @@ impl App {
 
         if *mode.source == **target {
             line.extend([source_span(), Span::raw(" ")]);
-            line.extend([
-                Span::raw("<< ").mode_colors(&self.mode),
-                Span::raw(NOOP).mode_colors(&self.mode),
-                Span::raw(" >>").mode_colors(&self.mode),
-                Span::raw(" "),
-            ]);
+            line.extend(
+                [
+                    Span::raw("<< ").mode_colors(&self.mode),
+                    Span::raw(NOOP).mode_colors(&self.mode),
+                ]
+                .into_iter()
+                .chain(
+                    mode.empty_message
+                        .then(|| Span::raw(" (empty message)").mode_colors(&self.mode)),
+                )
+                .chain([Span::raw(" >>").mode_colors(&self.mode), Span::raw(" ")]),
+            );
         } else if let Some(display) = commit_operation_display(data, mode) {
-            line.extend([
-                Span::raw("<< ").mode_colors(&self.mode),
-                Span::raw(display).mode_colors(&self.mode),
-                Span::raw(" >>").mode_colors(&self.mode),
-                Span::raw(" "),
-            ]);
+            line.extend(
+                [
+                    Span::raw("<< ").mode_colors(&self.mode),
+                    Span::raw(display).mode_colors(&self.mode),
+                ]
+                .into_iter()
+                .chain(
+                    mode.empty_message
+                        .then(|| Span::raw(" (empty message)").mode_colors(&self.mode)),
+                )
+                .chain([Span::raw(" >>").mode_colors(&self.mode), Span::raw(" ")]),
+            );
         }
     }
 
@@ -2809,7 +2824,8 @@ enum CommitMessage {
     CreateEmpty,
     Start,
     SetInsertSide(InsertSide),
-    Confirm { with_message: bool },
+    ToggleEmptyMessage,
+    Confirm,
 }
 
 #[derive(Debug, Clone)]

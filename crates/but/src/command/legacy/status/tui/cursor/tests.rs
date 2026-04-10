@@ -1605,6 +1605,7 @@ fn is_selectable_in_commit_mode_scopes_commit_targets_to_stack() {
         })),
         scope_to_stack: Some(scoped_stack_id),
         insert_side: InsertSide::Above,
+        empty_message: false,
     });
 
     let same_stack_commit_line = line(StatusOutputLineData::Commit {

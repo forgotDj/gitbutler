@@ -209,8 +209,10 @@ impl Details {
             | Message::RunAfterConfirmation(_) => true,
 
             Message::Commit(commit_message) => match commit_message {
-                CommitMessage::Confirm { .. } | CommitMessage::CreateEmpty => true,
-                CommitMessage::Start | CommitMessage::SetInsertSide(_) => false,
+                CommitMessage::Confirm | CommitMessage::CreateEmpty => true,
+                CommitMessage::Start
+                | CommitMessage::SetInsertSide(_)
+                | CommitMessage::ToggleEmptyMessage => false,
             },
             Message::Rub(rub_message) => match rub_message {
                 RubMessage::Start | RubMessage::StartWithSource { .. } => false,
