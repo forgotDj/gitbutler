@@ -49,6 +49,8 @@ use crate::{
 mod id;
 pub use id::{CliId, IdMap};
 
+pub use utils::binary_path::is_executed_as_but;
+
 mod alias;
 /// A place for all command implementations.
 pub(crate) mod command;

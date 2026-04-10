@@ -21,6 +21,8 @@ pub use metrics::types::OneshotMetricsContext;
 pub mod detect_agent;
 pub mod time;
 
+pub(crate) mod binary_path;
+
 /// Utilities attached to `anyhow::Result<impl serde::Serialize>`.
 pub trait ResultJsonExt {
     /// Write this value as pretty `JSON` to stdout if `json` is `true`.

@@ -54,14 +54,7 @@ fn main() -> anyhow::Result<()> {
         .build()?;
     #[cfg(feature = "builtin-but")]
     {
-        // Note: We use std::env::args_os() instead of std::env::current_exe() as the latter
-        // resolves symlinks on many UNIX implementations, which makes it unsuitable for the `but`
-        // symlink trick.
-        if std::env::args_os().next().is_some_and(|exec_path| {
-            std::path::Path::new(&exec_path)
-                .file_stem()
-                .is_some_and(|stem| stem == "but")
-        }) {
+        if but::is_executed_as_but()? {
             gitbutler_repo_actions::askpass::disable();
             return runtime.block_on(but::handle_args(std::env::args_os()));
         }
