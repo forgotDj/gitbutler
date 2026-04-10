@@ -357,7 +357,9 @@ impl Cursor {
             return None;
         }
 
-        let current_line_is_section_header = lines.get(self.0).is_some_and(is_section_header);
+        let current_line_is_section_header = lines
+            .get(self.0)
+            .is_some_and(|line| is_section_header(line, mode));
         let search_end = if current_line_is_section_header {
             self.0
         } else {
@@ -482,14 +484,34 @@ fn is_discard_commit_boundary(line: &StatusOutputLine) -> bool {
 }
 
 /// Returns true if a line is a section header row.
-fn is_section_header(line: &StatusOutputLine) -> bool {
-    matches!(
-        line.data,
-        StatusOutputLineData::Branch { .. }
-            | StatusOutputLineData::StagedChanges { .. }
-            | StatusOutputLineData::UnassignedChanges { .. }
-            | StatusOutputLineData::MergeBase
-    )
+fn is_section_header(line: &StatusOutputLine, mode: &Mode) -> bool {
+    match mode {
+        Mode::Normal
+        | Mode::InlineReword(..)
+        | Mode::Command(..)
+        | Mode::Commit(..)
+        | Mode::Move(..)
+        | Mode::Branch
+        | Mode::Details => {
+            matches!(
+                line.data,
+                StatusOutputLineData::Branch { .. }
+                    | StatusOutputLineData::UnassignedChanges { .. }
+                    | StatusOutputLineData::MergeBase
+            )
+        }
+
+        Mode::RubButApi(..)
+        | Mode::Rub(..) => {
+            matches!(
+                line.data,
+                StatusOutputLineData::Branch { .. }
+                    | StatusOutputLineData::StagedChanges { .. }
+                    | StatusOutputLineData::UnassignedChanges { .. }
+                    | StatusOutputLineData::MergeBase
+            )
+        }
+    }
 }
 
 /// Returns true if a line is selectable and is a jump target in the given mode.
@@ -498,7 +520,7 @@ fn is_jump_target_in_mode(
     mode: &Mode,
     show_files: FilesStatusFlag,
 ) -> bool {
-    is_selectable_in_mode(line, mode, show_files) && is_section_header(line)
+    is_selectable_in_mode(line, mode, show_files) && is_section_header(line, mode)
 }
 
 pub(super) fn is_selectable_in_mode(
