@@ -1,8 +1,8 @@
 import { type Operation, useRunOperation } from "#ui/Operation.ts";
 import { monitorForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { FC, type ReactNode, useEffect } from "react";
-import sharedStyles from "../-shared.module.css";
-import { type OperationSource } from "./-OperationSource.ts";
+import sharedStyles from "../shared.module.css";
+import { type OperationSource } from "./OperationSource.ts";
 
 export type DragData = {
 	operationSource: OperationSource;

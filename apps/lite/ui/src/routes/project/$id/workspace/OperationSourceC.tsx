@@ -4,10 +4,10 @@ import { useDraggable } from "#ui/hooks/useDraggable.tsx";
 import { mergeProps, useRender } from "@base-ui/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { FC } from "react";
-import { DragData, DragPreview } from "./-DragAndDrop.tsx";
-import { OperationSourceLabel } from "./-OperationSourceLabel.tsx";
-import { operationSourceEquals, type OperationSource } from "./-OperationSource.ts";
-import { type OperationMode } from "./-WorkspaceMode.ts";
+import { DragData, DragPreview } from "./DragAndDrop.tsx";
+import { OperationSourceLabel } from "./OperationSourceLabel.tsx";
+import { operationSourceEquals, type OperationSource } from "./OperationSource.ts";
+import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./route.module.css";
 
 export const OperationSourceC: FC<

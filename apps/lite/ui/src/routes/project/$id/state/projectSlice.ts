@@ -1,7 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "#ui/state/store.ts";
-import { type CommitItem, type Item, type SegmentItem } from "../workspace/-Item.ts";
-import type { OperationSource } from "../workspace/-OperationSource.ts";
+import { type CommitItem, type Item, type SegmentItem } from "../workspace/Item.ts";
+import type { OperationSource } from "../workspace/OperationSource.ts";
 import * as layout from "./layout.ts";
 import * as workspace from "./workspace.ts";
 

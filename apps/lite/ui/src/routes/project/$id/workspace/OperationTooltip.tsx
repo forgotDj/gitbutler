@@ -4,8 +4,8 @@ import uiStyles from "#ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
 import { FC } from "react";
 import styles from "./route.module.css";
-import { OperationSource, operationSourceMatchesItem } from "./-OperationSource";
-import { Item } from "./-Item";
+import { OperationSource, operationSourceMatchesItem } from "./OperationSource";
+import { Item } from "./Item";
 
 type OperationTooltipControls = {
 	onConfirm: () => void;

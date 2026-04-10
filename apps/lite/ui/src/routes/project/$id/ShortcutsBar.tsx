@@ -1,7 +1,7 @@
 import { formatShortcutKeys, ShortcutActionBase, ShortcutBinding } from "#ui/shortcuts.ts";
 import { createContext, type FC, use } from "react";
 import { createPortal } from "react-dom";
-import styles from "./-ShortcutsBar.module.css";
+import styles from "./ShortcutsBar.module.css";
 
 export const ShortcutsBarPortalContext = createContext<HTMLElement | null>(null);
 

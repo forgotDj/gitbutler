@@ -1,7 +1,7 @@
 import * as ReactQuery from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { App } from "#ui/App.tsx";
-import { routeTree } from "#ui/routeTree.gen.ts";
+import { routeTree } from "#ui/routeTree.ts";
 import { createRoot } from "react-dom/client";
 import "./global.css";
 import { Toast } from "@base-ui/react";

@@ -1,6 +1,6 @@
 import { Match } from "effect";
-import { type OperationSource, operationSourceMatchesItem } from "./-OperationSource.ts";
-import { type NavigationIndex } from "./-WorkspaceModel.ts";
+import { type OperationSource, operationSourceMatchesItem } from "./OperationSource.ts";
+import { type NavigationIndex } from "./WorkspaceModel.ts";
 
 /** @public */
 export type RubOperationMode = { source: OperationSource };

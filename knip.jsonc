@@ -19,9 +19,6 @@
 				"ui/src/react-css-properties.d.ts!",
 			],
 			"project": ["electron/src/**!", "ui/src/**!"],
-			"tanstack-router": {
-				"entry": ["ui/src/routeTree.gen.ts"],
-			},
 			"includeEntryExports": true,
 			"ignoreDependencies": ["@tanstack/eslint-plugin-query"],
 		},

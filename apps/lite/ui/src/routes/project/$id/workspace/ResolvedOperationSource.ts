@@ -29,8 +29,8 @@ import {
 	type TreeChange,
 } from "@gitbutler/but-sdk";
 import { Match } from "effect";
-import { decodeRefName, getAssignmentsByPath } from "../-shared";
-import { type OperationSource } from "./-OperationSource.ts";
+import { decodeRefName, getAssignmentsByPath } from "../shared";
+import { type OperationSource } from "./OperationSource.ts";
 
 type TreeChangeWithHunkHeaders = {
 	change: TreeChange;
