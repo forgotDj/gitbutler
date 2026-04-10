@@ -42,6 +42,8 @@
 		order?: number;
 		/** Unset max height */
 		unsetMaxHeight?: string;
+		/** Optional visual offset from the viewport edge used to place the sash */
+		edgeOffsetRem?: number;
 
 		// Actions
 		onHeight?: (height: number) => void;
@@ -68,6 +70,7 @@
 		resizeGroup,
 		order,
 		unsetMaxHeight,
+		edgeOffsetRem = 0,
 		onResizing,
 		onOverflow,
 		onDblClick,
@@ -93,14 +96,25 @@
 	// so that getBoundingClientRect differences remain scroll-invariant.
 	const layerCtx = getContext<SashLayerContext | undefined>(SASH_LAYER);
 	let inLayer = $state(false);
-	const SASH_LAYER_LAYOUT_EVENT = "sash-layer-layout";
 
 	let initial = 0;
 	let isResizing = $state(false);
 	let resizerDiv = $state<HTMLDivElement>();
+	let pointerMoveRaf: number | undefined;
+	let pendingPointerMove:
+		| {
+				clientX: number;
+				clientY: number;
+				shiftKey: boolean;
+		  }
+		| undefined;
 
 	let unsubUp: () => void;
 	let unsubMove: () => void;
+
+	// Last pointer position tracked per-drag-frame for arithmetic sash movement.
+	let lastDragClientX = 0;
+	let lastDragClientY = 0;
 
 	function onMouseDown(e: MouseEvent) {
 		e.stopPropagation();
@@ -112,6 +126,10 @@
 		if (direction === "left") initial = window.innerWidth - e.clientX - viewport.clientWidth;
 		if (direction === "down") initial = e.clientY - viewport.clientHeight;
 		if (direction === "up") initial = window.innerHeight - e.clientY - viewport.clientHeight;
+
+		// Capture starting pointer position for drag-delta sash movement.
+		lastDragClientX = e.clientX;
+		lastDragClientY = e.clientY;
 
 		onResizing?.(true);
 	}
@@ -141,21 +159,26 @@
 		return { newValue, overflow };
 	}
 
-	function onMouseMove(e: MouseEvent) {
-		isResizing = true;
+	function processPointerMove() {
+		const move = pendingPointerMove;
+		if (!move) {
+			return;
+		}
+
+		pendingPointerMove = undefined;
 		let offsetPx: number | undefined;
 		switch (direction) {
 			case "down":
-				offsetPx = e.clientY - initial;
+				offsetPx = move.clientY - initial;
 				break;
 			case "up":
-				offsetPx = document.body.scrollHeight - e.clientY - initial;
+				offsetPx = document.body.scrollHeight - move.clientY - initial;
 				break;
 			case "right":
-				offsetPx = e.clientX - initial;
+				offsetPx = move.clientX - initial;
 				break;
 			case "left":
-				offsetPx = document.body.scrollWidth - e.clientX - initial;
+				offsetPx = document.body.scrollWidth - move.clientX - initial;
 				break;
 		}
 
@@ -174,17 +197,65 @@
 		const { newValue, overflow } = applyLimits(offsetRem);
 
 		if (newValue && !passive && !disabled) {
-			setValue(newValue);
+			// Fast path when the handle lives in a SashLayer and is NOT part of a
+			// resize group: move the sash div by the pointer delta (pure arithmetic,
+			// zero getBoundingClientRect calls during drag).  Geometry is re-synced
+			// once on mouse-up via requestLayout.
+			if (inLayer && !resizeGroup && resizerDiv) {
+				const dx = move.clientX - lastDragClientX;
+				const dy = move.clientY - lastDragClientY;
+				const d = resizerDiv;
+				if (orientation === "horizontal") {
+					d.style.left = parseFloat(d.style.left || "0") + dx + "px";
+				} else {
+					d.style.top = parseFloat(d.style.top || "0") + dy + "px";
+				}
+				// Write viewport size and notify callbacks — no requestLayout here.
+				value.set(newValue);
+				updateDom(newValue);
+				if (newValue !== undefined) onWidth?.(newValue);
+			} else {
+				setValue(newValue);
+			}
 		}
+
+		lastDragClientX = move.clientX;
+		lastDragClientY = move.clientY;
+
 		if (overflow) {
 			onOverflow?.(overflow);
 		}
-		if (e.shiftKey && syncName && newValue !== undefined && !passive && !disabled) {
+		if (move.shiftKey && syncName && newValue !== undefined && !passive && !disabled) {
 			resizeSync.emit(syncName, resizerId, newValue);
 		}
 	}
 
+	function onMouseMove(e: MouseEvent) {
+		isResizing = true;
+		pendingPointerMove = {
+			clientX: e.clientX,
+			clientY: e.clientY,
+			shiftKey: e.shiftKey,
+		};
+
+		if (pointerMoveRaf !== undefined) {
+			return;
+		}
+
+		pointerMoveRaf = requestAnimationFrame(() => {
+			pointerMoveRaf = undefined;
+			processPointerMove();
+		});
+	}
+
 	function onMouseUp() {
+		if (pointerMoveRaf !== undefined) {
+			cancelAnimationFrame(pointerMoveRaf);
+			pointerMoveRaf = undefined;
+		}
+		processPointerMove();
+		// Re-sync sash to exact geometry once at the end of drag.
+		if (inLayer) layerCtx?.requestLayout();
 		isResizing = false;
 		unsubUp?.();
 		unsubMove?.();
@@ -250,10 +321,6 @@
 		return pxToRem(viewport.clientHeight, zoom);
 	}
 
-	function notifyLayerLayoutChange() {
-		layerCtx?.container?.dispatchEvent(new Event(SASH_LAYER_LAYOUT_EVENT));
-	}
-
 	export function setValue(newValue?: number) {
 		const currentValue = getValue();
 		if (currentValue === newValue) {
@@ -264,7 +331,7 @@
 		if (newValue !== undefined) {
 			onWidth?.(newValue);
 		}
-		notifyLayerLayoutChange();
+		layerCtx?.requestLayout();
 	}
 
 	$effect(() => {
@@ -307,9 +374,10 @@
 
 	// Teleportation effect: move the resizer div into the SashLayer overlay so
 	// it is never clipped by overflow:hidden on pane containers. Position is
-	// kept in sync via ResizeObserver + window resize. No scroll tracking is
-	// needed — the SashLayer is always scoped inside the same scroll container
-	// as the viewport, so getBoundingClientRect differences are scroll-invariant.
+	// kept in sync via ResizeObserver + window resize + shared per-layer
+	// scheduler notifications. No scroll tracking is needed — the SashLayer is
+	// always scoped inside the same scroll container as the viewport, so
+	// getBoundingClientRect differences are scroll-invariant.
 	$effect(() => {
 		const container = layerCtx?.container;
 		const div = resizerDiv;
@@ -318,6 +386,7 @@
 		// read here (inside the effect body) so Svelte tracks them as deps.
 		const dir = direction;
 		const orient = orientation;
+		const edgeOffsetPx = remToPx(edgeOffsetRem, zoom);
 
 		if (!container || !div || !vp) return;
 
@@ -329,21 +398,23 @@
 		inLayer = true;
 		c.appendChild(d);
 
-		function updatePosition() {
+		function updatePosition(containerRect?: DOMRectReadOnly) {
 			const vr = vp.getBoundingClientRect();
-			const cr = c.getBoundingClientRect();
+			const cr = containerRect ?? c.getBoundingClientRect();
 			// 8 px hit area in layer mode (no risk of overlapping scrollbars).
 			const t = 8;
 
 			if (orient === "horizontal") {
-				d.style.left = `${(dir === "right" ? vr.right : vr.left) - cr.left - t / 2}px`;
+				const edge = dir === "right" ? vr.right + edgeOffsetPx : vr.left - edgeOffsetPx;
+				d.style.left = `${edge - cr.left - t / 2}px`;
 				d.style.right = "";
 				d.style.top = `${vr.top - cr.top}px`;
 				d.style.bottom = "";
 				d.style.width = `${t}px`;
 				d.style.height = `${vr.height}px`;
 			} else {
-				d.style.top = `${(dir === "down" ? vr.bottom : vr.top) - cr.top - t / 2}px`;
+				const edge = dir === "down" ? vr.bottom + edgeOffsetPx : vr.top - edgeOffsetPx;
+				d.style.top = `${edge - cr.top - t / 2}px`;
 				d.style.bottom = "";
 				d.style.left = `${vr.left - cr.left}px`;
 				d.style.right = "";
@@ -352,37 +423,28 @@
 			}
 		}
 
-		let rafId: number | undefined;
-
-		function scheduleUpdatePosition() {
-			if (rafId !== undefined) return;
-			rafId = requestAnimationFrame(() => {
-				rafId = undefined;
-				updatePosition();
-			});
-		}
-
 		updatePosition();
 
-		const ro = new ResizeObserver(scheduleUpdatePosition);
+		const ro = new ResizeObserver(() => {
+			layerCtx?.requestLayout();
+		});
 		ro.observe(vp);
 		// Also watch the layer wrapper itself so position updates when sibling
 		// panes resize (pushing this pane without changing its own size).
 		if (c.parentElement) {
 			ro.observe(c.parentElement);
 		}
-		window.addEventListener("resize", scheduleUpdatePosition);
-		c.addEventListener(SASH_LAYER_LAYOUT_EVENT, scheduleUpdatePosition);
+		window.addEventListener("resize", layerCtx.requestLayout);
+		const unsubscribeLayout = layerCtx.subscribeLayout((containerRect) => {
+			updatePosition(containerRect);
+		});
+		layerCtx.requestLayout();
 
 		return () => {
 			inLayer = false;
 			ro.disconnect();
-			window.removeEventListener("resize", scheduleUpdatePosition);
-			c.removeEventListener(SASH_LAYER_LAYOUT_EVENT, scheduleUpdatePosition);
-			if (rafId !== undefined) {
-				cancelAnimationFrame(rafId);
-				rafId = undefined;
-			}
+			window.removeEventListener("resize", layerCtx.requestLayout);
+			unsubscribeLayout?.();
 			d.remove();
 		};
 	});
@@ -418,7 +480,7 @@
 		--resizer-cursor: default;
 		position: absolute;
 		outline: none;
-		/* background-color: rgba(249, 46, 46, 0.394); */
+		background-color: rgba(249, 46, 46, 0.394);
 		cursor: var(--resizer-cursor);
 
 		&.horizontal {
@@ -440,7 +502,7 @@
 			top: 0;
 			width: 1px;
 			height: 100%;
-			border-left: 1px solid var(--border-2);
+			/* border-left: 1px solid var(--border-2); */
 			content: "";
 			pointer-events: none;
 		}
