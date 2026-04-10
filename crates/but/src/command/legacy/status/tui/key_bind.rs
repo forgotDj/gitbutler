@@ -248,6 +248,15 @@ fn register_global_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscrimina
         message: Message::Details(DetailsMessage::ToggleVisibility),
         hide_from_hotbar: false,
     });
+
+    key_binds.register(StaticKeyBind {
+        short_description: "unassigned",
+        chord_display: "z",
+        key_matcher: press().code(KeyCode::Char('z')),
+        modes: modes.clone(),
+        message: Message::SelectUnassigned,
+        hide_from_hotbar: false,
+    });
 }
 
 fn register_quit_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscriminant>) {

@@ -525,7 +525,7 @@ fn is_jump_target_in_mode(
 pub(super) fn is_selectable_in_mode(
     line: &StatusOutputLine,
     mode: &Mode,
-    show_files: FilesStatusFlag,
+    show_files_flag: FilesStatusFlag,
 ) -> bool {
     if !line.is_selectable() {
         return false;
@@ -562,7 +562,7 @@ pub(super) fn is_selectable_in_mode(
     }
 
     match mode {
-        Mode::Normal | Mode::Details => match show_files {
+        Mode::Normal | Mode::Details => match show_files_flag {
             FilesStatusFlag::None | FilesStatusFlag::All => true,
             FilesStatusFlag::Commit(object_id) => {
                 if let Some(cli_id) = line.data.cli_id()

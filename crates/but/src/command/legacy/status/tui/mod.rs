@@ -566,6 +566,18 @@ impl App {
                     self.cursor = new_cursor;
                 }
             }
+            Message::SelectUnassigned => {
+                let new_cursor = Cursor::new(&self.status_lines);
+                if let Some(unassigned_line) = new_cursor.selected_line(&self.status_lines)
+                    && cursor::is_selectable_in_mode(
+                        unassigned_line,
+                        &self.mode,
+                        self.flags.show_files,
+                    )
+                {
+                    self.cursor = new_cursor;
+                }
+            }
             Message::Rub(rub_message) => match rub_message {
                 RubMessage::Start => self.handle_start_rub(),
                 RubMessage::StartWithSource {
@@ -2649,6 +2661,7 @@ enum Message {
     MoveCursorDown,
     MoveCursorPreviousSection,
     MoveCursorNextSection,
+    SelectUnassigned,
 
     // Features
     Commit(CommitMessage),

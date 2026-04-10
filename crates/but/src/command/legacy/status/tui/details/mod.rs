@@ -204,6 +204,7 @@ impl Details {
             | Message::MoveCursorDown
             | Message::MoveCursorPreviousSection
             | Message::MoveCursorNextSection
+            | Message::SelectUnassigned
             | Message::Reload(_)
             | Message::RunAfterConfirmation(_) => true,
 
