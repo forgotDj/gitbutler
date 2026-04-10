@@ -105,124 +105,126 @@ export const useRunOperation = () => {
 
 	return (projectId: string, operation: Operation): void => {
 		Match.value(operation).pipe(
-			Match.tag("AssignHunk", (operation) => {
-				assignHunk.mutate({
-					projectId,
-					assignments: operation.assignments,
-				});
-			}),
-			Match.tag("CommitAmend", (operation) => {
-				commitAmend.mutate(
-					{
+			Match.tagsExhaustive({
+				AssignHunk: (operation) => {
+					assignHunk.mutate({
+						projectId,
+						assignments: operation.assignments,
+					});
+				},
+				CommitAmend: (operation) => {
+					commitAmend.mutate(
+						{
+							projectId,
+							commitId: operation.commitId,
+							changes: operation.changes,
+						},
+						{
+							onSuccess: (response) => {
+								if (response.rejectedChanges.length > 0)
+									toastManager.add(
+										rejectedChangesToastOptions({
+											newCommit: response.newCommit ?? null,
+											rejectedChanges: response.rejectedChanges,
+										}),
+									);
+							},
+						},
+					);
+				},
+				CommitMoveChangesBetween: (operation) => {
+					commitMoveChangesBetween.mutate({
+						projectId,
+						sourceCommitId: operation.sourceCommitId,
+						destinationCommitId: operation.destinationCommitId,
+						changes: operation.changes,
+					});
+				},
+				CommitSquash: (operation) => {
+					commitSquash.mutate({
+						projectId,
+						sourceCommitId: operation.sourceCommitId,
+						destinationCommitId: operation.destinationCommitId,
+					});
+				},
+				CommitUncommit: (operation) => {
+					commitUncommit.mutate({
 						projectId,
 						commitId: operation.commitId,
-						changes: operation.changes,
-					},
-					{
-						onSuccess: (response) => {
-							if (response.rejectedChanges.length > 0)
-								toastManager.add(
-									rejectedChangesToastOptions({
-										newCommit: response.newCommit ?? null,
-										rejectedChanges: response.rejectedChanges,
-									}),
-								);
-						},
-					},
-				);
-			}),
-			Match.tag("CommitMoveChangesBetween", (operation) => {
-				commitMoveChangesBetween.mutate({
-					projectId,
-					sourceCommitId: operation.sourceCommitId,
-					destinationCommitId: operation.destinationCommitId,
-					changes: operation.changes,
-				});
-			}),
-			Match.tag("CommitSquash", (operation) => {
-				commitSquash.mutate({
-					projectId,
-					sourceCommitId: operation.sourceCommitId,
-					destinationCommitId: operation.destinationCommitId,
-				});
-			}),
-			Match.tag("CommitUncommit", (operation) => {
-				commitUncommit.mutate({
-					projectId,
-					commitId: operation.commitId,
-					assignTo: operation.assignTo,
-				});
-			}),
-			Match.tag("CommitUncommitChanges", (operation) => {
-				commitUncommitChanges.mutate({
-					projectId,
-					commitId: operation.commitId,
-					assignTo: operation.assignTo,
-					changes: operation.changes,
-				});
-			}),
-			Match.tag("CommitCreate", (operation) => {
-				commitCreate.mutate(
-					{
-						projectId,
-						relativeTo: operation.relativeTo,
-						side: operation.side,
-						changes: operation.changes,
-						message: operation.message,
-					},
-					{
-						onSuccess: (response) => {
-							if (response.rejectedChanges.length > 0)
-								toastManager.add(
-									rejectedChangesToastOptions({
-										newCommit: response.newCommit,
-										rejectedChanges: response.rejectedChanges,
-									}),
-								);
-						},
-					},
-				);
-			}),
-			Match.tag("CommitCreateFromCommittedChanges", (operation) => {
-				// Ideally this would be an atomic backend operation.
-				void (async () => {
-					const insertedCommit = await commitInsertBlank.mutateAsync({
-						projectId,
-						relativeTo: operation.relativeTo,
-						side: operation.side,
+						assignTo: operation.assignTo,
 					});
+				},
+				CommitUncommitChanges: (operation) => {
+					commitUncommitChanges.mutate({
+						projectId,
+						commitId: operation.commitId,
+						assignTo: operation.assignTo,
+						changes: operation.changes,
+					});
+				},
+				CommitCreate: (operation) => {
+					commitCreate.mutate(
+						{
+							projectId,
+							relativeTo: operation.relativeTo,
+							side: operation.side,
+							changes: operation.changes,
+							message: operation.message,
+						},
+						{
+							onSuccess: (response) => {
+								if (response.rejectedChanges.length > 0)
+									toastManager.add(
+										rejectedChangesToastOptions({
+											newCommit: response.newCommit,
+											rejectedChanges: response.rejectedChanges,
+										}),
+									);
+							},
+						},
+					);
+				},
+				CommitCreateFromCommittedChanges: (operation) => {
+					// Ideally this would be an atomic backend operation.
+					void (async () => {
+						const insertedCommit = await commitInsertBlank.mutateAsync({
+							projectId,
+							relativeTo: operation.relativeTo,
+							side: operation.side,
+						});
 
-					await commitMoveChangesBetween.mutateAsync({
+						await commitMoveChangesBetween.mutateAsync({
+							projectId,
+							sourceCommitId:
+								insertedCommit.replacedCommits[operation.sourceCommitId] ??
+								operation.sourceCommitId,
+							destinationCommitId: insertedCommit.newCommit,
+							changes: operation.changes,
+						});
+					})();
+				},
+				CommitMove: (operation) => {
+					commitMove.mutate({
 						projectId,
-						sourceCommitId:
-							insertedCommit.replacedCommits[operation.sourceCommitId] ?? operation.sourceCommitId,
-						destinationCommitId: insertedCommit.newCommit,
-						changes: operation.changes,
+						subjectCommitId: operation.subjectCommitId,
+						relativeTo: operation.relativeTo,
+						side: operation.side,
 					});
-				})();
+				},
+				MoveBranch: (operation) => {
+					moveBranch.mutate({
+						projectId,
+						subjectBranch: operation.subjectBranch,
+						targetBranch: operation.targetBranch,
+					});
+				},
+				TearOffBranch: (operation) => {
+					tearOffBranch.mutate({
+						projectId,
+						subjectBranch: operation.subjectBranch,
+					});
+				},
 			}),
-			Match.tag("CommitMove", (operation) => {
-				commitMove.mutate({
-					projectId,
-					subjectCommitId: operation.subjectCommitId,
-					relativeTo: operation.relativeTo,
-					side: operation.side,
-				});
-			}),
-			Match.tag("MoveBranch", (operation) => {
-				moveBranch.mutate({
-					projectId,
-					subjectBranch: operation.subjectBranch,
-					targetBranch: operation.targetBranch,
-				});
-			}),
-			Match.tag("TearOffBranch", (operation) => {
-				tearOffBranch.mutate({
-					projectId,
-					subjectBranch: operation.subjectBranch,
-				});
-			}),
-			Match.exhaustive,
 		);
 	};
 };

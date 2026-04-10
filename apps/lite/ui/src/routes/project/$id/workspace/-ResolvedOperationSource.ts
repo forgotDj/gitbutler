@@ -78,50 +78,53 @@ const resolveOperationSource = ({
 			},
 			File: ({ parent, path }): ResolvedOperationSource | null => {
 				const change = Match.value(parent).pipe(
-					Match.tag("ChangesSection", () => {
-						if (!worktreeChanges) return null;
+					Match.tagsExhaustive({
+						ChangesSection: () => {
+							if (!worktreeChanges) return null;
 
-						return worktreeChanges.changes.find((candidate) => candidate.path === path) ?? null;
-					}),
-					Match.tag("Commit", ({ commitId }) => {
-						const commitDetails = getCommitDetails(commitId);
-						if (!commitDetails) return null;
+							return worktreeChanges.changes.find((candidate) => candidate.path === path) ?? null;
+						},
+						Commit: ({ commitId }) => {
+							const commitDetails = getCommitDetails(commitId);
+							if (!commitDetails) return null;
 
-						return commitDetails.changes.find((candidate) => candidate.path === path) ?? null;
+							return commitDetails.changes.find((candidate) => candidate.path === path) ?? null;
+						},
 					}),
-					Match.exhaustive,
 				);
 
 				if (!change) return null;
 
 				const hunkHeaders = Match.value(parent).pipe(
-					Match.tag("ChangesSection", ({ stackId }) => {
-						if (!worktreeChanges) return [];
+					Match.tagsExhaustive({
+						ChangesSection: ({ stackId }) => {
+							if (!worktreeChanges) return [];
 
-						return hunkHeadersForAssignments(
-							getAssignmentsByPath(worktreeChanges.assignments, stackId).get(path),
-						);
+							return hunkHeadersForAssignments(
+								getAssignmentsByPath(worktreeChanges.assignments, stackId).get(path),
+							);
+						},
+						Commit: () => [],
 					}),
-					Match.tag("Commit", () => []),
-					Match.exhaustive,
 				);
 
 				return { _tag: "TreeChanges", parent, changes: [{ change, hunkHeaders }] };
 			},
 			Hunk: ({ parent, path, hunkHeader }): ResolvedOperationSource | null => {
 				const change = Match.value(parent).pipe(
-					Match.tag("ChangesSection", () => {
-						if (!worktreeChanges) return null;
+					Match.tagsExhaustive({
+						ChangesSection: () => {
+							if (!worktreeChanges) return null;
 
-						return worktreeChanges.changes.find((candidate) => candidate.path === path) ?? null;
-					}),
-					Match.tag("Commit", ({ commitId }) => {
-						const commitDetails = getCommitDetails(commitId);
-						if (!commitDetails) return null;
+							return worktreeChanges.changes.find((candidate) => candidate.path === path) ?? null;
+						},
+						Commit: ({ commitId }) => {
+							const commitDetails = getCommitDetails(commitId);
+							if (!commitDetails) return null;
 
-						return commitDetails.changes.find((candidate) => candidate.path === path) ?? null;
+							return commitDetails.changes.find((candidate) => candidate.path === path) ?? null;
+						},
 					}),
-					Match.exhaustive,
 				);
 
 				if (!change) return null;
@@ -289,17 +292,16 @@ export const getBranchTargetOperation = ({
 	branchRef: Array<number>;
 }): Operation | null =>
 	Match.value(resolvedOperationSource).pipe(
-		Match.tag("Segment", (source): Operation | null => {
-			if (source.branchRef === null) return null;
-			return {
-				_tag: "MoveBranch",
-				subjectBranch: decodeRefName(source.branchRef),
-				targetBranch: decodeRefName(branchRef),
-			};
-		}),
-		Match.tag(
-			"Commit",
-			({ commitId }): Operation => ({
+		Match.tags({
+			Segment: (source): Operation | null => {
+				if (source.branchRef === null) return null;
+				return {
+					_tag: "MoveBranch",
+					subjectBranch: decodeRefName(source.branchRef),
+					targetBranch: decodeRefName(branchRef),
+				};
+			},
+			Commit: ({ commitId }): Operation => ({
 				_tag: "CommitMove",
 				subjectCommitId: commitId,
 				relativeTo: {
@@ -308,35 +310,30 @@ export const getBranchTargetOperation = ({
 				},
 				side: "below",
 			}),
-		),
-		Match.tag("TreeChanges", (source): Operation | null => {
-			const changes = source.changes.map(({ change, hunkHeaders }) =>
-				createDiffSpec(change, hunkHeaders),
-			);
+			TreeChanges: (source): Operation | null => {
+				const changes = source.changes.map(({ change, hunkHeaders }) =>
+					createDiffSpec(change, hunkHeaders),
+				);
 
-			return Match.value(source.parent).pipe(
-				Match.tag(
-					"ChangesSection",
-					(): Operation => ({
-						_tag: "CommitCreate",
-						relativeTo: { type: "referenceBytes", subject: branchRef },
-						side: "below",
-						changes,
-						message: "",
+				return Match.value(source.parent).pipe(
+					Match.tagsExhaustive({
+						ChangesSection: (): Operation => ({
+							_tag: "CommitCreate",
+							relativeTo: { type: "referenceBytes", subject: branchRef },
+							side: "below",
+							changes,
+							message: "",
+						}),
+						Commit: ({ commitId: sourceCommitId }): Operation => ({
+							_tag: "CommitCreateFromCommittedChanges",
+							sourceCommitId,
+							relativeTo: { type: "referenceBytes", subject: branchRef },
+							side: "below",
+							changes,
+						}),
 					}),
-				),
-				Match.tag(
-					"Commit",
-					({ commitId: sourceCommitId }): Operation => ({
-						_tag: "CommitCreateFromCommittedChanges",
-						sourceCommitId,
-						relativeTo: { type: "referenceBytes", subject: branchRef },
-						side: "below",
-						changes,
-					}),
-				),
-				Match.exhaustive,
-			);
+				);
+			},
 		}),
 		Match.orElse(() => null),
 	);

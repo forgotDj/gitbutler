@@ -615,33 +615,33 @@ const Preview: FC<{
 	remote: string | null;
 }> = ({ projectId, selection, remote }) =>
 	Match.value(selection).pipe(
-		Match.tag("Branch", ({ branchName }) => (
-			<ShowBranch
-				projectId={projectId}
-				branchName={branchName}
-				remote={remote}
-				renderHunk={(change, hunk) => <Hunk change={change} hunk={hunk} />}
-			/>
-		)),
-		Match.tag("Commit", ({ branchName, commitId, mode }) =>
-			mode._tag === "Details" && mode.path !== undefined ? (
-				<ShowBranchCommitFile
+		Match.tagsExhaustive({
+			Branch: ({ branchName }) => (
+				<ShowBranch
 					projectId={projectId}
 					branchName={branchName}
 					remote={remote}
-					commitId={commitId}
-					path={mode.path}
-				/>
-			) : (
-				<ShowBranchCommit
-					projectId={projectId}
-					branchName={branchName}
-					remote={remote}
-					commitId={commitId}
+					renderHunk={(change, hunk) => <Hunk change={change} hunk={hunk} />}
 				/>
 			),
-		),
-		Match.exhaustive,
+			Commit: ({ branchName, commitId, mode }) =>
+				mode._tag === "Details" && mode.path !== undefined ? (
+					<ShowBranchCommitFile
+						projectId={projectId}
+						branchName={branchName}
+						remote={remote}
+						commitId={commitId}
+						path={mode.path}
+					/>
+				) : (
+					<ShowBranchCommit
+						projectId={projectId}
+						branchName={branchName}
+						remote={remote}
+						commitId={commitId}
+					/>
+				),
+		}),
 	);
 
 const ProjectBranchesPage: FC = () => {
