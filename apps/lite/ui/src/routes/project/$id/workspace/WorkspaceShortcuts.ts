@@ -1,8 +1,8 @@
 import { getAction, type ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import { useRunOperation } from "#ui/Operation.ts";
-import { isTypingTarget } from "#ui/routes/project/$id/-shared.tsx";
-import { getFocus, type ProjectLayoutState } from "#ui/routes/project/$id/-state/layout.ts";
-import { projectActions } from "#ui/routes/project/$id/-state/projectSlice.ts";
+import { isTypingTarget } from "#ui/routes/project/$id/shared.tsx";
+import { getFocus, type ProjectLayoutState } from "#ui/routes/project/$id/state/layout.ts";
+import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { useAppDispatch } from "#ui/state/hooks.ts";
 import { AbsorptionTarget } from "@gitbutler/but-sdk";
 import { Match } from "effect";
@@ -21,13 +21,13 @@ import {
 	type Item,
 	segmentItem,
 	type SegmentItem,
-} from "./-Item.ts";
-import { operationModeToOperation } from "./-OperationMode.tsx";
-import { operationSourceFromItem } from "./-OperationSource.ts";
-import { useResolveOperationSource } from "./-ResolvedOperationSource.ts";
+} from "./Item.ts";
+import { operationModeToOperation } from "./OperationMode.tsx";
+import { operationSourceFromItem } from "./OperationSource.ts";
+import { useResolveOperationSource } from "./ResolvedOperationSource.ts";
 import { PreviewImperativeHandle } from "./route.tsx";
-import { getAdjacentItem, getAdjacentSection, type NavigationIndex } from "./-WorkspaceModel.ts";
-import { OperationMode, type WorkspaceMode } from "./-WorkspaceMode.ts";
+import { getAdjacentItem, getAdjacentSection, type NavigationIndex } from "./WorkspaceModel.ts";
+import { OperationMode, type WorkspaceMode } from "./WorkspaceMode.ts";
 
 type MoveItemSelectionAction = { offset: -1 | 1 };
 

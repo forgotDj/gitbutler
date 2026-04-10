@@ -12,7 +12,7 @@ import {
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Match } from "effect";
 import { ComponentProps, FC, ReactNode } from "react";
-import styles from "./-shared.module.css";
+import styles from "./shared.module.css";
 
 // https://linear.app/gitbutler/issue/GB-1161/refsbranches-should-use-bytes-instead-of-strings
 export const decodeRefName = (fullNameBytes: Array<number>): string =>

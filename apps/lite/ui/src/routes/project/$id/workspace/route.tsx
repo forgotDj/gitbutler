@@ -27,8 +27,8 @@ import {
 	type FileParent,
 } from "#ui/domain/FileParent.ts";
 import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
-import { ProjectPreviewLayout } from "#ui/routes/project/$id/-ProjectPreviewLayout.tsx";
-import { getFocus } from "#ui/routes/project/$id/-state/layout.ts";
+import { ProjectPreviewLayout } from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
+import { getFocus } from "#ui/routes/project/$id/state/layout.ts";
 import {
 	projectActions,
 	selectProjectExpandedCommitId,
@@ -37,18 +37,18 @@ import {
 	selectProjectSelectedHunk,
 	selectProjectSelectedItem,
 	selectProjectWorkspaceModeState,
-} from "#ui/routes/project/$id/-state/projectSlice.ts";
-import { normalizeSelectedHunk } from "#ui/routes/project/$id/-state/workspace.ts";
-import { AbsorptionDialog, useAbsorption } from "#ui/routes/project/$id/workspace/-Absorption.tsx";
-import { useMonitorDraggedOperationSource } from "#ui/routes/project/$id/workspace/-DragAndDrop.tsx";
-import { isOperationModeSourceOrTarget } from "#ui/routes/project/$id/workspace/-OperationMode.tsx";
-import { OperationSourceC } from "#ui/routes/project/$id/workspace/-OperationSourceC.tsx";
-import { useResolveOperationSource } from "#ui/routes/project/$id/workspace/-ResolvedOperationSource.ts";
+} from "#ui/routes/project/$id/state/projectSlice.ts";
+import { normalizeSelectedHunk } from "#ui/routes/project/$id/state/workspace.ts";
+import { AbsorptionDialog, useAbsorption } from "#ui/routes/project/$id/workspace/Absorption.tsx";
+import { useMonitorDraggedOperationSource } from "#ui/routes/project/$id/workspace/DragAndDrop.tsx";
+import { isOperationModeSourceOrTarget } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
+import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
+import { useResolveOperationSource } from "#ui/routes/project/$id/workspace/ResolvedOperationSource.ts";
 import {
 	CommitTarget,
 	OperationTarget,
-} from "#ui/routes/project/$id/workspace/-OperationTargets.tsx";
-import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/-OperationSourceLabel.tsx";
+} from "#ui/routes/project/$id/workspace/OperationTargets.tsx";
+import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import {
 	CommitFiles as SharedCommitFiles,
 	CommitsList,
@@ -64,7 +64,7 @@ import {
 	getRelative,
 	hunkKey,
 	encodeRefName,
-} from "#ui/routes/project/$id/-shared.tsx";
+} from "#ui/routes/project/$id/shared.tsx";
 import uiStyles from "#ui/ui.module.css";
 import { ContextMenu, Menu, mergeProps, Tooltip, useRender } from "@base-ui/react";
 import {
@@ -97,7 +97,7 @@ import {
 } from "react";
 import { Route as projectRoute } from "#ui/routes/project/$id/route.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
-import sharedStyles from "../-shared.module.css";
+import sharedStyles from "../shared.module.css";
 import {
 	baseCommitItem,
 	changeItem,
@@ -109,7 +109,7 @@ import {
 	type Item,
 	SegmentItem,
 	segmentItem,
-} from "./-Item.ts";
+} from "./Item.ts";
 import {
 	buildNavigationIndex,
 	filterNavigationIndex,
@@ -117,7 +117,7 @@ import {
 	navigationIndexIncludes,
 	type NavigationIndex,
 	useWorkspaceOutline,
-} from "./-WorkspaceModel.ts";
+} from "./WorkspaceModel.ts";
 import {
 	getScopeBindings,
 	getScopeLabel,
@@ -125,21 +125,21 @@ import {
 	renameBranchBindings,
 	rewordCommitBindings,
 	useWorkspaceShortcuts,
-} from "./-WorkspaceShortcuts.ts";
-import { PositionedShortcutsBar } from "../-ShortcutsBar.tsx";
+} from "./WorkspaceShortcuts.ts";
+import { PositionedShortcutsBar } from "../ShortcutsBar.tsx";
 import { formatShortcutKeys, ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import styles from "./route.module.css";
 import {
 	fileOperationSource,
 	hunkOperationSource,
 	operationSourceFromItem,
-} from "./-OperationSource.ts";
+} from "./OperationSource.ts";
 import {
 	getOperationMode,
 	normalizeWorkspaceMode,
 	type OperationMode,
 	type WorkspaceMode,
-} from "./-WorkspaceMode.ts";
+} from "./WorkspaceMode.ts";
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 const fileHunkKey = (path: string, hunk: HunkHeader): string => `${path}:${hunkKey(hunk)}`;

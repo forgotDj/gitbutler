@@ -4,17 +4,17 @@ import { FC, useState } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext } from "@tanstack/react-router";
 import { ShortcutButton } from "#ui/ShortcutButton.tsx";
-import { ShortcutsBarPortalContext } from "#ui/routes/project/$id/-ShortcutsBar.tsx";
-import { isPreviewPanelVisible } from "#ui/routes/project/$id/-state/layout.ts";
+import { ShortcutsBarPortalContext } from "#ui/routes/project/$id/ShortcutsBar.tsx";
+import { isPreviewPanelVisible } from "#ui/routes/project/$id/state/layout.ts";
 import {
 	projectActions,
 	selectProjectLayoutState,
-} from "#ui/routes/project/$id/-state/projectSlice.ts";
+} from "#ui/routes/project/$id/state/projectSlice.ts";
 import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import {
 	toggleFullscreenPreviewBinding,
 	togglePreviewBinding,
-} from "#ui/routes/project/$id/workspace/-WorkspaceShortcuts.ts";
+} from "#ui/routes/project/$id/workspace/WorkspaceShortcuts.ts";
 import uiStyles from "#ui/ui.module.css";
 import styles from "./__root.module.css";
 

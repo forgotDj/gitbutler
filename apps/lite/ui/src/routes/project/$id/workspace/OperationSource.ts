@@ -5,7 +5,7 @@ import {
 } from "#ui/domain/FileParent.ts";
 import { type HunkHeader } from "@gitbutler/but-sdk";
 import { Match } from "effect";
-import { type Item } from "./-Item.ts";
+import { type Item } from "./Item.ts";
 
 /** @public */
 export type ChangesSectionOperationSource = { stackId: string | null };

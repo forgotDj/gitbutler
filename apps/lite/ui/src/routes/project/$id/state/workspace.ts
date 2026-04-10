@@ -4,8 +4,8 @@ import {
 	type CommitItem,
 	type Item,
 	type SegmentItem,
-} from "../workspace/-Item.ts";
-import { type OperationSource } from "../workspace/-OperationSource.ts";
+} from "../workspace/Item.ts";
+import { type OperationSource } from "../workspace/OperationSource.ts";
 import {
 	defaultWorkspaceMode,
 	moveOperationMode,
@@ -13,7 +13,7 @@ import {
 	rewordCommitWorkspaceMode,
 	rubOperationMode,
 	type WorkspaceMode,
-} from "../workspace/-WorkspaceMode.ts";
+} from "../workspace/WorkspaceMode.ts";
 
 export type WorkspaceSelectionState = {
 	hunk: string | null;

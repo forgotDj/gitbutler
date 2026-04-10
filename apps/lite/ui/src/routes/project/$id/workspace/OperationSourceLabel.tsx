@@ -4,11 +4,11 @@ import {
 	decodeRefName,
 	formatHunkHeader,
 	shortCommitId,
-} from "#ui/routes/project/$id/-shared.tsx";
+} from "#ui/routes/project/$id/shared.tsx";
 import { Match } from "effect";
 import { type FC } from "react";
 import { type RefInfo } from "@gitbutler/but-sdk";
-import { type OperationSource } from "./-OperationSource.ts";
+import { type OperationSource } from "./OperationSource.ts";
 
 export const OperationSourceLabel: FC<{
 	source: OperationSource;

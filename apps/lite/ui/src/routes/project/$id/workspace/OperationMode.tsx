@@ -1,16 +1,16 @@
 import { type Operation } from "#ui/Operation.ts";
 import { changesSectionFileParent, commitFileParent } from "#ui/domain/FileParent.ts";
 import { Match } from "effect";
-import { type Item } from "./-Item.ts";
+import { type Item } from "./Item.ts";
 import {
 	getBranchTargetOperation,
 	getCombineOperation,
 	getCommitTargetMoveOperation,
 	getTearOffBranchTargetOperation,
 	type ResolvedOperationSource,
-} from "./-ResolvedOperationSource.ts";
-import { operationSourceMatchesItem } from "./-OperationSource.ts";
-import { type OperationMode } from "./-WorkspaceMode.ts";
+} from "./ResolvedOperationSource.ts";
+import { operationSourceMatchesItem } from "./OperationSource.ts";
+import { type OperationMode } from "./WorkspaceMode.ts";
 
 const rubModeOperationSourceToOperation = ({
 	resolvedOperationSource,

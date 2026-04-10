@@ -23,7 +23,7 @@ import { applyBranchMutationOptions, unapplyStackMutationOptions } from "#ui/api
 import { listBranchesQueryOptions, listProjectsQueryOptions } from "#ui/api/queries.ts";
 import { CheckIcon, ArrowDownIcon, ArrowUpIcon, AddCircleIcon } from "#ui/components/icons.tsx";
 import { commitFileParent } from "#ui/domain/FileParent.ts";
-import { ProjectPreviewLayout } from "#ui/routes/project/$id/-ProjectPreviewLayout.tsx";
+import { ProjectPreviewLayout } from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
 import {
 	CommitFiles,
 	CommitLabel,
@@ -33,12 +33,12 @@ import {
 	HunkDiff,
 	hunkKey,
 	Patch,
-} from "#ui/routes/project/$id/-shared.tsx";
-import { OperationSourceC } from "#ui/routes/project/$id/workspace/-OperationSourceC.tsx";
-import { fileOperationSource } from "#ui/routes/project/$id/workspace/-OperationSource.ts";
+} from "#ui/routes/project/$id/shared.tsx";
+import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
+import { fileOperationSource } from "#ui/routes/project/$id/workspace/OperationSource.ts";
 import { Route as projectRoute } from "#ui/routes/project/$id/route.tsx";
 import uiStyles from "#ui/ui.module.css";
-import sharedStyles from "../-shared.module.css";
+import sharedStyles from "../shared.module.css";
 import {
 	branchSelection,
 	commitSelection,
@@ -47,7 +47,7 @@ import {
 	isValidBranchSelection,
 	type Selection,
 	summaryCommitMode,
-} from "./-Selection.ts";
+} from "./Selection.ts";
 
 const FileDiff: FC<{
 	projectId: string;

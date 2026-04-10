@@ -1,12 +1,12 @@
 import { absorbMutationOptions, absorptionPlanMutationOptions } from "#ui/api/mutations.ts";
 import { classes } from "#ui/classes.ts";
-import { commitTitle, shortCommitId } from "#ui/routes/project/$id/-shared.tsx";
+import { commitTitle, shortCommitId } from "#ui/routes/project/$id/shared.tsx";
 import uiStyles from "#ui/ui.module.css";
 import { AlertDialog, Toast } from "@base-ui/react";
 import { AbsorptionReason, AbsorptionTarget, CommitAbsorption } from "@gitbutler/but-sdk";
 import { useMutation } from "@tanstack/react-query";
 import { FC, useState } from "react";
-import styles from "./-Absorption.module.css";
+import styles from "./Absorption.module.css";
 import { dedupe } from "effect/Array";
 
 const describeAbsorptionReason = (reason: AbsorptionReason): string | null => {

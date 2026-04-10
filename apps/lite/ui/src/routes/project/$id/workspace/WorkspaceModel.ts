@@ -15,8 +15,8 @@ import {
 	commitFileItem,
 	itemIdentityKey,
 	segmentItem,
-} from "./-Item.ts";
-import { getRelative } from "../-shared.tsx";
+} from "./Item.ts";
+import { getRelative } from "../shared.tsx";
 
 const hasAssignmentsForPath = ({
 	assignments,
