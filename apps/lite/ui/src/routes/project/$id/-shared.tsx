@@ -142,7 +142,7 @@ export const FileButton: FC<
 	</button>
 );
 
-export const CommitDetails: FC<{
+export const CommitFiles: FC<{
 	projectId: string;
 	commitId: string;
 	renderFile: (change: TreeChange) => ReactNode;
@@ -162,7 +162,7 @@ export const CommitDetails: FC<{
 		: [];
 
 	if (conflictedPaths.length === 0 && data.changes.length === 0)
-		return <div className={styles.rowEmpty}>No file changes.</div>;
+		return <div className={styles.itemRowEmpty}>No file changes.</div>;
 
 	return (
 		<>

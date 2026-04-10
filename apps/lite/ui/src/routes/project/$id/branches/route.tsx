@@ -6,7 +6,7 @@ import {
 } from "#ui/api/queries.ts";
 import { classes } from "#ui/classes.ts";
 import { ExpandCollapseIcon, MenuTriggerIcon } from "#ui/components/icons.tsx";
-import { ContextMenu, Menu } from "@base-ui/react";
+import { ContextMenu, Menu, Tooltip } from "@base-ui/react";
 import { BranchDetails, BranchListing, Commit, DiffHunk, TreeChange } from "@gitbutler/but-sdk";
 import {
 	useMutation,
@@ -24,7 +24,7 @@ import { listBranchesQueryOptions, listProjectsQueryOptions } from "#ui/api/quer
 import { CheckIcon, ArrowDownIcon, ArrowUpIcon, AddCircleIcon } from "#ui/components/icons.tsx";
 import { ProjectPreviewLayout } from "#ui/routes/project/$id/-ProjectPreviewLayout.tsx";
 import {
-	CommitDetails,
+	CommitFiles,
 	CommitLabel,
 	CommitsList,
 	FileButton,
@@ -33,7 +33,7 @@ import {
 	hunkKey,
 	Patch,
 } from "#ui/routes/project/$id/-shared.tsx";
-import { CommitFileSource } from "#ui/routes/project/$id/workspace/-OperationSubjects.tsx";
+import { OperationSourceC } from "#ui/routes/project/$id/workspace/-OperationSourceC.tsx";
 import uiStyles from "#ui/ui.module.css";
 import sharedStyles from "../-shared.module.css";
 import { getDefaultSelection, isValidBranchSelection, Selection } from "./-Selection.ts";
@@ -133,12 +133,16 @@ const ShowCommit: FC<{
 					{changes.map((change) => (
 						<li key={change.path}>
 							{editable ? (
-								<CommitFileSource
-									change={change}
-									fileParent={{ _tag: "Commit", commitId: commit.id }}
+								<OperationSourceC
+									projectId={projectId}
+									source={{
+										_tag: "File",
+										parent: { _tag: "Commit", commitId: commit.id },
+										path: change.path,
+									}}
 								>
 									<h4>{change.path}</h4>
-								</CommitFileSource>
+								</OperationSourceC>
 							) : (
 								<h4>{change.path}</h4>
 							)}
@@ -269,7 +273,7 @@ const BranchApplyToggle: FC<{
 	return isApplied ? (
 		<button
 			type="button"
-			className={classes(sharedStyles.rowAction, styles.branchApplyToggle)}
+			className={classes(sharedStyles.itemRowAction, styles.branchApplyToggle)}
 			disabled={stackId === undefined}
 			aria-label={`Unapply branch ${branch.name}`}
 			onClick={() => {
@@ -283,7 +287,7 @@ const BranchApplyToggle: FC<{
 	) : (
 		<button
 			type="button"
-			className={classes(sharedStyles.rowAction, styles.branchApplyToggle)}
+			className={classes(sharedStyles.itemRowAction, styles.branchApplyToggle)}
 			aria-label={`Apply branch ${branch.name}`}
 			onClick={() => {
 				applyBranch.mutate({
@@ -315,8 +319,7 @@ const BranchRow: FC<
 		<div
 			{...restProps}
 			className={classes(
-				sharedStyles.row,
-				(branchSelection || commitSelection) && sharedStyles.rowSelected,
+				sharedStyles.itemRow,
 				(branchSelection || commitSelection) && sharedStyles.itemRowSelected,
 				className,
 			)}
@@ -349,7 +352,10 @@ const BranchRow: FC<
 			</ContextMenu.Root>
 			<BranchApplyToggle branch={branch} projectId={projectId} />
 			<Menu.Root>
-				<Menu.Trigger className={sharedStyles.rowAction} aria-label={`Branch ${branch.name} menu`}>
+				<Menu.Trigger
+					className={sharedStyles.itemRowAction}
+					aria-label={`Branch ${branch.name} menu`}
+				>
 					<MenuTriggerIcon />
 				</Menu.Trigger>
 				<Menu.Portal>
@@ -401,12 +407,10 @@ const CommitRow: FC<{
 			);
 		});
 	};
-
 	return (
 		<div
 			className={classes(
-				sharedStyles.row,
-				commitSelection && sharedStyles.rowSelected,
+				sharedStyles.itemRow,
 				commitSelection && sharedStyles.itemRowSelected,
 				isHighlighted && sharedStyles.itemRowHighlighted,
 			)}
@@ -427,17 +431,30 @@ const CommitRow: FC<{
 			>
 				<CommitLabel commit={commit} />
 			</button>
-			<button
-				className={sharedStyles.rowAction}
-				type="button"
-				onClick={toggleDetails}
-				aria-expanded={commitSelection?.mode._tag === "Details"}
-				aria-label={
-					commitSelection?.mode._tag === "Details" ? "Hide commit details" : "Show commit details"
-				}
+			<Tooltip.Root
+				// Prevent tooltip from lingering while moving between nearby controls.
+				// [tag:tooltip-disable-hoverable-popup]
+				disableHoverablePopup
 			>
-				<ExpandCollapseIcon isExpanded={commitSelection?.mode._tag === "Details"} />
-			</button>
+				<Tooltip.Trigger
+					className={sharedStyles.itemRowAction}
+					type="button"
+					onClick={toggleDetails}
+					aria-expanded={commitSelection?.mode._tag === "Details"}
+					aria-label={
+						commitSelection?.mode._tag === "Details" ? "Hide commit files" : "Show commit files"
+					}
+				>
+					<ExpandCollapseIcon isExpanded={commitSelection?.mode._tag === "Details"} />
+				</Tooltip.Trigger>
+				<Tooltip.Portal>
+					<Tooltip.Positioner sideOffset={8}>
+						<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
+							{commitSelection?.mode._tag === "Details" ? "Hide commit files" : "Show commit files"}
+						</Tooltip.Popup>
+					</Tooltip.Positioner>
+				</Tooltip.Portal>
+			</Tooltip.Root>
 		</div>
 	);
 };
@@ -467,8 +484,8 @@ const CommitC: FC<{
 				isHighlighted={false}
 			/>
 			{commitSelection?.mode._tag === "Details" && (
-				<Suspense fallback={<div className={sharedStyles.rowEmpty}>Loading change details…</div>}>
-					<CommitDetails
+				<Suspense fallback={<div className={sharedStyles.itemRowEmpty}>Loading commit files…</div>}>
+					<CommitFiles
 						projectId={projectId}
 						commitId={commit.id}
 						renderFile={(change) => {
@@ -478,10 +495,9 @@ const CommitC: FC<{
 							return (
 								<div
 									className={classes(
-										sharedStyles.row,
-										isSelected && sharedStyles.rowSelected,
+										sharedStyles.itemRow,
+										isSelected && sharedStyles.itemRowSelected,
 										sharedStyles.fileRow,
-										isSelected && sharedStyles.fileRowSelected,
 									)}
 								>
 									<FileButton

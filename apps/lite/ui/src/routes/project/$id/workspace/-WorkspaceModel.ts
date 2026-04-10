@@ -1,4 +1,10 @@
+import {
+	changesInWorktreeQueryOptions,
+	commitDetailsWithLineStatsQueryOptions,
+	headInfoQueryOptions,
+} from "#ui/api/queries.ts";
 import { Segment, type HunkAssignment, type RefInfo, type TreeChange } from "@gitbutler/but-sdk";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { type NonEmptyArray } from "effect/Array";
 import {
 	baseCommitItem,
@@ -6,11 +12,11 @@ import {
 	changesSectionItem,
 	type Item,
 	commitItem,
+	commitFileItem,
 	itemIdentityKey,
 	segmentItem,
 } from "./-Item.ts";
 import { getRelative } from "../-shared.tsx";
-import { asSelectedItem, SelectedItem } from "./-SelectedItem.ts";
 
 const hasAssignmentsForPath = ({
 	assignments,
@@ -36,12 +42,16 @@ type BuildWorkspaceOutlineArgs = {
 	headInfo: RefInfo;
 	changes: Array<TreeChange>;
 	assignments: Array<HunkAssignment>;
+	expandedCommitId?: string | null;
+	expandedCommitPaths?: Array<string>;
 };
 
-export const buildWorkspaceOutline = ({
+const buildWorkspaceOutline = ({
 	headInfo,
 	changes,
 	assignments,
+	expandedCommitId = null,
+	expandedCommitPaths,
 }: BuildWorkspaceOutlineArgs): WorkspaceOutline => {
 	const changesSection = (stackId: string | null): WorkspaceSection => ({
 		section: changesSectionItem(stackId),
@@ -60,9 +70,20 @@ export const buildWorkspaceOutline = ({
 		const branchRef = segment.refName?.fullNameBytes ?? null;
 		return {
 			section: segmentItem({ stackId, segmentIndex, branchRef }),
-			children: segment.commits.map((commit) =>
+			children: segment.commits.flatMap((commit) => [
 				commitItem({ stackId, segmentIndex, branchRef, commitId: commit.id }),
-			),
+				...(commit.id === expandedCommitId
+					? (expandedCommitPaths ?? []).map((path) =>
+							commitFileItem({
+								stackId,
+								segmentIndex,
+								branchRef,
+								commitId: commit.id,
+								path,
+							}),
+						)
+					: []),
+			]),
 		};
 	};
 
@@ -87,6 +108,32 @@ export const buildWorkspaceOutline = ({
 
 		baseCommitSection,
 	];
+};
+
+export const useWorkspaceOutline = ({
+	projectId,
+	expandedCommitId,
+}: {
+	projectId: string;
+	expandedCommitId: string | null;
+}) => {
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
+	const { data: expandedCommitDetails } = useQuery({
+		...commitDetailsWithLineStatsQueryOptions({
+			projectId,
+			commitId: expandedCommitId ?? "",
+		}),
+		enabled: expandedCommitId !== null,
+	});
+
+	return buildWorkspaceOutline({
+		headInfo,
+		changes: worktreeChanges.changes,
+		assignments: worktreeChanges.assignments,
+		expandedCommitId,
+		expandedCommitPaths: expandedCommitDetails?.changes.map((change) => change.path) ?? [],
+	});
 };
 
 export type NavigationIndex = {
@@ -119,6 +166,40 @@ export const buildNavigationIndex = (outline: WorkspaceOutline): NavigationIndex
 	}
 
 	return model;
+};
+
+export const filterNavigationIndex = (
+	index: NavigationIndex,
+	predicate: (item: Item) => boolean,
+): NavigationIndex => {
+	const filteredIndex: NavigationIndex = {
+		items: [],
+		sectionStartIndexes: [],
+		sectionIndexByItemIndex: [],
+		indexByKey: new Map<string, number>(),
+	};
+
+	let currentSectionIndex = -1;
+	let filteredSectionIndex = -1;
+
+	for (const [itemIndex, item] of index.items.entries()) {
+		if (!predicate(item)) continue;
+
+		const sectionIndex = index.sectionIndexByItemIndex[itemIndex] ?? -1;
+		if (sectionIndex !== currentSectionIndex) {
+			// Preserve the original section grouping, even when the section header
+			// itself is filtered out and the retained item is one of its children.
+			currentSectionIndex = sectionIndex;
+			filteredSectionIndex = filteredIndex.sectionStartIndexes.length;
+			filteredIndex.sectionStartIndexes.push(filteredIndex.items.length);
+		}
+
+		filteredIndex.indexByKey.set(itemIdentityKey(item), filteredIndex.items.length);
+		filteredIndex.sectionIndexByItemIndex.push(filteredSectionIndex);
+		filteredIndex.items.push(item);
+	}
+
+	return filteredIndex;
 };
 
 export const getAdjacentItem = (
@@ -154,5 +235,5 @@ export const getAdjacentSection = (
 export const navigationIndexIncludes = (navigationIndex: NavigationIndex, item: Item): boolean =>
 	navigationIndex.indexByKey.has(itemIdentityKey(item));
 
-export const getDefaultSelectedItem = (navigationIndex: NavigationIndex): SelectedItem | null =>
-	navigationIndex.items[0] ? asSelectedItem(navigationIndex.items[0]) : null;
+export const getDefaultItem = (navigationIndex: NavigationIndex): Item | null =>
+	navigationIndex.items[0] ?? null;

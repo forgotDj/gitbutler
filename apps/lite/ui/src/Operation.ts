@@ -56,7 +56,7 @@ export const getInsertionSide = (operation: Operation): InsertSide | null =>
 		Match.orElse(() => null),
 	);
 
-export const operationLabel = (operation: Operation): string | null =>
+export const operationLabel = (operation: Operation): string =>
 	Match.value(operation).pipe(
 		Match.tagsExhaustive({
 			AssignHunk: (operation) =>
@@ -68,7 +68,12 @@ export const operationLabel = (operation: Operation): string | null =>
 					Match.when("below", () => "Create commit below"),
 					Match.exhaustive,
 				),
-			CommitCreateFromCommittedChanges: () => "Create commit here",
+			CommitCreateFromCommittedChanges: ({ side }) =>
+				Match.value(side).pipe(
+					Match.when("above", () => "Create commit above"),
+					Match.when("below", () => "Create commit below"),
+					Match.exhaustive,
+				),
 			CommitMove: ({ side }) =>
 				Match.value(side).pipe(
 					Match.when("above", () => "Move commit above"),

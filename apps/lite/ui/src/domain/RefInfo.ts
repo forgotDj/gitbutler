@@ -1,4 +1,4 @@
-import { type RefInfo } from "@gitbutler/but-sdk";
+import { type Commit, type RefInfo, type Segment } from "@gitbutler/but-sdk";
 
 export const getCommonBaseCommitId = (headInfo: RefInfo): string | undefined => {
 	const bases = headInfo.stacks
@@ -19,4 +19,55 @@ export const getBranchNameByCommitId = (headInfo: RefInfo): Map<string, string> 
 		}
 
 	return byCommitId;
+};
+
+type CommitWithContext = {
+	stackId: string | null;
+	segmentIndex: number;
+	segment: Segment;
+	commit: Commit;
+};
+
+export const findCommitWithContext = ({
+	headInfo,
+	commitId,
+}: {
+	headInfo: RefInfo;
+	commitId: string;
+}): CommitWithContext | null => {
+	for (const stack of headInfo.stacks)
+		for (const [segmentIndex, segment] of stack.segments.entries()) {
+			const commit = segment.commits.find((candidate) => candidate.id === commitId);
+			if (!commit) continue;
+
+			return {
+				stackId: stack.id,
+				segmentIndex,
+				segment,
+				commit,
+			};
+		}
+
+	return null;
+};
+
+const branchRefsEqual = (left: Array<number> | null, right: Array<number> | null): boolean =>
+	left === right ||
+	(left !== null &&
+		right !== null &&
+		left.length === right.length &&
+		left.every((value, index) => value === right[index]));
+
+export const findSegmentByBranchRef = ({
+	headInfo,
+	branchRef,
+}: {
+	headInfo: RefInfo;
+	branchRef: Array<number> | null;
+}): Segment | null => {
+	for (const stack of headInfo.stacks)
+		for (const segment of stack.segments)
+			if (branchRefsEqual(segment.refName?.fullNameBytes ?? null, branchRef)) return segment;
+
+	return null;
 };

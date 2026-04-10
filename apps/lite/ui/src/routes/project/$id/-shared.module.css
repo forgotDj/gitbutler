@@ -8,6 +8,11 @@
 	flex-grow: 1;
 }
 
+[data-panel] {
+	/* `operationModePreview` is relative to this. */
+	position: relative;
+}
+
 .primaryPanel {
 	display: flex;
 	flex-direction: column;
@@ -43,18 +48,21 @@
 	width: 500px;
 }
 
-.row {
+.itemRow {
 	display: flex;
 	align-items: start;
-	overflow: clip;
 	border-radius: 8px;
 
 	&:where(:hover) {
 		background-color: var(--color-row-hover-bg);
 	}
+
+	&[inert] {
+		opacity: 0.5;
+	}
 }
 
-.rowEmpty {
+.itemRowEmpty {
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
 	color: var(--color-text-secondary);
@@ -79,16 +87,17 @@
 	background-color: var(--color-section-selected-bg);
 }
 
-.rowAction {
+.itemRowAction {
 	display: grid;
 	visibility: hidden;
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
+	border-radius: 8px;
 
 	&:enabled:hover {
 		background-color: var(--color-item-row-action-hover-bg);
 
-		.rowSelected & {
+		.itemRowSelected & {
 			background-color: var(--color-item-row-selected-action-hover-bg);
 		}
 	}
@@ -98,10 +107,10 @@
 		height: var(--row-line-height);
 	}
 
-	.row:hover &,
-	.row:focus-within &,
-	.row:has(.rowAction[aria-expanded="true"]) &,
-	.rowSelected & {
+	.itemRow:hover &,
+	.itemRow:focus-within &,
+	.itemRow:has(.itemRowAction[aria-expanded="true"]) &,
+	.itemRowSelected & {
 		visibility: visible;
 	}
 
@@ -140,10 +149,6 @@
 
 .fileRow {
 	padding-left: 8px;
-}
-
-.fileRowSelected {
-	background-color: var(--color-file-row-selected-bg);
 }
 
 .hunkHeaderRow {
