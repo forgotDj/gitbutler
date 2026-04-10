@@ -18,7 +18,44 @@ pub(super) fn route_operation<'a>(
     source: &'a CliId,
     target: &'a CliId,
 ) -> Option<RubOperation<'a>> {
-    crate::command::legacy::rub::route_operation(source, target)
+    Some(
+        match crate::command::legacy::rub::route_operation(source, target)? {
+            op @ RubOperation::UnassignUncommitted(..) => op,
+            op @ RubOperation::UncommittedToCommit(..) => op,
+            op @ RubOperation::UnassignedToCommit(..) => op,
+            op @ RubOperation::UndoCommit(..) => op,
+            op @ RubOperation::SquashCommits(..) => op,
+            op @ RubOperation::CommittedFileToCommit(..) => op,
+            op @ RubOperation::CommittedFileToUnassigned(..) => op,
+            op @ RubOperation::UncommittedToStack(..) => op,
+            op @ RubOperation::StackToUnassigned(..) => op,
+            op @ RubOperation::StackToStack(..) => op,
+            op @ RubOperation::UnassignedToStack(..) => op,
+
+            // dont allow rubbing with branches
+            RubOperation::UncommittedToBranch(..)
+            | RubOperation::StackToBranch(..)
+            | RubOperation::UnassignedToBranch(..)
+            | RubOperation::MoveCommitToBranch(..)
+            | RubOperation::BranchToUnassigned(..)
+            | RubOperation::BranchToStack(..)
+            | RubOperation::BranchToCommit(..)
+            | RubOperation::BranchToBranch(..)
+            | RubOperation::CommittedFileToBranch(..) => return None,
+        },
+    )
+}
+
+pub(super) fn supports_rubbing(id: &CliId) -> bool {
+    match id {
+        CliId::Branch { .. } => false,
+        CliId::Uncommitted(..)
+        | CliId::PathPrefix { .. }
+        | CliId::CommittedFile { .. }
+        | CliId::Commit { .. }
+        | CliId::Unassigned { .. }
+        | CliId::Stack { .. } => true,
+    }
 }
 
 /// Returns a human-facing operation descriptor for the source/target pair.

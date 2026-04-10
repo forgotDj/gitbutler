@@ -30,26 +30,24 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::{
     CliId,
-    command::legacy::{
-        status::{
-            CommitLineContent, FileLineContent, StatusFlags, StatusOutputLine, TuiLaunchOptions,
-            output::BranchLineContent,
-            tui::{
-                confirm::{Confirm, ConfirmMessage},
-                cursor::{Cursor, is_selectable_in_mode},
-                details::{Details, DetailsMessage, DetailsVisibility, RenderNextChunkResult},
-                event_polling::{CrosstermEventPolling, EventPolling, NoopEventPolling},
-                fps::FpsCounter,
-                graph_extension::{ExtensionDirection, extend_connector_spans},
-                highlight::{Highlights, with_highlight},
-                key_bind::{KeyBinds, confirm_key_binds, default_key_binds},
-                message_on_drop::MessageOnDrop,
-                mode::{
-                    CommandMode, CommitMode, CommitSource, InlineRewordMode, Mode, MoveMode,
-                    MoveSource, RubMode, RubSource,
-                },
-                toast::{ToastKind, Toasts},
+    command::legacy::status::{
+        CommitLineContent, FileLineContent, StatusFlags, StatusOutputLine, TuiLaunchOptions,
+        output::BranchLineContent,
+        tui::{
+            confirm::{Confirm, ConfirmMessage},
+            cursor::{Cursor, is_selectable_in_mode},
+            details::{Details, DetailsMessage, DetailsVisibility, RenderNextChunkResult},
+            event_polling::{CrosstermEventPolling, EventPolling, NoopEventPolling},
+            fps::FpsCounter,
+            graph_extension::{ExtensionDirection, extend_connector_spans},
+            highlight::{Highlights, with_highlight},
+            key_bind::{KeyBinds, confirm_key_binds, default_key_binds},
+            message_on_drop::MessageOnDrop,
+            mode::{
+                CommandMode, CommitMode, CommitSource, InlineRewordMode, Mode, MoveMode,
+                MoveSource, RubMode, RubSource,
             },
+            toast::{ToastKind, Toasts},
         },
     },
     tui::{CrosstermTerminalGuard, HeadlessTerminalGuard, TerminalGuard},
@@ -768,6 +766,15 @@ impl App {
         source: RubSource,
         unlock_details: Option<MessageOnDrop>,
     ) {
+        match &source {
+            RubSource::CliId(cli_id) => {
+                if !rub::supports_rubbing(cli_id) {
+                    return;
+                }
+            }
+            RubSource::CommittedHunk(..) => {}
+        }
+
         let available_targets = self
             .status_lines
             .iter()
