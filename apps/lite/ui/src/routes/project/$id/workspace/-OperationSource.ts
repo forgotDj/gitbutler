@@ -1,7 +1,22 @@
-import { type FileParent } from "#ui/domain/FileParent.ts";
+import {
+	changesSectionFileParent,
+	commitFileParent,
+	type FileParent,
+} from "#ui/domain/FileParent.ts";
 import { type HunkHeader } from "@gitbutler/but-sdk";
 import { Match } from "effect";
 import { type Item } from "./-Item.ts";
+
+/** @public */
+export type ChangesSectionOperationSource = { stackId: string | null };
+/** @public */
+export type CommitOperationSource = { commitId: string };
+/** @public */
+export type FileOperationSource = { parent: FileParent; path: string };
+/** @public */
+export type HunkOperationSource = { parent: FileParent; path: string; hunkHeader: HunkHeader };
+/** @public */
+export type SegmentOperationSource = { branchRef: Array<number> | null };
 
 /**
  * The source of an operation before it has been materialized into data that can
@@ -9,11 +24,55 @@ import { type Item } from "./-Item.ts";
  */
 export type OperationSource =
 	| { _tag: "BaseCommit" }
-	| { _tag: "ChangesSection"; stackId: string | null }
-	| { _tag: "Commit"; commitId: string }
-	| { _tag: "File"; parent: FileParent; path: string }
-	| { _tag: "Hunk"; parent: FileParent; path: string; hunkHeader: HunkHeader }
-	| { _tag: "Segment"; branchRef: Array<number> | null };
+	| ({ _tag: "ChangesSection" } & ChangesSectionOperationSource)
+	| ({ _tag: "Commit" } & CommitOperationSource)
+	| ({ _tag: "File" } & FileOperationSource)
+	| ({ _tag: "Hunk" } & HunkOperationSource)
+	| ({ _tag: "Segment" } & SegmentOperationSource);
+
+/** @public */
+export const baseCommitOperationSource: OperationSource = {
+	_tag: "BaseCommit",
+};
+
+/** @public */
+export const changesSectionOperationSource = ({
+	stackId,
+}: ChangesSectionOperationSource): OperationSource => ({
+	_tag: "ChangesSection",
+	stackId,
+});
+
+/** @public */
+export const commitOperationSource = ({ commitId }: CommitOperationSource): OperationSource => ({
+	_tag: "Commit",
+	commitId,
+});
+
+/** @public */
+export const fileOperationSource = ({ parent, path }: FileOperationSource): OperationSource => ({
+	_tag: "File",
+	parent,
+	path,
+});
+
+/** @public */
+export const hunkOperationSource = ({
+	parent,
+	path,
+	hunkHeader,
+}: HunkOperationSource): OperationSource => ({
+	_tag: "Hunk",
+	parent,
+	path,
+	hunkHeader,
+});
+
+/** @public */
+export const segmentOperationSource = ({ branchRef }: SegmentOperationSource): OperationSource => ({
+	_tag: "Segment",
+	branchRef,
+});
 
 const operationSourceIdentityKey = (operationSource: OperationSource): string =>
 	Match.value(operationSource).pipe(
@@ -33,20 +92,20 @@ export const operationSourceEquals = (a: OperationSource, b: OperationSource): b
 export const operationSourceFromItem = (item: Item): OperationSource =>
 	Match.value(item).pipe(
 		Match.tagsExhaustive({
-			BaseCommit: (): OperationSource => ({ _tag: "BaseCommit" }),
-			Change: ({ stackId, path }): OperationSource => ({
-				_tag: "File",
-				parent: { _tag: "ChangesSection", stackId },
-				path,
-			}),
-			ChangesSection: ({ stackId }): OperationSource => ({ _tag: "ChangesSection", stackId }),
-			Commit: ({ commitId }): OperationSource => ({ _tag: "Commit", commitId }),
-			CommitFile: ({ commitId, path }): OperationSource => ({
-				_tag: "File",
-				parent: { _tag: "Commit", commitId },
-				path,
-			}),
-			Segment: ({ branchRef }): OperationSource => ({ _tag: "Segment", branchRef }),
+			BaseCommit: () => baseCommitOperationSource,
+			Change: ({ stackId, path }) =>
+				fileOperationSource({
+					parent: changesSectionFileParent({ stackId }),
+					path,
+				}),
+			ChangesSection: ({ stackId }) => changesSectionOperationSource({ stackId }),
+			Commit: ({ commitId }) => commitOperationSource({ commitId }),
+			CommitFile: ({ commitId, path }) =>
+				fileOperationSource({
+					parent: commitFileParent({ commitId }),
+					path,
+				}),
+			Segment: ({ branchRef }) => segmentOperationSource({ branchRef }),
 		}),
 	);
 

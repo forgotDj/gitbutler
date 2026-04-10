@@ -2,15 +2,58 @@ import { Match } from "effect";
 import { type OperationSource, operationSourceMatchesItem } from "./-OperationSource.ts";
 import { type NavigationIndex } from "./-WorkspaceModel.ts";
 
+/** @public */
+export type RubOperationMode = { source: OperationSource };
+/** @public */
+export type MoveOperationMode = { source: OperationSource };
 export type OperationMode =
-	| { _tag: "Rub"; source: OperationSource }
-	| { _tag: "Move"; source: OperationSource };
+	| ({ _tag: "Rub" } & RubOperationMode)
+	| ({ _tag: "Move" } & MoveOperationMode);
 
+/** @public */
+export type RewordCommitWorkspaceMode = { commitId: string };
+/** @public */
+export type RenameBranchWorkspaceMode = { stackId: string; segmentIndex: number };
 export type WorkspaceMode =
 	| { _tag: "Default" }
-	| { _tag: "RewordCommit"; commitId: string }
-	| { _tag: "RenameBranch"; stackId: string; segmentIndex: number }
+	| ({ _tag: "RewordCommit" } & RewordCommitWorkspaceMode)
+	| ({ _tag: "RenameBranch" } & RenameBranchWorkspaceMode)
 	| OperationMode;
+
+/** @public */
+export const rubOperationMode = ({ source }: RubOperationMode): OperationMode => ({
+	_tag: "Rub",
+	source,
+});
+
+/** @public */
+export const moveOperationMode = ({ source }: MoveOperationMode): OperationMode => ({
+	_tag: "Move",
+	source,
+});
+
+/** @public */
+export const defaultWorkspaceMode: WorkspaceMode = {
+	_tag: "Default",
+};
+
+/** @public */
+export const rewordCommitWorkspaceMode = ({
+	commitId,
+}: RewordCommitWorkspaceMode): WorkspaceMode => ({
+	_tag: "RewordCommit",
+	commitId,
+});
+
+/** @public */
+export const renameBranchWorkspaceMode = ({
+	stackId,
+	segmentIndex,
+}: RenameBranchWorkspaceMode): WorkspaceMode => ({
+	_tag: "RenameBranch",
+	stackId,
+	segmentIndex,
+});
 
 export const getOperationMode = (mode: WorkspaceMode): OperationMode | null =>
 	mode._tag === "Rub" || mode._tag === "Move" ? mode : null;
@@ -25,21 +68,21 @@ export const normalizeWorkspaceMode = ({
 	Match.value(mode).pipe(
 		Match.tagsExhaustive({
 			Default: () => mode,
-			Rub: (mode): WorkspaceMode =>
+			Rub: (mode) =>
 				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item))
 					? mode
-					: { _tag: "Default" },
-			Move: (mode): WorkspaceMode =>
+					: defaultWorkspaceMode,
+			Move: (mode) =>
 				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item))
 					? mode
-					: { _tag: "Default" },
-			RewordCommit: (mode): WorkspaceMode =>
+					: defaultWorkspaceMode,
+			RewordCommit: (mode) =>
 				navigationIndex.items.some(
 					(item) => item._tag === "Commit" && item.commitId === mode.commitId,
 				)
 					? mode
-					: { _tag: "Default" },
-			RenameBranch: (mode): WorkspaceMode =>
+					: defaultWorkspaceMode,
+			RenameBranch: (mode) =>
 				navigationIndex.items.some(
 					(item) =>
 						item._tag === "Segment" &&
@@ -47,6 +90,6 @@ export const normalizeWorkspaceMode = ({
 						item.segmentIndex === mode.segmentIndex,
 				)
 					? mode
-					: { _tag: "Default" },
+					: defaultWorkspaceMode,
 		}),
 	);

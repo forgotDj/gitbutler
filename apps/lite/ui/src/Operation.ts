@@ -30,21 +30,114 @@ import {
 } from "#ui/api/mutations.ts";
 import { InsertSide } from "@gitbutler/but-sdk";
 
+/** @public */
+export type AssignHunkOperation = Omit<AssignHunkParams, "projectId">;
+/** @public */
+export type CommitAmendOperation = Omit<CommitAmendParams, "projectId">;
+/** @public */
+export type CommitCreateOperation = Omit<CommitCreateParams, "projectId">;
+/** @public */
+export type CommitCreateFromCommittedChangesOperation = Omit<CommitInsertBlankParams, "projectId"> &
+	Pick<CommitMoveChangesBetweenParams, "changes" | "sourceCommitId">;
+/** @public */
+export type CommitMoveOperation = Omit<CommitMoveParams, "projectId">;
+/** @public */
+export type CommitMoveChangesBetweenOperation = Omit<CommitMoveChangesBetweenParams, "projectId">;
+/** @public */
+export type CommitSquashOperation = Omit<CommitSquashParams, "projectId">;
+/** @public */
+export type CommitUncommitOperation = Omit<CommitUncommitParams, "projectId">;
+/** @public */
+export type CommitUncommitChangesOperation = Omit<CommitUncommitChangesParams, "projectId">;
+/** @public */
+export type MoveBranchOperation = Omit<MoveBranchParams, "projectId">;
+/** @public */
+export type TearOffBranchOperation = Omit<TearOffBranchParams, "projectId">;
+
 export type Operation =
-	| ({ _tag: "AssignHunk" } & Omit<AssignHunkParams, "projectId">)
-	| ({ _tag: "CommitAmend" } & Omit<CommitAmendParams, "projectId">)
-	| ({ _tag: "CommitCreate" } & Omit<CommitCreateParams, "projectId">)
-	| ({
-			_tag: "CommitCreateFromCommittedChanges";
-	  } & Omit<CommitInsertBlankParams, "projectId"> &
-			Pick<CommitMoveChangesBetweenParams, "changes" | "sourceCommitId">)
-	| ({ _tag: "CommitMove" } & Omit<CommitMoveParams, "projectId">)
-	| ({ _tag: "CommitMoveChangesBetween" } & Omit<CommitMoveChangesBetweenParams, "projectId">)
-	| ({ _tag: "CommitSquash" } & Omit<CommitSquashParams, "projectId">)
-	| ({ _tag: "CommitUncommit" } & Omit<CommitUncommitParams, "projectId">)
-	| ({ _tag: "CommitUncommitChanges" } & Omit<CommitUncommitChangesParams, "projectId">)
-	| ({ _tag: "MoveBranch" } & Omit<MoveBranchParams, "projectId">)
-	| ({ _tag: "TearOffBranch" } & Omit<TearOffBranchParams, "projectId">);
+	| ({ _tag: "AssignHunk" } & AssignHunkOperation)
+	| ({ _tag: "CommitAmend" } & CommitAmendOperation)
+	| ({ _tag: "CommitCreate" } & CommitCreateOperation)
+	| ({ _tag: "CommitCreateFromCommittedChanges" } & CommitCreateFromCommittedChangesOperation)
+	| ({ _tag: "CommitMove" } & CommitMoveOperation)
+	| ({ _tag: "CommitMoveChangesBetween" } & CommitMoveChangesBetweenOperation)
+	| ({ _tag: "CommitSquash" } & CommitSquashOperation)
+	| ({ _tag: "CommitUncommit" } & CommitUncommitOperation)
+	| ({ _tag: "CommitUncommitChanges" } & CommitUncommitChangesOperation)
+	| ({ _tag: "MoveBranch" } & MoveBranchOperation)
+	| ({ _tag: "TearOffBranch" } & TearOffBranchOperation);
+
+/** @public */
+export const assignHunkOperation = (operation: AssignHunkOperation): Operation => ({
+	_tag: "AssignHunk",
+	...operation,
+});
+
+/** @public */
+export const commitAmendOperation = (operation: CommitAmendOperation): Operation => ({
+	_tag: "CommitAmend",
+	...operation,
+});
+
+/** @public */
+export const commitCreateOperation = (operation: CommitCreateOperation): Operation => ({
+	_tag: "CommitCreate",
+	...operation,
+});
+
+/** @public */
+export const commitCreateFromCommittedChangesOperation = (
+	operation: CommitCreateFromCommittedChangesOperation,
+): Operation => ({
+	_tag: "CommitCreateFromCommittedChanges",
+	...operation,
+});
+
+/** @public */
+export const commitMoveOperation = (operation: CommitMoveOperation): Operation => ({
+	_tag: "CommitMove",
+	...operation,
+});
+
+/** @public */
+export const commitMoveChangesBetweenOperation = (
+	operation: CommitMoveChangesBetweenOperation,
+): Operation => ({
+	_tag: "CommitMoveChangesBetween",
+	...operation,
+});
+
+/** @public */
+export const commitSquashOperation = (operation: CommitSquashOperation): Operation => ({
+	_tag: "CommitSquash",
+	...operation,
+});
+
+/** @public */
+export const commitUncommitOperation = (operation: CommitUncommitOperation): Operation => ({
+	_tag: "CommitUncommit",
+	...operation,
+});
+
+/** @public */
+export const commitUncommitChangesOperation = (
+	operation: CommitUncommitChangesOperation,
+): Operation => ({
+	_tag: "CommitUncommitChanges",
+	...operation,
+});
+
+/** @public */
+export const moveBranchOperation = (operation: MoveBranchOperation): Operation => ({
+	_tag: "MoveBranch",
+	...operation,
+});
+
+/** @public */
+export const tearOffBranchOperation = (operation: TearOffBranchOperation): Operation => ({
+	_tag: "TearOffBranch",
+	...operation,
+});
 
 export const getInsertionSide = (operation: Operation): InsertSide | null =>
 	Match.value(operation).pipe(

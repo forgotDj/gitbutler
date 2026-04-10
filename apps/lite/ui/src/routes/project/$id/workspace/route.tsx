@@ -21,7 +21,11 @@ import {
 	MenuTriggerIcon,
 	PushIcon,
 } from "#ui/components/icons.tsx";
-import { type FileParent } from "#ui/domain/FileParent.ts";
+import {
+	changesSectionFileParent,
+	commitFileParent,
+	type FileParent,
+} from "#ui/domain/FileParent.ts";
 import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
 import { ProjectPreviewLayout } from "#ui/routes/project/$id/-ProjectPreviewLayout.tsx";
 import { getFocus } from "#ui/routes/project/$id/-state/layout.ts";
@@ -124,7 +128,11 @@ import {
 import { PositionedShortcutsBar } from "../-ShortcutsBar.tsx";
 import { formatShortcutKeys, ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import styles from "./route.module.css";
-import { OperationSource, operationSourceFromItem } from "./-OperationSource.ts";
+import {
+	fileOperationSource,
+	hunkOperationSource,
+	operationSourceFromItem,
+} from "./-OperationSource.ts";
 import {
 	getOperationMode,
 	normalizeWorkspaceMode,
@@ -289,12 +297,11 @@ const Hunk: FC<{
 		>
 			{fileParent && editable
 				? (() => {
-						const source: OperationSource = {
-							_tag: "Hunk",
+						const source = hunkOperationSource({
 							parent: fileParent,
 							path: change.path,
 							hunkHeader: hunk,
-						};
+						});
 						return (
 							<OperationSourceC
 								operationMode={operationMode}
@@ -478,11 +485,8 @@ const ChangesPreview: FC<{
 			) : (
 				<ul>
 					{changesWithDiffs.map(([change, diff]) => {
-						const source: OperationSource = {
-							_tag: "File",
-							parent: { _tag: "ChangesSection", stackId },
-							path: change.path,
-						};
+						const parent = changesSectionFileParent({ stackId });
+						const source = fileOperationSource({ parent, path: change.path });
 						return (
 							<li key={change.path}>
 								<OperationSourceC
@@ -496,7 +500,7 @@ const ChangesPreview: FC<{
 									operationMode={operationMode}
 									projectId={projectId}
 									change={change}
-									fileParent={{ _tag: "ChangesSection", stackId }}
+									fileParent={parent}
 									editable
 									assignments={assignmentsByPath.get(change.path)}
 									hunkDependencyDiffs={hunkDependencyDiffsByPath.get(change.path)}
@@ -558,11 +562,8 @@ const CommitPreview: FC<{
 			) : (
 				<ul>
 					{changesWithDiffs.map(([change, diff]) => {
-						const source: OperationSource = {
-							_tag: "File",
-							parent: { _tag: "Commit", commitId },
-							path: change.path,
-						};
+						const parent = commitFileParent({ commitId });
+						const source = fileOperationSource({ parent, path: change.path });
 						return (
 							<li key={change.path}>
 								{editable ? (
@@ -580,7 +581,7 @@ const CommitPreview: FC<{
 									operationMode={operationMode}
 									projectId={projectId}
 									change={change}
-									fileParent={{ _tag: "Commit", commitId }}
+									fileParent={parent}
 									editable={editable}
 									diff={diff}
 									selectedHunk={normalizedSelectedHunk}

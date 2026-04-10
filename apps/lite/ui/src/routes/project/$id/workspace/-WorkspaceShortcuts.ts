@@ -29,55 +29,64 @@ import { PreviewImperativeHandle } from "./route.tsx";
 import { getAdjacentItem, getAdjacentSection, type NavigationIndex } from "./-WorkspaceModel.ts";
 import { OperationMode, type WorkspaceMode } from "./-WorkspaceMode.ts";
 
-type EnterMoveModeAction = { _tag: "EnterMoveMode" };
-type EnterRubModeAction = { _tag: "EnterRubMode" };
+type MoveItemSelectionAction = { offset: -1 | 1 };
 
 type ItemSelectionAction =
-	| EnterMoveModeAction
-	| EnterRubModeAction
-	| { _tag: "Move"; offset: -1 | 1 }
+	| { _tag: "EnterMoveMode" }
+	| { _tag: "EnterRubMode" }
+	| ({ _tag: "Move" } & MoveItemSelectionAction)
 	| { _tag: "NextSection" }
 	| { _tag: "PreviousSection" };
+
+const enterMoveModeAction = { _tag: "EnterMoveMode" } as const;
+const enterRubModeAction = { _tag: "EnterRubMode" } as const;
+const nextSectionAction = { _tag: "NextSection" } as const;
+const previousSectionAction = { _tag: "PreviousSection" } as const;
+
+const moveItemSelectionAction = ({ offset }: MoveItemSelectionAction): ItemSelectionAction => ({
+	_tag: "Move",
+	offset,
+});
 
 const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
 	{
 		id: "item-selection-move-up",
 		description: "up",
 		keys: ["ArrowUp", "k"],
-		action: { _tag: "Move", offset: -1 },
+		action: moveItemSelectionAction({ offset: -1 }),
 	},
 	{
 		id: "item-selection-move-down",
 		description: "down",
 		keys: ["ArrowDown", "j"],
-		action: { _tag: "Move", offset: 1 },
+		action: moveItemSelectionAction({ offset: 1 }),
 	},
 	{
 		id: "item-selection-previous-section",
 		description: "Previous section",
 		keys: ["Shift+ArrowUp", "Shift+k"],
-		action: { _tag: "PreviousSection" },
+		action: previousSectionAction,
 		showInShortcutsBar: false,
 	},
 	{
 		id: "item-selection-next-section",
 		description: "Next section",
 		keys: ["Shift+ArrowDown", "Shift+j"],
-		action: { _tag: "NextSection" },
+		action: nextSectionAction,
 		showInShortcutsBar: false,
 	},
 	{
 		id: "item-selection-enter-rub-mode",
 		description: "Rub",
 		keys: ["r"],
-		action: { _tag: "EnterRubMode" },
+		action: enterRubModeAction,
 		repeat: false,
 	},
 	{
 		id: "item-selection-enter-move-mode",
 		description: "Move",
 		keys: ["m"],
-		action: { _tag: "EnterMoveMode" },
+		action: enterMoveModeAction,
 		repeat: false,
 	},
 ];
@@ -89,11 +98,16 @@ type PrimaryPanelAction =
 	| { _tag: "ToggleFullscreenPreview" }
 	| { _tag: "TogglePreview" };
 
+const focusPreviewAction = { _tag: "FocusPreview" } as const;
+const selectUnassignedChangesAction = { _tag: "SelectUnassignedChanges" } as const;
+const toggleFullscreenPreviewAction = { _tag: "ToggleFullscreenPreview" } as const;
+const togglePreviewAction = { _tag: "TogglePreview" } as const;
+
 export const togglePreviewBinding: ShortcutBinding<PrimaryPanelAction> = {
 	id: "primary-panel-toggle-preview",
 	description: "Preview",
 	keys: ["p"],
-	action: { _tag: "TogglePreview" },
+	action: togglePreviewAction,
 	repeat: false,
 };
 
@@ -101,7 +115,7 @@ export const toggleFullscreenPreviewBinding: ShortcutBinding<PrimaryPanelAction>
 	id: "primary-panel-toggle-fullscreen-preview",
 	description: "Fullscreen preview",
 	keys: ["d"],
-	action: { _tag: "ToggleFullscreenPreview" },
+	action: toggleFullscreenPreviewAction,
 	repeat: false,
 };
 
@@ -111,14 +125,14 @@ const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 		id: "primary-panel-select-unassigned-changes",
 		description: "Unassigned changes",
 		keys: ["z"],
-		action: { _tag: "SelectUnassignedChanges" },
+		action: selectUnassignedChangesAction,
 		repeat: false,
 	},
 	{
 		id: "primary-panel-focus-preview",
 		description: "Focus preview",
 		keys: ["l"],
-		action: { _tag: "FocusPreview" },
+		action: focusPreviewAction,
 		repeat: false,
 	},
 	toggleFullscreenPreviewBinding,
@@ -126,6 +140,7 @@ const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 ];
 
 type ChangesAction = PrimaryPanelAction | { _tag: "Absorb" };
+const absorbAction = { _tag: "Absorb" } as const;
 
 const changesBindings: Array<ShortcutBinding<ChangesAction>> = [
 	...primaryPanelBindings,
@@ -133,22 +148,24 @@ const changesBindings: Array<ShortcutBinding<ChangesAction>> = [
 		id: "changes-absorb",
 		description: "Absorb",
 		keys: ["a"],
-		action: { _tag: "Absorb" },
+		action: absorbAction,
 		repeat: false,
 	},
 ];
 
 type CommitToggleFilesAction = { _tag: "ToggleFiles" };
+const toggleCommitFilesAction = { _tag: "ToggleFiles" } as const;
 
 const toggleCommitFilesBinding: ShortcutBinding<CommitToggleFilesAction> = {
 	id: "commit-toggle-files",
 	description: "Files",
 	keys: ["f"],
-	action: { _tag: "ToggleFiles" },
+	action: toggleCommitFilesAction,
 	repeat: false,
 };
 
 type CommitAction = PrimaryPanelAction | CommitToggleFilesAction | { _tag: "EditMessage" };
+const editMessageAction = { _tag: "EditMessage" } as const;
 
 const commitDefaultBindings: Array<ShortcutBinding<CommitAction>> = [
 	...primaryPanelBindings,
@@ -157,12 +174,13 @@ const commitDefaultBindings: Array<ShortcutBinding<CommitAction>> = [
 		id: "commit-reword",
 		description: "Reword",
 		keys: ["Enter"],
-		action: { _tag: "EditMessage" },
+		action: editMessageAction,
 		repeat: false,
 	},
 ];
 
 type CommitFileAction = PrimaryPanelAction | CommitToggleFilesAction | { _tag: "CloseFiles" };
+const closeFilesAction = { _tag: "CloseFiles" } as const;
 
 const commitFilesBindings: Array<ShortcutBinding<CommitFileAction>> = [
 	...primaryPanelBindings,
@@ -171,12 +189,13 @@ const commitFilesBindings: Array<ShortcutBinding<CommitFileAction>> = [
 		id: "commit-file-close",
 		description: "Close",
 		keys: ["Escape"],
-		action: { _tag: "CloseFiles" },
+		action: closeFilesAction,
 		repeat: false,
 	},
 ];
 
 type BranchAction = PrimaryPanelAction | { _tag: "RenameBranch" };
+const renameBranchAction = { _tag: "RenameBranch" } as const;
 
 const branchBindings: Array<ShortcutBinding<BranchAction>> = [
 	...primaryPanelBindings,
@@ -184,86 +203,146 @@ const branchBindings: Array<ShortcutBinding<BranchAction>> = [
 		id: "branch-rename",
 		description: "Rename",
 		keys: ["Enter"],
-		action: { _tag: "RenameBranch" },
+		action: renameBranchAction,
 		repeat: false,
 	},
 ];
 
+type BaseCommitDefaultModeScope = {
+	bindings: Array<ShortcutBinding<PrimaryPanelAction>>;
+};
+type BranchDefaultModeScope = {
+	bindings: Array<ShortcutBinding<BranchAction>>;
+	context: SegmentItem;
+};
+type ChangeDefaultModeScope = {
+	bindings: Array<ShortcutBinding<ChangesAction>>;
+	context: ChangeItem;
+};
+type ChangesSectionDefaultModeScope = {
+	bindings: Array<ShortcutBinding<ChangesAction>>;
+	context: ChangesSectionItem;
+};
+type CommitDefaultModeScope = {
+	bindings: Array<ShortcutBinding<CommitAction>>;
+	context: CommitItem;
+};
+type CommitFileDefaultModeScope = {
+	bindings: Array<ShortcutBinding<CommitFileAction>>;
+	context: CommitFileItem;
+};
+type SegmentDefaultModeScope = {
+	bindings: Array<ShortcutBinding<PrimaryPanelAction>>;
+	context: SegmentItem;
+};
+
 type DefaultModeScope =
-	| {
-			_tag: "BaseCommit";
-			bindings: Array<ShortcutBinding<PrimaryPanelAction>>;
-	  }
-	| {
-			_tag: "Branch";
-			bindings: Array<ShortcutBinding<BranchAction>>;
-			context: SegmentItem;
-	  }
-	| {
-			_tag: "Change";
-			bindings: Array<ShortcutBinding<ChangesAction>>;
-			context: ChangeItem;
-	  }
-	| {
-			_tag: "ChangesSection";
-			bindings: Array<ShortcutBinding<ChangesAction>>;
-			context: ChangesSectionItem;
-	  }
-	| {
-			_tag: "Commit";
-			bindings: Array<ShortcutBinding<CommitAction>>;
-			context: CommitItem;
-	  }
-	| {
-			_tag: "CommitFile";
-			bindings: Array<ShortcutBinding<CommitFileAction>>;
-			context: CommitFileItem;
-	  }
-	| {
-			_tag: "Segment";
-			bindings: Array<ShortcutBinding<PrimaryPanelAction>>;
-			context: SegmentItem;
-	  };
+	| ({ _tag: "BaseCommit" } & BaseCommitDefaultModeScope)
+	| ({ _tag: "Branch" } & BranchDefaultModeScope)
+	| ({ _tag: "Change" } & ChangeDefaultModeScope)
+	| ({ _tag: "ChangesSection" } & ChangesSectionDefaultModeScope)
+	| ({ _tag: "Commit" } & CommitDefaultModeScope)
+	| ({ _tag: "CommitFile" } & CommitFileDefaultModeScope)
+	| ({ _tag: "Segment" } & SegmentDefaultModeScope);
+
+const baseCommitDefaultModeScope = ({
+	bindings,
+}: BaseCommitDefaultModeScope): DefaultModeScope => ({
+	_tag: "BaseCommit",
+	bindings,
+});
+
+const branchDefaultModeScope = ({
+	bindings,
+	context,
+}: BranchDefaultModeScope): DefaultModeScope => ({
+	_tag: "Branch",
+	bindings,
+	context,
+});
+
+const changeDefaultModeScope = ({
+	bindings,
+	context,
+}: ChangeDefaultModeScope): DefaultModeScope => ({
+	_tag: "Change",
+	bindings,
+	context,
+});
+
+const changesSectionDefaultModeScope = ({
+	bindings,
+	context,
+}: ChangesSectionDefaultModeScope): DefaultModeScope => ({
+	_tag: "ChangesSection",
+	bindings,
+	context,
+});
+
+const commitDefaultModeScope = ({
+	bindings,
+	context,
+}: CommitDefaultModeScope): DefaultModeScope => ({
+	_tag: "Commit",
+	bindings,
+	context,
+});
+
+const commitFileDefaultModeScope = ({
+	bindings,
+	context,
+}: CommitFileDefaultModeScope): DefaultModeScope => ({
+	_tag: "CommitFile",
+	bindings,
+	context,
+});
+
+const segmentDefaultModeScope = ({
+	bindings,
+	context,
+}: SegmentDefaultModeScope): DefaultModeScope => ({
+	_tag: "Segment",
+	bindings,
+	context,
+});
 
 const getDefaultModeScope = (selectedItem: Item): DefaultModeScope =>
 	Match.value(selectedItem).pipe(
 		Match.tagsExhaustive({
-			BaseCommit: (): DefaultModeScope => ({
-				_tag: "BaseCommit",
-				bindings: primaryPanelBindings,
-			}),
-			Change: (selectedItem): DefaultModeScope => ({
-				_tag: "Change",
-				bindings: changesBindings,
-				context: selectedItem,
-			}),
-			ChangesSection: (selectedItem): DefaultModeScope => ({
-				_tag: "ChangesSection",
-				bindings: changesBindings,
-				context: selectedItem,
-			}),
-			Commit: (selectedItem): DefaultModeScope => ({
-				_tag: "Commit",
-				bindings: commitDefaultBindings,
-				context: selectedItem,
-			}),
-			CommitFile: (selectedItem): DefaultModeScope => ({
-				_tag: "CommitFile",
-				bindings: commitFilesBindings,
-				context: selectedItem,
-			}),
+			BaseCommit: (): DefaultModeScope =>
+				baseCommitDefaultModeScope({
+					bindings: primaryPanelBindings,
+				}),
+			Change: (selectedItem): DefaultModeScope =>
+				changeDefaultModeScope({
+					bindings: changesBindings,
+					context: selectedItem,
+				}),
+			ChangesSection: (selectedItem): DefaultModeScope =>
+				changesSectionDefaultModeScope({
+					bindings: changesBindings,
+					context: selectedItem,
+				}),
+			Commit: (selectedItem): DefaultModeScope =>
+				commitDefaultModeScope({
+					bindings: commitDefaultBindings,
+					context: selectedItem,
+				}),
+			CommitFile: (selectedItem): DefaultModeScope =>
+				commitFileDefaultModeScope({
+					bindings: commitFilesBindings,
+					context: selectedItem,
+				}),
 			Segment: (selectedItem): DefaultModeScope =>
 				selectedItem.branchRef === null
-					? {
-							_tag: "Segment",
+					? segmentDefaultModeScope({
 							bindings: primaryPanelBindings,
 							context: selectedItem,
-						}
-					: {
-							_tag: "Branch",
+						})
+					: branchDefaultModeScope({
 							bindings: branchBindings,
 							context: selectedItem,
-						},
+						}),
 		}),
 	);
 
@@ -282,6 +361,13 @@ const getDefaultModeScopeLabel = (scope: DefaultModeScope): string =>
 
 type HunkSelectionAction = { _tag: "Move"; offset: -1 | 1 };
 
+const closePreviewAction = { _tag: "ClosePreview" } as const;
+const focusPrimaryAction = { _tag: "FocusPrimary" } as const;
+const moveHunkSelectionAction = ({ offset }: { offset: -1 | 1 }): HunkSelectionAction => ({
+	_tag: "Move",
+	offset,
+});
+
 type PreviewAction =
 	| { _tag: "ClosePreview" }
 	| { _tag: "FocusPrimary" }
@@ -293,7 +379,7 @@ export const closePreviewBinding: ShortcutBinding<PreviewAction> = {
 	id: "preview-close",
 	description: "Close",
 	keys: ["Escape"],
-	action: { _tag: "ClosePreview" },
+	action: closePreviewAction,
 	repeat: false,
 };
 
@@ -302,33 +388,33 @@ const previewBindings: Array<ShortcutBinding<PreviewAction>> = [
 		id: "preview-move-up",
 		description: "up",
 		keys: ["ArrowUp", "k"],
-		action: { _tag: "Move", offset: -1 },
+		action: moveHunkSelectionAction({ offset: -1 }),
 	},
 	{
 		id: "preview-move-down",
 		description: "down",
 		keys: ["ArrowDown", "j"],
-		action: { _tag: "Move", offset: 1 },
+		action: moveHunkSelectionAction({ offset: 1 }),
 	},
 	{
 		id: "preview-focus-primary",
 		description: "Focus primary",
 		keys: ["h"],
-		action: { _tag: "FocusPrimary" },
+		action: focusPrimaryAction,
 		repeat: false,
 	},
 	{
 		id: "preview-toggle-fullscreen-preview",
 		description: "Fullscreen preview",
 		keys: ["d"],
-		action: { _tag: "ToggleFullscreenPreview" },
+		action: toggleFullscreenPreviewAction,
 		repeat: false,
 	},
 	{
 		id: "preview-toggle-preview",
 		description: "Preview",
 		keys: ["p"],
-		action: { _tag: "TogglePreview" },
+		action: togglePreviewAction,
 		repeat: false,
 	},
 	closePreviewBinding,
@@ -345,7 +431,15 @@ type PreviewScope = {
 	context: { isFullscreen: boolean };
 };
 
+const previewScope = ({ bindings, context }: Omit<PreviewScope, "_tag">): PreviewScope => ({
+	_tag: "Preview",
+	bindings,
+	context,
+});
+
 type OperationModeAction = PrimaryPanelAction | { _tag: "Cancel" } | { _tag: "Run" };
+const runOperationModeAction = { _tag: "Run" } as const;
+const cancelOperationModeAction = { _tag: "Cancel" } as const;
 
 const operationModeBindings: Array<ShortcutBinding<OperationModeAction>> = [
 	...primaryPanelBindings.filter(
@@ -355,29 +449,48 @@ const operationModeBindings: Array<ShortcutBinding<OperationModeAction>> = [
 		id: "operation-mode-confirm",
 		description: "Run",
 		keys: ["Enter"],
-		action: { _tag: "Run" },
+		action: runOperationModeAction,
 		repeat: false,
 	},
 	{
 		id: "operation-mode-cancel",
 		description: "Cancel",
 		keys: ["Escape"],
-		action: { _tag: "Cancel" },
+		action: cancelOperationModeAction,
 		repeat: false,
 	},
 ];
 
+type MoveOperationModeScope = {
+	bindings: Array<ShortcutBinding<OperationModeAction>>;
+	context: Item | null;
+};
+type RubOperationModeScope = {
+	bindings: Array<ShortcutBinding<OperationModeAction>>;
+	context: Item | null;
+};
+
 type OperationModeScope =
-	| {
-			_tag: "Move";
-			bindings: Array<ShortcutBinding<OperationModeAction>>;
-			context: Item | null;
-	  }
-	| {
-			_tag: "Rub";
-			bindings: Array<ShortcutBinding<OperationModeAction>>;
-			context: Item | null;
-	  };
+	| ({ _tag: "Move" } & MoveOperationModeScope)
+	| ({ _tag: "Rub" } & RubOperationModeScope);
+
+const moveOperationModeScope = ({
+	bindings,
+	context,
+}: MoveOperationModeScope): OperationModeScope => ({
+	_tag: "Move",
+	bindings,
+	context,
+});
+
+const rubOperationModeScope = ({
+	bindings,
+	context,
+}: RubOperationModeScope): OperationModeScope => ({
+	_tag: "Rub",
+	bindings,
+	context,
+});
 
 const getOperationModeScopeLabel = (scope: OperationModeScope): string =>
 	Match.value(scope).pipe(
@@ -388,59 +501,79 @@ const getOperationModeScopeLabel = (scope: OperationModeScope): string =>
 	);
 
 type RewordCommitAction = { _tag: "Cancel" } | { _tag: "Save" };
+const saveRewordCommitAction = { _tag: "Save" } as const;
+const cancelRewordCommitAction = { _tag: "Cancel" } as const;
 
 export const rewordCommitBindings: Array<ShortcutBinding<RewordCommitAction>> = [
 	{
 		id: "commit-reword-save",
 		description: "Save",
 		keys: ["Enter"],
-		action: { _tag: "Save" },
+		action: saveRewordCommitAction,
 		repeat: false,
 	},
 	{
 		id: "commit-reword-cancel",
 		description: "Cancel",
 		keys: ["Escape"],
-		action: { _tag: "Cancel" },
+		action: cancelRewordCommitAction,
 		repeat: false,
 	},
 ];
 
 type RenameBranchAction = { _tag: "Cancel" } | { _tag: "Save" };
+const saveRenameBranchAction = { _tag: "Save" } as const;
+const cancelRenameBranchAction = { _tag: "Cancel" } as const;
 
 export const renameBranchBindings: Array<ShortcutBinding<RenameBranchAction>> = [
 	{
 		id: "branch-rename-save",
 		description: "Save",
 		keys: ["Enter"],
-		action: { _tag: "Save" },
+		action: saveRenameBranchAction,
 		repeat: false,
 	},
 	{
 		id: "branch-rename-cancel",
 		description: "Cancel",
 		keys: ["Escape"],
-		action: { _tag: "Cancel" },
+		action: cancelRenameBranchAction,
 		repeat: false,
 	},
 ];
 
+type DefaultModeScopeContainer = { scope: DefaultModeScope };
+type RenameBranchModeScope = {
+	bindings: Array<ShortcutBinding<RenameBranchAction>>;
+	context: SegmentItem;
+};
+type RewordCommitModeScope = {
+	bindings: Array<ShortcutBinding<RewordCommitAction>>;
+	context: CommitItem;
+};
+
 type ModeScope =
-	| {
-			_tag: "Default";
-			scope: DefaultModeScope;
-	  }
-	| {
-			_tag: "RenameBranch";
-			bindings: Array<ShortcutBinding<RenameBranchAction>>;
-			context: SegmentItem;
-	  }
-	| {
-			_tag: "RewordCommit";
-			bindings: Array<ShortcutBinding<RewordCommitAction>>;
-			context: CommitItem;
-	  }
+	| ({ _tag: "Default" } & DefaultModeScopeContainer)
+	| ({ _tag: "RenameBranch" } & RenameBranchModeScope)
+	| ({ _tag: "RewordCommit" } & RewordCommitModeScope)
 	| OperationModeScope;
+
+const defaultModeScope = ({ scope }: DefaultModeScopeContainer): ModeScope => ({
+	_tag: "Default",
+	scope,
+});
+
+const renameBranchModeScope = ({ bindings, context }: RenameBranchModeScope): ModeScope => ({
+	_tag: "RenameBranch",
+	bindings,
+	context,
+});
+
+const rewordCommitModeScope = ({ bindings, context }: RewordCommitModeScope): ModeScope => ({
+	_tag: "RewordCommit",
+	bindings,
+	context,
+});
 
 const getModeScope = ({
 	selectedItem,
@@ -453,39 +586,36 @@ const getModeScope = ({
 		Match.tagsExhaustive({
 			Default: (): ModeScope | null =>
 				selectedItem
-					? {
-							_tag: "Default",
+					? defaultModeScope({
 							scope: getDefaultModeScope(selectedItem),
-						}
+						})
 					: null,
-			Move: (): ModeScope => ({
-				_tag: "Move",
-				bindings: operationModeBindings,
-				context: selectedItem,
-			}),
+			Move: (): ModeScope =>
+				moveOperationModeScope({
+					bindings: operationModeBindings,
+					context: selectedItem,
+				}),
 			RenameBranch: (workspaceMode): ModeScope | null =>
 				selectedItem?._tag === "Segment" &&
 				workspaceMode.stackId === selectedItem.stackId &&
 				workspaceMode.segmentIndex === selectedItem.segmentIndex
-					? {
-							_tag: "RenameBranch",
+					? renameBranchModeScope({
 							bindings: renameBranchBindings,
 							context: selectedItem,
-						}
+						})
 					: null,
 			RewordCommit: (workspaceMode): ModeScope | null =>
 				selectedItem?._tag === "Commit" && workspaceMode.commitId === selectedItem.commitId
-					? {
-							_tag: "RewordCommit",
+					? rewordCommitModeScope({
 							bindings: rewordCommitBindings,
 							context: selectedItem,
-						}
+						})
 					: null,
-			Rub: (): ModeScope => ({
-				_tag: "Rub",
-				bindings: operationModeBindings,
-				context: selectedItem,
-			}),
+			Rub: (): ModeScope =>
+				rubOperationModeScope({
+					bindings: operationModeBindings,
+					context: selectedItem,
+				}),
 		}),
 	);
 
@@ -501,11 +631,10 @@ export const getScope = ({
 	workspaceMode: WorkspaceMode;
 }): Scope | null => {
 	if (getFocus(layoutState) === "preview")
-		return {
-			_tag: "Preview",
+		return previewScope({
 			bindings: layoutState.isFullscreenPreviewOpen ? fullscreenPreviewBindings : previewBindings,
 			context: { isFullscreen: layoutState.isFullscreenPreviewOpen },
-		};
+		});
 
 	return getModeScope({ selectedItem, workspaceMode });
 };
