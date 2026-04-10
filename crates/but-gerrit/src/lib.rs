@@ -262,7 +262,7 @@ mod tests {
 
     #[test]
     fn output_is_41_characters_long() {
-        let commit_change_id = ChangeId::generate_sha1();
+        let commit_change_id = ChangeId::generate();
         let change_id = GerritChangeId::from(&commit_change_id);
         let output = format!("{change_id}");
         assert_eq!(output.len(), 41); // "I" + 40 hex chars
@@ -271,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_add_trailer_no_existing_trailers() {
-        let commit_change_id = ChangeId::generate_sha1();
+        let commit_change_id = ChangeId::generate();
         let change_id = GerritChangeId::from(&commit_change_id);
         let change_id_line = format!("Change-Id: {change_id}\n");
 
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_add_trailer_already_has_change_id() {
-        let commit_change_id = ChangeId::generate_sha1();
+        let commit_change_id = ChangeId::generate();
         let change_id = GerritChangeId::from(&commit_change_id);
         let change_id_line = format!("Change-Id: {change_id}\n");
 
@@ -298,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_add_trailer_with_signed_off_by() {
-        let commit_change_id = ChangeId::generate_sha1();
+        let commit_change_id = ChangeId::generate();
         let change_id = GerritChangeId::from(&commit_change_id);
         let change_id_line = format!("Change-Id: {change_id}\n");
 

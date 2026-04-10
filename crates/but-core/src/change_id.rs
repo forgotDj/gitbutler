@@ -29,11 +29,7 @@ impl ChangeId {
     }
 
     /// Creates a random length 32 reverse hex ChangeId (SHA-1).
-    ///
-    /// As opposed to [`crate::commit::Headers::synthetic_change_id_from_commit_id`], these
-    /// have 4 bytes more than synthetic ones, which could indicate that this was a newly
-    /// created commit that was imbued with a change-id from the get-go.
-    pub fn generate_sha1() -> Self {
+    pub fn generate() -> Self {
         let mut rng = rand::rng();
         let bytes: [u8; CHANGE_ID_REVERSE_BYTE_LEN] = rng.random();
         ChangeId::from_bytes(&bytes)

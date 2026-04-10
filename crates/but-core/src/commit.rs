@@ -38,10 +38,10 @@ impl Headers {
     ///
     /// Useful for when [`Self::change_id`] is `None`.
     ///
-    /// These synthesized IDs are compatible with Jujutsu's deterministic scheme, including for
-    /// SHA-256 object IDs.
+    /// These synthesized IDs are compatible with Jujutsu's deterministic scheme,
+    /// and JJ would create exactly the same change-id if given the `commit_id`.
     pub fn synthetic_change_id_from_commit_id(commit_id: gix::ObjectId) -> ChangeId {
-        let bytes: Vec<_> = commit_id.as_bytes()[4..commit_id.kind().len_in_bytes()]
+        let bytes: Vec<_> = commit_id.as_bytes()[4..gix::hash::Kind::Sha1.len_in_bytes()]
             .iter()
             .rev()
             .map(|byte| byte.reverse_bits())
@@ -59,10 +59,7 @@ impl Headers {
         if self.change_id.is_none() {
             self.change_id = commit_id
                 .into()
-                .map_or_else(
-                    ChangeId::generate_sha1,
-                    Self::synthetic_change_id_from_commit_id,
-                )
+                .map_or_else(ChangeId::generate, Self::synthetic_change_id_from_commit_id)
                 .into();
         }
         self
@@ -73,7 +70,7 @@ impl Headers {
     #[deprecated = "We want deterministic change-ids, use Headers::synthetic_change_id_from_commit_id() instead."]
     pub fn new_with_random_change_id() -> Self {
         Self {
-            change_id: Some(ChangeId::generate_sha1()),
+            change_id: Some(ChangeId::generate()),
             conflicted: None,
         }
     }
@@ -94,7 +91,7 @@ impl Headers {
                             .ok()
                             .map(ChangeId::from_number_for_testing)
                     })
-                    .unwrap_or_else(ChangeId::generate_sha1),
+                    .unwrap_or_else(ChangeId::generate),
             ),
             conflicted: None,
         }
