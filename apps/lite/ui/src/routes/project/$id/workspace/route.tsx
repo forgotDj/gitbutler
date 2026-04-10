@@ -114,10 +114,11 @@ import {
 	useWorkspaceOutline,
 } from "./-WorkspaceModel.ts";
 import {
-	renameBranchBindings,
-	commitEditingMessageBindings,
-	getLabel,
+	getScopeBindings,
+	getScopeLabel,
 	getScope,
+	renameBranchBindings,
+	rewordCommitBindings,
 	useWorkspaceShortcuts,
 } from "./-WorkspaceShortcuts.ts";
 import { PositionedShortcutsBar } from "../-ShortcutsBar.tsx";
@@ -789,7 +790,7 @@ const InlineCommitMessageEditor: FC<{
 			defaultValue={message.trim()}
 			className={classes(styles.editorInput, styles.editCommitMessageInput)}
 		/>
-		<EditorHelp bindings={commitEditingMessageBindings} />
+		<EditorHelp bindings={rewordCommitBindings} />
 	</form>
 );
 
@@ -2041,8 +2042,8 @@ const ProjectPage: FC = () => {
 			</div>
 
 			<PositionedShortcutsBar
-				label={shortcutScope ? getLabel(shortcutScope) : null}
-				items={shortcutScope?.bindings ?? []}
+				label={shortcutScope ? getScopeLabel(shortcutScope) : null}
+				items={shortcutScope ? getScopeBindings(shortcutScope) : []}
 			/>
 
 			{operationMode && (
