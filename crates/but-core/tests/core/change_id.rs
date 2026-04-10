@@ -3,9 +3,9 @@ mod generate {
 
     #[test]
     fn returns_a_32_character_random_string() {
-        let a = ChangeId::generate();
+        let a = ChangeId::generate_sha1();
         assert_eq!(a.to_string().len(), 32);
-        let b = ChangeId::generate();
+        let b = ChangeId::generate_sha1();
         assert_ne!(a, b, "these are always different");
     }
 }

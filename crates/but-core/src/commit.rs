@@ -59,7 +59,7 @@ impl Headers {
         if self.change_id.is_none() {
             self.change_id = commit_id
                 .into()
-                .map_or_else(ChangeId::generate, Self::synthetic_change_id_from_commit_id)
+                .map_or_else(ChangeId::generate_sha1, Self::synthetic_change_id_from_commit_id)
                 .into();
         }
         self
@@ -70,7 +70,7 @@ impl Headers {
     #[deprecated = "We want deterministic change-ids, use Headers::synthetic_change_id_from_commit_id() instead."]
     pub fn new_with_random_change_id() -> Self {
         Self {
-            change_id: Some(ChangeId::generate()),
+            change_id: Some(ChangeId::generate_sha1()),
             conflicted: None,
         }
     }
@@ -91,7 +91,7 @@ impl Headers {
                             .ok()
                             .map(ChangeId::from_number_for_testing)
                     })
-                    .unwrap_or_else(ChangeId::generate),
+                    .unwrap_or_else(ChangeId::generate_sha1),
             ),
             conflicted: None,
         }
