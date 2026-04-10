@@ -8,6 +8,10 @@ import { AbsorptionTarget } from "@gitbutler/but-sdk";
 import { Match } from "effect";
 import { RefObject, useEffect, useEffectEvent } from "react";
 import {
+	baseCommitItem,
+	changeItem,
+	commitFileItem,
+	commitItem,
 	type ChangeItem,
 	changesSectionItem,
 	type ChangesSectionItem,
@@ -15,6 +19,7 @@ import {
 	type CommitItem,
 	getParentSection,
 	type Item,
+	segmentItem,
 	type SegmentItem,
 } from "./-Item.ts";
 import { operationModeToOperation } from "./-OperationMode.tsx";
@@ -647,9 +652,7 @@ export const useWorkspaceShortcuts = ({
 				ToggleFiles: () =>
 					dispatch(projectActions.toggleCommitFiles({ projectId, item: selectedItem })),
 			}),
-			Match.orElse((action) =>
-				handlePrimaryPanelAction(action, { _tag: "Commit", ...selectedItem }),
-			),
+			Match.orElse((action) => handlePrimaryPanelAction(action, commitItem(selectedItem))),
 		);
 
 	const handleCommitFileScopeAction = (action: CommitFileAction, selectedItem: CommitFileItem) =>
@@ -660,9 +663,7 @@ export const useWorkspaceShortcuts = ({
 				ToggleFiles: () =>
 					dispatch(projectActions.toggleCommitFiles({ projectId, item: selectedItem })),
 			}),
-			Match.orElse((action) =>
-				handlePrimaryPanelAction(action, { _tag: "CommitFile", ...selectedItem }),
-			),
+			Match.orElse((action) => handlePrimaryPanelAction(action, commitFileItem(selectedItem))),
 		);
 
 	const handleBranchScopeAction = (action: BranchAction, selectedItem: SegmentItem) =>
@@ -676,9 +677,7 @@ export const useWorkspaceShortcuts = ({
 						}),
 					),
 			}),
-			Match.orElse((action) =>
-				handlePrimaryPanelAction(action, { _tag: "Segment", ...selectedItem }),
-			),
+			Match.orElse((action) => handlePrimaryPanelAction(action, segmentItem(selectedItem))),
 		);
 
 	const handleDefaultScopeKeyDown = (scope: DefaultModeScope, event: KeyboardEvent) =>
@@ -688,7 +687,7 @@ export const useWorkspaceShortcuts = ({
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handlePrimaryPanelAction(action, { _tag: "BaseCommit" });
+					handlePrimaryPanelAction(action, baseCommitItem);
 				},
 				Branch: (scope) => {
 					const action = getAction(scope.bindings, event);
@@ -700,13 +699,13 @@ export const useWorkspaceShortcuts = ({
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handleChangesScopeAction(action, { _tag: "Change", ...scope.context });
+					handleChangesScopeAction(action, changeItem(scope.context));
 				},
 				ChangesSection: (scope) => {
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handleChangesScopeAction(action, { _tag: "ChangesSection", ...scope.context });
+					handleChangesScopeAction(action, changesSectionItem(scope.context));
 				},
 				Commit: (scope) => {
 					const action = getAction(scope.bindings, event);
@@ -724,7 +723,7 @@ export const useWorkspaceShortcuts = ({
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handlePrimaryPanelAction(action, { _tag: "Segment", ...scope.context });
+					handlePrimaryPanelAction(action, segmentItem(scope.context));
 				},
 			}),
 		);

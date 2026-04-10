@@ -2029,7 +2029,7 @@ const ProjectPage: FC = () => {
 					<div className={styles.commonBaseCommitContainer}>
 						<OperationTarget
 							projectId={projectId}
-							item={{ _tag: "BaseCommit" }}
+							item={baseCommitItem}
 							operationMode={operationMode}
 							selectedItem={selectedItem?._tag === "BaseCommit" ? selectedItem : null}
 							render={
