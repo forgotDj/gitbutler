@@ -2,9 +2,22 @@ import {
 	changesInWorktreeQueryOptions,
 	commitDetailsWithLineStatsQueryOptions,
 } from "#ui/api/queries.ts";
-import { type Operation } from "#ui/Operation.ts";
+import {
+	assignHunkOperation,
+	commitAmendOperation,
+	commitCreateFromCommittedChangesOperation,
+	commitCreateOperation,
+	commitMoveChangesBetweenOperation,
+	commitMoveOperation,
+	commitSquashOperation,
+	commitUncommitChangesOperation,
+	commitUncommitOperation,
+	moveBranchOperation,
+	tearOffBranchOperation,
+	type Operation,
+} from "#ui/Operation.ts";
 import { createDiffSpec } from "#ui/domain/DiffSpec.ts";
-import { type FileParent } from "#ui/domain/FileParent.ts";
+import { changesSectionFileParent, type FileParent } from "#ui/domain/FileParent.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	CommitDetails,
@@ -24,14 +37,55 @@ type TreeChangeWithHunkHeaders = {
 	hunkHeaders: Array<HunkHeader>;
 };
 
+/** @public */
+export type CommitResolvedOperationSource = { commitId: string };
+/** @public */
+export type SegmentResolvedOperationSource = { branchRef: Array<number> | null };
+/** @public */
+export type TreeChangesResolvedOperationSource = {
+	parent: FileParent;
+	changes: Array<TreeChangeWithHunkHeaders>;
+};
+
 /**
  * The source of an operation in a form that can be sent to the backend.
  */
 export type ResolvedOperationSource =
 	| { _tag: "BaseCommit" }
-	| { _tag: "Commit"; commitId: string }
-	| { _tag: "Segment"; branchRef: Array<number> | null }
-	| { _tag: "TreeChanges"; parent: FileParent; changes: Array<TreeChangeWithHunkHeaders> };
+	| ({ _tag: "Commit" } & CommitResolvedOperationSource)
+	| ({ _tag: "Segment" } & SegmentResolvedOperationSource)
+	| ({ _tag: "TreeChanges" } & TreeChangesResolvedOperationSource);
+
+/** @public */
+export const baseCommitResolvedOperationSource: ResolvedOperationSource = {
+	_tag: "BaseCommit",
+};
+
+/** @public */
+export const commitResolvedOperationSource = ({
+	commitId,
+}: CommitResolvedOperationSource): ResolvedOperationSource => ({
+	_tag: "Commit",
+	commitId,
+});
+
+/** @public */
+export const segmentResolvedOperationSource = ({
+	branchRef,
+}: SegmentResolvedOperationSource): ResolvedOperationSource => ({
+	_tag: "Segment",
+	branchRef,
+});
+
+/** @public */
+export const treeChangesResolvedOperationSource = ({
+	parent,
+	changes,
+}: TreeChangesResolvedOperationSource): ResolvedOperationSource => ({
+	_tag: "TreeChanges",
+	parent,
+	changes,
+});
 
 const hunkHeadersForAssignments = (
 	assignments: Array<HunkAssignment> | undefined,
@@ -50,13 +104,13 @@ const resolveOperationSource = ({
 	operationSource: OperationSource;
 	worktreeChanges: WorktreeChanges | undefined;
 	getCommitDetails: (commitId: string) => CommitDetails | undefined;
-}): ResolvedOperationSource | null =>
+}) =>
 	Match.value(operationSource).pipe(
 		Match.tagsExhaustive({
-			Segment: ({ branchRef }): ResolvedOperationSource => ({ _tag: "Segment", branchRef }),
-			BaseCommit: (): ResolvedOperationSource => ({ _tag: "BaseCommit" }),
-			Commit: ({ commitId }): ResolvedOperationSource => ({ _tag: "Commit", commitId }),
-			ChangesSection: ({ stackId }): ResolvedOperationSource | null => {
+			Segment: ({ branchRef }) => segmentResolvedOperationSource({ branchRef }),
+			BaseCommit: () => baseCommitResolvedOperationSource,
+			Commit: ({ commitId }) => commitResolvedOperationSource({ commitId }),
+			ChangesSection: ({ stackId }) => {
 				if (!worktreeChanges) return null;
 
 				const assignmentsByPath = getAssignmentsByPath(worktreeChanges.assignments, stackId);
@@ -74,59 +128,71 @@ const resolveOperationSource = ({
 					},
 				);
 
-				return { _tag: "TreeChanges", parent: { _tag: "ChangesSection", stackId }, changes };
+				return treeChangesResolvedOperationSource({
+					parent: changesSectionFileParent({ stackId }),
+					changes,
+				});
 			},
-			File: ({ parent, path }): ResolvedOperationSource | null => {
+			File: ({ parent, path }) => {
 				const change = Match.value(parent).pipe(
-					Match.tag("ChangesSection", () => {
-						if (!worktreeChanges) return null;
+					Match.tagsExhaustive({
+						ChangesSection: () => {
+							if (!worktreeChanges) return null;
 
-						return worktreeChanges.changes.find((candidate) => candidate.path === path) ?? null;
-					}),
-					Match.tag("Commit", ({ commitId }) => {
-						const commitDetails = getCommitDetails(commitId);
-						if (!commitDetails) return null;
+							return worktreeChanges.changes.find((candidate) => candidate.path === path) ?? null;
+						},
+						Commit: ({ commitId }) => {
+							const commitDetails = getCommitDetails(commitId);
+							if (!commitDetails) return null;
 
-						return commitDetails.changes.find((candidate) => candidate.path === path) ?? null;
+							return commitDetails.changes.find((candidate) => candidate.path === path) ?? null;
+						},
 					}),
-					Match.exhaustive,
 				);
 
 				if (!change) return null;
 
 				const hunkHeaders = Match.value(parent).pipe(
-					Match.tag("ChangesSection", ({ stackId }) => {
-						if (!worktreeChanges) return [];
+					Match.tagsExhaustive({
+						ChangesSection: ({ stackId }) => {
+							if (!worktreeChanges) return [];
 
-						return hunkHeadersForAssignments(
-							getAssignmentsByPath(worktreeChanges.assignments, stackId).get(path),
-						);
+							return hunkHeadersForAssignments(
+								getAssignmentsByPath(worktreeChanges.assignments, stackId).get(path),
+							);
+						},
+						Commit: () => [],
 					}),
-					Match.tag("Commit", () => []),
-					Match.exhaustive,
 				);
 
-				return { _tag: "TreeChanges", parent, changes: [{ change, hunkHeaders }] };
+				return treeChangesResolvedOperationSource({
+					parent,
+					changes: [{ change, hunkHeaders }],
+				});
 			},
-			Hunk: ({ parent, path, hunkHeader }): ResolvedOperationSource | null => {
+			Hunk: ({ parent, path, hunkHeader }) => {
 				const change = Match.value(parent).pipe(
-					Match.tag("ChangesSection", () => {
-						if (!worktreeChanges) return null;
+					Match.tagsExhaustive({
+						ChangesSection: () => {
+							if (!worktreeChanges) return null;
 
-						return worktreeChanges.changes.find((candidate) => candidate.path === path) ?? null;
-					}),
-					Match.tag("Commit", ({ commitId }) => {
-						const commitDetails = getCommitDetails(commitId);
-						if (!commitDetails) return null;
+							return worktreeChanges.changes.find((candidate) => candidate.path === path) ?? null;
+						},
+						Commit: ({ commitId }) => {
+							const commitDetails = getCommitDetails(commitId);
+							if (!commitDetails) return null;
 
-						return commitDetails.changes.find((candidate) => candidate.path === path) ?? null;
+							return commitDetails.changes.find((candidate) => candidate.path === path) ?? null;
+						},
 					}),
-					Match.exhaustive,
 				);
 
 				if (!change) return null;
 
-				return { _tag: "TreeChanges", parent, changes: [{ change, hunkHeaders: [hunkHeader] }] };
+				return treeChangesResolvedOperationSource({
+					parent,
+					changes: [{ change, hunkHeaders: [hunkHeader] }],
+				});
 			},
 		}),
 	);
@@ -134,7 +200,7 @@ const resolveOperationSource = ({
 export const useResolveOperationSource = (projectId: string) => {
 	const queryClient = useQueryClient();
 
-	return (operationSource: OperationSource): ResolvedOperationSource | null =>
+	return (operationSource: OperationSource) =>
 		resolveOperationSource({
 			operationSource,
 			worktreeChanges: queryClient.getQueryData(changesInWorktreeQueryOptions(projectId).queryKey),
@@ -165,21 +231,21 @@ export const getCombineOperation = ({
 }): Operation | null =>
 	Match.value(resolvedOperationSource).pipe(
 		Match.tagsExhaustive({
-			Segment: (): Operation | null => null,
-			BaseCommit: (): Operation | null => null,
+			Segment: () => null,
+			BaseCommit: () => null,
 			Commit: ({ commitId: sourceCommitId }) =>
 				Match.value(target).pipe(
 					Match.tagsExhaustive({
-						ChangesSection: ({ stackId }): Operation => ({
-							_tag: "CommitUncommit",
-							commitId: sourceCommitId,
-							assignTo: stackId,
-						}),
-						Commit: ({ commitId: destinationCommitId }): Operation => ({
-							_tag: "CommitSquash",
-							sourceCommitId,
-							destinationCommitId,
-						}),
+						ChangesSection: ({ stackId }) =>
+							commitUncommitOperation({
+								commitId: sourceCommitId,
+								assignTo: stackId,
+							}),
+						Commit: ({ commitId: destinationCommitId }) =>
+							commitSquashOperation({
+								sourceCommitId,
+								destinationCommitId,
+							}),
 					}),
 				),
 			TreeChanges: ({ parent, changes: sourceChanges }) => {
@@ -192,41 +258,41 @@ export const getCombineOperation = ({
 						ChangesSection: () =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
-									ChangesSection: ({ stackId: targetStackId }): Operation => ({
-										_tag: "AssignHunk",
-										assignments: sourceChanges.flatMap(({ change, hunkHeaders }) =>
-											hunkHeaders.map(
-												(hunkHeader): HunkAssignmentRequest => ({
-													pathBytes: change.pathBytes,
-													hunkHeader,
-													stackId: targetStackId,
-													branchRefBytes: null,
-												}),
+									ChangesSection: ({ stackId: targetStackId }) =>
+										assignHunkOperation({
+											assignments: sourceChanges.flatMap(({ change, hunkHeaders }) =>
+												hunkHeaders.map(
+													(hunkHeader): HunkAssignmentRequest => ({
+														pathBytes: change.pathBytes,
+														hunkHeader,
+														stackId: targetStackId,
+														branchRefBytes: null,
+													}),
+												),
 											),
-										),
-									}),
-									Commit: ({ commitId }): Operation => ({
-										_tag: "CommitAmend",
-										commitId,
-										changes,
-									}),
+										}),
+									Commit: ({ commitId }) =>
+										commitAmendOperation({
+											commitId,
+											changes,
+										}),
 								}),
 							),
 						Commit: ({ commitId: sourceCommitId }) =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
-									ChangesSection: ({ stackId }): Operation => ({
-										_tag: "CommitUncommitChanges",
-										commitId: sourceCommitId,
-										assignTo: stackId,
-										changes,
-									}),
-									Commit: ({ commitId: destinationCommitId }): Operation => ({
-										_tag: "CommitMoveChangesBetween",
-										sourceCommitId,
-										destinationCommitId,
-										changes,
-									}),
+									ChangesSection: ({ stackId }) =>
+										commitUncommitChangesOperation({
+											commitId: sourceCommitId,
+											assignTo: stackId,
+											changes,
+										}),
+									Commit: ({ commitId: destinationCommitId }) =>
+										commitMoveChangesBetweenOperation({
+											sourceCommitId,
+											destinationCommitId,
+											changes,
+										}),
 								}),
 							),
 					}),
@@ -246,33 +312,33 @@ export const getCommitTargetMoveOperation = ({
 }) =>
 	Match.value(resolvedOperationSource).pipe(
 		Match.tags({
-			Commit: ({ commitId: subjectCommitId }): Operation => ({
-				_tag: "CommitMove",
-				subjectCommitId,
-				relativeTo: { type: "commit", subject: commitId },
-				side,
-			}),
-			TreeChanges: ({ parent, changes: sourceChanges }): Operation => {
+			Commit: ({ commitId: subjectCommitId }) =>
+				commitMoveOperation({
+					subjectCommitId,
+					relativeTo: { type: "commit", subject: commitId },
+					side,
+				}),
+			TreeChanges: ({ parent, changes: sourceChanges }) => {
 				const changes = sourceChanges.map(({ change, hunkHeaders }) =>
 					createDiffSpec(change, hunkHeaders),
 				);
 
 				return Match.value(parent).pipe(
 					Match.tags({
-						ChangesSection: (): Operation => ({
-							_tag: "CommitCreate",
-							relativeTo: { type: "commit", subject: commitId },
-							side,
-							changes,
-							message: "",
-						}),
-						Commit: ({ commitId: sourceCommitId }): Operation => ({
-							_tag: "CommitCreateFromCommittedChanges",
-							sourceCommitId,
-							relativeTo: { type: "commit", subject: commitId },
-							side,
-							changes,
-						}),
+						ChangesSection: () =>
+							commitCreateOperation({
+								relativeTo: { type: "commit", subject: commitId },
+								side,
+								changes,
+								message: "",
+							}),
+						Commit: ({ commitId: sourceCommitId }) =>
+							commitCreateFromCommittedChangesOperation({
+								sourceCommitId,
+								relativeTo: { type: "commit", subject: commitId },
+								side,
+								changes,
+							}),
 					}),
 					Match.exhaustive,
 				);
@@ -289,54 +355,47 @@ export const getBranchTargetOperation = ({
 	branchRef: Array<number>;
 }): Operation | null =>
 	Match.value(resolvedOperationSource).pipe(
-		Match.tag("Segment", (source): Operation | null => {
-			if (source.branchRef === null) return null;
-			return {
-				_tag: "MoveBranch",
-				subjectBranch: decodeRefName(source.branchRef),
-				targetBranch: decodeRefName(branchRef),
-			};
-		}),
-		Match.tag(
-			"Commit",
-			({ commitId }): Operation => ({
-				_tag: "CommitMove",
-				subjectCommitId: commitId,
-				relativeTo: {
-					type: "referenceBytes",
-					subject: branchRef,
-				},
-				side: "below",
-			}),
-		),
-		Match.tag("TreeChanges", (source): Operation | null => {
-			const changes = source.changes.map(({ change, hunkHeaders }) =>
-				createDiffSpec(change, hunkHeaders),
-			);
+		Match.tags({
+			Segment: (source) => {
+				if (source.branchRef === null) return null;
+				return moveBranchOperation({
+					subjectBranch: decodeRefName(source.branchRef),
+					targetBranch: decodeRefName(branchRef),
+				});
+			},
+			Commit: ({ commitId }) =>
+				commitMoveOperation({
+					subjectCommitId: commitId,
+					relativeTo: {
+						type: "referenceBytes",
+						subject: branchRef,
+					},
+					side: "below",
+				}),
+			TreeChanges: (source) => {
+				const changes = source.changes.map(({ change, hunkHeaders }) =>
+					createDiffSpec(change, hunkHeaders),
+				);
 
-			return Match.value(source.parent).pipe(
-				Match.tag(
-					"ChangesSection",
-					(): Operation => ({
-						_tag: "CommitCreate",
-						relativeTo: { type: "referenceBytes", subject: branchRef },
-						side: "below",
-						changes,
-						message: "",
+				return Match.value(source.parent).pipe(
+					Match.tagsExhaustive({
+						ChangesSection: () =>
+							commitCreateOperation({
+								relativeTo: { type: "referenceBytes", subject: branchRef },
+								side: "below",
+								changes,
+								message: "",
+							}),
+						Commit: ({ commitId: sourceCommitId }) =>
+							commitCreateFromCommittedChangesOperation({
+								sourceCommitId,
+								relativeTo: { type: "referenceBytes", subject: branchRef },
+								side: "below",
+								changes,
+							}),
 					}),
-				),
-				Match.tag(
-					"Commit",
-					({ commitId: sourceCommitId }): Operation => ({
-						_tag: "CommitCreateFromCommittedChanges",
-						sourceCommitId,
-						relativeTo: { type: "referenceBytes", subject: branchRef },
-						side: "below",
-						changes,
-					}),
-				),
-				Match.exhaustive,
-			);
+				);
+			},
 		}),
 		Match.orElse(() => null),
 	);
@@ -347,8 +406,7 @@ export const getTearOffBranchTargetOperation = (
 	if (resolvedOperationSource._tag !== "Segment") return null;
 	if (resolvedOperationSource.branchRef === null) return null;
 
-	return {
-		_tag: "TearOffBranch",
+	return tearOffBranchOperation({
 		subjectBranch: decodeRefName(resolvedOperationSource.branchRef),
-	};
+	});
 };

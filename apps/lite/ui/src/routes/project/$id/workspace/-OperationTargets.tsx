@@ -3,6 +3,7 @@ import {
 	extractInstruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
 import { classes } from "#ui/classes.ts";
+import { changesSectionFileParent, commitFileParent } from "#ui/domain/FileParent.ts";
 import { type GetDataParams, useDroppable } from "#ui/hooks/useDroppable.ts";
 import { getInsertionSide, useRunOperation, type Operation } from "#ui/Operation.ts";
 import { projectActions } from "#ui/routes/project/$id/-state/projectSlice.ts";
@@ -110,13 +111,13 @@ const dropTargetToOperation = ({
 }: {
 	target: Item;
 	resolvedOperationSource: ResolvedOperationSource;
-}): Operation | null =>
+}) =>
 	Match.value(target).pipe(
 		Match.tags({
 			ChangesSection: ({ stackId }) =>
 				getCombineOperation({
 					resolvedOperationSource,
-					target: { _tag: "ChangesSection", stackId },
+					target: changesSectionFileParent({ stackId }),
 				}),
 			Segment: ({ branchRef }) =>
 				branchRef === null
@@ -128,7 +129,7 @@ const dropTargetToOperation = ({
 			Commit: ({ commitId }) =>
 				getCombineOperation({
 					resolvedOperationSource,
-					target: { _tag: "Commit", commitId },
+					target: commitFileParent({ commitId }),
 				}),
 			BaseCommit: () => getTearOffBranchTargetOperation(resolvedOperationSource),
 		}),
@@ -180,10 +181,10 @@ const commitDropTargetToOperation = ({
 }: GetDataParams[0] & {
 	resolvedOperationSource: ResolvedOperationSource;
 	commitId: string;
-}): Operation | null => {
+}) => {
 	const combine = getCombineOperation({
 		resolvedOperationSource,
-		target: { _tag: "Commit", commitId },
+		target: commitFileParent({ commitId }),
 	});
 	const insertAbove = getCommitTargetMoveOperation({
 		resolvedOperationSource,

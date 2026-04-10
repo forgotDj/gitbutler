@@ -1,4 +1,5 @@
 import { type Operation } from "#ui/Operation.ts";
+import { changesSectionFileParent, commitFileParent } from "#ui/domain/FileParent.ts";
 import { Match } from "effect";
 import { type Item } from "./-Item.ts";
 import {
@@ -17,18 +18,18 @@ const rubModeOperationSourceToOperation = ({
 }: {
 	resolvedOperationSource: ResolvedOperationSource;
 	target: Item;
-}): Operation | null =>
+}) =>
 	Match.value(target).pipe(
 		Match.tags({
 			ChangesSection: (target) =>
 				getCombineOperation({
 					resolvedOperationSource,
-					target: { _tag: "ChangesSection", stackId: target.stackId },
+					target: changesSectionFileParent({ stackId: target.stackId }),
 				}),
 			Commit: (target) =>
 				getCombineOperation({
 					resolvedOperationSource,
-					target: { _tag: "Commit", commitId: target.commitId },
+					target: commitFileParent({ commitId: target.commitId }),
 				}),
 		}),
 		Match.orElse(() => null),
@@ -40,7 +41,7 @@ const moveModeOperationSourceToOperation = ({
 }: {
 	resolvedOperationSource: ResolvedOperationSource;
 	target: Item;
-}): Operation | null =>
+}) =>
 	Match.value(target).pipe(
 		Match.tags({
 			Segment: ({ branchRef }) =>

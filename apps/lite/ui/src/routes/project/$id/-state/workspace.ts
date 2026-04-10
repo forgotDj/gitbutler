@@ -6,17 +6,24 @@ import {
 	type SegmentItem,
 } from "../workspace/-Item.ts";
 import { type OperationSource } from "../workspace/-OperationSource.ts";
-import { type WorkspaceMode } from "../workspace/-WorkspaceMode.ts";
+import {
+	defaultWorkspaceMode,
+	moveOperationMode,
+	renameBranchWorkspaceMode,
+	rewordCommitWorkspaceMode,
+	rubOperationMode,
+	type WorkspaceMode,
+} from "../workspace/-WorkspaceMode.ts";
 
 export type WorkspaceSelectionState = {
 	hunk: string | null;
 	item: Item | null;
 };
 
-export const initialWorkspaceSelectionState: WorkspaceSelectionState = {
+const createInitialWorkspaceSelectionState = (): WorkspaceSelectionState => ({
 	hunk: null,
 	item: null,
-};
+});
 
 export type WorkspaceState = {
 	expandedCommitId: string | null;
@@ -25,14 +32,16 @@ export type WorkspaceState = {
 	selection: WorkspaceSelectionState;
 };
 
-export const initialState: WorkspaceState = {
+export const createInitialState = (): WorkspaceState => ({
 	expandedCommitId: null,
 	highlightedCommitIds: [],
-	mode: { _tag: "Default" },
-	selection: initialWorkspaceSelectionState,
-};
+	mode: defaultWorkspaceMode,
+	selection: createInitialWorkspaceSelectionState(),
+});
 
-const normalizeModeForSelectedItem = (mode: WorkspaceMode, item: Item | null): WorkspaceMode =>
+export const initialState: WorkspaceState = createInitialState();
+
+const normalizeModeForSelectedItem = (mode: WorkspaceMode, item: Item | null) =>
 	(mode._tag === "RewordCommit" &&
 		(item === null || item._tag !== "Commit" || item.commitId !== mode.commitId)) ||
 	(mode._tag === "RenameBranch" &&
@@ -40,7 +49,7 @@ const normalizeModeForSelectedItem = (mode: WorkspaceMode, item: Item | null): W
 			item._tag !== "Segment" ||
 			item.stackId !== mode.stackId ||
 			item.segmentIndex !== mode.segmentIndex))
-		? { _tag: "Default" }
+		? defaultWorkspaceMode
 		: mode;
 
 export const closeCommitFiles = (state: WorkspaceState, item: CommitItem) => {
@@ -49,15 +58,15 @@ export const closeCommitFiles = (state: WorkspaceState, item: CommitItem) => {
 };
 
 export const enterMoveMode = (state: WorkspaceState, source: OperationSource) => {
-	state.mode = { _tag: "Move", source };
+	state.mode = moveOperationMode({ source });
 };
 
 export const enterRubMode = (state: WorkspaceState, source: OperationSource) => {
-	state.mode = { _tag: "Rub", source };
+	state.mode = rubOperationMode({ source });
 };
 
 export const exitMode = (state: WorkspaceState) => {
-	state.mode = { _tag: "Default" };
+	state.mode = defaultWorkspaceMode;
 };
 
 export const openCommitFiles = (state: WorkspaceState, item: CommitItem) => {
@@ -85,16 +94,15 @@ export const setHighlightedCommitIds = (state: WorkspaceState, commitIds: Array<
 
 export const startRenameBranch = (state: WorkspaceState, item: SegmentItem) => {
 	selectItem(state, segmentItem(item));
-	state.mode = {
-		_tag: "RenameBranch",
+	state.mode = renameBranchWorkspaceMode({
 		stackId: item.stackId,
 		segmentIndex: item.segmentIndex,
-	};
+	});
 };
 
 export const startRewordCommit = (state: WorkspaceState, item: CommitItem) => {
 	selectItem(state, commitItem(item));
-	state.mode = { _tag: "RewordCommit", commitId: item.commitId };
+	state.mode = rewordCommitWorkspaceMode({ commitId: item.commitId });
 };
 
 export const toggleCommitFiles = (state: WorkspaceState, item: CommitItem) => {

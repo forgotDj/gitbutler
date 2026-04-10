@@ -21,7 +21,11 @@ import {
 	MenuTriggerIcon,
 	PushIcon,
 } from "#ui/components/icons.tsx";
-import { type FileParent } from "#ui/domain/FileParent.ts";
+import {
+	changesSectionFileParent,
+	commitFileParent,
+	type FileParent,
+} from "#ui/domain/FileParent.ts";
 import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
 import { ProjectPreviewLayout } from "#ui/routes/project/$id/-ProjectPreviewLayout.tsx";
 import { getFocus } from "#ui/routes/project/$id/-state/layout.ts";
@@ -114,16 +118,21 @@ import {
 	useWorkspaceOutline,
 } from "./-WorkspaceModel.ts";
 import {
-	renameBranchBindings,
-	commitEditingMessageBindings,
-	getLabel,
+	getScopeBindings,
+	getScopeLabel,
 	getScope,
+	renameBranchBindings,
+	rewordCommitBindings,
 	useWorkspaceShortcuts,
 } from "./-WorkspaceShortcuts.ts";
 import { PositionedShortcutsBar } from "../-ShortcutsBar.tsx";
 import { formatShortcutKeys, ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import styles from "./route.module.css";
-import { OperationSource, operationSourceFromItem } from "./-OperationSource.ts";
+import {
+	fileOperationSource,
+	hunkOperationSource,
+	operationSourceFromItem,
+} from "./-OperationSource.ts";
 import {
 	getOperationMode,
 	normalizeWorkspaceMode,
@@ -288,12 +297,11 @@ const Hunk: FC<{
 		>
 			{fileParent && editable
 				? (() => {
-						const source: OperationSource = {
-							_tag: "Hunk",
+						const source = hunkOperationSource({
 							parent: fileParent,
 							path: change.path,
 							hunkHeader: hunk,
-						};
+						});
 						return (
 							<OperationSourceC
 								operationMode={operationMode}
@@ -477,11 +485,8 @@ const ChangesPreview: FC<{
 			) : (
 				<ul>
 					{changesWithDiffs.map(([change, diff]) => {
-						const source: OperationSource = {
-							_tag: "File",
-							parent: { _tag: "ChangesSection", stackId },
-							path: change.path,
-						};
+						const parent = changesSectionFileParent({ stackId });
+						const source = fileOperationSource({ parent, path: change.path });
 						return (
 							<li key={change.path}>
 								<OperationSourceC
@@ -495,7 +500,7 @@ const ChangesPreview: FC<{
 									operationMode={operationMode}
 									projectId={projectId}
 									change={change}
-									fileParent={{ _tag: "ChangesSection", stackId }}
+									fileParent={parent}
 									editable
 									assignments={assignmentsByPath.get(change.path)}
 									hunkDependencyDiffs={hunkDependencyDiffsByPath.get(change.path)}
@@ -557,11 +562,8 @@ const CommitPreview: FC<{
 			) : (
 				<ul>
 					{changesWithDiffs.map(([change, diff]) => {
-						const source: OperationSource = {
-							_tag: "File",
-							parent: { _tag: "Commit", commitId },
-							path: change.path,
-						};
+						const parent = commitFileParent({ commitId });
+						const source = fileOperationSource({ parent, path: change.path });
 						return (
 							<li key={change.path}>
 								{editable ? (
@@ -579,7 +581,7 @@ const CommitPreview: FC<{
 									operationMode={operationMode}
 									projectId={projectId}
 									change={change}
-									fileParent={{ _tag: "Commit", commitId }}
+									fileParent={parent}
 									editable={editable}
 									diff={diff}
 									selectedHunk={normalizedSelectedHunk}
@@ -789,7 +791,7 @@ const InlineCommitMessageEditor: FC<{
 			defaultValue={message.trim()}
 			className={classes(styles.editorInput, styles.editCommitMessageInput)}
 		/>
-		<EditorHelp bindings={commitEditingMessageBindings} />
+		<EditorHelp bindings={rewordCommitBindings} />
 	</form>
 );
 
@@ -1198,7 +1200,7 @@ const ChangeRow: FC<{
 	stackId,
 }) => {
 	const dispatch = useAppDispatch();
-	const item = changeItem(stackId, change.path);
+	const item = changeItem({ stackId, path: change.path });
 	return (
 		<OperationSourceC
 			operationMode={operationMode}
@@ -1298,7 +1300,7 @@ const ChangesSectionRow: FC<{
 
 	return (
 		<ItemRow
-			inert={!navigationIndexIncludes(navigationIndex, changesSectionItem(stackId))}
+			inert={!navigationIndexIncludes(navigationIndex, changesSectionItem({ stackId }))}
 			isSelected={isSelected}
 		>
 			<ContextMenu.Root>
@@ -1309,7 +1311,10 @@ const ChangesSectionRow: FC<{
 							className={styles.segmentButton}
 							onClick={() => {
 								dispatch(
-									projectActions.selectItem({ projectId, item: changesSectionItem(stackId) }),
+									projectActions.selectItem({
+										projectId,
+										item: changesSectionItem({ stackId }),
+									}),
 								);
 							}}
 						>
@@ -1409,7 +1414,7 @@ const Changes: FC<{
 	const changes = worktreeChanges.changes.filter((change) => assignmentsByPath.has(change.path));
 	const isSectionSelected = isSelected || selectedPath !== null;
 
-	const item = changesSectionItem(stackId);
+	const item = changesSectionItem({ stackId });
 
 	const dispatch = useAppDispatch();
 
@@ -1417,7 +1422,7 @@ const Changes: FC<{
 		dispatch(
 			projectActions.enterMoveMode({
 				projectId,
-				source: operationSourceFromItem(changesSectionItem(stackId)),
+				source: operationSourceFromItem(changesSectionItem({ stackId })),
 			}),
 		);
 
@@ -2025,7 +2030,7 @@ const ProjectPage: FC = () => {
 					<div className={styles.commonBaseCommitContainer}>
 						<OperationTarget
 							projectId={projectId}
-							item={{ _tag: "BaseCommit" }}
+							item={baseCommitItem}
 							operationMode={operationMode}
 							selectedItem={selectedItem?._tag === "BaseCommit" ? selectedItem : null}
 							render={
@@ -2041,8 +2046,8 @@ const ProjectPage: FC = () => {
 			</div>
 
 			<PositionedShortcutsBar
-				label={shortcutScope ? getLabel(shortcutScope) : null}
-				items={shortcutScope?.bindings ?? []}
+				label={shortcutScope ? getScopeLabel(shortcutScope) : null}
+				items={shortcutScope ? getScopeBindings(shortcutScope) : []}
 			/>
 
 			{operationMode && (

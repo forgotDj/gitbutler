@@ -54,10 +54,10 @@ const buildWorkspaceOutline = ({
 	expandedCommitPaths,
 }: BuildWorkspaceOutlineArgs): WorkspaceOutline => {
 	const changesSection = (stackId: string | null): WorkspaceSection => ({
-		section: changesSectionItem(stackId),
+		section: changesSectionItem({ stackId }),
 		children: changes.flatMap((change) =>
 			hasAssignmentsForPath({ assignments, stackId, path: change.path })
-				? [changeItem(stackId, change.path)]
+				? [changeItem({ stackId, path: change.path })]
 				: [],
 		),
 	});
