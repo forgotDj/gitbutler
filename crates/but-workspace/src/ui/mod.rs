@@ -108,8 +108,10 @@ pub struct Commit {
     pub created_at: i128,
     /// The author of the commit.
     pub author: Author,
-    /// The GitButler change-id associated with this commit, if available.
-    pub change_id: Option<String>,
+    /// The GitButler change-id associated with this commit.
+    /// It always exists as we either read it from the [headers][but_core::commit::Headers], or we
+    /// synthesize one from [the commit id][but_core::commit::Headers::synthetic_change_id_from_commit_id()].
+    pub change_id: String,
     /// Optional URL to the Gerrit review for this commit, if applicable.
     /// Only populated if Gerrit mode is enabled and the commit has an associated review.
     pub gerrit_review_url: Option<String>,
@@ -123,17 +125,22 @@ impl TryFrom<gix::Commit<'_>> for Commit {
         let commit_id = commit.id;
         let commit = commit.decode()?;
         let headers = but_core::commit::Headers::try_from_commit_headers(|| commit.extra_headers());
+        let has_conflicts = headers.as_ref().is_some_and(|hdr| hdr.is_conflicted());
+        let change_id = headers
+            .unwrap_or_default()
+            .ensure_change_id(commit_id)
+            .change_id
+            .expect("change-id is ensured")
+            .to_string();
         Ok(Commit {
             id: commit_id,
             parent_ids: commit.parents().collect(),
             message: commit.message.to_owned(),
-            has_conflicts: headers.as_ref().is_some_and(|hdr| hdr.is_conflicted()),
+            has_conflicts,
             state: CommitState::LocalAndRemote(commit_id),
             created_at: i128::from(commit.time()?.seconds) * 1000,
             author: commit.author()?.into(),
-            change_id: headers
-                .and_then(|headers| headers.change_id)
-                .map(|id| id.to_string()),
+            change_id,
             gerrit_review_url: None,
         })
     }
@@ -144,8 +151,11 @@ impl From<but_core::CommitOwned> for Commit {
         let headers = commit::Headers::try_from_commit(&inner);
         let has_conflicts = headers.as_ref().is_some_and(|hdr| hdr.is_conflicted());
         let change_id = headers
-            .and_then(|hdr| hdr.change_id)
-            .map(|id| id.to_string());
+            .unwrap_or_default()
+            .ensure_change_id(id)
+            .change_id
+            .expect("change-id is ensured")
+            .to_string();
         let gix::objs::Commit {
             tree: _,
             parents,
@@ -439,7 +449,12 @@ impl From<&LocalCommit> for ui::Commit {
             author: author
                 .to_ref(&mut gix::date::parse::TimeBuf::default())
                 .into(),
-            change_id: change_id.as_ref().map(ToString::to_string),
+            change_id: change_id
+                .as_ref()
+                .map(ToString::to_string)
+                .unwrap_or_else(|| {
+                    but_core::commit::Headers::synthetic_change_id_from_commit_id(*id).to_string()
+                }),
             gerrit_review_url: None,
         }
     }

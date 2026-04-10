@@ -582,6 +582,12 @@ export type Commit = {
   /** The author of the commit. */
   author: Author;
   /**
+   * The GitButler change-id associated with this commit.
+   * It always exists as we either read it from the [headers][but_core::commit::Headers], or we
+   * synthesize one from [the commit id][but_core::commit::Headers::synthetic_change_id_from_commit_id()].
+   */
+  changeId: string;
+  /**
    * Optional URL to the Gerrit review for this commit, if applicable.
    * Only populated if Gerrit mode is enabled and the commit has an associated review.
    */
@@ -1489,6 +1495,8 @@ export type UpstreamCommit = {
   createdAt: number;
   /** The author of the commit. */
   author: Author;
+  /** The GitButler change-id associated with this commit, if available. */
+  changeId?: string | null;
 };
 
 /** Git files activity. Supplies the head sha */

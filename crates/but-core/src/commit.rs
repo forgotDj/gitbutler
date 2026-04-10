@@ -59,7 +59,10 @@ impl Headers {
         if self.change_id.is_none() {
             self.change_id = commit_id
                 .into()
-                .map_or_else(ChangeId::generate_sha1, Self::synthetic_change_id_from_commit_id)
+                .map_or_else(
+                    ChangeId::generate_sha1,
+                    Self::synthetic_change_id_from_commit_id,
+                )
                 .into();
         }
         self
@@ -528,6 +531,15 @@ impl CommitOwned {
             inner,
         }
     }
+
+    /// Return the stored change-id if present, or derive a deterministic fallback from the commit id.
+    pub fn change_id(&self) -> ChangeId {
+        Headers::try_from_commit(&self.inner)
+            .unwrap_or_default()
+            .ensure_change_id(self.id)
+            .change_id
+            .expect("change-id is ensured")
+    }
 }
 
 /// Mutations
@@ -603,6 +615,15 @@ impl<'repo> Commit<'repo> {
     /// Return our custom headers, of present.
     pub fn headers(&self) -> Option<Headers> {
         Headers::try_from_commit(&self.inner)
+    }
+
+    /// Return the stored change-id if present, or derive a deterministic fallback from the commit id.
+    pub fn change_id(&self) -> ChangeId {
+        self.headers()
+            .unwrap_or_default()
+            .ensure_change_id(self.id.detach())
+            .change_id
+            .expect("change-id is ensured")
     }
 }
 

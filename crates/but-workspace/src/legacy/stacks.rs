@@ -627,7 +627,11 @@ pub fn local_and_remote_commits(
             state,
             created_at,
             author: gix_commit.author()?.into(),
-            change_id: change_id.map(|id| id.to_string()),
+            change_id: change_id
+                .unwrap_or_else(|| {
+                    but_core::commit::Headers::synthetic_change_id_from_commit_id(*commit_id)
+                })
+                .to_string(),
             gerrit_review_url: None,
         };
         local_and_remote.push(api_commit);

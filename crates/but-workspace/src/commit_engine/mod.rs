@@ -222,9 +222,8 @@ fn create_possibly_signed_commit(
     parents: impl IntoIterator<Item = impl Into<gix::ObjectId>>,
     commit_headers: Option<but_core::commit::Headers>,
 ) -> anyhow::Result<gix::ObjectId> {
-    let commit_headers = commit_headers.unwrap_or_else(|| {
-        Headers::from_config(&repo.config_snapshot())
-    });
+    let commit_headers =
+        commit_headers.unwrap_or_else(|| Headers::from_config(&repo.config_snapshot()));
     let commit = gix::objs::Commit {
         message: message.into(),
         tree,

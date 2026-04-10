@@ -234,10 +234,7 @@ fn local_commits_gix(
             state: CommitState::LocalAndRemote(info.id),
             created_at: i128::from(commit.committer.time.seconds) * 1000,
             author,
-            change_id: commit
-                .headers()
-                .and_then(|headers| headers.change_id)
-                .map(|id| id.to_string()),
+            change_id: commit.change_id().to_string(),
             gerrit_review_url: None,
         });
     }
