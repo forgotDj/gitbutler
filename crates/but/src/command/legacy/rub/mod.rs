@@ -99,6 +99,14 @@ pub(crate) struct StackToBranchOperation<'a> {
     pub(crate) to: &'a str,
 }
 
+/// Represents squashing all assignments from a stack to a commit.
+#[derive(Debug)]
+pub(crate) struct StackToCommitOperation {
+    /// The source stack id.
+    pub(crate) from: StackId,
+    pub(crate) to: gix::ObjectId,
+}
+
 /// Represents amending all unassigned hunks into a commit.
 #[derive(Debug)]
 pub(crate) struct UnassignedToCommitOperation {
@@ -221,6 +229,7 @@ pub(crate) enum RubOperation<'a> {
     StackToUnassigned(StackToUnassignedOperation),
     StackToStack(StackToStackOperation),
     StackToBranch(StackToBranchOperation<'a>),
+    StackToCommit(StackToCommitOperation),
     UnassignedToCommit(UnassignedToCommitOperation),
     UnassignedToBranch(UnassignedToBranchOperation<'a>),
     UnassignedToStack(UnassignedToStackOperation),
@@ -422,6 +431,44 @@ impl<'a> StackToBranchOperation<'a> {
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
         let target_stack_id = stack_id_for_branch_name(ctx, self.to)?;
         reassign_all_from_stack_to_stack(ctx, Some(self.from), target_stack_id)
+    }
+}
+
+impl StackToCommitOperation {
+    /// Executes this operation.
+    pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
+        let result = self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            let new_commit = result
+                .new_commit
+                .map(|c| {
+                    let short = shorten_object_id(&repo, c);
+                    let (lead, rest) = split_short_id(&short, 2);
+                    format!("{}{}", lead.blue().bold(), rest.blue())
+                })
+                .unwrap_or_default();
+            writeln!(
+                out,
+                "Amended files assigned to {} → {}",
+                stack_id_to_branch_name(ctx, self.from)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".to_string().bold()),
+                new_commit,
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({
+                "ok": true,
+                "new_commit_id": result.new_commit.map(|c| c.to_string()),
+            }))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `StackToCommit` by squashing all hunks from the source stack to the target commit.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitCreateResult> {
+        let changes = changes_for_stack_assignment(ctx, Some(self.from))?;
+        but_api::commit::amend::commit_amend(ctx, self.to, changes)
     }
 }
 
@@ -805,6 +852,7 @@ impl<'a> RubOperation<'a> {
             RubOperation::CommittedFileToBranch(operation) => operation.execute(ctx, out),
             RubOperation::CommittedFileToCommit(operation) => operation.execute(ctx, out),
             RubOperation::CommittedFileToUnassigned(operation) => operation.execute(ctx, out),
+            RubOperation::StackToCommit(operation) => operation.execute(ctx, out),
         }
     }
 }
@@ -949,6 +997,12 @@ pub(crate) fn route_operation<'a>(
             Some(RubOperation::StackToBranch(StackToBranchOperation {
                 from: *from,
                 to,
+            }))
+        }
+        (Stack { stack_id, .. }, Commit { commit_id, .. }) => {
+            Some(RubOperation::StackToCommit(StackToCommitOperation {
+                from: *stack_id,
+                to: *commit_id,
             }))
         }
         // Unassigned -> *
@@ -1794,11 +1848,11 @@ mod tests {
         // Valid: Stack -> Branch
         assert!(route_operation(&stack, &branch_id()).is_some());
 
+        // Valid: Stack -> Commit
+        assert!(route_operation(&stack, &commit_id()).is_some());
+
         // Invalid: Stack -> Uncommitted
         assert!(route_operation(&stack, &uncommitted_id()).is_none());
-
-        // Invalid: Stack -> Commit
-        assert!(route_operation(&stack, &commit_id()).is_none());
 
         // Invalid: Stack -> CommittedFile
         assert!(route_operation(&stack, &committed_file_id()).is_none());
@@ -1898,6 +1952,12 @@ mod tests {
         match route_operation(&stack, &branch) {
             Some(RubOperation::StackToBranch(..)) => {}
             _ => panic!("Expected StackToBranch variant"),
+        }
+
+        // Stack -> Commit should be StackToCommit
+        match route_operation(&stack, &commit) {
+            Some(RubOperation::StackToCommit(..)) => {}
+            _ => panic!("Expected StackToCommit variant"),
         }
 
         // CommittedFile -> Commit should be CommittedFileToCommit

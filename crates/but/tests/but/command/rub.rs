@@ -1694,6 +1694,46 @@ Staged all [A] changes to [B].
 }
 
 #[test]
+fn rub_matrix_stack_to_commit_smoke() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
+    env.setup_metadata(&["A", "B"])?;
+
+    env.file("stack-to-commit.txt", "content\n");
+    env.but("rub stack-to-commit.txt A")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged the only hunk in stack-to-commit.txt in the unassigned area → [A].
+
+"#]])
+        .stderr_eq(str![""]);
+
+    let before = status_json(&env)?;
+    let target_commit = branch_commit_ids(&before, "A")[0].clone();
+
+    env.but(format!("rub A@{{stack}} {target_commit}"))
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Amended files assigned to [A] → [..]
+
+"#]])
+        .stderr_eq(str![""]);
+
+    let after = status_json(&env)?;
+    assert!(
+        !stack_assigned_contains_file(&after, "A", "stack-to-commit.txt"),
+        "file should no longer be assigned to stack A"
+    );
+    assert!(
+        branch_commits_contain_file(&after, "A", "stack-to-commit.txt"),
+        "file should be amended into a commit on branch A"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn rub_matrix_committed_file_to_branch_smoke() -> anyhow::Result<()> {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
     env.setup_metadata(&["A", "B"])?;
@@ -1782,14 +1822,6 @@ Rubbed the wrong way. Operation doesn't make sense.[..]
 "#]]);
 
     env.but("rub A invalid-a.txt")
-        .assert()
-        .failure()
-        .stderr_eq(str![[r#"
-Rubbed the wrong way. Operation doesn't make sense.[..]
-
-"#]]);
-
-    env.but(format!("rub A@{{stack}} {commit}"))
         .assert()
         .failure()
         .stderr_eq(str![[r#"

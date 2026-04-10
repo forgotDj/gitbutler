@@ -31,6 +31,7 @@ pub(super) fn route_operation<'a>(
             op @ RubOperation::StackToUnassigned(..) => op,
             op @ RubOperation::StackToStack(..) => op,
             op @ RubOperation::UnassignedToStack(..) => op,
+            op @ RubOperation::StackToCommit(..) => op,
 
             // dont allow rubbing with branches
             RubOperation::UncommittedToBranch(..)
@@ -86,6 +87,7 @@ pub(super) fn rub_operation_display(source: &CliId, target: &CliId) -> Option<&'
         RubOperation::CommittedFileToBranch(..) => "uncommit file",
         RubOperation::CommittedFileToCommit(..) => "move file",
         RubOperation::CommittedFileToUnassigned(..) => "uncommit file",
+        RubOperation::StackToCommit(..) => "amend",
     })
 }
 
@@ -183,6 +185,10 @@ pub(super) fn perform_operation(
         RubOperation::CommittedFileToUnassigned(operation) => {
             operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
+        }
+        RubOperation::StackToCommit(operation) => {
+            let result = operation.execute_inner(ctx)?;
+            SelectAfterReload::Commit(result.new_commit.context("api returned no new commit")?)
         }
     };
 
