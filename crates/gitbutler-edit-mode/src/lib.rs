@@ -137,7 +137,6 @@ fn checkout_edit_branch(ctx: &Context, commit_id: gix::ObjectId) -> Result<()> {
         EDIT_BRANCH_REF.into(),
         0,
     )?;
-    git2_repo.checkout_head(Some(CheckoutBuilder::new().force().remove_untracked(true)))?;
 
     // Checkout the commit as unstaged changes
     // TODO this may not be necessary if the commit is unconflicted
