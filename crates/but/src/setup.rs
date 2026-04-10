@@ -7,7 +7,7 @@ use command_group::AsyncCommandGroup;
 
 use crate::{
     args::Args,
-    utils::{Confirm, ConfirmDefault, OutputChannel},
+    utils::{Confirm, ConfirmDefault, OutputChannel, binary_path::current_exe_for_but_exec},
 };
 
 #[derive(Default)]
@@ -324,20 +324,17 @@ fn spawn_background_sync(
     operations: SyncOperations,
     silent: bool,
 ) {
-    #[cfg(windows)]
-    let binary_path = std::env::current_exe().unwrap();
-    #[cfg(unix)]
-    // std::env::current_exe() resolves symlinks on many UNIX implementations, which breaks the
-    // builtin-but behavior that relies on being able to tell that a `but` symlink was used to start
-    // `gitbutler-tauri`. Getting the actual OS argument used to invoke the program circumvents this
-    // issue.
-    //
-    // It would in theory be possible to just fork the current process, instead of fork-exec like we
-    // currently do here. But that would split the implementation across UNIX and Windows (which
-    // does not have fork), and I'm also uncertain how the Tokio runtime would behave with a fork.
-    let binary_path = std::env::args_os().next().unwrap();
-
-    let mut cmd = tokio::process::Command::new(binary_path);
+    let mut cmd = {
+        match current_exe_for_but_exec() {
+            Ok(but_path) => tokio::process::Command::new(but_path),
+            Err(e) => {
+                tracing::error!(error = %e, "failed to resolve but binary path");
+                // We don't want to cause a crash just because we can't spawn background sync, so we fail
+                // silently instead
+                return;
+            }
+        }
+    };
     cmd.arg("-C")
         .arg(&args.current_dir)
         .arg("refresh-remote-data");

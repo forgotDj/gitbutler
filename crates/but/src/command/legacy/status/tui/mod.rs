@@ -55,7 +55,7 @@ use crate::{
         },
     },
     tui::{CrosstermTerminalGuard, HeadlessTerminalGuard, TerminalGuard},
-    utils::{DebugAsType, OutputChannel},
+    utils::{DebugAsType, OutputChannel, binary_path::current_exe_for_but_exec},
 };
 
 use super::{
@@ -1948,7 +1948,7 @@ impl App {
             return Ok(());
         };
 
-        let binary_path = std::env::current_exe().unwrap_or_default();
+        let binary_path = current_exe_for_but_exec()?;
         let args = shell_words::split(input)?.into_iter().map(OsString::from);
 
         let mut cmd = Command::new(binary_path);
