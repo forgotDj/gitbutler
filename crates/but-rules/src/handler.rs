@@ -65,6 +65,7 @@ pub fn process_workspace_rules(
                         .filter(|e| e.stack_id != Some(stack_id))
                         .map(|mut e| {
                             e.stack_id = Some(stack_id);
+                            e.branch_ref_bytes = None;
                             e
                         })
                         .collect_vec();

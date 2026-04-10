@@ -317,7 +317,7 @@ export type AbsorptionReason = "hunk_dependency" | "stack_assignment" | "default
 export type AbsorptionTarget = {
   type: "branch";
   subject: {
-    branch_name: string;
+    branchName: string;
   };
 } | {
   type: "hunkAssignments";
@@ -328,7 +328,7 @@ export type AbsorptionTarget = {
   type: "treeChanges";
   subject: {
     changes: Array<TreeChange>;
-    assigned_stack_id?: string | null;
+    assignedStackId?: string | null;
   };
 } | {
   type: "all";
@@ -949,12 +949,14 @@ export type HunkAssignment = {
   path: string;
   /** The file path of the hunk in bytes. */
   pathBytes: Array<number>;
-  /** The stack to which the hunk is assigned. If None, the hunk is not assigned to any stack. */
+  /**
+   * The stack to which the hunk is assigned, derived from `branch_ref_bytes`
+   * through workspace projection.
+   */
   stackId: string | null;
   /**
-   * The branch within the stack, as a full ref name (e.g. `refs/heads/my-branch`).
-   * Serialized as bytes over the wire for non-UTF-8 safety.
-   * `None` means "topmost branch of the stack" (backward-compatible default).
+   * The assigned branch as a full ref name (e.g. `refs/heads/my-branch`).
+   * This is the source of truth for assignment targeting.
    */
   branchRefBytes: Array<number> | null;
   /** The line numbers that were added in this hunk. */
@@ -965,7 +967,8 @@ export type HunkAssignment = {
 
 /**
  * A request to update a hunk assignment.
- * If a a file has multiple hunks, the UI client should send a list of assignment requests with the appropriate hunk headers.
+ * If a file has multiple hunks, the UI client should send a list of assignment
+ * requests with the appropriate hunk headers.
  */
 export type HunkAssignmentRequest = {
   /**
@@ -976,17 +979,21 @@ export type HunkAssignmentRequest = {
   hunkHeader?: HunkHeader | null;
   /** The file path of the hunk in bytes. */
   pathBytes: Array<number>;
-  /**
-   * The stack to which the hunk is assigned. If set to None, the hunk is set as "unassigned".
-   * If a stack id is set, it must be one of the applied stacks.
-   */
-  stackId: string | null;
-  /**
-   * Optional: target a specific branch within the stack, as a full ref name.
-   * Serialized as bytes over the wire for non-UTF-8 safety.
-   * If not provided, auto-resolves to the topmost branch.
-   */
-  branchRefBytes: Array<number> | null;
+  /** Where to assign this hunk. `None` means "unassigned". */
+  target?: HunkAssignmentTarget | null;
+};
+
+/** The target for a hunk assignment request. */
+export type HunkAssignmentTarget = {
+  type: "stack";
+  subject: {
+    stackId: string;
+  };
+} | {
+  type: "branch";
+  subject: {
+    branchRefBytes: Array<number>;
+  };
 };
 
 /**

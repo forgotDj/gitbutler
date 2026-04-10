@@ -52,16 +52,16 @@ pub struct HunkAssignment {
         schemars(schema_with = "but_schemars::bstring_bytes")
     )]
     pub path_bytes: BString,
-    /// The stack to which the hunk is assigned. If None, the hunk is not assigned to any stack.
+    /// The stack to which the hunk is assigned, derived from `branch_ref_bytes`
+    /// through workspace projection.
     #[cfg_attr(feature = "export-ts", ts(type = "string | null"))]
     #[cfg_attr(
         feature = "export-schema",
         schemars(schema_with = "but_schemars::stack_id_opt")
     )]
     pub stack_id: Option<StackId>,
-    /// The branch within the stack, as a full ref name (e.g. `refs/heads/my-branch`).
-    /// Serialized as bytes over the wire for non-UTF-8 safety.
-    /// `None` means "topmost branch of the stack" (backward-compatible default).
+    /// The assigned branch as a full ref name (e.g. `refs/heads/my-branch`).
+    /// This is the source of truth for assignment targeting.
     #[serde(with = "but_serde::fullname_bytes_opt")]
     #[cfg_attr(feature = "export-ts", ts(type = "number[] | null"))]
     #[cfg_attr(
@@ -93,7 +93,7 @@ impl TryFrom<but_db::HunkAssignment> for HunkAssignment {
             .hunk_header
             .as_ref()
             .and_then(|h| serde_json::from_str(h).ok());
-        let stack_id = value
+        let legacy_stack_id = value
             .stack_id
             .as_ref()
             .and_then(|id| uuid::Uuid::parse_str(id).ok())
@@ -103,7 +103,7 @@ impl TryFrom<but_db::HunkAssignment> for HunkAssignment {
             hunk_header: header,
             path: value.path,
             path_bytes: value.path_bytes.into(),
-            stack_id,
+            stack_id: legacy_stack_id,
             branch_ref_bytes: value
                 .branch_ref_bytes
                 .map(|b| gix::refs::FullName::try_from(BString::from(b)))
@@ -131,7 +131,7 @@ impl TryFrom<HunkAssignment> for but_db::HunkAssignment {
             hunk_header: header,
             path: value.path,
             path_bytes: value.path_bytes.into(),
-            stack_id: value.stack_id.map(|id| id.to_string()),
+            stack_id: None,
             branch_ref_bytes: value.branch_ref_bytes.map(|r| r.into_inner().into()),
         })
     }
@@ -160,7 +160,12 @@ impl From<HunkAssignment> for but_core::DiffSpec {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 #[cfg_attr(feature = "export-ts", derive(ts_rs::TS))]
-#[serde(rename_all = "camelCase", tag = "type", content = "subject")]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "type",
+    content = "subject"
+)]
 #[cfg_attr(
     feature = "export-ts",
     ts(export, export_to = "./hunkAssignment/index.ts")
@@ -283,38 +288,73 @@ pub struct JsonAbsorbOutput {
     pub commits: Vec<JsonCommitAbsorption>,
 }
 
+/// The target for a hunk assignment request.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "export-ts", derive(ts_rs::TS))]
+#[serde(
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase",
+    tag = "type",
+    content = "subject"
+)]
+#[cfg_attr(
+    feature = "export-ts",
+    ts(rename_all = "camelCase", rename_all_fields = "camelCase")
+)]
+#[cfg_attr(
+    feature = "export-ts",
+    ts(export, export_to = "./hunkAssignment/index.ts")
+)]
+pub enum HunkAssignmentTarget {
+    /// Assign to the topmost branch of the given stack.
+    Stack {
+        #[serde(rename = "stackId")]
+        #[cfg_attr(feature = "export-ts", ts(rename = "stackId"))]
+        #[cfg_attr(feature = "export-ts", ts(type = "string"))]
+        #[cfg_attr(feature = "export-schema", schemars(with = "String"))]
+        stack_id: StackId,
+    },
+    /// Assign directly to the given branch ref bytes.
+    Branch {
+        #[serde(rename = "branchRefBytes")]
+        #[cfg_attr(feature = "export-ts", ts(rename = "branchRefBytes"))]
+        #[cfg_attr(feature = "export-ts", ts(type = "number[]"))]
+        #[cfg_attr(
+            feature = "export-schema",
+            schemars(schema_with = "but_schemars::bstring_bytes")
+        )]
+        branch_ref_bytes: BString,
+    },
+}
+#[cfg(feature = "export-schema")]
+but_schemars::register_sdk_type!(HunkAssignmentTarget);
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "export-ts", derive(ts_rs::TS))]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(
+    feature = "export-ts",
+    ts(export, export_to = "./hunkAssignment/index.ts")
+)]
 /// A request to update a hunk assignment.
-/// If a a file has multiple hunks, the UI client should send a list of assignment requests with the appropriate hunk headers.
+/// If a file has multiple hunks, the UI client should send a list of assignment
+/// requests with the appropriate hunk headers.
 pub struct HunkAssignmentRequest {
     /// The hunk that is being assigned. Together with path_bytes, this identifies the hunk.
     /// If the file is binary, or too large to load, this will be None and in this case the path name is the only identity.
     /// If the file has hunk headers, then header info MUST be provided.
     pub hunk_header: Option<HunkHeader>,
     /// The file path of the hunk in bytes.
+    #[cfg_attr(feature = "export-ts", ts(type = "number[]"))]
     #[cfg_attr(
         feature = "export-schema",
         schemars(schema_with = "but_schemars::bstring_bytes")
     )]
     pub path_bytes: BString,
-    /// The stack to which the hunk is assigned. If set to None, the hunk is set as "unassigned".
-    /// If a stack id is set, it must be one of the applied stacks.
-    #[cfg_attr(
-        feature = "export-schema",
-        schemars(schema_with = "but_schemars::stack_id_opt")
-    )]
-    pub stack_id: Option<StackId>,
-    /// Optional: target a specific branch within the stack, as a full ref name.
-    /// Serialized as bytes over the wire for non-UTF-8 safety.
-    /// If not provided, auto-resolves to the topmost branch.
-    #[serde(with = "but_serde::fullname_bytes_opt")]
-    #[cfg_attr(
-        feature = "export-schema",
-        schemars(schema_with = "but_schemars::fullname_bytes_opt")
-    )]
-    pub branch_ref_bytes: Option<gix::refs::FullName>,
+    /// Where to assign this hunk. `None` means "unassigned".
+    pub target: Option<HunkAssignmentTarget>,
 }
 #[cfg(feature = "export-schema")]
 but_schemars::register_sdk_type!(HunkAssignmentRequest);
@@ -421,7 +461,7 @@ pub fn assign(
     requests: Vec<HunkAssignmentRequest>,
     context_lines: u32,
 ) -> Result<()> {
-    let (identifiable_stacks, branches_by_stack) = workspace_stack_and_branch_info(workspace);
+    let branches_by_stack = workspace_branches_by_stack(workspace);
 
     let worktree_changes: Vec<but_core::TreeChange> =
         but_core::diff::worktree_changes(repo)?.changes;
@@ -435,27 +475,27 @@ pub fn assign(
     }
 
     // Reconcile worktree with the persisted assignments
-    let persisted_assignments = state::assignments(db.to_ref())?;
+    let mut persisted_assignments = state::assignments(db.to_ref())?;
+    backfill_branch_ref_from_legacy_stack_id(&mut persisted_assignments, workspace);
     let with_worktree = reconcile::assignments(
         &worktree_assignments,
         &persisted_assignments,
-        &identifiable_stacks,
         &branches_by_stack,
         MultipleOverlapping::SetMostLines,
         true,
     );
 
     // Reconcile with the requested changes
+    let request_assignments = requests_to_assignments(requests, workspace)?;
     let mut with_requests = reconcile::assignments(
         &with_worktree,
-        &requests_to_assignments(requests),
-        &identifiable_stacks,
+        &request_assignments,
         &branches_by_stack,
         MultipleOverlapping::SetMostLines,
         true,
     );
 
-    auto_populate_branch_ref_bytes(&mut with_requests, workspace);
+    derive_stack_ids(&mut with_requests, workspace);
     state::set_assignments(db, with_requests)?;
 
     Ok(())
@@ -503,7 +543,7 @@ fn reconcile_worktree_changes_with_worktree(
     }
     let mut reconciled = reconcile_with_worktree(db.to_ref(), workspace, &worktree_assignments)?;
 
-    auto_populate_branch_ref_bytes(&mut reconciled, workspace);
+    derive_stack_ids(&mut reconciled, workspace);
     state::set_assignments(db, reconciled.clone())?;
     Ok(reconciled)
 }
@@ -528,13 +568,13 @@ fn reconcile_with_worktree(
     workspace: &but_graph::projection::Workspace,
     worktree_assignments: &[HunkAssignment],
 ) -> Result<Vec<HunkAssignment>> {
-    let (identifiable_stacks, branches_by_stack) = workspace_stack_and_branch_info(workspace);
+    let branches_by_stack = workspace_branches_by_stack(workspace);
 
-    let persisted_assignments = state::assignments(db)?;
+    let mut persisted_assignments = state::assignments(db)?;
+    backfill_branch_ref_from_legacy_stack_id(&mut persisted_assignments, workspace);
     let with_worktree = reconcile::assignments(
         worktree_assignments,
         &persisted_assignments,
-        &identifiable_stacks,
         &branches_by_stack,
         MultipleOverlapping::SetMostLines,
         true,
@@ -543,15 +583,31 @@ fn reconcile_with_worktree(
     Ok(with_worktree)
 }
 
-/// Collect applied stack IDs and a mapping of stack→branches from the workspace for reconciliation.
-fn workspace_stack_and_branch_info(
+/// Backfill legacy stack-backed rows to the topmost branch of that stack before
+/// reconciliation runs.
+fn backfill_branch_ref_from_legacy_stack_id(
+    assignments: &mut [HunkAssignment],
     workspace: &but_graph::projection::Workspace,
-) -> (Vec<StackId>, HashMap<StackId, Vec<gix::refs::FullName>>) {
-    let mut stack_ids = Vec::new();
+) {
+    for assignment in assignments.iter_mut() {
+        if assignment.branch_ref_bytes.is_none()
+            && let Some(stack_id) = assignment.stack_id
+        {
+            assignment.branch_ref_bytes = workspace
+                .find_stack_by_id(stack_id)
+                .and_then(|stack| stack.ref_name())
+                .map(|ref_name| ref_name.to_owned());
+        }
+    }
+}
+
+/// Collect the workspace branches keyed by stack for reconciliation validation.
+fn workspace_branches_by_stack(
+    workspace: &but_graph::projection::Workspace,
+) -> HashMap<StackId, Vec<gix::refs::FullName>> {
     let mut branches_by_stack = HashMap::new();
     for stack in &workspace.stacks {
         if let Some(id) = stack.id {
-            stack_ids.push(id);
             let branch_refs: Vec<gix::refs::FullName> = stack
                 .segments
                 .iter()
@@ -560,32 +616,20 @@ fn workspace_stack_and_branch_info(
             branches_by_stack.insert(id, branch_refs);
         }
     }
-    (stack_ids, branches_by_stack)
+    branches_by_stack
 }
 
-/// For assignments that have a `stack_id` but no `branch_ref_bytes`, auto-populate `branch_ref_bytes`
-/// with the topmost branch of that stack from the workspace projection.
-fn auto_populate_branch_ref_bytes(
+/// Derive `stack_id` from the assigned branch ref for API compatibility.
+fn derive_stack_ids(
     assignments: &mut [HunkAssignment],
     workspace: &but_graph::projection::Workspace,
 ) {
-    let branch_ref_bytes_by_stack: HashMap<StackId, gix::refs::FullName> = workspace
-        .stacks
-        .iter()
-        .filter_map(|stack| {
-            let stack_id = stack.id?;
-            let ref_name = stack.ref_name()?;
-            Some((stack_id, ref_name.to_owned()))
-        })
-        .collect();
-
     for assignment in assignments.iter_mut() {
-        if let Some(stack_id) = assignment.stack_id
-            && assignment.branch_ref_bytes.is_none()
-            && let Some(ref_name) = branch_ref_bytes_by_stack.get(&stack_id)
-        {
-            assignment.branch_ref_bytes = Some(ref_name.clone());
-        }
+        assignment.stack_id = assignment.branch_ref_bytes.as_ref().and_then(|branch_ref| {
+            workspace
+                .find_segment_and_stack_by_refname(branch_ref.as_ref())
+                .and_then(|(stack, _segment)| stack.id)
+        });
     }
 }
 
@@ -714,33 +758,75 @@ fn line_nums_from_hunk(diff: &BString, old_start: u32, new_start: u32) -> (Vec<u
     (line_nums_added_new, line_nums_removed_old)
 }
 
-fn requests_to_assignments(request: Vec<HunkAssignmentRequest>) -> Vec<HunkAssignment> {
+fn requests_to_assignments(
+    request: Vec<HunkAssignmentRequest>,
+    workspace: &but_graph::projection::Workspace,
+) -> Result<Vec<HunkAssignment>> {
     let mut assignments = vec![];
     for req in request {
+        let HunkAssignmentRequest {
+            hunk_header,
+            path_bytes,
+            target,
+        } = req;
+        let branch_ref_bytes = match target {
+            None => None,
+            Some(HunkAssignmentTarget::Branch { branch_ref_bytes }) => Some(
+                gix::refs::FullName::try_from(branch_ref_bytes).map_err(|err| {
+                    anyhow::anyhow!(
+                        "Invalid branch_ref_bytes in assignment request for '{}': {err}",
+                        path_bytes.to_str_lossy()
+                    )
+                })?,
+            ),
+            Some(HunkAssignmentTarget::Stack { stack_id }) => Some(
+                workspace
+                    .find_stack_by_id(stack_id)
+                    .and_then(|stack| stack.ref_name())
+                    .map(|ref_name| ref_name.to_owned())
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Unknown stack_id {stack_id} in assignment request for '{}'",
+                            path_bytes.to_str_lossy()
+                        )
+                    })?,
+            ),
+        };
         let assignment = HunkAssignment {
             id: None,
-            hunk_header: req.hunk_header,
-            path: req.path_bytes.to_str_lossy().into(),
-            path_bytes: req.path_bytes,
-            stack_id: req.stack_id,
-            branch_ref_bytes: req.branch_ref_bytes,
+            hunk_header,
+            path: path_bytes.to_str_lossy().into(),
+            path_bytes,
+            stack_id: None,
+            branch_ref_bytes,
             line_nums_added: None,
             line_nums_removed: None,
             diff: None,
         };
         assignments.push(assignment);
     }
-    assignments
+    Ok(assignments)
 }
 
 pub fn assignments_to_requests(assignments: Vec<HunkAssignment>) -> Vec<HunkAssignmentRequest> {
     assignments
         .into_iter()
-        .map(|assignment| HunkAssignmentRequest {
-            hunk_header: assignment.hunk_header,
-            path_bytes: assignment.path_bytes,
-            stack_id: assignment.stack_id,
-            branch_ref_bytes: assignment.branch_ref_bytes,
+        .map(|assignment| {
+            let target = assignment
+                .branch_ref_bytes
+                .map(|branch_ref_bytes| HunkAssignmentTarget::Branch {
+                    branch_ref_bytes: BString::from(branch_ref_bytes.as_bstr()),
+                })
+                .or_else(|| {
+                    assignment
+                        .stack_id
+                        .map(|stack_id| HunkAssignmentTarget::Stack { stack_id })
+                });
+            HunkAssignmentRequest {
+                hunk_header: assignment.hunk_header,
+                path_bytes: assignment.path_bytes,
+                target,
+            }
         })
         .collect()
 }
@@ -811,6 +897,7 @@ pub type GroupedChanges = BTreeMap<
 mod tests {
     use bstr::BString;
     use but_core::{HunkHeader, ref_metadata::StackId};
+    use but_graph::projection::{Workspace, WorkspaceKind};
 
     use super::*;
     use crate::reconcile::MultipleOverlapping;
@@ -852,12 +939,7 @@ mod tests {
     }
 
     impl HunkAssignmentRequest {
-        pub fn new(
-            path: &str,
-            start: u32,
-            end: u32,
-            stack_id: Option<usize>,
-        ) -> HunkAssignmentRequest {
+        pub fn new(path: &str, start: u32, end: u32) -> HunkAssignmentRequest {
             HunkAssignmentRequest {
                 hunk_header: Some(HunkHeader {
                     old_start: start,
@@ -866,8 +948,7 @@ mod tests {
                     new_lines: end,
                 }),
                 path_bytes: BString::from(path),
-                stack_id: stack_id.map(stack_id_seq),
-                branch_ref_bytes: None,
+                target: None,
             }
         }
     }
@@ -881,12 +962,26 @@ mod tests {
         uuid::Uuid::parse_str(&format!("00000000-0000-0000-0000-00000000000{}", num % 10)).unwrap()
     }
 
+    fn empty_workspace() -> Workspace {
+        Workspace {
+            graph: but_graph::Graph::default(),
+            id: Default::default(),
+            kind: WorkspaceKind::AdHoc,
+            stacks: vec![],
+            lower_bound: None,
+            lower_bound_segment_id: None,
+            target_ref: None,
+            target_commit: None,
+            extra_target: None,
+            metadata: None,
+        }
+    }
+
     fn deep_eq(a: &HunkAssignment, b: &HunkAssignment) -> bool {
         a.id == b.id
             && a.hunk_header == b.hunk_header
             && a.path == b.path
             && a.path_bytes == b.path_bytes
-            && a.stack_id == b.stack_id
             && a.branch_ref_bytes == b.branch_ref_bytes
     }
     fn assert_eq(a: Vec<HunkAssignment>, b: Vec<HunkAssignment>) {
@@ -919,11 +1014,9 @@ mod tests {
             HunkAssignment::new("foo.rs", 10, 5, None, None),
             HunkAssignment::new("foo.rs", 20, 5, None, None),
         ];
-        let applied_stacks = vec![stack_id_seq(1), stack_id_seq(2)];
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
@@ -941,11 +1034,9 @@ mod tests {
     fn test_reconcile_exact_match_unapplied_branch_unassigns() {
         let previous_assignments = vec![HunkAssignment::new("foo.rs", 10, 5, Some(1), Some(1))];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 10, 5, None, Some(1))];
-        let applied_stacks = vec![stack_id_seq(2)];
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
@@ -960,11 +1051,9 @@ mod tests {
     fn test_reconcile_with_overlap_preserves_assignment() {
         let previous_assignments = vec![HunkAssignment::new("foo.rs", 10, 5, Some(1), Some(1))];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 12, 7, None, Some(1))];
-        let applied_stacks = vec![stack_id_seq(1)];
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
@@ -981,12 +1070,10 @@ mod tests {
             HunkAssignment::new("foo.rs", 1, 15, Some(1), Some(1)),
             HunkAssignment::new("foo.rs", 17, 20, Some(2), Some(2)),
         ];
-        let applied_stacks = vec![stack_id_seq(1), stack_id_seq(2)];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 5, 18, None, None)];
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
@@ -1003,12 +1090,10 @@ mod tests {
             HunkAssignment::new("foo.rs", 5, 15, Some(1), Some(1)),
             HunkAssignment::new("foo.rs", 17, 25, Some(2), Some(2)),
         ];
-        let applied_stacks = vec![stack_id_seq(1), stack_id_seq(2)];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 5, 18, None, None)];
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &HashMap::new(),
             MultipleOverlapping::SetNone,
             true,
@@ -1023,11 +1108,9 @@ mod tests {
     fn test_reconcile_not_updating_unassigned() {
         let previous_assignments = vec![HunkAssignment::new("foo.rs", 10, 15, Some(1), None)];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 12, 17, Some(2), None)];
-        let applied_stacks = vec![stack_id_seq(1)];
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             false,
@@ -1051,6 +1134,46 @@ mod tests {
         let hunk1 = HunkAssignment::new("foo.rs", 10, 15, Some(1), None);
         let hunk2 = HunkAssignment::new("bar.rs", 10, 15, Some(2), None);
         assert_ne!(hunk1, hunk2);
+    }
+
+    #[test]
+    fn test_requests_to_assignments_rejects_invalid_branch_target() {
+        let err = requests_to_assignments(
+            vec![HunkAssignmentRequest {
+                hunk_header: None,
+                path_bytes: BString::from("foo.rs"),
+                target: Some(HunkAssignmentTarget::Branch {
+                    branch_ref_bytes: BString::from("not a valid ref"),
+                }),
+            }],
+            &empty_workspace(),
+        )
+        .expect_err("invalid branch targets should fail");
+
+        assert!(
+            err.to_string().contains("Invalid branch_ref_bytes"),
+            "unexpected error: {err:#}"
+        );
+    }
+
+    #[test]
+    fn test_requests_to_assignments_rejects_unknown_stack_target() {
+        let err = requests_to_assignments(
+            vec![HunkAssignmentRequest {
+                hunk_header: None,
+                path_bytes: BString::from("foo.rs"),
+                target: Some(HunkAssignmentTarget::Stack {
+                    stack_id: stack_id_seq(1),
+                }),
+            }],
+            &empty_workspace(),
+        )
+        .expect_err("unknown stack targets should fail");
+
+        assert!(
+            err.to_string().contains("Unknown stack_id"),
+            "unexpected error: {err:#}"
+        );
     }
 
     #[test]
@@ -1153,8 +1276,6 @@ mod tests {
     #[test]
     fn test_reconcile_with_binary_files() {
         // Test that reconciliation preserves stack assignments for binary files
-        let applied_stacks = vec![stack_id_seq(1)];
-
         let previous_assignments = vec![
             // Binary file assigned to stack 1
             HunkAssignment {
@@ -1192,32 +1313,29 @@ mod tests {
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
         );
 
-        // Binary file should maintain its stack assignment
-        assert_eq!(
-            result[0].stack_id,
-            Some(stack_id_seq(1)),
-            "Binary file should maintain stack assignment"
+        assert_eq!(result.len(), 2, "Both files should be in the result");
+
+        let binary_result = result.iter().find(|a| a.path == "logo.png").unwrap();
+        assert!(
+            binary_result.hunk_header.is_none(),
+            "Binary file should remain without a hunk header"
         );
 
-        // Text file should also maintain its stack assignment
-        assert_eq!(
-            result[1].stack_id,
-            Some(stack_id_seq(1)),
-            "Text file should maintain stack assignment"
+        let text_result = result.iter().find(|a| a.path == "code.rs").unwrap();
+        assert!(
+            text_result.hunk_header.is_some(),
+            "Text file should retain its hunk header"
         );
     }
 
     #[test]
     fn test_reconcile_file_type_change() {
         // Test file changing from text to binary maintains assignment
-        let applied_stacks = vec![stack_id_seq(1)];
-
         // Previously was a text file with hunks
         let previous_assignments = vec![HunkAssignment::new("data.file", 1, 10, Some(1), Some(1))];
 
@@ -1237,17 +1355,12 @@ mod tests {
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
         );
 
-        assert_eq!(
-            result[0].stack_id,
-            Some(stack_id_seq(1)),
-            "File should maintain stack assignment when changing from text to binary"
-        );
+        assert_eq!(result.len(), 1, "File should be in the result");
     }
 
     #[test]
@@ -1259,17 +1372,14 @@ mod tests {
                 .with_branch_ref_bytes(Some("refs/heads/feature")),
         ];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 10, 5, None, None)];
-        let applied_stacks = vec![stack_id_seq(1)];
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &branches,
             MultipleOverlapping::SetMostLines,
             true,
         );
         assert_eq!(result.len(), 1);
-        assert_eq!(result[0].stack_id, Some(stack_id_seq(1)));
         assert_eq!(
             result[0].branch_ref_bytes.as_ref().map(|r| r.to_string()),
             Some("refs/heads/feature".to_string()),
@@ -1285,24 +1395,17 @@ mod tests {
                 .with_branch_ref_bytes(Some("refs/heads/feature")),
         ];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 10, 5, None, None)];
-        // Stack 1 is NOT in the applied stacks
-        let applied_stacks = vec![stack_id_seq(2)];
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             true,
         );
         assert_eq!(result.len(), 1);
         assert_eq!(
-            result[0].stack_id, None,
-            "stack_id should be cleared when stack is unapplied"
-        );
-        assert_eq!(
             result[0].branch_ref_bytes, None,
-            "branch_ref_bytes should be cleared when stack_id is cleared"
+            "branch_ref_bytes should be cleared when no matching branch in workspace"
         );
     }
 
@@ -1315,21 +1418,15 @@ mod tests {
             HunkAssignment::new("foo.rs", 17, 25, Some(2), Some(2))
                 .with_branch_ref_bytes(Some("refs/heads/feature-b")),
         ];
-        let applied_stacks = vec![stack_id_seq(1), stack_id_seq(2)];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 5, 18, None, None)];
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &HashMap::new(),
             MultipleOverlapping::SetNone,
             true,
         );
         assert_eq!(result.len(), 1);
-        assert_eq!(
-            result[0].stack_id, None,
-            "stack_id should be None on conflicting multi-overlap"
-        );
         assert_eq!(
             result[0].branch_ref_bytes, None,
             "branch_ref_bytes should be None on conflicting multi-overlap"
@@ -1344,11 +1441,9 @@ mod tests {
                 .with_branch_ref_bytes(Some("refs/heads/feature")),
         ];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 12, 17, None, None)];
-        let applied_stacks = vec![stack_id_seq(1)];
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &HashMap::new(),
             MultipleOverlapping::SetMostLines,
             false,
@@ -1367,7 +1462,6 @@ mod tests {
                 .with_branch_ref_bytes(Some("refs/heads/deleted-branch")),
         ];
         let worktree_assignments = vec![HunkAssignment::new("foo.rs", 10, 5, None, None)];
-        let applied_stacks = vec![stack_id_seq(1)];
         // The stack exists but only has a different branch — "deleted-branch" is gone
         let other_ref =
             gix::refs::FullName::try_from("refs/heads/other-branch".to_string()).unwrap();
@@ -1375,17 +1469,11 @@ mod tests {
         let result = reconcile::assignments(
             &worktree_assignments,
             &previous_assignments,
-            &applied_stacks,
             &branches,
             MultipleOverlapping::SetMostLines,
             true,
         );
         assert_eq!(result.len(), 1);
-        assert_eq!(
-            result[0].stack_id,
-            Some(stack_id_seq(1)),
-            "stack_id should be preserved when stack is still applied"
-        );
         assert_eq!(
             result[0].branch_ref_bytes, None,
             "branch_ref_bytes should be cleared when branch is no longer in workspace"

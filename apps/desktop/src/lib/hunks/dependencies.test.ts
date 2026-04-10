@@ -27,6 +27,7 @@ function makeAssignment(
 		path,
 		pathBytes: [],
 		stackId,
+		branchRefBytes: null,
 		hunkHeader: { oldStart: 1, oldLines: 1, newStart, newLines },
 		lineNumsAdded: null,
 		lineNumsRemoved: null,

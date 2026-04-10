@@ -38,7 +38,7 @@
 			type: "treeChanges",
 			subject: {
 				changes: changesToAbsorb,
-				assigned_stack_id: stackId ?? null,
+				assignedStackId: stackId ?? null,
 			},
 		});
 		if (!plan || plan.length === 0) {

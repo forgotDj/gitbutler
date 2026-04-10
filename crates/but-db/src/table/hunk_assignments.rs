@@ -107,19 +107,19 @@ impl HunkAssignmentsHandleMut<'_> {
 
     /// Sets the hunk assignments table to the provided values.
     /// Any existing entries that are not in the provided values are deleted.
+    /// `stack_id` is preserved only for reads of legacy rows and is no longer written.
     pub fn set_all(self, assignments: Vec<HunkAssignment>) -> rusqlite::Result<()> {
         self.sp.execute("DELETE FROM hunk_assignments", [])?;
 
         for assignment in assignments {
             self.sp.execute(
-                "INSERT INTO hunk_assignments (id, hunk_header, path, path_bytes, stack_id, branch_ref) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                "INSERT INTO hunk_assignments (id, hunk_header, path, path_bytes, branch_ref) \
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
                 rusqlite::params![
                     assignment.id,
                     assignment.hunk_header,
                     assignment.path,
                     assignment.path_bytes,
-                    assignment.stack_id,
                     assignment.branch_ref_bytes,
                 ],
             )?;

@@ -8,12 +8,9 @@ import type { TreeChange } from "../core/ui";
 export type AbsorptionReason = "hunk_dependency" | "stack_assignment" | "default_stack";
 
 export type AbsorptionTarget =
-	| { type: "branch"; subject: { branch_name: string } }
+	| { type: "branch"; subject: { branchName: string } }
 	| { type: "hunkAssignments"; subject: { assignments: Array<HunkAssignment> } }
-	| {
-			type: "treeChanges";
-			subject: { changes: Array<TreeChange>; assigned_stack_id: string | null };
-	  }
+	| { type: "treeChanges"; subject: { changes: Array<TreeChange>; assignedStackId: string | null } }
 	| { type: "all" };
 
 /**
@@ -54,13 +51,13 @@ export type HunkAssignment = {
 	 */
 	pathBytes: number[];
 	/**
-	 * The stack to which the hunk is assigned. If None, the hunk is not assigned to any stack.
+	 * The stack to which the hunk is assigned, derived from `branch_ref_bytes`
+	 * through workspace projection.
 	 */
 	stackId: string | null;
 	/**
-	 * The branch within the stack, as a full ref name (e.g. `refs/heads/my-branch`).
-	 * Serialized as bytes over the wire for non-UTF-8 safety.
-	 * `None` means "topmost branch of the stack" (backward-compatible default).
+	 * The assigned branch as a full ref name (e.g. `refs/heads/my-branch`).
+	 * This is the source of truth for assignment targeting.
 	 */
 	branchRefBytes: number[] | null;
 	/**
@@ -72,3 +69,32 @@ export type HunkAssignment = {
 	 */
 	lineNumsRemoved: Array<number> | null;
 };
+
+/**
+ * A request to update a hunk assignment.
+ * If a file has multiple hunks, the UI client should send a list of assignment
+ * requests with the appropriate hunk headers.
+ */
+export type HunkAssignmentRequest = {
+	/**
+	 * The hunk that is being assigned. Together with path_bytes, this identifies the hunk.
+	 * If the file is binary, or too large to load, this will be None and in this case the path name is the only identity.
+	 * If the file has hunk headers, then header info MUST be provided.
+	 */
+	hunkHeader: HunkHeader | null;
+	/**
+	 * The file path of the hunk in bytes.
+	 */
+	pathBytes: number[];
+	/**
+	 * Where to assign this hunk. `None` means "unassigned".
+	 */
+	target: HunkAssignmentTarget | null;
+};
+
+/**
+ * The target for a hunk assignment request.
+ */
+export type HunkAssignmentTarget =
+	| { type: "stack"; subject: { stackId: string } }
+	| { type: "branch"; subject: { branchRefBytes: number[] } };

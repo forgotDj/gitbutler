@@ -1,7 +1,7 @@
 use bstr::BString;
 use but_core::{HunkHeader, ref_metadata::StackId};
 use but_ctx::Context;
-use but_hunk_assignment::HunkAssignmentRequest;
+use but_hunk_assignment::{HunkAssignmentRequest, HunkAssignmentTarget};
 
 pub(crate) fn do_assignments(
     ctx: &mut Context,
@@ -61,8 +61,11 @@ pub(crate) fn to_assignment_request(
 ) -> anyhow::Result<Vec<HunkAssignmentRequest>> {
     let normalized = branch_name.map(normalize_branch_name_for_lookup);
     let stack_id = branch_name_to_stack_id(ctx, normalized)?;
-    let branch_ref_bytes = match (stack_id, branch_name) {
-        (Some(_), Some(name)) => Some(to_full_ref_name(name)?),
+    let target = match (stack_id, branch_name) {
+        (Some(_), Some(name)) => Some(HunkAssignmentTarget::Branch {
+            branch_ref_bytes: to_full_ref_name(name)?.into_inner(),
+        }),
+        (Some(stack_id), None) => Some(HunkAssignmentTarget::Stack { stack_id }),
         _ => None,
     };
 
@@ -71,8 +74,7 @@ pub(crate) fn to_assignment_request(
         reqs.push(HunkAssignmentRequest {
             hunk_header,
             path_bytes,
-            stack_id,
-            branch_ref_bytes: branch_ref_bytes.clone(),
+            target: target.clone(),
         });
     }
     Ok(reqs)
