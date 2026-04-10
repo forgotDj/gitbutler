@@ -1,13 +1,16 @@
 <script lang="ts">
 	import { RESIZE_SYNC } from "$lib/floating/resizeSync";
+	import { SASH_LAYER } from "$lib/sash/sashLayer";
 	import { SETTINGS } from "$lib/settings/userSettings";
 	import { inject } from "@gitbutler/core/context";
 	import { persistWithExpiration } from "@gitbutler/shared/persisted";
 	import { mergeUnlisten } from "@gitbutler/ui/utils/mergeUnlisten";
 	import { pxToRem, remToPx } from "@gitbutler/ui/utils/pxToRem";
+	import { getContext } from "svelte";
 	import { on } from "svelte/events";
 	import { writable } from "svelte/store";
 	import type { ResizeGroup } from "$lib/floating/resizeGroup";
+	import type { SashLayerContext } from "$lib/sash/sashLayer";
 
 	interface Props {
 		/** Default value */
@@ -83,6 +86,14 @@
 	);
 
 	const resizerId = Symbol();
+
+	// When a SashLayer ancestor is present the resizer teleports into its
+	// sash-container so it escapes overflow:hidden on pane wrappers. The
+	// SashLayer must be scoped to the same scroll context as the viewport
+	// so that getBoundingClientRect differences remain scroll-invariant.
+	const layerCtx = getContext<SashLayerContext | undefined>(SASH_LAYER);
+	let inLayer = $state(false);
+	const SASH_LAYER_LAYOUT_EVENT = "sash-layer-layout";
 
 	let initial = 0;
 	let isResizing = $state(false);
@@ -239,6 +250,10 @@
 		return pxToRem(viewport.clientHeight, zoom);
 	}
 
+	function notifyLayerLayoutChange() {
+		layerCtx?.container?.dispatchEvent(new Event(SASH_LAYER_LAYOUT_EVENT));
+	}
+
 	export function setValue(newValue?: number) {
 		const currentValue = getValue();
 		if (currentValue === newValue) {
@@ -249,6 +264,7 @@
 		if (newValue !== undefined) {
 			onWidth?.(newValue);
 		}
+		notifyLayerLayoutChange();
 	}
 
 	$effect(() => {
@@ -288,6 +304,88 @@
 			}
 		}
 	});
+
+	// Teleportation effect: move the resizer div into the SashLayer overlay so
+	// it is never clipped by overflow:hidden on pane containers. Position is
+	// kept in sync via ResizeObserver + window resize. No scroll tracking is
+	// needed — the SashLayer is always scoped inside the same scroll container
+	// as the viewport, so getBoundingClientRect differences are scroll-invariant.
+	$effect(() => {
+		const container = layerCtx?.container;
+		const div = resizerDiv;
+		const vp = viewport;
+		// Snapshot these so updatePosition closes over stable values. They are
+		// read here (inside the effect body) so Svelte tracks them as deps.
+		const dir = direction;
+		const orient = orientation;
+
+		if (!container || !div || !vp) return;
+
+		// Re-bind with narrowed types so closures below satisfy TypeScript.
+		// (Type narrowing from if-guards doesn't propagate into nested functions.)
+		const c = container;
+		const d = div;
+
+		inLayer = true;
+		c.appendChild(d);
+
+		function updatePosition() {
+			const vr = vp.getBoundingClientRect();
+			const cr = c.getBoundingClientRect();
+			// 8 px hit area in layer mode (no risk of overlapping scrollbars).
+			const t = 8;
+
+			if (orient === "horizontal") {
+				d.style.left = `${(dir === "right" ? vr.right : vr.left) - cr.left - t / 2}px`;
+				d.style.right = "";
+				d.style.top = `${vr.top - cr.top}px`;
+				d.style.bottom = "";
+				d.style.width = `${t}px`;
+				d.style.height = `${vr.height}px`;
+			} else {
+				d.style.top = `${(dir === "down" ? vr.bottom : vr.top) - cr.top - t / 2}px`;
+				d.style.bottom = "";
+				d.style.left = `${vr.left - cr.left}px`;
+				d.style.right = "";
+				d.style.width = `${vr.width}px`;
+				d.style.height = `${t}px`;
+			}
+		}
+
+		let rafId: number | undefined;
+
+		function scheduleUpdatePosition() {
+			if (rafId !== undefined) return;
+			rafId = requestAnimationFrame(() => {
+				rafId = undefined;
+				updatePosition();
+			});
+		}
+
+		updatePosition();
+
+		const ro = new ResizeObserver(scheduleUpdatePosition);
+		ro.observe(vp);
+		// Also watch the layer wrapper itself so position updates when sibling
+		// panes resize (pushing this pane without changing its own size).
+		if (c.parentElement) {
+			ro.observe(c.parentElement);
+		}
+		window.addEventListener("resize", scheduleUpdatePosition);
+		c.addEventListener(SASH_LAYER_LAYOUT_EVENT, scheduleUpdatePosition);
+
+		return () => {
+			inLayer = false;
+			ro.disconnect();
+			window.removeEventListener("resize", scheduleUpdatePosition);
+			c.removeEventListener(SASH_LAYER_LAYOUT_EVENT, scheduleUpdatePosition);
+			if (rafId !== undefined) {
+				cancelAnimationFrame(rafId);
+				rafId = undefined;
+			}
+			d.remove();
+		};
+	});
 </script>
 
 <div
@@ -302,6 +400,7 @@
 	{onclick}
 	class:disabled
 	class="resizer"
+	class:in-layer={inLayer}
 	class:is-resizing={isResizing}
 	class:vertical={orientation === "vertical"}
 	class:horizontal={orientation === "horizontal"}
@@ -319,6 +418,7 @@
 		--resizer-cursor: default;
 		position: absolute;
 		outline: none;
+		/* background-color: rgba(249, 46, 46, 0.394); */
 		cursor: var(--resizer-cursor);
 
 		&.horizontal {
@@ -387,6 +487,27 @@
 		&.disabled {
 			pointer-events: none;
 			--resizer-cursor: default;
+		}
+
+		/* When teleported into the SashLayer overlay the container has
+		   pointer-events:none, so individual resizers must opt back in. */
+		&.in-layer {
+			pointer-events: initial;
+		}
+
+		&.in-layer.disabled {
+			pointer-events: none;
+		}
+
+		/* Center the 1 px visual border line in the wider 8 px hit area. */
+		&.in-layer.border.horizontal::after {
+			right: auto;
+			left: calc(50% - 0.5px);
+		}
+
+		&.in-layer.border.vertical::after {
+			top: calc(50% - 0.5px);
+			bottom: auto;
 		}
 	}
 </style>
