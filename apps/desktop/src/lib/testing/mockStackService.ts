@@ -18,7 +18,7 @@ const MOCK_COMMIT_A: Commit = {
 	state: { type: "LocalOnly" },
 	createdAt: BigInt(1672531200000), // Example timestamp
 	author: MOCK_AUTHOR_A,
-	changeId: null,
+	changeId: "Icommit-a-id",
 	gerritReviewUrl: null,
 };
 
