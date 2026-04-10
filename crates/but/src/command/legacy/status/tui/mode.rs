@@ -20,7 +20,6 @@ pub(super) enum Mode {
     #[default]
     Normal,
     Rub(RubMode),
-    RubButApi(RubMode),
     InlineReword(InlineRewordMode),
     Command(CommandMode),
     Commit(CommitMode),
@@ -34,7 +33,7 @@ impl Mode {
         match self {
             Mode::Normal => Color::DarkGray,
             Mode::Commit(_) => Color::Green,
-            Mode::Rub(_) | Mode::RubButApi(_) => Color::Blue,
+            Mode::Rub(_) => Color::Blue,
             Mode::InlineReword(_) => Color::Magenta,
             Mode::Command(_) => Color::Yellow,
             Mode::Move(..) => Color::Cyan,
@@ -50,7 +49,6 @@ impl Mode {
             | Mode::Branch
             | Mode::Details
             | Mode::Rub(_)
-            | Mode::RubButApi(_)
             | Mode::InlineReword(_)
             | Mode::Move(..)
             | Mode::Command(_) => Color::Black,

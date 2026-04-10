@@ -22,10 +22,6 @@ pub(super) fn default_key_binds() -> KeyBinds {
             }
             ModeDiscriminant::Rub => {
                 register_global_key_binds(&mut key_binds, Vec::from([mode]));
-                register_rub_mode_key_binds(&mut key_binds);
-            }
-            ModeDiscriminant::RubButApi => {
-                register_global_key_binds(&mut key_binds, Vec::from([mode]));
                 register_rub_but_api_mode_key_binds(&mut key_binds);
             }
             ModeDiscriminant::InlineReword => {
@@ -271,21 +267,8 @@ fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
         chord_display: "r",
         key_matcher: press().code(KeyCode::Char('r')),
         modes: Vec::from([ModeDiscriminant::Normal]),
-        message: Message::Rub(RubMessage::Start {
-            using_but_api: true,
-        }),
+        message: Message::Rub(RubMessage::Start),
         hide_from_hotbar: false,
-    });
-
-    key_binds.register(StaticKeyBind {
-        short_description: "rub (legacy)",
-        chord_display: "shift+r",
-        key_matcher: press().shift().code(KeyCode::Char('R')),
-        modes: Vec::from([ModeDiscriminant::Normal]),
-        message: Message::Rub(RubMessage::Start {
-            using_but_api: false,
-        }),
-        hide_from_hotbar: true,
     });
 
     key_binds.register(StaticKeyBind {
@@ -415,41 +398,12 @@ fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
     });
 }
 
-fn register_rub_mode_key_binds(key_binds: &mut KeyBinds) {
-    key_binds.register(StaticKeyBind {
-        short_description: "confirm",
-        chord_display: "enter",
-        key_matcher: press().code(KeyCode::Enter),
-        modes: Vec::from([ModeDiscriminant::Rub]),
-        message: Message::Rub(RubMessage::Confirm),
-        hide_from_hotbar: false,
-    });
-
-    key_binds.register(StaticKeyBind {
-        short_description: "back",
-        chord_display: "esc",
-        key_matcher: press().code(KeyCode::Esc),
-        modes: Vec::from([ModeDiscriminant::Rub]),
-        message: Message::EnterNormalMode,
-        hide_from_hotbar: false,
-    });
-
-    key_binds.register(StaticKeyBind {
-        short_description: "back",
-        chord_display: "r",
-        key_matcher: press().code(KeyCode::Char('r')),
-        modes: Vec::from([ModeDiscriminant::Rub]),
-        message: Message::EnterNormalMode,
-        hide_from_hotbar: true,
-    });
-}
-
 fn register_rub_but_api_mode_key_binds(key_binds: &mut KeyBinds) {
     key_binds.register(StaticKeyBind {
         short_description: "confirm",
         chord_display: "enter",
         key_matcher: press().code(KeyCode::Enter),
-        modes: Vec::from([ModeDiscriminant::RubButApi]),
+        modes: Vec::from([ModeDiscriminant::Rub]),
         message: Message::Rub(RubMessage::Confirm),
         hide_from_hotbar: false,
     });
@@ -458,7 +412,7 @@ fn register_rub_but_api_mode_key_binds(key_binds: &mut KeyBinds) {
         short_description: "back",
         chord_display: "esc",
         key_matcher: press().code(KeyCode::Esc),
-        modes: Vec::from([ModeDiscriminant::RubButApi]),
+        modes: Vec::from([ModeDiscriminant::Rub]),
         message: Message::EnterNormalMode,
         hide_from_hotbar: false,
     });
@@ -467,7 +421,7 @@ fn register_rub_but_api_mode_key_binds(key_binds: &mut KeyBinds) {
         short_description: "back",
         chord_display: "r",
         key_matcher: press().code(KeyCode::Char('r')),
-        modes: Vec::from([ModeDiscriminant::RubButApi]),
+        modes: Vec::from([ModeDiscriminant::Rub]),
         message: Message::EnterNormalMode,
         hide_from_hotbar: true,
     });

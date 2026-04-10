@@ -9,10 +9,17 @@ use but_ctx::Context;
 use crate::{
     CliId,
     command::legacy::{
-        rub::{RubOperation, RubOperationDiscriminants, route_operation},
+        rub::{RubOperation, RubOperationDiscriminants},
         status::tui::SelectAfterReload,
     },
 };
+
+pub(super) fn route_operation<'a>(
+    source: &'a CliId,
+    target: &'a CliId,
+) -> Option<RubOperation<'a>> {
+    crate::command::legacy::rub::route_operation(source, target)
+}
 
 /// Returns a human-facing operation descriptor for the source/target pair.
 pub(super) fn rub_operation_display(source: &CliId, target: &CliId) -> Option<&'static str> {

@@ -30,9 +30,7 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::{
     CliId,
-    args::OutputFormat,
     command::legacy::{
-        rub::{self, RubOperation},
         status::{
             CommitLineContent, FileLineContent, StatusFlags, StatusOutputLine, TuiLaunchOptions,
             output::BranchLineContent,
@@ -74,7 +72,7 @@ mod key_bind;
 mod message_on_drop;
 mod mode;
 mod operations;
-mod rub_api;
+mod rub;
 mod rub_from_detail_view;
 mod toast;
 
@@ -571,13 +569,7 @@ impl App {
                 }
             }
             Message::Rub(rub_message) => match rub_message {
-                RubMessage::Start { using_but_api } => {
-                    if using_but_api {
-                        self.handle_start_rub_using_but_api()
-                    } else {
-                        self.handle_start_rub()
-                    }
-                }
+                RubMessage::Start => self.handle_start_rub(),
                 RubMessage::StartWithSource {
                     source,
                     unlock_details,
@@ -761,20 +753,13 @@ impl App {
         }
     }
 
-    /// Handles transitioning into rub mode and selecting a valid rub target.
     fn handle_start_rub(&mut self) {
-        if !matches!(self.mode, Mode::Normal) {
-            return;
-        }
-
         let Some(selected_line) = self.cursor.selected_line(&self.status_lines) else {
             return;
         };
-
         let Some(cli_id) = selected_line.data.cli_id() else {
             return;
         };
-
         self.handle_start_rub_with_source(RubSource::CliId(Arc::clone(cli_id)), None);
     }
 
@@ -803,56 +788,6 @@ impl App {
             source,
             available_targets,
             _unlock_details: unlock_details,
-        });
-
-        if self
-            .cursor
-            .selected_line(&self.status_lines)
-            .is_some_and(|line| {
-                cursor::is_selectable_in_mode(line, &self.mode, self.flags.show_files)
-            })
-        {
-            return;
-        }
-
-        if let Some(new_cursor) =
-            self.cursor
-                .move_down(&self.status_lines, &self.mode, self.flags.show_files)
-        {
-            self.cursor = new_cursor;
-        } else if let Some(new_cursor) =
-            self.cursor
-                .move_up(&self.status_lines, &self.mode, self.flags.show_files)
-        {
-            self.cursor = new_cursor;
-        }
-    }
-
-    fn handle_start_rub_using_but_api(&mut self) {
-        if !matches!(self.mode, Mode::Normal) {
-            return;
-        }
-
-        let Some(selected_line) = self.cursor.selected_line(&self.status_lines) else {
-            return;
-        };
-
-        let Some(cli_id) = selected_line.data.cli_id() else {
-            return;
-        };
-
-        let available_targets = self
-            .status_lines
-            .iter()
-            .filter_map(|line| line.data.cli_id())
-            .filter(|target| *target == cli_id || rub::route_operation(cli_id, target).is_some())
-            .cloned()
-            .collect::<Vec<_>>();
-
-        self.mode = Mode::RubButApi(RubMode {
-            source: RubSource::CliId(Arc::clone(cli_id)),
-            available_targets,
-            _unlock_details: None,
         });
 
         if self
@@ -935,44 +870,11 @@ impl App {
                     match source {
                         RubSource::CliId(source) => {
                             if let Some(operation) = rub::route_operation(source, target) {
-                                with_noop_output(|out| {
-                                    operations::rub_legacy(ctx, out, operation)
-                                })?;
-                            }
-                            None
-                        }
-                        RubSource::CommittedHunk(hunk) => {
-                            if let Some(operation) =
-                                rub_from_detail_view::route_operation(hunk, target)
-                            {
-                                Some(Message::Reload(Some(operation.execute(ctx)?)))
-                            } else {
-                                None
-                            }
-                        }
-                    }
-                } else {
-                    None
-                }
-            }
-            Mode::RubButApi(RubMode {
-                source,
-                available_targets: _,
-                _unlock_details: _,
-            }) => {
-                if let Some(selected_line) = self.cursor.selected_line(&self.status_lines)
-                    && let Some(target) = selected_line.data.cli_id()
-                {
-                    match source {
-                        RubSource::CliId(source) => {
-                            if let Some(operation) = rub::route_operation(source, target) {
-                                if let Some(what_to_select) =
-                                    operations::rub_using_but_api(ctx, &operation)?
-                                {
+                                if let Some(what_to_select) = operations::rub(ctx, &operation)? {
                                     Some(Message::Reload(Some(what_to_select)))
                                 } else {
                                     messages.push(Message::ShowError(Arc::new(
-                                        anyhow::Error::from(rub_api::OperationNotSupported::new(
+                                        anyhow::Error::from(rub::OperationNotSupported::new(
                                             &operation,
                                         )),
                                     )));
@@ -2147,13 +2049,6 @@ impl App {
                 }) => {
                     self.render_rub_inline_labels_for_selected_line(data, source, &mut line);
                 }
-                Mode::RubButApi(RubMode {
-                    source,
-                    available_targets: _,
-                    _unlock_details: _,
-                }) => {
-                    self.render_rub_api_inline_labels_for_selected_line(data, source, &mut line);
-                }
                 Mode::Commit(commit_mode) => {
                     if data
                         .cli_id()
@@ -2189,11 +2084,6 @@ impl App {
                 | Mode::Branch
                 | Mode::Details => {}
                 Mode::Rub(RubMode {
-                    source,
-                    available_targets: _,
-                    _unlock_details: _,
-                })
-                | Mode::RubButApi(RubMode {
                     source,
                     available_targets: _,
                     _unlock_details: _,
@@ -2322,7 +2212,6 @@ impl App {
             | Mode::Move(..)
             | Mode::Command(..)
             | Mode::Rub(..)
-            | Mode::RubButApi(..)
             | Mode::Commit(..) => {
                 if is_selectable_in_mode(tui_line, &self.mode, self.flags.show_files) {
                     line.extend(content_spans);
@@ -2393,7 +2282,6 @@ impl App {
                 | Mode::Normal
                 | Mode::Details
                 | Mode::Rub(..)
-                | Mode::RubButApi(..)
                 | Mode::InlineReword(..)
                 | Mode::Command(..) => {}
             }
@@ -2416,39 +2304,9 @@ impl App {
             line.extend([source_span(), Span::raw(" ")]);
         }
 
-        let rub_operation_display = match source {
-            RubSource::CliId(source) => {
-                rub_operation_display_legacy(source, target).unwrap_or("invalid")
-            }
-            RubSource::CommittedHunk(hunk) => {
-                rub_from_detail_view::rub_operation_display(hunk, target).unwrap_or("invalid")
-            }
-        };
-        line.extend([
-            Span::raw("<< ").mode_colors(&self.mode),
-            Span::raw(rub_operation_display).mode_colors(&self.mode),
-            Span::raw(" >>").mode_colors(&self.mode),
-            Span::raw(" "),
-        ]);
-    }
-
-    fn render_rub_api_inline_labels_for_selected_line(
-        &self,
-        data: &StatusOutputLineData,
-        source: &RubSource,
-        line: &mut Line<'static>,
-    ) {
-        let Some(target) = data.cli_id() else {
-            return;
-        };
-
-        if source == &**target {
-            line.extend([source_span(), Span::raw(" ")]);
-        }
-
         let display = match source {
             RubSource::CliId(source) => {
-                Cow::Borrowed(rub_api::rub_operation_display(source, target).unwrap_or("invalid"))
+                Cow::Borrowed(rub::rub_operation_display(source, target).unwrap_or("invalid"))
             }
             RubSource::CommittedHunk(hunk) => Cow::Borrowed(
                 rub_from_detail_view::rub_operation_display(hunk, target).unwrap_or("invalid"),
@@ -2535,8 +2393,7 @@ impl App {
             "  {}  ",
             match self.mode {
                 Mode::Normal => "normal",
-                Mode::Rub(..) => "rub (legacy)",
-                Mode::RubButApi(..) => "rub",
+                Mode::Rub(..) => "rub",
                 Mode::InlineReword(..) => "reword",
                 Mode::Command(..) => "command",
                 Mode::Commit(..) => "commit",
@@ -2563,7 +2420,6 @@ impl App {
             | Mode::Branch
             | Mode::Details
             | Mode::Rub(..)
-            | Mode::RubButApi(..)
             | Mode::Commit(..)
             | Mode::Move(..)
             | Mode::InlineReword(..) => {
@@ -2734,7 +2590,6 @@ fn event_to_messages(ev: Event, key_binds: &KeyBinds, mode: &Mode, messages: &mu
                     | Mode::Branch
                     | Mode::Details
                     | Mode::Rub(..)
-                    | Mode::RubButApi(..)
                     | Mode::Commit(..)
                     | Mode::Move(..) => {}
                 }
@@ -2754,7 +2609,6 @@ fn event_to_messages(ev: Event, key_binds: &KeyBinds, mode: &Mode, messages: &mu
             | Mode::Branch
             | Mode::Details
             | Mode::Rub(..)
-            | Mode::RubButApi(..)
             | Mode::Commit(..)
             | Mode::Move(..) => {
                 messages.push(Message::JustRender);
@@ -2847,9 +2701,7 @@ impl Message {
 
 #[derive(Debug, Clone)]
 enum RubMessage {
-    Start {
-        using_but_api: bool,
-    },
+    Start,
     StartWithSource {
         source: RubSource,
         unlock_details: Option<MessageOnDrop>,
@@ -2939,15 +2791,6 @@ fn format_error_for_tui(err: &anyhow::Error) -> String {
     output
 }
 
-fn with_noop_output<F, T>(f: F) -> anyhow::Result<T>
-where
-    F: FnOnce(&mut OutputChannel) -> anyhow::Result<T>,
-{
-    let mut out = OutputChannel::new_without_pager_non_json(OutputFormat::None);
-    let t = f(&mut out)?;
-    Ok(t)
-}
-
 /// Formats an exit status for human-readable error messages.
 fn format_exit_status(status: std::process::ExitStatus) -> String {
     if let Some(code) = status.code() {
@@ -2955,35 +2798,6 @@ fn format_exit_status(status: std::process::ExitStatus) -> String {
     } else {
         status.to_string()
     }
-}
-
-fn rub_operation_display_legacy(source: &CliId, target: &CliId) -> Option<&'static str> {
-    if source == target {
-        return Some(NOOP);
-    }
-
-    Some(match rub::route_operation(source, target)? {
-        RubOperation::UnassignUncommitted(..) => "unassign hunks",
-        RubOperation::UncommittedToCommit(..) => "amend commit",
-        RubOperation::UncommittedToBranch(..) => "assign hunks",
-        RubOperation::UncommittedToStack(..) => "assign hunks",
-        RubOperation::StackToUnassigned(..) => "unassign hunks",
-        RubOperation::StackToStack(..) => "reassign hunks",
-        RubOperation::StackToBranch(..) => "reassign hunks",
-        RubOperation::UnassignedToCommit(..) => "amend commit",
-        RubOperation::UnassignedToBranch(..) => "assign hunks",
-        RubOperation::UnassignedToStack(..) => "assign hunks",
-        RubOperation::UndoCommit(..) => "undo commit",
-        RubOperation::SquashCommits(..) => "squash commits",
-        RubOperation::MoveCommitToBranch(..) => "move commit",
-        RubOperation::BranchToUnassigned(..) => "unassign hunks",
-        RubOperation::BranchToStack(..) => "reassign hunks",
-        RubOperation::BranchToCommit(..) => "amend commit",
-        RubOperation::BranchToBranch(..) => "reassign hunks",
-        RubOperation::CommittedFileToBranch(..) => "extract file",
-        RubOperation::CommittedFileToCommit(..) => "move file",
-        RubOperation::CommittedFileToUnassigned(..) => "extract file",
-    })
 }
 
 fn commit_operation_display(

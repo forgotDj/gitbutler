@@ -501,8 +501,7 @@ fn is_section_header(line: &StatusOutputLine, mode: &Mode) -> bool {
             )
         }
 
-        Mode::RubButApi(..)
-        | Mode::Rub(..) => {
+        Mode::Rub(..) => {
             matches!(
                 line.data,
                 StatusOutputLineData::Branch { .. }
@@ -534,7 +533,7 @@ pub(super) fn is_selectable_in_mode(
 
     // selecting the source line should always be possible
     match mode {
-        Mode::Rub(rub_mode) | Mode::RubButApi(rub_mode) => {
+        Mode::Rub(rub_mode) => {
             if let Some(cli_id) = line.data.cli_id()
                 && rub_mode.source == **cli_id
             {
@@ -575,7 +574,7 @@ pub(super) fn is_selectable_in_mode(
                 }
             }
         },
-        Mode::Rub(rub_mode) | Mode::RubButApi(rub_mode) => line
+        Mode::Rub(rub_mode) => line
             .data
             .cli_id()
             .is_some_and(|cli_id| rub_mode.available_targets.contains(cli_id)),

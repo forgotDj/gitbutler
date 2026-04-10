@@ -179,22 +179,14 @@ pub(super) fn create_commit_legacy(
     .map(Some)
 }
 
-pub(super) fn rub_legacy(
-    ctx: &mut Context,
-    out: &mut OutputChannel,
-    operation: RubOperation<'_>,
-) -> anyhow::Result<()> {
-    operation.execute(ctx, out)
-}
-
-pub(super) fn rub_using_but_api(
+pub(super) fn rub(
     ctx: &mut Context,
     operation: &RubOperation<'_>,
 ) -> anyhow::Result<Option<SelectAfterReload>> {
     // `perform_operation` is in a legacy module but it's explicitly written to not use legacy code.
     // When it has reached feature parity with `but rub` it'll be promoted to a non-legacy module.
     // Hence why this function doesn't have the legacy postfix.
-    legacy::status::tui::rub_api::perform_operation(ctx, operation)
+    legacy::status::tui::rub::perform_operation(ctx, operation)
 }
 
 pub(super) fn reword_commit_with_editor_legacy(

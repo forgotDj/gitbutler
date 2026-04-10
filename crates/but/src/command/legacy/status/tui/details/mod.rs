@@ -212,7 +212,7 @@ impl Details {
                 CommitMessage::Start | CommitMessage::SetInsertSide(_) => false,
             },
             Message::Rub(rub_message) => match rub_message {
-                RubMessage::Start { .. } | RubMessage::StartWithSource { .. } => false,
+                RubMessage::Start | RubMessage::StartWithSource { .. } => false,
                 RubMessage::Confirm => true,
             },
             Message::Reword(reword_message) => match reword_message {
