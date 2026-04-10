@@ -157,17 +157,6 @@ pub fn move_commit_to_commit_with_perm(
     Ok(())
 }
 
-/// Move a commit to the top of a branch
-pub fn move_commit_to_branch(
-    ctx: &mut Context,
-    source: gix::ObjectId,
-    target_branch: &str,
-    out: &mut OutputChannel,
-) -> Result<(), anyhow::Error> {
-    let mut guard = ctx.exclusive_worktree_access();
-    move_commit_to_branch_with_perm(ctx, source, target_branch, out, guard.write_permission())
-}
-
 pub fn move_commit_to_branch_with_perm(
     ctx: &mut Context,
     source: gix::ObjectId,

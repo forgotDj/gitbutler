@@ -7,26 +7,7 @@ use gitbutler_branch_actions::update_workspace_commit;
 use gix::ObjectId;
 use nonempty::NonEmpty;
 
-use super::assign::branch_name_to_stack_id;
 use crate::utils::{OutputChannel, shorten_object_id, split_short_id};
-
-pub(crate) fn uncommitted_to_commit(
-    ctx: &mut Context,
-    hunk_assignments: NonEmpty<&HunkAssignment>,
-    description: String,
-    oid: ObjectId,
-    out: &mut OutputChannel,
-) -> anyhow::Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    uncommitted_to_commit_with_perm(
-        ctx,
-        hunk_assignments,
-        description,
-        oid,
-        out,
-        guard.write_permission(),
-    )
-}
 
 pub(crate) fn uncommitted_to_commit_with_perm(
     ctx: &mut Context,
@@ -64,77 +45,6 @@ pub(crate) fn uncommitted_to_commit_with_perm(
         }))?;
     }
     Ok(())
-}
-
-pub(crate) fn assignments_to_commit(
-    ctx: &mut Context,
-    branch_name: Option<&str>,
-    oid: ObjectId,
-    out: &mut OutputChannel,
-) -> anyhow::Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    assignments_to_commit_with_perm(ctx, branch_name, oid, out, guard.write_permission())
-}
-
-pub(crate) fn assignments_to_commit_with_perm(
-    ctx: &mut Context,
-    branch_name: Option<&str>,
-    oid: ObjectId,
-    out: &mut OutputChannel,
-    perm: &mut RepoExclusive,
-) -> anyhow::Result<()> {
-    let stack_id = branch_name_to_stack_id(ctx, branch_name)?;
-    let diff_specs: Vec<DiffSpec> = wt_assignments_with_perm(ctx, perm)?
-        .into_iter()
-        .filter(|assignment| assignment.stack_id == stack_id)
-        .map(|assignment| assignment.into())
-        .collect();
-    let outcome = amend_diff_specs(ctx, diff_specs, stack_id, oid, perm)?;
-    update_workspace_commit(ctx, false)?;
-    if let Some(out) = out.for_human() {
-        let repo = ctx.repo.get()?;
-        let new_commit = outcome
-            .new_commit
-            .map(|c| {
-                let short = shorten_object_id(&repo, c);
-                let (lead, rest) = split_short_id(&short, 2);
-                format!("{}{}", lead.blue().bold(), rest.blue())
-            })
-            .unwrap_or_default();
-        if let Some(branch_name) = branch_name {
-            writeln!(
-                out,
-                "Amended assigned files {} → {}",
-                format!("[{branch_name}]").green(),
-                new_commit,
-            )?;
-        } else {
-            writeln!(out, "Amended unassigned files → {new_commit}")?;
-        }
-    } else if let Some(out) = out.for_json() {
-        out.write_value(serde_json::json!({
-            "ok": true,
-            "new_commit_id": outcome.new_commit.map(|c| c.to_string()),
-        }))?;
-    }
-    Ok(())
-}
-
-fn wt_assignments_with_perm(
-    ctx: &mut Context,
-    perm: &mut RepoExclusive,
-) -> anyhow::Result<Vec<HunkAssignment>> {
-    let changes = but_core::diff::ui::worktree_changes(&*ctx.repo.get()?)?.changes;
-    let context_lines = ctx.settings.context_lines;
-    let (repo, ws, mut db) = ctx.workspace_mut_and_db_mut_with_perm(perm)?;
-    let (assignments, _assignments_error) = but_hunk_assignment::assignments_with_fallback(
-        db.hunk_assignments_mut()?,
-        &repo,
-        &ws,
-        Some(changes.clone()),
-        context_lines,
-    )?;
-    Ok(assignments)
 }
 
 fn amend_diff_specs(

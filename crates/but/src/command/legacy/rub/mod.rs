@@ -1,7 +1,12 @@
-use anyhow::bail;
+use anyhow::{Context as _, bail};
 use bstr::BStr;
-use but_core::{ref_metadata::StackId, sync::RepoExclusive};
+use but_api::commit::types::{
+    CommitCreateResult, CommitMoveResult, CommitSquashResult, CommitUndoResult, MoveChangesResult,
+};
+use but_core::{DiffSpec, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
+use but_hunk_assignment::HunkAssignmentRequest;
+use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
 use colored::Colorize;
 mod amend;
 mod assign;
@@ -12,13 +17,14 @@ use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
 };
+use gix::refs::FullName;
 use nonempty::NonEmpty;
 
 use crate::{
     CliId, IdMap,
-    command::commit::r#move::move_commit_to_branch,
+    command::legacy::rub::assign::stack_id_to_branch_name,
     id::parser::{parse_sources_with_disambiguation, prompt_for_disambiguation},
-    utils::{OutputChannel, shorten_object_id},
+    utils::{OutputChannel, shorten_object_id, split_short_id},
 };
 
 /// A description of a set of hunks.
@@ -231,190 +237,491 @@ pub(crate) enum RubOperation<'a> {
 impl<'a> UnassignUncommittedOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::unassign_uncommitted(ctx, self.hunk_assignments, self.description, out)
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(out, "Unstaged {}", self.description)?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes this operation without writing any output.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let requests =
+            assignment_requests_for_selected_hunks(self.hunk_assignments.iter().copied(), None);
+        but_api::diff::assign_hunk(ctx, requests)
     }
 }
 
 impl<'a> UncommittedToCommitOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::AmendCommit);
-        amend::uncommitted_to_commit(ctx, self.hunk_assignments, self.description, self.oid, out)
+        let result = self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            let new_commit = result
+                .new_commit
+                .map(|c| {
+                    let short = shorten_object_id(&repo, c);
+                    let (lead, rest) = split_short_id(&short, 2);
+                    format!("{}{}", lead.blue().bold(), rest.blue())
+                })
+                .unwrap_or_default();
+            writeln!(out, "Amended {} → {new_commit}", self.description)?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({
+                "ok": true,
+                "new_commit_id": result.new_commit.map(|c| c.to_string()),
+            }))?;
+        }
+        Ok(())
+    }
+
+    /// Executes this operation without writing any output.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitCreateResult> {
+        let changes = self
+            .hunk_assignments
+            .iter()
+            .copied()
+            .cloned()
+            .map(DiffSpec::from)
+            .collect::<Vec<_>>();
+        let changes = but_workspace::flatten_diff_specs(changes);
+        but_api::commit::amend::commit_amend(ctx, self.oid, changes)
     }
 }
 
 impl<'a> UncommittedToBranchOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_uncommitted_to_branch(
-            ctx,
-            self.hunk_assignments,
-            self.description,
-            self.name,
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged {} → {}.",
+                self.description,
+                format!("[{}]", self.name).green()
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `UncommittedToBranch` by assigning selected hunks to the target branch stack.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let stack_id = stack_id_for_branch_name(ctx, self.name)?;
+        let requests =
+            assignment_requests_for_selected_hunks(self.hunk_assignments.iter().copied(), stack_id);
+        but_api::diff::assign_hunk(ctx, requests)
     }
 }
 
 impl<'a> UncommittedToStackOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_uncommitted_to_stack(
-            ctx,
-            self.hunk_assignments,
-            self.description,
-            &self.stack_id,
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged {} → stack {}.",
+                self.description,
+                format!("[{}]", self.stack_id).green()
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `UncommittedToStack` by assigning selected hunks to the target stack.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let requests = assignment_requests_for_selected_hunks(
+            self.hunk_assignments.iter().copied(),
+            Some(self.stack_id),
+        );
+        but_api::diff::assign_hunk(ctx, requests)
     }
 }
 
 impl StackToUnassignedOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(
-            ctx,
-            Some(assign::AssignTarget::Stack(&self.stack_id)),
-            None,
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Unstaged all {} changes.",
+                stack_id_to_branch_name(ctx, self.stack_id)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".to_string().bold())
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `StackToUnassigned` by reassigning all hunks from the source stack into unassigned.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        reassign_all_from_stack_to_stack(ctx, Some(self.stack_id), None)
     }
 }
 
 impl StackToStackOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(
-            ctx,
-            Some(assign::AssignTarget::Stack(&self.from)),
-            Some(assign::AssignTarget::Stack(&self.to)),
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged all {} changes to {}.",
+                stack_id_to_branch_name(ctx, self.from)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".to_string().bold()),
+                stack_id_to_branch_name(ctx, self.to)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".to_string().bold())
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `StackToStack` by reassigning all hunks from one stack to another.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        reassign_all_from_stack_to_stack(ctx, Some(self.from), Some(self.to))
     }
 }
 
 impl<'a> StackToBranchOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(
-            ctx,
-            Some(assign::AssignTarget::Stack(&self.from)),
-            Some(assign::AssignTarget::Branch(self.to)),
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged all {} changes to {}.",
+                stack_id_to_branch_name(ctx, self.from)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".to_string().bold()),
+                format!("[{}]", self.to).green(),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+
+        Ok(())
+    }
+
+    /// Executes `StackToBranch` by reassigning all hunks from the source stack to the target branch stack.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let target_stack_id = stack_id_for_branch_name(ctx, self.to)?;
+        reassign_all_from_stack_to_stack(ctx, Some(self.from), target_stack_id)
     }
 }
 
 impl UnassignedToCommitOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::AmendCommit);
-        amend::assignments_to_commit(ctx, None, self.oid, out)
+        let result = self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            let new_commit = result
+                .new_commit
+                .map(|c| {
+                    let short = shorten_object_id(&repo, c);
+                    let (lead, rest) = split_short_id(&short, 2);
+                    format!("{}{}", lead.blue().bold(), rest.blue())
+                })
+                .unwrap_or_default();
+            writeln!(out, "Amended unassigned files → {new_commit}")?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({
+                "ok": true,
+                "new_commit_id": result.new_commit.map(|c| c.to_string()),
+            }))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `UnassignedToCommit` and returns the exact commit-amend API result.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitCreateResult> {
+        let changes = changes_for_stack_assignment(ctx, None)?;
+        but_api::commit::amend::commit_amend(ctx, self.oid, changes)
     }
 }
 
 impl<'a> UnassignedToBranchOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(ctx, None, Some(assign::AssignTarget::Branch(self.to)), out)
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged all {} changes to {}.",
+                "unstaged".to_string().bold(),
+                format!("[{}]", self.to).green(),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `UnassignedToBranch` by assigning unassigned hunks to the target branch stack.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let target_stack_id = stack_id_for_branch_name(ctx, self.to)?;
+        reassign_all_from_stack_to_stack(ctx, None, target_stack_id)
     }
 }
 
 impl UnassignedToStackOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(ctx, None, Some(assign::AssignTarget::Stack(&self.to)), out)
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged all {} changes to {}.",
+                "unstaged".bold(),
+                stack_id_to_branch_name(ctx, self.to)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".bold())
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `UnassignedToStack` by assigning unassigned hunks to the target stack.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        reassign_all_from_stack_to_stack(ctx, None, Some(self.to))
     }
 }
 
 impl UndoCommitOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::UndoCommit);
-        undo::commit(ctx, self.oid, out)
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            writeln!(
+                out,
+                "Uncommitted {}",
+                shorten_object_id(&repo, self.oid).blue()
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `UndoCommit` by uncommitting all changes from the selected commit.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitUndoResult> {
+        but_api::commit::undo::commit_undo(ctx, self.oid)
     }
 }
 
 impl SquashCommitsOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::SquashCommit);
-        squash::commits(ctx, self.source, self.destination, None, out)
+        let result = self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            writeln!(
+                out,
+                "Squashed {} → {}",
+                shorten_object_id(&repo, self.source).blue(),
+                shorten_object_id(&repo, result.new_commit).blue(),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({
+                "ok": true,
+                "new_commit_id": result.new_commit.to_string(),
+                "squashed_count": 1,
+            }))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `SquashCommits` by squashing source into target.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitSquashResult> {
+        but_api::commit::squash::commit_squash(ctx, self.source, self.destination)
     }
 }
 
 impl<'a> MoveCommitToBranchOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        move_commit_to_branch(ctx, self.oid, self.name, out)
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            writeln!(
+                out,
+                "Moved {} → {}",
+                shorten_object_id(&repo, self.oid).blue(),
+                format!("[{}]", self.name).green()
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `MoveCommitToBranch` and returns the exact commit-move API result.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitMoveResult> {
+        let target_full_name = FullName::try_from(format!("refs/heads/{}", self.name))?;
+        but_api::commit::move_commit::commit_move(
+            ctx,
+            self.oid,
+            RelativeTo::Reference(target_full_name),
+            InsertSide::Below,
+        )
     }
 }
 
 impl<'a> BranchToUnassignedOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(
-            ctx,
-            Some(assign::AssignTarget::Branch(self.from)),
-            None,
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Unstaged all {} changes.",
+                format!("[{}]", self.from).green(),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `BranchToUnassigned` by moving all branch-assigned hunks into unassigned.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let source_stack_id = stack_id_for_branch_name(ctx, self.from)?;
+        reassign_all_from_stack_to_stack(ctx, source_stack_id, None)
     }
 }
 
 impl<'a> BranchToStackOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(
-            ctx,
-            Some(assign::AssignTarget::Branch(self.from)),
-            Some(assign::AssignTarget::Stack(&self.to)),
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged all {} changes to {}.",
+                format!("[{}]", self.from).green(),
+                stack_id_to_branch_name(ctx, self.to)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".to_string().bold()),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `BranchToStack` by moving all branch-assigned hunks into the target stack.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let source_stack_id = stack_id_for_branch_name(ctx, self.from)?;
+        reassign_all_from_stack_to_stack(ctx, source_stack_id, Some(self.to))
     }
 }
 
 impl<'a> BranchToCommitOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::AmendCommit);
-        amend::assignments_to_commit(ctx, Some(self.name), self.oid, out)
+        let result = self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            let new_commit = result
+                .new_commit
+                .map(|c| {
+                    let short = shorten_object_id(&repo, c);
+                    let (lead, rest) = split_short_id(&short, 2);
+                    format!("{}{}", lead.blue().bold(), rest.blue())
+                })
+                .unwrap_or_default();
+            writeln!(
+                out,
+                "Amended assigned files {} → {}",
+                format!("[{}]", self.name).green(),
+                new_commit,
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({
+                "ok": true,
+                "new_commit_id": result.new_commit.map(|c| c.to_string()),
+            }))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `BranchToCommit` and returns the exact commit-amend API result.
+    ///
+    /// When the source branch is not associated with a stack, this amends currently
+    /// unassigned hunks to match legacy `but rub` behavior.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitCreateResult> {
+        let stack_id = stack_id_for_branch_name(ctx, self.name)?;
+        let changes = changes_for_stack_assignment(ctx, stack_id)?;
+        but_api::commit::amend::commit_amend(ctx, self.oid, changes)
     }
 }
 
 impl<'a> BranchToBranchOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::MoveHunk);
-        assign::assign_all(
-            ctx,
-            Some(assign::AssignTarget::Branch(self.from)),
-            Some(assign::AssignTarget::Branch(self.to)),
-            out,
-        )
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(
+                out,
+                "Staged all {} changes to {}.",
+                format!("[{}]", self.from).green(),
+                format!("[{}]", self.to).green(),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `BranchToBranch` by reassigning all hunks from one branch stack to another.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<()> {
+        let source_stack_id = stack_id_for_branch_name(ctx, self.from)?;
+        let target_stack_id = stack_id_for_branch_name(ctx, self.to)?;
+        reassign_all_from_stack_to_stack(ctx, source_stack_id, target_stack_id)
     }
 }
 
 impl<'a> CommittedFileToBranchOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::FileChanges);
-        crate::command::commit::file::uncommit_file(
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(out, "Uncommitted changes")?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `CommittedFileToBranch` and returns the exact uncommit API result.
+    ///
+    /// When the target branch is not associated with a stack, this uncommits file
+    /// changes into unassigned to match legacy `but rub` behavior.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<MoveChangesResult> {
+        let stack_id = stack_id_for_branch_name(ctx, self.name)?;
+        let relevant_changes = file_changes_from_commit(ctx, self.commit_oid, self.path)?;
+        but_api::commit::uncommit::commit_uncommit_changes(
             ctx,
-            self.path,
             self.commit_oid,
-            Some(self.name),
-            out,
+            relevant_changes,
+            stack_id,
         )
     }
 }
@@ -422,13 +729,23 @@ impl<'a> CommittedFileToBranchOperation<'a> {
 impl<'a> CommittedFileToCommitOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::FileChanges);
-        crate::command::commit::file::commited_file_to_another_commit(
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(out, "Moved files between commits!")?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `CommittedFileToCommit` and returns the exact move-changes API result.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<MoveChangesResult> {
+        let relevant_changes = file_changes_from_commit(ctx, self.commit_oid, self.path)?;
+        but_api::commit::move_changes::commit_move_changes_between(
             ctx,
-            self.path,
             self.commit_oid,
             self.oid,
-            out,
+            relevant_changes,
         )
     }
 }
@@ -436,8 +753,24 @@ impl<'a> CommittedFileToCommitOperation<'a> {
 impl<'a> CommittedFileToUnassignedOperation<'a> {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
-        create_snapshot(ctx, OperationKind::FileChanges);
-        crate::command::commit::file::uncommit_file(ctx, self.path, self.commit_oid, None, out)
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            writeln!(out, "Uncommitted changes")?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `CommittedFileToUnassigned` and returns the exact uncommit API result.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<MoveChangesResult> {
+        let relevant_changes = file_changes_from_commit(ctx, self.commit_oid, self.path)?;
+        but_api::commit::uncommit::commit_uncommit_changes(
+            ctx,
+            self.commit_oid,
+            relevant_changes,
+            None,
+        )
     }
 }
 
@@ -1193,6 +1526,87 @@ pub(crate) fn handle_unstage(
 
     // Call the main rub handler with "zz" as target to unassign
     handle(ctx, out, file_or_hunk_str, "zz")
+}
+
+/// Builds assignment requests for selected hunks and assigns them to `target_stack_id`.
+fn assignment_requests_for_selected_hunks<'a>(
+    hunks: impl Iterator<Item = &'a but_hunk_assignment::HunkAssignment>,
+    target_stack_id: Option<StackId>,
+) -> Vec<HunkAssignmentRequest> {
+    hunks
+        .map(|assignment| HunkAssignmentRequest {
+            hunk_header: assignment.hunk_header,
+            path_bytes: assignment.path_bytes.to_owned(),
+            stack_id: target_stack_id,
+            branch_ref_bytes: None,
+        })
+        .collect()
+}
+
+/// Resolves a branch name into its workspace stack id, if any.
+fn stack_id_for_branch_name(
+    ctx: &mut Context,
+    branch_name: &str,
+) -> anyhow::Result<Option<StackId>> {
+    let target_branch_full_name = FullName::try_from(format!("refs/heads/{branch_name}"))?;
+    let (_guard, _repo, ws, _db) = ctx.workspace_and_db()?;
+    Ok(ws
+        .find_segment_and_stack_by_refname(target_branch_full_name.as_ref())
+        .and_then(|(stack, _segment)| stack.id))
+}
+
+/// Reassigns all current worktree assignments from `source_stack_id` to `target_stack_id`.
+fn reassign_all_from_stack_to_stack(
+    ctx: &mut Context,
+    source_stack_id: Option<StackId>,
+    target_stack_id: Option<StackId>,
+) -> anyhow::Result<()> {
+    let requests = but_api::diff::changes_in_worktree(ctx)?
+        .assignments
+        .into_iter()
+        .filter(|assignment| assignment.stack_id == source_stack_id)
+        .map(|assignment| HunkAssignmentRequest {
+            hunk_header: assignment.hunk_header,
+            path_bytes: assignment.path_bytes,
+            stack_id: target_stack_id,
+            branch_ref_bytes: None,
+        })
+        .collect::<Vec<_>>();
+
+    but_api::diff::assign_hunk(ctx, requests)
+}
+
+/// Collects worktree diff specs that are currently assigned to `stack_id`.
+fn changes_for_stack_assignment(
+    ctx: &mut Context,
+    stack_id: Option<StackId>,
+) -> anyhow::Result<Vec<DiffSpec>> {
+    let changes = but_api::diff::changes_in_worktree(ctx)?
+        .assignments
+        .into_iter()
+        .filter(|assignment| assignment.stack_id == stack_id)
+        .map(DiffSpec::from)
+        .collect();
+    Ok(but_workspace::flatten_diff_specs(changes))
+}
+
+/// Computes diff specs for changes to `path` in `commit_oid` relative to its first parent.
+fn file_changes_from_commit(
+    ctx: &Context,
+    commit_oid: gix::ObjectId,
+    path: &bstr::BStr,
+) -> anyhow::Result<Vec<DiffSpec>> {
+    let repo = ctx.repo.get()?;
+    let source_commit = repo.find_commit(commit_oid)?;
+    let source_commit_parent_id = source_commit.parent_ids().next().context("no parents")?;
+
+    let tree_changes =
+        but_core::diff::tree_changes(&repo, Some(source_commit_parent_id.detach()), commit_oid)?;
+    Ok(tree_changes
+        .into_iter()
+        .filter(|tc| tc.path == path)
+        .map(DiffSpec::from)
+        .collect::<Vec<_>>())
 }
 
 #[cfg(test)]

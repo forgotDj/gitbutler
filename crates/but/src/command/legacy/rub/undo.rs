@@ -1,23 +1,5 @@
 use but_core::ref_metadata::StackId;
 use but_ctx::Context;
-use colored::Colorize;
-
-use crate::utils::{OutputChannel, shorten_object_id};
-
-pub(crate) fn commit(
-    ctx: &mut Context,
-    oid: gix::ObjectId,
-    out: &mut OutputChannel,
-) -> anyhow::Result<()> {
-    gitbutler_branch_actions::undo_commit(ctx, stack_id_by_commit_id(ctx, oid)?, oid)?;
-    if let Some(out) = out.for_human() {
-        let repo = ctx.repo.get()?;
-        writeln!(out, "Uncommitted {}", shorten_object_id(&repo, oid).blue())?;
-    } else if let Some(out) = out.for_json() {
-        out.write_value(serde_json::json!({"ok": true}))?;
-    }
-    Ok(())
-}
 
 pub(crate) fn stack_id_by_commit_id(ctx: &Context, oid: gix::ObjectId) -> anyhow::Result<StackId> {
     let stacks = crate::legacy::commits::stacks(ctx)?

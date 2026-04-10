@@ -5,24 +5,6 @@ use bstr::ByteSlice;
 use but_core::{DiffSpec, diff::tree_changes, sync::RepoExclusive};
 use but_ctx::Context;
 
-pub fn commited_file_to_another_commit(
-    ctx: &mut Context,
-    path: &BStr,
-    source_id: gix::ObjectId,
-    target_id: gix::ObjectId,
-    out: &mut OutputChannel,
-) -> Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    commited_file_to_another_commit_with_perm(
-        ctx,
-        path,
-        source_id,
-        target_id,
-        out,
-        guard.write_permission(),
-    )
-}
-
 pub fn commited_file_to_another_commit_with_perm(
     ctx: &mut Context,
     path: &BStr,
@@ -45,55 +27,6 @@ pub fn commited_file_to_another_commit_with_perm(
 
     if let Some(out) = out.for_human() {
         writeln!(out, "Moved files between commits!")?;
-    } else if let Some(out) = out.for_json() {
-        out.write_value(serde_json::json!({"ok": true}))?;
-    }
-
-    Ok(())
-}
-
-pub fn uncommit_file(
-    ctx: &mut Context,
-    path: &BStr,
-    source_id: gix::ObjectId,
-    target_branch: Option<&str>,
-    out: &mut OutputChannel,
-) -> Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    uncommit_file_with_perm(
-        ctx,
-        path,
-        source_id,
-        target_branch,
-        out,
-        guard.write_permission(),
-    )
-}
-
-pub fn uncommit_file_with_perm(
-    ctx: &mut Context,
-    path: &BStr,
-    source_id: gix::ObjectId,
-    target_branch: Option<&str>,
-    out: &mut OutputChannel,
-    perm: &mut RepoExclusive,
-) -> Result<()> {
-    // Convert target_branch to StackId if provided (for hunk assignment after uncommit)
-    let assign_to = find_stack_id_for_branch_with_perm(ctx, target_branch, perm)?;
-    let relevant_changes = changes_for_path_in_commit(ctx, path, source_id)?;
-
-    but_api::commit::uncommit::commit_uncommit_changes_only_with_perm(
-        ctx,
-        source_id,
-        relevant_changes,
-        assign_to,
-        perm,
-    )?;
-
-    legacy_update_workspace_commit(ctx)?;
-
-    if let Some(out) = out.for_human() {
-        writeln!(out, "Uncommitted changes")?;
     } else if let Some(out) = out.for_json() {
         out.write_value(serde_json::json!({"ok": true}))?;
     }
@@ -181,21 +114,6 @@ fn changes_for_path_in_commit(
         .filter(|tc| tc.path == path)
         .map(Into::into)
         .collect())
-}
-
-fn find_stack_id_for_branch_with_perm(
-    ctx: &Context,
-    target_branch: Option<&str>,
-    perm: &mut RepoExclusive,
-) -> Result<Option<but_core::Id<'S'>>, anyhow::Error> {
-    let (_, ws, _) = ctx.workspace_and_db_with_perm(perm.read_permission())?;
-    let target_branch_full_name = target_branch
-        .map(|branch| gix::refs::FullName::try_from(format!("refs/heads/{branch}")))
-        .transpose()?;
-    let assign_to = target_branch_full_name
-        .and_then(|full_name| ws.find_segment_and_stack_by_refname(full_name.as_ref()))
-        .and_then(|(stack, _)| stack.id);
-    Ok(assign_to)
 }
 
 /// Refresh the workspace commit when legacy workspace state is available.
