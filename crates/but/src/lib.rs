@@ -667,6 +667,7 @@ async fn match_subcommand(
                 refresh_prs: sync_prs,
                 show_upstream: upstream,
                 hint: !no_hint,
+                always_show_stack_assignments: false,
             };
             command::legacy::status::worktree(
                 &mut ctx,
@@ -723,7 +724,7 @@ async fn match_subcommand(
             command::legacy::status::worktree(
                 &mut ctx,
                 out,
-                StatusFlags::all_false(),
+                StatusFlags::for_tui(),
                 StatusRenderMode::Tui(_options),
             )
             .await
