@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use but_api_macros::but_api;
-use but_hunk_assignment::HunkAssignmentRequest;
+use but_hunk_assignment::{HunkAssignmentRequest, HunkAssignmentTarget};
 use but_oplog::legacy::{OperationKind, SnapshotDetails};
 use but_rebase::graph_rebase::Editor;
 use tracing::instrument;
@@ -90,8 +90,7 @@ pub fn commit_uncommit_changes_only_with_perm(
             .map(|assignment| HunkAssignmentRequest {
                 hunk_header: assignment.hunk_header,
                 path_bytes: assignment.path_bytes,
-                stack_id: Some(stack_id),
-                branch_ref_bytes: None,
+                target: Some(HunkAssignmentTarget::Stack { stack_id }),
             })
             .collect();
 

@@ -14,6 +14,7 @@ import { chipToasts } from "@gitbutler/ui";
 import type { DropzoneHandler } from "$lib/dragging/handler";
 import type { ForgePrService } from "$lib/forge/interface/forgePrService";
 import type { DiffService } from "$lib/hunks/diffService.svelte";
+import type { HunkAssignmentTarget } from "$lib/hunks/hunk";
 import type { UncommittedService } from "$lib/selection/uncommittedService.svelte";
 import type { StackService } from "$lib/stacks/stackService.svelte";
 import type { UiState } from "$lib/state/uiState.svelte";
@@ -32,6 +33,10 @@ export class OutsideLaneDzHandler implements DropzoneHandler {
 		private readonly baseBranchName: string | undefined,
 	) {
 		this.macros = new StackMacros(this.projectId, this.stackService, this.uiState);
+	}
+
+	private stackTarget(stackId: string): HunkAssignmentTarget {
+		return { type: "stack", subject: { stackId } };
 	}
 
 	private acceptsChangeDropData(data: unknown): data is ChangeDropData {
@@ -138,7 +143,11 @@ export class OutsideLaneDzHandler implements DropzoneHandler {
 					.flatMap((c) =>
 						this.uncommittedService.getAssignmentsByPath(data.stackId ?? null, c.path),
 					)
-					.map((h) => ({ ...h, stackId: ensureValue(stack.id) }));
+					.map((h) => ({
+						hunkHeader: h.hunkHeader,
+						pathBytes: h.pathBytes,
+						target: this.stackTarget(ensureValue(stack.id)),
+					}));
 				await this.diffService.assignHunk({
 					projectId: this.projectId,
 					assignments,
@@ -206,7 +215,13 @@ export class OutsideLaneDzHandler implements DropzoneHandler {
 
 				await this.diffService.assignHunk({
 					projectId: this.projectId,
-					assignments: [{ ...assignment, stackId: ensureValue(stack.id) }],
+					assignments: [
+						{
+							hunkHeader: assignment.hunkHeader,
+							pathBytes: assignment.pathBytes,
+							target: this.stackTarget(ensureValue(stack.id)),
+						},
+					],
 				});
 				break;
 			}

@@ -69,11 +69,17 @@ export type HunkAssignment = {
 	readonly pathBytes: number[];
 	/** The stack to which the hunk is assigned. If None, the hunk is not assigned to any stack (i.e. it belongs in the unassigned area */
 	readonly stackId: string | null;
+	/** The assigned branch as raw full-ref bytes. */
+	readonly branchRefBytes: number[] | null;
 	/** The line numbers that were added in this hunk. The "after" or "new" line numbers.*/
 	readonly lineNumsAdded: number[] | null;
 	/** The line numbers that were removed in this hunk. The "before" or "old" line numbers.*/
 	readonly lineNumsRemoved: number[] | null;
 };
+
+export type HunkAssignmentTarget =
+	| { type: "stack"; subject: { stackId: string } }
+	| { type: "branch"; subject: { branchRefBytes: number[] } };
 
 /**
  * A request to update a hunk assignment. If a file has multiple hunks, the UI client needs to send a list of assignment requests with the appropriate hunk headers.
@@ -87,11 +93,8 @@ export type HunkAssignmentRequest = {
 	hunkHeader: HunkHeader | null;
 	/** The file path of the hunk in bytes. */
 	pathBytes: number[];
-	/**
-	 * The stack to which the hunk is assigned. If set to None, the hunk is set as "unassigned".
-	 * If a stack id is set, it must be one of the applied stacks.
-	 */
-	stackId: string | null;
+	/** Where to assign this hunk. `null` means unassign. */
+	target: HunkAssignmentTarget | null;
 };
 
 type DeltaLineGroup = {

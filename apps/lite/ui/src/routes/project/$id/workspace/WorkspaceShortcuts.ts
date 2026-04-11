@@ -762,7 +762,7 @@ export const useWorkspaceShortcuts = ({
 			type: "treeChanges",
 			subject: {
 				changes: resolvedOperationSource.changes.map(({ change }) => change),
-				assigned_stack_id: resolvedOperationSource.parent.stackId,
+				assignedStackId: resolvedOperationSource.parent.stackId,
 			},
 		});
 	};

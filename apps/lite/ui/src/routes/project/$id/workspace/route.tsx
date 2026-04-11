@@ -1167,7 +1167,7 @@ const ChangeRowMenuPopup: FC<{
 			type: "treeChanges",
 			subject: {
 				changes: [change],
-				assigned_stack_id: stackId,
+				assignedStackId: stackId,
 			},
 		});
 	};
@@ -1274,7 +1274,7 @@ const ChangesSectionRowMenuPopup: FC<{
 			type: "treeChanges",
 			subject: {
 				changes,
-				assigned_stack_id: stackId,
+				assignedStackId: stackId,
 			},
 		});
 	};

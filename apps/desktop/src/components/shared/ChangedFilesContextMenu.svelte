@@ -188,7 +188,7 @@
 				projectId,
 				target: {
 					type: "treeChanges",
-					subject: { changes, assigned_stack_id: stackId ?? null },
+					subject: { changes, assignedStackId: stackId ?? null },
 				},
 				useAi: $aiGenEnabled,
 			});

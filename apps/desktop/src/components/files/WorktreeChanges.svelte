@@ -162,7 +162,7 @@
 				type: "treeChanges",
 				subject: {
 					changes: treeChanges,
-					assigned_stack_id: stackId ?? null,
+					assignedStackId: stackId ?? null,
 				},
 			},
 			useAi: $aiGenEnabled,

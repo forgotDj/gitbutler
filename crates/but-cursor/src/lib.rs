@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 use but_action::{ActionHandler, Source, reword::CommitEvent};
 use but_ctx::Context;
-use but_hunk_assignment::HunkAssignmentRequest;
+use but_hunk_assignment::{HunkAssignmentRequest, HunkAssignmentTarget};
 use but_llm::LLMProvider;
 use but_workspace::legacy::StacksFilter;
 use gix::diff::blob::{
@@ -199,8 +199,7 @@ pub async fn handle_after_edit(read: impl std::io::Read) -> anyhow::Result<Curso
         .map(|a| HunkAssignmentRequest {
             hunk_header: a.hunk_header,
             path_bytes: a.path_bytes,
-            stack_id: Some(stack_id),
-            branch_ref_bytes: None,
+            target: Some(HunkAssignmentTarget::Stack { stack_id }),
         })
         .collect();
 

@@ -612,8 +612,7 @@ pub fn uncommit_changes(
             .map(|a| HunkAssignmentRequest {
                 hunk_header: a.hunk_header,
                 path_bytes: a.path_bytes,
-                stack_id: Some(stack_id),
-                branch_ref_bytes: None,
+                target: Some(but_hunk_assignment::HunkAssignmentTarget::Stack { stack_id }),
             })
             .collect::<Vec<_>>();
 
