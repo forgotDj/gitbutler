@@ -216,8 +216,10 @@ pub fn open_in_terminal(terminal_id: String, path: String) -> Result<()> {
                 .status()
                 .context("Failed to run 'open -Ra' to check application availability")?;
             if !status.success() {
-                return Err(anyhow::anyhow!("'{app_name}' was not found.")
-                    .context(but_error::Code::DefaultTerminalNotFound));
+                return Err(anyhow::anyhow!(
+                    "'{app_name}' was not found - `open -Ra {app_name}` failed."
+                )
+                .context(but_error::Code::DefaultTerminalNotFound));
             }
             Ok(())
         }
