@@ -198,8 +198,15 @@
 	tooltip={checksTagInfo.tooltip}
 	reversedDirection
 	onclick={(e) => {
-		checksService?.fetch(branchName, { forceRefetch: true });
 		e.stopPropagation();
+		if (!enabled) return;
+		// Re-add to polling list so that if new checks are discovered, polling resumes.
+		if (isDone) {
+			projectState.branchesToPoll.add(branchName);
+			loadedOnce = false;
+			elapsedMs = 0;
+		}
+		checksQuery?.result.refetch();
 	}}
 >
 	<span data-pr-text={checksTagInfo.reducedText} class="truncate">
