@@ -20,7 +20,7 @@ pub use table::{
 };
 
 /// Just like [`crate::SchemaVersion`], but for project caches. Note that caches can always be created though
-/// as they are generated in memory in the worst case.
+/// as they are generated in memory in the worst case, particularly on migration failure.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum SchemaVersion {
     /// The current forward-compatible schema line.
@@ -31,7 +31,7 @@ pub enum SchemaVersion {
     /// Switch to `One` only once a migration makes the database unsafe for binaries that only
     /// understand `Zero`, such as removing or reinterpreting persisted data they still use.
     Zero = 0,
-    /// Needed to for the removal of ChangeID/Commit associations.
+    /// Needed for the removal of ChangeID/Commit associations.
     One = 1,
 }
 
