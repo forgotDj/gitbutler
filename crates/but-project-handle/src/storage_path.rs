@@ -13,10 +13,22 @@ pub fn storage_path_config_key() -> &'static str {
     storage_path_config_key_for_channel(&AppChannel::new())
 }
 
+/// Return the config key used to customize the GitButler storage path for `channel`.
+pub fn storage_path_config_key_for_app_channel(channel: AppChannel) -> &'static str {
+    storage_path_config_key_for_channel(&channel)
+}
+
 /// Return the path where per-project GitButler data should be stored for `repo`.
 pub fn gitbutler_storage_path(repo: &gix::Repository) -> anyhow::Result<PathBuf> {
+    gitbutler_storage_path_for_channel(repo, AppChannel::new())
+}
+
+/// Return the path where per-project GitButler data should be stored for `repo` and `channel`.
+pub fn gitbutler_storage_path_for_channel(
+    repo: &gix::Repository,
+    channel: AppChannel,
+) -> anyhow::Result<PathBuf> {
     let git_dir = repo.git_dir();
-    let channel = AppChannel::new();
     let storage_key = storage_path_config_key_for_channel(&channel);
 
     match repo.config_snapshot().trusted_path(storage_key) {

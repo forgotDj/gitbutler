@@ -1,4 +1,5 @@
 use but_ctx::{Context, ProjectHandle};
+use but_path::AppChannel;
 use but_testsupport::{CommandExt as _, git, gix_testtools::tempfile::TempDir, open_repo};
 
 #[test]
@@ -94,6 +95,34 @@ fn sync_context_preserves_project_data_dir() -> anyhow::Result<()> {
             .join("but_cache.sqlite")
             .exists(),
         "thread-local restoration should still initialize the project cache in the project data dir"
+    );
+    Ok(())
+}
+
+#[test]
+fn discover_with_app_channel_uses_requested_project_data_dir() -> anyhow::Result<()> {
+    let repo_dir = TempDir::new()?;
+    let repo = gix::init(repo_dir.path())?;
+    let nightly_key =
+        but_project_handle::storage_path_config_key_for_app_channel(AppChannel::Nightly);
+    let dev_key = but_project_handle::storage_path_config_key_for_app_channel(AppChannel::Dev);
+    git(&repo)
+        .args(["config", "--local", nightly_key, "gitbutler-nightly"])
+        .run();
+    git(&repo)
+        .args(["config", "--local", dev_key, "gitbutler-dev"])
+        .run();
+
+    let nightly_ctx = Context::discover_with_app_channel(repo_dir.path(), AppChannel::Nightly)?;
+    assert_eq!(
+        nightly_ctx.project_data_dir(),
+        nightly_ctx.gitdir.join("gitbutler-nightly")
+    );
+
+    let dev_ctx = Context::discover_with_app_channel(repo_dir.path(), AppChannel::Dev)?;
+    assert_eq!(
+        dev_ctx.project_data_dir(),
+        dev_ctx.gitdir.join("gitbutler-dev")
     );
     Ok(())
 }

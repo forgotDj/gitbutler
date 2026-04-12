@@ -1,12 +1,11 @@
 use std::path::Path;
 
 use but_core::RepositoryExt;
-use but_ctx::Context;
 use but_hunk_dependency::ui::HunkDependencies;
 use gix::bstr::BString;
 use itertools::Itertools;
 
-use crate::command::{UI_CONTEXT_LINES, debug_print};
+use crate::command::{UI_CONTEXT_LINES, context_from_args, debug_print};
 
 pub fn commit_changes(
     current_dir: &Path,
@@ -73,8 +72,8 @@ fn handle_normal_diff(worktree: but_core::WorktreeChanges, use_json: bool) -> an
     }
 }
 
-pub fn locks(current_dir: &Path, simple: bool, use_json: bool) -> anyhow::Result<()> {
-    let ctx = Context::discover(current_dir)?;
+pub fn locks(args: &crate::Args, simple: bool, use_json: bool) -> anyhow::Result<()> {
+    let ctx = context_from_args(args)?;
     let (_guard, repo, ws, _) = ctx.workspace_and_db()?;
     let worktree_changes = but_core::diff::worktree_changes(&repo)?;
     let input_stacks = but_hunk_dependency::new_stacks_to_input_stacks(&repo, &ws)?;

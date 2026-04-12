@@ -7,6 +7,7 @@ use but_core::{
 };
 use but_ctx::{ProjectHandle, ProjectHandleOrLegacyProjectId};
 use but_db::poll::ItemKind;
+use but_path::AppChannel;
 use but_workspace::branch::{
     OnWorkspaceMergeConflict,
     apply::{WorkspaceMerge, WorkspaceReferenceNaming},
@@ -19,6 +20,14 @@ use gix::{
 use tokio::sync::mpsc::unbounded_channel;
 
 pub(crate) const UI_CONTEXT_LINES: u32 = 3;
+
+pub(crate) fn context_from_args(args: &crate::Args) -> anyhow::Result<Context> {
+    let app_suffix = args.app_suffix.as_deref();
+    match app_suffix.map(str::parse::<AppChannel>).transpose()? {
+        Some(channel) => Context::discover_with_app_channel(&args.current_dir, channel),
+        None => Context::discover(&args.current_dir),
+    }
+}
 
 fn debug_print(this: impl std::fmt::Debug) -> anyhow::Result<()> {
     println!("{this:#?}");
@@ -46,15 +55,12 @@ pub mod diff;
 pub mod project;
 
 pub mod assignment {
-    use std::path::Path;
-
-    use but_ctx::Context;
     use but_hunk_assignment::HunkAssignmentRequest;
 
-    use crate::command::debug_print;
+    use crate::command::{context_from_args, debug_print};
 
-    pub fn hunk_assignments(current_dir: &Path, use_json: bool) -> anyhow::Result<()> {
-        let mut ctx = Context::discover(current_dir)?;
+    pub fn hunk_assignments(args: &crate::Args, use_json: bool) -> anyhow::Result<()> {
+        let mut ctx = context_from_args(args)?;
         let context_lines = ctx.settings.context_lines;
         let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
         let (assignments, _) = but_hunk_assignment::assignments_with_fallback(
@@ -74,11 +80,11 @@ pub mod assignment {
     }
 
     pub fn assign_hunk(
-        current_dir: &Path,
+        args: &crate::Args,
         use_json: bool,
         assignment: HunkAssignmentRequest,
     ) -> anyhow::Result<()> {
-        let mut ctx = Context::discover(current_dir)?;
+        let mut ctx = context_from_args(args)?;
         let context_lines = ctx.settings.context_lines;
         let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
         but_hunk_assignment::assign(
@@ -96,7 +102,7 @@ pub mod assignment {
 }
 
 pub mod stacks {
-    use std::{path::Path, str::FromStr};
+    use std::str::FromStr;
 
     use anyhow::Context as _;
     use but_ctx::Context;
@@ -105,10 +111,10 @@ pub mod stacks {
     use gitbutler_stack::StackId;
     use gix::bstr::ByteSlice;
 
-    use crate::command::debug_print;
+    use crate::command::{context_from_args, debug_print};
 
-    pub fn list(current_dir: &Path, use_json: bool, in_workspace: bool) -> anyhow::Result<()> {
-        let ctx = Context::discover(current_dir)?;
+    pub fn list(args: &crate::Args, use_json: bool, in_workspace: bool) -> anyhow::Result<()> {
+        let ctx = context_from_args(args)?;
         let repo = ctx.clone_repo_for_merging_non_persisting()?;
         let filter = if in_workspace {
             StacksFilter::InWorkspace
@@ -128,8 +134,8 @@ pub mod stacks {
         }
     }
 
-    pub fn details(id: Option<StackId>, current_dir: &Path) -> anyhow::Result<()> {
-        let ctx = Context::discover(current_dir)?;
+    pub fn details(id: Option<StackId>, args: &crate::Args) -> anyhow::Result<()> {
+        let ctx = context_from_args(args)?;
         let details = {
             let meta = ctx.legacy_meta()?;
             let repo = ctx.clone_repo_for_merging_non_persisting()?;
@@ -138,8 +144,8 @@ pub mod stacks {
         debug_print(details)
     }
 
-    pub fn branch_details(ref_name: &str, current_dir: &Path) -> anyhow::Result<()> {
-        let ctx = Context::discover(current_dir)?;
+    pub fn branch_details(ref_name: &str, args: &crate::Args) -> anyhow::Result<()> {
+        let ctx = context_from_args(args)?;
         let meta = ctx.meta()?;
         let repo = ctx.clone_repo_for_merging_non_persisting()?;
         let ref_name = repo.find_reference(ref_name)?.name().to_owned();
@@ -148,8 +154,8 @@ pub mod stacks {
         debug_print(details)
     }
 
-    pub fn branches(id: StackId, current_dir: &Path, use_json: bool) -> anyhow::Result<()> {
-        let ctx = Context::discover(current_dir)?;
+    pub fn branches(id: StackId, args: &crate::Args, use_json: bool) -> anyhow::Result<()> {
+        let ctx = context_from_args(args)?;
         let branches = stack_branches(id, &ctx)?;
         if use_json {
             let json = serde_json::to_string_pretty(&branches)?;
@@ -242,9 +248,9 @@ pub mod stacks {
     pub fn move_branch(
         subject_branch: &str,
         destination_branch: &str,
-        current_dir: &Path,
+        args: &crate::Args,
     ) -> anyhow::Result<()> {
-        let mut ctx = Context::discover(current_dir)?;
+        let mut ctx = context_from_args(args)?;
         let meta = ctx.legacy_meta()?;
         let stacks = {
             but_workspace::legacy::stacks_v3(&*ctx.repo.get()?, &meta, Default::default(), None)?
@@ -284,11 +290,11 @@ pub mod stacks {
     pub fn create_branch(
         id: Option<StackId>,
         name: &str,
-        current_dir: &Path,
+        args: &crate::Args,
         remote: bool,
         use_json: bool,
     ) -> anyhow::Result<()> {
-        let mut ctx = Context::discover(current_dir)?;
+        let mut ctx = context_from_args(args)?;
         let stack_entry = match id {
             Some(id) => add_branch_to_stack(&mut ctx, id, name)?,
             None => create_stack_with_branch(&mut ctx, name, remote)?,
@@ -339,7 +345,7 @@ pub(crate) fn discard_change(
 }
 
 pub async fn watch(args: &super::Args, watch_mode: Option<&str>) -> anyhow::Result<()> {
-    let ctx = Context::discover(&args.current_dir)?;
+    let ctx = context_from_args(args)?;
     let (tx, mut rx) = unbounded_channel();
     let start = std::time::Instant::now();
     let workdir = ctx.workdir_or_fail()?;
@@ -364,7 +370,7 @@ pub async fn watch(args: &super::Args, watch_mode: Option<&str>) -> anyhow::Resu
     Ok(())
 }
 pub fn watch_db(args: &super::Args) -> anyhow::Result<()> {
-    let ctx = Context::discover(&args.current_dir)?;
+    let ctx = context_from_args(args)?;
     let db = ctx.db.get()?;
     let rx = db.poll_changes(
         ItemKind::Actions | ItemKind::Assignments | ItemKind::Workflows,
@@ -379,7 +385,7 @@ pub fn watch_db(args: &super::Args) -> anyhow::Result<()> {
 }
 
 pub fn operating_mode(args: &super::Args) -> anyhow::Result<()> {
-    let ctx = Context::discover(&args.current_dir)?;
+    let ctx = context_from_args(args)?;
     let guard = ctx.shared_worktree_access();
     debug_print(gitbutler_operating_modes::operating_mode(
         &ctx,
@@ -388,7 +394,7 @@ pub fn operating_mode(args: &super::Args) -> anyhow::Result<()> {
 }
 
 pub fn ref_info(args: &super::Args, ref_name: Option<&str>, expensive: bool) -> anyhow::Result<()> {
-    let ctx = Context::discover(&args.current_dir)?;
+    let ctx = context_from_args(args)?;
     let opts = but_workspace::ref_info::Options {
         expensive_commit_info: expensive,
         traversal: Default::default(),
@@ -410,7 +416,7 @@ pub fn remove_reference(
     short_name: &str,
     opts: but_workspace::branch::remove_reference::Options,
 ) -> anyhow::Result<()> {
-    let mut ctx = Context::discover(&args.current_dir)?;
+    let mut ctx = context_from_args(args)?;
     let mut meta = ctx.meta()?;
     let (_guard, repo, mut ws, _) = ctx.workspace_mut_and_db()?;
     let ref_name = Category::LocalBranch.to_full_name(short_name)?;
@@ -426,7 +432,7 @@ pub fn remove_reference(
 }
 
 pub fn apply(args: &super::Args, short_name: &str, order: Option<usize>) -> anyhow::Result<()> {
-    let mut ctx = Context::discover(&args.current_dir)?;
+    let mut ctx = context_from_args(args)?;
     let mut meta = ctx.meta()?;
     let (_guard, repo, mut ws, _) = ctx.workspace_mut_and_db()?;
     let branch = repo.find_reference(short_name)?;
@@ -458,7 +464,7 @@ pub fn create_reference(
     above: Option<&str>,
     below: Option<&str>,
 ) -> anyhow::Result<()> {
-    let mut ctx = Context::discover(&args.current_dir)?;
+    let mut ctx = context_from_args(args)?;
     let mut meta = ctx.meta()?;
     let (_guard, repo, mut ws, _) = ctx.workspace_mut_and_db()?;
     let resolve = |spec: &str, position: Position| -> anyhow::Result<Anchor<'_>> {
@@ -557,8 +563,8 @@ fn path_to_rela_path(path: &Path) -> anyhow::Result<BString> {
     Ok(rela_path)
 }
 
-pub fn branch_list(current_dir: &Path) -> anyhow::Result<()> {
-    let ctx = Context::discover(current_dir)?;
+pub fn branch_list(args: &crate::Args) -> anyhow::Result<()> {
+    let ctx = context_from_args(args)?;
     debug_print(gitbutler_branch_actions::list_branches(
         &ctx,
         Some(BranchListingFilter {

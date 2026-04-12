@@ -13,6 +13,7 @@ use but_core::{
     RepositoryExt,
     sync::{RepoExclusive, RepoExclusiveGuard, RepoShared, RepoSharedGuard},
 };
+use but_path::AppChannel;
 use but_settings::AppSettings;
 use tracing::instrument;
 
@@ -340,6 +341,19 @@ impl Context {
         Self::discover_with_repo_open_mode(directory, RepoOpenMode::Standard)
     }
 
+    /// Discover the Git repository in `directory`, or search upwards until one is found, and return it as context,
+    /// resolving project-local GitButler storage using `channel` instead of the build's compile-time channel.
+    pub fn discover_with_app_channel(
+        directory: impl AsRef<Path>,
+        channel: AppChannel,
+    ) -> anyhow::Result<Context> {
+        Self::discover_with_app_channel_and_repo_open_mode(
+            directory,
+            channel,
+            RepoOpenMode::Standard,
+        )
+    }
+
     /// Discover the Git repository in `directory`, or search upwards until one is found, and return it as context
     /// while controlling how the repository sources configuration via `repo_open_mode`.
     pub fn discover_with_repo_open_mode(
@@ -350,6 +364,19 @@ impl Context {
         let gitdir = gix::discover(directory)?.git_dir().to_owned();
         let repo = open_repo(&gitdir, repo_open_mode)?;
         Self::from_repo_with_legacy_support(repo, repo_open_mode)
+    }
+
+    /// Like [`Self::discover_with_app_channel()`], but allows controlling how the repository
+    /// sources configuration via `repo_open_mode`.
+    pub fn discover_with_app_channel_and_repo_open_mode(
+        directory: impl AsRef<Path>,
+        channel: AppChannel,
+        repo_open_mode: RepoOpenMode,
+    ) -> anyhow::Result<Context> {
+        let directory = directory.as_ref();
+        let gitdir = gix::discover(directory)?.git_dir().to_owned();
+        let repo = open_repo(&gitdir, repo_open_mode)?;
+        Self::from_repo_with_legacy_support_and_channel(repo, repo_open_mode, channel)
     }
 
     /// Create a context from a `project_handle`, which directly encodes the repository path.
@@ -392,8 +419,21 @@ impl Context {
         repo: gix::Repository,
         repo_open_mode: RepoOpenMode,
     ) -> anyhow::Result<Context> {
-        let app_cache_dir = but_path::app_cache_dir().ok();
-        let project_data_dir = repo.gitbutler_storage_path()?;
+        Self::from_repo_with_legacy_support_and_channel(repo, repo_open_mode, AppChannel::new())
+    }
+
+    #[allow(
+        deprecated,
+        reason = "Context owns the deprecated boundary cache and must initialize it."
+    )]
+    fn from_repo_with_legacy_support_and_channel(
+        repo: gix::Repository,
+        repo_open_mode: RepoOpenMode,
+        channel: AppChannel,
+    ) -> anyhow::Result<Context> {
+        let app_cache_dir = but_path::app_cache_dir_for_channel(channel).ok();
+        let project_data_dir =
+            but_project_handle::gitbutler_storage_path_for_channel(&repo, channel)?;
         #[cfg(feature = "legacy")]
         {
             use anyhow::Context as _;

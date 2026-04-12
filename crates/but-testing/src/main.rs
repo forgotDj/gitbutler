@@ -2,15 +2,14 @@
 use std::{path::PathBuf, str::FromStr};
 
 use anyhow::{Context as _, Result, bail};
+use but_path::AppChannel;
 use command::parse_diff_spec;
 use gix::bstr::BString;
 
 mod args;
+use crate::{args::Subcommands, command::graph::Dot};
 use args::Args;
 use but_core::HunkHeader;
-use but_ctx::Context;
-
-use crate::{args::Subcommands, command::graph::Dot};
 
 mod command;
 
@@ -23,14 +22,6 @@ async fn main() -> Result<()> {
         trace::init(args.trace)?;
     }
     let _op_span = tracing::info_span!("cli-op").entered();
-    static CHANNEL: Option<&str> = option_env!("CHANNEL");
-    if let Some(suffix) = &args.app_suffix
-        && CHANNEL != Some(suffix)
-    {
-        bail!(
-            "Launch with CHANNEL={suffix} cargo run -- but-testing… instead - must be compiled in!"
-        )
-    }
 
     match &args.cmd {
         Subcommands::Apply { branch_name, order } => command::apply(&args, branch_name, *order),
@@ -38,11 +29,14 @@ async fn main() -> Result<()> {
             switch_to_workspace,
             path,
         } => command::project::add(
-            data_dir(args.app_data_dir)?,
+            data_dir(args.app_data_dir.clone(), args.app_suffix.as_deref())?,
             path.to_owned(),
             switch_to_workspace.to_owned(),
         ),
-        args::Subcommands::RemoveProject { project_name } => command::project::remove(project_name),
+        args::Subcommands::RemoveProject { project_name } => command::project::remove(
+            data_dir(args.app_data_dir.clone(), args.app_suffix.as_deref())?,
+            project_name,
+        ),
         args::Subcommands::RemoveReference {
             permit_empty_stacks,
             keep_metadata,
@@ -93,7 +87,7 @@ async fn main() -> Result<()> {
             stack_segment_ref,
             diff_spec,
         } => {
-            let ctx = Context::discover(&args.current_dir)?;
+            let ctx = command::context_from_args(&args)?;
             let diff_spec = parse_diff_spec(diff_spec)?;
             command::commit(
                 ctx.repo.get()?.clone(),
@@ -114,7 +108,7 @@ async fn main() -> Result<()> {
             )
         }
         args::Subcommands::HunkDependency { simple } => {
-            command::diff::locks(&args.current_dir, *simple, args.json)
+            command::diff::locks(&args, *simple, args.json)
         }
         args::Subcommands::Status {
             unified_diff,
@@ -133,13 +127,13 @@ async fn main() -> Result<()> {
         args::Subcommands::Watch { mode } => command::watch(&args, mode.as_deref()).await,
         args::Subcommands::WatchDb => command::watch_db(&args),
         args::Subcommands::Stacks { workspace_only } => {
-            command::stacks::list(&args.current_dir, args.json, *workspace_only)
+            command::stacks::list(&args, args.json, *workspace_only)
         }
-        args::Subcommands::BranchList => command::branch_list(&args.current_dir),
+        args::Subcommands::BranchList => command::branch_list(&args),
         args::Subcommands::BranchDetails { ref_name } => {
-            command::stacks::branch_details(ref_name, &args.current_dir)
+            command::stacks::branch_details(ref_name, &args)
         }
-        args::Subcommands::StackDetails { id } => command::stacks::details(*id, &args.current_dir),
+        args::Subcommands::StackDetails { id } => command::stacks::details(*id, &args),
         args::Subcommands::RefInfo {
             ref_name,
             expensive,
@@ -177,7 +171,7 @@ async fn main() -> Result<()> {
             *no_post,
         ),
         args::Subcommands::HunkAssignments => {
-            command::assignment::hunk_assignments(&args.current_dir, args.json)
+            command::assignment::hunk_assignments(&args, args.json)
         }
         args::Subcommands::AssignHunk {
             path,
@@ -199,7 +193,7 @@ async fn main() -> Result<()> {
                     new_lines: *new_lines,
                 }),
             };
-            command::assignment::assign_hunk(&args.current_dir, args.json, assignment)
+            command::assignment::assign_hunk(&args, args.json, assignment)
         }
         args::Subcommands::StackBranches {
             id,
@@ -207,14 +201,10 @@ async fn main() -> Result<()> {
             description: _,
             remote,
         } => match (branch_name, id) {
-            (Some(branch_name), maybe_id) => command::stacks::create_branch(
-                *maybe_id,
-                branch_name,
-                &args.current_dir,
-                *remote,
-                args.json,
-            ),
-            (None, Some(id)) => command::stacks::branches(*id, &args.current_dir, args.json),
+            (Some(branch_name), maybe_id) => {
+                command::stacks::create_branch(*maybe_id, branch_name, &args, *remote, args.json)
+            }
+            (None, Some(id)) => command::stacks::branches(*id, &args, args.json),
             (None, None) => {
                 bail!(
                     "You must provide a stack ID to list branches. Use `--branch-name` to create a new branch."
@@ -227,7 +217,7 @@ async fn main() -> Result<()> {
         } => command::stacks::move_branch(
             stack_branch_subject_name,
             stack_branch_destination_name,
-            &args.current_dir,
+            &args,
         ),
     }
 }
@@ -273,14 +263,18 @@ mod trace {
     }
 }
 
-pub fn data_dir(app_data_dir: Option<PathBuf>) -> anyhow::Result<PathBuf> {
+pub fn data_dir(
+    app_data_dir: Option<PathBuf>,
+    app_suffix: Option<&str>,
+) -> anyhow::Result<PathBuf> {
     let path = if let Some(dir) = app_data_dir {
         std::fs::create_dir_all(&dir).context("Failed to assure the designated data-dir exists")?;
         dir
     } else {
-        dirs_next::data_dir()
-            .map(|dir| dir.join("com.gitbutler.app"))
-            .context("no data-directory available on this platform")?
+        match app_suffix.map(str::parse::<AppChannel>).transpose()? {
+            Some(channel) => but_path::app_data_dir_for_channel(channel)?,
+            None => but_path::app_data_dir()?,
+        }
     };
     if !path.is_dir() {
         bail!("Path '{}' must be a valid directory", path.display());

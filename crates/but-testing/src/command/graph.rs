@@ -21,7 +21,7 @@ pub fn doit(
     stats: bool,
     dangerously_skip_postprocessing_for_debugging: bool,
 ) -> anyhow::Result<()> {
-    let mut ctx = but_ctx::Context::discover(&args.current_dir)?;
+    let mut ctx = crate::command::context_from_args(args)?;
     let mut repo = ctx.repo.get_mut()?;
     repo.objects.refresh = RefreshMode::Never;
     drop(repo);
