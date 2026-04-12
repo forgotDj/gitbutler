@@ -28,7 +28,7 @@ impl ChangeId {
         ChangeId(value.to_string().into())
     }
 
-    /// Creates a random length 32 reverse hex ChangeId.
+    /// Creates a random length 32 reverse hex ChangeId (SHA-1).
     pub fn generate() -> Self {
         let mut rng = rand::rng();
         let bytes: [u8; CHANGE_ID_REVERSE_BYTE_LEN] = rng.random();

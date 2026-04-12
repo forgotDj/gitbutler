@@ -177,7 +177,6 @@ impl<'a> UpstreamIntegrationContext<'a> {
         {
             let meta = ctx.meta()?;
             let repo = ctx.repo.get()?;
-            let mut cache = ctx.cache.get_cache_mut()?;
             let _ref_info = but_workspace::head_info(
                 &repo,
                 &meta,
@@ -185,7 +184,6 @@ impl<'a> UpstreamIntegrationContext<'a> {
                     expensive_commit_info: true,
                     traversal: but_graph::init::Options::limited(),
                 },
-                &mut cache,
             )?;
         }
 
@@ -220,13 +218,11 @@ fn stacks(
     repo: &gix::Repository,
 ) -> anyhow::Result<Vec<but_workspace::legacy::ui::StackEntry>> {
     let meta = ctx.legacy_meta()?;
-    let mut cache = ctx.cache.get_cache_mut()?;
     but_workspace::legacy::stacks_v3(
         repo,
         &meta,
         but_workspace::legacy::StacksFilter::InWorkspace,
         None,
-        &mut cache,
     )
 }
 
@@ -236,8 +232,7 @@ fn stack_details(
 ) -> anyhow::Result<but_workspace::ui::StackDetails> {
     let repo = ctx.clone_repo_for_merging_non_persisting()?;
     let meta = ctx.legacy_meta()?;
-    let mut cache = ctx.cache.get_cache_mut()?;
-    but_workspace::legacy::stack_details_v3(stack_id, &repo, &meta, &mut cache)
+    but_workspace::legacy::stack_details_v3(stack_id, &repo, &meta)
 }
 
 /// Returns the status of a stack.

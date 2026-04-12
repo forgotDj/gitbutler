@@ -161,6 +161,10 @@ pub fn merge_commits(
         conflicted_files.to_headers()
     } else {
         tree_oid = merged_tree_id.to_git2();
+        #[expect(
+            deprecated,
+            reason = "We should use a synthetic ID instead, but that needs the existing commit id if available"
+        )]
         Headers::new_with_random_change_id()
     };
 
@@ -191,12 +195,17 @@ trait ToHeaders {
 
 impl ToHeaders for ConflictEntries {
     fn to_headers(&self) -> Headers {
+        #[expect(
+            deprecated,
+            reason = "We should use a synthetic ID instead, but that needs the existing commit id if available"
+        )]
+        let default_headers = Headers::new_with_random_change_id();
         Headers {
             conflicted: Some({
                 let entries = self.total_entries();
                 if entries > 0 { entries as u64 } else { 1 }
             }),
-            ..Headers::new_with_random_change_id()
+            ..default_headers
         }
     }
 }

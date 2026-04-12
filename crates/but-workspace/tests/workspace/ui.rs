@@ -137,10 +137,8 @@ mod changes_in_branch {
             "passing strange ref-names still causes an error - they must exist"
         );
 
-        let mut ref_info: ui::RefInfo = {
-            let mut cache = crate::ref_info::in_memory_cache();
-            but_workspace::head_info(&repo, &*meta, Default::default(), &mut cache)?.try_into()?
-        };
+        let mut ref_info: ui::RefInfo =
+            but_workspace::head_info(&repo, &*meta, Default::default())?.try_into()?;
         ref_info = ref_info.pruned_to_entrypoint();
         insta::assert_json_snapshot!(&ref_info, @r#"
         {
@@ -247,6 +245,7 @@ mod changes_in_branch {
                         "email": "author@example.com",
                         "gravatarUrl": "https://www.gravatar.com/avatar/5c1e6d6e64e12aca17657581a48005d1?s=100&r=g&d=retro"
                       },
+                      "changeId": "mvvzyyvvvuosslxwrvqpxopvomovrrmz",
                       "gerritReviewUrl": null
                     }
                   ],
@@ -259,7 +258,8 @@ mod changes_in_branch {
                         "name": "author",
                         "email": "author@example.com",
                         "gravatarUrl": "https://www.gravatar.com/avatar/5c1e6d6e64e12aca17657581a48005d1?s=100&r=g&d=retro"
-                      }
+                      },
+                      "changeId": null
                     }
                   ],
                   "commitsOutside": null,
@@ -430,6 +430,7 @@ mod changes_in_branch {
                         "email": "author@example.com",
                         "gravatarUrl": "https://www.gravatar.com/avatar/5c1e6d6e64e12aca17657581a48005d1?s=100&r=g&d=retro"
                       },
+                      "changeId": "mvvzyyvvvuosslxwrvqpxopvomovrrmz",
                       "gerritReviewUrl": null
                     }
                   ],
@@ -442,7 +443,8 @@ mod changes_in_branch {
                         "name": "author",
                         "email": "author@example.com",
                         "gravatarUrl": "https://www.gravatar.com/avatar/5c1e6d6e64e12aca17657581a48005d1?s=100&r=g&d=retro"
-                      }
+                      },
+                      "changeId": null
                     }
                   ],
                   "commitsOutside": null,

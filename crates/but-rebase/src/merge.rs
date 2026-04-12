@@ -86,8 +86,8 @@ pub fn octopus(
     }
     target_merge_commit.tree = ours;
     if but_core::commit::Headers::try_from_commit(&target_merge_commit).is_none() {
-        but_core::commit::Headers::from_config(&repo.config_snapshot())
-            .set_in_commit(&mut target_merge_commit);
+        let headers = but_core::commit::Headers::from_config(&repo.config_snapshot());
+        headers.set_in_commit(&mut target_merge_commit);
     }
     if target_merge_commit
         .extra_headers()

@@ -150,14 +150,7 @@ pub async fn handle_after_edit(read: impl std::io::Read) -> anyhow::Result<Curso
     // Create repo and workspace once at the entry point
     let mut guard = ctx.exclusive_worktree_access();
     let stacks = {
-        let mut cache = ctx.cache.get_cache_mut()?;
-        but_workspace::legacy::stacks_v3(
-            &*ctx.repo.get()?,
-            &meta,
-            StacksFilter::default(),
-            None,
-            &mut cache,
-        )?
+        but_workspace::legacy::stacks_v3(&*ctx.repo.get()?, &meta, StacksFilter::default(), None)?
     };
     let stack_id = but_claude::hooks::get_or_create_session(
         &mut ctx,
@@ -242,14 +235,7 @@ pub async fn handle_stop(
     // Create repo and workspace once at the entry point
     let mut guard = ctx.exclusive_worktree_access();
     let stacks = {
-        let mut cache = ctx.cache.get_cache_mut()?;
-        but_workspace::legacy::stacks_v3(
-            &*ctx.repo.get()?,
-            &meta,
-            StacksFilter::default(),
-            None,
-            &mut cache,
-        )?
+        but_workspace::legacy::stacks_v3(&*ctx.repo.get()?, &meta, StacksFilter::default(), None)?
     };
     let stack_id = but_claude::hooks::get_or_create_session(
         &mut ctx,
@@ -282,14 +268,7 @@ pub async fn handle_stop(
     )?;
 
     let stacks = {
-        let mut cache = ctx.cache.get_cache_mut()?;
-        but_workspace::legacy::stacks_v3(
-            &*ctx.repo.get()?,
-            &meta,
-            StacksFilter::default(),
-            None,
-            &mut cache,
-        )?
+        but_workspace::legacy::stacks_v3(&*ctx.repo.get()?, &meta, StacksFilter::default(), None)?
     };
 
     // Trigger commit message generation for newly created commits

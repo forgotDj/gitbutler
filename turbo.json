@@ -3,7 +3,7 @@
 	"tasks": {
 		"package": {
 			"dependsOn": ["^package"],
-			"outputs": ["dist/**"]
+			"outputs": ["dist/**", ".svelte-kit/**"]
 		},
 		"build": {
 			"dependsOn": ["package"],

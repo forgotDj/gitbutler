@@ -12,6 +12,7 @@
 		"test:ui": "vitest --ui",
 		"build": "vite build",
 		"preview": "vite preview",
+		"package": "svelte-kit sync",
 		"check": "svelte-check --tsconfig ./tsconfig.json",
 		"check-cycles": "tsx ../../scripts/check-component-cycles.ts",
 		"check:watch": "pnpm check --watch",

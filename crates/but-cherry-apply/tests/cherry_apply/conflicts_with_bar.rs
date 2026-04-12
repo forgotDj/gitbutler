@@ -55,8 +55,7 @@ fn can_only_apply_to_bar_stack() -> anyhow::Result<()> {
             .join("virtual_branches.toml"),
     )?;
     let repo = test_ctx.ctx.repo.get()?;
-    let mut cache = test_ctx.ctx.cache.get_cache_mut()?;
-    let details = stack_details_v3(Some(bar_id), &repo, &meta, &mut cache)?;
+    let details = stack_details_v3(Some(bar_id), &repo, &meta)?;
 
     let has_commit = details
         .branch_details

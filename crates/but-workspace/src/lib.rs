@@ -63,8 +63,6 @@ use but_graph::{SegmentIndex, projection::TargetCommit};
 ///
 /// We always try to deduce a set of stacks that are currently applied to a workspace,
 /// even though it's possible to look at refs that are outside a workspace as well.
-/// TODO: There should be a UI version of [`but_graph::projection::Workspace`].
-///       This should also include base-branch data, see `get_base_branch_data()`.
 #[derive(Debug, Clone)]
 pub struct RefInfo {
     /// The name of the ref that points to a workspace commit,

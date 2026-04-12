@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// A collection of all the extra information we keep in the headers of a commit.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Headers {
     /// A property we can use to determine if two different commits are
     /// actually the same "patch" at different points in time. We carry it
@@ -34,10 +34,40 @@ pub struct Headers {
 
 /// Lifecycle
 impl Headers {
-    /// Creates a new set of headers with a randomly generated change_id.
+    /// Derive a deterministic synthetic change-id from `commit_id`.
     ///
-    /// # Note - use [Self::from_config()] instead
+    /// Useful for when [`Self::change_id`] is `None`.
+    ///
+    /// These synthesized IDs are compatible with Jujutsu's deterministic scheme,
+    /// and JJ would create exactly the same change-id if given the `commit_id`.
+    pub fn synthetic_change_id_from_commit_id(commit_id: gix::ObjectId) -> ChangeId {
+        let bytes: Vec<_> = commit_id.as_bytes()[4..gix::hash::Kind::Sha1.len_in_bytes()]
+            .iter()
+            .rev()
+            .map(|byte| byte.reverse_bits())
+            .collect();
+        ChangeId::from_bytes(&bytes)
+    }
+
+    /// Fill in [`Self::change_id`] with a deterministic synthetic value derived from `commit_id`
+    /// if it is not set yet, and return the updated headers.
+    /// If `commit_id` is `None`, this means no commit-id is known and we create a random ID (SHA1) instead.
+    ///
+    /// Use this when headers already exist or are being built up incrementally, but a stored
+    /// `change-id` header still needs to be ensured.
+    pub fn ensure_change_id(mut self, commit_id: impl Into<Option<gix::ObjectId>>) -> Self {
+        if self.change_id.is_none() {
+            self.change_id = commit_id
+                .into()
+                .map_or_else(ChangeId::generate, Self::synthetic_change_id_from_commit_id)
+                .into();
+        }
+        self
+    }
+
+    /// Creates a new set of headers with a randomly generated change_id.
     #[cfg(feature = "legacy")]
+    #[deprecated = "We want deterministic change-ids, use Headers::synthetic_change_id_from_commit_id() instead."]
     pub fn new_with_random_change_id() -> Self {
         Self {
             change_id: Some(ChangeId::generate()),
@@ -45,9 +75,12 @@ impl Headers {
         }
     }
 
-    /// Create a new instance, with the following rules for setting the change id:
+    /// Create a new instance, with the following rules for setting the change id header:
     /// 1. Read `gitbutler.testing.changeId` from `config` and if it's a valid u128 integer, use it as change-id.
     /// 2. generate a new change-id
+    ///
+    /// This produces a stored header value. For the deterministic fallback used when headerless
+    /// commits still need a change-id, see [`Self::ensure_change_id()`].
     pub fn from_config(config: &gix::config::Snapshot) -> Self {
         Headers {
             change_id: Some(
@@ -71,6 +104,10 @@ impl Headers {
 
     /// Extract header information from the given [`extra_headers`](gix::objs::Commit::extra_headers()) function,
     /// or return `None` if not present.
+    ///
+    /// The `change-id` header takes precedence over the legacy `gitbutler-change-id` header.
+    /// If neither header is present and a stable fallback is required, use
+    /// `Headers::unwrap_or_default().ensure_change_id(commit_id)`
     pub fn try_from_commit_headers<'a, I>(
         extra_headers: impl Fn() -> gix::objs::commit::ExtraHeaders<I>,
     ) -> Option<Self>
@@ -110,8 +147,11 @@ impl Headers {
         }
     }
 
-    /// Write the values from this instance to the given `commit`,  fully replacing any header
+    /// Write the values from this instance to the given `commit`, fully replacing any header
     /// that might have been there before.
+    ///
+    /// This always writes the canonical `change-id` header for [`Self::change_id`]. Use
+    /// [`Self::ensure_change_id()`] to persist a deterministic fallback,
     pub fn set_in_commit(&self, commit: &mut gix::objs::Commit) {
         Self::remove_in_commit(commit);
         commit
@@ -417,7 +457,7 @@ impl TreeKind {
     }
 }
 
-/// Instantiation
+/// Lifecycle
 impl<'repo> Commit<'repo> {
     /// Decode the object at `commit_id` and keep its data for later query.
     pub fn from_id(commit_id: gix::Id<'repo>) -> anyhow::Result<Self> {
@@ -441,13 +481,6 @@ impl From<Commit<'_>> for CommitOwned {
             id: id.detach(),
             inner,
         }
-    }
-}
-
-impl Commit<'_> {
-    /// Set this commit to use the given `headers`, completely replacing the ones it might currently have.
-    pub fn set_headers(&mut self, header: &Headers) {
-        header.set_in_commit(self)
     }
 }
 
@@ -494,6 +527,23 @@ impl CommitOwned {
             id: id.attach(repo),
             inner,
         }
+    }
+
+    /// Return the stored change-id if present, or derive a deterministic fallback from the commit id.
+    pub fn change_id(&self) -> ChangeId {
+        Headers::try_from_commit(&self.inner)
+            .unwrap_or_default()
+            .ensure_change_id(self.id)
+            .change_id
+            .expect("change-id is ensured")
+    }
+}
+
+/// Mutations
+impl Commit<'_> {
+    /// Set this commit to use the given `headers`, completely replacing the ones it might currently have.
+    pub fn set_headers(&mut self, header: &Headers) {
+        header.set_in_commit(self)
     }
 }
 
@@ -562,6 +612,15 @@ impl<'repo> Commit<'repo> {
     /// Return our custom headers, of present.
     pub fn headers(&self) -> Option<Headers> {
         Headers::try_from_commit(&self.inner)
+    }
+
+    /// Return the stored change-id if present, or derive a deterministic fallback from the commit id.
+    pub fn change_id(&self) -> ChangeId {
+        self.headers()
+            .unwrap_or_default()
+            .ensure_change_id(self.id.detach())
+            .change_id
+            .expect("change-id is ensured")
     }
 }
 

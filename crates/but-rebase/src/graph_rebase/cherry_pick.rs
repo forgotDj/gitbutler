@@ -318,11 +318,10 @@ fn commit_from_unconflicted_tree<'repo>(
             new_commit.extra_headers.remove(pos);
         }
     } else if headers.is_none() {
+        let headers = Headers::from_config(&repo.config_snapshot());
         new_commit
             .extra_headers
-            .extend(Vec::<(BString, BString)>::from(&Headers::from_config(
-                &repo.config_snapshot(),
-            )));
+            .extend(Vec::<(BString, BString)>::from(&headers));
     }
     new_commit.parents = parents.into();
 

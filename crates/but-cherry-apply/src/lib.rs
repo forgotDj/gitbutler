@@ -59,8 +59,7 @@ pub fn cherry_apply_status(
         .with_object_memory();
 
     let meta = ctx.legacy_meta()?;
-    let mut cache = ctx.cache.get_cache_mut()?;
-    let stacks = stacks_v3(&repo, &meta, StacksFilter::InWorkspace, None, &mut cache)?;
+    let stacks = stacks_v3(&repo, &meta, StacksFilter::InWorkspace, None)?;
 
     if stacks.is_empty() {
         return Ok(CherryApplyStatus::NoStacks);

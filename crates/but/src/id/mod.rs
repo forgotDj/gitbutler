@@ -558,7 +558,6 @@ impl IdMap {
         let meta = ctx.meta()?;
         let head_info = {
             let repo = ctx.clone_repo_for_merging_non_persisting()?;
-            let mut cache = ctx.cache.get_cache_mut()?;
             but_workspace::head_info(
                 &repo,
                 &meta,
@@ -566,7 +565,6 @@ impl IdMap {
                     expensive_commit_info: false,
                     ..Default::default()
                 },
-                &mut cache,
             )?
         };
         let context_lines = ctx.settings.context_lines;

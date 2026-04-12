@@ -21,6 +21,66 @@ pub fn conflict_repo(name: &str) -> anyhow::Result<gix::Repository> {
 }
 
 mod headers {
+    mod ensure_change_id {
+        use but_core::commit::Headers;
+
+        #[test]
+        fn sets_change_id_from_commit_id_if_missing() {
+            let commit_id = gix::ObjectId::from_hex(b"0123456789abcdef0123456789abcdef01234567")
+                .expect("valid sha1 object id");
+
+            let headers = Headers::default().ensure_change_id(commit_id);
+
+            assert_eq!(
+                headers.change_id.map(|id| id.to_string()),
+                Some("ltpxnvrzksowmuqyltpxnvrzksowmuqy".to_owned())
+            );
+            assert_eq!(headers.conflicted, None);
+        }
+
+        #[test]
+        fn keeps_existing_change_id() {
+            let commit_id = gix::ObjectId::from_hex(b"0123456789abcdef0123456789abcdef01234567")
+                .expect("valid sha1 object id");
+
+            let headers = Headers {
+                change_id: Some(but_core::ChangeId::from_number_for_testing(42)),
+                conflicted: Some(3),
+            }
+            .ensure_change_id(commit_id);
+
+            assert_eq!(
+                headers.change_id.map(|id| id.to_string()),
+                Some("42".to_owned())
+            );
+            assert_eq!(headers.conflicted, Some(3));
+        }
+
+        #[test]
+        fn generates_random_change_id_if_commit_id_is_unknown() {
+            let headers = Headers::default().ensure_change_id(None);
+
+            let change_id = headers.change_id.expect("change-id should be generated");
+            assert_eq!(change_id.len(), 32);
+            assert_eq!(headers.conflicted, None);
+        }
+    }
+
+    mod synthetic_change_id_from_commit_id {
+        use but_core::commit::Headers;
+
+        #[test]
+        fn supports_sha1_commit_ids() {
+            let commit_id = gix::ObjectId::from_hex(b"0123456789abcdef0123456789abcdef01234567")
+                .expect("valid sha1 object id");
+
+            assert_eq!(
+                Headers::synthetic_change_id_from_commit_id(commit_id).to_string(),
+                "ltpxnvrzksowmuqyltpxnvrzksowmuqy"
+            );
+        }
+    }
+
     mod try_from_commit {
         use but_core::commit::Headers;
         use gix::actor::Signature;

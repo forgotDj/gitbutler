@@ -21,8 +21,7 @@ pub fn ref_info(
     if opts.traversal.extra_target_commit_id.is_none() {
         opts.traversal.extra_target_commit_id = meta.data().default_target.as_ref().map(|t| t.sha);
     }
-    let mut cache = crate::ref_info::in_memory_cache();
-    but_workspace::ref_info(existing_ref, meta, opts, &mut cache)
+    but_workspace::ref_info(existing_ref, meta, opts)
 }
 
 #[test]

@@ -117,8 +117,7 @@ pub mod stacks {
         };
         let stacks = {
             let meta = ctx.legacy_meta()?;
-            let mut cache = ctx.cache.get_cache_mut()?;
-            but_workspace::legacy::stacks_v3(&repo, &meta, filter, None, &mut cache)
+            but_workspace::legacy::stacks_v3(&repo, &meta, filter, None)
         }?;
         if use_json {
             let json = serde_json::to_string_pretty(&stacks)?;
@@ -134,8 +133,7 @@ pub mod stacks {
         let details = {
             let meta = ctx.legacy_meta()?;
             let repo = ctx.clone_repo_for_merging_non_persisting()?;
-            let mut cache = ctx.cache.get_cache_mut()?;
-            but_workspace::legacy::stack_details_v3(id, &repo, &meta, &mut cache)
+            but_workspace::legacy::stack_details_v3(id, &repo, &meta)
         }?;
         debug_print(details)
     }
@@ -189,14 +187,8 @@ pub mod stacks {
 
             let repo = ctx.repo.get()?;
             let meta = ctx.legacy_meta()?;
-            let mut cache = ctx.cache.get_cache_mut()?;
-            let stack_entries = but_workspace::legacy::stacks_v3(
-                &repo,
-                &meta,
-                Default::default(),
-                None,
-                &mut cache,
-            )?;
+            let stack_entries =
+                but_workspace::legacy::stacks_v3(&repo, &meta, Default::default(), None)?;
             let stack_entry = stack_entries
                 .into_iter()
                 .find(|entry| entry.id == Some(stack_id))
@@ -235,9 +227,8 @@ pub mod stacks {
         gitbutler_branch_actions::stack::create_branch(ctx, stack_id, creation_request)?;
         let repo = ctx.repo.get()?;
         let meta = ctx.legacy_meta()?;
-        let mut cache = ctx.cache.get_cache_mut()?;
         let stack_entries =
-            but_workspace::legacy::stacks_v3(&repo, &meta, Default::default(), None, &mut cache)?;
+            but_workspace::legacy::stacks_v3(&repo, &meta, Default::default(), None)?;
 
         let stack_entry = stack_entries
             .into_iter()
@@ -256,14 +247,7 @@ pub mod stacks {
         let mut ctx = Context::discover(current_dir)?;
         let meta = ctx.legacy_meta()?;
         let stacks = {
-            let mut cache = ctx.cache.get_cache_mut()?;
-            but_workspace::legacy::stacks_v3(
-                &*ctx.repo.get()?,
-                &meta,
-                Default::default(),
-                None,
-                &mut cache,
-            )?
+            but_workspace::legacy::stacks_v3(&*ctx.repo.get()?, &meta, Default::default(), None)?
         };
         let subject_stack = stacks
             .clone()
@@ -413,12 +397,9 @@ pub fn ref_info(args: &super::Args, ref_name: Option<&str>, expensive: bool) -> 
     let _guard = ctx.shared_worktree_access();
     let meta = ctx.meta()?;
     let repo = &*ctx.repo.get()?;
-    let mut cache = ctx.cache.get_cache_mut()?;
     debug_print(match ref_name {
-        None => but_workspace::head_info(repo, &meta, opts, &mut cache),
-        Some(ref_name) => {
-            but_workspace::ref_info(repo.find_reference(ref_name)?, &meta, opts, &mut cache)
-        }
+        None => but_workspace::head_info(repo, &meta, opts),
+        Some(ref_name) => but_workspace::ref_info(repo.find_reference(ref_name)?, &meta, opts),
     }?)
 }
 
