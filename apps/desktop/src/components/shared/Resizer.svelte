@@ -274,6 +274,9 @@
 		if (passive || disabled) {
 			if (orientation === "horizontal") {
 				viewport.style.width = "";
+				viewport.style.flexBasis = "";
+				viewport.style.flexGrow = "";
+				viewport.style.flexShrink = "";
 				viewport.style.maxWidth = "";
 				viewport.style.minWidth = "";
 			} else {
@@ -291,10 +294,19 @@
 		if (orientation === "horizontal") {
 			if (newValue === undefined) {
 				viewport.style.width = "";
+				// Restore flex behaviour so CSS classes take over again.
+				viewport.style.flexBasis = "";
+				viewport.style.flexGrow = "";
+				viewport.style.flexShrink = "";
 				viewport.style.maxWidth = maxWidth ? maxWidth + "rem" : "";
 				viewport.style.minWidth = minWidth ? minWidth + "rem" : "";
 			} else {
 				viewport.style.width = newValue + "rem";
+				// Pin flex-basis to the explicit value and lock grow/shrink so
+				// the flex algorithm cannot override the user-set width.
+				viewport.style.flexBasis = newValue + "rem";
+				viewport.style.flexGrow = "0";
+				viewport.style.flexShrink = "0";
 				viewport.style.maxWidth = "";
 				viewport.style.minWidth = "";
 			}
@@ -480,7 +492,7 @@
 		--resizer-cursor: default;
 		position: absolute;
 		outline: none;
-		background-color: rgba(249, 46, 46, 0.394);
+		background-color: rgba(255, 0, 0, 0.2);
 		cursor: var(--resizer-cursor);
 
 		&.horizontal {
@@ -502,7 +514,7 @@
 			top: 0;
 			width: 1px;
 			height: 100%;
-			/* border-left: 1px solid var(--border-2); */
+			border-left: 1px solid var(--border-2);
 			content: "";
 			pointer-events: none;
 		}
@@ -530,19 +542,6 @@
 		}
 
 		&.border.vertical.down::after {
-			bottom: 0;
-		}
-
-		&.right {
-			right: 0;
-		}
-		&.left {
-			left: 0;
-		}
-		&.up {
-			top: 0;
-		}
-		&.down {
 			bottom: 0;
 		}
 

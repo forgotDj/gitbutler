@@ -13,6 +13,7 @@
 	import AppScrollableContainer from "$components/shared/AppScrollableContainer.svelte";
 	import ReduxResult from "$components/shared/ReduxResult.svelte";
 	import Resizer from "$components/shared/Resizer.svelte";
+	import SashLayer from "$components/shared/SashLayer.svelte";
 	import BranchesViewBranch from "$components/views/BranchesViewBranch.svelte";
 	import TargetCommitList from "$components/views/TargetCommitList.svelte";
 	import { BASE_BRANCH_SERVICE } from "$lib/baseBranch/baseBranchService.svelte";
@@ -154,220 +155,115 @@
 	{/snippet}
 </Modal>
 
-<div class="branches-view" data-testid={TestId.BranchesView}>
-	<div class="relative overflow-hidden radius-ml">
-		<div
-			bind:this={branchViewLeftEl}
-			class="branches-view__left"
-			use:focusable={{ vertical: true }}
-		>
-			<ReduxResult {projectId} result={baseBranchQuery.result}>
-				{#snippet children(baseBranch)}
-					{@const lastCommit = baseBranch.recentCommits.at(0)}
-					<BranchesListGroup title="Current workspace target">
-						<!-- TODO: We need an API for `commitsCount`! -->
-						<CurrentOriginCard
-							originName={baseBranch.branchName}
-							lastCommit={lastCommit
-								? {
-										author: lastCommit.author,
-										ago: getTimeAgo(new Date(lastCommit.createdAt), true),
-										branch: baseBranch.shortName,
-										sha: lastCommit.id.slice(0, 7),
-									}
-								: undefined}
-							onclick={() => {
-								selection = { type: "target" };
-							}}
-							selected={selection.type === "target"}
-						/>
-					</BranchesListGroup>
-					<BranchExplorer
-						{projectId}
-						bind:selectedOption={$selectedOption}
-						forgeUser={forgeUserQuery.response}
-						{baseBranch}
-					>
-						{#snippet sidebarEntry(sidebarEntrySubject: SidebarEntrySubject)}
-							{#if sidebarEntrySubject.type === "branchListing"}
-								<BranchListCard
-									reviewUnit={prUnit}
-									{projectId}
-									branchListing={sidebarEntrySubject.subject}
-									prs={sidebarEntrySubject.prs}
-									selected={selection.type === "branch"
-										? sidebarEntrySubject.subject.stack
-											? selection.branchName === sidebarEntrySubject.subject.stack.branches.at(0)
-											: selection.branchName === sidebarEntrySubject.subject.name
-										: false}
-									onclick={({ listing }) => {
-										if (listing.stack) {
-											selection = {
-												type: "branch",
-												branchName: listing.stack.branches[0]!,
-												stackId: listing.stack.id,
-											};
-										} else {
-											selection = {
-												type: "branch",
-												branchName: listing.name,
-												remote: listing.remotes.at(0),
-											};
+<SashLayer>
+	<div class="branches-view" data-testid={TestId.BranchesView}>
+		<div class="relative overflow-hidden radius-ml">
+			<div
+				bind:this={branchViewLeftEl}
+				class="branches-view__left"
+				use:focusable={{ vertical: true }}
+			>
+				<ReduxResult {projectId} result={baseBranchQuery.result}>
+					{#snippet children(baseBranch)}
+						{@const lastCommit = baseBranch.recentCommits.at(0)}
+						<BranchesListGroup title="Current workspace target">
+							<!-- TODO: We need an API for `commitsCount`! -->
+							<CurrentOriginCard
+								originName={baseBranch.branchName}
+								lastCommit={lastCommit
+									? {
+											author: lastCommit.author,
+											ago: getTimeAgo(new Date(lastCommit.createdAt), true),
+											branch: baseBranch.shortName,
+											sha: lastCommit.id.slice(0, 7),
 										}
-									}}
-								/>
-							{:else}
-								<PRListCard
-									reviewUnit={prUnit}
-									number={sidebarEntrySubject.subject.number}
-									isDraft={sidebarEntrySubject.subject.draft}
-									title={sidebarEntrySubject.subject.title}
-									sourceBranch={sidebarEntrySubject.subject.sourceBranch}
-									author={{
-										name: sidebarEntrySubject.subject.author?.name,
-										email: sidebarEntrySubject.subject.author?.email,
-										gravatarUrl: sidebarEntrySubject.subject.author?.gravatarUrl,
-									}}
-									modifiedAt={sidebarEntrySubject.subject.modifiedAt}
-									mergedAt={sidebarEntrySubject.subject.mergedAt}
-									closedAt={sidebarEntrySubject.subject.closedAt}
-									selected={selection.type === "pr" &&
-										selection.prNumber === sidebarEntrySubject.subject.number}
-									onclick={(pr) => (selection = { type: "pr", prNumber: pr.number })}
-									noRemote
-								/>
-							{/if}
-						{/snippet}
-					</BranchExplorer>
-				{/snippet}
-			</ReduxResult>
+									: undefined}
+								onclick={() => {
+									selection = { type: "target" };
+								}}
+								selected={selection.type === "target"}
+							/>
+						</BranchesListGroup>
+						<BranchExplorer
+							{projectId}
+							bind:selectedOption={$selectedOption}
+							forgeUser={forgeUserQuery.response}
+							{baseBranch}
+						>
+							{#snippet sidebarEntry(sidebarEntrySubject: SidebarEntrySubject)}
+								{#if sidebarEntrySubject.type === "branchListing"}
+									<BranchListCard
+										reviewUnit={prUnit}
+										{projectId}
+										branchListing={sidebarEntrySubject.subject}
+										prs={sidebarEntrySubject.prs}
+										selected={selection.type === "branch"
+											? sidebarEntrySubject.subject.stack
+												? selection.branchName === sidebarEntrySubject.subject.stack.branches.at(0)
+												: selection.branchName === sidebarEntrySubject.subject.name
+											: false}
+										onclick={({ listing }) => {
+											if (listing.stack) {
+												selection = {
+													type: "branch",
+													branchName: listing.stack.branches[0]!,
+													stackId: listing.stack.id,
+												};
+											} else {
+												selection = {
+													type: "branch",
+													branchName: listing.name,
+													remote: listing.remotes.at(0),
+												};
+											}
+										}}
+									/>
+								{:else}
+									<PRListCard
+										reviewUnit={prUnit}
+										number={sidebarEntrySubject.subject.number}
+										isDraft={sidebarEntrySubject.subject.draft}
+										title={sidebarEntrySubject.subject.title}
+										sourceBranch={sidebarEntrySubject.subject.sourceBranch}
+										author={{
+											name: sidebarEntrySubject.subject.author?.name,
+											email: sidebarEntrySubject.subject.author?.email,
+											gravatarUrl: sidebarEntrySubject.subject.author?.gravatarUrl,
+										}}
+										modifiedAt={sidebarEntrySubject.subject.modifiedAt}
+										mergedAt={sidebarEntrySubject.subject.mergedAt}
+										closedAt={sidebarEntrySubject.subject.closedAt}
+										selected={selection.type === "pr" &&
+											selection.prNumber === sidebarEntrySubject.subject.number}
+										onclick={(pr) => (selection = { type: "pr", prNumber: pr.number })}
+										noRemote
+									/>
+								{/if}
+							{/snippet}
+						</BranchExplorer>
+					{/snippet}
+				</ReduxResult>
+			</div>
+			<Resizer
+				viewport={branchViewLeftEl}
+				direction="right"
+				minWidth={14}
+				persistId="resizer-branchesWidth"
+				defaultValue={24}
+			/>
 		</div>
-		<Resizer
-			viewport={branchViewLeftEl}
-			direction="right"
-			minWidth={14}
-			persistId="resizer-branchesWidth"
-			defaultValue={24}
-		/>
-	</div>
 
-	<div class="branches-view__right">
-		<div class="right-wrapper dotted-pattern">
-			{#if selection.type === "target"}
-				<div class="branch-column" bind:this={branchColumn} use:focusable={{ vertical: true }}>
-					<TargetCommitList
-						{projectId}
-						onclick={(commitId) => (selection = { type: "target", commitId })}
-						onFileClick={(index) => {
-							multiDiffView?.jumpToIndex(index);
-						}}
-					/>
-					<Resizer
-						viewport={branchColumn}
-						persistId="branches-branch-column-1"
-						direction="right"
-						defaultValue={20}
-						minWidth={10}
-						maxWidth={30}
-					/>
-				</div>
-			{:else}
-				<AppScrollableContainer>
+		<div class="branches-view__right">
+			<div class="right-wrapper dotted-pattern">
+				{#if selection.type === "target"}
 					<div class="branch-column" bind:this={branchColumn} use:focusable={{ vertical: true }}>
-						{#if selection.type === "branch"}
-							{@const { stackId, branchName, remote } = selection}
-							{@const selectedBranch = branchService.get(projectId, selection.branchName)}
-							{@const listing = branchService.listingByName(projectId, selection.branchName)}
-
-							<ReduxResult
-								{projectId}
-								result={combineResults(selectedBranch.result, listing.result)}
-							>
-								{#snippet children([branch, listing])}
-									{@const prNumber = branch.stack?.pullRequests[branchName]}
-									{@const inWorkspace = branch.stack?.inWorkspace}
-									{@const hasLocal = listing.hasLocal}
-									<!-- Apply branch -->
-
-									{#if branchName && !inWorkspace}
-										<div class="branch-actions">
-											<AsyncButton
-												testId={TestId.BranchesViewApplyBranchButton}
-												icon="workbench"
-												shrinkable
-												action={async () => {
-													await checkoutBranch({ remote, branchName, hasLocal, prNumber });
-												}}
-											>
-												Apply to workspace
-											</AsyncButton>
-											<Button
-												testId={TestId.BranchesViewDeleteLocalBranchButton}
-												kind="outline"
-												icon="bin"
-												onclick={() => {
-													if (branchName) {
-														handleDeleteLocalBranch(branchName);
-													}
-												}}
-												disabled={!hasLocal || !branchName}
-												tooltip={listing.hasLocal ? undefined : "No local branch to delete"}
-											>
-												Delete local
-											</Button>
-										</div>
-									{/if}
-
-									{#if stackId}
-										<BranchesViewStack
-											{projectId}
-											{stackId}
-											isTarget={false}
-											inWorkspace={inWorkspace ?? false}
-											selectedCommitId={selection.type === "branch"
-												? selection.commitId
-												: undefined}
-											onCommitClick={(commitId) => {
-												selection = { type: "branch", branchName, remote, stackId, commitId };
-											}}
-											onFileClick={(index) => {
-												multiDiffView?.jumpToIndex(index);
-											}}
-											{onerror}
-										/>
-									{:else if branchName}
-										<BranchesViewBranch
-											{projectId}
-											{branchName}
-											{remote}
-											inWorkspace={inWorkspace ?? false}
-											selectedCommitId={selection.type === "branch"
-												? selection.commitId
-												: undefined}
-											onCommitClick={(commitId) => {
-												selection = { type: "branch", branchName, remote, stackId, commitId };
-											}}
-											onFileClick={(index) => {
-												multiDiffView?.jumpToIndex(index);
-											}}
-											{onerror}
-										/>
-									{/if}
-								{/snippet}
-							</ReduxResult>
-						{:else if selection.type === "pr"}
-							{@const prNumber = selection.prNumber}
-							<div class="branch-actions">
-								<Button
-									testId={TestId.BranchesViewApplyFromForkButton}
-									icon="workbench"
-									onclick={applyFromFork}
-								>
-									Apply {forge.reviewUnitAbbr} to workspace
-								</Button>
-							</div>
-							<BranchesViewPr bind:this={prBranch} {projectId} {prNumber} {onerror} />
-						{/if}
+						<TargetCommitList
+							{projectId}
+							onclick={(commitId) => (selection = { type: "target", commitId })}
+							onFileClick={(index) => {
+								multiDiffView?.jumpToIndex(index);
+							}}
+						/>
 						<Resizer
 							viewport={branchColumn}
 							persistId="branches-branch-column-1"
@@ -377,35 +273,118 @@
 							maxWidth={30}
 						/>
 					</div>
-				</AppScrollableContainer>
-			{/if}
+				{:else}
+					<AppScrollableContainer>
+						<div class="branch-column" bind:this={branchColumn} use:focusable={{ vertical: true }}>
+							{#if selection.type === "branch"}
+								{@const { stackId, branchName, remote } = selection}
+								{@const selectedBranch = branchService.get(projectId, selection.branchName)}
+								{@const listing = branchService.listingByName(projectId, selection.branchName)}
 
-			<div class="commit-column">
-				{#if selection.type === "branch" && selection.commitId}
-					{@const { commitId } = selection}
-					{@const changesQuery = stackService.commitChanges(projectId, commitId)}
-					<UnappliedCommitView {projectId} {commitId} />
-					<ReduxResult {projectId} result={changesQuery.result}>
-						{#snippet children(result, { projectId })}
-							<MultiDiffView
-								bind:this={multiDiffView}
-								selectionId={{
-									type: "commit",
-									commitId: commitId,
-								}}
-								changes={result.changes}
-								{projectId}
-								draggable={true}
-								selectable={false}
+								<ReduxResult
+									{projectId}
+									result={combineResults(selectedBranch.result, listing.result)}
+								>
+									{#snippet children([branch, listing])}
+										{@const prNumber = branch.stack?.pullRequests[branchName]}
+										{@const inWorkspace = branch.stack?.inWorkspace}
+										{@const hasLocal = listing.hasLocal}
+										<!-- Apply branch -->
+
+										{#if branchName && !inWorkspace}
+											<div class="branch-actions">
+												<AsyncButton
+													testId={TestId.BranchesViewApplyBranchButton}
+													icon="workbench"
+													shrinkable
+													action={async () => {
+														await checkoutBranch({ remote, branchName, hasLocal, prNumber });
+													}}
+												>
+													Apply to workspace
+												</AsyncButton>
+												<Button
+													testId={TestId.BranchesViewDeleteLocalBranchButton}
+													kind="outline"
+													icon="bin"
+													onclick={() => {
+														if (branchName) {
+															handleDeleteLocalBranch(branchName);
+														}
+													}}
+													disabled={!hasLocal || !branchName}
+													tooltip={listing.hasLocal ? undefined : "No local branch to delete"}
+												>
+													Delete local
+												</Button>
+											</div>
+										{/if}
+
+										{#if stackId}
+											<BranchesViewStack
+												{projectId}
+												{stackId}
+												isTarget={false}
+												inWorkspace={inWorkspace ?? false}
+												selectedCommitId={selection.type === "branch"
+													? selection.commitId
+													: undefined}
+												onCommitClick={(commitId) => {
+													selection = { type: "branch", branchName, remote, stackId, commitId };
+												}}
+												onFileClick={(index) => {
+													multiDiffView?.jumpToIndex(index);
+												}}
+												{onerror}
+											/>
+										{:else if branchName}
+											<BranchesViewBranch
+												{projectId}
+												{branchName}
+												{remote}
+												inWorkspace={inWorkspace ?? false}
+												selectedCommitId={selection.type === "branch"
+													? selection.commitId
+													: undefined}
+												onCommitClick={(commitId) => {
+													selection = { type: "branch", branchName, remote, stackId, commitId };
+												}}
+												onFileClick={(index) => {
+													multiDiffView?.jumpToIndex(index);
+												}}
+												{onerror}
+											/>
+										{/if}
+									{/snippet}
+								</ReduxResult>
+							{:else if selection.type === "pr"}
+								{@const prNumber = selection.prNumber}
+								<div class="branch-actions">
+									<Button
+										testId={TestId.BranchesViewApplyFromForkButton}
+										icon="workbench"
+										onclick={applyFromFork}
+									>
+										Apply {forge.reviewUnitAbbr} to workspace
+									</Button>
+								</div>
+								<BranchesViewPr bind:this={prBranch} {projectId} {prNumber} {onerror} />
+							{/if}
+							<Resizer
+								viewport={branchColumn}
+								persistId="branches-branch-column-1"
+								direction="right"
+								defaultValue={20}
+								minWidth={10}
+								maxWidth={30}
 							/>
-						{/snippet}
-					</ReduxResult>
-				{:else if selection.type === "pr"}
-					{@const prNumber = selection.prNumber}
-					<PrBranchView {projectId} {prNumber} {onerror} />
-				{:else if selection.type === "target"}
-					{@const commitId = selection.commitId}
-					{#if commitId}
+						</div>
+					</AppScrollableContainer>
+				{/if}
+
+				<div class="commit-column">
+					{#if selection.type === "branch" && selection.commitId}
+						{@const { commitId } = selection}
 						{@const changesQuery = stackService.commitChanges(projectId, commitId)}
 						<UnappliedCommitView {projectId} {commitId} />
 						<ReduxResult {projectId} result={changesQuery.result}>
@@ -423,12 +402,36 @@
 								/>
 							{/snippet}
 						</ReduxResult>
+					{:else if selection.type === "pr"}
+						{@const prNumber = selection.prNumber}
+						<PrBranchView {projectId} {prNumber} {onerror} />
+					{:else if selection.type === "target"}
+						{@const commitId = selection.commitId}
+						{#if commitId}
+							{@const changesQuery = stackService.commitChanges(projectId, commitId)}
+							<UnappliedCommitView {projectId} {commitId} />
+							<ReduxResult {projectId} result={changesQuery.result}>
+								{#snippet children(result, { projectId })}
+									<MultiDiffView
+										bind:this={multiDiffView}
+										selectionId={{
+											type: "commit",
+											commitId: commitId,
+										}}
+										changes={result.changes}
+										{projectId}
+										draggable={true}
+										selectable={false}
+									/>
+								{/snippet}
+							</ReduxResult>
+						{/if}
 					{/if}
-				{/if}
+				</div>
 			</div>
 		</div>
 	</div>
-</div>
+</SashLayer>
 
 <style lang="postcss">
 	.branches-view {
