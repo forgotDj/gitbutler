@@ -1,4 +1,7 @@
-#![expect(deprecated, reason = "imports but_workspace::legacy::stack_details_v3")]
+#![expect(
+    deprecated,
+    reason = "imports but_workspace::legacy::stack_details_v3; VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 
 /// Tests for cherry-apply functionality
 mod util {

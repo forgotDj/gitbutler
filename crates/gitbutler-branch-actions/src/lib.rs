@@ -1,4 +1,9 @@
 //! GitButler internal library containing functionality related to branches, i.e. the virtual branches implementation
+#![expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
+
 mod actions;
 // This is our API
 pub use actions::{

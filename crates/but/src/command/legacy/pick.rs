@@ -1,4 +1,8 @@
 //! Cherry-pick commits from unapplied branches into applied virtual branches.
+#![expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 
 use anyhow::{Context as _, Result, bail};
 use bstr::ByteSlice;

@@ -21,7 +21,10 @@
 //!     disambiguate accurately.
 //!
 //!   - otherwise, it can be applied anywhere
-#![expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
+#![expect(
+    deprecated,
+    reason = "calls but_workspace::legacy::stacks_v3; VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 
 use anyhow::{Context as _, Result, bail};
 use but_core::{RepositoryExt, ref_metadata::StackId};

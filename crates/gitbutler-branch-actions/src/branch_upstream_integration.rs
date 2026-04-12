@@ -1,3 +1,8 @@
+#![expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
+
 use anyhow::{Result, bail};
 use but_ctx::{Context, access::RepoExclusive};
 use but_rebase::{Rebase, RebaseStep};

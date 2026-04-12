@@ -1,3 +1,8 @@
+#![expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
+
 use super::super::FileChange;
 use bstr::ByteSlice;
 use but_ctx::Context;
