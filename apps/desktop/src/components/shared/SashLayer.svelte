@@ -10,7 +10,16 @@
 
 	const { children }: Props = $props();
 	const layoutListeners = new Set<(containerRect: DOMRectReadOnly) => void>();
+	const layoutTargets = new Set<Element>();
 	let layoutRaf: number | undefined;
+	let targetResizeObserver: ResizeObserver | undefined;
+	let autoLayoutPauseCount = 0;
+
+	function triggerLayoutIfActive() {
+		if (autoLayoutPauseCount === 0) {
+			requestLayout();
+		}
+	}
 
 	function requestLayout() {
 		if (layoutRaf !== undefined) return;
@@ -31,21 +40,73 @@
 		};
 	}
 
+	function observeLayoutTarget(target: Element) {
+		layoutTargets.add(target);
+		if (!targetResizeObserver) {
+			targetResizeObserver = new ResizeObserver(() => {
+				triggerLayoutIfActive();
+			});
+		}
+		targetResizeObserver.observe(target);
+		return () => {
+			layoutTargets.delete(target);
+			targetResizeObserver?.unobserve(target);
+			if (layoutTargets.size === 0 && targetResizeObserver) {
+				targetResizeObserver.disconnect();
+				targetResizeObserver = undefined;
+			}
+		};
+	}
+
+	function setAutoLayoutPaused(paused: boolean) {
+		if (paused) {
+			autoLayoutPauseCount += 1;
+			return;
+		}
+		autoLayoutPauseCount = Math.max(0, autoLayoutPauseCount - 1);
+		triggerLayoutIfActive();
+	}
+
 	// $state makes the object's properties reactive — any descendant $effect
 	// that reads ctx.container will re-run when the container div mounts.
 	const ctx: SashLayerContext = $state({
 		container: undefined,
 		requestLayout,
 		subscribeLayout,
+		observeLayoutTarget,
+		setAutoLayoutPaused,
 	});
 	setContext(SASH_LAYER, ctx);
+
+	$effect(() => {
+		const container = ctx.container;
+		if (!container) return;
+
+		const ro = new ResizeObserver(() => {
+			triggerLayoutIfActive();
+		});
+		if (container.parentElement) {
+			ro.observe(container.parentElement);
+		}
+		window.addEventListener("resize", triggerLayoutIfActive);
+		requestLayout();
+
+		return () => {
+			ro.disconnect();
+			window.removeEventListener("resize", triggerLayoutIfActive);
+		};
+	});
 
 	onDestroy(() => {
 		if (layoutRaf !== undefined) {
 			cancelAnimationFrame(layoutRaf);
 			layoutRaf = undefined;
 		}
+		targetResizeObserver?.disconnect();
+		targetResizeObserver = undefined;
+		autoLayoutPauseCount = 0;
 		layoutListeners.clear();
+		layoutTargets.clear();
 	});
 </script>
 

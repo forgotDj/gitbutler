@@ -44,6 +44,8 @@
 		unsetMaxHeight?: string;
 		/** Optional visual offset from the viewport edge used to place the sash */
 		edgeOffsetRem?: number;
+		/** In layer mode, stretch sash across full layer cross-axis */
+		fullLayerCrossAxis?: boolean;
 
 		// Actions
 		onHeight?: (height: number) => void;
@@ -71,6 +73,7 @@
 		order,
 		unsetMaxHeight,
 		edgeOffsetRem = 0,
+		fullLayerCrossAxis = false,
 		onResizing,
 		onOverflow,
 		onDblClick,
@@ -115,6 +118,43 @@
 	// Last pointer position tracked per-drag-frame for arithmetic sash movement.
 	let lastDragClientX = 0;
 	let lastDragClientY = 0;
+	let lastDragSashPosPx = 0;
+	let lastShiftSyncedValue: number | undefined;
+	let lastReportedWidth: number | undefined;
+	let pausedAutoLayout = false;
+
+	type StyleProp =
+		| "left"
+		| "right"
+		| "top"
+		| "bottom"
+		| "width"
+		| "height"
+		| "maxWidth"
+		| "minWidth"
+		| "maxHeight"
+		| "minHeight"
+		| "flexBasis"
+		| "flexGrow"
+		| "flexShrink";
+
+	function setStyle(style: CSSStyleDeclaration, prop: StyleProp, value: string) {
+		if (style[prop] !== value) {
+			style[prop] = value;
+		}
+	}
+
+	function reportWidth(nextValue: number | undefined) {
+		if (nextValue === undefined) {
+			lastReportedWidth = undefined;
+			return;
+		}
+		if (nextValue === lastReportedWidth) {
+			return;
+		}
+		lastReportedWidth = nextValue;
+		onWidth?.(nextValue);
+	}
 
 	function onMouseDown(e: MouseEvent) {
 		e.stopPropagation();
@@ -130,33 +170,25 @@
 		// Capture starting pointer position for drag-delta sash movement.
 		lastDragClientX = e.clientX;
 		lastDragClientY = e.clientY;
+		lastShiftSyncedValue = undefined;
+		if (resizerDiv) {
+			lastDragSashPosPx =
+				parseFloat(orientation === "horizontal" ? resizerDiv.style.left : resizerDiv.style.top) ||
+				0;
+		}
+		if (inLayer && !resizeGroup && !pausedAutoLayout) {
+			layerCtx?.setAutoLayoutPaused(true);
+			pausedAutoLayout = true;
+		}
 
 		onResizing?.(true);
 	}
 
-	function applyLimits(value: number) {
-		let newValue: number;
-		let overflow: number;
-		switch (direction) {
-			case "down":
-				newValue = Math.min(Math.max(value, minHeight), maxHeight);
-				overflow = minHeight - value;
-				break;
-			case "up":
-				newValue = Math.min(Math.max(value, minHeight), maxHeight);
-				overflow = minHeight - value;
-				break;
-			case "right":
-				newValue = Math.min(Math.max(value, minWidth), maxWidth);
-				overflow = minWidth - value;
-				break;
-			case "left":
-				newValue = Math.min(Math.max(value, minWidth), maxWidth);
-				overflow = minWidth - value;
-				break;
-		}
-
-		return { newValue, overflow };
+	function applyLimits(nextValue: number) {
+		const minValue = orientation === "horizontal" ? minWidth : minHeight;
+		const maxValue = orientation === "horizontal" ? maxWidth : maxHeight;
+		const newValue = Math.min(Math.max(nextValue, minValue), maxValue);
+		return { newValue, overflow: minValue - nextValue };
 	}
 
 	function processPointerMove() {
@@ -196,7 +228,7 @@
 
 		const { newValue, overflow } = applyLimits(offsetRem);
 
-		if (newValue && !passive && !disabled) {
+		if (newValue !== undefined && !passive && !disabled) {
 			// Fast path when the handle lives in a SashLayer and is NOT part of a
 			// resize group: move the sash div by the pointer delta (pure arithmetic,
 			// zero getBoundingClientRect calls during drag).  Geometry is re-synced
@@ -204,16 +236,19 @@
 			if (inLayer && !resizeGroup && resizerDiv) {
 				const dx = move.clientX - lastDragClientX;
 				const dy = move.clientY - lastDragClientY;
-				const d = resizerDiv;
 				if (orientation === "horizontal") {
-					d.style.left = parseFloat(d.style.left || "0") + dx + "px";
+					lastDragSashPosPx += dx;
+					setStyle(resizerDiv.style, "left", `${lastDragSashPosPx}px`);
 				} else {
-					d.style.top = parseFloat(d.style.top || "0") + dy + "px";
+					lastDragSashPosPx += dy;
+					setStyle(resizerDiv.style, "top", `${lastDragSashPosPx}px`);
 				}
 				// Write viewport size and notify callbacks — no requestLayout here.
-				value.set(newValue);
-				updateDom(newValue);
-				if (newValue !== undefined) onWidth?.(newValue);
+				if (newValue !== $value) {
+					value.set(newValue);
+					updateDom(newValue, true);
+					reportWidth(newValue);
+				}
 			} else {
 				setValue(newValue);
 			}
@@ -222,10 +257,18 @@
 		lastDragClientX = move.clientX;
 		lastDragClientY = move.clientY;
 
-		if (overflow) {
+		if (overflow > 0) {
 			onOverflow?.(overflow);
 		}
-		if (move.shiftKey && syncName && newValue !== undefined && !passive && !disabled) {
+		if (
+			move.shiftKey &&
+			syncName &&
+			newValue !== undefined &&
+			!passive &&
+			!disabled &&
+			newValue !== lastShiftSyncedValue
+		) {
+			lastShiftSyncedValue = newValue;
 			resizeSync.emit(syncName, resizerId, newValue);
 		}
 	}
@@ -254,6 +297,11 @@
 			pointerMoveRaf = undefined;
 		}
 		processPointerMove();
+		lastShiftSyncedValue = undefined;
+		if (pausedAutoLayout) {
+			layerCtx?.setAutoLayoutPaused(false);
+			pausedAutoLayout = false;
+		}
 		// Re-sync sash to exact geometry once at the end of drag.
 		if (inLayer) layerCtx?.requestLayout();
 		isResizing = false;
@@ -267,58 +315,58 @@
 		e.stopPropagation();
 	}
 
-	function updateDom(newValue?: number) {
+	function updateDom(newValue?: number, valueAlreadyLimited = false) {
 		if (!viewport) {
 			return;
 		}
 		if (passive || disabled) {
 			if (orientation === "horizontal") {
-				viewport.style.width = "";
-				viewport.style.flexBasis = "";
-				viewport.style.flexGrow = "";
-				viewport.style.flexShrink = "";
-				viewport.style.maxWidth = "";
-				viewport.style.minWidth = "";
+				setStyle(viewport.style, "width", "");
+				setStyle(viewport.style, "flexBasis", "");
+				setStyle(viewport.style, "flexGrow", "");
+				setStyle(viewport.style, "flexShrink", "");
+				setStyle(viewport.style, "maxWidth", "");
+				setStyle(viewport.style, "minWidth", "");
 			} else {
-				viewport.style.height = "";
-				viewport.style.maxHeight = "";
-				viewport.style.minHeight = "";
+				setStyle(viewport.style, "height", "");
+				setStyle(viewport.style, "maxHeight", "");
+				setStyle(viewport.style, "minHeight", "");
 			}
 			return;
 		}
 
-		if (newValue !== undefined) {
-			newValue = applyLimits(newValue).newValue;
-		}
+		const limitedValue =
+			newValue !== undefined && !valueAlreadyLimited ? applyLimits(newValue).newValue : newValue;
 
 		if (orientation === "horizontal") {
-			if (newValue === undefined) {
-				viewport.style.width = "";
+			if (limitedValue === undefined) {
+				setStyle(viewport.style, "width", "");
 				// Restore flex behaviour so CSS classes take over again.
-				viewport.style.flexBasis = "";
-				viewport.style.flexGrow = "";
-				viewport.style.flexShrink = "";
-				viewport.style.maxWidth = maxWidth ? maxWidth + "rem" : "";
-				viewport.style.minWidth = minWidth ? minWidth + "rem" : "";
+				setStyle(viewport.style, "flexBasis", "");
+				setStyle(viewport.style, "flexGrow", "");
+				setStyle(viewport.style, "flexShrink", "");
+				setStyle(viewport.style, "maxWidth", maxWidth ? maxWidth + "rem" : "");
+				setStyle(viewport.style, "minWidth", minWidth ? minWidth + "rem" : "");
 			} else {
-				viewport.style.width = newValue + "rem";
+				const remValue = limitedValue + "rem";
+				setStyle(viewport.style, "width", remValue);
 				// Pin flex-basis to the explicit value and lock grow/shrink so
 				// the flex algorithm cannot override the user-set width.
-				viewport.style.flexBasis = newValue + "rem";
-				viewport.style.flexGrow = "0";
-				viewport.style.flexShrink = "0";
-				viewport.style.maxWidth = "";
-				viewport.style.minWidth = "";
+				setStyle(viewport.style, "flexBasis", remValue);
+				setStyle(viewport.style, "flexGrow", "0");
+				setStyle(viewport.style, "flexShrink", "0");
+				setStyle(viewport.style, "maxWidth", "");
+				setStyle(viewport.style, "minWidth", "");
 			}
 		} else {
-			if (newValue === undefined) {
-				viewport.style.height = "";
-				viewport.style.maxHeight = unsetMaxHeight || "";
-				viewport.style.minHeight = minHeight ? minHeight + "rem" : "";
+			if (limitedValue === undefined) {
+				setStyle(viewport.style, "height", "");
+				setStyle(viewport.style, "maxHeight", unsetMaxHeight || "");
+				setStyle(viewport.style, "minHeight", minHeight ? minHeight + "rem" : "");
 			} else {
-				viewport.style.height = newValue + "rem";
-				viewport.style.maxHeight = "";
-				viewport.style.minHeight = "";
+				setStyle(viewport.style, "height", limitedValue + "rem");
+				setStyle(viewport.style, "maxHeight", "");
+				setStyle(viewport.style, "minHeight", "");
 			}
 		}
 	}
@@ -334,16 +382,17 @@
 	}
 
 	export function setValue(newValue?: number) {
+		if (newValue !== undefined) {
+			newValue = applyLimits(newValue).newValue;
+		}
 		const currentValue = getValue();
 		if (currentValue === newValue) {
 			return;
 		}
 		value.set(newValue);
-		updateDom(newValue);
-		if (newValue !== undefined) {
-			onWidth?.(newValue);
-		}
-		layerCtx?.requestLayout();
+		updateDom(newValue, true);
+		reportWidth(newValue);
+		if (inLayer) layerCtx?.requestLayout();
 	}
 
 	$effect(() => {
@@ -378,9 +427,7 @@
 	$effect(() => {
 		if (maxWidth || minWidth || maxHeight || minHeight) {
 			updateDom($value);
-			if ($value !== undefined) {
-				onWidth?.($value);
-			}
+			reportWidth($value);
 		}
 	});
 
@@ -415,47 +462,43 @@
 			const cr = containerRect ?? c.getBoundingClientRect();
 			// 8 px hit area in layer mode (no risk of overlapping scrollbars).
 			const t = 8;
+			const crossTopPx = fullLayerCrossAxis ? 0 : vr.top - cr.top;
+			const crossHeightPx = fullLayerCrossAxis ? cr.height : vr.height;
 
 			if (orient === "horizontal") {
 				const edge = dir === "right" ? vr.right + edgeOffsetPx : vr.left - edgeOffsetPx;
-				d.style.left = `${edge - cr.left - t / 2}px`;
-				d.style.right = "";
-				d.style.top = `${vr.top - cr.top}px`;
-				d.style.bottom = "";
-				d.style.width = `${t}px`;
-				d.style.height = `${vr.height}px`;
+				setStyle(d.style, "left", `${edge - cr.left - t / 2}px`);
+				setStyle(d.style, "right", "");
+				setStyle(d.style, "top", `${crossTopPx}px`);
+				setStyle(d.style, "bottom", "");
+				setStyle(d.style, "width", `${t}px`);
+				setStyle(d.style, "height", `${crossHeightPx}px`);
 			} else {
 				const edge = dir === "down" ? vr.bottom + edgeOffsetPx : vr.top - edgeOffsetPx;
-				d.style.top = `${edge - cr.top - t / 2}px`;
-				d.style.bottom = "";
-				d.style.left = `${vr.left - cr.left}px`;
-				d.style.right = "";
-				d.style.width = `${vr.width}px`;
-				d.style.height = `${t}px`;
+				setStyle(d.style, "top", `${edge - cr.top - t / 2}px`);
+				setStyle(d.style, "bottom", "");
+				setStyle(d.style, "left", `${vr.left - cr.left}px`);
+				setStyle(d.style, "right", "");
+				setStyle(d.style, "width", `${vr.width}px`);
+				setStyle(d.style, "height", `${t}px`);
 			}
 		}
 
 		updatePosition();
 
-		const ro = new ResizeObserver(() => {
-			layerCtx?.requestLayout();
-		});
-		ro.observe(vp);
-		// Also watch the layer wrapper itself so position updates when sibling
-		// panes resize (pushing this pane without changing its own size).
-		if (c.parentElement) {
-			ro.observe(c.parentElement);
-		}
-		window.addEventListener("resize", layerCtx.requestLayout);
+		const unobserveLayoutTarget = layerCtx.observeLayoutTarget(vp);
 		const unsubscribeLayout = layerCtx.subscribeLayout((containerRect) => {
 			updatePosition(containerRect);
 		});
 		layerCtx.requestLayout();
 
 		return () => {
+			if (pausedAutoLayout) {
+				layerCtx?.setAutoLayoutPaused(false);
+				pausedAutoLayout = false;
+			}
 			inLayer = false;
-			ro.disconnect();
-			window.removeEventListener("resize", layerCtx.requestLayout);
+			unobserveLayoutTarget?.();
 			unsubscribeLayout?.();
 			d.remove();
 		};
@@ -492,7 +535,7 @@
 		--resizer-cursor: default;
 		position: absolute;
 		outline: none;
-		background-color: rgba(255, 0, 0, 0.2);
+		background-color: rgba(255, 0, 0, 0.345);
 		cursor: var(--resizer-cursor);
 
 		&.horizontal {
@@ -509,7 +552,7 @@
 			height: var(--resizer-thickness);
 		}
 
-		&.border.horizontal::after {
+		/* &.border.horizontal::after {
 			position: absolute;
 			top: 0;
 			width: 1px;
@@ -517,7 +560,7 @@
 			border-left: 1px solid var(--border-2);
 			content: "";
 			pointer-events: none;
-		}
+		} */
 
 		&.border.horizontal.left::after {
 			left: 0;

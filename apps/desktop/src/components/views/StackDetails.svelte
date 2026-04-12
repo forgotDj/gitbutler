@@ -278,6 +278,7 @@
 		persistId="resizer-panel2-${stackId}"
 		direction="right"
 		edgeOffsetRem={DETAILS_RIGHT_PADDING_REM}
+		fullLayerCrossAxis
 		showBorder
 		minWidth={RESIZER_CONFIG.minWidth}
 		maxWidth={RESIZER_CONFIG.maxWidth}
