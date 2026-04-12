@@ -1,3 +1,8 @@
+#![expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
+
 use but_core::git_config::{edit_config, set_config_value};
 
 use super::*;

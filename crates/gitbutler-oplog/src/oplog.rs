@@ -15,6 +15,10 @@ use but_meta::virtual_branches_legacy_types;
 use but_oxidize::{ObjectIdExt as _, OidExt};
 use gitbutler_cherry_pick::GixRepositoryExt as _;
 use gitbutler_repo::{SignaturePurpose, commit_without_signature_gix, signature_gix};
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 use gitbutler_stack::{VirtualBranchesHandle, VirtualBranchesState};
 use gix::objs::Write as _;
 use gix::{
@@ -423,6 +427,10 @@ fn reset_index_to_tree(ctx: &Context, tree_id: gix::ObjectId) -> Result<()> {
     Ok(())
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 pub fn prepare_snapshot(ctx: &Context, _shared_access: &RepoShared) -> Result<gix::ObjectId> {
     let repo = ctx.repo.get()?;
     let empty_tree_id = repo.empty_tree().id;
@@ -569,6 +577,10 @@ fn commit_snapshot(
     Ok(snapshot_commit_id)
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn restore_snapshot(
     ctx: &Context,
     snapshot_commit_id: gix::ObjectId,

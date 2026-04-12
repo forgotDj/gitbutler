@@ -1,3 +1,5 @@
+#![expect(deprecated, reason = "covers calls to stacks_v3 and stack_details_v3")]
+
 mod stacks {
     use but_testsupport::visualize_commit_graph_all;
     use but_workspace::legacy::StacksFilter;

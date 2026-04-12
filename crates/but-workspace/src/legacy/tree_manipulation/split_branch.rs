@@ -1,3 +1,8 @@
+#![expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
+
 use anyhow::Result;
 use but_core::{Reference, sync::RepoExclusive};
 use but_ctx::Context;

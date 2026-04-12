@@ -11,6 +11,10 @@ use but_ctx::{Context, ProjectHandleOrLegacyProjectId};
 use but_hunk_assignment::CommitAbsorption;
 use but_workspace::legacy::ui::StackEntry;
 use gitbutler_branch::BranchCreateRequest;
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 use gitbutler_stack::{Target, VirtualBranchesHandle};
 use serde::{Deserialize, Serialize};
 
@@ -99,6 +103,10 @@ pub fn handle_changes(
     }
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn default_target_setting_if_none(
     ctx: &Context,
     vb_state: &mut VirtualBranchesHandle,
@@ -134,6 +142,7 @@ fn default_target_setting_if_none(
     Ok(target)
 }
 
+#[expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
 fn stacks(ctx: &Context, repo: &gix::Repository) -> anyhow::Result<Vec<StackEntry>> {
     let meta = ctx.legacy_meta()?;
     but_workspace::legacy::stacks_v3(

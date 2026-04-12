@@ -1,3 +1,5 @@
+#![expect(deprecated, reason = "calls stacks_v3")]
+
 use anyhow::Context as _;
 use but_meta::VirtualBranchesTomlMetadata;
 use but_workspace::legacy::{StacksFilter, stacks_v3};

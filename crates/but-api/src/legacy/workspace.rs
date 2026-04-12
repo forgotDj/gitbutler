@@ -76,13 +76,36 @@ pub fn stacks(
 }
 ///
 /// Return stack information for the repository that `ctx` refers to using legacy metadata.
+#[expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
 pub(crate) fn stacks_v3_from_ctx(
     ctx: &Context,
     filter: StacksFilter,
 ) -> anyhow::Result<Vec<but_workspace::legacy::ui::StackEntry>> {
     let repo = ctx.clone_repo_for_merging_non_persisting()?;
     let meta = ctx.meta()?;
-    but_workspace::legacy::stacks_v3(&repo, &meta, filter, None)
+    let workspace_ref = match repo.head() {
+        Ok(head)
+            if head.referent_name().is_some_and(|head_ref| {
+                head_ref.as_bstr() == gitbutler_operating_modes::EDIT_BRANCH_REF
+            }) =>
+        {
+            [
+                gitbutler_operating_modes::WORKSPACE_BRANCH_REF,
+                gitbutler_operating_modes::INTEGRATION_BRANCH_REF,
+            ]
+            .iter()
+            .find_map(|&name| {
+                let ref_name: &gix::refs::FullNameRef = name.try_into().ok()?;
+                repo.try_find_reference(ref_name).ok().flatten()?;
+                Some(ref_name)
+            })
+        }
+        _ => None,
+    };
+    // Only prefer a workspace-like ref during edit mode. When HEAD points at
+    // `gitbutler/edit`, querying stacks from HEAD would produce entries without stack IDs
+    // because the edit branch itself is not part of the workspace metadata.
+    but_workspace::legacy::stacks_v3(&repo, &meta, filter, workspace_ref)
 }
 
 #[cfg(unix)]
@@ -175,6 +198,7 @@ fn remove_in_workspace_flag_below_lower_bound(
 
 #[but_api]
 #[instrument(err(Debug))]
+#[expect(deprecated, reason = "calls but_workspace::legacy::stack_details_v3")]
 pub fn stack_details(
     ctx: &Context,
     stack_id: Option<StackId>,

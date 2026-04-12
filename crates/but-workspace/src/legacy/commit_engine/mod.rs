@@ -1,4 +1,8 @@
 //! The machinery used to alter and mutate commits in various ways whilst adjusting descendant commits within a [reference frame](ReferenceFrame).
+#![expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 
 use std::path::Path;
 

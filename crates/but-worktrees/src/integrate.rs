@@ -8,6 +8,10 @@ use but_ctx::{
 use but_rebase::{Rebase, RebaseOutput, RebaseStep};
 use but_workspace::legacy::stack_ext::StackExt;
 use gitbutler_branch_actions::update_workspace_commit;
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 use gitbutler_stack::{Stack, VirtualBranchesHandle};
 use gitbutler_workspace::branch_trees::{
     WorkspaceState, merge_workspace, move_tree_has_conflicts, update_uncommitted_changes,
@@ -89,6 +93,10 @@ struct IntegrationResult {
 
 /// Performs the workspace integration operations in memory, returning the
 /// status, and output if it's integratable
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn worktree_integration_inner(
     ctx: &mut Context,
     perm: &RepoShared,

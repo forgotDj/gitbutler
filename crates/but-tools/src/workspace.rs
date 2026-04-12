@@ -15,6 +15,10 @@ use gitbutler_oplog::{
     entry::{OperationKind, SnapshotDetails},
 };
 use gitbutler_reference::{LocalRefname, Refname};
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 use gitbutler_stack::{PatchReferenceUpdate, VirtualBranchesHandle};
 use schemars::{JsonSchema, schema_for};
 
@@ -163,6 +167,10 @@ impl Tool for Commit {
     }
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 pub fn create_commit(
     ctx: &mut Context,
     params: CommitParameters,
@@ -297,6 +305,10 @@ impl Tool for CreateBranch {
     }
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 pub fn create_branch(
     ctx: &mut Context,
     params: CreateBranchParameters,
@@ -1521,6 +1533,10 @@ pub fn get_filtered_changes(
     Ok(file_changes)
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn entries_to_simple_stacks(
     entries: &[StackEntryNoOpt],
     ctx: &Context,
@@ -1630,6 +1646,10 @@ fn unified_diff_for_changes(
         .collect::<Result<Vec<_>, _>>()
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn changes_in_branch_inner(
     ctx: &Context,
     branch_name: String,
@@ -1649,6 +1669,10 @@ fn changes_in_branch_inner(
     but_core::diff::ui::changes_with_line_stats_in_range(&repo, start_commit_id, base_commit_id)
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn commit_and_base_from_stack(
     ctx: &Context,
     state: &VirtualBranchesHandle,
@@ -1742,6 +1766,7 @@ fn find_the_right_commit_id(
     commit_id
 }
 
+#[expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
 fn stacks(ctx: &Context) -> anyhow::Result<Vec<but_workspace::legacy::ui::StackEntry>> {
     let meta = ctx.legacy_meta()?;
     let repo = &*ctx.repo.get()?;

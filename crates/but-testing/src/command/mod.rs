@@ -102,6 +102,11 @@ pub mod assignment {
 }
 
 pub mod stacks {
+    #![expect(
+        deprecated,
+        reason = "calls but_workspace::legacy::stacks_v3 and but_workspace::legacy::stack_details_v3"
+    )]
+
     use std::str::FromStr;
 
     use anyhow::Context as _;

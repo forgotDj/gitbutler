@@ -160,9 +160,13 @@ fn try_from_stack_v3(
 /// Returns the list of stacks that pass `filter`, in unspecified order.
 ///
 /// Use `repo` and `meta` to read branches data
-/// Use `ref_name` to forcefully pretend the HEAD is looking at something else. Only used in testing to avoid needing
-/// multiple fixtures just with a different HEAD position.
+/// Use `ref_name_override` to read from a specific ref instead of HEAD. Used in production by
+/// `stacks_v3_from_ctx` to anchor queries to the workspace ref (during edit mode, HEAD points
+/// elsewhere), and in tests to avoid needing multiple fixtures with different HEAD positions.
 // TODO: See if the UI can migrate to `head_info()` or a variant of it so the information is only called once.
+#[deprecated(
+    note = "Use head_info() and the returned RefInfo instead. Callers that already have a Context should prefer ctx.workspace_* helpers."
+)]
 pub fn stacks_v3(
     repo: &gix::Repository,
     meta: &impl RefMetadata,
@@ -283,6 +287,9 @@ pub fn stacks_v3(
 // TODO: StackId shouldn't be used, instead use the ref-name or stack index as universal tip identifier.
 //       It's notable that there isn't always a ref-name available right now in case the ref advanced, but maybe this is something
 //       we can pull out of the metadata information.
+#[deprecated(
+    note = "Use head_info() and the returned RefInfo instead. Callers that already have a Context should prefer ctx.workspace_* helpers."
+)]
 #[instrument(level = "debug", skip(meta), err(Debug))]
 pub fn stack_details_v3(
     stack_id: Option<StackId>,

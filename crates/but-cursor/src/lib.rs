@@ -117,6 +117,7 @@ fn cursor_path_to_pathbuf(input: &str) -> PathBuf {
     }
 }
 
+#[expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
 pub async fn handle_after_edit(read: impl std::io::Read) -> anyhow::Result<CursorHookOutput> {
     let mut input: FileEditEvent = serde_json::from_reader(read)
         .map_err(|e| anyhow::anyhow!("Failed to parse input JSON: {e}"))?;
@@ -207,6 +208,7 @@ pub async fn handle_after_edit(read: impl std::io::Read) -> anyhow::Result<Curso
     Ok(CursorHookOutput::default())
 }
 
+#[expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
 pub async fn handle_stop(
     nightly: bool,
     read: impl std::io::Read,

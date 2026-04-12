@@ -16,6 +16,10 @@ use gix::validate::reference::name_partial;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 use crate::{
     StackBranch, VirtualBranchesHandle,
     heads::{add_head, get_head, remove_head},
@@ -126,6 +130,10 @@ impl From<Stack> for virtual_branches_legacy_types::Stack {
 /// The first patches are in the beginning of the list and the most recent patches are at the end of the list (top of the stack)
 /// Similarly, heads that point to earlier commits are first in the order, and the last head always points to the most recent patch.
 /// If there are multiple heads that point to the same patch, the `add` and `update` operations can specify the intended order.
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 impl Stack {
     /// The name of the stack, defined as the name of the first head (branch) in the stack.
     /// The usage of this is discouraged
@@ -715,6 +723,10 @@ impl TryFrom<&Stack> for VirtualRefname {
 ///
 /// If the patch reference is a commit ID, it must be the case that the commit has no change ID associated with it.
 /// In other words, change IDs are enforced to be preferred over commit IDs when available.
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn validate_target(
     reference: gix::ObjectId,
     repo: &gix::Repository,
@@ -747,6 +759,10 @@ fn validate_target(
 ///  - unique within all stacks
 ///  - not the same as any existing local git reference (it is permitted for the name to match an existing remote reference)
 ///  - not including the `refs/heads/` prefix
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn validate_name(name: &str, state: &VirtualBranchesHandle) -> Result<()> {
     if name.starts_with("refs/heads") {
         return Err(anyhow!("Stack head name cannot start with 'refs/heads'"));
@@ -761,14 +777,26 @@ fn validate_name(name: &str, state: &VirtualBranchesHandle) -> Result<()> {
     Ok(())
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn branch_state_from_project_data_dir(project_data_dir: &Path) -> VirtualBranchesHandle {
     VirtualBranchesHandle::new(project_data_dir)
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn branch_state(ctx: &Context) -> VirtualBranchesHandle {
     branch_state_from_project_data_dir(&ctx.project_data_dir())
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn patch_reference_exists(state: &VirtualBranchesHandle, name: &str) -> Result<bool> {
     Ok(state
         .list_stacks_in_workspace()?
@@ -785,6 +813,10 @@ fn local_reference_exists(repo: &gix::Repository, name: &str) -> Result<bool> {
     Ok(repo.find_reference(name_partial(name.into())?).is_ok())
 }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 fn remote_reference_exists(
     repo: &gix::Repository,
     state: &VirtualBranchesHandle,

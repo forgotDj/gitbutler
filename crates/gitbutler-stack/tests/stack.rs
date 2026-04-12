@@ -1,3 +1,8 @@
+#![expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
+
 use std::{fs, path::Path, thread, time::Duration};
 
 use anyhow::{Context as _, Result, bail};

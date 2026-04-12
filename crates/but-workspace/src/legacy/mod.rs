@@ -1,3 +1,8 @@
+#![expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
+
 use std::path::Path;
 
 use but_ctx::Context;
@@ -14,6 +19,7 @@ pub use head::{
 
 pub mod tree_manipulation;
 // TODO: _v3 versions are specifically for the UI, so import them into `ui` instead.
+#[expect(deprecated, reason = "re-exports stacks_v3 and stack_details_v3")]
 pub use stacks::{
     local_and_remote_commits, stack_branches, stack_details_v3, stack_heads_info, stacks_v3,
 };

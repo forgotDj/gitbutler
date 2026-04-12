@@ -1,3 +1,8 @@
+#![expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
+
 use anyhow::{Result, bail};
 use but_ctx::{Context, access::RepoExclusive};
 use but_rebase::{Rebase, RebaseStep};
@@ -40,6 +45,7 @@ pub enum InteractiveIntegrationStep {
 ///
 /// This basically just lists the upstream and local commits in the display order (child to parent) and creates a `Pick` step for each.
 /// The user can then modify this in the UI.
+#[expect(deprecated, reason = "calls but_workspace::legacy::stack_details_v3")]
 pub fn get_initial_integration_steps_for_branch(
     ctx: &Context,
     stack_id: Option<StackId>,

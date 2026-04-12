@@ -1,3 +1,8 @@
+#![expect(
+    deprecated,
+    reason = "calls but_workspace::legacy::stacks_v3 and but_workspace::legacy::stack_details_v3"
+)]
+
 use anyhow::Result;
 use but_ctx::{Context, RepoOpenMode};
 use but_settings::AppSettings;

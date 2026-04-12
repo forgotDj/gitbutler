@@ -98,6 +98,7 @@ impl VirtualBranches {
 /// A handle to the state of virtual branches.
 ///
 /// For all operations, if the state file does not exist, it will be created.
+#[deprecated(note = "use ctx.workspace_* helpers instead of VirtualBranchesHandle")]
 pub struct VirtualBranchesHandle {
     /// The path to the file containing the virtual branches state.
     file_path: PathBuf,
@@ -113,6 +114,10 @@ pub struct VirtualBranchesHandle {
 //     }
 // }
 
+#[expect(
+    deprecated,
+    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+)]
 impl VirtualBranchesHandle {
     /// Creates a new concurrency-safe handle to the state of virtual branches.
     pub fn new<P: AsRef<Path>>(base_path: P) -> Self {
