@@ -82,20 +82,28 @@ pub(crate) fn stacks_v3_from_ctx(
 ) -> anyhow::Result<Vec<but_workspace::legacy::ui::StackEntry>> {
     let repo = ctx.clone_repo_for_merging_non_persisting()?;
     let meta = ctx.meta()?;
-    let workspace_ref = [
-        gitbutler_operating_modes::WORKSPACE_BRANCH_REF,
-        gitbutler_operating_modes::INTEGRATION_BRANCH_REF,
-    ]
-    .iter()
-    .find_map(|&name| {
-        let ref_name: &gix::refs::FullNameRef = name.try_into().ok()?;
-        repo.try_find_reference(ref_name).ok().flatten()?;
-        Some(ref_name)
-    });
-    // Prefer reading from the workspace ref rather than HEAD. During edit mode HEAD points
-    // to the edit branch, which is not part of the workspace, so querying stacks from there
-    // would produce entries without stack IDs. Fall back to HEAD when no workspace-like ref
-    // is present.
+    let workspace_ref = match repo.head() {
+        Ok(head)
+            if head.referent_name().is_some_and(|head_ref| {
+                head_ref.as_bstr() == gitbutler_operating_modes::EDIT_BRANCH_REF
+            }) =>
+        {
+            [
+                gitbutler_operating_modes::WORKSPACE_BRANCH_REF,
+                gitbutler_operating_modes::INTEGRATION_BRANCH_REF,
+            ]
+            .iter()
+            .find_map(|&name| {
+                let ref_name: &gix::refs::FullNameRef = name.try_into().ok()?;
+                repo.try_find_reference(ref_name).ok().flatten()?;
+                Some(ref_name)
+            })
+        }
+        _ => None,
+    };
+    // Only prefer a workspace-like ref during edit mode. When HEAD points at
+    // `gitbutler/edit`, querying stacks from HEAD would produce entries without stack IDs
+    // because the edit branch itself is not part of the workspace metadata.
     but_workspace::legacy::stacks_v3(&repo, &meta, filter, workspace_ref)
 }
 
