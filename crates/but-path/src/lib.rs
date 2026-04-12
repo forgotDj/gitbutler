@@ -9,12 +9,17 @@ use anyhow::Context;
 ///
 /// > ⚠️Keep in sync with `tauri::AppHandle::path().app_data_dir().`
 pub fn app_data_dir() -> anyhow::Result<PathBuf> {
+    app_data_dir_for_channel(AppChannel::new())
+}
+
+/// Like [`app_data_dir()`], but explicitly for `channel`.
+pub fn app_data_dir_for_channel(channel: AppChannel) -> anyhow::Result<PathBuf> {
     if let Some(test_dir) = std::env::var_os("E2E_TEST_APP_DATA_DIR") {
-        return Ok(PathBuf::from(test_dir).join("com.gitbutler.app"));
+        return Ok(PathBuf::from(test_dir).join(identifier_for_channel(channel)));
     }
     dirs::data_dir()
         .ok_or(anyhow::anyhow!("Could not get app data dir"))
-        .map(|dir| dir.join(identifier()))
+        .map(|dir| dir.join(identifier_for_channel(channel)))
 }
 
 /// The directory to store logs in, **one per channel**.
@@ -85,30 +90,37 @@ pub fn app_config_dir() -> anyhow::Result<PathBuf> {
 ///
 /// Returns an error if the platform's cache directory cannot be determined.
 pub fn app_cache_dir() -> anyhow::Result<PathBuf> {
+    app_cache_dir_for_channel(AppChannel::new())
+}
+
+/// Like [`app_cache_dir()`], but explicitly for `channel`.
+pub fn app_cache_dir_for_channel(channel: AppChannel) -> anyhow::Result<PathBuf> {
     if let Some(test_dir) = std::env::var_os("E2E_TEST_APP_DATA_DIR") {
-        return Ok(PathBuf::from(test_dir).join("cache"));
+        return Ok(PathBuf::from(test_dir)
+            .join("cache")
+            .join(identifier_for_channel(channel)));
     }
     dirs::cache_dir()
         .ok_or(anyhow::anyhow!("Could not get app cache dir"))
-        .map(|dir| dir.join(identifier()))
+        .map(|dir| dir.join(identifier_for_channel(channel)))
 }
 
+/// Returns the bundle identifier for the compile-time [`AppChannel`].
 pub fn identifier() -> &'static str {
-    option_env!("IDENTIFIER").unwrap_or_else(|| {
-        if let Some(channel) = option_env!("CHANNEL") {
-            match channel {
-                "nightly" => "com.gitbutler.app.nightly",
-                "release" => "com.gitbutler.app",
-                _ => "com.gitbutler.app.dev",
-            }
-        } else {
-            "com.gitbutler.app.dev"
-        }
-    })
+    identifier_for_channel(AppChannel::new())
+}
+
+/// Returns the bundle identifier used for `channel`.
+pub const fn identifier_for_channel(channel: AppChannel) -> &'static str {
+    match channel {
+        AppChannel::Nightly => "com.gitbutler.app.nightly",
+        AppChannel::Release => "com.gitbutler.app",
+        AppChannel::Dev => "com.gitbutler.app.dev",
+    }
 }
 
 /// A way to learn about the currently configured compile-time app-channel.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AppChannel {
     /// This is a nightly build.
     Nightly,
@@ -125,8 +137,27 @@ impl Default for AppChannel {
 }
 
 impl AppChannel {
+    /// Returns the app channel configured at compile time.
+    ///
+    /// Resolution prefers the `IDENTIFIER` environment variable embedded at build
+    /// time. If it is unset, `CHANNEL` is mapped to the corresponding bundle
+    /// identifier, with any missing or unknown value falling back to
+    /// [`AppChannel::Dev`].
+    ///
+    /// Only the known nightly and release identifiers map to their dedicated
+    /// variants; any other identifier resolves to [`AppChannel::Dev`].
     pub fn new() -> Self {
-        match identifier() {
+        match option_env!("IDENTIFIER").unwrap_or_else(|| {
+            if let Some(channel) = option_env!("CHANNEL") {
+                match channel {
+                    "nightly" => identifier_for_channel(AppChannel::Nightly),
+                    "release" => identifier_for_channel(AppChannel::Release),
+                    _ => identifier_for_channel(AppChannel::Dev),
+                }
+            } else {
+                identifier_for_channel(AppChannel::Dev)
+            }
+        }) {
             "com.gitbutler.app.nightly" => AppChannel::Nightly,
             "com.gitbutler.app" => AppChannel::Release,
             _ => AppChannel::Dev,
@@ -243,6 +274,21 @@ impl AppChannel {
             }
         }
         Ok(())
+    }
+}
+
+impl std::str::FromStr for AppChannel {
+    type Err = anyhow::Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "nightly" => Ok(AppChannel::Nightly),
+            "release" | "production" | "prod" => Ok(AppChannel::Release),
+            "dev" | "development" => Ok(AppChannel::Dev),
+            _ => Err(anyhow::anyhow!(
+                "Unknown app suffix '{value}', expected one of: dev, nightly, release"
+            )),
+        }
     }
 }
 

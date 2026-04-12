@@ -17,9 +17,9 @@ pub struct Args {
     /// Defaults to the standard location on this platform if unset.
     #[clap(short = 'a', long, env = "GITBUTLER_CLI_DATA_DIR")]
     pub app_data_dir: Option<PathBuf>,
-    /// A suffix like `dev` to refer to projects of the development version of the application.
+    /// Select which GitButler application channel should be used for app directories and repo-local state.
     ///
-    /// The production version is used if unset.
+    /// Supported values are `dev`, `nightly`, and `release`.
     #[clap(short = 's', long)]
     pub app_suffix: Option<String>,
     /// Whether to use JSON output format.

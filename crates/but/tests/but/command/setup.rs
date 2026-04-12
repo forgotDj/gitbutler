@@ -713,7 +713,10 @@ Learn more at https://docs.gitbutler.com/cli-overview
 
 "#]]);
 
-    let projects_file = env.app_data_dir().join("com.gitbutler.app/projects.json");
+    let projects_file = env
+        .app_data_dir()
+        .join(but_path::identifier())
+        .join("projects.json");
     let mut file: serde_json::Value = std::fs::read_to_string(&projects_file)?.parse()?;
 
     file.as_array_mut().unwrap()[0]
