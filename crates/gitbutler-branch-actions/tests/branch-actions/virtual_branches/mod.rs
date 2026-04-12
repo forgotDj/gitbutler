@@ -1,3 +1,5 @@
+#![expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
+
 use std::{fs, path, path::PathBuf, str::FromStr};
 
 use but_ctx::{Context, ProjectHandleOrLegacyProjectId, RepoOpenMode};

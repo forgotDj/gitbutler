@@ -28,6 +28,10 @@ pub fn list(ctx: &Context) -> Result<()> {
     Ok(())
 }
 
+#[expect(
+    deprecated,
+    reason = "calls but_workspace::legacy::stacks_v3 and but_workspace::legacy::stack_details_v3"
+)]
 pub(crate) fn stacks(ctx: &Context) -> Result<Vec<(StackId, StackDetails)>> {
     let repo = ctx.clone_repo_for_merging_non_persisting()?;
     let stacks = {

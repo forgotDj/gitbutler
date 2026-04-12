@@ -1742,6 +1742,7 @@ fn find_the_right_commit_id(
     commit_id
 }
 
+#[expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
 fn stacks(ctx: &Context) -> anyhow::Result<Vec<but_workspace::legacy::ui::StackEntry>> {
     let meta = ctx.legacy_meta()?;
     let repo = &*ctx.repo.get()?;

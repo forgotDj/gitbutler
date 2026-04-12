@@ -85,6 +85,7 @@ pub fn commit(
     Ok(new_commit_id.map(|id| (id, message)))
 }
 
+#[expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
 fn stacks(ctx: &Context) -> anyhow::Result<Vec<StackEntry>> {
     let repo = ctx.clone_repo_for_merging_non_persisting()?;
     let meta = ctx.legacy_meta()?;

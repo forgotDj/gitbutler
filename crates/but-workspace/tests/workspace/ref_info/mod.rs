@@ -1,3 +1,8 @@
+#![expect(
+    deprecated,
+    reason = "covers calls to but_workspace::legacy::stacks_v3 and but_workspace::legacy::stack_details_v3"
+)]
+
 use std::borrow::Cow;
 
 use but_workspace::{legacy::StacksFilter, ref_info};
@@ -16,6 +21,9 @@ pub fn head_info(
     but_workspace::head_info(repo, meta, opts)
 }
 
+#[deprecated(
+    note = "Use head_info() and the returned RefInfo instead. Callers that already have a Context should prefer ctx.workspace_* helpers."
+)]
 pub fn stacks_v3(
     repo: &gix::Repository,
     meta: &but_meta::VirtualBranchesTomlMetadata,
@@ -25,6 +33,9 @@ pub fn stacks_v3(
     but_workspace::legacy::stacks_v3(repo, meta, filter, ref_name_override)
 }
 
+#[deprecated(
+    note = "Use head_info() and the returned RefInfo instead. Callers that already have a Context should prefer ctx.workspace_* helpers."
+)]
 pub fn stack_details_v3(
     stack_id: Option<gitbutler_stack::StackId>,
     repo: &gix::Repository,

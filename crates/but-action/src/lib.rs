@@ -134,6 +134,7 @@ fn default_target_setting_if_none(
     Ok(target)
 }
 
+#[expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
 fn stacks(ctx: &Context, repo: &gix::Repository) -> anyhow::Result<Vec<StackEntry>> {
     let meta = ctx.legacy_meta()?;
     but_workspace::legacy::stacks_v3(

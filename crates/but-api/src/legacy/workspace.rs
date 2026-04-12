@@ -76,6 +76,7 @@ pub fn stacks(
 }
 ///
 /// Return stack information for the repository that `ctx` refers to using legacy metadata.
+#[expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
 pub(crate) fn stacks_v3_from_ctx(
     ctx: &Context,
     filter: StacksFilter,
@@ -197,6 +198,7 @@ fn remove_in_workspace_flag_below_lower_bound(
 
 #[but_api]
 #[instrument(err(Debug))]
+#[expect(deprecated, reason = "calls but_workspace::legacy::stack_details_v3")]
 pub fn stack_details(
     ctx: &Context,
     stack_id: Option<StackId>,

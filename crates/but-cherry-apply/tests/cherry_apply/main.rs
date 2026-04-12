@@ -1,3 +1,5 @@
+#![expect(deprecated, reason = "imports but_workspace::legacy::stack_details_v3")]
+
 /// Tests for cherry-apply functionality
 mod util {
     use but_cherry_apply::{CherryApplyStatus, cherry_apply, cherry_apply_status};

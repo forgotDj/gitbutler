@@ -213,6 +213,7 @@ impl<'a> UpstreamIntegrationContext<'a> {
     }
 }
 
+#[expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
 fn stacks(
     ctx: &Context,
     repo: &gix::Repository,
@@ -226,6 +227,7 @@ fn stacks(
     )
 }
 
+#[expect(deprecated, reason = "calls but_workspace::legacy::stack_details_v3")]
 fn stack_details(
     ctx: &Context,
     stack_id: Option<StackId>,
@@ -364,7 +366,7 @@ pub fn upstream_integration_statuses(
         .tree_id()?;
 
     // The working directory tree
-    #[expect(deprecated)]
+    #[expect(deprecated, reason = "calls repo.create_wd_tree")]
     let workdir_tree = repo.create_wd_tree(gitbutler_project::AUTO_TRACK_LIMIT_BYTES)?;
 
     // The target tree

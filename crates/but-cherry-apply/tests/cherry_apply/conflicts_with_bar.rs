@@ -1,3 +1,5 @@
+#![expect(deprecated, reason = "calls stack_details_v3")]
+
 use super::*;
 use crate::util::test_ctx;
 
