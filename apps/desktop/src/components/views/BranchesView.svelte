@@ -67,6 +67,18 @@
 	let branchColumn = $state<HTMLDivElement>();
 	let branchViewLeftEl = $state<HTMLDivElement>();
 
+	const LEFT_PANEL_RESIZER = {
+		minWidth: 16,
+		maxWidth: 40,
+		defaultValue: 24,
+	};
+
+	const BRANCH_COLUMN_RESIZER = {
+		minWidth: 20,
+		maxWidth: 30,
+		defaultValue: 20,
+	};
+
 	async function checkoutBranch(args: {
 		branchName: string;
 		remote?: string;
@@ -247,9 +259,10 @@
 			<Resizer
 				viewport={branchViewLeftEl}
 				direction="right"
-				minWidth={14}
+				minWidth={LEFT_PANEL_RESIZER.minWidth}
+				maxWidth={LEFT_PANEL_RESIZER.maxWidth}
 				persistId="resizer-branchesWidth"
-				defaultValue={24}
+				defaultValue={LEFT_PANEL_RESIZER.defaultValue}
 			/>
 		</div>
 
@@ -268,9 +281,9 @@
 							viewport={branchColumn}
 							persistId="branches-branch-column-1"
 							direction="right"
-							defaultValue={20}
-							minWidth={10}
-							maxWidth={30}
+							defaultValue={BRANCH_COLUMN_RESIZER.defaultValue}
+							minWidth={BRANCH_COLUMN_RESIZER.minWidth}
+							maxWidth={BRANCH_COLUMN_RESIZER.maxWidth}
 						/>
 					</div>
 				{:else}
@@ -374,9 +387,9 @@
 								viewport={branchColumn}
 								persistId="branches-branch-column-1"
 								direction="right"
-								defaultValue={20}
-								minWidth={10}
-								maxWidth={30}
+								defaultValue={BRANCH_COLUMN_RESIZER.defaultValue}
+								minWidth={BRANCH_COLUMN_RESIZER.minWidth}
+								maxWidth={BRANCH_COLUMN_RESIZER.maxWidth}
 							/>
 						</div>
 					</AppScrollableContainer>
