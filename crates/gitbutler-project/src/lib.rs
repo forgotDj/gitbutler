@@ -94,6 +94,17 @@ pub fn dangerously_list_projects_without_migration() -> anyhow::Result<Vec<Proje
     controller.list()
 }
 
+/// Testing purpose only.
+///
+/// Like [`dangerously_list_projects_without_migration()`], but allows setting
+/// the `app_data_dir` explicitly for isolated tests and diagnostics.
+pub fn dangerously_list_projects_without_migration_with_path(
+    app_data_dir: impl AsRef<Path>,
+) -> anyhow::Result<Vec<Project>> {
+    let controller = Controller::from_path(app_data_dir.as_ref());
+    controller.list()
+}
+
 pub fn delete(id: ProjectHandleOrLegacyProjectId) -> anyhow::Result<()> {
     let controller = Controller::from_path(but_path::app_data_dir()?);
     controller.delete(id)

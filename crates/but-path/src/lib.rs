@@ -1,4 +1,19 @@
 //! A version of `tauri::AppHandle::path()` for use outside `tauri`.
+//!
+//! # E2E test override
+//!
+//! When the `E2E_TEST_APP_DATA_DIR` environment varaiable is set,
+//! these helpers stop using the platform-specific GitButler locations
+//! and instead use fixed subdirectories underneath that directory:
+//!
+//! - app data: `<E2E_TEST_APP_DATA_DIR>/com.gitbutler.app`
+//! - logs: `<E2E_TEST_APP_DATA_DIR>/logs`
+//! - config: `<E2E_TEST_APP_DATA_DIR>/gitbutler`
+//! - cache: `<E2E_TEST_APP_DATA_DIR>/cache`
+//!
+//! This override intentionally ignores the compile-time or explicit [`AppChannel`]. Even
+//! `*_for_channel(...)` helpers return the same E2E path for all channels so tests do not
+//! accidentally spread state across channel-specific directories.
 #[cfg(target_os = "linux")]
 use std::process::Command;
 use std::{env, path::PathBuf};
@@ -8,14 +23,20 @@ use anyhow::Context;
 /// The directory to store application-wide data in, like logs, **one per channel**.
 ///
 /// > ⚠️Keep in sync with `tauri::AppHandle::path().app_data_dir().`
+///
+/// When `E2E_TEST_APP_DATA_DIR` is set, returns
+/// `<E2E_TEST_APP_DATA_DIR>/com.gitbutler.app` for every channel.
 pub fn app_data_dir() -> anyhow::Result<PathBuf> {
     app_data_dir_for_channel(AppChannel::new())
 }
 
 /// Like [`app_data_dir()`], but explicitly for `channel`.
+///
+/// When `E2E_TEST_APP_DATA_DIR` is set, `channel` is ignored and the result is always
+/// `<E2E_TEST_APP_DATA_DIR>/com.gitbutler.app`.
 pub fn app_data_dir_for_channel(channel: AppChannel) -> anyhow::Result<PathBuf> {
     if let Some(test_dir) = std::env::var_os("E2E_TEST_APP_DATA_DIR") {
-        return Ok(PathBuf::from(test_dir).join(identifier_for_channel(channel)));
+        return Ok(PathBuf::from(test_dir).join("com.gitbutler.app"));
     }
     dirs::data_dir()
         .ok_or(anyhow::anyhow!("Could not get app data dir"))
@@ -35,7 +56,7 @@ pub fn app_data_dir_for_channel(channel: AppChannel) -> anyhow::Result<PathBuf> 
 ///
 /// When the `E2E_TEST_APP_DATA_DIR` environment variable is set (used by E2E tests),
 /// this function returns `<E2E_TEST_APP_DATA_DIR>/logs` instead of the platform-specific
-/// default directories above.
+/// default directories above. This override always ignores the compile-time channel.
 pub fn app_log_dir() -> anyhow::Result<PathBuf> {
     if let Some(test_dir) = std::env::var_os("E2E_TEST_APP_DATA_DIR") {
         return Ok(PathBuf::from(test_dir).join("logs"));
@@ -54,6 +75,8 @@ pub fn app_log_dir() -> anyhow::Result<PathBuf> {
 /// The directory to store application-wide settings in, **shared for all channels**.
 ///
 /// > ⚠️Keep in sync with `tauri::AppHandle::path().app_config_dir().`
+///
+/// When `E2E_TEST_APP_DATA_DIR` is set, returns `<E2E_TEST_APP_DATA_DIR>/gitbutler`.
 pub fn app_config_dir() -> anyhow::Result<PathBuf> {
     if let Some(test_dir) = std::env::var_os("E2E_TEST_APP_DATA_DIR") {
         return Ok(PathBuf::from(test_dir).join("gitbutler"));
@@ -84,7 +107,8 @@ pub fn app_config_dir() -> anyhow::Result<PathBuf> {
 /// # Testing
 ///
 /// When the `E2E_TEST_APP_DATA_DIR` environment variable is set, returns
-/// `{E2E_TEST_APP_DATA_DIR}/cache` to isolate test environments.
+/// `{E2E_TEST_APP_DATA_DIR}/cache` to isolate test environments. This override ignores
+/// the compile-time or explicit channel.
 ///
 /// # Errors
 ///
@@ -94,11 +118,12 @@ pub fn app_cache_dir() -> anyhow::Result<PathBuf> {
 }
 
 /// Like [`app_cache_dir()`], but explicitly for `channel`.
+///
+/// When `E2E_TEST_APP_DATA_DIR` is set, `channel` is ignored and the result is always
+/// `<E2E_TEST_APP_DATA_DIR>/cache`.
 pub fn app_cache_dir_for_channel(channel: AppChannel) -> anyhow::Result<PathBuf> {
     if let Some(test_dir) = std::env::var_os("E2E_TEST_APP_DATA_DIR") {
-        return Ok(PathBuf::from(test_dir)
-            .join("cache")
-            .join(identifier_for_channel(channel)));
+        return Ok(PathBuf::from(test_dir).join("cache"));
     }
     dirs::cache_dir()
         .ok_or(anyhow::anyhow!("Could not get app cache dir"))

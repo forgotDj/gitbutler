@@ -24,11 +24,12 @@ pub fn add(data_dir: PathBuf, path: PathBuf, refname: Option<RemoteRefname>) -> 
     debug_print(project)
 }
 
-pub fn remove(project_name: &str) -> Result<()> {
-    let projects = gitbutler_project::dangerously_list_projects_without_migration()?;
+pub fn remove(data_dir: PathBuf, project_name: &str) -> Result<()> {
+    let projects =
+        gitbutler_project::dangerously_list_projects_without_migration_with_path(&data_dir)?;
     let project = projects
         .into_iter()
         .find(|p| p.title == project_name)
         .context("Project not found")?;
-    gitbutler_project::delete(project.id)
+    gitbutler_project::delete_with_path(data_dir, project.id)
 }
