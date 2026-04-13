@@ -20,6 +20,7 @@ bitflags.workspace = true
 serde.workspace = true
 anyhow.workspace = true
 chrono = { workspace = true, features = ["serde"] }
+but-utils.workspace = true
 # other things
 tracing.workspace = true
 backoff.workspace = true

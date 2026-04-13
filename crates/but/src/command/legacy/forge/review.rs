@@ -1085,7 +1085,7 @@ fn extract_commit_title(commit: Option<&Commit>) -> Option<&str> {
 /// Get a mapping from branch names to their associated reviews.
 #[instrument(skip(ctx))]
 pub fn get_review_map(
-    ctx: &mut Context,
+    ctx: &Context,
     cache_config: Option<but_forge::CacheConfig>,
 ) -> anyhow::Result<std::collections::HashMap<String, Vec<but_forge::ForgeReview>>> {
     let reviews = but_api::legacy::forge::list_reviews(ctx, cache_config).unwrap_or_default();

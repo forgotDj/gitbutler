@@ -43,11 +43,10 @@ pub fn split_commit(
     let base = source_stack.merge_base(ctx)?;
     let result = {
         let repo = ctx.repo.get()?;
-        let cache = ctx.cache.get_cache()?;
         let mut rebase = Rebase::new(&repo, base, None)?;
         rebase.steps(steps)?;
         rebase.rebase_noops(false);
-        rebase.rebase(&cache)?
+        rebase.rebase()?
     };
 
     let commit_mapping = result

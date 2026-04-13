@@ -4,7 +4,7 @@ use but_ctx::Context;
 use but_hunk_assignment::{HunkAssignmentRequest, HunkAssignmentTarget};
 
 pub(crate) fn do_assignments(
-    ctx: &mut Context,
+    ctx: &Context,
     reqs: Vec<HunkAssignmentRequest>,
 ) -> anyhow::Result<()> {
     let context_lines = ctx.settings.context_lines;

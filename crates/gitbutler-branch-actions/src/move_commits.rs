@@ -158,7 +158,7 @@ fn rebase_without_commit(
     let mut rebase = but_rebase::Rebase::new(repo, Some(merge_base), None)?;
     rebase.rebase_noops(false);
     rebase.steps(steps)?;
-    rebase.rebase(&*ctx.cache.get_cache()?)
+    rebase.rebase()
 }
 
 /// Rebase `stack` with `subject_commit_oid` inserted at the top, writing only to the ODB.
@@ -186,7 +186,7 @@ fn rebase_with_commit_at_top(
     let mut rebase = but_rebase::Rebase::new(repo, Some(merge_base), None)?;
     rebase.rebase_noops(false);
     rebase.steps(steps)?;
-    rebase.rebase(&*ctx.cache.get_cache()?)
+    rebase.rebase()
 }
 
 /// Remove the commit from the source stack.

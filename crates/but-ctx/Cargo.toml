@@ -24,6 +24,7 @@ but-meta = { workspace = true, features = ["legacy"] }
 but-db.workspace = true
 but-graph.workspace = true
 but-project-handle.workspace = true
+but-utils.workspace = true
 
 # Optional so `but-ctx` can stay decoupled from legacy project storage by default.
 gitbutler-project = { workspace = true, optional = true }

@@ -30,7 +30,7 @@ pub(crate) fn commit_insert_blank_only_impl(
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitInsertBlankResult> {
     let mut meta = ctx.meta()?;
-    let (repo, mut ws, _, _cache) = ctx.workspace_mut_and_db_and_cache_with_perm(perm)?;
+    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
 
     let (outcome, blank_commit_selector) =

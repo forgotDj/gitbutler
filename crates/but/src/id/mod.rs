@@ -551,7 +551,7 @@ impl IdMap {
     /// # NOTE: claims a read-only workspace lock!
     /// TODO(ctx|ai): Use a `ws` directly instead of creating a whole new RefInfo uncached.
     pub fn new_from_context(
-        ctx: &mut Context,
+        ctx: &Context,
         assignments: Option<Vec<HunkAssignment>>,
         perm: &RepoShared,
     ) -> anyhow::Result<Self> {

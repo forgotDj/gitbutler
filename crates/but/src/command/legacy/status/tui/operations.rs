@@ -340,7 +340,7 @@ pub(super) fn create_branch_legacy(ctx: &mut Context) -> anyhow::Result<String> 
     Ok(new_name)
 }
 
-pub(super) fn has_unassigned_changes(ctx: &mut Context) -> anyhow::Result<bool> {
+pub(super) fn has_unassigned_changes(ctx: &Context) -> anyhow::Result<bool> {
     let context_lines = ctx.settings.context_lines;
 
     let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
@@ -359,7 +359,7 @@ pub(super) fn has_unassigned_changes(ctx: &mut Context) -> anyhow::Result<bool> 
 }
 
 pub(super) fn assigned_file_count_for_stack(
-    ctx: &mut Context,
+    ctx: &Context,
     stack_id: StackId,
 ) -> anyhow::Result<usize> {
     let context_lines = ctx.settings.context_lines;

@@ -4,9 +4,9 @@ use std::{
 };
 
 use anyhow::{Context as _, Error, Result};
-use but_fs::list_files;
 use but_github::CredentialCheckResult;
 use but_gitlab::GitLabProjectId;
+use but_utils::list_files;
 use chrono::Datelike;
 use serde::{Deserialize, Serialize};
 

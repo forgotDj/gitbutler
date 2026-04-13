@@ -36,7 +36,8 @@ impl TestCase<'_> {
             AppSettings::default(),
             RepoOpenMode::Isolated,
         )
-        .expect("can create context");
+        .expect("can create context")
+        .with_memory_app_cache();
 
         #[expect(deprecated, reason = "transport/auth compatibility coverage")]
         let git2_repo = &*ctx.git2_repo.get().unwrap();

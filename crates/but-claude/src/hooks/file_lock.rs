@@ -2,12 +2,12 @@ use but_ctx::Context;
 use uuid::Uuid;
 
 pub(crate) fn obtain_or_insert(
-    ctx: &mut Context,
+    ctx: &Context,
     session_id: Uuid,
     file_path: String,
 ) -> anyhow::Result<()> {
     let owner = session_id.to_string();
-    let mut db = ctx.db.get_mut()?;
+    let mut db = ctx.db.get_cache_mut()?;
     let mut locks_mut = db.file_write_locks_mut();
     let max_wait_time = std::time::Duration::from_secs(30);
     let start = std::time::Instant::now();
@@ -42,9 +42,9 @@ pub(crate) fn obtain_or_insert(
 
 /// If file_path is provided, it will clear the lock for that file.
 /// Otherwise, it will clear all locks for the session_id.
-pub fn clear(ctx: &mut Context, session_id: Uuid, file_path: Option<String>) -> anyhow::Result<()> {
+pub fn clear(ctx: &Context, session_id: Uuid, file_path: Option<String>) -> anyhow::Result<()> {
     let owner = session_id.to_string();
-    let mut db = ctx.db.get_mut()?;
+    let mut db = ctx.db.get_cache_mut()?;
     let mut trans = db.transaction()?;
 
     let locks = trans.file_write_locks().list()?;

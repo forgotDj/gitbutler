@@ -674,7 +674,7 @@ fn print_worktree_status(
 }
 
 fn ci_map(
-    ctx: &mut Context,
+    ctx: &Context,
     cache_config: &but_forge::CacheConfig,
     stack_details: &[StackEntry],
 ) -> Result<BTreeMap<String, Vec<but_forge::CiCheck>>, anyhow::Error> {

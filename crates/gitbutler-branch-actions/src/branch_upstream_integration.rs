@@ -163,7 +163,7 @@ pub fn integrate_branch_with_steps(
     let mut rebase = Rebase::new(&repo, merge_base, None)?;
     rebase.steps(new_rebase_steps)?;
     rebase.rebase_noops(false);
-    let result = rebase.rebase(&*ctx.cache.get_cache()?)?;
+    let result = rebase.rebase()?;
 
     source_stack.set_stack_head(&mut vb_state, &repo, result.top_commit)?;
     let new_workspace = WorkspaceState::create(ctx, perm.read_permission())?;

@@ -201,15 +201,15 @@ pub fn create_rule(
     };
 
     ctx.db
-        .get_mut()?
+        .get_cache_mut()?
         .workspace_rules_mut()
         .insert(rule.clone().try_into()?)?;
     process_rules(ctx, perm).ok(); // Reevaluate rules after creating
     Ok(rule)
 }
 
-pub fn delete_rule(ctx: &mut Context, id: &str) -> anyhow::Result<()> {
-    ctx.db.get_mut()?.workspace_rules_mut().delete(id)?;
+pub fn delete_rule(ctx: &Context, id: &str) -> anyhow::Result<()> {
+    ctx.db.get_cache_mut()?.workspace_rules_mut().delete(id)?;
     Ok(())
 }
 
@@ -248,7 +248,7 @@ pub fn update_rule(
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<WorkspaceRule> {
     let mut rule: WorkspaceRule = {
-        let db = ctx.db.get_mut()?;
+        let db = ctx.db.get_cache_mut()?;
         db.workspace_rules()
             .get(&req.id)?
             .ok_or_else(|| anyhow::anyhow!("Rule with ID {} not found", req.id))?
@@ -269,7 +269,7 @@ pub fn update_rule(
     }
 
     ctx.db
-        .get_mut()?
+        .get_cache_mut()?
         .workspace_rules_mut()
         .update(&req.id, rule.clone().try_into()?)?;
     process_rules(ctx, perm).ok(); // Reevaluate rules after updating
@@ -280,7 +280,7 @@ pub fn update_rule(
 pub fn get_rule(ctx: &Context, id: &str) -> anyhow::Result<WorkspaceRule> {
     let rule = ctx
         .db
-        .get()?
+        .get_cache()?
         .workspace_rules()
         .get(id)?
         .ok_or_else(|| anyhow::anyhow!("Rule with ID {id} not found"))?
@@ -292,7 +292,7 @@ pub fn get_rule(ctx: &Context, id: &str) -> anyhow::Result<WorkspaceRule> {
 pub fn list_rules(ctx: &Context) -> anyhow::Result<Vec<WorkspaceRule>> {
     let rules = ctx
         .db
-        .get()?
+        .get_cache()?
         .workspace_rules()
         .list()?
         .into_iter()

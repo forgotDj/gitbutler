@@ -146,9 +146,9 @@ impl ButlerAction {
     }
 }
 
-pub(crate) fn persist_action(ctx: &mut Context, action: ButlerAction) -> anyhow::Result<()> {
+pub(crate) fn persist_action(ctx: &Context, action: ButlerAction) -> anyhow::Result<()> {
     ctx.db
-        .get_mut()?
+        .get_cache_mut()?
         .butler_actions_mut()
         .insert(action.try_into()?)
         .map_err(|e| anyhow::anyhow!("Failed to persist action: {e}"))?;
@@ -158,7 +158,7 @@ pub(crate) fn persist_action(ctx: &mut Context, action: ButlerAction) -> anyhow:
 pub fn list_actions(ctx: &Context, offset: i64, limit: i64) -> anyhow::Result<ActionListing> {
     let (total, actions) = ctx
         .db
-        .get()?
+        .get_cache()?
         .butler_actions()
         .list(offset, limit)
         .map_err(|e| anyhow::anyhow!("Failed to list actions: {e}"))?;

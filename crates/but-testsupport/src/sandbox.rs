@@ -246,14 +246,14 @@ impl Sandbox {
         )
     }
 
-    /// Return a context configured to interact with this repository.
+    /// Return a fully isolated context configured to interact with this repository.
     ///
     /// ### Not for plumbing
     ///
     /// This feature is only meant for higher-level Client or API tests. Plumbing crates must not use the [`but_ctx::Context`].
     #[cfg(feature = "sandbox-but-api")]
     pub fn context(&self) -> anyhow::Result<but_ctx::Context> {
-        but_ctx::Context::from_repo(self.open_repo()?)
+        but_ctx::Context::from_repo(self.open_repo()?).map(but_ctx::Context::with_memory_app_cache)
     }
 
     /// Return the graph at `HEAD`, along with the `(graph, repo, meta)` repository and metadata used to create it.

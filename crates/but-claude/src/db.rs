@@ -5,13 +5,13 @@ use uuid::Uuid;
 use crate::{ClaudePermissionRequest, ClaudeSession};
 
 /// Creates a new ClaudeSession with the session_id provided and saves it to the database.
-pub fn save_new_session(ctx: &mut Context, id: Uuid) -> anyhow::Result<ClaudeSession> {
+pub fn save_new_session(ctx: &Context, id: Uuid) -> anyhow::Result<ClaudeSession> {
     save_new_session_with_gui_flag(ctx, id, false)
 }
 
 /// Creates a new ClaudeSession with the session_id provided and saves it to the database.
 pub fn save_new_session_with_gui_flag(
-    ctx: &mut Context,
+    ctx: &Context,
     id: Uuid,
     in_gui: bool,
 ) -> anyhow::Result<ClaudeSession> {
@@ -27,18 +27,14 @@ pub fn save_new_session_with_gui_flag(
         denied_permissions: vec![],
     };
     ctx.db
-        .get_mut()?
+        .get_cache_mut()?
         .claude_mut()
         .insert_session(session.clone().try_into()?)?;
     Ok(session)
 }
 
 /// Adds a session ID to the list of session IDs for a given session.
-pub fn add_session_id(
-    ctx: &mut Context,
-    session_id: Uuid,
-    new_session_id: Uuid,
-) -> anyhow::Result<()> {
+pub fn add_session_id(ctx: &Context, session_id: Uuid, new_session_id: Uuid) -> anyhow::Result<()> {
     if let Some(mut session) = get_session_by_id(ctx, session_id)?
         && !session.session_ids.contains(&new_session_id)
     {
@@ -48,11 +44,11 @@ pub fn add_session_id(
         let json = serde_json::to_string(&session.session_ids)?;
 
         ctx.db
-            .get_mut()?
+            .get_cache_mut()?
             .claude_mut()
             .update_session_ids(&session_id.to_string(), &json)?;
         ctx.db
-            .get_mut()?
+            .get_cache_mut()?
             .claude_mut()
             .update_session_current_id(&session_id.to_string(), &new_session_id.to_string())?;
     }
@@ -60,9 +56,9 @@ pub fn add_session_id(
 }
 
 /// Updates the current session ID for a given session in the database.
-pub fn set_session_in_gui(ctx: &mut Context, session_id: Uuid, in_gui: bool) -> anyhow::Result<()> {
+pub fn set_session_in_gui(ctx: &Context, session_id: Uuid, in_gui: bool) -> anyhow::Result<()> {
     ctx.db
-        .get_mut()?
+        .get_cache_mut()?
         .claude_mut()
         .update_session_in_gui(&session_id.to_string(), in_gui)?;
     Ok(())
@@ -70,18 +66,17 @@ pub fn set_session_in_gui(ctx: &mut Context, session_id: Uuid, in_gui: bool) -> 
 
 /// Updates the permissions for a given session in the database.
 pub fn update_session_permissions(
-    ctx: &mut Context,
+    ctx: &Context,
     session_id: Uuid,
     approved_permissions: &[crate::Permission],
     denied_permissions: &[crate::Permission],
 ) -> anyhow::Result<()> {
     let approved_json = serde_json::to_string(approved_permissions)?;
     let denied_json = serde_json::to_string(denied_permissions)?;
-    ctx.db.get_mut()?.claude_mut().update_session_permissions(
-        &session_id.to_string(),
-        &approved_json,
-        &denied_json,
-    )?;
+    ctx.db
+        .get_cache_mut()?
+        .claude_mut()
+        .update_session_permissions(&session_id.to_string(), &approved_json, &denied_json)?;
     Ok(())
 }
 
@@ -89,7 +84,7 @@ pub fn update_session_permissions(
 pub fn get_session_by_id(ctx: &Context, session_id: Uuid) -> anyhow::Result<Option<ClaudeSession>> {
     let session = ctx
         .db
-        .get()?
+        .get_cache()?
         .claude()
         .get_session(&session_id.to_string())?;
     match session {
@@ -104,7 +99,7 @@ pub fn get_session_by_current_id(
 ) -> anyhow::Result<Option<ClaudeSession>> {
     let session = ctx
         .db
-        .get()?
+        .get_cache()?
         .claude()
         .get_session_by_current_id(&current_id.to_string())?;
     match session {
@@ -114,12 +109,9 @@ pub fn get_session_by_current_id(
 }
 
 /// Deletes a Claude session and all associated messages from the database. This is what we want to use when we want to delete a session completely.
-pub fn delete_session_and_messages_by_id(
-    ctx: &mut Context,
-    session_id: Uuid,
-) -> anyhow::Result<()> {
+pub fn delete_session_and_messages_by_id(ctx: &Context, session_id: Uuid) -> anyhow::Result<()> {
     ctx.db
-        .get_mut()?
+        .get_cache_mut()?
         .claude_mut()
         .delete_session_and_messages(&session_id.to_string())?;
     Ok(())
@@ -127,7 +119,7 @@ pub fn delete_session_and_messages_by_id(
 
 /// Creates a new ClaudeMessage with the provided session_id and payload, and saves it to the database.
 pub fn save_new_message(
-    ctx: &mut Context,
+    ctx: &Context,
     session_id: Uuid,
     payload: crate::MessagePayload,
 ) -> anyhow::Result<crate::ClaudeMessage> {
@@ -138,7 +130,7 @@ pub fn save_new_message(
         payload,
     };
     ctx.db
-        .get_mut()?
+        .get_cache_mut()?
         .claude_mut()
         .insert_message(message.clone().try_into()?)?;
     Ok(message)
@@ -152,7 +144,7 @@ pub fn list_messages_by_session(
 ) -> anyhow::Result<Vec<crate::ClaudeMessage>> {
     let messages = ctx
         .db
-        .get()?
+        .get_cache()?
         .claude()
         .list_messages_by_session(&session_id.to_string())?;
     messages
@@ -169,7 +161,7 @@ pub fn get_user_message(
 ) -> anyhow::Result<Option<crate::ClaudeMessage>> {
     let message = ctx
         .db
-        .get()?
+        .get_cache()?
         .claude()
         .get_message_of_type(MessagePayloadDbType::User.to_string(), offset)?;
 
@@ -189,7 +181,7 @@ pub fn list_all_permission_requests(
 /// Update permission request decision.
 /// This sends the decision to the waiting in-memory request.
 pub fn update_permission_request(
-    _ctx: &mut Context,
+    _ctx: &Context,
     id: &str,
     decision: crate::PermissionDecision,
     use_wildcard: bool,
@@ -211,7 +203,7 @@ pub fn list_pending_ask_user_question_requests(
 /// Updates the answers for an AskUserQuestion request.
 /// This sends the answers to the waiting in-memory request.
 pub fn set_ask_user_question_answers(
-    _ctx: &mut Context,
+    _ctx: &Context,
     id: &str,
     answers: std::collections::HashMap<String, String>,
 ) -> anyhow::Result<()> {
@@ -220,7 +212,7 @@ pub fn set_ask_user_question_answers(
 
 /// Alias for set_ask_user_question_answers for API compatibility.
 pub fn answer_ask_user_question(
-    ctx: &mut Context,
+    ctx: &Context,
     id: &str,
     answers: std::collections::HashMap<String, String>,
 ) -> anyhow::Result<()> {
@@ -230,7 +222,7 @@ pub fn answer_ask_user_question(
 /// Updates the answers for the pending AskUserQuestion request for a specific stack.
 /// Returns true if an update was made, false if no pending request was found for the stack.
 pub fn set_ask_user_question_answers_by_stack(
-    _ctx: &mut Context,
+    _ctx: &Context,
     stack_id: but_core::ref_metadata::StackId,
     answers: std::collections::HashMap<String, String>,
 ) -> anyhow::Result<bool> {

@@ -50,7 +50,7 @@ pub fn write_edit_mode_metadata(
 ) -> Result<()> {
     let serialized_edit_mode_metadata =
         toml::to_string(edit_mode_metadata).context("Failed to serialize edit mode metadata")?;
-    but_fs::write(
+    but_utils::write(
         edit_mode_metadata_path(ctx).as_path(),
         serialized_edit_mode_metadata,
     )

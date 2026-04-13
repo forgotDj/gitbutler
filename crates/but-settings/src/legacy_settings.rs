@@ -92,7 +92,7 @@ fn maybe_persist_overrides(config_path: &Path, legacy_overrides: serde_json::Val
     if let Some(diff_obj) = diff.as_object()
         && !diff_obj.is_empty()
     {
-        but_fs::write(
+        but_utils::write(
             config_path,
             serde_json_lenient::to_string_pretty(&customizations_with_overrides)?,
         )?;

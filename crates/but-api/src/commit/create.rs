@@ -50,7 +50,7 @@ pub(crate) fn commit_create_only_impl(
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitCreateResult> {
     let mut meta = ctx.meta()?;
-    let (repo, mut ws, _, _cache) = ctx.workspace_mut_and_db_and_cache_with_perm(perm)?;
+    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
 
     let but_workspace::commit::CommitCreateOutcome {

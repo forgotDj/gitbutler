@@ -11,7 +11,7 @@ const PROJECTS_FILE: &str = "projects.json";
 
 #[derive(Debug, Clone)]
 pub(crate) struct Storage {
-    inner: but_fs::Storage,
+    inner: but_utils::Storage,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -122,7 +122,7 @@ fn default_false() -> bool {
 impl Storage {
     pub fn from_path(path: impl Into<PathBuf>) -> Self {
         Storage {
-            inner: but_fs::Storage::new(path),
+            inner: but_utils::Storage::new(path),
         }
     }
 
