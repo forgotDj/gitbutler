@@ -388,9 +388,5 @@
 		&:not(:first-child) {
 			border-left: 1px solid var(--border-2);
 		}
-
-		&:not(:has(~ .reorderable-stack)) {
-			border-right: 1px solid var(--border-2);
-		}
 	}
 </style>

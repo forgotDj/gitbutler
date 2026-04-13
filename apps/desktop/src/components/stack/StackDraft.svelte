@@ -70,10 +70,6 @@
 {/if}
 
 <style lang="postcss">
-	.draft-stack {
-		border-right: 1px solid var(--border-2);
-	}
-
 	.draft-stack__scroll-wrap {
 		position: relative;
 		min-height: 100%;
