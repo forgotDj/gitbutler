@@ -5888,6 +5888,94 @@ fn unapplied_branch_on_base() -> anyhow::Result<()> {
 }
 
 #[test]
+fn shared_target_base_keeps_exact_target_segment_with_inactive_unapplied_branch()
+-> anyhow::Result<()> {
+    let (repo, mut meta) =
+        read_only_in_memory_scenario("ws/target-shared-with-unapplied-and-origin-head")?;
+    add_workspace(&mut meta);
+    add_stack_with_segments(&mut meta, 1, "survivor", StackState::InWorkspace, &[]);
+    add_stack_with_segments(&mut meta, 2, "unapplied", StackState::Inactive, &[]);
+
+    let target_ref: gix::refs::FullName = "refs/remotes/origin/main".try_into()?;
+    let target_head_ref: gix::refs::FullName = "refs/remotes/origin/HEAD".try_into()?;
+    let main_ref: gix::refs::FullName = "refs/heads/main".try_into()?;
+
+    assert!(
+        repo.try_find_reference(target_ref.as_ref())?.is_some(),
+        "fixture must contain {target_ref}",
+    );
+    assert!(
+        repo.try_find_reference(target_head_ref.as_ref())?.is_some(),
+        "fixture must contain {target_head_ref}",
+    );
+
+    let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+    insta::assert_snapshot!(graph_tree(&graph), @"
+
+    ├── 👉📕►►►:0[0]:gitbutler/workspace[🌳]
+    │   └── ·20f65b7 (⌂|🏘|01)
+    │       └── 📙►:3[1]:survivor
+    │           ├── ·4ca0966 (⌂|🏘|01)
+    │           └── ·a3b180e (⌂|🏘|01)
+    │               └── 📙►:2[2]:unapplied
+    │                   ├── ·ce09734 (⌂|🏘|✓|11) ►base-peer, ►base-peer-1, ►base-peer-2, ►base-peer-3, ►base-peer-4, ►base-peer-5, ►base-peer-6, ►base-peer-7, ►base-peer-8, ►main
+    │                   └── ·fafd9d0 (⌂|🏘|✓|11)
+    └── ►:1[0]:origin/main
+        └── →:2: (unapplied)
+    ");
+    let debug_graph = graph_tree(&graph);
+    let target_segment = graph
+        .named_segment_by_ref_name(target_ref.as_ref())
+        .unwrap_or_else(|| {
+            panic!(
+                "expected exact target segment for existing ref {target_ref}, graph was:\n{debug_graph}"
+            )
+        });
+
+    assert!(
+        target_segment.commits.is_empty(),
+        "expected exact target segment to stay empty when the target rests on main, graph was:\n{debug_graph}"
+    );
+    assert!(
+        graph.named_segment_by_ref_name(main_ref.as_ref()).is_none(),
+        "main should remain only as a commit ref in this fixture, as 'unapplied' takes precedence, graph was:\n{debug_graph}"
+    );
+
+    let ws = graph.into_workspace()?;
+    insta::assert_snapshot!(graph_workspace(&ws), @"
+    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main on ce09734
+    └── ≡📙:3:survivor on ce09734 {1}
+        └── 📙:3:survivor
+            ├── ·4ca0966 (🏘️)
+            └── ·a3b180e (🏘️)
+    ");
+
+    assert_eq!(
+        ws.target_ref.as_ref().map(|t| t.ref_name.as_ref()),
+        Some(target_ref.as_ref()),
+        "expected workspace target_ref to resolve from exact target segment"
+    );
+
+    // When it's applied, it will show up though.
+    add_stack_with_segments(&mut meta, 2, "unapplied", StackState::InWorkspace, &[]);
+    let ws = ws
+        .graph
+        .redo_traversal_with_overlay(&repo, &*meta, Overlay::default())?
+        .into_workspace()?;
+    insta::assert_snapshot!(graph_workspace(&ws), @"
+    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main on ce09734
+    ├── ≡📙:4:unapplied on ce09734 {2}
+    │   └── 📙:4:unapplied
+    └── ≡📙:3:survivor on ce09734 {1}
+        └── 📙:3:survivor
+            ├── ·4ca0966 (🏘️)
+            └── ·a3b180e (🏘️)
+    ");
+
+    Ok(())
+}
+
+#[test]
 fn unapplied_branch_on_base_no_target() -> anyhow::Result<()> {
     let (repo, mut meta) = read_only_in_memory_scenario("ws/unapplied-branch-on-base")?;
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
