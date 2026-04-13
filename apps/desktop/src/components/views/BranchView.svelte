@@ -7,7 +7,6 @@
 	import BranchReview from "$components/forge/BranchReview.svelte";
 	import Drawer from "$components/shared/Drawer.svelte";
 	import ReduxResult from "$components/shared/ReduxResult.svelte";
-	import Resizer from "$components/shared/Resizer.svelte";
 	import newBranchSmolSVG from "$lib/assets/empty-state/new-branch-smol.svg?raw";
 	import { commitCreatedAt, commitStateSubject } from "$lib/branches/v3";
 	import { findEarliestConflict } from "$lib/commits/utils";
@@ -18,7 +17,6 @@
 	import { UI_STATE } from "$lib/state/uiState.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { Icon, TestId, Tooltip, Button } from "@gitbutler/ui";
-	import type { ComponentProps } from "svelte";
 
 	interface Props {
 		stackId?: string;
@@ -28,7 +26,6 @@
 		active?: boolean;
 		grow?: boolean;
 		clientHeight?: number;
-		resizer?: Partial<ComponentProps<typeof Resizer>>;
 		rounded?: boolean;
 		ontoggle?: (collapsed: boolean) => void;
 		onerror?: (err: unknown) => void;
@@ -43,7 +40,6 @@
 		branchName,
 		grow,
 		clientHeight = $bindable(),
-		resizer,
 		rounded,
 		ontoggle,
 		onerror,
@@ -97,7 +93,6 @@
 			bind:clientHeight
 			persistId="branch-view-drawer-{projectId}-{stackId}-{branch.name}"
 			testId={TestId.BranchView}
-			{resizer}
 			{grow}
 			{onclose}
 			{ontoggle}

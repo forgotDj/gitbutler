@@ -2,6 +2,7 @@
 	import CreateBranchModal from "$components/branch/CreateBranchModal.svelte";
 	import FoldedStack from "$components/branch/FoldedStack.svelte";
 	import ErrorBoundary from "$components/shared/ErrorBoundary.svelte";
+	import SashLayer from "$components/shared/SashLayer.svelte";
 	import Scrollbar from "$components/shared/Scrollbar.svelte";
 	import StackDraft from "$components/stack/StackDraft.svelte";
 	import StackView from "$components/views/StackView.svelte";
@@ -214,117 +215,126 @@
 		lastWidth = data.frame.width;
 	}}
 >
-	<div class="lanes-scrollable">
-		<StackDraft {projectId} visible={isDraftStackVisible} />
+	<!--
+		One SashLayer for the entire lanes scroll context. The sash-container
+		lives inside scrollbar-container so it scrolls with lane content —
+		getBoundingClientRect differences are therefore scroll-invariant and
+		no scroll event tracking is needed. If a lane ever introduces its own
+		independent scroll context with resizers, add a nested SashLayer there.
+	-->
+	<SashLayer>
+		<div class="lanes-scrollable">
+			<StackDraft {projectId} visible={isDraftStackVisible} />
 
-		<!--
+			<!--
 	Ideally we wouldn't key on stack id, but the opacity change is done on the
 	element being dragged, and therefore stays in place without the key. We
 	should find a way of encapsulating the reordering logic better, perhaps
 	with some feedback that enables the opacity to become a prop for
 	`StackView` instead of being set imperatively in the dragstart handler.
 	 -->
-		{#each mutableStacks as stack, i (stack.id)}
-			<div
-				bind:this={stackElements[stack.id || "branchless"]}
-				class="reorderable-stack dotted-pattern"
-				role="presentation"
-				animate:flip={{ duration: draggingStack ? 200 : 0 }}
-				onmousedown={onReorderMouseDown}
-				ondragstart={(e) => {
-					if (!stack.id) return;
-					const isCollapsedLane = foldedStackIds.includes(stack.id);
-					onReorderStart(
-						e,
-						stack.id,
-						() => {
-							draggingStack = true;
-						},
-						isCollapsedLane,
-					);
-				}}
-				ondragover={(e) => {
-					if (!stack.id) return;
-					throttledDragOver(e, mutableStacks, stack.id);
-				}}
-				ondragend={() => {
-					draggingStack = false;
-					onReorderEnd();
+			{#each mutableStacks as stack, i (stack.id)}
+				<div
+					bind:this={stackElements[stack.id || "branchless"]}
+					class="reorderable-stack dotted-pattern"
+					role="presentation"
+					animate:flip={{ duration: draggingStack ? 200 : 0 }}
+					onmousedown={onReorderMouseDown}
+					ondragstart={(e) => {
+						if (!stack.id) return;
+						const isCollapsedLane = foldedStackIds.includes(stack.id);
+						onReorderStart(
+							e,
+							stack.id,
+							() => {
+								draggingStack = true;
+							},
+							isCollapsedLane,
+						);
+					}}
+					ondragover={(e) => {
+						if (!stack.id) return;
+						throttledDragOver(e, mutableStacks, stack.id);
+					}}
+					ondragend={() => {
+						draggingStack = false;
+						onReorderEnd();
+					}}
+				>
+					{#if stack.id && foldedStackIds.includes(stack.id)}
+						<FoldedStack
+							branchNames={stack.heads.map((head) => head.name)}
+							onUnfold={() => unfoldStack(stack.id)}
+						/>
+					{:else}
+						<ErrorBoundary title="Something went wrong in this stack">
+							<StackView
+								{projectId}
+								laneId={stack.id || "banana"}
+								stackId={stack.id ?? undefined}
+								onFoldStack={() => foldStack(stack.id)}
+								topBranchName={stack.heads.at(0)?.name}
+								bind:clientWidth={laneWidths[i]}
+								bind:clientHeight={lineHeights[i]}
+								onVisible={(visible) => {
+									if (visible) {
+										visibleIndexes = [...visibleIndexes, i];
+									} else {
+										visibleIndexes = visibleIndexes.filter((index) => index !== i);
+									}
+								}}
+							/>
+						</ErrorBoundary>
+					{/if}
+				</div>
+			{/each}
+
+			<NewStackDropzone
+				{projectId}
+				viewport={lanesScrollableEl}
+				onVisible={(visible) => {
+					isCreateNewVisible = visible;
 				}}
 			>
-				{#if stack.id && foldedStackIds.includes(stack.id)}
-					<FoldedStack
-						branchNames={stack.heads.map((head) => head.name)}
-						onUnfold={() => unfoldStack(stack.id)}
-					/>
-				{:else}
-					<ErrorBoundary title="Something went wrong in this stack">
-						<StackView
-							{projectId}
-							laneId={stack.id || "banana"}
-							stackId={stack.id ?? undefined}
-							onFoldStack={() => foldStack(stack.id)}
-							topBranchName={stack.heads.at(0)?.name}
-							bind:clientWidth={laneWidths[i]}
-							bind:clientHeight={lineHeights[i]}
-							onVisible={(visible) => {
-								if (visible) {
-									visibleIndexes = [...visibleIndexes, i];
-								} else {
-									visibleIndexes = visibleIndexes.filter((index) => index !== i);
-								}
-							}}
-						/>
-					</ErrorBoundary>
-				{/if}
-			</div>
-		{/each}
+				{#snippet title()}
+					{#if stacks.length === 0}
+						No branches in Workspace
+					{/if}
+				{/snippet}
+				{#snippet description()}
+					{#if stacks.length === 0}
+						Drop files to start a branch,
+						<br />
+						apply from the
+						<a
+							class="pointer-events underline-dotted clr-text-2 link-hover-2"
+							aria-label="Branches view"
+							href={branchesPath(projectId)}>branches view</a
+						>
+						↗
+						<br />
+						or
+						<button
+							type="button"
+							class="underline-dotted pointer-events clr-text-2 link-hover-2"
+							onclick={() => createBranchModal?.show()}>create a new branch</button
+						> +
+					{:else}
+						Drop files to start a branch,
+						<br />
+						or
+						<button
+							type="button"
+							class="underline-dotted pointer-events clr-text-2 link-hover-2"
+							onclick={() => createBranchModal?.show()}>create a new branch</button
+						> +
+					{/if}
+				{/snippet}
+			</NewStackDropzone>
 
-		<NewStackDropzone
-			{projectId}
-			viewport={lanesScrollableEl}
-			onVisible={(visible) => {
-				isCreateNewVisible = visible;
-			}}
-		>
-			{#snippet title()}
-				{#if stacks.length === 0}
-					No branches in Workspace
-				{/if}
-			{/snippet}
-			{#snippet description()}
-				{#if stacks.length === 0}
-					Drop files to start a branch,
-					<br />
-					apply from the
-					<a
-						class="pointer-events underline-dotted clr-text-2 link-hover-2"
-						aria-label="Branches view"
-						href={branchesPath(projectId)}>branches view</a
-					>
-					↗
-					<br />
-					or
-					<button
-						type="button"
-						class="underline-dotted pointer-events clr-text-2 link-hover-2"
-						onclick={() => createBranchModal?.show()}>create a new branch</button
-					> +
-				{:else}
-					Drop files to start a branch,
-					<br />
-					or
-					<button
-						type="button"
-						class="underline-dotted pointer-events clr-text-2 link-hover-2"
-						onclick={() => createBranchModal?.show()}>create a new branch</button
-					> +
-				{/if}
-			{/snippet}
-		</NewStackDropzone>
-
-		<div class="dotted-pattern"></div>
-	</div>
+			<div class="dotted-pattern"></div>
+		</div>
+	</SashLayer>
 
 	{#if lanesScrollableEl}
 		<Scrollbar viewport={lanesScrollableEl} horz />
@@ -338,7 +348,6 @@
 		display: flex;
 		flex: 1;
 		height: 100%;
-		margin-right: -1px; /* to hide vertical lane border gap */
 		overflow-x: auto;
 		overflow-y: hidden;
 	}
@@ -370,8 +379,14 @@
 		flex-direction: column;
 		width: fit-content;
 		height: 100%;
-		margin-left: -1px;
-		border-left: 1px solid var(--border-2);
 		background-color: var(--bg-2);
+
+		&:first-child {
+			box-shadow: -1px 0 0 0 var(--border-2);
+		}
+
+		&:not(:first-child) {
+			border-left: 1px solid var(--border-2);
+		}
 	}
 </style>

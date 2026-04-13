@@ -9,6 +9,7 @@
 	import FullviewLoading from "$components/shared/FullviewLoading.svelte";
 	import InfiniteScrollTrigger from "$components/shared/InfiniteScrollTrigger.svelte";
 	import Resizer from "$components/shared/Resizer.svelte";
+	import SashLayer from "$components/shared/SashLayer.svelte";
 	import emptyFolderSvg from "$lib/assets/empty-state/empty-folder.svg?raw";
 	import { HISTORY_SERVICE, createdOnDay } from "$lib/history/history";
 	import { FILE_SELECTION_MANAGER } from "$lib/selection/fileSelectionManager.svelte";
@@ -165,45 +166,47 @@
 	{/if}
 {/snippet}
 
-<div class="history-view" use:focusable>
-	<div class="relative overflow-hidden radius-ml">
-		<div bind:this={sidebarEl} class="history-view__snapshots" use:focusable={{ vertical: true }}>
-			<div class="history-view__snapshots-header">
-				<h3 class="history-view__snapshots-header-title text-15 text-bold">Operations history</h3>
-				<Button
-					size="tag"
-					kind="outline"
-					icon="camera"
-					tooltip="Create a manual snapshot of your current state"
-					onclick={() => createSnapshotModal?.show()}
-				>
-					Create snapshot
-				</Button>
+<SashLayer>
+	<div class="history-view" use:focusable>
+		<div class="relative overflow-hidden radius-ml">
+			<div bind:this={sidebarEl} class="history-view__snapshots" use:focusable={{ vertical: true }}>
+				<div class="history-view__snapshots-header">
+					<h3 class="history-view__snapshots-header-title text-15 text-bold">Operations history</h3>
+					<Button
+						size="tag"
+						kind="outline"
+						icon="camera"
+						tooltip="Create a manual snapshot of your current state"
+						onclick={() => createSnapshotModal?.show()}
+					>
+						Create snapshot
+					</Button>
+				</div>
+				{@render historyEntries()}
 			</div>
-			{@render historyEntries()}
+
+			<Resizer
+				viewport={sidebarEl}
+				direction="right"
+				minWidth={14}
+				persistId="resizer-historyWidth"
+				defaultValue={30}
+			/>
 		</div>
 
-		<Resizer
-			viewport={sidebarEl}
-			direction="right"
-			minWidth={14}
-			persistId="resizer-historyWidth"
-			defaultValue={30}
-		/>
+		<div class="history-view__preview dotted-pattern" use:focusable>
+			{#if selectedFile}
+				<div class="history-view__preview-file">
+					<AppScrollableContainer bind:viewport={scrollContainer}>
+						<SelectionView {projectId} {scrollContainer} selectionId={currentSelectionId} />
+					</AppScrollableContainer>
+				</div>
+			{:else}
+				<FilePreviewPlaceholder />
+			{/if}
+		</div>
 	</div>
-
-	<div class="history-view__preview dotted-pattern" use:focusable>
-		{#if selectedFile}
-			<div class="history-view__preview-file">
-				<AppScrollableContainer bind:viewport={scrollContainer}>
-					<SelectionView {projectId} {scrollContainer} selectionId={currentSelectionId} />
-				</AppScrollableContainer>
-			</div>
-		{:else}
-			<FilePreviewPlaceholder />
-		{/if}
-	</div>
-</div>
+</SashLayer>
 
 <CreateSnapshotModal {projectId} bind:this={createSnapshotModal} />
 

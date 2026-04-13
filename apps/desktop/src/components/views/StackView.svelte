@@ -223,7 +223,6 @@
 							viewport={stackViewEl}
 							zIndex="var(--z-lifted)"
 							direction="right"
-							showBorder={!isDetailsOpen}
 							minWidth={PANEL1_RESIZER.minWidth}
 							maxWidth={PANEL1_RESIZER.maxWidth}
 							defaultValue={$persistedStackWidth ?? PANEL1_RESIZER.defaultValue}

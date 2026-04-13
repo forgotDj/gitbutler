@@ -103,6 +103,7 @@
 	// TIMER FUNCTIONS //
 	/////////////////////
 	let timer = 0;
+	let hoverShowTimer = 0;
 
 	function setupTimer() {
 		if (shouldShowOnHover || shouldAlwaysShow) return;
@@ -117,6 +118,13 @@
 		if (timer) {
 			window.clearTimeout(timer);
 			timer = 0;
+		}
+	}
+
+	function clearHoverShowTimer() {
+		if (hoverShowTimer) {
+			window.clearTimeout(hoverShowTimer);
+			hoverShowTimer = 0;
 		}
 	}
 
@@ -195,13 +203,43 @@
 	}
 
 	function onTrackEnter() {
-		if (shouldShowOnHover || shouldAlwaysShow) return;
+		if (shouldShowOnHover) {
+			clearTimer();
+			clearHoverShowTimer();
+			visible = true;
+			return;
+		}
+
+		if (shouldAlwaysShow) {
+			clearTimer();
+			clearHoverShowTimer();
+			return;
+		}
+		if (!isScrollable) return;
 		clearTimer();
+		clearHoverShowTimer();
+
+		hoverShowTimer = window.setTimeout(() => {
+			visible = true;
+			hoverShowTimer = 0;
+		}, 200);
 	}
 
 	function onTrackLeave() {
-		if (shouldShowOnHover || shouldAlwaysShow) return;
+		if (shouldShowOnHover) {
+			clearTimer();
+			clearHoverShowTimer();
+			visible = false;
+			return;
+		}
 
+		if (shouldAlwaysShow) {
+			clearTimer();
+			clearHoverShowTimer();
+			return;
+		}
+
+		clearHoverShowTimer();
 		clearTimer();
 		setupTimer();
 	}
@@ -209,11 +247,12 @@
 	function setupTrack(track: Element) {
 		if (!track) return;
 
-		track.addEventListener("mousedown", onThumbClick);
+		track.addEventListener("mousedown", onTrackClick);
 		track.addEventListener("mouseenter", onTrackEnter);
 		track.addEventListener("mouseleave", onTrackLeave);
 
 		return () => {
+			clearHoverShowTimer();
 			track.removeEventListener("mousedown", onTrackClick);
 			track.removeEventListener("mouseenter", onTrackEnter);
 			track.removeEventListener("mouseleave", onTrackLeave);
@@ -237,6 +276,7 @@
 
 		onscroll?.(e);
 
+		clearHoverShowTimer();
 		clearTimer();
 		setupTimer();
 
@@ -272,6 +312,7 @@
 	function onTrackClick(event: Event | MouseEvent) {
 		event.stopPropagation();
 		event.preventDefault();
+		isDragging = true;
 
 		if (event instanceof MouseEvent) {
 			const clickOffsetY = (event.offsetY / trackHeight) * wholeHeight;
@@ -279,11 +320,11 @@
 			const halfThumbY = (thumbHeight / trackHeight) * (wholeHeight / 2);
 			const halfThumbX = (thumbWidth / trackWidth) * (wholeWidth / 2);
 			if (vert) viewport.scrollTo({ top: clickOffsetY - halfThumbY });
-			if (!vert) viewport.scrollTo({ top: clickOffsetX - halfThumbX });
+			if (!vert) viewport.scrollTo({ left: clickOffsetX - halfThumbX });
 			startY = event.clientY;
 			startTop = viewport.scrollTop;
-			startX = event.clientY;
-			startLeft = viewport.scrollTop;
+			startX = event.clientX;
+			startLeft = viewport.scrollLeft;
 		}
 
 		document.addEventListener("mousemove", onMouseMove);

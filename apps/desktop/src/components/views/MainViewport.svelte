@@ -25,6 +25,7 @@ the window, then enlarge it and retain the original widths of the layout.
 -->
 <script lang="ts">
 	import Resizer from "$components/shared/Resizer.svelte";
+	import SashLayer from "$components/shared/SashLayer.svelte";
 	import { SETTINGS } from "$lib/settings/userSettings";
 	import { UI_STATE } from "$lib/state/uiState.svelte";
 	import { inject } from "@gitbutler/core/context";
@@ -128,97 +129,99 @@ the window, then enlarge it and retain the original widths of the layout.
 	);
 </script>
 
-<div
-	class="main-viewport"
-	bind:clientWidth={containerBindWidth}
-	data-testid={testId}
-	class:left-sideview-open={!!preview}
->
-	{#if !unassignedSidebarFolded.current}
-		<div
-			class="left-section view-wrapper"
-			bind:this={leftDiv}
-			style:width={finalLeftWidth + "rem"}
-			style:min-width={leftMinWidth + "rem"}
-		>
-			<div class="left-section__content">
-				{@render left()}
-			</div>
-			<Resizer
-				viewport={leftDiv}
-				direction="right"
-				minWidth={leftMinWidth}
-				defaultValue={leftDefaultWidth}
-				maxWidth={leftMaxWidth}
-				persistId="viewport-${name}-left-section"
-				onWidth={(width) => {
-					leftPreferredWidth = width;
-				}}
-			/>
-		</div>
-
-		{#if preview}
+<SashLayer>
+	<div
+		class="main-viewport"
+		bind:clientWidth={containerBindWidth}
+		data-testid={testId}
+		class:left-sideview-open={!!preview}
+	>
+		{#if !unassignedSidebarFolded.current}
 			<div
-				class="left-sideview view-wrapper"
-				bind:this={previewDiv}
-				style:width={finalPreviewWidth + "rem"}
-				style:min-width={previewMinWidth + "rem"}
-				use:focusable={{ vertical: true }}
+				class="left-section view-wrapper"
+				bind:this={leftDiv}
+				style:width={finalLeftWidth + "rem"}
+				style:min-width={leftMinWidth + "rem"}
 			>
-				<div class="left-sideview-content dotted-pattern">
-					{@render preview()}
+				<div class="left-section__content">
+					{@render left()}
 				</div>
 				<Resizer
-					viewport={previewDiv}
+					viewport={leftDiv}
 					direction="right"
-					minWidth={previewMinWidth}
-					maxWidth={previewMaxWidth}
-					persistId="viewport-${name}-left-sideview"
-					defaultValue={pxToRem(previewWidth?.default, zoom)}
+					minWidth={leftMinWidth}
+					defaultValue={leftDefaultWidth}
+					maxWidth={leftMaxWidth}
+					persistId="viewport-${name}-left-section"
 					onWidth={(width) => {
-						previewPreferredWidth = width;
+						leftPreferredWidth = width;
 					}}
 				/>
 			</div>
-		{/if}
-	{:else}
-		<div class="left-section__folded">
-			{@render left()}
-		</div>
-	{/if}
 
-	<div
-		class="main-section"
-		style:min-width={middleMinWidth + "rem"}
-		style:margin-right={right ? "0" : ""}
-	>
-		{@render middle()}
-	</div>
-
-	{#if right}
-		<div
-			class="right-sideview"
-			bind:this={rightDiv}
-			style:width={finalRightWidth + "rem"}
-			use:focusable
-		>
-			<Resizer
-				viewport={rightDiv}
-				direction="left"
-				minWidth={rightMinWidth}
-				defaultValue={pxToRem(rightWidth.default, zoom)}
-				maxWidth={rightMaxWidth}
-				persistId="viewport-${name}-right-sideview"
-				onWidth={(width) => {
-					rightPreferredWidth = width;
-				}}
-			/>
-			<div class="right-sideview-content">
-				{@render right()}
+			{#if preview}
+				<div
+					class="left-sideview view-wrapper"
+					bind:this={previewDiv}
+					style:width={finalPreviewWidth + "rem"}
+					style:min-width={previewMinWidth + "rem"}
+					use:focusable={{ vertical: true }}
+				>
+					<div class="left-sideview-content dotted-pattern">
+						{@render preview()}
+					</div>
+					<Resizer
+						viewport={previewDiv}
+						direction="right"
+						minWidth={previewMinWidth}
+						maxWidth={previewMaxWidth}
+						persistId="viewport-${name}-left-sideview"
+						defaultValue={pxToRem(previewWidth?.default, zoom)}
+						onWidth={(width) => {
+							previewPreferredWidth = width;
+						}}
+					/>
+				</div>
+			{/if}
+		{:else}
+			<div class="left-section__folded">
+				{@render left()}
 			</div>
+		{/if}
+
+		<div
+			class="main-section"
+			style:min-width={middleMinWidth + "rem"}
+			style:margin-right={right ? "0" : ""}
+		>
+			{@render middle()}
 		</div>
-	{/if}
-</div>
+
+		{#if right}
+			<div
+				class="right-sideview"
+				bind:this={rightDiv}
+				style:width={finalRightWidth + "rem"}
+				use:focusable
+			>
+				<Resizer
+					viewport={rightDiv}
+					direction="left"
+					minWidth={rightMinWidth}
+					defaultValue={pxToRem(rightWidth.default, zoom)}
+					maxWidth={rightMaxWidth}
+					persistId="viewport-${name}-right-sideview"
+					onWidth={(width) => {
+						rightPreferredWidth = width;
+					}}
+				/>
+				<div class="right-sideview-content">
+					{@render right()}
+				</div>
+			</div>
+		{/if}
+	</div>
+</SashLayer>
 
 <style lang="postcss">
 	.main-viewport {
