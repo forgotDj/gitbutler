@@ -151,7 +151,7 @@
 		max-width: 400px;
 		height: 100%;
 		overflow: hidden;
-		border-left: 1px solid var(--border-2);
+		/* border-left: 1px solid var(--border-2); */
 		background-color: var(--bg-2);
 		box-shadow: 1px 0 0 0 var(--border-2);
 	}
