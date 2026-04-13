@@ -270,6 +270,7 @@
 										{projectId}
 										branchName={pr.sourceBranch}
 										prUpdatedAt={pr.updatedAt}
+										mergeableState={pr.mergeableState}
 										isFork={pr.fork}
 										isMerged={pr.merged}
 									/>
