@@ -217,7 +217,7 @@ gix = { version = "0.81.0", git = "https://github.com/GitoxideLabs/gitoxide", re
 ] }
 gix-testtools = { version = "0.19.0", git = "https://github.com/GitoxideLabs/gitoxide", rev = "8f091d108cd75371be2ed9de6e81f785cda53d92" }
 
-ts-rs = { version = "11.1.0", features = ["serde-compat", "no-serde-warnings"] }
+
 insta = { version = "1.45.1", features = ["json"] }
 git2 = { version = "0.20.4", features = [
     "vendored-openssl",

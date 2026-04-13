@@ -1,7 +1,6 @@
 import { filterDependenciesByAssignments } from "$lib/hunks/dependencies";
 import { describe, expect, test } from "vitest";
-import type { HunkDependencies } from "$lib/hunks/dependencies";
-import type { HunkAssignment } from "$lib/hunks/hunk";
+import type { HunkAssignment, HunkDependencies } from "@gitbutler/but-sdk";
 
 function makeDeps(
 	entries: Array<{ path: string; newStart: number; newLines: number }>,
@@ -138,7 +137,14 @@ describe("filterDependenciesByAssignments", () => {
 		test("errors field is passed through unchanged", () => {
 			const deps: HunkDependencies = {
 				diffs: [],
-				errors: [{ errorMessage: "oops", stackId: "s", commitId: "c", path: "a.ts" }],
+				errors: [
+					{
+						errorMessage: "oops",
+						target: { type: "stack", subject: "s" },
+						commitId: "c",
+						path: "a.ts",
+					},
+				],
 			};
 			const result = filterDependenciesByAssignments(deps, [], undefined);
 			expect(result.errors).toEqual(deps.errors);
