@@ -149,7 +149,7 @@ pub fn handle(ctx: &mut Context, out: &mut OutputChannel, id: &str) -> Result<()
     let dropped = but_workspace::discard_workspace_changes(
         &repo,
         diff_specs.clone(),
-        3, // context_lines - default value used by GUI
+        ctx.settings.context_lines,
     )?;
 
     // Report results

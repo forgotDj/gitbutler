@@ -138,7 +138,7 @@ pub(crate) fn get_commit_message_from_editor(
             commit_details
                 .diff_with_first_parent
                 .iter()
-                .map(|change| change.unified_diff(&*ctx.repo.get()?, 3))
+                .map(|change| change.unified_diff(&*ctx.repo.get()?, ctx.settings.context_lines))
                 .filter_map(|diff| diff.transpose())
                 .collect::<Result<Vec<_>>>()
         })
