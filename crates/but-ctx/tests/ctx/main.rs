@@ -65,10 +65,22 @@ fn project_data_dir_comes_from_git_config() -> anyhow::Result<()> {
     let ctx = Context::from_repo(repo)?;
     assert_eq!(ctx.project_data_dir(), ctx.gitdir.join("gitbutler-custom"));
 
-    let _db = ctx.db.get_cache()?;
+    let db = ctx.db.get_cache()?;
     assert!(
         ctx.project_data_dir().join("but.sqlite").exists(),
         "database should be created in configured project-data directory"
+    );
+
+    let project_cache_path = ctx.project_data_dir().join("but_cache.sqlite");
+    assert!(
+        !project_cache_path.exists(),
+        "cache database isn't present initially"
+    );
+
+    let _cache = db.cache.get()?;
+    assert!(
+        project_cache_path.exists(),
+        "cache database should be created after first access alongside the main database in configured project-data directory"
     );
     Ok(())
 }

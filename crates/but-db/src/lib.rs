@@ -206,7 +206,8 @@ pub struct DbHandle {
     conn: rusqlite::Connection,
     /// The path at which the connection was opened, mainly for debugging.
     path: PathBuf,
-    /// A lazily opened project-local cache, in-memory of this instance is, or in the same directory as this instance.
+    /// A lazily opened project-local cache. It is in-memory of the parent instance is in-memory,
+    /// or in the same directory as the parent instance.
     pub cache: OnDemand<CacheHandle>,
 }
 

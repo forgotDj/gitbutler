@@ -22,7 +22,8 @@ fn twice() {
             AppSettings::default(),
             but_ctx::RepoOpenMode::Isolated,
         )
-        .expect("can create context");
+        .expect("can create context")
+        .with_memory_app_cache();
 
         let mut guard = ctx.exclusive_worktree_access();
         gitbutler_branch_actions::set_base_branch(
@@ -46,7 +47,8 @@ fn twice() {
             AppSettings::default(),
             but_ctx::RepoOpenMode::Isolated,
         )
-        .expect("can create context");
+        .expect("can create context")
+        .with_memory_app_cache();
         let mut guard = ctx.exclusive_worktree_access();
         gitbutler_branch_actions::set_base_branch(
             &ctx,

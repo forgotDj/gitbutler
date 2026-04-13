@@ -222,7 +222,8 @@ impl Test {
             settings,
             RepoOpenMode::Isolated,
         )
-        .expect("can create context");
+        .expect("can create context")
+        .with_memory_app_cache();
         Self {
             repo: test_project,
             project_id: project.id,

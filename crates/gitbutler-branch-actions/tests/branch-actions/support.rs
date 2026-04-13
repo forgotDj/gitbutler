@@ -32,7 +32,8 @@ pub fn hook_case() -> Result<HookCase> {
         &project,
         AppSettings::default(),
         RepoOpenMode::Isolated,
-    )?;
+    )?
+    .with_memory_app_cache();
     Ok(HookCase {
         ctx,
         _app_data_dir: app_data_dir,

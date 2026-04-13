@@ -119,7 +119,9 @@ pub struct Context {
     pub git2_repo: OnDemand<git2::Repository>,
     /// An open handle to the database. It's initialized lazily upon first access.
     /// It is also what makes this type non-Clone, which is fair.
-    /// It sports interior mutability, which works as it's `Sync` naturally.
+    /// Note that the underlying ref-cell will still yield an error if the `db` is mutably borrowed more than once,
+    /// which now is a real risk as the Rust borrow-check doesn't apply anymore to the parent context
+    /// (which now may be read-only).
     pub db: OnDemandCache<but_db::DbHandle>,
     /// An open handle to the cache, initialized lazily on first access and only fallible if it's already borrowed.
     pub app_cache: OnDemandCache<but_db::AppCacheHandle>,
@@ -520,7 +522,7 @@ impl Context {
     ///
     /// This is useful for read-only contexts so cache access doesn't create SQLite files on disk.
     /// Prefer calling it before the first cache access.
-    pub fn with_memory_cache(mut self) -> Self {
+    pub fn with_memory_app_cache(mut self) -> Self {
         self.cache_mode = CacheMode::Memory;
         self.app_cache = new_ondemand_app_cache(self.app_cache_dir.clone(), self.cache_mode);
         self

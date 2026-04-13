@@ -22,7 +22,8 @@ fn ctx() -> TestCtx {
             AppSettings::default(),
             RepoOpenMode::Isolated,
         )
-        .expect("can create context"),
+        .expect("can create context")
+        .with_memory_app_cache(),
         _tmp: tmp,
     }
 }

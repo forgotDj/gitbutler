@@ -17,6 +17,7 @@ fn context_for_repo(workdir: &Path) -> Context {
         RepoOpenMode::Isolated,
     )
     .expect("can create context")
+    .with_memory_app_cache()
 }
 
 #[test]
