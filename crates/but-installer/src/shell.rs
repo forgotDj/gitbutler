@@ -1,7 +1,6 @@
 //! Shell and PATH configuration
 
 use std::{
-    env,
     fs::{self, OpenOptions},
     io::Write as IoWrite,
     path::{Path, PathBuf},
@@ -107,6 +106,16 @@ impl ShellConfig {
         missing_shell_config_lines
     }
 
+    /// Create an empty [`ShellConfig`] for `shell` with a bogus `config_path`.
+    fn empty_config(shell: ShellType) -> Self {
+        ShellConfig {
+            shell,
+            config_path: PathBuf::from("/dev/null"),
+            has_completions: false,
+            has_path: false,
+        }
+    }
+
     fn detect_posix_shell_config(home_dir: &Path, shell: ShellType) -> Option<ShellConfig> {
         let config_path = shell.config_path(home_dir)?;
         let contents = fs::read_to_string(&config_path).unwrap_or_default();
@@ -163,37 +172,13 @@ impl ShellConfig {
     }
 }
 
+/// Interactively add shell configurations for the user.
+///
+/// This is designed to run interactively and errors if [`ui::is_connected_to_terminal`] returns `false`.
 pub(crate) fn configure_shell(home_dir: &Path) -> Result<()> {
-    let bin_dir = home_dir.join(".local/bin");
-
-    // Canonicalize bin_dir for comparison (resolves symlinks, removes .., etc.)
-    let bin_dir_canonical = fs::canonicalize(&bin_dir).unwrap_or_else(|_| bin_dir.clone());
-
-    // Check if already in PATH with normalized comparison
-    let current_path = env::var("PATH").unwrap_or_default();
-    let already_in_path = current_path.split(':').any(|p| {
-        if p.is_empty() {
-            return false;
-        }
-
-        // Expand tilde and $HOME in PATH entries
-        let expanded = if p.starts_with("~/") {
-            home_dir.join(p.trim_start_matches("~/"))
-        } else if p.starts_with("$HOME/") {
-            home_dir.join(p.trim_start_matches("$HOME/"))
-        } else {
-            PathBuf::from(p)
-        };
-
-        // Normalize by removing trailing slashes and canonicalizing
-        let normalized = fs::canonicalize(&expanded).unwrap_or_else(|_| {
-            // If path doesn't exist yet, at least normalize the string
-            let path_str = expanded.to_string_lossy();
-            PathBuf::from(path_str.trim_end_matches('/'))
-        });
-
-        normalized == bin_dir_canonical
-    });
+    if !ui::is_connected_to_terminal() {
+        anyhow::bail!("Shell configuration cannot be performed without a connected terminal");
+    }
 
     let detected_shell_configs: Vec<ShellConfig> =
         [ShellType::Bash, ShellType::Zsh, ShellType::Fish]
@@ -208,7 +193,6 @@ pub(crate) fn configure_shell(home_dir: &Path) -> Result<()> {
         .filter(|cfg| !cfg.is_fully_configured())
         .collect();
 
-    let mut is_any_shell_configured = num_detected_shells > unconfigured_shells.len();
     for cfg in &unconfigured_shells {
         ui::println_empty();
         info(&format!(
@@ -224,17 +208,22 @@ pub(crate) fn configure_shell(home_dir: &Path) -> Result<()> {
         if !cfg.has_completions {
             missing.push("shell completions");
         }
-        ui::info(&format!("Config file lacks: {}", missing.join(", ")));
+        info(&format!("Config file lacks: {}", missing.join(", ")));
 
-        if ui::prompt_for_confirmation("Automatically add missing config?")? {
-            is_any_shell_configured = true;
-            cfg.setup_config()?;
+        if ui::prompt_for_confirmation("Automatically add missing config?") {
+            if let Err(err) = cfg.setup_config() {
+                warn(&format!("{err}"));
+                warn(&format!(
+                    "Failed to add shell configuration for {}, skipping...",
+                    cfg.shell.name()
+                ));
+            }
         } else {
-            ui::info(&format!(
+            info(&format!(
                 "Skipping auto-configuration for {}",
                 cfg.shell.name()
             ));
-            ui::info(&format!(
+            info(&format!(
                 "For manual setup, add the following to '{}'",
                 cfg.config_path.display(),
             ));
@@ -245,8 +234,8 @@ pub(crate) fn configure_shell(home_dir: &Path) -> Result<()> {
         }
     }
 
-    if !is_any_shell_configured {
-        print_fallback_setup_instructions(&bin_dir, already_in_path);
+    if num_detected_shells == 0 {
+        print_fallback_setup_instructions();
     }
 
     Ok(())
@@ -329,17 +318,19 @@ fn setup_shell_config(cfg: &ShellConfig) -> Result<()> {
 }
 
 /// Instructions to print if we cannot detect any supported shells
-fn print_fallback_setup_instructions(bin_dir: &Path, already_in_path: bool) {
+fn print_fallback_setup_instructions() {
     ui::println_empty();
-    if already_in_path {
-        // PATH is already set up, only need completions
-        info("To set up shell completions, add this to your shell config file:");
-        ui::println("  eval \"$(but completions <shell>)\"  # Replace <shell> with bash or zsh");
-    } else {
-        // Need both PATH and completions
-        info("Please add the following lines to your shell config file:");
-        ui::println(&format!("  export PATH=\"{}:$PATH\"", bin_dir.display()));
-        ui::println("  eval \"$(but completions <shell>)\"  # Replace <shell> with bash or zsh");
+    warn("Could not detect your shell configuration file");
+
+    for shell in [ShellType::Bash, ShellType::Zsh, ShellType::Fish] {
+        ui::println_empty();
+        info(&format!(
+            "For {}, add the following to your config:",
+            shell.name()
+        ));
+        for line in ShellConfig::empty_config(shell).generate_missing_shell_config_lines() {
+            ui::println(&format!("  {line}"));
+        }
     }
 }
 
@@ -456,10 +447,7 @@ mod tests {
 
         for (i, export_statement) in variations.iter().enumerate() {
             let config_path = Path::new(".zshrc");
-            let temp_dir = tmpdir_with_config_at(
-                config_path,
-                Some("export PATH=/usr/bin:/home/someuser/.local/bin:/some/other/path"),
-            );
+            let temp_dir = tmpdir_with_config_at(config_path, Some(export_statement));
             let home_dir = temp_dir.path();
 
             let cfg = ShellType::Zsh
