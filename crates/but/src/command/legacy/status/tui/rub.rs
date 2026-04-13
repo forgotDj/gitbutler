@@ -98,20 +98,34 @@ pub(super) fn perform_operation(
 ) -> anyhow::Result<Option<SelectAfterReload>> {
     let selection = match operation {
         RubOperation::UnassignUncommitted(operation) => {
+            let path = operation.hunk_assignments.first().path_bytes.clone();
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Unassigned
+            SelectAfterReload::UncommittedFile {
+                path,
+                stack_id: None,
+            }
         }
         RubOperation::UncommittedToCommit(operation) => {
-            let result = operation.execute_inner(ctx)?;
-            SelectAfterReload::Commit(result.new_commit.context("api returned no new commit")?)
+            let assignment = operation.hunk_assignments.first();
+            let path = assignment.path_bytes.clone();
+            let stack_id = assignment.stack_id;
+            operation.execute_inner(ctx)?;
+            SelectAfterReload::UncommittedFile { path, stack_id }
         }
         RubOperation::UncommittedToBranch(operation) => {
+            let assignment = operation.hunk_assignments.first();
+            let path = assignment.path_bytes.clone();
+            let stack_id = assignment.stack_id;
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Branch(operation.name.to_string())
+            SelectAfterReload::UncommittedFile { path, stack_id }
         }
         RubOperation::UncommittedToStack(operation) => {
+            let path = operation.hunk_assignments.first().path_bytes.clone();
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Unassigned
+            SelectAfterReload::UncommittedFile {
+                path,
+                stack_id: Some(operation.stack_id),
+            }
         }
         RubOperation::StackToUnassigned(operation) => {
             operation.execute_inner(ctx)?;
@@ -119,7 +133,7 @@ pub(super) fn perform_operation(
         }
         RubOperation::StackToStack(operation) => {
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Unassigned
+            SelectAfterReload::Stack(operation.to)
         }
         RubOperation::StackToBranch(operation) => {
             operation.execute_inner(ctx)?;
@@ -135,7 +149,7 @@ pub(super) fn perform_operation(
         }
         RubOperation::UnassignedToStack(operation) => {
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Unassigned
+            SelectAfterReload::Stack(operation.to)
         }
         RubOperation::UndoCommit(operation) => {
             operation.execute_inner(ctx)?;
@@ -155,7 +169,7 @@ pub(super) fn perform_operation(
         }
         RubOperation::BranchToStack(operation) => {
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Unassigned
+            SelectAfterReload::Stack(operation.to)
         }
         RubOperation::BranchToCommit(operation) => {
             let result = operation.execute_inner(ctx)?;

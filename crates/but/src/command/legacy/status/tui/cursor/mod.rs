@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use bstr::BStr;
 use gitbutler_stack::StackId;
 
 use crate::{
@@ -181,6 +182,23 @@ impl Cursor {
                 && stack_id == *id
             {
                 true
+            } else {
+                false
+            }
+        })?;
+        Some(Self(idx))
+    }
+
+    /// Select the first uncommitted file line that points to the given path in the given stack.
+    pub(super) fn select_uncommitted_file(
+        path: &BStr,
+        stack_id: Option<StackId>,
+        lines: &[StatusOutputLine],
+    ) -> Option<Self> {
+        let idx = lines.iter().position(|line| {
+            if let Some(CliId::Uncommitted(uncommitted)) = line.data.cli_id().map(|id| &**id) {
+                let assignment = uncommitted.hunk_assignments.first();
+                &**assignment.path_bytes == path && assignment.stack_id == stack_id
             } else {
                 false
             }

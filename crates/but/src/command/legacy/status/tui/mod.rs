@@ -10,7 +10,7 @@ use std::{
 };
 
 use anyhow::Context as _;
-use bstr::ByteSlice;
+use bstr::{BString, ByteSlice};
 use but_core::tree::create_tree::RejectionReason;
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::InsertSide;
@@ -30,24 +30,27 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::{
     CliId,
-    command::legacy::status::{
-        CommitLineContent, FileLineContent, StatusFlags, StatusOutputLine, TuiLaunchOptions,
-        output::BranchLineContent,
-        tui::{
-            confirm::{Confirm, ConfirmMessage},
-            cursor::{Cursor, is_selectable_in_mode},
-            details::{Details, DetailsMessage, DetailsVisibility, RenderNextChunkResult},
-            event_polling::{CrosstermEventPolling, EventPolling, NoopEventPolling},
-            fps::FpsCounter,
-            graph_extension::{ExtensionDirection, extend_connector_spans},
-            highlight::{Highlights, with_highlight},
-            key_bind::{KeyBinds, confirm_key_binds, default_key_binds},
-            message_on_drop::MessageOnDrop,
-            mode::{
-                CommandMode, CommitMode, CommitSource, InlineRewordMode, Mode, MoveMode,
-                MoveSource, RubMode, RubSource,
+    command::legacy::{
+        rub::RubOperationDiscriminants,
+        status::{
+            CommitLineContent, FileLineContent, StatusFlags, StatusOutputLine, TuiLaunchOptions,
+            output::BranchLineContent,
+            tui::{
+                confirm::{Confirm, ConfirmMessage},
+                cursor::{Cursor, is_selectable_in_mode},
+                details::{Details, DetailsMessage, DetailsVisibility, RenderNextChunkResult},
+                event_polling::{CrosstermEventPolling, EventPolling, NoopEventPolling},
+                fps::FpsCounter,
+                graph_extension::{ExtensionDirection, extend_connector_spans},
+                highlight::{Highlights, with_highlight},
+                key_bind::{KeyBinds, confirm_key_binds, default_key_binds},
+                message_on_drop::MessageOnDrop,
+                mode::{
+                    CommandMode, CommitMode, CommitSource, InlineRewordMode, Mode, MoveMode,
+                    MoveSource, RubMode, RubSource,
+                },
+                toast::{ToastKind, Toasts},
             },
-            toast::{ToastKind, Toasts},
         },
     },
     id::UNASSIGNED,
@@ -889,6 +892,15 @@ impl App {
                         RubSource::CliId(source) => {
                             if let Some(operation) = rub::route_operation(source, target) {
                                 if let Some(what_to_select) = operations::rub(ctx, &operation)? {
+                                    if self.options.debug {
+                                        messages.push(Message::ShowToast {
+                                            kind: ToastKind::Debug,
+                                            text: format!(
+                                                "Performed `{:?}`",
+                                                RubOperationDiscriminants::from(operation)
+                                            ),
+                                        });
+                                    }
                                     Some(Message::Reload(Some(what_to_select)))
                                 } else {
                                     messages.push(Message::ShowError(Arc::new(
@@ -952,6 +964,9 @@ impl App {
                 }
                 SelectAfterReload::Branch(branch) => Cursor::select_branch(branch, &new_lines),
                 SelectAfterReload::Unassigned => Cursor::select_unassigned(&new_lines),
+                SelectAfterReload::UncommittedFile { path, stack_id } => {
+                    Cursor::select_uncommitted_file(path.as_ref(), stack_id, &new_lines)
+                }
                 SelectAfterReload::FirstFileInCommit(commit_id) => {
                     Cursor::select_first_file_in_commit(commit_id, &new_lines)
                 }
@@ -2821,6 +2836,10 @@ enum FilesMessage {
 enum SelectAfterReload {
     Commit(gix::ObjectId),
     FirstFileInCommit(gix::ObjectId),
+    UncommittedFile {
+        path: BString,
+        stack_id: Option<StackId>,
+    },
     Branch(String),
     Stack(StackId),
     CliId(Arc<CliId>),
