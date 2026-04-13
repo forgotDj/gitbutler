@@ -55,7 +55,6 @@ pub struct StatusFlags {
     pub refresh_prs: bool,
     pub show_upstream: bool,
     pub hint: bool,
-    pub always_show_stack_assignments: bool,
 }
 
 impl StatusFlags {
@@ -66,7 +65,6 @@ impl StatusFlags {
             refresh_prs: false,
             show_upstream: false,
             hint: false,
-            always_show_stack_assignments: false,
         }
     }
 
@@ -77,7 +75,6 @@ impl StatusFlags {
             refresh_prs: false,
             show_upstream: false,
             hint: false,
-            always_show_stack_assignments: true,
         }
     }
 }
@@ -728,8 +725,7 @@ fn print_assignments(
         .unwrap_or_default();
 
     if let Some(stack) = stack
-        && ((!unstaged && !assignments.is_empty())
-            || status_ctx.flags.always_show_stack_assignments)
+        && (!unstaged && !assignments.is_empty())
     {
         let staged_changes_cli_id = status_ctx
             .id_map
@@ -777,46 +773,42 @@ fn print_assignments(
         .max()
         .unwrap_or(0);
 
-    if assignments.is_empty() && status_ctx.flags.always_show_stack_assignments {
-        output.connector(Vec::from([Span::raw("┊  │    ")]))?;
-    } else {
-        for fa in assignments {
-            let state = status_from_changes(&status_ctx.worktree_changes, fa.path.clone());
-            let path = match &state {
-                Some(state) => path_with_color_ui(state, fa.path.to_string()),
-                None => Span::raw(fa.path.to_string()),
-            };
+    for fa in assignments {
+        let state = status_from_changes(&status_ctx.worktree_changes, fa.path.clone());
+        let path = match &state {
+            Some(state) => path_with_color_ui(state, fa.path.to_string()),
+            None => Span::raw(fa.path.to_string()),
+        };
 
-            let status = state.as_ref().map(status_letter_ui).unwrap_or_default();
+        let status = state.as_ref().map(status_letter_ui).unwrap_or_default();
 
-            let first_assignment = &fa.assignments[0];
-            let cli_id = &first_assignment.cli_id;
-            let pad = max_id_width.saturating_sub(cli_id.len());
-            let id_padding = " ".repeat(pad);
+        let first_assignment = &fa.assignments[0];
+        let cli_id = &first_assignment.cli_id;
+        let pad = max_id_width.saturating_sub(cli_id.len());
+        let id_padding = " ".repeat(pad);
 
-            let file_cli_id = lookup_cli_id_for_short_id(
-                &status_ctx.id_map,
-                repo,
-                cli_id,
-                |id| matches!(id, CliId::Uncommitted(uncommitted) if uncommitted.is_entire_file),
-                "uncommitted file",
-            )?;
+        let file_cli_id = lookup_cli_id_for_short_id(
+            &status_ctx.id_map,
+            repo,
+            cli_id,
+            |id| matches!(id, CliId::Uncommitted(uncommitted) if uncommitted.is_entire_file),
+            "uncommitted file",
+        )?;
 
-            let file_line = FileLineContent {
-                id: Vec::from([
-                    Span::raw(id_padding.clone()),
-                    Span::styled(cli_id.to_string(), Style::default().bold().blue()),
-                    Span::raw(" "),
-                ]),
-                status: Vec::from([Span::raw(status.to_string()), Span::raw(" ")]),
-                path: Vec::from([path]),
-            };
+        let file_line = FileLineContent {
+            id: Vec::from([
+                Span::raw(id_padding.clone()),
+                Span::styled(cli_id.to_string(), Style::default().bold().blue()),
+                Span::raw(" "),
+            ]),
+            status: Vec::from([Span::raw(status.to_string()), Span::raw(" ")]),
+            path: Vec::from([path]),
+        };
 
-            if unstaged {
-                output.unassigned_file(Vec::from([Span::raw("┊   ")]), file_line, file_cli_id)?;
-            } else {
-                output.staged_file(Vec::from([Span::raw("┊  │ ")]), file_line, file_cli_id)?;
-            }
+        if unstaged {
+            output.unassigned_file(Vec::from([Span::raw("┊   ")]), file_line, file_cli_id)?;
+        } else {
+            output.staged_file(Vec::from([Span::raw("┊  │ ")]), file_line, file_cli_id)?;
         }
     }
 

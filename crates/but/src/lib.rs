@@ -667,7 +667,6 @@ async fn match_subcommand(
                 refresh_prs: sync_prs,
                 show_upstream: upstream,
                 hint: !no_hint,
-                always_show_stack_assignments: false,
             };
             command::legacy::status::worktree(
                 &mut ctx,
