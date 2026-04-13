@@ -2,10 +2,10 @@
 	import ScrollableContainer from "$components/shared/AppScrollableContainer.svelte";
 	import ChangedFilesContextMenu from "$components/shared/ChangedFilesContextMenu.svelte";
 	import ReduxResult from "$components/shared/ReduxResult.svelte";
+	import EditModeFileListItem from "$components/workspace/EditModeFileListItem.svelte";
 	import { getEditorUri, URL_SERVICE } from "$lib/backend/url";
 	import { splitMessage } from "$lib/commits/commitMessage";
-	import { conflictEntryHint, getConflictState } from "$lib/files/conflictEntryPresence";
-	import { FILE_SERVICE } from "$lib/files/fileService";
+	import { conflictEntryHint } from "$lib/files/conflictEntryPresence";
 	import { computeChangeStatus } from "$lib/files/fileStatus";
 	import { MODE_SERVICE } from "$lib/mode/modeService";
 	import { vscodePath } from "$lib/project/project";
@@ -16,20 +16,8 @@
 	import { USER } from "$lib/user/user";
 	import { inject } from "@gitbutler/core/context";
 
-	import {
-		AsyncButton,
-		Avatar,
-		Badge,
-		Button,
-		FileListItem,
-		InfoButton,
-		Modal,
-		TestId,
-	} from "@gitbutler/ui";
-	import { isDefined } from "@gitbutler/ui/utils/typeguards";
+	import { AsyncButton, Avatar, Badge, Button, InfoButton, Modal, TestId } from "@gitbutler/ui";
 	import { SvelteSet } from "svelte/reactivity";
-	import { derived, fromStore, readable, toStore, type Readable } from "svelte/store";
-	import type { FileInfo } from "$lib/files/file";
 	import type { EditModeMetadata, TreeChange } from "@gitbutler/but-sdk";
 	import type { ConflictEntryPresence } from "@gitbutler/but-sdk";
 	import type { FileStatus } from "@gitbutler/ui/components/file/types";
@@ -48,7 +36,6 @@
 	const stackService = inject(STACK_SERVICE);
 	const modeService = inject(MODE_SERVICE);
 	const userSettings = inject(SETTINGS);
-	const fileService = inject(FILE_SERVICE);
 	const urlService = inject(URL_SERVICE);
 
 	const initialFiles = $derived(modeService.initialEditModeState({ projectId }));
@@ -56,15 +43,6 @@
 
 	const [saveEdit, savingEdit] = modeService.saveEditAndReturnToWorkspaceMutation;
 	const [abortEdit, abortingEdit] = modeService.abortEditAndReturnToWorkspaceMutation;
-
-	function readFromWorkspace(
-		filePath: string,
-		projectId: string,
-	): Readable<{ data: FileInfo; isLarge: boolean } | undefined> {
-		return readable(undefined as { data: FileInfo; isLarge: boolean } | undefined, (set) => {
-			fileService.readFromWorkspace(filePath, projectId).then(set);
-		});
-	}
 
 	let commitQuery = $derived(stackService.commitDetails(projectId, editModeMetadata.commitOid));
 
@@ -77,13 +55,8 @@
 		status?: FileStatus;
 		conflicted: boolean;
 		conflictHint?: string;
+		conflictEntryPresence?: ConflictEntryPresence;
 	}
-
-	const initialFileMap = $derived(
-		new Map<string, { file: TreeChange; conflictEntryPresence?: ConflictEntryPresence }>(
-			initialFiles.response?.map(([f, c]) => [f.path, { file: f, conflictEntryPresence: c }]) || [],
-		),
-	);
 
 	const files = $derived.by(() => {
 		if (!initialFiles.response || !uncommittedFiles.response) return [];
@@ -95,6 +68,7 @@
 				path: initialFile.path,
 				conflicted: !!conflictEntryPresence,
 				conflictHint: conflictEntryPresence ? conflictEntryHint(conflictEntryPresence) : undefined,
+				conflictEntryPresence: conflictEntryPresence ?? undefined,
 			});
 		});
 
@@ -147,28 +121,8 @@
 	const conflictedFiles = $derived(files.filter((file) => file.conflicted));
 
 	let manuallyResolvedFiles = new SvelteSet<string>();
-	const filesWithConflictedStatues = $derived(
-		conflictedFiles.map((f) => [f, isConflicted(f)] as [FileEntry, Readable<boolean>]),
-	);
-	const stillConflictedFiles = $derived(
-		filesWithConflictedStatues.filter(([_, status]) => fromStore(status).current).map(([f]) => f),
-	);
-
-	function isConflicted(fileEntry: FileEntry): Readable<boolean> {
-		const file = readFromWorkspace(fileEntry.path, projectId);
-		const conflictState = derived(file, (file) => {
-			if (!isDefined(file?.data.content)) return "unknown";
-			const { conflictEntryPresence } = initialFileMap.get(fileEntry.path) || {};
-			if (!conflictEntryPresence) return "unknown";
-			return getConflictState(conflictEntryPresence, file.data.content);
-		});
-
-		const manuallyResolved = toStore(() => manuallyResolvedFiles.has(fileEntry.path));
-
-		return derived([conflictState, manuallyResolved], ([conflictState, manuallyResolved]) => {
-			return fileEntry.conflicted && conflictState === "conflicted" && !manuallyResolved;
-		});
-	}
+	let stillConflictedPaths = new SvelteSet<string>();
+	const hasUnresolvedConflicts = $derived(stillConflictedPaths.size > 0);
 
 	async function abort(force: boolean) {
 		if (loading) return;
@@ -181,7 +135,7 @@
 	}
 
 	async function handleSave() {
-		if (stillConflictedFiles.length > 0) {
+		if (hasUnresolvedConflicts) {
 			confirmSaveModal?.show();
 			return;
 		}
@@ -293,27 +247,31 @@
 							}}
 						>
 							{#each files as file (file.path)}
-								{@const conflictedStore = isConflicted(file)}
-								{@const conflicted = fromStore(conflictedStore).current}
-								<div class="file">
-									<FileListItem
-										filePath={file.path}
-										pathFirst={$userSettings.pathFirst}
-										fileStatus={file.status}
-										{conflicted}
-										clickable={false}
-										onresolveclick={file.conflicted
-											? () => manuallyResolvedFiles.add(file.path)
-											: undefined}
-										conflictHint={file.conflictHint}
-										oncontextmenu={(e) => {
-											const treeChange = getTreeChangeForFile(file);
-											if (treeChange) {
-												contextMenu?.open(e, { changes: [treeChange] });
-											}
-										}}
-									/>
-								</div>
+								<EditModeFileListItem
+									{projectId}
+									filePath={file.path}
+									pathFirst={$userSettings.pathFirst}
+									fileStatus={file.status}
+									conflictHint={file.conflictHint}
+									conflictEntryPresence={file.conflictEntryPresence}
+									manuallyResolved={manuallyResolvedFiles.has(file.path)}
+									onresolveclick={file.conflicted
+										? () => manuallyResolvedFiles.add(file.path)
+										: undefined}
+									oncontextmenu={(e) => {
+										const treeChange = getTreeChangeForFile(file);
+										if (treeChange) {
+											contextMenu?.open(e, { changes: [treeChange] });
+										}
+									}}
+									onconflictchange={(conflicted) => {
+										if (conflicted) {
+											stillConflictedPaths.add(file.path);
+										} else {
+											stillConflictedPaths.delete(file.path);
+										}
+									}}
+								/>
 							{/each}
 						</ScrollableContainer>
 					</div>
@@ -456,7 +414,7 @@
 			}
 		}
 
-		& .file {
+		& :global(.file) {
 			border-bottom: 1px solid var(--border-3);
 			&:last-child {
 				border-bottom: none;
