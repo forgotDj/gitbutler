@@ -204,11 +204,17 @@
 
 	function onTrackEnter() {
 		if (shouldShowOnHover) {
+			clearTimer();
+			clearHoverShowTimer();
 			visible = true;
 			return;
 		}
 
-		if (shouldAlwaysShow) return;
+		if (shouldAlwaysShow) {
+			clearTimer();
+			clearHoverShowTimer();
+			return;
+		}
 		if (!isScrollable) return;
 		clearTimer();
 		clearHoverShowTimer();
@@ -221,11 +227,17 @@
 
 	function onTrackLeave() {
 		if (shouldShowOnHover) {
+			clearTimer();
+			clearHoverShowTimer();
 			visible = false;
 			return;
 		}
 
-		if (shouldAlwaysShow) return;
+		if (shouldAlwaysShow) {
+			clearTimer();
+			clearHoverShowTimer();
+			return;
+		}
 
 		clearHoverShowTimer();
 		clearTimer();
