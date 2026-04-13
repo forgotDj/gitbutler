@@ -312,6 +312,7 @@
 	function onTrackClick(event: Event | MouseEvent) {
 		event.stopPropagation();
 		event.preventDefault();
+		isDragging = true;
 
 		if (event instanceof MouseEvent) {
 			const clickOffsetY = (event.offsetY / trackHeight) * wholeHeight;
@@ -319,11 +320,11 @@
 			const halfThumbY = (thumbHeight / trackHeight) * (wholeHeight / 2);
 			const halfThumbX = (thumbWidth / trackWidth) * (wholeWidth / 2);
 			if (vert) viewport.scrollTo({ top: clickOffsetY - halfThumbY });
-			if (!vert) viewport.scrollTo({ top: clickOffsetX - halfThumbX });
+			if (!vert) viewport.scrollTo({ left: clickOffsetX - halfThumbX });
 			startY = event.clientY;
 			startTop = viewport.scrollTop;
-			startX = event.clientY;
-			startLeft = viewport.scrollTop;
+			startX = event.clientX;
+			startLeft = viewport.scrollLeft;
 		}
 
 		document.addEventListener("mousemove", onMouseMove);

@@ -151,7 +151,7 @@
 		max-width: 400px;
 		height: 100%;
 		overflow: hidden;
-		/* Render the right divider without changing layout width. */
+		/* Render left and right dividers without changing layout width. */
 		background-color: var(--bg-2);
 		box-shadow:
 			1px 0 0 0 var(--border-2),
