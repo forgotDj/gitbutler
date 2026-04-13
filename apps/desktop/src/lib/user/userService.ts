@@ -30,11 +30,7 @@ export class UserService {
 	readonly userLogin = derived<Readable<User | undefined>, string | undefined>(
 		this.user,
 		(user, set) => {
-			if (user) {
-				this.getUser().then((user) => set(user.login ?? undefined));
-			} else {
-				set(undefined);
-			}
+			set(user?.login ?? undefined);
 		},
 	);
 	readonly error = writable();
@@ -95,11 +91,7 @@ export class UserService {
 				return;
 			}
 
-			const user = await this.httpClient.get<User>("login/whoami", {
-				headers: {
-					"X-Auth-Token": token,
-				},
-			});
+			const user = await this.backend.invoke<User>("login_with_token", { token });
 
 			if (bypassConfirmationToast) {
 				// In the case that the token is e.g. pasted directly, we don't need a confirmation toast.
@@ -139,10 +131,9 @@ export class UserService {
 	}
 
 	private async getLoginUrl(): Promise<string> {
-		this.forgetUserCredentials();
+		await this.forgetUserCredentials();
 		try {
-			// Get the login url from the backend
-			const token = await this.httpClient.post<LoginToken>("login/token.json");
+			const token = await this.backend.invoke<LoginToken>("get_login_token");
 			const url = new URL(token.url);
 			url.host = this.httpClient.apiUrl.host;
 			const buildType = await this.backend.invoke<string>("build_type").catch(() => undefined);

@@ -1586,7 +1586,6 @@ dependencies = [
  "gitbutler-user",
  "gitbutler-watcher",
  "mime_guess",
- "reqwest 0.12.28",
  "rust-embed",
  "serde",
  "serde_json",
@@ -4345,10 +4344,12 @@ dependencies = [
  "but-secret",
  "but-utils",
  "keyring",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "serial_test",
  "tempfile",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

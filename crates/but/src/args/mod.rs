@@ -1192,9 +1192,6 @@ pub enum Subcommands {
         /// Disable authentication entirely. DANGEROUS — only use on trusted networks.
         #[clap(long)]
         dangerously_allow_anyone: bool,
-        /// Use the staging GitButler API (app.staging.gitbutler.com) instead of production.
-        #[clap(long)]
-        dev: bool,
     },
 
     /// Show help information grouped by category.

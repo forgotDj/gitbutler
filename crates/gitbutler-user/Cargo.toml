@@ -15,7 +15,9 @@ but-utils = { workspace = true, features = ["legacy"] }
 but-path.workspace = true
 
 anyhow.workspace = true
+reqwest.workspace = true
 serde.workspace = true
+thiserror.workspace = true
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 
 [dev-dependencies]

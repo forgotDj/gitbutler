@@ -36,10 +36,6 @@ struct Args {
     /// Disable authentication entirely. DANGEROUS — only use on trusted networks.
     #[arg(long)]
     dangerously_allow_anyone: bool,
-
-    /// Use the staging GitButler API (app.staging.gitbutler.com) instead of production.
-    #[arg(long)]
-    dev: bool,
 }
 
 #[tokio::main]
@@ -67,7 +63,6 @@ async fn main() -> anyhow::Result<()> {
         origin: args.origin,
         base_path: args.base_path,
         allow_anyone: args.dangerously_allow_anyone,
-        dev: args.dev,
         project_path: None,
         verbose: true,
     };

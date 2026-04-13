@@ -255,7 +255,6 @@ async fn match_subcommand(
             named_tunnel,
             origin,
             dangerously_allow_anyone,
-            dev,
         } => {
             but_server::run(but_server::Config {
                 port: Some(port),
@@ -265,7 +264,6 @@ async fn match_subcommand(
                 origin,
                 base_path: Some("/api".into()),
                 allow_anyone: dangerously_allow_anyone,
-                dev,
                 project_path: Some(args.current_dir.clone()),
                 verbose: args.trace > 0,
             })

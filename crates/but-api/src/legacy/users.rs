@@ -1,6 +1,7 @@
 use anyhow::Result;
 use but_api_macros::but_api;
 use gitbutler_user::User;
+use gitbutler_user::api::LoginToken;
 use tracing::instrument;
 
 mod json {
@@ -97,4 +98,18 @@ pub fn set_user(user: User) -> Result<()> {
 #[instrument(err(Debug))]
 pub fn delete_user() -> Result<()> {
     gitbutler_user::delete_user()
+}
+
+#[but_api]
+#[instrument(err(Debug))]
+pub async fn get_login_token() -> Result<LoginToken> {
+    let api_url = gitbutler_user::api::default_api_url();
+    gitbutler_user::api::fetch_login_token(&api_url).await
+}
+
+#[but_api]
+#[instrument(err(Debug))]
+pub async fn login_with_token(token: String) -> Result<serde_json::Value> {
+    let api_url = gitbutler_user::api::default_api_url();
+    gitbutler_user::api::fetch_user_by_token(&api_url, &token).await
 }
