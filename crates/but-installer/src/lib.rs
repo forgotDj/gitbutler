@@ -25,7 +25,7 @@ use config::{Channel, InstallerConfig};
 pub use config::{Version, VersionRequest};
 use install::but_binary_path;
 use release::fetch_release;
-use shell::setup_path;
+use shell::configure_shell;
 use ui::{info, success};
 
 #[cfg(target_os = "linux")]
@@ -70,7 +70,7 @@ pub fn run_installation_with_version(
 /// changes on installation failure.
 pub fn run_installation() -> Result<()> {
     let config = InstallerConfig::new()?;
-    run_installation_impl(config, true)
+    run_installation_impl(config, ui::can_prompt())
 }
 
 fn run_installation_impl(config: InstallerConfig, interactive: bool) -> Result<()> {
@@ -115,8 +115,10 @@ fn run_installation_impl(config: InstallerConfig, interactive: bool) -> Result<(
 
     download_and_install_app(&config, platform_info, &release, channel)?;
 
-    // Setup PATH
-    setup_path(&config.home_dir)?;
+    if interactive {
+        ui::info("Checking shell configuration");
+        configure_shell(&config.home_dir)?;
+    }
 
     ui::println_empty();
     success(&format!(

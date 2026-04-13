@@ -3,7 +3,7 @@
 //! Provides colored output functions for the installer. All functions ignore I/O errors
 //! to ensure the installation can continue even if output fails (e.g., broken pipe).
 
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write, stdin};
 
 use owo_colors::{OwoColorize, Stream};
 
@@ -65,6 +65,25 @@ pub fn println(msg: &str) {
 /// Prints an empty line to stdout.
 pub fn println_empty() {
     print_stdout("");
+}
+
+/// Prompts a user for a [y/N] style confirmation.
+///
+/// Returns true if the user enters "y" or "yes" with any casing.
+pub fn prompt_for_confirmation(prompt: &str) -> io::Result<bool> {
+    print(prompt);
+    print(" [y]es [N]o (default=No): ");
+
+    let mut response = String::new();
+    stdin().read_line(&mut response)?;
+    response = response.trim().to_lowercase();
+
+    Ok(response == "yes" || response == "y")
+}
+
+/// Checks if there is a terminal to prompt on.
+pub fn can_prompt() -> bool {
+    std::io::stdin().is_terminal() && std::io::stdout().is_terminal()
 }
 
 /// Prints to stdout without a newline, ignoring all I/O errors.
