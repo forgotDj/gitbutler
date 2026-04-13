@@ -31,7 +31,6 @@
 		changes: TreeChange[];
 		draggable?: boolean;
 		selectable: boolean;
-		showBorder?: boolean;
 		showRoundedEdges?: boolean;
 		startIndex?: number;
 		selectionId: SelectionId;
@@ -45,7 +44,6 @@
 		changes,
 		draggable,
 		selectable,
-		showBorder = true,
 		showRoundedEdges = true,
 		startIndex,
 		selectionId,
@@ -183,7 +181,7 @@
 	</Drawer>
 {/snippet}
 
-<div class="multi-diff-view" class:no-border={!showBorder} class:no-rounded={!showRoundedEdges}>
+<div class="multi-diff-view" class:no-rounded={!showRoundedEdges}>
 	{#if onclose && allInOneDiff}
 		<div class="floating-actions">
 			<Button
@@ -281,10 +279,6 @@
 		border: 1px solid var(--border-2);
 		border-radius: var(--radius-ml);
 		background-color: var(--bg-1);
-
-		&.no-border {
-			border: none;
-		}
 
 		&.no-rounded {
 			border-radius: 0;

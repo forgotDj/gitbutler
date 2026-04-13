@@ -138,7 +138,6 @@
 						minWidth={14}
 						maxWidth={30}
 						defaultValue={15}
-						showBorder
 					/>
 				{/if}
 				<div class="left-header" bind:this={headerElRef}>

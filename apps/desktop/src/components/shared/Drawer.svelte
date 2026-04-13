@@ -1,15 +1,11 @@
 <script lang="ts">
 	import AppScrollableContainer from "$components/shared/AppScrollableContainer.svelte";
 	import DrawerHeader from "$components/shared/DrawerHeader.svelte";
-	import Resizer from "$components/shared/Resizer.svelte";
-	import { SETTINGS } from "$lib/settings/userSettings";
-	import { inject } from "@gitbutler/core/context";
 	import { persistWithExpiration } from "@gitbutler/shared/persisted";
 	import { Icon } from "@gitbutler/ui";
-	import { pxToRem } from "@gitbutler/ui/utils/pxToRem";
 	import { untrack } from "svelte";
 	import { writable, type Writable } from "svelte/store";
-	import type { ComponentProps, Snippet } from "svelte";
+	import type { Snippet } from "svelte";
 
 	type Props = {
 		header: Snippet<[HTMLDivElement]>;
@@ -24,7 +20,6 @@
 		grow?: boolean;
 		noshrink?: boolean;
 		clientHeight?: number;
-		resizer?: Partial<ComponentProps<typeof Resizer>>;
 		defaultCollapsed?: boolean;
 		notScrollable?: boolean;
 		maxHeight?: string;
@@ -52,7 +47,6 @@
 		topBorder = false,
 		grow,
 		noshrink,
-		resizer,
 		clientHeight = $bindable(),
 		defaultCollapsed = false,
 		notScrollable = false,
@@ -69,9 +63,6 @@
 		onclose,
 	}: Props = $props();
 
-	const userSettings = inject(SETTINGS);
-	const zoom = $derived($userSettings.zoom);
-
 	let containerDiv = $state<HTMLDivElement>();
 	let internalCollapsed: Writable<boolean | undefined> = untrack(() => persistId)
 		? persistWithExpiration<boolean>(
@@ -82,10 +73,6 @@
 		: writable(untrack(() => defaultCollapsed));
 
 	const isCollapsed = $derived($internalCollapsed);
-
-	let headerHeight = $state(0);
-	let contentHeight = $state(0);
-	const totalHeightRem = $derived(pxToRem(headerHeight + 1 + contentHeight, zoom));
 
 	function setCollapsed(newValue: boolean) {
 		if (isCollapsed === undefined) return;
@@ -134,7 +121,6 @@
 	<DrawerHeader
 		{actions}
 		{closeActions}
-		bind:headerHeight
 		{transparent}
 		sticky={stickyHeader}
 		{reserveSpaceOnStuck}
@@ -166,7 +152,7 @@
 	</DrawerHeader>
 
 	{#snippet drawerContent()}
-		<div class="drawer__content" bind:clientHeight={contentHeight}>
+		<div class="drawer__content">
 			{@render children()}
 		</div>
 	{/snippet}
@@ -179,27 +165,6 @@
 				{@render drawerContent()}
 			</AppScrollableContainer>
 		{/if}
-	{/if}
-
-	{#if resizer}
-		<!--
-			This ternarny statement captures the nuance of maxHeight possibly
-			being lower than minHeight.
-			TODO: Move this logic into the resizer so it applies everywhere.
-		-->
-		{@const computedMaxHeight =
-			resizer.maxHeight && resizer.minHeight
-				? Math.min(resizer.maxHeight, Math.max(totalHeightRem, resizer.minHeight))
-				: undefined}
-		<Resizer
-			viewport={containerDiv}
-			defaultValue={undefined}
-			passive={resizer.passive}
-			disabled={isCollapsed}
-			direction="down"
-			{...resizer}
-			maxHeight={computedMaxHeight}
-		/>
 	{/if}
 </div>
 

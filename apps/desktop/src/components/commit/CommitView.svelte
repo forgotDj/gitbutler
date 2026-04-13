@@ -6,7 +6,6 @@
 	import { isLocalAndRemoteCommit } from "$components/lib";
 	import Drawer from "$components/shared/Drawer.svelte";
 	import ReduxResult from "$components/shared/ReduxResult.svelte";
-	import Resizer from "$components/shared/Resizer.svelte";
 	import { type CommitKey } from "$lib/commits/commit";
 	import { splitMessage } from "$lib/commits/commitMessage";
 	import { rewrapCommitMessage } from "$lib/config/uiFeatureFlags";
@@ -19,8 +18,6 @@
 	import { inject, injectOptional } from "@gitbutler/core/context";
 	import { Button, TestId } from "@gitbutler/ui";
 
-	import type { ComponentProps } from "svelte";
-
 	type Props = {
 		projectId: string;
 		stackId?: string;
@@ -30,7 +27,6 @@
 		draggableFiles: boolean;
 		grow?: boolean;
 		clientHeight?: number;
-		resizer?: Partial<ComponentProps<typeof Resizer>>;
 		rounded?: boolean;
 		ontoggle?: (collapsed: boolean) => void;
 		onerror: (err: unknown) => void;
@@ -45,7 +41,6 @@
 		commitKey,
 		grow,
 		clientHeight = $bindable(),
-		resizer,
 		rounded,
 		ontoggle,
 		onerror,
@@ -155,7 +150,6 @@
 			bind:clientHeight
 			testId={TestId.CommitDrawer}
 			persistId="commit-view-drawer-{projectId}-{stackId}-{commitKey.commitId}"
-			{resizer}
 			{grow}
 			{rounded}
 			{ontoggle}

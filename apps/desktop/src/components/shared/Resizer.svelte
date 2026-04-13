@@ -34,8 +34,6 @@
 		passive?: boolean;
 		/** Whether the resizer is disabled */
 		disabled?: boolean;
-		/** Whether to show the resizer border */
-		showBorder?: boolean;
 		/** Optional manager that can coordinate multiple resizers */
 		resizeGroup?: ResizeGroup;
 		/** Optional ordering of resizer for use with `resizeManager` */
@@ -48,7 +46,6 @@
 		fullLayerCrossAxis?: boolean;
 
 		// Actions
-		onHeight?: (height: number) => void;
 		onWidth?: (width: number) => void;
 		onResizing?: (isResizing: boolean) => void;
 		onOverflow?: (value: number) => void;
@@ -68,7 +65,6 @@
 		persistId,
 		passive,
 		disabled,
-		showBorder = false,
 		resizeGroup,
 		order,
 		unsetMaxHeight,
@@ -445,7 +441,9 @@
 		// read here (inside the effect body) so Svelte tracks them as deps.
 		const dir = direction;
 		const orient = orientation;
-		const edgeOffsetPx = remToPx(edgeOffsetRem, zoom);
+		// Keep the divider center correction separate from API semantics:
+		// edgeOffsetRem is caller intent; +0.5 aligns to 1px separator center.
+		const effectiveEdgeOffsetPx = remToPx(edgeOffsetRem, zoom) + 0.5;
 
 		if (!container || !div || !vp) return;
 
@@ -466,16 +464,16 @@
 		function updatePosition(containerRect?: DOMRectReadOnly) {
 			const vr = vp.getBoundingClientRect();
 			const cr = containerRect ?? c.getBoundingClientRect();
-			// 8 px hit area in layer mode (no risk of overlapping scrollbars).
-			const t = 8;
+			// 6 px hit area in layer mode (no risk of overlapping scrollbars).
+			const t = 6;
 			const crossTopPx = fullLayerCrossAxis ? 0 : vr.top - cr.top;
 			const crossHeightPx = fullLayerCrossAxis ? cr.height : vr.height;
 
 			if (orient === "horizontal") {
 				const edge =
 					dir === "right"
-						? vr.right + marginRightPx + edgeOffsetPx
-						: vr.left - marginLeftPx - edgeOffsetPx;
+						? vr.right + marginRightPx + effectiveEdgeOffsetPx
+						: vr.left - marginLeftPx - effectiveEdgeOffsetPx;
 				setStyle(d.style, "left", `${edge - cr.left - t / 2}px`);
 				setStyle(d.style, "right", "");
 				setStyle(d.style, "top", `${crossTopPx}px`);
@@ -483,7 +481,8 @@
 				setStyle(d.style, "width", `${t}px`);
 				setStyle(d.style, "height", `${crossHeightPx}px`);
 			} else {
-				const edge = dir === "down" ? vr.bottom + edgeOffsetPx : vr.top - edgeOffsetPx;
+				const edge =
+					dir === "down" ? vr.bottom + effectiveEdgeOffsetPx : vr.top - effectiveEdgeOffsetPx;
 				setStyle(d.style, "top", `${edge - cr.top - t / 2}px`);
 				setStyle(d.style, "bottom", "");
 				setStyle(d.style, "left", `${vr.left - cr.left}px`);
@@ -534,7 +533,6 @@
 	class:down={direction === "down"}
 	class:left={direction === "left"}
 	class:right={direction === "right"}
-	class:border={showBorder}
 	style:z-index={zIndex}
 ></div>
 
@@ -561,42 +559,6 @@
 			height: var(--resizer-thickness);
 		}
 
-		/* &.border.horizontal::after {
-			position: absolute;
-			top: 0;
-			width: 1px;
-			height: 100%;
-			border-left: 1px solid var(--border-2);
-			content: "";
-			pointer-events: none;
-		} */
-
-		&.border.horizontal.left::after {
-			left: 0;
-		}
-
-		&.border.horizontal.right::after {
-			right: 0;
-		}
-
-		&.border.vertical::after {
-			position: absolute;
-			left: 0;
-			width: 100%;
-			height: 1px;
-			border-top: 1px solid var(--border-2);
-			content: "";
-			pointer-events: none;
-		}
-
-		&.border.vertical.up::after {
-			top: 0;
-		}
-
-		&.border.vertical.down::after {
-			bottom: 0;
-		}
-
 		&.disabled {
 			pointer-events: none;
 			--resizer-cursor: default;
@@ -610,17 +572,6 @@
 
 		&.in-layer.disabled {
 			pointer-events: none;
-		}
-
-		/* Center the 1 px visual border line in the wider 8 px hit area. */
-		&.in-layer.border.horizontal::after {
-			right: auto;
-			left: calc(50% - 0.5px);
-		}
-
-		&.in-layer.border.vertical::after {
-			top: calc(50% - 0.5px);
-			bottom: auto;
 		}
 	}
 </style>

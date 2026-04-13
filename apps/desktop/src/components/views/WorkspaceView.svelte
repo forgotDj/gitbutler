@@ -59,7 +59,6 @@
 		bind:this={multiDiffView}
 		draggable={true}
 		selectable={isCommitting}
-		showBorder={false}
 		showRoundedEdges={false}
 		{onVisibleChange}
 		onclose={() => {
