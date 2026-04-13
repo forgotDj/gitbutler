@@ -333,10 +333,8 @@ function setupDragHandlers(
 			element.classList.add(DRAGGING_CLASS);
 		}
 
-		// Activate dropzones
-		for (const dropzone of Array.from(opts.dropzoneRegistry.values())) {
-			dropzone.activate(opts.data);
-		}
+		// Activate dropzones (also enables auto-activation of late-registered dropzones)
+		opts.dropzoneRegistry.startDrag(opts.data);
 
 		// Create drag clone
 		clone = createClone(opts, selectedElements);
@@ -379,11 +377,6 @@ function setupDragHandlers(
 	}
 
 	function handleMouseUp(e: MouseEvent) {
-		if (opts) {
-			Array.from(opts.dropzoneRegistry.values()).forEach((dropzone) => {
-				dropzone.deactivate();
-			});
-		}
 		e.preventDefault();
 		e.stopPropagation();
 
@@ -462,6 +455,14 @@ function setupDragHandlers(
 			currentHoveredDropzone = null;
 		}
 
+		// Deactivate all dropzones and clear drag state from the registry.
+		// This must happen in cleanup (not just mouseup) so that dropzones
+		// are properly deactivated even if the dragged element is destroyed
+		// mid-drag (e.g. due to a data refresh).
+		if (isDragging && opts) {
+			opts.dropzoneRegistry.endDrag();
+		}
+
 		// Remove listeners
 		if (isDragging) {
 			window.removeEventListener("mousemove", handleMouseMove);
@@ -475,7 +476,6 @@ function setupDragHandlers(
 		// Stop observer (also stops auto-scroll since it's in the same RAF loop)
 		stopObserver();
 
-		// Deactivate dropzones
 		selectedElements.forEach((el) => el.classList.remove(DRAGGING_CLASS));
 
 		if (clone) {
