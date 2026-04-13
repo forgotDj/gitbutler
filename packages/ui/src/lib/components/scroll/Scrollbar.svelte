@@ -235,7 +235,7 @@
 	function setupTrack(track: Element) {
 		if (!track) return;
 
-		track.addEventListener("mousedown", onThumbClick);
+		track.addEventListener("mousedown", onTrackClick);
 		track.addEventListener("mouseenter", onTrackEnter);
 		track.addEventListener("mouseleave", onTrackLeave);
 

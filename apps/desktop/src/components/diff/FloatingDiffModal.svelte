@@ -220,16 +220,16 @@
 										size="tag"
 										activated={activeMenuPath === selectedChange.path}
 										onclick={async (e) => {
-											if (!contextMenu || !(e.target instanceof HTMLElement)) return;
+											if (!contextMenu || !(e.currentTarget instanceof HTMLElement)) return;
 											if (activeMenuPath === selectedChange.path) {
 												contextMenu.close();
 												return;
 											}
 											const changes = await idSelection.treeChanges(projectId, selectionId);
 											if (idSelection.has(selectedChange.path, selectionId) && changes.length > 0) {
-												contextMenu.open(e.target, { changes: changes });
+												contextMenu.open(e.currentTarget, { changes: changes });
 											} else {
-												contextMenu.open(e.target, { changes: [selectedChange] });
+												contextMenu.open(e.currentTarget, { changes: [selectedChange] });
 											}
 											activeMenuPath = selectedChange.path;
 										}}

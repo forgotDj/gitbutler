@@ -577,6 +577,28 @@
 			height: var(--resizer-thickness);
 		}
 
+		/* Non-layer fallback positioning: when not teleported into SashLayer,
+		   anchor to the requested viewport edge via directional classes. */
+		&.horizontal.right:not(.in-layer) {
+			right: 0;
+			left: auto;
+		}
+
+		&.horizontal.left:not(.in-layer) {
+			right: auto;
+			left: 0;
+		}
+
+		&.vertical.down:not(.in-layer) {
+			top: auto;
+			bottom: 0;
+		}
+
+		&.vertical.up:not(.in-layer) {
+			top: 0;
+			bottom: auto;
+		}
+
 		&.disabled {
 			pointer-events: none;
 			--resizer-cursor: default;
