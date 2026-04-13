@@ -6,7 +6,7 @@
 	import { persistWithExpiration } from "@gitbutler/shared/persisted";
 	import { mergeUnlisten } from "@gitbutler/ui/utils/mergeUnlisten";
 	import { pxToRem, remToPx } from "@gitbutler/ui/utils/pxToRem";
-	import { getContext } from "svelte";
+	import { getContext, onDestroy } from "svelte";
 	import { on } from "svelte/events";
 	import { writable } from "svelte/store";
 	import type { ResizeGroup } from "$lib/floating/resizeGroup";
@@ -108,8 +108,8 @@
 		  }
 		| undefined;
 
-	let unsubUp: () => void;
-	let unsubMove: () => void;
+	let unsubUp: (() => void) | undefined;
+	let unsubMove: (() => void) | undefined;
 
 	// Last pointer position tracked per-drag-frame for arithmetic sash movement.
 	let lastDragClientX = 0;
@@ -151,6 +151,30 @@
 		lastReportedWidth = nextValue;
 		onWidth?.(nextValue);
 	}
+
+	function cleanupPointerDragState() {
+		unsubUp?.();
+		unsubUp = undefined;
+		unsubMove?.();
+		unsubMove = undefined;
+
+		if (pointerMoveRaf !== undefined) {
+			cancelAnimationFrame(pointerMoveRaf);
+			pointerMoveRaf = undefined;
+		}
+
+		pendingPointerMove = undefined;
+		lastShiftSyncedValue = undefined;
+
+		if (pausedAutoLayout) {
+			layerCtx?.setAutoLayoutPaused(false);
+			pausedAutoLayout = false;
+		}
+	}
+
+	onDestroy(() => {
+		cleanupPointerDragState();
+	});
 
 	function onMouseDown(e: MouseEvent) {
 		e.stopPropagation();
@@ -293,16 +317,10 @@
 			pointerMoveRaf = undefined;
 		}
 		processPointerMove();
-		lastShiftSyncedValue = undefined;
-		if (pausedAutoLayout) {
-			layerCtx?.setAutoLayoutPaused(false);
-			pausedAutoLayout = false;
-		}
+		cleanupPointerDragState();
 		// Re-sync sash to exact geometry once at the end of drag.
 		if (inLayer) layerCtx?.requestLayout();
 		isResizing = false;
-		unsubUp?.();
-		unsubMove?.();
 		onResizing?.(false);
 	}
 
