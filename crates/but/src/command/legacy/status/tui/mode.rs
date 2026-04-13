@@ -148,24 +148,21 @@ pub(super) struct UnassignedCommitSource {
 
 #[derive(Debug)]
 pub(super) struct StackCommitSource {
-    pub(super) id: ShortId,
     pub(super) stack_id: StackId,
 }
 
-impl TryFrom<CliId> for CommitSource {
-    type Error = anyhow::Error;
-
-    fn try_from(id: CliId) -> Result<Self, Self::Error> {
+impl CommitSource {
+    pub(super) fn try_new(id: CliId) -> Option<Self> {
         match id {
-            CliId::Unassigned { id } => Ok(Self::Unassigned(UnassignedCommitSource { id })),
+            CliId::Unassigned { id } => Some(Self::Unassigned(UnassignedCommitSource { id })),
             CliId::Uncommitted(uncommitted_cli_id) => {
-                Ok(Self::Uncommitted(Box::new(uncommitted_cli_id)))
+                Some(Self::Uncommitted(Box::new(uncommitted_cli_id)))
             }
-            CliId::Stack { id, stack_id } => Ok(Self::Stack(StackCommitSource { id, stack_id })),
+            CliId::Stack { stack_id, .. } => Some(Self::Stack(StackCommitSource { stack_id })),
             CliId::PathPrefix { .. }
             | CliId::CommittedFile { .. }
             | CliId::Branch { .. }
-            | CliId::Commit { .. } => anyhow::bail!("cannot commit: {id:?}"),
+            | CliId::Commit { .. } => None,
         }
     }
 }
@@ -188,15 +185,14 @@ impl PartialEq<CliId> for CommitSource {
                 }
             }
             CommitSource::Stack(StackCommitSource {
-                id: id_lhs,
                 stack_id: stack_id_lhs,
             }) => {
                 if let CliId::Stack {
-                    id: id_rhs,
                     stack_id: stack_id_rhs,
+                    ..
                 } = other
                 {
-                    id_lhs == id_rhs && stack_id_lhs == stack_id_rhs
+                    stack_id_lhs == stack_id_rhs
                 } else {
                     false
                 }

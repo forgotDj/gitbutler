@@ -35,7 +35,7 @@ mod tests;
 /// A helper to indicate that this is a short-id as a user would see.
 pub(crate) type ShortId = String;
 
-const UNASSIGNED: &str = "zz";
+pub(crate) const UNASSIGNED: &str = "zz";
 
 /// Create a CLI ID for the given staged file (if `stack_id` is `Some`) or the
 /// given unstaged file or committed file (if `stack_id` is `None`).

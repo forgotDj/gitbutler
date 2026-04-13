@@ -50,6 +50,7 @@ use crate::{
             toast::{ToastKind, Toasts},
         },
     },
+    id::UNASSIGNED,
     tui::{CrosstermTerminalGuard, HeadlessTerminalGuard, TerminalGuard},
     utils::{DebugAsType, OutputChannel, binary_path::current_exe_for_but_exec},
 };
@@ -611,11 +612,9 @@ impl App {
             }
             Message::ShowError(err) => self.handle_show_error(err, messages),
             Message::Commit(commit_message) => match commit_message {
-                CommitMessage::CreateEmpty => self.handle_create_empty_commit(ctx, messages)?,
-                CommitMessage::Start => self.handle_commit_start(ctx),
-                CommitMessage::Confirm { with_message } => {
-                    self.handle_commit_confirm(ctx, messages, with_message)?
-                }
+                CommitMessage::CreateEmpty => self.handle_commit_create_empty(ctx, messages)?,
+                CommitMessage::Start => self.handle_commit_start(ctx)?,
+                CommitMessage::Confirm => self.handle_commit_confirm(ctx, messages)?,
                 CommitMessage::SetInsertSide(insert_side) => {
                     self.handle_commit_set_insert_side(insert_side);
                 }
@@ -1209,49 +1208,87 @@ impl App {
         Ok(())
     }
 
-    fn handle_commit_start(&mut self, ctx: &mut Context) {
-        if !matches!(self.mode, Mode::Normal) {
-            return;
-        }
+    fn handle_commit_start(&mut self, ctx: &mut Context) -> anyhow::Result<()> {
         let Some(selection) = self.cursor.selected_line(&self.status_lines) else {
-            return;
+            return Ok(());
         };
+
+        let insert_side = InsertSide::Above;
 
         let commit_mode = match &selection.data {
             StatusOutputLineData::UnassignedChanges { cli_id } => {
-                let Ok(has_unassigned_changes) = operations::has_unassigned_changes(ctx) else {
-                    return;
-                };
-                if !has_unassigned_changes {
-                    return;
-                }
-                let Ok(source) = CommitSource::try_from(Arc::unwrap_or_clone(Arc::clone(cli_id)))
+                let Some(source) = CommitSource::try_new(Arc::unwrap_or_clone(Arc::clone(cli_id)))
                 else {
-                    return;
+                    return Ok(());
                 };
                 CommitMode {
                     source: Arc::new(source),
                     scope_to_stack: None,
-                    insert_side: InsertSide::Above,
+                    insert_side,
+                    empty_message: false,
                 }
             }
             StatusOutputLineData::UnassignedFile { cli_id }
             | StatusOutputLineData::StagedChanges { cli_id }
             | StatusOutputLineData::StagedFile { cli_id } => {
-                let Ok(source) = CommitSource::try_from(Arc::unwrap_or_clone(Arc::clone(cli_id)))
+                let Some(source) = CommitSource::try_new(Arc::unwrap_or_clone(Arc::clone(cli_id)))
                 else {
-                    return;
+                    return Ok(());
                 };
                 CommitMode {
                     source: Arc::new(source),
                     scope_to_stack: cli_id.stack_id(),
-                    insert_side: InsertSide::Above,
+                    insert_side,
+                    empty_message: false,
+                }
+            }
+            StatusOutputLineData::Commit { stack_id, .. } => {
+                let (source, scope_to_stack) = if let Some(stack_id) = *stack_id
+                    && stack_has_assigned_changes(ctx, stack_id)?
+                {
+                    (
+                        CommitSource::Stack(StackCommitSource { stack_id }),
+                        Some(stack_id),
+                    )
+                } else {
+                    (
+                        CommitSource::Unassigned(UnassignedCommitSource {
+                            id: UNASSIGNED.to_string(),
+                        }),
+                        None,
+                    )
+                };
+                CommitMode {
+                    empty_message: false,
+                }
+            StatusOutputLineData::Branch { cli_id } => {
+                let CliId::Branch { stack_id, .. } = &**cli_id else {
+                    return Ok(());
+                };
+                let (source, scope_to_stack) = if let Some(stack_id) = *stack_id
+                    && stack_has_assigned_changes(ctx, stack_id)?
+                {
+                    (
+                        CommitSource::Stack(StackCommitSource { stack_id }),
+                        Some(stack_id),
+                    )
+                } else {
+                    (
+                        CommitSource::Unassigned(UnassignedCommitSource {
+                            id: UNASSIGNED.to_string(),
+                        }),
+                        None,
+                    )
+                };
+                CommitMode {
+                    source: Arc::new(source),
+                    scope_to_stack,
+                    insert_side,
+                    empty_message: false,
                 }
             }
             StatusOutputLineData::UpdateNotice
             | StatusOutputLineData::Connector
-            | StatusOutputLineData::Branch { .. }
-            | StatusOutputLineData::Commit { .. }
             | StatusOutputLineData::CommitMessage
             | StatusOutputLineData::EmptyCommitMessage
             | StatusOutputLineData::File { .. }
@@ -1259,10 +1296,12 @@ impl App {
             | StatusOutputLineData::UpstreamChanges
             | StatusOutputLineData::Warning
             | StatusOutputLineData::Hint
-            | StatusOutputLineData::NoAssignmentsUnstaged => return,
+            | StatusOutputLineData::NoAssignmentsUnstaged => return Ok(())
         };
 
         self.mode = Mode::Commit(commit_mode);
+
+        Ok(())
     }
 
     fn handle_commit_confirm(
