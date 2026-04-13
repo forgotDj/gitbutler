@@ -155,6 +155,12 @@ pub(super) mod function {
             .and_then(|ws_ref| meta.workspace_opt(ws_ref).transpose())
             .transpose()?;
         let ref_name = ref_name.borrow();
+        let existing_ref_target_id = repo
+            .try_find_reference(ref_name)?
+            .map(|mut reference| reference.peel_to_id().map(|id| id.detach()))
+            .transpose()?;
+        let existing_ref_target_in_workspace = existing_ref_target_id
+            .filter(|id| workspace.find_owner_indexes_by_commit_id(*id).is_some());
 
         let (check_if_id_in_workspace, ref_target_id, instruction): (
             _,
@@ -170,18 +176,35 @@ pub(super) mod function {
                     {
                         return Ok(Cow::Borrowed(workspace));
                     }
-                    let base = ws_base.with_context(|| {
-                        format!(
-                            "workspace at {} is missing a base",
-                            workspace.ref_name_display()
+                    if let Some(existing_ref_target_id) = existing_ref_target_in_workspace {
+                        let instruction = existing_ws_meta
+                            .as_ref()
+                            .map(|_| {
+                                instruction_by_named_anchor_for_commit(
+                                    workspace,
+                                    existing_ref_target_id,
+                                )
+                            })
+                            .transpose()?;
+                        (
+                            true, // expect the target id to be in the workspace
+                            existing_ref_target_id,
+                            instruction,
                         )
-                    })?;
-                    (
-                        // do not validate, as the base is expectedly outside of workspace
-                        false,
-                        base,
-                        Some(Instruction::Independent),
-                    )
+                    } else {
+                        let base = ws_base.with_context(|| {
+                            format!(
+                                "workspace at {} is missing a base",
+                                workspace.ref_name_display()
+                            )
+                        })?;
+                        (
+                            // do not validate, as the base is expectedly outside of workspace
+                            false,
+                            base,
+                            Some(Instruction::Independent),
+                        )
+                    }
                 }
                 Some(Anchor::AtCommit {
                     commit_id,
@@ -299,7 +322,18 @@ pub(super) mod function {
         let has_new_ref_as_standalone_segment = updated_workspace
             .find_segment_and_stack_by_refname(ref_name)
             .is_some();
+        let existing_ref_is_in_workspace = existing_ref_target_in_workspace.is_some();
         if !has_new_ref_as_standalone_segment {
+            if existing_ref_target_id.is_some()
+                && !existing_ref_is_in_workspace
+                && !workspace.refname_is_segment(ref_name)
+                && workspace.ref_name() != Some(ref_name)
+            {
+                bail!(
+                    "Reference '{}' already exists and is outside the workspace",
+                    ref_name.shorten()
+                )
+            }
             // TODO: this should probably be easier to understand for the UI, with error codes maybe?
             bail!(
                 "Reference '{}' cannot be created as segment at {ref_target_id}",

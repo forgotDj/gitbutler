@@ -8,6 +8,7 @@ use but_core::{
 use but_graph::init::Options;
 use but_testsupport::{graph_workspace, id_at, id_by_rev, visualize_commit_graph_all};
 use but_workspace::branch::create_reference::{Anchor, Position::*};
+use gix::refs::transaction::PreviousValue;
 
 use crate::{
     ref_info::with_workspace_commit::utils::{
@@ -1190,8 +1191,8 @@ mod with_workspace {
         .unwrap_err();
         assert_eq!(
             err.to_string(),
-            "Reference 'extra' cannot be created as segment at 3183e43ff482a2c4c8ff531d595453b64f58d90b",
-            "The simulation catches the issue first, note how it wants to create it at the base"
+            "Reference 'extra' already exists and is outside the workspace",
+            "Existing refs outside the workspace should fail explicitly instead of surfacing the generic segment error"
         );
         assert!(
             meta.branch(outside_ref.as_ref())?.is_default(),
@@ -1631,6 +1632,50 @@ fn journey_with_commits() -> anyhow::Result<()> {
         │   └── ·12995d7
         └── 📙:2:two-below-main
             └── ·3d57fc1
+    ");
+
+    Ok(())
+}
+
+#[test]
+fn existing_git_ref_inside_workspace_is_adopted() -> anyhow::Result<()> {
+    let (_tmp, repo, mut meta) = named_writable_scenario("single-branch-4-commits")?;
+    let graph = but_graph::Graph::from_head(&repo, &meta, Options::limited())?;
+    let ws = graph.into_workspace()?;
+
+    let test_ref = r("refs/heads/created-with-git");
+    let target_id = id_by_rev(&repo, ":/A1").detach();
+    repo.reference(
+        test_ref,
+        target_id,
+        PreviousValue::Any,
+        "manual branch created with git",
+    )?;
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
+    * 05240ea (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    * 43f9472 (A) A2
+    * 6fdab32 (created-with-git) A1
+    * bce0c5e (origin/main, main) M2
+    * 3183e43 M1
+    ");
+
+    let ws = but_workspace::branch::create_reference(
+        test_ref,
+        None,
+        &repo,
+        &ws,
+        &mut meta,
+        stack_id_for_name,
+        None,
+    )?;
+
+    insta::assert_snapshot!(graph_workspace(&ws), @"
+    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main on bce0c5e
+    └── ≡:4:A on bce0c5e {632}
+        ├── :4:A
+        │   └── ·43f9472 (🏘️)
+        └── 📙:3:created-with-git
+            └── ·6fdab32 (🏘️)
     ");
 
     Ok(())
