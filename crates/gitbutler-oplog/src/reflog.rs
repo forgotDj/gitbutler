@@ -6,7 +6,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use but_fs::write;
+use but_utils::write;
 use gitbutler_repo::{GITBUTLER_COMMIT_AUTHOR_EMAIL, GITBUTLER_COMMIT_AUTHOR_NAME};
 use gitbutler_stack::VirtualBranchesHandle;
 use gix::{config::tree::Key, date::parse::TimeBuf};

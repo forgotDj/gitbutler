@@ -79,26 +79,26 @@ impl<T> OnDemandCache<T> {
         )
     }
 }
+
 #[cfg(test)]
 mod tests {
-    use crate::OnDemand;
+    use crate::OnDemandCache;
 
     #[test]
-    fn on_demand_journey() -> anyhow::Result<()> {
-        let mut v = OnDemand::new(|| Ok(42usize));
-        let vr = *v.get()?;
-        assert_eq!(vr, 42);
-        assert_eq!(*v.get()?, 42, "double read-only borrow is fine");
+    fn on_demand_cache_journey() -> anyhow::Result<()> {
+        let v = OnDemandCache::new(|| 42usize);
+        assert_eq!(*v.get_cache()?, 42);
+        assert_eq!(*v.get_cache()?, 42, "double read-only borrow is fine");
 
         {
-            let mut vr = v.get_mut()?;
+            let mut vr = v.get_cache_mut()?;
             assert_eq!(*vr, 42);
             *vr = 52;
             assert_eq!(*vr, 52);
         }
 
-        assert_eq!(*v.get_mut()?, 52);
-        assert_eq!(*v.get()?, 52);
+        assert_eq!(*v.get_cache_mut()?, 52);
+        assert_eq!(*v.get_cache()?, 52);
         Ok(())
     }
 }

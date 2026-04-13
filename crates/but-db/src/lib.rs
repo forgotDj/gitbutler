@@ -55,6 +55,7 @@
 //! ```
 #![expect(clippy::inconsistent_digit_grouping)]
 #![deny(missing_docs)]
+use but_utils::OnDemand;
 use rusqlite::ErrorCode;
 use std::path::PathBuf;
 
@@ -205,6 +206,8 @@ pub struct DbHandle {
     conn: rusqlite::Connection,
     /// The path at which the connection was opened, mainly for debugging.
     path: PathBuf,
+    /// A lazily opened project-local cache, in-memory of this instance is, or in the same directory as this instance.
+    pub cache: OnDemand<CacheHandle>,
 }
 
 /// A wrapper for a [`rusqlite::Transaction`] to allow ORM handles to be created more easily,

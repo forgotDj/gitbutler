@@ -88,7 +88,7 @@ members = [
     ##
     # Mostly supporting legacy code.
     # In big parts replaced by other crates.
-    "crates/but-fs",      # 📄filesystem utilities 👉we should be using `but-db` instead.
+    "crates/but-utils",   # 📄filesystem and general utilities; formerly `but-fs`.
     "crates/but-oxidize", # 📄Utilities to help translate between `git2` and `gix`. 👉Shouldn't be needed once `git2` is gone.
 
     ##
@@ -181,7 +181,7 @@ but-project-handle = { path = "crates/but-project-handle" }
 but-forge-storage = { path = "crates/but-forge-storage" }
 but-settings = { path = "crates/but-settings" }
 but-oxidize = { path = "crates/but-oxidize" }
-but-fs = { path = "crates/but-fs" }
+but-utils = { path = "crates/but-utils" }
 but-forge = { path = "crates/but-forge" }
 but-oplog = { path = "crates/but-oplog" }
 but-llm = { path = "crates/but-llm" }

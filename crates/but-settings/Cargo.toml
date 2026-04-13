@@ -14,7 +14,7 @@ doctest = false
 
 [dependencies]
 but-path.workspace = true
-but-fs.workspace = true
+but-utils.workspace = true
 
 anyhow.workspace = true
 serde.workspace = true

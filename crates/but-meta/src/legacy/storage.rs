@@ -216,7 +216,7 @@ fn write_toml(path: &Path, data: &VirtualBranches) -> anyhow::Result<TomlFileSta
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    but_fs::write(path, content.as_bytes())?;
+    but_utils::write(path, content.as_bytes())?;
     // Read from a single file descriptor so mtime/hash come from the same file instance.
     let (bytes, metadata) = read_file_bytes_and_metadata(path)?;
     let mtime_ns = file_mtime_ns(&metadata)?;

@@ -20,7 +20,7 @@ export-schema = [
 doctest = false
 
 [dependencies]
-but-fs.workspace = true
+but-utils.workspace = true
 but-github.workspace = true
 but-gitlab.workspace = true
 but-forge-storage.workspace = true

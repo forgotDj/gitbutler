@@ -9,6 +9,12 @@ use gix::tempfile::{AutoRemove, ContainingDirectory, create_dir::Retries};
 use serde::de::DeserializeOwned;
 use walkdir::WalkDir;
 
+mod on_demand;
+mod on_demand_cache;
+
+pub use on_demand::OnDemand;
+pub use on_demand_cache::OnDemandCache;
+
 #[cfg(feature = "legacy")]
 mod legacy {
     use std::{

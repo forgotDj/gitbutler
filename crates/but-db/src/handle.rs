@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
 
+use but_utils::OnDemand;
 use tracing::instrument;
 
-use crate::{DbHandle, migration, migration::improve_concurrency};
+use crate::{CacheHandle, DbHandle, migration, migration::improve_concurrency};
 
 const FILE_NAME: &str = "but.sqlite";
 
@@ -36,13 +37,22 @@ impl DbHandle {
         let mut conn = rusqlite::Connection::open(&path)?;
         improve_concurrency(&conn)?;
         run_migrations(&mut conn)?;
-        Ok(DbHandle { conn, path })
+        let cache = cache_for_db_path(&path);
+        Ok(DbHandle { conn, path, cache })
     }
 
     /// Return the path to the standard database file.
     pub fn db_file_path(db_dir: impl AsRef<Path>) -> PathBuf {
         db_dir.as_ref().join(FILE_NAME)
     }
+}
+
+fn cache_for_db_path(path: &Path) -> OnDemand<CacheHandle> {
+    if path == Path::new(":memory:") {
+        return OnDemand::new(|| Ok(CacheHandle::new_at_path(":memory:")));
+    }
+    let cache_dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
+    OnDemand::new(move || Ok(CacheHandle::new_in_directory(cache_dir.clone())))
 }
 
 fn run_migrations(conn: &mut rusqlite::Connection) -> anyhow::Result<()> {

@@ -14,7 +14,7 @@ test = false
 [features]
 legacy = [
     "dep:but-db",
-    "dep:but-fs",
+    "dep:but-utils",
     "dep:but-serde",
     "dep:but-graph",
     "dep:gitbutler-reference",
@@ -33,7 +33,7 @@ but-core.workspace = true
 but-db = { workspace = true, optional = true }
 but-serde = { workspace = true, optional = true }
 but-graph = { workspace = true, optional = true }
-but-fs = { workspace = true, optional = true }
+but-utils = { workspace = true, optional = true }
 
 gitbutler-reference = {workspace = true, optional = true}
 

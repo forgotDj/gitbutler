@@ -15,6 +15,7 @@ use but_core::{
 };
 use but_path::AppChannel;
 use but_settings::AppSettings;
+use but_utils::OnDemandCache;
 use tracing::instrument;
 
 /// Legacy types that shouldn't be used.
@@ -34,12 +35,8 @@ mod project_handle;
 /// Once `gitbutler-project` is dissolved, these types are expected to merge back into `but-ctx`.
 /// Thus, use it through this crate only to simplify dependencies.
 pub use but_project_handle::{ProjectHandle, ProjectHandleOrLegacyProjectId};
-
-mod ondemand;
-pub use ondemand::OnDemand;
-
-mod ondemand_cache;
-use crate::ondemand_cache::OnDemandCache;
+/// Convenience export as most crates out there refer to `but-ctx`.
+pub use but_utils::OnDemand;
 
 /// A context specific to a repository, along with commonly used information to make higher-level functions
 /// more convenient to implement.

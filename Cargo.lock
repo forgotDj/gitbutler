@@ -1138,6 +1138,7 @@ dependencies = [
  "but-project-handle",
  "but-settings",
  "but-testsupport",
+ "but-utils",
  "git2",
  "gitbutler-project",
  "gix",
@@ -1171,6 +1172,7 @@ dependencies = [
  "anyhow",
  "backoff",
  "bitflags 2.11.0",
+ "but-utils",
  "chrono",
  "insta",
  "libc",
@@ -1212,11 +1214,11 @@ dependencies = [
  "anyhow",
  "but-db",
  "but-forge-storage",
- "but-fs",
  "but-github",
  "but-gitlab",
  "but-path",
  "but-schemars",
+ "but-utils",
  "chrono",
  "git-url-parse",
  "schemars 1.2.1",
@@ -1231,20 +1233,9 @@ name = "but-forge-storage"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "but-fs",
+ "but-utils",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "but-fs"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "gix",
- "serde",
- "toml 0.9.12+spec-1.1.0",
- "walkdir",
 ]
 
 [[package]]
@@ -1422,11 +1413,11 @@ dependencies = [
  "bstr",
  "but-core",
  "but-db",
- "but-fs",
  "but-graph",
  "but-meta",
  "but-serde",
  "but-testsupport",
+ "but-utils",
  "gitbutler-reference",
  "gix",
  "hex",
@@ -1617,8 +1608,8 @@ name = "but-settings"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "but-fs",
  "but-path",
+ "but-utils",
  "notify",
  "serde",
  "serde_json",
@@ -1732,6 +1723,17 @@ dependencies = [
  "serde_json",
  "sha2",
  "tokio",
+]
+
+[[package]]
+name = "but-utils"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "gix",
+ "serde",
+ "toml 0.9.12+spec-1.1.0",
+ "walkdir",
 ]
 
 [[package]]
@@ -4104,10 +4106,10 @@ dependencies = [
  "bstr",
  "but-core",
  "but-ctx",
- "but-fs",
  "but-schemars",
  "but-serde",
  "but-testsupport",
+ "but-utils",
  "but-workspace",
  "gix",
  "schemars 1.2.1",
@@ -4124,11 +4126,11 @@ dependencies = [
  "anyhow",
  "but-core",
  "but-ctx",
- "but-fs",
  "but-meta",
  "but-oxidize",
  "but-serde",
  "but-testsupport",
+ "but-utils",
  "git2",
  "gitbutler-branch",
  "gitbutler-cherry-pick",
@@ -4152,12 +4154,12 @@ dependencies = [
  "but-core",
  "but-error",
  "but-forge",
- "but-fs",
  "but-path",
  "but-project-handle",
  "but-schemars",
  "but-serde",
  "but-testsupport",
+ "but-utils",
  "gix",
  "insta",
  "resolve-path",
@@ -4339,9 +4341,9 @@ name = "gitbutler-user"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "but-fs",
  "but-path",
  "but-secret",
+ "but-utils",
  "keyring",
  "serde",
  "serde_json",
