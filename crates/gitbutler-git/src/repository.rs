@@ -325,14 +325,7 @@ where
     // be rewritten to use `std::env::var_os()` and the executor should be tweaked to let `envs`
     // contain raw binary strings. This is however exceedingly unlikely to be a problem in practice
     // so we'll keep it like this for now.
-    if let Ok(git_ssh_command) = std::env::var("GIT_SSH_COMMAND") {
-        envs.insert("GIT_SSH_COMMAND".into(), git_ssh_command);
-        return envs;
-    }
-
-    if let Ok(Some(git_ssh_command)) = get_core_sshcommand(harness_env) {
-        // This move is a NOOP in most practical applications, but we do it for the simplicity of
-        // the GIT_SSH/GIT_SSH_COMMAND-is-configured invariant.
+    if let Ok(Some(git_ssh_command)) = get_git_ssh_command(harness_env) {
         envs.insert("GIT_SSH_COMMAND".into(), git_ssh_command);
         return envs;
     }
@@ -363,7 +356,12 @@ where
     envs
 }
 
-fn get_core_sshcommand<P>(harness_env: &HarnessEnv<P>) -> anyhow::Result<Option<String>>
+/// Gets GIT_SSH_COMMAND from env first, config second.
+///
+/// Correctness issue: If the command is not valid UTF8, this function returns Ok(None). When the
+/// executor is updated to be able to handle binary strings for envs, this should be rewritten
+/// accordingly.
+fn get_git_ssh_command<P>(harness_env: &HarnessEnv<P>) -> anyhow::Result<Option<String>>
 where
     P: AsRef<Path>,
 {
@@ -371,10 +369,10 @@ where
         HarnessEnv::Repo(repo_path) => Ok(gix::open(repo_path.as_ref())?
             .config_snapshot()
             .trusted_program(gix::config::tree::Core::SSH_COMMAND)
-            .map(|program| program.to_string_lossy().into_owned())),
+            .and_then(|program| program.to_str().map(String::from))),
         HarnessEnv::Global(_) => Ok(gix::config::File::from_globals()?
             .string(gix::config::tree::Core::SSH_COMMAND)
-            .map(|program| program.to_str_lossy().into_owned())),
+            .and_then(|program| program.to_str().ok().map(String::from))),
     }
 }
 
