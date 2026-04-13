@@ -103,6 +103,7 @@
 	// TIMER FUNCTIONS //
 	/////////////////////
 	let timer = 0;
+	let hoverShowTimer = 0;
 
 	function setupTimer() {
 		if (shouldShowOnHover || shouldAlwaysShow) return;
@@ -117,6 +118,13 @@
 		if (timer) {
 			window.clearTimeout(timer);
 			timer = 0;
+		}
+	}
+
+	function clearHoverShowTimer() {
+		if (hoverShowTimer) {
+			window.clearTimeout(hoverShowTimer);
+			hoverShowTimer = 0;
 		}
 	}
 
@@ -195,13 +203,31 @@
 	}
 
 	function onTrackEnter() {
-		if (shouldShowOnHover || shouldAlwaysShow) return;
+		if (shouldShowOnHover) {
+			visible = true;
+			return;
+		}
+
+		if (shouldAlwaysShow) return;
+		if (!isScrollable) return;
 		clearTimer();
+		clearHoverShowTimer();
+
+		hoverShowTimer = window.setTimeout(() => {
+			visible = true;
+			hoverShowTimer = 0;
+		}, 200);
 	}
 
 	function onTrackLeave() {
-		if (shouldShowOnHover || shouldAlwaysShow) return;
+		if (shouldShowOnHover) {
+			visible = false;
+			return;
+		}
 
+		if (shouldAlwaysShow) return;
+
+		clearHoverShowTimer();
 		clearTimer();
 		setupTimer();
 	}
@@ -214,6 +240,7 @@
 		track.addEventListener("mouseleave", onTrackLeave);
 
 		return () => {
+			clearHoverShowTimer();
 			track.removeEventListener("mousedown", onTrackClick);
 			track.removeEventListener("mouseenter", onTrackEnter);
 			track.removeEventListener("mouseleave", onTrackLeave);
@@ -237,6 +264,7 @@
 
 		onscroll?.(e);
 
+		clearHoverShowTimer();
 		clearTimer();
 		setupTimer();
 
