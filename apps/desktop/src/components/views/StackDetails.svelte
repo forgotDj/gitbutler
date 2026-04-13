@@ -66,7 +66,7 @@
 		maxWidth: 64,
 		defaultValue: 37,
 	};
-	const DETAILS_RIGHT_PADDING_REM = 1.125;
+	const DETAILS_RIGHT_PADDING_REM = 1;
 
 	const commitQuery = $derived(
 		controller.commitId

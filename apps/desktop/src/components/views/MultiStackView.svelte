@@ -348,7 +348,6 @@
 		display: flex;
 		flex: 1;
 		height: 100%;
-		margin-right: -1px; /* to hide vertical lane border gap */
 		overflow-x: auto;
 		overflow-y: hidden;
 	}
@@ -380,8 +379,14 @@
 		flex-direction: column;
 		width: fit-content;
 		height: 100%;
-		margin-left: -1px;
-		border-left: 1px solid var(--border-2);
 		background-color: var(--bg-2);
+
+		&:first-child {
+			box-shadow: -1px 0 0 0 var(--border-2);
+		}
+
+		&:not(:first-child) {
+			border-left: 1px solid var(--border-2);
+		}
 	}
 </style>

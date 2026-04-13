@@ -150,11 +150,10 @@
 		min-width: 400px;
 		max-width: 400px;
 		height: 100%;
-		margin-left: -1px;
 		overflow: hidden;
-		border-right: 1px solid var(--border-2);
 		border-left: 1px solid var(--border-2);
 		background-color: var(--bg-2);
+		box-shadow: 1px 0 0 0 var(--border-2);
 	}
 
 	.hidden-dropzone__lane {
@@ -164,7 +163,6 @@
 		justify-content: center;
 		width: 100%;
 		height: 100%;
-		margin-bottom: 8px;
 		gap: 10px;
 
 		/* SVG ANIMATION */

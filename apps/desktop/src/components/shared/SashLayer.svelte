@@ -132,7 +132,7 @@
 
 	/* Full-size overlay; only individual resizer children re-enable pointer events. */
 	.sash-container {
-		z-index: var(--z-floating);
+		z-index: var(--z-ground);
 		position: absolute;
 		inset: 0;
 		pointer-events: none;

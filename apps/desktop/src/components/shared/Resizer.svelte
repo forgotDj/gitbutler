@@ -453,6 +453,12 @@
 		// (Type narrowing from if-guards doesn't propagate into nested functions.)
 		const c = container;
 		const d = div;
+		const applyMarginCompensation = fullLayerCrossAxis;
+		const vpStyle = applyMarginCompensation ? getComputedStyle(vp) : undefined;
+		const marginLeftPx = applyMarginCompensation ? parseFloat(vpStyle?.marginLeft || "0") || 0 : 0;
+		const marginRightPx = applyMarginCompensation
+			? parseFloat(vpStyle?.marginRight || "0") || 0
+			: 0;
 
 		inLayer = true;
 		c.appendChild(d);
@@ -466,7 +472,10 @@
 			const crossHeightPx = fullLayerCrossAxis ? cr.height : vr.height;
 
 			if (orient === "horizontal") {
-				const edge = dir === "right" ? vr.right + edgeOffsetPx : vr.left - edgeOffsetPx;
+				const edge =
+					dir === "right"
+						? vr.right + marginRightPx + edgeOffsetPx
+						: vr.left - marginLeftPx - edgeOffsetPx;
 				setStyle(d.style, "left", `${edge - cr.left - t / 2}px`);
 				setStyle(d.style, "right", "");
 				setStyle(d.style, "top", `${crossTopPx}px`);
@@ -535,7 +544,7 @@
 		--resizer-cursor: default;
 		position: absolute;
 		outline: none;
-		background-color: rgba(255, 0, 0, 0.345);
+		/* background-color: rgba(255, 0, 0, 0.345); */
 		cursor: var(--resizer-cursor);
 
 		&.horizontal {
