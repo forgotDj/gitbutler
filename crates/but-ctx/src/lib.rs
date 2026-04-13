@@ -123,8 +123,6 @@ pub struct Context {
     /// An open handle to the database. It's initialized lazily upon first access.
     /// It is also what makes this type non-Clone, which is fair.
     pub db: OnDemand<but_db::DbHandle>,
-    /// An open handle to the project-local cache, initialized lazily on first access and only fallible if it's already borrowed.
-    pub cache: OnDemandCache<but_db::CacheHandle>,
     /// An open handle to the cache, initialized lazily on first access and only fallible if it's already borrowed.
     pub app_cache: OnDemandCache<but_db::AppCacheHandle>,
     /// The legacy implementation, for all the old code.
@@ -159,7 +157,7 @@ pub struct ThreadSafeContext {
 }
 
 impl From<ThreadSafeContext> for Context {
-    #[allow(
+    #[expect(
         deprecated,
         reason = "Context owns the deprecated boundary cache and must initialize it."
     )]
@@ -185,7 +183,6 @@ impl From<ThreadSafeContext> for Context {
             repo: ondemand,
             git2_repo: new_ondemand_git2_repo(gitdir.clone()),
             db: new_ondemand_db(project_data_dir.clone()),
-            cache: new_ondemand_cache(project_data_dir.clone(), cache_mode),
             app_cache: new_ondemand_app_cache(app_cache_dir.clone(), cache_mode),
             gitdir,
             project_data_dir,
@@ -276,7 +273,7 @@ impl Context {
 
     /// Just like [`Context::new()`], but allows controlling how the repository
     /// sources configuration via `repo_open_mode`.
-    #[allow(
+    #[expect(
         deprecated,
         reason = "Context owns the deprecated boundary cache and must initialize it."
     )]
@@ -301,7 +298,6 @@ impl Context {
                 repo: new_ondemand_repo(gitdir.clone(), repo_open_mode),
                 git2_repo: new_ondemand_git2_repo(gitdir.clone()),
                 db: new_ondemand_db(project_data_dir.clone()),
-                cache: new_ondemand_cache(project_data_dir, CacheMode::Disk),
                 app_cache: new_ondemand_app_cache(app_cache_dir.clone(), CacheMode::Disk),
                 app_cache_dir,
                 workspace: Default::default(),
@@ -327,7 +323,6 @@ impl Context {
                 repo: new_ondemand_repo(gitdir.clone(), repo_open_mode),
                 git2_repo: new_ondemand_git2_repo(gitdir.clone()),
                 db: new_ondemand_db(project_data_dir.clone()),
-                cache: new_ondemand_cache(project_data_dir, cache_mode),
                 app_cache: new_ondemand_app_cache(app_cache_dir.clone(), cache_mode),
                 app_cache_dir,
                 workspace: Default::default(),
@@ -411,10 +406,6 @@ impl Context {
         Self::from_repo_with_legacy_support(repo, repo_open_mode)
     }
 
-    #[allow(
-        deprecated,
-        reason = "Context owns the deprecated boundary cache and must initialize it."
-    )]
     fn from_repo_with_legacy_support(
         repo: gix::Repository,
         repo_open_mode: RepoOpenMode,
@@ -422,7 +413,7 @@ impl Context {
         Self::from_repo_with_legacy_support_and_channel(repo, repo_open_mode, AppChannel::new())
     }
 
-    #[allow(
+    #[expect(
         deprecated,
         reason = "Context owns the deprecated boundary cache and must initialize it."
     )]
@@ -454,7 +445,6 @@ impl Context {
                 repo: new_ondemand_repo(gitdir.clone(), repo_open_mode),
                 git2_repo: new_ondemand_git2_repo(gitdir.clone()),
                 db: new_ondemand_db(project_data_dir.clone()),
-                cache: new_ondemand_cache(project_data_dir, cache_mode),
                 app_cache: new_ondemand_app_cache(app_cache_dir.clone(), cache_mode),
                 app_cache_dir,
                 workspace: Default::default(),
@@ -475,7 +465,6 @@ impl Context {
                 repo: new_ondemand_repo(gitdir.clone(), repo_open_mode),
                 git2_repo: new_ondemand_git2_repo(gitdir.clone()),
                 db: new_ondemand_db(project_data_dir.clone()),
-                cache: new_ondemand_cache(project_data_dir, cache_mode),
                 app_cache: new_ondemand_app_cache(app_cache_dir.clone(), cache_mode),
                 app_cache_dir,
                 workspace: Default::default(),
@@ -488,7 +477,7 @@ impl Context {
     ///
     /// Particularly useful in testing, which might start off with just a Git repository.
     /// **Note that it does not have support for legacy projects to encourage single-branch compatible code.**
-    #[allow(
+    #[expect(
         deprecated,
         reason = "Context owns the deprecated boundary cache and must initialize it."
     )]
@@ -516,7 +505,6 @@ impl Context {
             repo: new_ondemand_repo(gitdir.clone(), repo_open_mode),
             git2_repo: new_ondemand_git2_repo(gitdir.clone()),
             db: new_ondemand_db(project_data_dir.clone()),
-            cache: new_ondemand_cache(project_data_dir, cache_mode),
             app_cache: new_ondemand_app_cache(app_cache_dir.clone(), cache_mode),
             app_cache_dir,
             workspace: Default::default(),
@@ -530,13 +518,12 @@ impl Context {
         self
     }
 
-    /// Use in-memory caches instead of project/app cache files.
+    /// Use an in-memory application cache instead of cache files on disk.
     ///
     /// This is useful for read-only contexts so cache access doesn't create SQLite files on disk.
     /// Prefer calling it before the first cache access.
     pub fn with_memory_cache(mut self) -> Self {
         self.cache_mode = CacheMode::Memory;
-        self.cache = new_ondemand_cache(self.project_data_dir.clone(), self.cache_mode);
         self.app_cache = new_ondemand_app_cache(self.app_cache_dir.clone(), self.cache_mode);
         self
     }
@@ -564,34 +551,6 @@ impl Context {
         let mut guard = self.exclusive_worktree_access();
         let (repo, ws, db) = self.workspace_mut_and_db_mut_with_perm(guard.write_permission())?;
         Ok((guard, repo, ws, db))
-    }
-
-    /// Create a cached workspace as seen from the current HEAD for editing, and return it,
-    /// along with `(&repo, &mut ws, &mut db, &cache)`.
-    /// `perm` ensures exclusive process-wide access to the repository.
-    /// Once the repository is changed, the cached workspace should be updated.
-    ///
-    /// # IMPORTANT
-    /// * if the workspace was changed, write the new workspace back into `&mut ws`.
-    #[instrument(
-        name = "Context::workspace_mut_and_db_mut_and_cache",
-        level = "debug",
-        skip_all
-    )]
-    #[expect(clippy::type_complexity)]
-    pub fn workspace_mut_and_db_mut_and_cache(
-        &mut self,
-    ) -> anyhow::Result<(
-        RepoExclusiveGuard,
-        cell::Ref<'_, gix::Repository>,
-        cell::RefMut<'_, but_graph::projection::Workspace>,
-        cell::RefMut<'_, but_db::DbHandle>,
-        cell::Ref<'_, but_db::CacheHandle>,
-    )> {
-        let mut guard = self.exclusive_worktree_access();
-        let (repo, ws, db, cache) =
-            self.workspace_mut_and_db_mut_and_cache_with_perm(guard.write_permission())?;
-        Ok((guard, repo, ws, db, cache))
     }
 
     /// Create a cached workspace as seen from the current HEAD for editing, and return it,
@@ -631,48 +590,6 @@ impl Context {
             .unwrap_or_else(|_| unreachable!("just set the value"));
         let db = self.db.get_mut()?;
         Ok((repo, ws, db))
-    }
-
-    /// Create a cached workspace as seen from the current HEAD for editing, and return it,
-    /// along with `(&repo, &mut ws, &mut db, &cache)`.
-    /// `perm` ensures exclusive process-wide access to the repository.
-    /// Once the repository is changed, the cached workspace should be updated.
-    ///
-    /// # IMPORTANT
-    /// * if the workspace was changed, write it back into `&mut ws`.
-    /// * Keep the guard alive like `let (_guard, …) = …`!
-    #[instrument(
-        name = "Context::workspace_mut_and_db_mut_and_cache_with_perm",
-        level = "debug",
-        skip_all
-    )]
-    #[expect(clippy::type_complexity)]
-    pub fn workspace_mut_and_db_mut_and_cache_with_perm(
-        &mut self,
-        _perm: &mut RepoExclusive,
-    ) -> anyhow::Result<(
-        cell::Ref<'_, gix::Repository>,
-        cell::RefMut<'_, but_graph::projection::Workspace>,
-        cell::RefMut<'_, but_db::DbHandle>,
-        cell::Ref<'_, but_db::CacheHandle>,
-    )> {
-        let cache = self.cache.get_cache()?;
-        let repo = self.repo.get()?;
-        if let Ok(cached) =
-            cell::RefMut::filter_map(self.workspace.try_borrow_mut()?, |opt| opt.as_mut())
-        {
-            let db = self.db.get_mut()?;
-            return Ok((repo, cached, db, cache));
-        }
-        let ws = self.workspace_from_head()?;
-        {
-            let mut value = self.workspace.try_borrow_mut()?;
-            *value = Some(ws);
-        }
-        let ws = cell::RefMut::filter_map(self.workspace.borrow_mut(), |opt| opt.as_mut())
-            .unwrap_or_else(|_| unreachable!("just set the value"));
-        let db = self.db.get_mut()?;
-        Ok((repo, ws, db, cache))
     }
 
     /// Create a new cached workspace as seen from the current HEAD for *reading* and return it,
@@ -756,35 +673,6 @@ impl Context {
         Ok((guard, repo, ws, db))
     }
 
-    /// Create a new cached workspace as seen from the current HEAD for *writing* and return it,
-    /// along with `(guard, &repo, &mut ws, &db, &cache)`.
-    /// The `db` and `cache` are read-only.
-    /// The guard is for exclusive access to the repository.
-    ///
-    /// # IMPORTANT
-    /// * if the workspace was changed, write it back into `&mut ws`.
-    /// * Keep the guard alive like `let (_guard, …) = …`!
-    #[instrument(
-        name = "Context::workspace_mut_and_db_and_cache",
-        level = "debug",
-        skip_all
-    )]
-    #[expect(clippy::type_complexity)]
-    pub fn workspace_mut_and_db_and_cache(
-        &mut self,
-    ) -> anyhow::Result<(
-        RepoExclusiveGuard,
-        cell::Ref<'_, gix::Repository>,
-        cell::RefMut<'_, but_graph::projection::Workspace>,
-        cell::Ref<'_, but_db::DbHandle>,
-        cell::Ref<'_, but_db::CacheHandle>,
-    )> {
-        let mut guard = self.exclusive_worktree_access();
-        let (repo, ws, db, cache) =
-            self.workspace_mut_and_db_and_cache_with_perm(guard.write_permission())?;
-        Ok((guard, repo, ws, db, cache))
-    }
-
     /// Create a new cached workspace as seen from the current HEAD for *reading* and return it,
     /// along with `(&repo, &mut ws, &db)`, given a read-`perm`ission.
     /// The `db` is read-only.
@@ -819,32 +707,6 @@ impl Context {
         Ok((self.repo.get()?, ws, self.db.get()?))
     }
 
-    /// Create a new cached workspace as seen from the current HEAD for *writing* and return it,
-    /// along with `(&repo, &mut ws, &db, &cache)`, given a write-`perm`ission.
-    /// The `db` and `cache` are read-only.
-    ///
-    /// # IMPORTANT
-    /// * if the workspace was changed, write it back into `&mut ws`.
-    #[instrument(
-        name = "Context::workspace_mut_and_db_and_cache_with_perm",
-        level = "debug",
-        skip_all
-    )]
-    #[expect(clippy::type_complexity)]
-    pub fn workspace_mut_and_db_and_cache_with_perm(
-        &self,
-        perm: &RepoExclusive,
-    ) -> anyhow::Result<(
-        cell::Ref<'_, gix::Repository>,
-        cell::RefMut<'_, but_graph::projection::Workspace>,
-        cell::Ref<'_, but_db::DbHandle>,
-        cell::Ref<'_, but_db::CacheHandle>,
-    )> {
-        let (repo, ws, db) = self.workspace_mut_and_db_with_perm(perm)?;
-        let cache = self.cache.get_cache()?;
-        Ok((repo, ws, db, cache))
-    }
-
     /// Create a new cached workspace as seen from the current HEAD for *reading* and return it,
     /// along with `(guard, &repo, &ws, &db)`.
     /// The `db` is read-only.
@@ -865,34 +727,6 @@ impl Context {
         let guard = self.shared_worktree_access();
         let (repo, ws, db) = self.workspace_and_db_with_perm(guard.read_permission())?;
         Ok((guard, repo, ws, db))
-    }
-
-    /// Create a new cached workspace as seen from the current HEAD for *reading* and return it,
-    /// along with `(guard, &repo, &ws, &db, &cache)`.
-    /// The `db` and `cache` are read-only.
-    /// The guard is for shared access to the repository.
-    ///
-    /// # IMPORTANT
-    /// * Keep the guard alive like `let (_guard, …) = …`!
-    #[instrument(
-        name = "Context::workspace_and_db_and_cache",
-        level = "debug",
-        skip_all
-    )]
-    #[expect(clippy::type_complexity)]
-    pub fn workspace_and_db_and_cache(
-        &self,
-    ) -> anyhow::Result<(
-        RepoSharedGuard,
-        cell::Ref<'_, gix::Repository>,
-        cell::Ref<'_, but_graph::projection::Workspace>,
-        cell::Ref<'_, but_db::DbHandle>,
-        cell::Ref<'_, but_db::CacheHandle>,
-    )> {
-        let guard = self.shared_worktree_access();
-        let (repo, ws, db, cache) =
-            self.workspace_and_db_and_cache_with_perm(guard.read_permission())?;
-        Ok((guard, repo, ws, db, cache))
     }
 
     /// Create a new cached workspace as seen from the current HEAD for *reading* and return it,
@@ -923,29 +757,6 @@ impl Context {
         let ws = cell::Ref::filter_map(self.workspace.borrow(), |opt| opt.as_ref())
             .unwrap_or_else(|_| unreachable!("just set the value"));
         Ok((self.repo.get()?, ws, self.db.get()?))
-    }
-
-    /// Create a new cached workspace as seen from the current HEAD for *reading* and return it,
-    /// along with `(&repo, &ws, &db, &cache)`, given a read-`perm`ission.
-    /// The `db` and `cache` are read-only.
-    #[instrument(
-        name = "Context::workspace_and_db_and_cache_with_perm",
-        level = "debug",
-        skip_all
-    )]
-    #[expect(clippy::type_complexity)]
-    pub fn workspace_and_db_and_cache_with_perm(
-        &self,
-        perm: &RepoShared,
-    ) -> anyhow::Result<(
-        cell::Ref<'_, gix::Repository>,
-        cell::Ref<'_, but_graph::projection::Workspace>,
-        cell::Ref<'_, but_db::DbHandle>,
-        cell::Ref<'_, but_db::CacheHandle>,
-    )> {
-        let (repo, ws, db) = self.workspace_and_db_with_perm(perm)?;
-        let cache = self.cache.get_cache()?;
-        Ok((repo, ws, db, cache))
     }
 
     fn workspace_from_head(&self) -> anyhow::Result<but_graph::projection::Workspace> {
@@ -1018,7 +829,7 @@ impl Context {
     }
 
     /// Take all copyable values and place them in an instance that can pass across thread boundaries.
-    #[allow(
+    #[expect(
         deprecated,
         reason = "Context owns the deprecated boundary cache and must move it out internally."
     )]
@@ -1030,7 +841,6 @@ impl Context {
             mut repo,
             git2_repo: _,
             db: _,
-            cache: _,
             app_cache: _,
             app_cache_dir,
             cache_mode,
@@ -1158,17 +968,6 @@ fn new_ondemand_git2_repo(gitdir: PathBuf) -> OnDemand<git2::Repository> {
 #[instrument(level = "trace")]
 fn new_ondemand_db(project_data_dir: PathBuf) -> OnDemand<but_db::DbHandle> {
     OnDemand::new(move || but_db::DbHandle::new_in_directory(project_data_dir.clone()))
-}
-
-#[instrument(level = "trace")]
-fn new_ondemand_cache(
-    project_data_dir: PathBuf,
-    cache_mode: CacheMode,
-) -> OnDemandCache<but_db::CacheHandle> {
-    OnDemandCache::new(move || match cache_mode {
-        CacheMode::Disk => but_db::CacheHandle::new_in_directory(project_data_dir.clone()),
-        CacheMode::Memory => but_db::CacheHandle::new_at_path(":memory:"),
-    })
 }
 
 #[instrument(level = "trace")]

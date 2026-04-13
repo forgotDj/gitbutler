@@ -57,7 +57,7 @@ pub fn reorder_stack(
     let mut builder = but_rebase::Rebase::new(&repo, Some(merge_base), None)?;
     let builder = builder.steps(steps)?;
     builder.rebase_noops(false);
-    let output = builder.rebase(&*ctx.cache.get_cache()?)?;
+    let output = builder.rebase()?;
 
     // Ensure the stack head is set to the new oid after rebasing
     stack.set_stack_head(&mut state, &repo, output.top_commit)?;

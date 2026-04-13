@@ -307,8 +307,7 @@ pub fn create_commit_and_update_refs(
                         commit_id,
                         new_message: None,
                     }])?;
-                    let cache = ctx.cache.get_cache()?;
-                    match builder.rebase(&cache) {
+                    match builder.rebase() {
                         Ok(mut outcome) => {
                             if commit_id != workspace_tip {
                                 let Some(rewritten_old) =
@@ -336,8 +335,7 @@ pub fn create_commit_and_update_refs(
                         }
                     }
                 } else {
-                    let cache = ctx.cache.get_cache()?;
-                    match builder.rebase(&cache) {
+                    match builder.rebase() {
                         Ok(rebase) => rebase,
                         Err(err) => {
                             return if let Some(conflicts) =

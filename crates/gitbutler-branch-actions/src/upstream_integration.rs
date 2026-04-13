@@ -307,7 +307,7 @@ fn get_stack_status(
         let mut rebase = but_rebase::Rebase::new(gix_repo, Some(rebase_base), None)?;
         rebase.rebase_noops(false);
         rebase.steps(steps)?;
-        let output = rebase.rebase(&*ctx.cache.get_cache()?)?;
+        let output = rebase.rebase()?;
         let new_head_oid = output.top_commit;
 
         let any_conflicted = output.commit_mapping.iter().any(|(_base, _old, new)| {
@@ -660,7 +660,7 @@ pub(crate) fn resolve_upstream_integration(
             let mut rebase = but_rebase::Rebase::new(&repo, Some(new_target_id), None)?;
             rebase.steps(steps)?;
             rebase.rebase_noops(false);
-            let outcome = rebase.rebase(&*ctx.cache.get_cache()?)?;
+            let outcome = rebase.rebase()?;
             Ok(outcome.top_commit)
         }
     }
@@ -775,7 +775,7 @@ fn compute_resolutions(
                         but_rebase::Rebase::new(context.gix_repo, Some(lower_bound), None)?;
                     rebase.rebase_noops(false);
                     rebase.steps(steps)?;
-                    let output = rebase.rebase(&*context.ctx.cache.get_cache()?)?;
+                    let output = rebase.rebase()?;
                     let new_head = output.top_commit;
 
                     Ok((

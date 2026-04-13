@@ -329,7 +329,7 @@ impl BranchManager<'_> {
             let mut rebase = but_rebase::Rebase::new(&repo, default_target.sha, None)?;
             rebase.steps(steps)?;
             rebase.rebase_noops(true);
-            let output = rebase.rebase(&*self.ctx.cache.get_cache()?)?;
+            let output = rebase.rebase()?;
             stack.set_stack_head(&mut vb_state, &repo, output.top_commit)?;
 
             stack.set_heads_from_rebase_output(self.ctx, output.references)?;

@@ -247,7 +247,7 @@ fn move_branch_impl_with_perm(
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<MoveBranchResult> {
     let mut meta = ctx.meta()?;
-    let (repo, mut ws, _, _cache) = ctx.workspace_mut_and_db_and_cache_with_perm(perm)?;
+    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
     let but_workspace::branch::move_branch::Outcome { rebase, ws_meta } =
         but_workspace::branch::move_branch(editor, subject_branch, target_branch)?;
@@ -312,7 +312,7 @@ fn tear_off_branch_impl_with_perm(
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<MoveBranchResult> {
     let mut meta = ctx.meta()?;
-    let (repo, mut ws, _, _cache) = ctx.workspace_mut_and_db_and_cache_with_perm(perm)?;
+    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
     let but_workspace::branch::move_branch::Outcome { rebase, ws_meta } =
         but_workspace::branch::tear_off_branch(editor, subject_branch, None)?;

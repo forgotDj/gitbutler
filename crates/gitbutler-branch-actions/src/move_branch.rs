@@ -74,7 +74,7 @@ pub(crate) fn move_branch(
             let mut src_rebase = Rebase::new(&repo, source_merge_base, None)?;
             src_rebase.steps(remaining_steps)?;
             src_rebase.rebase_noops(false);
-            Some(src_rebase.rebase(&*ctx.cache.get_cache()?)?)
+            Some(src_rebase.rebase()?)
         } else {
             None
         };
@@ -90,7 +90,7 @@ pub(crate) fn move_branch(
         let mut dst_rebase = Rebase::new(&repo, dest_merge_base, None)?;
         dst_rebase.steps(new_dest_steps)?;
         dst_rebase.rebase_noops(false);
-        let dest_output = dst_rebase.rebase(&*ctx.cache.get_cache()?)?;
+        let dest_output = dst_rebase.rebase()?;
 
         // Conflict check — bail before any state is written.
         if let Some(ref src_out) = source_output {
@@ -200,7 +200,7 @@ pub(crate) fn tear_off_branch(
     let mut new_stack_rebase = Rebase::new(&repo, source_merge_base, None)?;
     new_stack_rebase.steps(subject_branch_steps)?;
     new_stack_rebase.rebase_noops(false);
-    let new_stack_rebase_output = new_stack_rebase.rebase(&*ctx.cache.get_cache()?)?;
+    let new_stack_rebase_output = new_stack_rebase.rebase()?;
 
     let subject_branch_reference_spec = new_stack_rebase_output
         .clone()
@@ -261,7 +261,7 @@ fn extract_and_rebase_source_branch(
         let mut source_stack_rebase = Rebase::new(repository, source_merge_base, None)?;
         source_stack_rebase.steps(new_source_steps)?;
         source_stack_rebase.rebase_noops(false);
-        let source_rebase_result = source_stack_rebase.rebase(&*ctx.cache.get_cache()?)?;
+        let source_rebase_result = source_stack_rebase.rebase()?;
         let new_source_head = repository.find_commit(source_rebase_result.top_commit)?;
 
         source_stack.remove_branch(ctx, subject_branch_name)?;

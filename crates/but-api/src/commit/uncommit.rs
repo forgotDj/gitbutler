@@ -49,7 +49,7 @@ pub fn commit_uncommit_changes_only_with_perm(
 ) -> anyhow::Result<MoveChangesResult> {
     let context_lines = ctx.settings.context_lines;
     let mut meta = ctx.meta()?;
-    let (repo, mut ws, mut db, _cache) = ctx.workspace_mut_and_db_mut_and_cache_with_perm(perm)?;
+    let (repo, mut ws, mut db) = ctx.workspace_mut_and_db_mut_with_perm(perm)?;
 
     let before_assignments = if assign_to.is_some() {
         let (assignments, _) = but_hunk_assignment::assignments_with_fallback(

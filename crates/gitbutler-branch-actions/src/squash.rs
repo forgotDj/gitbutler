@@ -246,7 +246,7 @@ fn do_squash_commits(
         let mut builder = but_rebase::Rebase::new(&repo, Some(merge_base), None)?;
         let builder = builder.steps(steps)?;
         builder.rebase_noops(false);
-        let output = builder.rebase(&*ctx.cache.get_cache()?)?;
+        let output = builder.rebase()?;
 
         stack.set_stack_head(&mut vb_state, &repo, output.top_commit)?;
 
