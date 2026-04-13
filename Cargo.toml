@@ -212,10 +212,10 @@ backoff = "0.4.0"
 bstr = "1.12.1"
 # Add the `tracing` or `tracing-detail` features to see more of gitoxide in the logs. Useful to see which programs it invokes.
 # When adjusting this, update `gix-testtools` as well!
-gix = { version = "0.81.0", git = "https://github.com/GitoxideLabs/gitoxide", rev = "e51c40bd5c206305197bd635014f51930b5d8fc2", default-features = false, features = [
+gix = { version = "0.81.0", git = "https://github.com/GitoxideLabs/gitoxide", rev = "8f091d108cd75371be2ed9de6e81f785cda53d92", default-features = false, features = [
     "sha1",
 ] }
-gix-testtools = { version = "0.19.0", git = "https://github.com/GitoxideLabs/gitoxide", rev = "e51c40bd5c206305197bd635014f51930b5d8fc2" }
+gix-testtools = { version = "0.19.0", git = "https://github.com/GitoxideLabs/gitoxide", rev = "8f091d108cd75371be2ed9de6e81f785cda53d92" }
 
 ts-rs = { version = "11.1.0", features = ["serde-compat", "no-serde-warnings"] }
 insta = { version = "1.45.1", features = ["json"] }
@@ -336,7 +336,8 @@ incremental = false
 # Assure that `gix` is always fast so debug builds aren't unnecessarily slow.
 [profile.dev.package]
 foldhash = { opt-level = 3 }
-imara-diff = { opt-level = 3 }
+gix-imara-diff = { opt-level = 3 }
+gix-imara-diff-01 = { opt-level = 3 }
 but-graph = { opt-level = 3 }
 gix = { opt-level = 3 }
 gix-diff = { opt-level = 3 }
