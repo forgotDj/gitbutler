@@ -85,6 +85,16 @@ export class UserService {
 
 	async setUserAccessToken(token: string, bypassConfirmationToast = false) {
 		try {
+			const currentUser = await this.refresh();
+			if (currentUser) {
+				// Error out if we're trying to set a token when we've already logged in.
+				showError(
+					"Error: Attempting to login before loggin out first",
+					"There's already an account logged in, please log out before attempting to login to another account.",
+				);
+				return;
+			}
+
 			const user = await this.httpClient.get<User>("login/whoami", {
 				headers: {
 					"X-Auth-Token": token,

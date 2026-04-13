@@ -14,7 +14,7 @@
 
 	const userService = inject(USER_SERVICE);
 	const incomingUser = $derived(userService.incomingUserLogin);
-	const incomingUserEmail = $derived($incomingUser?.email ?? "");
+	const incomingUserEmail = $derived($incomingUser?.email);
 	const incomingUserName = $derived(
 		$incomingUser?.login ?? $incomingUser?.name ?? incomingUserEmail ?? "unknown",
 	);
@@ -44,7 +44,7 @@
 	const avatarSize = "3.25rem";
 </script>
 
-<ModalHeader type="info">Confirm login attempt</ModalHeader>
+<ModalHeader type="info">Confirm login attempt of {incomingUserName}</ModalHeader>
 <div class="modal-content">
 	{#await getUserAvatarURL()}
 		<SkeletonBone width={avatarSize} height={avatarSize} radius="100%" />
@@ -53,9 +53,9 @@
 	{/await}
 
 	<p class="text-13 text-body clr-text-2">
-		A new login attempt has been detected for the user
-		<span class="text-bold clr-text-1">{incomingUserName}</span>. Would you like to accept this
-		login?
+		A new login attempt has been detected for the user with email
+		<span class="text-bold clr-text-1">{incomingUserEmail ?? "-unknown-"}</span>. Would you like to
+		accept this login?
 	</p>
 </div>
 <ModalFooter>
