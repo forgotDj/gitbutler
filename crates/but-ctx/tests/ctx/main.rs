@@ -65,7 +65,7 @@ fn project_data_dir_comes_from_git_config() -> anyhow::Result<()> {
     let ctx = Context::from_repo(repo)?;
     assert_eq!(ctx.project_data_dir(), ctx.gitdir.join("gitbutler-custom"));
 
-    let _db = ctx.db.get()?;
+    let _db = ctx.db.get_cache()?;
     assert!(
         ctx.project_data_dir().join("but.sqlite").exists(),
         "database should be created in configured project-data directory"

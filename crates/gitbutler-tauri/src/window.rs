@@ -185,7 +185,7 @@ pub(crate) mod state {
                 watch_mode,
             )?;
 
-            let db = ctx.db.get()?;
+            let db = ctx.db.get_cache()?;
             let db_watcher = but_db::poll::watch_in_background(&db, {
                 let app_handle = self.app_handle.clone();
                 let project_id = ctx.legacy_project.id.clone();

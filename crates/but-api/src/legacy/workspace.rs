@@ -210,7 +210,7 @@ pub fn stack_details(
     }?;
     let repo = ctx.repo.get()?;
     let gerrit_mode = repo.git_settings()?.gitbutler_gerrit_mode.unwrap_or(false);
-    let db = ctx.db.get()?;
+    let db = ctx.db.get_cache()?;
     if gerrit_mode {
         for branch in details.branch_details.iter_mut() {
             handle_gerrit(branch, &repo, &db)?;
@@ -306,7 +306,7 @@ pub fn branch_details(
         but_workspace::branch_details(&repo, ref_name.as_ref(), &meta)
     }?;
     let repo = ctx.repo.get()?;
-    let db = ctx.db.get()?;
+    let db = ctx.db.get_cache()?;
     let gerrit_mode = ctx
         .repo
         .get()?

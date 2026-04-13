@@ -208,7 +208,7 @@ fn find_empty_branches(
 }
 
 /// Returns the set of stack IDs that have at least one worktree change assigned to them.
-fn stacks_with_assigned_changes(ctx: &mut but_ctx::Context) -> anyhow::Result<HashSet<StackId>> {
+fn stacks_with_assigned_changes(ctx: &but_ctx::Context) -> anyhow::Result<HashSet<StackId>> {
     let context_lines = ctx.settings.context_lines;
     let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
     let changes = but_core::diff::ui::worktree_changes(&repo)?.changes;

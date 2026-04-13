@@ -307,8 +307,8 @@ impl Claudes {
         // Persist the current session ID to the database so hooks can map current_session_id
         // back to our stable original_session_id.
         {
-            let mut ctx = sync_ctx.clone().into_thread_local();
-            if let Err(e) = db::add_session_id(&mut ctx, original_session_id, current_session_id) {
+            let ctx = sync_ctx.clone().into_thread_local();
+            if let Err(e) = db::add_session_id(&ctx, original_session_id, current_session_id) {
                 tracing::error!(
                     original_session_id = %original_session_id,
                     current_session_id = %current_session_id,
@@ -332,7 +332,7 @@ impl Claudes {
         let system_prompt_append = {
             let mut ctx = sync_ctx.clone().into_thread_local();
             let guard = ctx.exclusive_worktree_access();
-            let branch_info = format_branch_info(&mut ctx, stack_id, guard.read_permission());
+            let branch_info = format_branch_info(&ctx, stack_id, guard.read_permission());
             format!("{}\n\n{}", system_prompt(), branch_info)
         };
         let sdk_system_prompt =
@@ -905,7 +905,7 @@ Uncommitted changes (assigned to this stack):
 }
 
 /// Formats branch information for the system prompt
-fn format_branch_info(ctx: &mut Context, stack_id: StackId, perm: &RepoShared) -> String {
+fn format_branch_info(ctx: &Context, stack_id: StackId, perm: &RepoShared) -> String {
     let mut output = String::from(
         "<branch-info>\n\
         This repository uses GitButler for branch management. While git shows you are on\n\
@@ -991,7 +991,7 @@ fn append_stack_branches_info(output: &mut String, stack_id: StackId, ctx: &Cont
 fn append_assigned_files_info(
     output: &mut String,
     stack_id: StackId,
-    ctx: &mut Context,
+    ctx: &Context,
     perm: &RepoShared,
 ) -> anyhow::Result<()> {
     let context_lines = ctx.settings.context_lines;

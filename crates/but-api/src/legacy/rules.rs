@@ -23,7 +23,7 @@ pub fn create_workspace_rule(
 
 #[but_api]
 #[instrument(err(Debug))]
-pub fn delete_workspace_rule(ctx: &mut Context, rule_id: String) -> Result<()> {
+pub fn delete_workspace_rule(ctx: &Context, rule_id: String) -> Result<()> {
     delete_rule(ctx, &rule_id)
 }
 
@@ -39,7 +39,7 @@ pub fn update_workspace_rule(
 
 #[but_api]
 #[instrument(err(Debug))]
-pub fn list_workspace_rules(ctx: &mut Context) -> Result<Vec<WorkspaceRule>> {
+pub fn list_workspace_rules(ctx: &Context) -> Result<Vec<WorkspaceRule>> {
     let in_workspace = crate::legacy::workspace::stacks_v3_from_ctx(
         ctx,
         but_workspace::legacy::StacksFilter::InWorkspace,

@@ -484,7 +484,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
                 let mut active = extra.active_projects.lock().await;
                 let activated = active
                     .set_active(
-                        &mut ctx,
+                        &ctx,
                         &app,
                         app_settings.clone(),
                         #[cfg(feature = "irc")]

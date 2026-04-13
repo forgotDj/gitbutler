@@ -60,7 +60,7 @@ pub mod assignment {
     use crate::command::{context_from_args, debug_print};
 
     pub fn hunk_assignments(args: &crate::Args, use_json: bool) -> anyhow::Result<()> {
-        let mut ctx = context_from_args(args)?;
+        let ctx = context_from_args(args)?;
         let context_lines = ctx.settings.context_lines;
         let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
         let (assignments, _) = but_hunk_assignment::assignments_with_fallback(
@@ -84,7 +84,7 @@ pub mod assignment {
         use_json: bool,
         assignment: HunkAssignmentRequest,
     ) -> anyhow::Result<()> {
-        let mut ctx = context_from_args(args)?;
+        let ctx = context_from_args(args)?;
         let context_lines = ctx.settings.context_lines;
         let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
         but_hunk_assignment::assign(
@@ -376,7 +376,7 @@ pub async fn watch(args: &super::Args, watch_mode: Option<&str>) -> anyhow::Resu
 }
 pub fn watch_db(args: &super::Args) -> anyhow::Result<()> {
     let ctx = context_from_args(args)?;
-    let db = ctx.db.get()?;
+    let db = ctx.db.get_cache()?;
     let rx = db.poll_changes(
         ItemKind::Actions | ItemKind::Assignments | ItemKind::Workflows,
         std::time::Duration::from_millis(500),

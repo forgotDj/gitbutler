@@ -25,8 +25,8 @@ pub mod commit;
 pub mod stack;
 
 pub fn project_status(project_dir: &Path) -> anyhow::Result<but_tools::workspace::ProjectStatus> {
-    let mut ctx = Context::open(project_dir)?;
-    but_tools::workspace::get_project_status(&mut ctx, None)
+    let ctx = Context::open(project_dir)?;
+    but_tools::workspace::get_project_status(&ctx, None)
 }
 
 pub(crate) async fn start(app_settings: AppSettings) -> Result<()> {

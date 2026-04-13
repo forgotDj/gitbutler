@@ -76,7 +76,7 @@ pub fn read_only_context(script_name: &str, repo_name: &str) -> Result<Context> 
     )
     .map_err(anyhow::Error::from_boxed)?;
     let repo = open_repo(root.join(repo_name).as_path())?;
-    Ok(Context::from_repo(repo)?)
+    Context::from_repo(repo)
 }
 
 fn seed_fixture(repo: &gix::Repository, script_name: &str, repo_name: &str) -> Result<()> {

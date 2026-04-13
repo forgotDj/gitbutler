@@ -122,7 +122,8 @@ pub struct Context {
     pub git2_repo: OnDemand<git2::Repository>,
     /// An open handle to the database. It's initialized lazily upon first access.
     /// It is also what makes this type non-Clone, which is fair.
-    pub db: OnDemand<but_db::DbHandle>,
+    /// It sports interior mutability, which works as it's `Sync` naturally.
+    pub db: OnDemandCache<but_db::DbHandle>,
     /// An open handle to the cache, initialized lazily on first access and only fallible if it's already borrowed.
     pub app_cache: OnDemandCache<but_db::AppCacheHandle>,
     /// The legacy implementation, for all the old code.
@@ -578,7 +579,7 @@ impl Context {
         if let Ok(cached) =
             cell::RefMut::filter_map(self.workspace.try_borrow_mut()?, |opt| opt.as_mut())
         {
-            let db = self.db.get_mut()?;
+            let db = self.db.get_cache_mut()?;
             return Ok((repo, cached, db));
         }
         let ws = self.workspace_from_head()?;
@@ -588,7 +589,7 @@ impl Context {
         }
         let ws = cell::RefMut::filter_map(self.workspace.borrow_mut(), |opt| opt.as_mut())
             .unwrap_or_else(|_| unreachable!("just set the value"));
-        let db = self.db.get_mut()?;
+        let db = self.db.get_cache_mut()?;
         Ok((repo, ws, db))
     }
 
@@ -603,7 +604,7 @@ impl Context {
     #[instrument(name = "Context::workspace_and_db_mut", level = "debug", skip_all)]
     #[expect(clippy::type_complexity)]
     pub fn workspace_and_db_mut(
-        &mut self,
+        &self,
     ) -> anyhow::Result<(
         RepoSharedGuard,
         cell::Ref<'_, gix::Repository>,
@@ -629,7 +630,7 @@ impl Context {
         skip_all
     )]
     pub fn workspace_and_db_mut_with_perm(
-        &mut self,
+        &self,
         _perm: &RepoShared,
     ) -> anyhow::Result<(
         cell::Ref<'_, gix::Repository>,
@@ -638,7 +639,7 @@ impl Context {
     )> {
         if let Ok(cached) = cell::Ref::filter_map(self.workspace.try_borrow()?, |opt| opt.as_ref())
         {
-            return Ok((self.repo.get()?, cached, self.db.get_mut()?));
+            return Ok((self.repo.get()?, cached, self.db.get_cache_mut()?));
         }
         let ws = self.workspace_from_head()?;
         {
@@ -647,7 +648,7 @@ impl Context {
         }
         let ws = cell::Ref::filter_map(self.workspace.borrow(), |opt| opt.as_ref())
             .unwrap_or_else(|_| unreachable!("just set the value"));
-        Ok((self.repo.get()?, ws, self.db.get_mut()?))
+        Ok((self.repo.get()?, ws, self.db.get_cache_mut()?))
     }
 
     /// Create a new cached workspace as seen from the current HEAD for *writing* and return it,
@@ -695,7 +696,7 @@ impl Context {
         if let Ok(cached) =
             cell::RefMut::filter_map(self.workspace.try_borrow_mut()?, |opt| opt.as_mut())
         {
-            return Ok((self.repo.get()?, cached, self.db.get()?));
+            return Ok((self.repo.get()?, cached, self.db.get_cache()?));
         }
         let ws = self.workspace_from_head()?;
         {
@@ -704,7 +705,7 @@ impl Context {
         }
         let ws = cell::RefMut::filter_map(self.workspace.borrow_mut(), |opt| opt.as_mut())
             .unwrap_or_else(|_| unreachable!("just set the value"));
-        Ok((self.repo.get()?, ws, self.db.get()?))
+        Ok((self.repo.get()?, ws, self.db.get_cache()?))
     }
 
     /// Create a new cached workspace as seen from the current HEAD for *reading* and return it,
@@ -747,7 +748,7 @@ impl Context {
     )> {
         if let Ok(cached) = cell::Ref::filter_map(self.workspace.try_borrow()?, |opt| opt.as_ref())
         {
-            return Ok((self.repo.get()?, cached, self.db.get()?));
+            return Ok((self.repo.get()?, cached, self.db.get_cache()?));
         }
         let ws = self.workspace_from_head()?;
         {
@@ -756,7 +757,7 @@ impl Context {
         }
         let ws = cell::Ref::filter_map(self.workspace.borrow(), |opt| opt.as_ref())
             .unwrap_or_else(|_| unreachable!("just set the value"));
-        Ok((self.repo.get()?, ws, self.db.get()?))
+        Ok((self.repo.get()?, ws, self.db.get_cache()?))
     }
 
     fn workspace_from_head(&self) -> anyhow::Result<but_graph::projection::Workspace> {
@@ -966,8 +967,10 @@ fn new_ondemand_git2_repo(gitdir: PathBuf) -> OnDemand<git2::Repository> {
 }
 
 #[instrument(level = "trace")]
-fn new_ondemand_db(project_data_dir: PathBuf) -> OnDemand<but_db::DbHandle> {
-    OnDemand::new(move || but_db::DbHandle::new_in_directory(project_data_dir.clone()))
+fn new_ondemand_db(project_data_dir: PathBuf) -> OnDemandCache<but_db::DbHandle> {
+    OnDemandCache::new_fallible(move || {
+        but_db::DbHandle::new_in_directory(project_data_dir.clone())
+    })
 }
 
 #[instrument(level = "trace")]

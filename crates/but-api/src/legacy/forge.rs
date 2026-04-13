@@ -163,7 +163,7 @@ pub fn set_review_template(ctx: &but_ctx::Context, template_path: Option<String>
 #[but_api(napi)]
 #[instrument(err(Debug))]
 pub fn list_reviews(
-    ctx: &mut Context,
+    ctx: &Context,
     cache_config: Option<but_forge::CacheConfig>,
 ) -> Result<Vec<but_forge::ForgeReview>> {
     let (storage, forge_repo_info, preferred_forge_user) = {
@@ -177,7 +177,7 @@ pub fn list_reviews(
         )
     };
 
-    let db = &mut *ctx.db.get_mut()?;
+    let db = &mut *ctx.db.get_cache_mut()?;
 
     but_forge::list_forge_reviews_with_cache(
         preferred_forge_user,
@@ -190,7 +190,7 @@ pub fn list_reviews(
 
 #[but_api(napi)]
 #[instrument(err(Debug))]
-pub fn get_review(ctx: &mut Context, review_id: usize) -> Result<but_forge::ForgeReview> {
+pub fn get_review(ctx: &Context, review_id: usize) -> Result<but_forge::ForgeReview> {
     let (storage, forge_repo_info, preferred_forge_user) = {
         let base_branch = gitbutler_branch_actions::base::get_base_branch_data(ctx)?;
         let forge_repo_info = but_forge::derive_forge_repo_info(&base_branch.remote_url)
@@ -203,7 +203,7 @@ pub fn get_review(ctx: &mut Context, review_id: usize) -> Result<but_forge::Forg
         )
     };
 
-    let db = &mut *ctx.db.get_mut()?;
+    let db = &mut *ctx.db.get_cache_mut()?;
     but_forge::get_forge_review(
         &preferred_forge_user,
         &forge_repo_info,
@@ -216,7 +216,7 @@ pub fn get_review(ctx: &mut Context, review_id: usize) -> Result<but_forge::Forg
 #[but_api(napi)]
 #[instrument(skip(ctx), err(Debug))]
 pub fn list_ci_checks_and_update_cache(
-    ctx: &mut Context,
+    ctx: &Context,
     reference: String,
     cache_config: Option<but_forge::CacheConfig>,
 ) -> Result<Vec<but_forge::CiCheck>> {
@@ -230,7 +230,7 @@ pub fn list_ci_checks_and_update_cache(
             ctx.legacy_project.preferred_forge_user.clone(),
         )
     };
-    let db = &mut *ctx.db.get_mut()?;
+    let db = &mut *ctx.db.get_cache_mut()?;
 
     but_forge::ci_checks_for_ref_with_cache(
         preferred_forge_user,
@@ -428,7 +428,7 @@ pub async fn list_reviews_for_branch(
 /// part of any applied stack.
 #[but_api(napi)]
 #[instrument(err(Debug))]
-pub fn warm_ci_checks_cache(ctx: &mut Context) -> Result<()> {
+pub fn warm_ci_checks_cache(ctx: &Context) -> Result<()> {
     // Get all stacks
     let stacks = crate::legacy::workspace::stacks(ctx, None)?;
 
@@ -459,7 +459,7 @@ pub fn warm_ci_checks_cache(ctx: &mut Context) -> Result<()> {
     }
 
     // Clean up stale CI check entries from the database
-    let db = &mut *ctx.db.get_mut()?;
+    let db = &mut *ctx.db.get_cache_mut()?;
     let all_cached_refs = db.ci_checks().list_all_references()?;
 
     // Delete CI checks for references that are no longer in applied stacks

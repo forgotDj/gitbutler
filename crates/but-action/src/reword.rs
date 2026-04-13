@@ -79,7 +79,7 @@ pub fn commit(
         output_commits,
         None,
     )
-    .persist(&mut ctx)
+    .persist(&ctx)
     .ok();
 
     Ok(new_commit_id.map(|id| (id, message)))

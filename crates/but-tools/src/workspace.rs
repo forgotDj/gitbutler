@@ -1484,7 +1484,7 @@ impl ToolResult for Result<ProjectStatus, anyhow::Error> {
 }
 
 pub fn get_project_status(
-    ctx: &mut Context,
+    ctx: &Context,
     filter_changes: Option<Vec<BString>>,
 ) -> anyhow::Result<ProjectStatus> {
     let stacks = stacks(ctx)?;
@@ -1505,7 +1505,7 @@ pub fn get_project_status(
 }
 
 pub fn get_filtered_changes(
-    ctx: &mut Context,
+    ctx: &Context,
     filter_changes: Option<Vec<BString>>,
 ) -> Result<Vec<FileChange>, anyhow::Error> {
     let context_lines = ctx.settings.context_lines;

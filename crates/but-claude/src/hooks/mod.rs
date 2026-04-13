@@ -90,13 +90,13 @@ pub fn handle_stop(ctx: Context, read: impl std::io::Read) -> anyhow::Result<Cla
 /// `maybe_unused_session_id` is the session ID that was passed to the hook, and it should always be the same as the
 /// one that is stored. The code behaves like that's not the case, but we just go with it.
 pub fn handle_session_stop(
-    mut ctx: Context,
+    ctx: Context,
     maybe_unused_session_id: Uuid,
     transcript_path: &str,
     skip_gui_check: bool,
 ) -> anyhow::Result<ClaudeHookOutput> {
     let session_id =
-        stable_session_id(&mut ctx, maybe_unused_session_id)?.unwrap_or(maybe_unused_session_id);
+        stable_session_id(&ctx, maybe_unused_session_id)?.unwrap_or(maybe_unused_session_id);
 
     // ClearLocksGuard ensures all file locks for this session are cleared on drop,
     // including early returns (no changes, GUI check, auto-commit disabled).
@@ -126,7 +126,7 @@ pub fn handle_session_stop(
     let summary = transcript.summary().unwrap_or_default();
     let prompt = transcript.prompt().unwrap_or_default();
 
-    if !skip_gui_check && should_exit_early(&mut defer.ctx, maybe_unused_session_id)? {
+    if !skip_gui_check && should_exit_early(&defer.ctx, maybe_unused_session_id)? {
         return Ok(ClaudeHookOutput {
             do_continue: true,
             stop_reason: "Session running in GUI, skipping hook".to_string(),
@@ -244,7 +244,7 @@ pub fn handle_session_stop(
                 }),
             );
 
-            crate::db::save_new_message(&mut defer.ctx, session_id, commit_message)?;
+            crate::db::save_new_message(&defer.ctx, session_id, commit_message)?;
         }
     }
 
@@ -334,16 +334,16 @@ pub struct ClaudePreToolUseInput {
 }
 
 pub fn handle_pre_tool_call(
-    mut ctx: Context,
+    ctx: Context,
     read: impl std::io::Read,
 ) -> anyhow::Result<ClaudeHookOutput> {
     let input: ClaudePreToolUseInput = serde_json::from_reader(read)
         .map_err(|e| anyhow::anyhow!("Failed to parse input JSON: {e}"))?;
 
     let session_id = input.session_id;
-    let session_id = stable_session_id(&mut ctx, session_id)?.unwrap_or(session_id);
+    let session_id = stable_session_id(&ctx, session_id)?.unwrap_or(session_id);
 
-    if should_exit_early(&mut ctx, session_id)? {
+    if should_exit_early(&ctx, session_id)? {
         return Ok(ClaudeHookOutput {
             do_continue: true,
             stop_reason: "Session running in GUI, skipping hook".to_string(),
@@ -351,7 +351,7 @@ pub fn handle_pre_tool_call(
         });
     }
 
-    file_lock::obtain_or_insert(&mut ctx, session_id, input.tool_input.file_path)?;
+    file_lock::obtain_or_insert(&ctx, session_id, input.tool_input.file_path)?;
 
     Ok(ClaudeHookOutput {
         do_continue: true,
@@ -367,9 +367,9 @@ pub fn lock_file_for_tool_call(
     session_id: Uuid,
     file_path: &str,
 ) -> anyhow::Result<ClaudeHookOutput> {
-    let mut ctx: Context = sync_ctx.into_thread_local();
-    let resolved_session_id = stable_session_id(&mut ctx, session_id)?.unwrap_or(session_id);
-    file_lock::obtain_or_insert(&mut ctx, resolved_session_id, file_path.to_string())?;
+    let ctx: Context = sync_ctx.into_thread_local();
+    let resolved_session_id = stable_session_id(&ctx, session_id)?.unwrap_or(session_id);
+    file_lock::obtain_or_insert(&ctx, resolved_session_id, file_path.to_string())?;
 
     Ok(ClaudeHookOutput {
         do_continue: true,
@@ -395,7 +395,7 @@ pub fn handle_post_tool_call(
 }
 
 pub fn assign_hunks_post_tool_call(
-    mut ctx: Context,
+    ctx: Context,
     session_id: Uuid,
     file_path: &str,
     structured_patch: &[StructuredPatch],
@@ -403,7 +403,7 @@ pub fn assign_hunks_post_tool_call(
 ) -> anyhow::Result<ClaudeHookOutput> {
     let hook_headers: Vec<HunkHeader> = structured_patch.iter().map(|p| p.into()).collect();
 
-    let resolved_session_id = stable_session_id(&mut ctx, session_id)?.unwrap_or(session_id);
+    let resolved_session_id = stable_session_id(&ctx, session_id)?.unwrap_or(session_id);
 
     // ClearLocksGuard ensures the file lock is cleared on drop, including early returns.
     let mut defer = ClearLocksGuard {
@@ -412,7 +412,7 @@ pub fn assign_hunks_post_tool_call(
         file_path: Some(file_path.to_string()),
     };
 
-    if !skip_gui_check && should_exit_early(&mut defer.ctx, session_id)? {
+    if !skip_gui_check && should_exit_early(&defer.ctx, session_id)? {
         return Ok(ClaudeHookOutput {
             do_continue: true,
             stop_reason: "Session running in GUI, skipping hook".to_string(),
@@ -496,7 +496,7 @@ pub fn assign_hunks_post_tool_call(
 
 /// Get the stable session ID for a given session ID, if one is saved.
 /// This hinges on the assumption that the stored session ID can be different, but I don't see how it would be.
-fn stable_session_id(ctx: &mut Context, current_id: Uuid) -> Result<Option<Uuid>> {
+fn stable_session_id(ctx: &Context, current_id: Uuid) -> Result<Option<Uuid>> {
     Ok(crate::db::get_session_by_current_id(ctx, current_id)?.map(|session| session.id))
 }
 
@@ -567,7 +567,7 @@ pub(crate) struct ClearLocksGuard {
 
 impl Drop for ClearLocksGuard {
     fn drop(&mut self) {
-        file_lock::clear(&mut self.ctx, self.session_id, self.file_path.clone()).ok();
+        file_lock::clear(&self.ctx, self.session_id, self.file_path.clone()).ok();
     }
 }
 
@@ -608,7 +608,7 @@ fn list_stacks(ctx: &Context) -> anyhow::Result<Vec<StackEntry>> {
 }
 
 /// Returns true if the session has `is_gui` set to true, and `GUTBUTLER_IN_GUI` is unset
-fn should_exit_early(ctx: &mut Context, current_id: Uuid) -> anyhow::Result<bool> {
+fn should_exit_early(ctx: &Context, current_id: Uuid) -> anyhow::Result<bool> {
     let in_gui = std::env::var("GITBUTLER_IN_GUI").is_ok_and(|v| v == "1");
     if in_gui {
         return Ok(false);

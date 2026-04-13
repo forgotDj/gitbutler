@@ -32,7 +32,7 @@ impl TryFrom<crate::WorkspaceRule> for but_db::WorkspaceRule {
 pub fn workspace_rules(ctx: &Context) -> Result<Vec<crate::WorkspaceRule>> {
     let rules = ctx
         .db
-        .get()?
+        .get_cache()?
         .workspace_rules()
         .list()?
         .into_iter()

@@ -4,13 +4,15 @@ use std::{cell, cell::RefCell, rc::Rc};
 ///
 /// This structure trades compile-time safety for being able to 'hide' that caches are actually changed as they allow accessing
 /// cached data mutably on a *shared* borrow.
-/// Caches must also infallibly initialize to ensure that applications always work even without a cache, or an empty cache. To facilitate
+/// Caches *may* also infallibly initialize to ensure that applications always work even without a cache, or an empty cache. To facilitate
 /// this, the consuming code will always get to work with a cache, and should choose to ignore errors where possible - in the worst case,
-/// it can recalculate the cached data.
+/// it can recalculate the cached data. Use [`OnDemandCache::new()`] for that.
+///
+/// If only interior mutability is needed, without guaranteed cache creation, use [`OnDemandCache::new_fallible()`].
 ///
 /// Otherwise, equivalent to [`OnDemand`](crate::OnDemand)
 pub struct OnDemandCache<T> {
-    init: Rc<dyn Fn() -> T + 'static>,
+    init: Rc<dyn Fn() -> anyhow::Result<T> + 'static>,
     value: cell::RefCell<Option<T>>,
 }
 
@@ -30,6 +32,12 @@ where
 impl<T> OnDemandCache<T> {
     /// Create a new instance that can instantiate its value via `init` when needed.
     pub fn new(init: impl Fn() -> T + 'static) -> Self {
+        Self::new_fallible(move || Ok(init()))
+    }
+
+    /// Create a new instance that can instantiate its value via `init` when needed,
+    /// allowing initialization to fail.
+    pub fn new_fallible(init: impl Fn() -> anyhow::Result<T> + 'static) -> Self {
         OnDemandCache {
             init: Rc::new(init),
             value: RefCell::new(None),
@@ -40,13 +48,13 @@ impl<T> OnDemandCache<T> {
 /// Access
 impl<T> OnDemandCache<T> {
     /// Get a shared reference to the cached value or initialise it.
-    pub fn get_cache(&self) -> Result<cell::Ref<'_, T>, BorrowError> {
+    pub fn get_cache(&self) -> anyhow::Result<cell::Ref<'_, T>> {
         if let Ok(cached) = cell::Ref::filter_map(self.value.try_borrow()?, |opt| opt.as_ref()) {
             return Ok(cached);
         }
         {
             let mut value = self.value.try_borrow_mut()?;
-            *value = Some((self.init)());
+            *value = Some((self.init)()?);
         }
         Ok(
             cell::Ref::filter_map(self.value.borrow(), |opt| opt.as_ref())
@@ -55,7 +63,7 @@ impl<T> OnDemandCache<T> {
     }
 
     /// Get an exclusive references to the cached value or fallibly initialise it.
-    pub fn get_cache_mut(&self) -> Result<cell::RefMut<'_, T>, BorrowError> {
+    pub fn get_cache_mut(&self) -> anyhow::Result<cell::RefMut<'_, T>> {
         if let Ok(cached) =
             cell::RefMut::filter_map(self.value.try_borrow_mut()?, |opt| opt.as_mut())
         {
@@ -63,7 +71,7 @@ impl<T> OnDemandCache<T> {
         }
         {
             let mut value = self.value.try_borrow_mut()?;
-            *value = Some((self.init)());
+            *value = Some((self.init)()?);
         }
         Ok(
             cell::RefMut::filter_map(self.value.borrow_mut(), |opt| opt.as_mut())
@@ -71,49 +79,6 @@ impl<T> OnDemandCache<T> {
         )
     }
 }
-
-mod error {
-    use std::{cell, fmt::Formatter};
-
-    pub enum BorrowError {
-        Shared(cell::BorrowError),
-        Exclusive(cell::BorrowMutError),
-    }
-
-    impl From<cell::BorrowError> for BorrowError {
-        fn from(value: cell::BorrowError) -> Self {
-            Self::Shared(value)
-        }
-    }
-
-    impl From<cell::BorrowMutError> for BorrowError {
-        fn from(value: cell::BorrowMutError) -> Self {
-            Self::Exclusive(value)
-        }
-    }
-
-    impl std::fmt::Display for BorrowError {
-        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            match self {
-                BorrowError::Shared(e) => std::fmt::Display::fmt(&e, f),
-                BorrowError::Exclusive(e) => std::fmt::Display::fmt(&e, f),
-            }
-        }
-    }
-
-    impl std::fmt::Debug for BorrowError {
-        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            match self {
-                BorrowError::Shared(e) => std::fmt::Debug::fmt(&e, f),
-                BorrowError::Exclusive(e) => std::fmt::Debug::fmt(&e, f),
-            }
-        }
-    }
-
-    impl std::error::Error for BorrowError {}
-}
-use error::BorrowError;
-
 #[cfg(test)]
 mod tests {
     use crate::OnDemand;
