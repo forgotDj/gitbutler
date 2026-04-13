@@ -44,7 +44,7 @@
 	const avatarSize = "3.25rem";
 </script>
 
-<ModalHeader type="info">Confirm login attempt of {incomingUserName}</ModalHeader>
+<ModalHeader type="info">Confirm login attempt for {incomingUserName}</ModalHeader>
 <div class="modal-content">
 	{#await getUserAvatarURL()}
 		<SkeletonBone width={avatarSize} height={avatarSize} radius="100%" />
