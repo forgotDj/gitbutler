@@ -27,8 +27,12 @@ pub const AI_OLLAMA_MODEL_NAME_KEY: &str = "gitbutler.aiOllamaModelName";
 pub const AI_LMSTUDIO_ENDPOINT_KEY: &str = "gitbutler.aiLMStudioEndpoint";
 pub const AI_LMSTUDIO_MODEL_NAME_KEY: &str = "gitbutler.aiLMStudioModelName";
 
+pub const AI_OPENROUTER_MODEL_NAME_KEY: &str = "gitbutler.aiOpenRouterModelName";
+pub const AI_OPENROUTER_ENDPOINT_KEY: &str = "gitbutler.aiOpenRouterEndpoint";
+
 pub const AI_OPENAI_SECRET_HANDLE: &str = "aiOpenAIKey";
 pub const AI_ANTHROPIC_SECRET_HANDLE: &str = "aiAnthropicKey";
+pub const AI_OPENROUTER_SECRET_HANDLE: &str = "aiOpenRouterKey";
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -58,6 +62,7 @@ impl LLMProviderKind {
             LLMProviderKind::Anthropic => "anthropic",
             LLMProviderKind::Ollama => "ollama",
             LLMProviderKind::LMStudio => "lmstudio",
+            LLMProviderKind::OpenRouter => "openrouter",
         }
     }
 
@@ -67,6 +72,7 @@ impl LLMProviderKind {
             LLMProviderKind::Anthropic => "Anthropic",
             LLMProviderKind::Ollama => "Ollama",
             LLMProviderKind::LMStudio => "LM Studio",
+            LLMProviderKind::OpenRouter => "OpenRouter",
         }
     }
 }

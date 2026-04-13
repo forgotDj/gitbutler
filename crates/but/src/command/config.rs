@@ -12,7 +12,8 @@ use but_llm::{
     AI_ANTHROPIC_KEY_OPTION_KEY, AI_ANTHROPIC_MODEL_NAME_KEY, AI_ANTHROPIC_SECRET_HANDLE,
     AI_LMSTUDIO_ENDPOINT_KEY, AI_LMSTUDIO_MODEL_NAME_KEY, AI_MODEL_PROVIDER_KEY,
     AI_OLLAMA_ENDPOINT_KEY, AI_OLLAMA_MODEL_NAME_KEY, AI_OPENAI_CUSTOM_ENDPOINT_KEY,
-    AI_OPENAI_KEY_OPTION_KEY, AI_OPENAI_MODEL_NAME_KEY, AI_OPENAI_SECRET_HANDLE, LLMProviderKind,
+    AI_OPENAI_KEY_OPTION_KEY, AI_OPENAI_MODEL_NAME_KEY, AI_OPENAI_SECRET_HANDLE,
+    AI_OPENROUTER_MODEL_NAME_KEY, AI_OPENROUTER_SECRET_HANDLE, LLMProviderKind,
 };
 use but_secret::{Sensitive, secret};
 use but_settings::{AppSettingsWithDiskSync, api::TelemetryUpdate};
@@ -1201,6 +1202,15 @@ fn ai_config_non_interactive(
             apply_lmstudio_config(repo, scope, endpoint, model)?;
             write_ai_config_success(out, scope, LLMProviderKind::LMStudio)?;
         }
+        AiSubcommand::Openrouter {
+            model,
+            api_key,
+            api_key_env,
+        } => {
+            let secret = resolve_secret_input(api_key, api_key_env)?;
+            apply_openrouter_config(repo, scope, model, secret)?;
+            write_ai_config_success(out, scope, LLMProviderKind::OpenRouter)?;
+        }
     }
 
     Ok(())
@@ -1219,7 +1229,7 @@ fn ai_config_interactive(
 
     let provider_prompt = cli_prompts::prompts::Selection::new(
         "Select an AI provider",
-        vec!["OpenAI", "Anthropic", "Ollama", "LM Studio"].into_iter(),
+        vec!["OpenAI", "Anthropic", "Ollama", "LM Studio", "OpenRouter"].into_iter(),
     );
 
     let provider_label = provider_prompt
@@ -1230,6 +1240,7 @@ fn ai_config_interactive(
         "Anthropic" => LLMProviderKind::Anthropic,
         "Ollama" => LLMProviderKind::Ollama,
         "LM Studio" => LLMProviderKind::LMStudio,
+        "OpenRouter" => LLMProviderKind::OpenRouter,
         _ => anyhow::bail!("Unsupported AI provider selection: {provider_label}"),
     };
 
@@ -1289,6 +1300,15 @@ fn ai_config_interactive(
             let endpoint = inout.prompt("LM Studio endpoint URL (optional):")?;
             let model = inout.prompt("Preferred LM Studio model (optional):")?;
             apply_lmstudio_config(repo, scope, endpoint, model)?;
+        }
+        LLMProviderKind::OpenRouter => {
+            let model = inout.prompt("Preferred OpenRouter model (e.g. openai/gpt-4.1-mini):")?;
+            let secret = Some(
+                inout
+                    .prompt_secret("Enter OpenRouter API key:")?
+                    .context("No API key provided. Aborting configuration.")?,
+            );
+            apply_openrouter_config(repo, scope, model, secret)?;
         }
     }
 
@@ -1484,6 +1504,27 @@ fn apply_lmstudio_config(
         set_optional_config_value(config, AI_LMSTUDIO_MODEL_NAME_KEY, model)?;
         Ok(())
     })
+}
+
+fn apply_openrouter_config(
+    repo: Option<&gix::Repository>,
+    scope: AiScope,
+    model: Option<String>,
+    secret: Option<Sensitive<String>>,
+) -> Result<()> {
+    edit_ai_git_config(repo, scope, |config| {
+        set_config_value(
+            config,
+            AI_MODEL_PROVIDER_KEY,
+            LLMProviderKind::OpenRouter.as_git_config_value(),
+        )?;
+        set_optional_config_value(config, AI_OPENROUTER_MODEL_NAME_KEY, model)?;
+        Ok(())
+    })?;
+    if let Some(key) = secret {
+        secret::persist(AI_OPENROUTER_SECRET_HANDLE, &key, secret::Namespace::Global)?;
+    }
+    Ok(())
 }
 
 fn get_ai_config_info(repo: Option<&gix::Repository>, scope: AiScope) -> Result<AiConfigInfo> {
