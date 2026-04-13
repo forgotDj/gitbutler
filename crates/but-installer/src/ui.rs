@@ -72,7 +72,7 @@ pub fn println_empty() {
 /// Returns true if the user enters "y" or "yes" with any casing.
 pub fn prompt_for_confirmation(prompt: &str) -> io::Result<bool> {
     print(prompt);
-    print(" [y]es [N]o (default=No): ");
+    print(" [y/N] ");
 
     let mut response = String::new();
     stdin().read_line(&mut response)?;

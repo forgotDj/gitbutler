@@ -95,6 +95,18 @@ impl ShellConfig {
         self.has_path && self.has_completions
     }
 
+    fn generate_missing_shell_config_lines(&self) -> Vec<&'static str> {
+        let mut missing_shell_config_lines: Vec<&'static str> = vec![];
+        if !self.has_path {
+            missing_shell_config_lines.push(self.shell.path_command());
+        }
+        if !self.has_completions {
+            missing_shell_config_lines.push(self.shell.completion_command());
+        }
+
+        missing_shell_config_lines
+    }
+
     fn detect_posix_shell_config(home_dir: &Path, shell: ShellType) -> Option<ShellConfig> {
         let config_path = shell.config_path(home_dir)?;
         let contents = fs::read_to_string(&config_path).unwrap_or_default();
@@ -199,34 +211,37 @@ pub(crate) fn configure_shell(home_dir: &Path) -> Result<()> {
     let mut is_any_shell_configured = num_detected_shells > unconfigured_shells.len();
     for cfg in &unconfigured_shells {
         ui::println_empty();
-        ui::println(&format!(
-            "Detected shell: {} ({}).",
+        info(&format!(
+            "Detected {} config file: '{}'",
             cfg.shell.name(),
             cfg.config_path.display()
         ));
 
-        ui::println("Config file is missing: ");
+        let mut missing = Vec::new();
         if !cfg.has_path {
-            ui::println("   PATH setup")
+            missing.push("PATH setup");
         }
         if !cfg.has_completions {
-            ui::println("   but completions")
+            missing.push("shell completions");
         }
+        ui::info(&format!("Config file lacks: {}", missing.join(", ")));
 
-        ui::println_empty();
-        let confirm_prompt = format!(
-            "Would you like us to add the missing {}-configuration to '{}'?",
-            cfg.shell.name(),
-            cfg.config_path.display()
-        );
-        if ui::prompt_for_confirmation(&confirm_prompt)? {
+        if ui::prompt_for_confirmation("Automatically add missing config?")? {
             is_any_shell_configured = true;
             cfg.setup_config()?;
         } else {
-            ui::println(&format!(
-                "Skipping shell configuration for {}",
+            ui::info(&format!(
+                "Skipping auto-configuration for {}",
                 cfg.shell.name()
             ));
+            ui::info(&format!(
+                "For manual setup, add the following to '{}'",
+                cfg.config_path.display(),
+            ));
+            ui::println_empty();
+            for line in cfg.generate_missing_shell_config_lines() {
+                ui::println(&format!("  {line}"));
+            }
         }
     }
 
@@ -244,9 +259,9 @@ fn setup_shell_config(cfg: &ShellConfig) -> Result<()> {
     let needs_path = !cfg.has_path;
     let needs_completions = !cfg.has_completions;
 
-    if !(needs_path || needs_completions) {
+    if cfg.is_fully_configured() {
         // We shouldn't hit this case in practice as we should never ask the user to setup
-        // completions if there is nothing to do, so this is just being extra defensive.
+        // the shell if there is nothing to do, so this is just being extra defensive.
         info(&format!(
             "Shell already configured in '{}', there is nothing to do.",
             cfg.config_path.display()
@@ -260,12 +275,8 @@ fn setup_shell_config(cfg: &ShellConfig) -> Result<()> {
             writeln!(file)?;
             writeln!(file, "# Added by GitButler installer")?;
 
-            if needs_path {
-                writeln!(file, "{path_cmd}")?;
-            }
-
-            if needs_completions {
-                writeln!(file, "{completion_cmd}")?;
+            for line in cfg.generate_missing_shell_config_lines() {
+                writeln!(file, "{line}")?;
             }
 
             let mut updated_items = Vec::new();
@@ -583,8 +594,7 @@ mod tests {
     #[test]
     fn test_setup_fish_shell_config_only_adds_completions_when_path_in_config() -> Result<()> {
         let config_path = Path::new(".config/fish/config.fish");
-        let temp_dir =
-            tmpdir_with_config_at(config_path, Some("fish_add_path $HOME/.local/bin"));
+        let temp_dir = tmpdir_with_config_at(config_path, Some("fish_add_path $HOME/.local/bin"));
         let home_dir = temp_dir.path();
 
         let cfg = ShellType::Fish
@@ -608,10 +618,12 @@ mod tests {
         // detecting and setting up twice should have the same effect as doing it once
         ShellType::Fish
             .detect_config(home_dir)
-            .expect("Should detect config").setup_config()?;
+            .expect("Should detect config")
+            .setup_config()?;
         ShellType::Fish
             .detect_config(home_dir)
-            .expect("Should detect config").setup_config()?;
+            .expect("Should detect config")
+            .setup_config()?;
 
         let content = std::fs::read_to_string(home_dir.join(config_path)).unwrap();
         assert_eq!(content.matches("fish_add_path").count(), 1);
@@ -668,10 +680,12 @@ mod tests {
         // detecting and setting up twice should have the same effect as doing it once
         ShellType::Zsh
             .detect_config(home_dir)
-            .expect("Should detect config").setup_config()?;
+            .expect("Should detect config")
+            .setup_config()?;
         ShellType::Zsh
             .detect_config(home_dir)
-            .expect("Should detect config").setup_config()?;
+            .expect("Should detect config")
+            .setup_config()?;
 
         // Verify no duplicates were added
         let content = std::fs::read_to_string(home_dir.join(config_path)).unwrap();
