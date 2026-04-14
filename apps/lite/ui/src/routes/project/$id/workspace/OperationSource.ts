@@ -8,7 +8,7 @@ import { Match } from "effect";
 import { type Item } from "./Item.ts";
 
 /** @public */
-export type ChangesSectionOperationSource = { stackId: string | null };
+export type ChangesSectionOperationSource = {};
 /** @public */
 export type CommitOperationSource = { commitId: string };
 /** @public */
@@ -36,11 +36,11 @@ export const baseCommitOperationSource: OperationSource = {
 };
 
 /** @public */
-export const changesSectionOperationSource = ({
-	stackId,
-}: ChangesSectionOperationSource): OperationSource => ({
+export const changesSectionOperationSource = (
+	x: ChangesSectionOperationSource,
+): OperationSource => ({
 	_tag: "ChangesSection",
-	stackId,
+	...x,
 });
 
 /** @public */
@@ -78,7 +78,7 @@ const operationSourceIdentityKey = (operationSource: OperationSource): string =>
 	Match.value(operationSource).pipe(
 		Match.tagsExhaustive({
 			BaseCommit: () => JSON.stringify(["BaseCommit"]),
-			ChangesSection: ({ stackId }) => JSON.stringify(["ChangesSection", stackId]),
+			ChangesSection: () => JSON.stringify(["ChangesSection"]),
 			Commit: ({ commitId }) => JSON.stringify(["Commit", commitId]),
 			File: ({ parent, path }) => JSON.stringify(["File", parent, path]),
 			Hunk: ({ parent, path, hunkHeader }) => JSON.stringify(["Hunk", parent, path, hunkHeader]),
@@ -93,12 +93,12 @@ export const operationSourceFromItem = (item: Item): OperationSource =>
 	Match.value(item).pipe(
 		Match.tagsExhaustive({
 			BaseCommit: () => baseCommitOperationSource,
-			Change: ({ stackId, path }) =>
+			Change: ({ path }) =>
 				fileOperationSource({
-					parent: changesSectionFileParent({ stackId }),
+					parent: changesSectionFileParent({}),
 					path,
 				}),
-			ChangesSection: ({ stackId }) => changesSectionOperationSource({ stackId }),
+			ChangesSection: () => changesSectionOperationSource({}),
 			Commit: ({ commitId }) => commitOperationSource({ commitId }),
 			CommitFile: ({ commitId, path }) =>
 				fileOperationSource({

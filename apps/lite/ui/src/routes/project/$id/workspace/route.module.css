@@ -234,7 +234,6 @@ we must use an overlay for the background. */
 
 .stack {
 	display: flex;
-	row-gap: 24px;
 	flex-direction: column;
 }
 

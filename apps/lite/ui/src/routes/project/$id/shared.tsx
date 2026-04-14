@@ -1,4 +1,4 @@
-import { Commit, HunkAssignment, HunkHeader } from "@gitbutler/but-sdk";
+import { Commit, HunkHeader } from "@gitbutler/but-sdk";
 
 // https://linear.app/gitbutler/issue/GB-1161/refsbranches-should-use-bytes-instead-of-strings
 export const decodeRefName = (fullNameBytes: Array<number>): string =>
@@ -25,23 +25,6 @@ export const formatHunkHeader = (hunk: HunkHeader): string =>
 	`-${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines}`;
 
 export const shortCommitId = (commitId: string): string => commitId.slice(0, 7);
-
-export const getAssignmentsByPath = (
-	assignments: Array<HunkAssignment>,
-	stackId: string | null,
-): Map<string, Array<HunkAssignment>> => {
-	const byPath = new Map<string, Array<HunkAssignment>>();
-
-	for (const assignment of assignments) {
-		if ((assignment.stackId ?? null) !== stackId) continue;
-
-		const pathAssignments = byPath.get(assignment.path);
-		if (pathAssignments) pathAssignments.push(assignment);
-		else byPath.set(assignment.path, [assignment]);
-	}
-
-	return byPath;
-};
 
 export const commitTitle = (message: string): string => {
 	const _title = message.trim().split("\n")[0];

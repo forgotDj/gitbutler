@@ -751,13 +751,6 @@ export const useWorkspaceShortcuts = ({
 			}),
 		);
 
-	const getCommitModeSource = (selectedItem: Item) => {
-		if ("stackId" in selectedItem)
-			return operationSourceFromItem(changesSectionItem({ stackId: selectedItem.stackId }));
-
-		return operationSourceFromItem(changesSectionItem({ stackId: null }));
-	};
-
 	const handlePrimaryPanelAction = (action: PrimaryPanelAction, selectedItem: Item) =>
 		Match.value(action).pipe(
 			Match.tags({
@@ -765,7 +758,7 @@ export const useWorkspaceShortcuts = ({
 					dispatch(
 						projectActions.enterMoveMode({
 							projectId,
-							source: getCommitModeSource(selectedItem),
+							source: operationSourceFromItem(changesSectionItem({ stackId: null })),
 						}),
 					),
 				FocusPreview: () => dispatch(projectActions.focusPreview({ projectId })),
@@ -788,7 +781,7 @@ export const useWorkspaceShortcuts = ({
 			type: "treeChanges",
 			subject: {
 				changes: resolvedOperationSource.changes.map(({ change }) => change),
-				assignedStackId: resolvedOperationSource.parent.stackId,
+				assignedStackId: null,
 			},
 		});
 	};

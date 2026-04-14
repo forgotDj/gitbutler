@@ -3,7 +3,7 @@ import {
 	commitDetailsWithLineStatsQueryOptions,
 	headInfoQueryOptions,
 } from "#ui/api/queries.ts";
-import { Segment, type HunkAssignment, type RefInfo, type TreeChange } from "@gitbutler/but-sdk";
+import { Segment, type RefInfo, type TreeChange } from "@gitbutler/but-sdk";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { type NonEmptyArray } from "effect/Array";
 import {
@@ -18,19 +18,6 @@ import {
 } from "./Item.ts";
 import { getRelative } from "../shared.tsx";
 
-const hasAssignmentsForPath = ({
-	assignments,
-	stackId,
-	path,
-}: {
-	assignments: Array<HunkAssignment>;
-	stackId: string | null;
-	path: string;
-}): boolean =>
-	assignments.some(
-		(assignment) => (assignment.stackId ?? null) === stackId && assignment.path === path,
-	);
-
 type WorkspaceSection = {
 	section: Item;
 	children: Array<Item>;
@@ -41,7 +28,6 @@ type WorkspaceOutline = NonEmptyArray<WorkspaceSection>;
 type BuildWorkspaceOutlineArgs = {
 	headInfo: RefInfo;
 	changes: Array<TreeChange>;
-	assignments: Array<HunkAssignment>;
 	expandedCommitId?: string | null;
 	expandedCommitPaths?: Array<string>;
 };
@@ -49,17 +35,12 @@ type BuildWorkspaceOutlineArgs = {
 const buildWorkspaceOutline = ({
 	headInfo,
 	changes,
-	assignments,
 	expandedCommitId = null,
 	expandedCommitPaths,
 }: BuildWorkspaceOutlineArgs): WorkspaceOutline => {
 	const changesSection = (stackId: string | null): WorkspaceSection => ({
 		section: changesSectionItem({ stackId }),
-		children: changes.flatMap((change) =>
-			hasAssignmentsForPath({ assignments, stackId, path: change.path })
-				? [changeItem({ stackId, path: change.path })]
-				: [],
-		),
+		children: changes.map((change) => changeItem({ path: change.path })),
 	});
 
 	const segmentSection = (
@@ -98,12 +79,9 @@ const buildWorkspaceOutline = ({
 		...headInfo.stacks.flatMap((stack) => {
 			if (stack.id == null) return [];
 			const stackId = stack.id;
-			return [
-				changesSection(stackId),
-				...stack.segments.map((segment, segmentIndex) =>
-					segmentSection(stackId, segmentIndex, segment),
-				),
-			];
+			return stack.segments.map((segment, segmentIndex) =>
+				segmentSection(stackId, segmentIndex, segment),
+			);
 		}),
 
 		baseCommitSection,
@@ -130,7 +108,6 @@ export const useWorkspaceOutline = ({
 	return buildWorkspaceOutline({
 		headInfo,
 		changes: worktreeChanges.changes,
-		assignments: worktreeChanges.assignments,
 		expandedCommitId,
 		expandedCommitPaths: expandedCommitDetails?.changes.map((change) => change.path) ?? [],
 	});
