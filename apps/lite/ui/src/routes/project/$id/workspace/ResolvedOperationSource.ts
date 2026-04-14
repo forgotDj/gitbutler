@@ -24,12 +24,11 @@ import {
 	HunkAssignmentRequest,
 	InsertSide,
 	WorktreeChanges,
-	type HunkAssignment,
 	type HunkHeader,
 	type TreeChange,
 } from "@gitbutler/but-sdk";
 import { Match } from "effect";
-import { decodeRefName, getAssignmentsByPath } from "../shared";
+import { decodeRefName } from "../shared";
 import { type OperationSource } from "./OperationSource.ts";
 
 type TreeChangeWithHunkHeaders = {
@@ -87,15 +86,6 @@ export const treeChangesResolvedOperationSource = ({
 	changes,
 });
 
-const hunkHeadersForAssignments = (
-	assignments: Array<HunkAssignment> | undefined,
-): Array<HunkHeader> =>
-	assignments
-		? assignments.flatMap((assignment) =>
-				assignment.hunkHeader != null ? [assignment.hunkHeader] : [],
-			)
-		: [];
-
 const resolveOperationSource = ({
 	operationSource,
 	worktreeChanges,
@@ -110,26 +100,20 @@ const resolveOperationSource = ({
 			Segment: ({ branchRef }) => segmentResolvedOperationSource({ branchRef }),
 			BaseCommit: () => baseCommitResolvedOperationSource,
 			Commit: ({ commitId }) => commitResolvedOperationSource({ commitId }),
-			ChangesSection: ({ stackId }) => {
+			ChangesSection: () => {
 				if (!worktreeChanges) return null;
 
-				const assignmentsByPath = getAssignmentsByPath(worktreeChanges.assignments, stackId);
 				const changes = worktreeChanges.changes.flatMap(
-					(change): Array<TreeChangeWithHunkHeaders> => {
-						const assignments = assignmentsByPath.get(change.path);
-						if (!assignments) return [];
-
-						return [
-							{
-								change,
-								hunkHeaders: hunkHeadersForAssignments(assignments),
-							},
-						];
-					},
+					(change): Array<TreeChangeWithHunkHeaders> => [
+						{
+							change,
+							hunkHeaders: [],
+						},
+					],
 				);
 
 				return treeChangesResolvedOperationSource({
-					parent: changesSectionFileParent({ stackId }),
+					parent: changesSectionFileParent({}),
 					changes,
 				});
 			},
@@ -152,22 +136,9 @@ const resolveOperationSource = ({
 
 				if (!change) return null;
 
-				const hunkHeaders = Match.value(parent).pipe(
-					Match.tagsExhaustive({
-						ChangesSection: ({ stackId }) => {
-							if (!worktreeChanges) return [];
-
-							return hunkHeadersForAssignments(
-								getAssignmentsByPath(worktreeChanges.assignments, stackId).get(path),
-							);
-						},
-						Commit: () => [],
-					}),
-				);
-
 				return treeChangesResolvedOperationSource({
 					parent,
-					changes: [{ change, hunkHeaders }],
+					changes: [{ change, hunkHeaders: [] }],
 				});
 			},
 			Hunk: ({ parent, path, hunkHeader }) => {
@@ -236,10 +207,10 @@ export const getCombineOperation = ({
 			Commit: ({ commitId: sourceCommitId }) =>
 				Match.value(target).pipe(
 					Match.tagsExhaustive({
-						ChangesSection: ({ stackId }) =>
+						ChangesSection: () =>
 							commitUncommitOperation({
 								commitId: sourceCommitId,
-								assignTo: stackId,
+								assignTo: null,
 							}),
 						Commit: ({ commitId: destinationCommitId }) =>
 							commitSquashOperation({
@@ -258,20 +229,14 @@ export const getCombineOperation = ({
 						ChangesSection: () =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
-									ChangesSection: ({ stackId: targetStackId }) =>
+									ChangesSection: () =>
 										assignHunkOperation({
 											assignments: sourceChanges.flatMap(({ change, hunkHeaders }) =>
 												hunkHeaders.map(
 													(hunkHeader): HunkAssignmentRequest => ({
 														pathBytes: change.pathBytes,
 														hunkHeader,
-														target:
-															targetStackId === null
-																? null
-																: {
-																		type: "stack",
-																		subject: { stackId: targetStackId },
-																	},
+														target: null,
 													}),
 												),
 											),
@@ -286,10 +251,10 @@ export const getCombineOperation = ({
 						Commit: ({ commitId: sourceCommitId }) =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
-									ChangesSection: ({ stackId }) =>
+									ChangesSection: () =>
 										commitUncommitChangesOperation({
 											commitId: sourceCommitId,
-											assignTo: stackId,
+											assignTo: null,
 											changes,
 										}),
 									Commit: ({ commitId: destinationCommitId }) =>

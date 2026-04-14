@@ -21,10 +21,10 @@ const rubModeOperationSourceToOperation = ({
 }) =>
 	Match.value(target).pipe(
 		Match.tags({
-			ChangesSection: (target) =>
+			ChangesSection: () =>
 				getCombineOperation({
 					resolvedOperationSource,
-					target: changesSectionFileParent({ stackId: target.stackId }),
+					target: changesSectionFileParent({}),
 				}),
 			Commit: (target) =>
 				getCombineOperation({

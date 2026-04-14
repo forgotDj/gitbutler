@@ -114,10 +114,10 @@ const dropTargetToOperation = ({
 }) =>
 	Match.value(target).pipe(
 		Match.tags({
-			ChangesSection: ({ stackId }) =>
+			ChangesSection: () =>
 				getCombineOperation({
 					resolvedOperationSource,
-					target: changesSectionFileParent({ stackId }),
+					target: changesSectionFileParent({}),
 				}),
 			Segment: ({ branchRef }) =>
 				branchRef === null

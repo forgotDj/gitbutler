@@ -55,7 +55,6 @@ import {
 	CommitLabel,
 	shortCommitId,
 	decodeRefName,
-	getAssignmentsByPath,
 	getRelative,
 	encodeRefName,
 } from "#ui/routes/project/$id/shared.tsx";
@@ -65,7 +64,6 @@ import {
 	AbsorptionTarget,
 	Commit,
 	DiffHunk,
-	HunkAssignment,
 	HunkDependencies,
 	HunkHeader,
 	Segment,
@@ -136,27 +134,6 @@ import {
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 const fileHunkKey = (path: string, hunk: HunkHeader): string => `${path}:${hunkKey(hunk)}`;
-
-const hunkHeaderEquals = (a: HunkHeader, b: HunkHeader): boolean =>
-	a.oldStart === b.oldStart &&
-	a.oldLines === b.oldLines &&
-	a.newStart === b.newStart &&
-	a.newLines === b.newLines;
-
-const assignedHunks = (
-	hunks: Array<DiffHunk>,
-	assignments: Array<HunkAssignment>,
-): Array<DiffHunk> => {
-	if (assignments.length === 0) return [];
-	if (assignments.some((assignment) => assignment.hunkHeader == null)) return hunks;
-
-	return hunks.filter((hunk) =>
-		assignments.some(
-			(assignment) =>
-				assignment.hunkHeader != null && hunkHeaderEquals(hunk, assignment.hunkHeader),
-		),
-	);
-};
 
 const lineEndingForDiff = (diff: string): string => (diff.includes("\r\n") ? "\r\n" : "\n");
 
@@ -455,7 +432,6 @@ const FileDiff: FC<{
 	operationMode: OperationMode | null;
 	projectId: string;
 	change: TreeChange;
-	assignments?: Array<HunkAssignment>;
 	fileParent?: FileParent;
 	editable: boolean;
 	hunkDependencyDiffs?: Array<HunkDependencyDiff>;
@@ -466,7 +442,6 @@ const FileDiff: FC<{
 	operationMode,
 	projectId,
 	change,
-	assignments,
 	fileParent,
 	editable,
 	hunkDependencyDiffs,
@@ -481,9 +456,7 @@ const FileDiff: FC<{
 			<div>Diff too large ({subject.sizeInBytes} bytes).</div>
 		)),
 		Match.when({ type: "Patch" }, (patch) => {
-			const visibleHunks = assignments
-				? assignedHunks(patch.subject.hunks, assignments)
-				: patch.subject.hunks;
+			const visibleHunks = patch.subject.hunks;
 			if (visibleHunks.length === 0) return <div>No hunks.</div>;
 
 			return (
@@ -523,15 +496,11 @@ const FileDiff: FC<{
 		Match.exhaustive,
 	);
 
-const hunkKeysFromChangeWithDiff = (
-	[change, diff]: [TreeChange, UnifiedPatch | null],
-	assignments?: Array<HunkAssignment>,
-): Array<string> =>
-	diff?.type === "Patch"
-		? (assignments ? assignedHunks(diff.subject.hunks, assignments) : diff.subject.hunks).map(
-				(hunk) => fileHunkKey(change.path, hunk),
-			)
-		: [];
+const hunkKeysFromChangeWithDiff = ([change, diff]: [
+	TreeChange,
+	UnifiedPatch | null,
+]): Array<string> =>
+	diff?.type === "Patch" ? diff.subject.hunks.map((hunk) => fileHunkKey(change.path, hunk)) : [];
 
 export type PreviewImperativeHandle = {
 	moveSelection: (offset: -1 | 1) => void;
@@ -541,12 +510,10 @@ const usePreviewDiffState = ({
 	projectId,
 	changes,
 	ref,
-	getAssignments,
 }: {
 	projectId: string;
 	changes: Array<TreeChange>;
 	ref?: Ref<PreviewImperativeHandle>;
-	getAssignments?: (path: string) => Array<HunkAssignment> | undefined;
 }) => {
 	const dispatch = useAppDispatch();
 	const selectedHunk = useAppSelector((state) => selectProjectSelectedHunk(state, projectId));
@@ -555,7 +522,7 @@ const usePreviewDiffState = ({
 	}).map((result) => result.data);
 	const changesWithDiffs = pipe(changes, Array.zip(treeChangeDiffs));
 	const hunkKeys = changesWithDiffs.flatMap(([change, diff]) =>
-		hunkKeysFromChangeWithDiff([change, diff], getAssignments?.(change.path)),
+		hunkKeysFromChangeWithDiff([change, diff]),
 	);
 	const normalizedSelectedHunk = normalizeSelectedHunk({ hunkKeys, selectedHunk });
 
@@ -587,17 +554,15 @@ const usePreviewDiffState = ({
 const ChangesPreview: FC<{
 	operationMode: OperationMode | null;
 	projectId: string;
-	stackId: string | null;
 	selectedPath?: string;
 	isFocused: boolean;
 	ref?: Ref<PreviewImperativeHandle>;
-}> = ({ operationMode, projectId, stackId, selectedPath, isFocused, ref }) => {
+}> = ({ operationMode, projectId, selectedPath, isFocused, ref }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
-	const assignmentsByPath = getAssignmentsByPath(worktreeChanges.assignments, stackId);
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
 		worktreeChanges.dependencies?.diffs ?? [],
 	);
-	const changes = worktreeChanges.changes.filter((change) => assignmentsByPath.has(change.path));
+	const changes = worktreeChanges.changes;
 	const selectedChange =
 		selectedPath !== undefined
 			? changes.find((candidate) => candidate.path === selectedPath)
@@ -607,7 +572,6 @@ const ChangesPreview: FC<{
 		projectId,
 		changes: visibleChanges,
 		ref,
-		getAssignments: (path) => assignmentsByPath.get(path),
 	});
 
 	return (
@@ -617,7 +581,7 @@ const ChangesPreview: FC<{
 			) : (
 				<ul>
 					{changesWithDiffs.map(([change, diff]) => {
-						const parent = changesSectionFileParent({ stackId });
+						const parent = changesSectionFileParent({});
 						const source = fileOperationSource({ parent, path: change.path });
 						return (
 							<li key={change.path}>
@@ -634,7 +598,6 @@ const ChangesPreview: FC<{
 									change={change}
 									fileParent={parent}
 									editable
-									assignments={assignmentsByPath.get(change.path)}
 									hunkDependencyDiffs={hunkDependencyDiffsByPath.get(change.path)}
 									diff={diff}
 									selectedHunk={normalizedSelectedHunk}
@@ -809,20 +772,18 @@ const Preview: FC<{
 					/>
 				);
 			},
-			ChangesSection: ({ stackId }) => (
+			ChangesSection: () => (
 				<ChangesPreview
 					operationMode={operationMode}
 					projectId={projectId}
-					stackId={stackId}
 					isFocused={isFocused}
 					ref={ref}
 				/>
 			),
-			Change: ({ stackId, path }) => (
+			Change: ({ path }) => (
 				<ChangesPreview
 					operationMode={operationMode}
 					projectId={projectId}
-					stackId={stackId}
 					selectedPath={path}
 					isFocused={isFocused}
 					ref={ref}
@@ -1289,8 +1250,7 @@ const ChangeRowMenuPopup: FC<{
 	change: TreeChange;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	parts: typeof Menu | typeof ContextMenu;
-	stackId: string | null;
-}> = ({ change, onAbsorbChanges, parts, stackId }) => {
+}> = ({ change, onAbsorbChanges, parts }) => {
 	const { Popup, Item } = parts;
 
 	const absorb = () => {
@@ -1298,7 +1258,7 @@ const ChangeRowMenuPopup: FC<{
 			type: "treeChanges",
 			subject: {
 				changes: [change],
-				assignedStackId: stackId,
+				assignedStackId: null,
 			},
 		});
 	};
@@ -1320,7 +1280,6 @@ const ChangeRow: FC<{
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	operationMode: OperationMode | null;
 	projectId: string;
-	stackId: string | null;
 }> = ({
 	change,
 	dependencyCommitIds,
@@ -1329,10 +1288,9 @@ const ChangeRow: FC<{
 	onAbsorbChanges,
 	operationMode,
 	projectId,
-	stackId,
 }) => {
 	const dispatch = useAppDispatch();
-	const item = changeItem({ stackId, path: change.path });
+	const item = changeItem({ path: change.path });
 	return (
 		<OperationSourceC
 			operationMode={operationMode}
@@ -1359,7 +1317,6 @@ const ChangeRow: FC<{
 							change={change}
 							onAbsorbChanges={onAbsorbChanges}
 							parts={ContextMenu}
-							stackId={stackId}
 						/>
 					</ContextMenu.Positioner>
 				</ContextMenu.Portal>
@@ -1379,12 +1336,7 @@ const ChangeRow: FC<{
 				</Menu.Trigger>
 				<Menu.Portal>
 					<Menu.Positioner align="end">
-						<ChangeRowMenuPopup
-							change={change}
-							onAbsorbChanges={onAbsorbChanges}
-							parts={Menu}
-							stackId={stackId}
-						/>
+						<ChangeRowMenuPopup change={change} onAbsorbChanges={onAbsorbChanges} parts={Menu} />
 					</Menu.Positioner>
 				</Menu.Portal>
 			</Menu.Root>
@@ -1396,8 +1348,7 @@ const ChangesSectionRowMenuPopup: FC<{
 	changes: Array<TreeChange>;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	parts: typeof Menu | typeof ContextMenu;
-	stackId: string | null;
-}> = ({ changes, onAbsorbChanges, parts, stackId }) => {
+}> = ({ changes, onAbsorbChanges, parts }) => {
 	const { Popup, Item } = parts;
 
 	const absorb = () => {
@@ -1405,7 +1356,7 @@ const ChangesSectionRowMenuPopup: FC<{
 			type: "treeChanges",
 			subject: {
 				changes,
-				assignedStackId: stackId,
+				assignedStackId: null,
 			},
 		});
 	};
@@ -1423,16 +1374,14 @@ const ChangesSectionRow: FC<{
 	changes: Array<TreeChange>;
 	isSelected: boolean;
 	navigationIndex: NavigationIndex;
-	label: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	projectId: string;
-	stackId: string | null;
-}> = ({ changes, isSelected, navigationIndex, label, onAbsorbChanges, projectId, stackId }) => {
+}> = ({ changes, isSelected, navigationIndex, onAbsorbChanges, projectId }) => {
 	const dispatch = useAppDispatch();
 
 	return (
 		<ItemRow
-			inert={!navigationIndexIncludes(navigationIndex, changesSectionItem({ stackId }))}
+			inert={!navigationIndexIncludes(navigationIndex, changesSectionItem({}))}
 			isSelected={isSelected}
 		>
 			<ContextMenu.Root>
@@ -1445,12 +1394,12 @@ const ChangesSectionRow: FC<{
 								dispatch(
 									projectActions.selectItem({
 										projectId,
-										item: changesSectionItem({ stackId }),
+										item: changesSectionItem({}),
 									}),
 								);
 							}}
 						>
-							{label}
+							Changes
 						</button>
 					}
 				/>
@@ -1460,13 +1409,12 @@ const ChangesSectionRow: FC<{
 							changes={changes}
 							onAbsorbChanges={onAbsorbChanges}
 							parts={ContextMenu}
-							stackId={stackId}
 						/>
 					</ContextMenu.Positioner>
 				</ContextMenu.Portal>
 			</ContextMenu.Root>
 			<Menu.Root>
-				<Menu.Trigger className={styles.itemRowAction} aria-label={`${label} menu`}>
+				<Menu.Trigger className={styles.itemRowAction} aria-label={`Changes menu`}>
 					<MenuTriggerIcon />
 				</Menu.Trigger>
 				<Menu.Portal>
@@ -1475,7 +1423,6 @@ const ChangesSectionRow: FC<{
 							changes={changes}
 							onAbsorbChanges={onAbsorbChanges}
 							parts={Menu}
-							stackId={stackId}
 						/>
 					</Menu.Positioner>
 				</Menu.Portal>
@@ -1516,20 +1463,16 @@ const BaseCommitRow: FC<
 };
 
 const Changes: FC<{
-	label: string;
 	operationMode: OperationMode | null;
 	projectId: string;
-	stackId: string | null;
 	isSelected: boolean;
 	selectedPath: string | null;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	className?: string;
 	navigationIndex: NavigationIndex;
 }> = ({
-	label,
 	operationMode,
 	projectId,
-	stackId,
 	isSelected,
 	selectedPath,
 	onAbsorbChanges,
@@ -1538,15 +1481,13 @@ const Changes: FC<{
 }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
-	const assignmentsByPath = getAssignmentsByPath(worktreeChanges.assignments, stackId);
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
 		worktreeChanges.dependencies?.diffs ?? [],
 	);
 
-	const changes = worktreeChanges.changes.filter((change) => assignmentsByPath.has(change.path));
 	const isSectionSelected = isSelected || selectedPath !== null;
 
-	const item = changesSectionItem({ stackId });
+	const item = changesSectionItem({});
 
 	const dispatch = useAppDispatch();
 
@@ -1554,7 +1495,7 @@ const Changes: FC<{
 		dispatch(
 			projectActions.enterMoveMode({
 				projectId,
-				source: operationSourceFromItem(changesSectionItem({ stackId })),
+				source: operationSourceFromItem(changesSectionItem({})),
 			}),
 		);
 
@@ -1575,19 +1516,17 @@ const Changes: FC<{
 				}
 			>
 				<ChangesSectionRow
-					changes={changes}
+					changes={worktreeChanges.changes}
 					isSelected={isSelected}
 					navigationIndex={navigationIndex}
-					label={label}
 					onAbsorbChanges={onAbsorbChanges}
 					projectId={projectId}
-					stackId={stackId}
 				/>
-				{changes.length === 0 ? (
+				{worktreeChanges.changes.length === 0 ? (
 					<div className={styles.itemRowEmpty}>No changes.</div>
 				) : (
 					<ul>
-						{changes.map((change) => {
+						{worktreeChanges.changes.map((change) => {
 							const hunkDependencyDiffs = hunkDependencyDiffsByPath.get(change.path);
 							const dependencyCommitIds = hunkDependencyDiffs
 								? dependencyCommitIdsForFile(hunkDependencyDiffs)
@@ -1603,7 +1542,6 @@ const Changes: FC<{
 										onAbsorbChanges={onAbsorbChanges}
 										operationMode={operationMode}
 										projectId={projectId}
-										stackId={stackId}
 									/>
 								</li>
 							);
@@ -1930,7 +1868,6 @@ const StackC: FC<{
 	branchRenameFormRef: Ref<HTMLFormElement>;
 	commitMessageFormRef: Ref<HTMLFormElement>;
 	operationMode: OperationMode | null;
-	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	projectId: string;
 	selectedItem: Item | null;
 	stack: Stack;
@@ -1940,7 +1877,6 @@ const StackC: FC<{
 	branchRenameFormRef,
 	commitMessageFormRef,
 	operationMode,
-	onAbsorbChanges,
 	projectId,
 	selectedItem,
 	stack,
@@ -1959,33 +1895,17 @@ const StackC: FC<{
 
 	return (
 		<div className={styles.stack}>
-			<div>
-				<div className={styles.laneActions}>
-					<Menu.Root>
-						<Menu.Trigger className={styles.stackMenuTrigger} aria-label="Stack menu">
-							<MenuTriggerIcon />
-						</Menu.Trigger>
-						<Menu.Portal>
-							<Menu.Positioner align="end">
-								<StackMenuPopup projectId={projectId} stackId={stackId} />
-							</Menu.Positioner>
-						</Menu.Portal>
-					</Menu.Root>
-				</div>
-				<Changes
-					label="Assigned changes"
-					operationMode={operationMode}
-					projectId={projectId}
-					stackId={stack.id}
-					isSelected={selectedItem?._tag === "ChangesSection" && selectedItem.stackId === stackId}
-					selectedPath={
-						selectedItem?._tag === "Change" && selectedItem.stackId === stackId
-							? selectedItem.path
-							: null
-					}
-					onAbsorbChanges={onAbsorbChanges}
-					navigationIndex={navigationIndex}
-				/>
+			<div className={styles.laneActions}>
+				<Menu.Root>
+					<Menu.Trigger className={styles.stackMenuTrigger} aria-label="Stack menu">
+						<MenuTriggerIcon />
+					</Menu.Trigger>
+					<Menu.Portal>
+						<Menu.Positioner align="end">
+							<StackMenuPopup projectId={projectId} stackId={stackId} />
+						</Menu.Positioner>
+					</Menu.Portal>
+				</Menu.Root>
 			</div>
 
 			<ul className={styles.segments}>
@@ -2118,16 +2038,10 @@ const ProjectPage: FC = () => {
 					</div>
 
 					<Changes
-						label="Unassigned changes"
 						operationMode={operationMode}
 						projectId={projectId}
-						stackId={null}
-						isSelected={selectedItem?._tag === "ChangesSection" && selectedItem.stackId === null}
-						selectedPath={
-							selectedItem?._tag === "Change" && selectedItem.stackId === null
-								? selectedItem.path
-								: null
-						}
+						isSelected={selectedItem?._tag === "ChangesSection"}
+						selectedPath={selectedItem?._tag === "Change" ? selectedItem.path : null}
 						onAbsorbChanges={requestAbsorptionPlan}
 						navigationIndex={navigationIndex}
 					/>
@@ -2141,7 +2055,6 @@ const ProjectPage: FC = () => {
 									branchRenameFormRef={branchRenameFormRef}
 									commitMessageFormRef={commitMessageFormRef}
 									operationMode={operationMode}
-									onAbsorbChanges={requestAbsorptionPlan}
 									projectId={project.id}
 									selectedItem={selectedItem}
 									stack={stack}

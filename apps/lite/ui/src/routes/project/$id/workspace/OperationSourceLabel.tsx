@@ -27,8 +27,7 @@ export const OperationSourceLabel: FC<{
 				const commit = findCommitWithContext({ headInfo, commitId })?.commit;
 				return commit ? <CommitLabel commit={commit} /> : shortCommitId(commitId);
 			},
-			ChangesSection: ({ stackId }) =>
-				stackId === null ? "Unassigned changes" : "Assigned changes",
+			ChangesSection: () => "Changes",
 			File: ({ path }) => path,
 			Hunk: ({ hunkHeader }) => `Hunk ${formatHunkHeader(hunkHeader)}`,
 		}),

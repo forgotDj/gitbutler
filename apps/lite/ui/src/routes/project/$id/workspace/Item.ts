@@ -1,7 +1,7 @@
 import { Match } from "effect";
 
 /** @public */
-export type ChangesSectionItem = { stackId: string | null };
+export type ChangesSectionItem = {};
 /** @public */
 export type ChangeItem = ChangesSectionItem & { path: string };
 
@@ -28,15 +28,14 @@ export type Item =
 	| { _tag: "BaseCommit" };
 
 /** @public */
-export const changesSectionItem = ({ stackId }: ChangesSectionItem): Item => ({
+export const changesSectionItem = (x: ChangesSectionItem): Item => ({
 	_tag: "ChangesSection",
-	stackId,
+	...x,
 });
 
 /** @public */
-export const changeItem = ({ stackId, path }: ChangeItem): Item => ({
+export const changeItem = ({ path }: ChangeItem): Item => ({
 	_tag: "Change",
-	stackId,
 	path,
 });
 
@@ -81,8 +80,8 @@ export const baseCommitItem: Item = {
 export const itemIdentityKey = (item: Item): string =>
 	Match.value(item).pipe(
 		Match.tagsExhaustive({
-			ChangesSection: (item) => JSON.stringify(["ChangesSection", item.stackId]),
-			Change: (item) => JSON.stringify(["Change", item.stackId, item.path]),
+			ChangesSection: () => JSON.stringify(["ChangesSection"]),
+			Change: (item) => JSON.stringify(["Change", item.path]),
 			Segment: (item) =>
 				JSON.stringify(["Segment", item.stackId, item.segmentIndex, item.branchRef]),
 			Commit: (item) => JSON.stringify(["Commit", item.stackId, item.segmentIndex, item.commitId]),
@@ -110,7 +109,7 @@ export const getParentSection = (item: Item): Item | null =>
 					branchRef: item.branchRef,
 					commitId: item.commitId,
 				}),
-			Change: (item) => changesSectionItem({ stackId: item.stackId }),
+			Change: () => changesSectionItem({}),
 			ChangesSection: () => null,
 			BaseCommit: () => null,
 			Segment: () => null,
