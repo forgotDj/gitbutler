@@ -3,8 +3,12 @@
 //! These functions make server-side HTTP calls to `app.gitbutler.com` (or staging)
 //! so that browser-based frontends don't need to make cross-origin requests.
 //! They are also usable from the CLI (`but auth`) without any web framework dependency.
+//!
+//! The public API is synchronous — async HTTP calls are executed on a dedicated
+//! thread with a short-lived Tokio runtime, following the same pattern as `but-forge`.
 
 use anyhow::{Context, Result};
+use but_path::AppChannel;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
@@ -20,16 +24,16 @@ pub struct ApiHttpError {
 ///
 /// Resolution order:
 /// 1. `GITBUTLER_API_URL` env var at runtime (e.g. `http://localhost:3000`)
-/// 2. Compile-time `CHANNEL` env var:
-///    - `"release"` / `"nightly"` → `https://app.gitbutler.com`
-///    - anything else → `https://app.staging.gitbutler.com`
+/// 2. Compile-time [`AppChannel`]:
+///    - `Release` / `Nightly` → `https://app.gitbutler.com`
+///    - `Dev` → `https://app.staging.gitbutler.com`
 pub fn default_api_url() -> String {
     if let Ok(url) = std::env::var("GITBUTLER_API_URL") {
         return url;
     }
-    match option_env!("CHANNEL") {
-        Some("release" | "nightly") => "https://app.gitbutler.com",
-        _ => "https://app.staging.gitbutler.com",
+    match AppChannel::new() {
+        AppChannel::Release | AppChannel::Nightly => "https://app.gitbutler.com",
+        AppChannel::Dev => "https://app.staging.gitbutler.com",
     }
     .to_string()
 }
@@ -55,46 +59,52 @@ pub struct LoginToken {
 ///
 /// The returned [`LoginToken::url`] should be opened in the user's browser.
 /// After the user authenticates, they receive a token that can be validated
-/// with [`fetch_user_by_token`].
-pub async fn fetch_login_token(api_url: &str) -> Result<LoginToken> {
-    let url = format!("{api_url}/api/login/token.json");
-    let client = reqwest::Client::new();
-    let resp = client
-        .post(&url)
-        .send()
-        .await
-        .context("Failed to reach GitButler API for login token")?;
-    if !resp.status().is_success() {
-        let status = resp.status();
-        let body = resp.text().await.unwrap_or_default();
-        anyhow::bail!("Login token request failed ({status}): {body}");
-    }
-    resp.json()
-        .await
-        .context("Failed to parse login token response")
+/// with [`validate_token_owner`].
+pub fn fetch_login_token() -> Result<LoginToken> {
+    let api_url = default_api_url();
+    run_async(async move {
+        let url = format!("{api_url}/api/login/token.json");
+        let client = reqwest::Client::new();
+        let resp = client
+            .post(&url)
+            .send()
+            .await
+            .context("Failed to reach GitButler API for login token")?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("Login token request failed ({status}): {body}");
+        }
+        resp.json()
+            .await
+            .context("Failed to parse login token response")
+    })
 }
 
-/// Validate an access token against the GitButler API and return the user info.
+/// Validate an access token and return the user info from the GitButler API.
 ///
-/// Calls `GET /api/login/whoami` with the given token. On success the full
-/// user object is returned as a [`serde_json::Value`] so callers can
-/// deserialize into whatever type they need (the frontend `User` has
-/// different fields than the Rust `User`).
-pub async fn fetch_user_by_token(api_url: &str, token: &str) -> Result<serde_json::Value> {
-    let url = format!("{api_url}/api/login/whoami");
-    let client = reqwest::Client::new();
-    let resp = client
-        .get(&url)
-        .header("X-Auth-Token", token)
-        .send()
-        .await
-        .context("Failed to reach GitButler API for token validation")?;
-    if !resp.status().is_success() {
-        let status = resp.status();
-        let body = resp.text().await.unwrap_or_default();
-        return Err(ApiHttpError { status, body }.into());
-    }
-    resp.json().await.context("Failed to parse whoami response")
+/// Calls `GET /api/login/whoami` with the given token. On success the user
+/// object is returned as a [`serde_json::Value`] so callers can deserialize
+/// into whatever type they need.
+pub fn fetch_user_by_token(token: &str) -> Result<serde_json::Value> {
+    let api_url = default_api_url();
+    let token = token.to_string();
+    run_async(async move {
+        let url = format!("{api_url}/api/login/whoami");
+        let client = reqwest::Client::new();
+        let resp = client
+            .get(&url)
+            .header("X-Auth-Token", &token)
+            .send()
+            .await
+            .context("Failed to reach GitButler API for token validation")?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(ApiHttpError { status, body }.into());
+        }
+        resp.json().await.context("Failed to parse whoami response")
+    })
 }
 
 /// Check whether a token belongs to a specific user.
@@ -103,15 +113,11 @@ pub async fn fetch_user_by_token(api_url: &str, token: &str) -> Result<serde_jso
 /// the remote-access auth middleware to verify that the authenticated user
 /// matches the local machine owner.
 ///
-/// Returns `Ok(false)` for invalid/expired tokens (upstream 401/403) so that
+/// Returns `Ok(false)` for invalid/expired tokens (upstream 4xx) so that
 /// callers can distinguish "not the owner" from actual errors. Only network
 /// failures and unexpected responses produce `Err`.
-pub async fn validate_token_owner(
-    api_url: &str,
-    token: &str,
-    expected_user_id: u64,
-) -> Result<bool> {
-    let user = match fetch_user_by_token(api_url, token).await {
+pub fn validate_token_owner(token: &str, expected_user_id: u64) -> Result<bool> {
+    let user = match fetch_user_by_token(token) {
         Ok(user) => user,
         Err(e) => match e.downcast_ref::<ApiHttpError>() {
             Some(http_err) if http_err.status.is_client_error() => return Ok(false),
@@ -123,4 +129,22 @@ pub async fn validate_token_owner(
         .and_then(|v| v.as_u64())
         .context("whoami response missing 'id' field")?;
     Ok(id == expected_user_id)
+}
+
+/// Execute an async future on a dedicated thread with its own Tokio runtime.
+///
+/// This keeps the crate's public API synchronous while still using async HTTP
+/// internally, following the same pattern as `but-forge`.
+fn run_async<F, T>(future: F) -> Result<T>
+where
+    F: std::future::Future<Output = Result<T>> + Send + 'static,
+    T: Send + 'static,
+{
+    std::thread::spawn(move || {
+        tokio::runtime::Runtime::new()
+            .expect("failed to create tokio runtime")
+            .block_on(future)
+    })
+    .join()
+    .map_err(|e| anyhow::anyhow!("thread panicked: {e:?}"))?
 }

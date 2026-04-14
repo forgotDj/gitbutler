@@ -62,9 +62,13 @@ impl AuthState {
             }
         }
 
-        let api_url = gitbutler_user::api::default_api_url();
-        let is_owner =
-            gitbutler_user::api::validate_token_owner(&api_url, token, self.owner_id).await?;
+        let token_owned = token.to_string();
+        let owner_id = self.owner_id;
+        let is_owner = tokio::task::spawn_blocking(move || {
+            gitbutler_user::api::validate_token_owner(&token_owned, owner_id)
+        })
+        .await
+        .map_err(|e| anyhow::anyhow!("validate_token_owner task failed: {e}"))??;
 
         // Update cache.
         {
@@ -81,8 +85,9 @@ impl AuthState {
 
     /// Get the gitbutler.com login URL for the user to visit.
     async fn login_url(&self) -> anyhow::Result<String> {
-        let api_url = gitbutler_user::api::default_api_url();
-        let token = gitbutler_user::api::fetch_login_token(&api_url).await?;
+        let token = tokio::task::spawn_blocking(gitbutler_user::api::fetch_login_token)
+            .await
+            .map_err(|e| anyhow::anyhow!("fetch_login_token task failed: {e}"))??;
         Ok(token.url)
     }
 }

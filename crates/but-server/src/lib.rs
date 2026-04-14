@@ -1748,9 +1748,9 @@ fn deserialize_json<T: serde::de::DeserializeOwned>(value: serde_json::Value) ->
 /// The frontend calls this instead of hitting `app.gitbutler.com/api/login/token.json`
 /// directly, which would be blocked by CORS when running in a browser.
 async fn get_login_token(State(_state): State<AppState>) -> Json<serde_json::Value> {
-    let api_url = gitbutler_user::api::default_api_url();
-    match gitbutler_user::api::fetch_login_token(&api_url).await {
-        Ok(token) => Json(json!(Response::Success(json!(token)))),
+    match tokio::task::spawn_blocking(gitbutler_user::api::fetch_login_token).await {
+        Ok(Ok(token)) => Json(json!(Response::Success(json!(token)))),
+        Ok(Err(e)) => Json(json!(Response::Error(json!(e.to_string())))),
         Err(e) => Json(json!(Response::Error(json!(e.to_string())))),
     }
 }
@@ -1764,14 +1764,16 @@ async fn login_with_token(
     Json(params): Json<serde_json::Value>,
 ) -> Json<serde_json::Value> {
     let token = match params.get("token").and_then(|t| t.as_str()) {
-        Some(t) => t,
+        Some(t) => t.to_string(),
         None => {
             return Json(json!(Response::Error(json!("Missing 'token' parameter"))));
         }
     };
-    let api_url = gitbutler_user::api::default_api_url();
-    match gitbutler_user::api::fetch_user_by_token(&api_url, token).await {
-        Ok(user) => Json(json!(Response::Success(user))),
+    match tokio::task::spawn_blocking(move || gitbutler_user::api::fetch_user_by_token(&token))
+        .await
+    {
+        Ok(Ok(user)) => Json(json!(Response::Success(user))),
+        Ok(Err(e)) => Json(json!(Response::Error(json!(e.to_string())))),
         Err(e) => Json(json!(Response::Error(json!(e.to_string())))),
     }
 }
