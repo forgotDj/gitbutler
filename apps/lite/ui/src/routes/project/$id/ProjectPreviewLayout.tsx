@@ -46,7 +46,7 @@ export const ProjectPreviewLayout: FC<{
 			>
 				<Panel
 					id={"primary" satisfies PanelType}
-					minSize={500}
+					minSize={400}
 					className={sharedStyles.primaryPanel}
 				>
 					{children}
@@ -57,7 +57,7 @@ export const ProjectPreviewLayout: FC<{
 						<Panel
 							id={"preview" satisfies PanelType}
 							minSize={300}
-							defaultSize="30%"
+							defaultSize="70%"
 							className={sharedStyles.previewPanel}
 						>
 							{

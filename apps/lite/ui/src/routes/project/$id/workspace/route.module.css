@@ -4,10 +4,11 @@
 	flex-direction: column;
 }
 
-.lanes {
+.sections {
 	display: flex;
-	column-gap: 8px;
+	row-gap: 24px;
 	flex-grow: 1;
+	flex-direction: column;
 }
 
 .itemRow {
@@ -132,27 +133,6 @@
 	outline: 2px solid light-dark(black, white);
 }
 
-.unassignedChangesLane {
-	flex-shrink: 0;
-	width: 300px;
-}
-
-.stackLane {
-	flex-shrink: 0;
-	width: 350px;
-}
-
-.headInfo {
-	display: flex;
-	row-gap: 24px;
-	flex-direction: column;
-}
-
-.stackLanes {
-	display: flex;
-	column-gap: 8px;
-}
-
 .segments {
 	display: flex;
 	row-gap: 24px;
@@ -250,14 +230,8 @@ we must use an overlay for the background. */
 	}
 }
 
-.commonBaseCommitContainer {
-	display: flex;
-	flex-grow: 1;
-	flex-direction: column;
-	align-items: center;
-}
-
 .commonBaseCommit {
+	flex-grow: 1;
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
 	line-height: var(--row-line-height);

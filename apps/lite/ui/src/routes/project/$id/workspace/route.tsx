@@ -1489,70 +1489,55 @@ const Changes: FC<{
 
 	const item = changesSectionItem({});
 
-	const dispatch = useAppDispatch();
-
-	const commit = () =>
-		dispatch(
-			projectActions.enterMoveMode({
-				projectId,
-				source: operationSourceFromItem(changesSectionItem({})),
-			}),
-		);
-
 	return (
-		<div className={styles.changesContainer}>
-			<OperationSourceC
-				operationMode={operationMode}
-				projectId={projectId}
-				source={operationSourceFromItem(item)}
-				className={classes(className, styles.section, isSectionSelected && styles.sectionSelected)}
-				render={
-					<OperationTarget
-						item={item}
-						projectId={projectId}
-						operationMode={operationMode}
-						selectedItem={isSelected ? item : null}
-					/>
-				}
-			>
-				<ChangesSectionRow
-					changes={worktreeChanges.changes}
-					isSelected={isSelected}
-					navigationIndex={navigationIndex}
-					onAbsorbChanges={onAbsorbChanges}
+		<OperationSourceC
+			operationMode={operationMode}
+			projectId={projectId}
+			source={operationSourceFromItem(item)}
+			className={classes(className, styles.section, isSectionSelected && styles.sectionSelected)}
+			render={
+				<OperationTarget
+					item={item}
 					projectId={projectId}
+					operationMode={operationMode}
+					selectedItem={isSelected ? item : null}
 				/>
-				{worktreeChanges.changes.length === 0 ? (
-					<div className={styles.itemRowEmpty}>No changes.</div>
-				) : (
-					<ul>
-						{worktreeChanges.changes.map((change) => {
-							const hunkDependencyDiffs = hunkDependencyDiffsByPath.get(change.path);
-							const dependencyCommitIds = hunkDependencyDiffs
-								? dependencyCommitIdsForFile(hunkDependencyDiffs)
-								: [];
+			}
+		>
+			<ChangesSectionRow
+				changes={worktreeChanges.changes}
+				isSelected={isSelected}
+				navigationIndex={navigationIndex}
+				onAbsorbChanges={onAbsorbChanges}
+				projectId={projectId}
+			/>
+			{worktreeChanges.changes.length === 0 ? (
+				<div className={styles.itemRowEmpty}>No changes.</div>
+			) : (
+				<ul>
+					{worktreeChanges.changes.map((change) => {
+						const hunkDependencyDiffs = hunkDependencyDiffsByPath.get(change.path);
+						const dependencyCommitIds = hunkDependencyDiffs
+							? dependencyCommitIdsForFile(hunkDependencyDiffs)
+							: [];
 
-							return (
-								<li key={change.path}>
-									<ChangeRow
-										change={change}
-										dependencyCommitIds={dependencyCommitIds}
-										isSelected={selectedPath === change.path}
-										navigationIndex={navigationIndex}
-										onAbsorbChanges={onAbsorbChanges}
-										operationMode={operationMode}
-										projectId={projectId}
-									/>
-								</li>
-							);
-						})}
-					</ul>
-				)}
-			</OperationSourceC>
-			<button type="button" className={uiStyles.button} onClick={commit}>
-				Commit
-			</button>
-		</div>
+						return (
+							<li key={change.path}>
+								<ChangeRow
+									change={change}
+									dependencyCommitIds={dependencyCommitIds}
+									isSelected={selectedPath === change.path}
+									navigationIndex={navigationIndex}
+									onAbsorbChanges={onAbsorbChanges}
+									operationMode={operationMode}
+									projectId={projectId}
+								/>
+							</li>
+						);
+					})}
+				</ul>
+			)}
+		</OperationSourceC>
 	);
 };
 
@@ -2007,8 +1992,18 @@ const ProjectPage: FC = () => {
 		previewRef,
 	});
 
+	const dispatch = useAppDispatch();
+
 	// TODO: dedupe
 	if (!project) return <p>Project not found.</p>;
+
+	const commit = () =>
+		dispatch(
+			projectActions.enterMoveMode({
+				projectId,
+				source: operationSourceFromItem(changesSectionItem({})),
+			}),
+		);
 
 	return (
 		<ProjectPreviewLayout
@@ -2027,16 +2022,8 @@ const ProjectPage: FC = () => {
 				)
 			}
 		>
-			<div className={styles.lanes}>
-				<div className={styles.unassignedChangesLane}>
-					<div className={styles.laneActions}>
-						<Menu.Root>
-							<Menu.Trigger className={styles.stackMenuTrigger} aria-label="Menu" disabled>
-								<MenuTriggerIcon />
-							</Menu.Trigger>
-						</Menu.Root>
-					</div>
-
+			<div className={styles.sections}>
+				<div className={styles.changesContainer}>
 					<Changes
 						operationMode={operationMode}
 						projectId={projectId}
@@ -2045,42 +2032,39 @@ const ProjectPage: FC = () => {
 						onAbsorbChanges={requestAbsorptionPlan}
 						navigationIndex={navigationIndex}
 					/>
+
+					<button type="button" className={uiStyles.button} onClick={commit}>
+						Commit
+					</button>
 				</div>
 
-				<div className={styles.headInfo}>
-					<div className={styles.stackLanes}>
-						{headInfo.stacks.map((stack) => (
-							<div key={stack.id} className={styles.stackLane}>
-								<StackC
-									branchRenameFormRef={branchRenameFormRef}
-									commitMessageFormRef={commitMessageFormRef}
-									operationMode={operationMode}
-									projectId={project.id}
-									selectedItem={selectedItem}
-									stack={stack}
-									workspaceMode={workspaceMode}
-									navigationIndex={navigationIndex}
-								/>
-							</div>
-						))}
-					</div>
+				{headInfo.stacks.map((stack) => (
+					<StackC
+						key={stack.id}
+						branchRenameFormRef={branchRenameFormRef}
+						commitMessageFormRef={commitMessageFormRef}
+						operationMode={operationMode}
+						projectId={project.id}
+						selectedItem={selectedItem}
+						stack={stack}
+						workspaceMode={workspaceMode}
+						navigationIndex={navigationIndex}
+					/>
+				))}
 
-					<div className={styles.commonBaseCommitContainer}>
-						<OperationTarget
-							projectId={projectId}
-							item={baseCommitItem}
-							operationMode={operationMode}
-							selectedItem={selectedItem?._tag === "BaseCommit" ? selectedItem : null}
-							render={
-								<BaseCommitRow
-									commitId={commonBaseCommitId}
-									isSelected={selectedItem?._tag === "BaseCommit"}
-									navigationIndex={navigationIndex}
-								/>
-							}
+				<OperationTarget
+					projectId={projectId}
+					item={baseCommitItem}
+					operationMode={operationMode}
+					selectedItem={selectedItem?._tag === "BaseCommit" ? selectedItem : null}
+					render={
+						<BaseCommitRow
+							commitId={commonBaseCommitId}
+							isSelected={selectedItem?._tag === "BaseCommit"}
+							navigationIndex={navigationIndex}
 						/>
-					</div>
-				</div>
+					}
+				/>
 			</div>
 
 			<PositionedShortcutsBar
