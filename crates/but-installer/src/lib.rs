@@ -11,6 +11,7 @@ mod http;
 mod install;
 mod release;
 mod shell;
+mod skill;
 pub mod ui;
 
 #[cfg(target_os = "linux")]
@@ -123,6 +124,17 @@ fn run_installation_impl(config: InstallerConfig, interactive: bool) -> Result<(
     if interactive {
         info("Checking shell configuration");
         configure_shell(&config.home_dir)?;
+
+        let but_binary = but_binary_path(&config.home_dir);
+        if skill::has_skill_install(&but_binary) {
+            if ui::prompt_for_confirmation("Would you like to install the but skill files?") {
+                skill::but_skill_install_global(&but_binary);
+            } else {
+                info(
+                    "Skipping skill install. If you change your mind, just run `but skill install`!",
+                );
+            }
+        }
     }
 
     ui::println_empty();
