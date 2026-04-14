@@ -121,8 +121,8 @@ pub fn commit_undo_only_with_perm(
         WorkspaceState::from_rebase_preview(&final_rebase, final_rebase.history.commit_mappings())?
     } else {
         let materialized = final_rebase.materialize_without_checkout()?;
-        WorkspaceState::from_overlayed_graph(
-            materialized.workspace.graph.clone(),
+        WorkspaceState::from_workspace(
+            materialized.workspace,
             &repo,
             materialized.history.commit_mappings(),
         )?

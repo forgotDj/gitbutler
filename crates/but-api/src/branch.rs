@@ -380,7 +380,6 @@ fn branch_workspace_from_rebase<M: but_core::RefMetadata>(
         return WorkspaceState::from_successful_rebase(rebase, repo, dry_run);
     }
 
-    let graph = rebase.overlayed_graph()?;
     let materialized = rebase.materialize()?;
     if let Some((ws_meta, ref_name)) = ws_meta.zip(materialized.workspace.ref_name()) {
         let mut md = materialized.meta.workspace(ref_name)?;
@@ -388,5 +387,9 @@ fn branch_workspace_from_rebase<M: but_core::RefMetadata>(
         materialized.meta.set_workspace(&md)?;
     }
 
-    WorkspaceState::from_overlayed_graph(graph, repo, materialized.history.commit_mappings())
+    WorkspaceState::from_workspace(
+        materialized.workspace,
+        repo,
+        materialized.history.commit_mappings(),
+    )
 }

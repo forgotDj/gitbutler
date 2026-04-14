@@ -102,8 +102,8 @@ pub fn commit_uncommit_changes_only_with_perm(
             )?;
         }
 
-        WorkspaceState::from_overlayed_graph(
-            materialized.workspace.graph.clone(),
+        WorkspaceState::from_workspace(
+            materialized.workspace,
             &repo,
             materialized.history.commit_mappings(),
         )?

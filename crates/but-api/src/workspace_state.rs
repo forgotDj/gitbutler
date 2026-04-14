@@ -38,13 +38,13 @@ impl WorkspaceState {
     ///
     /// This is the most direct constructor in this module and is the right choice when
     /// there is no need to inspect or materialize a [`SuccessfulRebase`].
-    pub(crate) fn from_overlayed_graph(
-        graph: but_graph::Graph,
+    pub(crate) fn from_workspace(
+        workspace: &but_graph::projection::Workspace,
         repo: &gix::Repository,
         replaced_commits: BTreeMap<gix::ObjectId, gix::ObjectId>,
     ) -> anyhow::Result<WorkspaceState> {
         let head_info = but_workspace::graph_to_ref_info(
-            graph,
+            workspace,
             repo,
             but_workspace::ref_info::Options {
                 traversal: but_graph::init::Options::limited(),
@@ -68,8 +68,8 @@ impl WorkspaceState {
         rebase: &SuccessfulRebase<'_, '_, M>,
         replaced_commits: BTreeMap<gix::ObjectId, gix::ObjectId>,
     ) -> anyhow::Result<WorkspaceState> {
-        Self::from_overlayed_graph(
-            rebase.overlayed_graph()?,
+        Self::from_workspace(
+            &rebase.overlayed_graph()?.into_workspace()?,
             rebase.repository(),
             replaced_commits,
         )
@@ -93,8 +93,8 @@ impl WorkspaceState {
         }
 
         let materialized = rebase.materialize()?;
-        Self::from_overlayed_graph(
-            materialized.workspace.graph.clone(),
+        Self::from_workspace(
+            materialized.workspace,
             repo,
             materialized.history.commit_mappings(),
         )

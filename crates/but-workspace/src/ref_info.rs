@@ -375,7 +375,7 @@ pub(crate) mod function {
         opts: super::Options,
     ) -> anyhow::Result<RefInfo> {
         let graph = Graph::from_head(repo, meta, opts.traversal.clone())?;
-        graph_to_ref_info(graph, repo, opts)
+        graph_to_ref_info(&graph.into_workspace()?, repo, opts)
     }
 
     /// Gather information about the commit at `existing_ref` and the workspace that might be associated with it,
@@ -400,7 +400,7 @@ pub(crate) mod function {
             meta,
             opts.traversal.clone(),
         )?;
-        graph_to_ref_info(graph, repo, opts)
+        graph_to_ref_info(&graph.into_workspace()?, repo, opts)
     }
 
     pub(crate) fn find_ancestor_workspace_commit(
@@ -448,11 +448,11 @@ pub(crate) mod function {
     ///
     /// For details, see [`ref_info()`].
     pub fn graph_to_ref_info(
-        graph: Graph,
+        workspace: &but_graph::projection::Workspace,
         repo: &gix::Repository,
         opts: super::Options,
     ) -> anyhow::Result<RefInfo> {
-        if graph.hard_limit_hit() {
+        if workspace.graph.hard_limit_hit() {
             tracing::warn!(hard_limit=?opts.traversal.hard_limit,
                 "Commit-graph traversal might be incorrect as it was stopped too early due to hard limit",
             );
@@ -469,29 +469,29 @@ pub(crate) mod function {
             metadata,
             lower_bound: _,
             lower_bound_segment_id,
-        } = graph.into_workspace()?;
+        } = workspace;
 
         let (workspace_ref_info, is_managed_commit, ancestor_workspace_commit) = match kind {
             WorkspaceKind::Managed { ref_info } => (Some(ref_info), true, None),
             WorkspaceKind::ManagedMissingWorkspaceCommit { ref_info: ref_name } => {
                 let maybe_ancestor_workspace_commit =
-                    find_ancestor_workspace_commit(&graph, repo, id, lower_bound_segment_id);
+                    find_ancestor_workspace_commit(graph, repo, *id, *lower_bound_segment_id);
                 (Some(ref_name), false, maybe_ancestor_workspace_commit)
             }
-            WorkspaceKind::AdHoc => (graph[id].ref_info.clone(), false, None),
+            WorkspaceKind::AdHoc => (graph[*id].ref_info.as_ref(), false, None),
         };
-        let is_entrypoint = graph.lookup_entrypoint()?.segment_index == id;
+        let is_entrypoint = graph.lookup_entrypoint()?.segment_index == *id;
         let mut info = RefInfo {
-            workspace_ref_info,
+            workspace_ref_info: workspace_ref_info.cloned(),
             symbolic_remote_names: repo
                 .remote_names()
                 .into_iter()
                 .map(|n| n.into_owned().into())
                 .collect(),
-            lower_bound: lower_bound_segment_id,
-            extra_target,
+            lower_bound: *lower_bound_segment_id,
+            extra_target: *extra_target,
             stacks: stacks
-                .into_iter()
+                .iter()
                 // `but-graph` produces the order as seen by the merge commit,
                 // but GB traditionally shows it the other way around.
                 // TODO: validate that this is still correct to do here if the workspace
@@ -500,8 +500,8 @@ pub(crate) mod function {
                 .rev()
                 .map(|stack| branch::Stack::try_from_graph_stack(stack, repo))
                 .collect::<anyhow::Result<_>>()?,
-            target_ref,
-            target_commit,
+            target_ref: target_ref.clone(),
+            target_commit: target_commit.clone(),
             is_managed_ref: metadata.is_some(),
             is_managed_commit,
             ancestor_workspace_commit,
@@ -525,22 +525,22 @@ pub(crate) mod function {
             msg.push_str(&format!("    git reset --soft {ws_commit_id}"));
             bail!("{msg}");
         }
-        info.compute_similarity(&graph, repo, opts.expensive_commit_info)?;
+        info.compute_similarity(graph, repo, opts.expensive_commit_info)?;
         Ok(info)
     }
 
     impl branch::Stack {
         fn try_from_graph_stack(
-            stack: but_graph::projection::Stack,
+            stack: &but_graph::projection::Stack,
             repo: &gix::Repository,
         ) -> anyhow::Result<Self> {
             let base = stack.base();
             let but_graph::projection::Stack { segments, id } = stack;
             Ok(branch::Stack {
-                id,
+                id: *id,
                 base,
                 segments: segments
-                    .into_iter()
+                    .iter()
                     .map(|s| crate::ref_info::Segment::try_from_graph_segment(s, repo))
                     .collect::<anyhow::Result<_>>()?,
             })
@@ -564,22 +564,23 @@ pub(crate) mod function {
                 commits_by_segment: _,
                 metadata,
                 is_entrypoint,
-            }: but_graph::projection::StackSegment,
+            }: &but_graph::projection::StackSegment,
             repo: &gix::Repository,
         ) -> anyhow::Result<Self> {
             let commits: Vec<_> = commits
-                .into_iter()
+                .iter()
                 .map(|c| LocalCommit::try_from_stack_commit(c, repo))
                 .collect::<anyhow::Result<_>>()?;
             let commits_on_remote: Vec<_> = commits_on_remote
-                .into_iter()
+                .iter()
                 .map(|c| {
                     but_core::Commit::from_id(c.id.attach(repo)).map(crate::ref_info::Commit::from)
                 })
                 .collect::<Result<_, _>>()?;
             let commits_outside = commits_outside
+                .as_ref()
                 .map(|v| {
-                    v.into_iter()
+                    v.iter()
                         .map(|c| {
                             but_core::Commit::from_id(c.id.attach(repo))
                                 .map(crate::ref_info::Commit::from)
@@ -588,15 +589,15 @@ pub(crate) mod function {
                 })
                 .transpose()?;
             Ok(Self {
-                ref_info,
-                id,
-                remote_tracking_ref_name,
+                ref_info: ref_info.clone(),
+                id: *id,
+                remote_tracking_ref_name: remote_tracking_ref_name.clone(),
                 commits,
                 commits_on_remote,
                 commits_outside,
-                metadata,
-                is_entrypoint,
-                base,
+                metadata: metadata.clone(),
+                is_entrypoint: *is_entrypoint,
+                base: *base,
                 // To be set later.
                 push_status: PushStatus::NothingToPush,
             })
@@ -605,7 +606,7 @@ pub(crate) mod function {
 
     impl LocalCommit {
         // Note that commit-relationships here don't see remotes.
-        fn try_from_stack_commit(c: StackCommit, repo: &gix::Repository) -> anyhow::Result<Self> {
+        fn try_from_stack_commit(c: &StackCommit, repo: &gix::Repository) -> anyhow::Result<Self> {
             let StackCommit {
                 id,
                 parent_ids: _,
@@ -615,14 +616,14 @@ pub(crate) mod function {
             use but_graph::projection::StackCommitFlags;
             let mut inner: crate::ref_info::Commit =
                 but_core::Commit::from_id(id.attach(repo))?.into();
-            inner.refs = refs;
-            inner.flags = flags;
+            inner.refs = refs.clone();
+            inner.flags = *flags;
             Ok(LocalCommit {
                 inner,
                 relation: if flags.contains(StackCommitFlags::Integrated) {
-                    LocalCommitRelation::Integrated(id)
+                    LocalCommitRelation::Integrated(*id)
                 } else if flags.contains(StackCommitFlags::ReachableByRemote) {
-                    LocalCommitRelation::LocalAndRemote(id)
+                    LocalCommitRelation::LocalAndRemote(*id)
                 } else {
                     LocalCommitRelation::LocalOnly
                 },
