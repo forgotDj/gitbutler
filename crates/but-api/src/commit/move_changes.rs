@@ -12,7 +12,9 @@ use super::types::MoveChangesResult;
 /// This acquires exclusive worktree access from `ctx` before moving the
 /// changes.
 ///
-/// For details, see [`commit_move_changes_between_only_with_perm()`].
+/// When `dry_run` is enabled, the returned workspace previews the rewritten
+/// commits without materializing the rebase. For details, see
+/// [`commit_move_changes_between_only_with_perm()`].
 #[but_api(try_from = crate::commit::json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn commit_move_changes_between_only(
@@ -37,7 +39,9 @@ pub fn commit_move_changes_between_only(
 /// under caller-held exclusive repository access.
 ///
 /// It materializes the move-changes rebase and returns the replaced-commit
-/// mapping. For lower-level implementation details, see
+/// mapping. When `dry_run` is enabled, it returns a preview of the resulting
+/// workspace state without materializing the rebase. For lower-level
+/// implementation details, see
 /// [`but_workspace::commit::move_changes_between_commits()`].
 pub fn commit_move_changes_between_only_with_perm(
     ctx: &mut but_ctx::Context,
@@ -70,7 +74,9 @@ pub fn commit_move_changes_between_only_with_perm(
 /// This acquires exclusive worktree access from `ctx` before moving the
 /// changes.
 ///
-/// For details, see [`commit_move_changes_between_with_perm()`].
+/// When `dry_run` is enabled, the returned workspace previews the rewritten
+/// commits and no oplog entry is persisted. For details, see
+/// [`commit_move_changes_between_with_perm()`].
 #[but_api(napi, try_from = crate::commit::json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn commit_move_changes_between(
@@ -96,8 +102,9 @@ pub fn commit_move_changes_between(
 /// on success.
 ///
 /// This prepares a best-effort `MoveCommitFile` oplog snapshot, performs the
-/// rebase, and commits the snapshot only if the operation succeeds. For
-/// lower-level implementation details, see
+/// rebase, and commits the snapshot only if the operation succeeds. When
+/// `dry_run` is enabled, it returns a preview of the workspace state and skips
+/// oplog persistence. For lower-level implementation details, see
 /// [`but_workspace::commit::move_changes_between_commits()`].
 pub fn commit_move_changes_between_with_perm(
     ctx: &mut but_ctx::Context,
@@ -112,8 +119,7 @@ pub fn commit_move_changes_between_with_perm(
         SnapshotDetails::new(OperationKind::MoveCommitFile),
         perm.read_permission(),
         dry_run,
-    )
-    .ok();
+    );
 
     let res = commit_move_changes_between_only_with_perm(
         ctx,

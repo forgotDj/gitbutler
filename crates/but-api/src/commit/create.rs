@@ -15,7 +15,9 @@ use super::types::CommitCreateResult;
 ///
 /// This acquires exclusive worktree access from `ctx` before creating the
 /// commit. For lower-level implementation details, see
-/// [`but_workspace::commit::commit_create()`].
+/// [`but_workspace::commit::commit_create()`]. When `dry_run` is enabled, the
+/// returned workspace previews the inserted commit without materializing the
+/// rebase.
 #[but_api(try_from = crate::commit::json::CommitCreateResult)]
 #[instrument(err(Debug))]
 pub fn commit_create_only(
@@ -41,6 +43,9 @@ pub fn commit_create_only(
 }
 
 /// Creates and inserts a commit relative to either a commit or a reference.
+///
+/// When `dry_run` is enabled, the returned workspace previews the inserted
+/// commit without materializing the rebase.
 #[expect(clippy::too_many_arguments)]
 pub(crate) fn commit_create_only_impl(
     ctx: &mut but_ctx::Context,
@@ -86,8 +91,9 @@ pub(crate) fn commit_create_only_impl(
 ///
 /// `relative_to` and `side` choose where the commit is inserted. `message` is
 /// the entire commit message text, not just the title. On success, this commits
-/// a best-effort `CreateCommit` oplog snapshot using the same lock. For
-/// lower-level implementation details, see
+/// a best-effort `CreateCommit` oplog snapshot using the same lock. When
+/// `dry_run` is enabled, the returned workspace previews the inserted commit
+/// and no oplog entry is persisted. For lower-level implementation details, see
 /// [`but_workspace::commit::commit_create()`].
 #[but_api(napi, try_from = crate::commit::json::CommitCreateResult)]
 #[instrument(skip_all, fields(relative_to, side, message), err(Debug))]
@@ -106,8 +112,7 @@ pub fn commit_create(
         SnapshotDetails::new(OperationKind::CreateCommit),
         perm.read_permission(),
         dry_run,
-    )
-    .ok();
+    );
 
     let res = commit_create_only_impl(
         ctx,

@@ -242,8 +242,7 @@ pub fn assign_hunk_with_perm(
         SnapshotDetails::new(OperationKind::MoveHunk),
         perm.read_permission(),
         but_core::DryRun::No,
-    )
-    .ok();
+    );
 
     let res = assign_hunk_only_with_perm(ctx, assignments, perm);
     if let Some(snapshot) = maybe_oplog_entry

@@ -165,8 +165,7 @@ pub fn apply_with_perm(
         }]),
         perm.read_permission(),
         DryRun::No,
-    )
-    .ok();
+    );
 
     let res = apply_only_with_perm(ctx, existing_branch, perm);
     if let Some(snapshot) = maybe_oplog_entry
@@ -193,7 +192,9 @@ pub fn branch_diff(ctx: &Context, branch: String) -> anyhow::Result<TreeChanges>
 /// Moves a branch using the behavior described by [`move_branch_with_perm()`].
 ///
 /// This acquires exclusive worktree access from `ctx`, moves `subject_branch`
-/// on top of `target_branch`, and records an oplog snapshot on success.
+/// on top of `target_branch`, and records an oplog snapshot on success. When
+/// `dry_run` is enabled, the returned workspace previews the move and no oplog
+/// entry is persisted.
 #[but_api(napi, try_from = json::MoveBranchResult)]
 #[instrument(err(Debug))]
 pub fn move_branch(
@@ -218,8 +219,10 @@ pub fn move_branch(
 /// It prepares a best-effort move-branch oplog snapshot, rebases the subject
 /// branch onto the target branch, updates workspace metadata, and commits the
 /// snapshot only if the move succeeds. The returned [`MoveBranchResult`]
-/// contains the post-operation workspace view. For lower-level implementation
-/// details, see [`but_workspace::branch::move_branch()`].
+/// contains the post-operation workspace view. When `dry_run` is enabled, it
+/// returns a preview of the resulting workspace state and skips oplog
+/// persistence. For lower-level implementation details, see
+/// [`but_workspace::branch::move_branch()`].
 pub fn move_branch_with_perm(
     ctx: &mut but_ctx::Context,
     subject_branch: &gix::refs::FullNameRef,
@@ -232,24 +235,16 @@ pub fn move_branch_with_perm(
         perm,
         OperationKind::MoveBranch,
         dry_run,
-        |ctx, perm| move_branch_impl_with_perm(ctx, subject_branch, target_branch, dry_run, perm),
-    )
-}
+        |ctx, perm| {
+            let mut meta = ctx.meta()?;
+            let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
+            let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+            let but_workspace::branch::move_branch::Outcome { rebase, ws_meta } =
+                but_workspace::branch::move_branch(editor, subject_branch, target_branch)?;
 
-fn move_branch_impl_with_perm(
-    ctx: &mut but_ctx::Context,
-    subject_branch: &gix::refs::FullNameRef,
-    target_branch: &gix::refs::FullNameRef,
-    dry_run: DryRun,
-    perm: &mut RepoExclusive,
-) -> anyhow::Result<MoveBranchResult> {
-    branch_rebase_result_with_perm(
-        ctx,
-        perm,
-        dry_run,
-        BranchMutation::Move {
-            subject_branch,
-            target_branch,
+            Ok(MoveBranchResult {
+                workspace: branch_workspace_from_rebase(rebase, ws_meta, &repo, dry_run)?,
+            })
         },
     )
 }
@@ -257,7 +252,9 @@ fn move_branch_impl_with_perm(
 /// Tears off a branch using the behavior described by [`tear_off_branch_with_perm()`].
 ///
 /// This acquires exclusive worktree access from `ctx`, tears `subject_branch`
-/// out of its current stack, and records an oplog snapshot on success.
+/// out of its current stack, and records an oplog snapshot on success. When
+/// `dry_run` is enabled, the returned workspace previews the tear-off and no
+/// oplog entry is persisted.
 #[but_api(napi, try_from = json::MoveBranchResult)]
 #[instrument(err(Debug))]
 pub fn tear_off_branch(
@@ -275,8 +272,10 @@ pub fn tear_off_branch(
 /// It prepares a best-effort tear-off oplog snapshot, performs the tear-off
 /// rebase and workspace metadata update under `perm`, and commits the snapshot
 /// only if the mutation succeeds. The returned [`MoveBranchResult`] contains
-/// the post-operation workspace view. For lower-level implementation details,
-/// see [`but_workspace::branch::tear_off_branch()`].
+/// the post-operation workspace view. When `dry_run` is enabled, it returns a
+/// preview of the resulting workspace state and skips oplog persistence. For
+/// lower-level implementation details, see
+/// [`but_workspace::branch::tear_off_branch()`].
 pub fn tear_off_branch_with_perm(
     ctx: &mut but_ctx::Context,
     subject_branch: &gix::refs::FullNameRef,
@@ -288,7 +287,17 @@ pub fn tear_off_branch_with_perm(
         perm,
         OperationKind::TearOffBranch,
         dry_run,
-        |ctx, perm| tear_off_branch_impl_with_perm(ctx, subject_branch, dry_run, perm),
+        |ctx, perm| {
+            let mut meta = ctx.meta()?;
+            let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
+            let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+            let but_workspace::branch::move_branch::Outcome { rebase, ws_meta } =
+                but_workspace::branch::tear_off_branch(editor, subject_branch, None)?;
+
+            Ok(MoveBranchResult {
+                workspace: branch_workspace_from_rebase(rebase, ws_meta, &repo, dry_run)?,
+            })
+        },
     )
 }
 
@@ -307,8 +316,7 @@ where
         SnapshotDetails::new(operation_kind),
         perm.read_permission(),
         dry_run,
-    )
-    .ok();
+    );
 
     let result = operation(ctx, perm);
     if let Some(snapshot) = maybe_oplog_entry
@@ -318,56 +326,6 @@ where
     }
 
     result
-}
-
-/// Move the branch, updating the workspace and the metadata.
-fn tear_off_branch_impl_with_perm(
-    ctx: &mut but_ctx::Context,
-    subject_branch: &gix::refs::FullNameRef,
-    dry_run: DryRun,
-    perm: &mut RepoExclusive,
-) -> anyhow::Result<MoveBranchResult> {
-    branch_rebase_result_with_perm(
-        ctx,
-        perm,
-        dry_run,
-        BranchMutation::TearOff { subject_branch },
-    )
-}
-
-enum BranchMutation<'a> {
-    Move {
-        subject_branch: &'a gix::refs::FullNameRef,
-        target_branch: &'a gix::refs::FullNameRef,
-    },
-    TearOff {
-        subject_branch: &'a gix::refs::FullNameRef,
-    },
-}
-
-fn branch_rebase_result_with_perm(
-    ctx: &mut but_ctx::Context,
-    perm: &mut RepoExclusive,
-    dry_run: DryRun,
-    mutation: BranchMutation<'_>,
-) -> anyhow::Result<MoveBranchResult> {
-    let mut meta = ctx.meta()?;
-    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
-    let editor = Editor::create(&mut ws, &mut meta, &repo)?;
-
-    let but_workspace::branch::move_branch::Outcome { rebase, ws_meta } = match mutation {
-        BranchMutation::Move {
-            subject_branch,
-            target_branch,
-        } => but_workspace::branch::move_branch(editor, subject_branch, target_branch)?,
-        BranchMutation::TearOff { subject_branch } => {
-            but_workspace::branch::tear_off_branch(editor, subject_branch, None)?
-        }
-    };
-
-    Ok(MoveBranchResult {
-        workspace: branch_workspace_from_rebase(rebase, ws_meta, &repo, dry_run)?,
-    })
 }
 
 fn branch_workspace_from_rebase<M: but_core::RefMetadata>(

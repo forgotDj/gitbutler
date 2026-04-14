@@ -13,6 +13,8 @@ use super::types::CommitInsertBlankResult;
 /// Inserts a blank commit on `side` of `relative_to`.
 ///
 /// `side` chooses whether the blank commit lands before or after `relative_to`.
+/// When `dry_run` is enabled, the returned workspace previews the inserted
+/// commit without materializing the rebase.
 #[but_api(try_from = crate::commit::json::CommitInsertBlankResult)]
 #[instrument(err(Debug))]
 pub fn commit_insert_blank_only(
@@ -25,6 +27,11 @@ pub fn commit_insert_blank_only(
     commit_insert_blank_only_impl(ctx, relative_to, side, dry_run, guard.write_permission())
 }
 
+/// Create an empty commit next to `relative_to` under caller-held exclusive
+/// repository access.
+///
+/// When `dry_run` is enabled, the returned workspace previews the inserted
+/// commit without materializing the rebase.
 pub(crate) fn commit_insert_blank_only_impl(
     ctx: &mut but_ctx::Context,
     relative_to: RelativeTo,
@@ -50,7 +57,9 @@ pub(crate) fn commit_insert_blank_only_impl(
 /// Inserts a blank commit on `side` of `relative_to` and records an oplog
 /// snapshot on success.
 ///
-/// For details, see [`commit_insert_blank_with_perm()`].
+/// When `dry_run` is enabled, the returned workspace previews the inserted
+/// commit and no oplog entry is persisted. For details, see
+/// [`commit_insert_blank_with_perm()`].
 #[but_api(napi, try_from = crate::commit::json::CommitInsertBlankResult)]
 #[instrument(err(Debug))]
 pub fn commit_insert_blank(
@@ -68,8 +77,9 @@ pub fn commit_insert_blank(
 ///
 /// `side` chooses whether the blank commit lands before or after `relative_to`.
 /// This prepares a best-effort `InsertBlankCommit` oplog snapshot, creates the
-/// commit, and commits the snapshot only if the operation succeeds. For
-/// lower-level implementation details, see
+/// commit, and commits the snapshot only if the operation succeeds. When
+/// `dry_run` is enabled, it returns a preview of the resulting workspace state
+/// and skips oplog persistence. For lower-level implementation details, see
 /// [`but_workspace::commit::insert_blank_commit()`].
 pub fn commit_insert_blank_with_perm(
     ctx: &mut but_ctx::Context,
@@ -83,8 +93,7 @@ pub fn commit_insert_blank_with_perm(
         SnapshotDetails::new(OperationKind::InsertBlankCommit),
         perm.read_permission(),
         dry_run,
-    )
-    .ok();
+    );
 
     let res = commit_insert_blank_only_impl(ctx, relative_to, side, dry_run, perm);
     if let Some(snapshot) = maybe_oplog_entry

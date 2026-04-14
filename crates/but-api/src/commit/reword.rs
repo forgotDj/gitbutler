@@ -15,7 +15,9 @@ use super::types::CommitRewordResult;
 ///
 /// `message` must be the full commit message payload: the title line, and when a
 /// body is present, `\n\n` followed by the body.
-/// See [`commit_reword_only_with_perm()`] for details.
+/// When `dry_run` is enabled, the returned workspace previews the rewritten
+/// commit message without materializing the rebase. See
+/// [`commit_reword_only_with_perm()`] for details.
 #[but_api(try_from = crate::commit::json::CommitRewordResult)]
 #[instrument(err(Debug))]
 pub fn commit_reword_only(
@@ -32,8 +34,10 @@ pub fn commit_reword_only(
 /// repository access.
 ///
 /// It materializes the reword rebase and returns the new commit id plus the
-/// replaced-commit mapping. This variant does not create an oplog entry. For
-/// lower-level implementation details, see [`but_workspace::commit::reword()`].
+/// replaced-commit mapping. When `dry_run` is enabled, it returns a preview of
+/// the resulting workspace state without materializing the rebase. This
+/// variant does not create an oplog entry. For lower-level implementation
+/// details, see [`but_workspace::commit::reword()`].
 pub fn commit_reword_only_with_perm(
     ctx: &mut but_ctx::Context,
     commit_id: gix::ObjectId,
@@ -60,7 +64,9 @@ pub fn commit_reword_only_with_perm(
 /// [`commit_reword_with_perm()`].
 ///
 /// This acquires exclusive worktree access from `ctx` before rewriting the
-/// commit message and recording the oplog entry.
+/// commit message and recording the oplog entry. When `dry_run` is enabled,
+/// the returned workspace previews the rewritten message and no oplog entry is
+/// persisted.
 #[but_api(napi, try_from = crate::commit::json::CommitRewordResult)]
 #[instrument(err(Debug))]
 pub fn commit_reword(
@@ -77,8 +83,10 @@ pub fn commit_reword(
 /// access and records an oplog snapshot on success.
 ///
 /// It prepares a best-effort `UpdateCommitMessage` oplog snapshot, performs
-/// the reword, and commits the snapshot only if the operation succeeds. For
-/// lower-level implementation details, see [`but_workspace::commit::reword()`].
+/// the reword, and commits the snapshot only if the operation succeeds. When
+/// `dry_run` is enabled, it returns a preview of the resulting workspace state
+/// and skips oplog persistence. For lower-level implementation details, see
+/// [`but_workspace::commit::reword()`].
 pub fn commit_reword_with_perm(
     ctx: &mut but_ctx::Context,
     commit_id: gix::ObjectId,
@@ -91,8 +99,7 @@ pub fn commit_reword_with_perm(
         SnapshotDetails::new(OperationKind::UpdateCommitMessage),
         perm.read_permission(),
         dry_run,
-    )
-    .ok();
+    );
 
     let res = commit_reword_only_with_perm(ctx, commit_id, message, dry_run, perm);
     if let Some(snapshot) = maybe_oplog_entry

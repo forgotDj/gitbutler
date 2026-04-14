@@ -9,6 +9,9 @@ use crate::commit::types::CommitDiscardResult;
 
 /// Discard `subject_commit_id` using the behavior described by
 /// [`commit_discard_only_with_perm()`].
+///
+/// When `dry_run` is enabled, the returned workspace previews the discard
+/// without materializing the rebase.
 #[but_api(try_from = crate::commit::json::CommitDiscardResult)]
 pub fn commit_discard_only(
     ctx: &mut but_ctx::Context,
@@ -22,8 +25,9 @@ pub fn commit_discard_only(
 /// Discard `subject_commit_id` under caller-held exclusive repository access.
 ///
 /// This materializes the discard rebase and returns the commit-ID mapping for
-/// rewritten descendants. This variant does not create an oplog entry. For
-/// lower-level implementation details, see
+/// rewritten descendants. When `dry_run` is enabled, it returns the projected
+/// workspace state without materializing the rebase. This variant does not
+/// create an oplog entry. For lower-level implementation details, see
 /// [`but_workspace::commit::discard_commit()`].
 pub fn commit_discard_only_with_perm(
     ctx: &mut but_ctx::Context,
@@ -47,6 +51,9 @@ pub fn commit_discard_only_with_perm(
 
 /// Discard `subject_commit_id` using the behavior described by
 /// [`commit_discard_with_perm()`].
+///
+/// When `dry_run` is enabled, the returned workspace previews the discard and
+/// no oplog entry is persisted.
 #[but_api(napi, try_from = crate::commit::json::CommitDiscardResult)]
 #[instrument(err(Debug))]
 pub fn commit_discard(
@@ -63,7 +70,9 @@ pub fn commit_discard(
 ///
 /// This prepares a best-effort `DiscardCommit` oplog snapshot annotated with
 /// `subject_commit_id`, discards the commit, and commits the snapshot only if
-/// the operation succeeds. For lower-level implementation details, see
+/// the operation succeeds. When `dry_run` is enabled, it returns the projected
+/// workspace state and skips oplog persistence. For lower-level implementation
+/// details, see
 /// [`but_workspace::commit::discard_commit()`].
 pub fn commit_discard_with_perm(
     ctx: &mut but_ctx::Context,
@@ -80,8 +89,7 @@ pub fn commit_discard_with_perm(
         details,
         perm.read_permission(),
         dry_run,
-    )
-    .ok();
+    );
 
     let res = commit_discard_only_with_perm(ctx, subject_commit_id, dry_run, perm);
     if let Some(snapshot) = maybe_oplog_entry

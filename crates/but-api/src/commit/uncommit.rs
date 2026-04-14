@@ -16,7 +16,9 @@ use super::types::MoveChangesResult;
 /// This acquires exclusive worktree access from `ctx` before extracting the
 /// changes.
 ///
-/// See [`commit_uncommit_changes_only_with_perm()`] for details.
+/// When `dry_run` is enabled, the returned workspace previews the extracted
+/// changes without materializing the rebase. See
+/// [`commit_uncommit_changes_only_with_perm()`] for details.
 #[but_api(try_from = crate::commit::json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn commit_uncommit_changes_only(
@@ -42,7 +44,9 @@ pub fn commit_uncommit_changes_only(
 ///
 /// The removed diff stays in the workspace as uncommitted changes. When
 /// `assign_to` is set, newly surfaced hunks are reassigned to that stack after
-/// the rebase is materialized. For lower-level implementation details, see
+/// the rebase is materialized. When `dry_run` is enabled, the returned
+/// workspace previews the extracted changes and no hunk assignments are
+/// persisted. For lower-level implementation details, see
 /// [`but_workspace::commit::uncommit_changes()`].
 pub fn commit_uncommit_changes_only_with_perm(
     ctx: &mut but_ctx::Context,
@@ -140,7 +144,9 @@ fn newly_surfaced_hunk_assignments(
 /// This acquires exclusive worktree access from `ctx` before extracting the
 /// changes.
 ///
-/// See [`commit_uncommit_changes_with_perm()`] for details.
+/// When `dry_run` is enabled, the returned workspace previews the extracted
+/// changes and no oplog entry is persisted. See
+/// [`commit_uncommit_changes_with_perm()`] for details.
 #[but_api(napi, try_from = crate::commit::json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn commit_uncommit_changes(
@@ -167,7 +173,9 @@ pub fn commit_uncommit_changes(
 /// When `assign_to` is set, newly surfaced hunks are assigned to that stack
 /// after the rebase is materialized. This prepares a best-effort
 /// `DiscardChanges` oplog snapshot and commits it only if the operation
-/// succeeds. For lower-level implementation details, see
+/// succeeds. When `dry_run` is enabled, it returns a preview of the resulting
+/// workspace state and skips both hunk-assignment persistence and oplog
+/// persistence. For lower-level implementation details, see
 /// [`but_workspace::commit::uncommit_changes()`].
 pub fn commit_uncommit_changes_with_perm(
     ctx: &mut but_ctx::Context,
@@ -182,8 +190,7 @@ pub fn commit_uncommit_changes_with_perm(
         SnapshotDetails::new(OperationKind::DiscardChanges),
         perm.read_permission(),
         dry_run,
-    )
-    .ok();
+    );
 
     let res =
         commit_uncommit_changes_only_with_perm(ctx, commit_id, changes, assign_to, dry_run, perm);

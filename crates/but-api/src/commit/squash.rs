@@ -12,7 +12,9 @@ use super::types::CommitSquashResult;
 /// This acquires exclusive worktree access from `ctx` before rewriting the
 /// commits.
 ///
-/// For details, see [`commit_squash_only_with_perm()`].
+/// When `dry_run` is enabled, the returned workspace previews the squashed
+/// result without materializing the rebase. For details, see
+/// [`commit_squash_only_with_perm()`].
 #[but_api(try_from = crate::commit::json::CommitSquashResult)]
 #[instrument(err(Debug))]
 pub fn commit_squash_only(
@@ -36,8 +38,9 @@ pub fn commit_squash_only(
 ///
 /// This materializes the squash rebase and returns the resulting squashed
 /// commit ID together with rewritten commit mappings. This variant does not
-/// create an oplog entry. For lower-level implementation details, see
-/// [`but_workspace::commit::squash_commits()`].
+/// create an oplog entry. When `dry_run` is enabled, it returns a preview of
+/// the resulting workspace state without materializing the rebase.
+/// For lower-level implementation details, see [`but_workspace::commit::squash_commits()`].
 pub fn commit_squash_only_with_perm(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
@@ -67,7 +70,8 @@ pub fn commit_squash_only_with_perm(
 /// This acquires exclusive worktree access from `ctx` before rewriting the
 /// commits.
 ///
-/// For details, see [`commit_squash_with_perm()`].
+/// When `dry_run` is enabled, the returned workspace previews the squashed
+/// result and no oplog entry is persisted. For details, see [`commit_squash_with_perm()`].
 #[but_api(napi, try_from = crate::commit::json::CommitSquashResult)]
 #[instrument(err(Debug))]
 pub fn commit_squash(
@@ -90,8 +94,9 @@ pub fn commit_squash(
 /// exclusive repository access and record an oplog snapshot on success.
 ///
 /// It prepares a best-effort `SquashCommit` oplog snapshot, performs the
-/// squash, and commits the snapshot only if the operation succeeds. For
-/// lower-level implementation details, see
+/// squash, and commits the snapshot only if the operation succeeds. When
+/// `dry_run` is enabled, it returns a preview of the resulting workspace state
+/// and skips oplog persistence. For lower-level implementation details, see
 /// [`but_workspace::commit::squash_commits()`].
 pub fn commit_squash_with_perm(
     ctx: &mut but_ctx::Context,
@@ -105,8 +110,7 @@ pub fn commit_squash_with_perm(
         SnapshotDetails::new(OperationKind::SquashCommit),
         perm.read_permission(),
         dry_run,
-    )
-    .ok();
+    );
 
     let res = commit_squash_only_with_perm(ctx, subject_commit_id, target_commit_id, dry_run, perm);
     if let Some(snapshot) = maybe_oplog_entry

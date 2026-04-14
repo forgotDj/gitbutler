@@ -10,7 +10,8 @@ use super::types::CommitCreateResult;
 /// Amends the commit at `commit_id` with `changes`.
 ///
 /// See [`but_workspace::commit::commit_amend()`] for lower-level implementation
-/// details.
+/// details. When `dry_run` is enabled, the returned workspace previews the
+/// amended commit without materializing the rebase.
 #[but_api(try_from = crate::commit::json::CommitCreateResult)]
 #[instrument(err(Debug))]
 pub fn commit_amend_only(
@@ -64,8 +65,9 @@ pub(crate) fn commit_amend_only_impl(
 /// Amend the commit at `commit_id` with `changes` and record an oplog snapshot on success.
 ///
 /// This performs the rewrite under exclusive worktree access and creates a
-/// best-effort `AmendCommit` oplog entry if the operation succeeds. For
-/// lower-level implementation details, see
+/// best-effort `AmendCommit` oplog entry if the operation succeeds. When
+/// `dry_run` is enabled, the returned workspace previews the amended commit
+/// and no oplog entry is persisted. For lower-level implementation details, see
 /// [`but_workspace::commit::commit_amend()`].
 #[but_api(napi, try_from = crate::commit::json::CommitCreateResult)]
 #[instrument(err(Debug))]
@@ -82,8 +84,7 @@ pub fn commit_amend(
         SnapshotDetails::new(OperationKind::AmendCommit),
         guard.read_permission(),
         dry_run,
-    )
-    .ok();
+    );
 
     let res = commit_amend_only_impl(
         ctx,

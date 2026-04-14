@@ -10,6 +10,9 @@ use crate::commit::types::CommitUndoResult;
 
 /// Undo `subject_commit_id` using the behavior described by
 /// [`commit_undo_only_with_perm()`].
+///
+/// When `dry_run` is enabled, the returned workspace previews the undo result
+/// without materializing the rewrite or persisting an oplog entry.
 #[but_api(napi, try_from = crate::commit::json::CommitUndoResult)]
 #[instrument(err(Debug))]
 pub fn commit_undo(
@@ -23,6 +26,9 @@ pub fn commit_undo(
 
 /// Undo `subject_commit_id` using the behavior described by
 /// [`commit_undo_only_with_perm()`].
+///
+/// When `dry_run` is enabled, the returned workspace previews the undo result
+/// without materializing the rewrite.
 pub fn commit_undo_only(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
@@ -34,6 +40,9 @@ pub fn commit_undo_only(
 
 /// Undo `subject_commit_id` using the behavior described by
 /// [`commit_undo_only_with_perm()`].
+///
+/// When `dry_run` is enabled, the returned workspace previews the undo result
+/// and skips oplog persistence.
 pub fn commit_undo_with_perm(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
@@ -44,17 +53,12 @@ pub fn commit_undo_with_perm(
         key: "sha".to_string(),
         value: subject_commit_id.to_string(),
     }]);
-    let maybe_oplog_entry = if dry_run.into() {
-        None
-    } else {
-        but_oplog::UnmaterializedOplogSnapshot::from_details_with_perm(
-            ctx,
-            details,
-            perm.read_permission(),
-            dry_run,
-        )
-        .ok()
-    };
+    let maybe_oplog_entry = but_oplog::UnmaterializedOplogSnapshot::from_details_with_perm(
+        ctx,
+        details,
+        perm.read_permission(),
+        dry_run,
+    );
 
     let res = commit_undo_only_with_perm(ctx, subject_commit_id, dry_run, perm);
     if let Some(snapshot) = maybe_oplog_entry
@@ -67,7 +71,9 @@ pub fn commit_undo_with_perm(
 
 /// Undo `subject_commit_id`, under caller-held exclusive repository access.
 ///
-/// This will move the changes in the commit to be unassigned and discard the commit.
+/// This will move the changes in the commit to be unassigned and discard the
+/// commit. When `dry_run` is enabled, it returns a preview of the resulting
+/// workspace state without materializing the rewrite.
 pub fn commit_undo_only_with_perm(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
