@@ -1,4 +1,4 @@
-use crate::workspace_state::WorkspaceState;
+use crate::WorkspaceState;
 use anyhow::Context as _;
 use but_api_macros::but_api;
 use but_core::{DiffSpec, DryRun, sync::RepoExclusive};

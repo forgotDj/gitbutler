@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::workspace_state::WorkspaceState;
+use crate::WorkspaceState;
 use but_api_macros::but_api;
 use but_core::DryRun;
 use but_hunk_assignment::{HunkAssignmentRequest, HunkAssignmentTarget};

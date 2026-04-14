@@ -6,7 +6,7 @@
 //! If a JSON type only mirrors one API submodule, define it next to that API in
 //! a local `json` module instead of adding it here. See `crate::branch::json`,
 //! `crate::commit::json`, and `crate::diff::json` for the intended pattern.
-use crate::workspace_state::WorkspaceState as InternalWorkspaceState;
+use crate::WorkspaceState as InternalWorkspaceState;
 pub use error::{Error, ToJsonError, UnmarkedError};
 use gix::refs::Target;
 use schemars::{self, JsonSchema};

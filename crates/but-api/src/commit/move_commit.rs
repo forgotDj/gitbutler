@@ -7,7 +7,7 @@ use but_rebase::graph_rebase::{
 };
 use tracing::instrument;
 
-use crate::workspace_state::WorkspaceState;
+use crate::WorkspaceState;
 
 use super::types::CommitMoveResult;
 

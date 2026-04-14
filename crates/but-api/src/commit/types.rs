@@ -1,4 +1,4 @@
-use crate::workspace_state::WorkspaceState;
+use crate::WorkspaceState;
 use but_core::{DiffSpec, tree::create_tree::RejectionReason};
 
 /// Outcome after creating a commit.
