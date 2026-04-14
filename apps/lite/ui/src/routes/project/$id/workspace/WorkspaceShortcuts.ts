@@ -113,15 +113,24 @@ export const toggleFullscreenPreviewBinding: ShortcutBinding<GlobalPreviewAction
 
 type PrimaryPanelAction =
 	| ItemSelectionAction
+	| { _tag: "Commit" }
 	| { _tag: "FocusPreview" }
 	| { _tag: "SelectUnassignedChanges" }
 	| GlobalPreviewAction;
 
+const commitAction: PrimaryPanelAction = { _tag: "Commit" };
 const focusPreviewAction: PrimaryPanelAction = { _tag: "FocusPreview" };
 const selectUnassignedChangesAction: PrimaryPanelAction = { _tag: "SelectUnassignedChanges" };
 
 const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 	...itemSelectionBindings,
+	{
+		id: "primary-panel-commit",
+		description: "Commit",
+		keys: ["c"],
+		action: commitAction,
+		repeat: false,
+	},
 	{
 		id: "primary-panel-select-unassigned-changes",
 		description: "Unassigned changes",
@@ -425,7 +434,10 @@ const cancelOperationModeAction: OperationModeAction = { _tag: "Cancel" };
 
 const operationModeBindings: Array<ShortcutBinding<OperationModeAction>> = [
 	...primaryPanelBindings.filter(
-		(binding) => binding.action._tag !== "EnterRubMode" && binding.action._tag !== "EnterMoveMode",
+		(binding) =>
+			binding.action._tag !== "Commit" &&
+			binding.action._tag !== "EnterRubMode" &&
+			binding.action._tag !== "EnterMoveMode",
 	),
 	{
 		id: "operation-mode-confirm",
@@ -739,9 +751,23 @@ export const useWorkspaceShortcuts = ({
 			}),
 		);
 
+	const getCommitModeSource = (selectedItem: Item) => {
+		if ("stackId" in selectedItem)
+			return operationSourceFromItem(changesSectionItem({ stackId: selectedItem.stackId }));
+
+		return operationSourceFromItem(changesSectionItem({ stackId: null }));
+	};
+
 	const handlePrimaryPanelAction = (action: PrimaryPanelAction, selectedItem: Item) =>
 		Match.value(action).pipe(
 			Match.tags({
+				Commit: () =>
+					dispatch(
+						projectActions.enterMoveMode({
+							projectId,
+							source: getCommitModeSource(selectedItem),
+						}),
+					),
 				FocusPreview: () => dispatch(projectActions.focusPreview({ projectId })),
 				SelectUnassignedChanges: () => selectItem(changesSectionItem({ stackId: null })),
 				ToggleFullscreenPreview: () =>
