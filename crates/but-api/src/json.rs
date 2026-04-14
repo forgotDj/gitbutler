@@ -6,7 +6,6 @@
 //! If a JSON type only mirrors one API submodule, define it next to that API in
 //! a local `json` module instead of adding it here. See `crate::branch::json`,
 //! `crate::commit::json`, and `crate::diff::json` for the intended pattern.
-use crate::WorkspaceState as InternalWorkspaceState;
 pub use error::{Error, ToJsonError, UnmarkedError};
 use gix::refs::Target;
 use schemars::{self, JsonSchema};
@@ -150,14 +149,14 @@ pub struct WorkspaceState {
 #[cfg(feature = "export-schema")]
 but_schemars::register_sdk_type!(WorkspaceState);
 
-impl TryFrom<InternalWorkspaceState> for WorkspaceState {
+impl TryFrom<crate::WorkspaceState> for WorkspaceState {
     type Error = anyhow::Error;
 
     fn try_from(
-        InternalWorkspaceState {
+        crate::WorkspaceState {
             replaced_commits,
             head_info,
-        }: InternalWorkspaceState,
+        }: crate::WorkspaceState,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             replaced_commits: replaced_commits
