@@ -51,7 +51,7 @@ jobs:
         uses: ./.github/actions/init-env-node
         if: ${{ github.ref != 'refs/heads/master' }}
       - id: get_playwright_version
-        uses: eviden-actions/get-playwright-version@4ab3bd9361d018d7931275b5106f2290fa54cfb6 # v1
+        uses: eviden-actions/get-playwright-version@c83e8a285b395cc1e3d99df43d4ddaa0c889d8ff # v1
         if: ${{ github.ref != 'refs/heads/master' }}
       - name: Cache playwright binaries
         if: ${{ github.ref != 'refs/heads/master' }}
