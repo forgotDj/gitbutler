@@ -83,7 +83,7 @@ pub fn fetch_login_token() -> Result<LoginToken> {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
-            anyhow::bail!("Login token request failed ({status}): {body}");
+            return Err(ApiHttpError { status, body }.into());
         }
         resp.json()
             .await
