@@ -1,5 +1,6 @@
 <script lang="ts">
 	// import AppScrollableContainer from '$components/shared/AppScrollableContainer.svelte';
+	import SashLayer from "$components/shared/SashLayer.svelte";
 	import Resizer from "$components/shared/Resizer.svelte";
 	import { focusable } from "@gitbutler/ui/focus/focusable";
 	import type { Snippet } from "svelte";
@@ -13,25 +14,27 @@
 	let sidebarViewportRef = $state<HTMLDivElement>();
 </script>
 
-<div class="sidebar" bind:this={sidebarViewportRef} use:focusable={{ vertical: true }}>
-	<div class="sidebar-header" use:focusable>
-		<p class="text-14 text-semibold">Current sessions</p>
-		<div class="sidebar-header-actions">
-			{@render actions()}
+<SashLayer>
+	<div class="sidebar" bind:this={sidebarViewportRef} use:focusable={{ vertical: true }}>
+		<div class="sidebar-header" use:focusable>
+			<p class="text-14 text-semibold">Current sessions</p>
+			<div class="sidebar-header-actions">
+				{@render actions()}
+			</div>
 		</div>
+
+		{@render content()}
+
+		<Resizer
+			direction="right"
+			viewport={sidebarViewportRef}
+			defaultValue={20}
+			minWidth={20}
+			maxWidth={35}
+			persistId="resizer-codegenLeft"
+		/>
 	</div>
-
-	{@render content()}
-
-	<Resizer
-		direction="right"
-		viewport={sidebarViewportRef}
-		defaultValue={20}
-		minWidth={20}
-		maxWidth={35}
-		persistId="resizer-codegenLeft"
-	/>
-</div>
+</SashLayer>
 
 <style lang="postcss">
 	.sidebar {
