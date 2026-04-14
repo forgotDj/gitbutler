@@ -347,6 +347,7 @@ pub(super) fn create_branch_legacy(ctx: &mut Context) -> anyhow::Result<String> 
     Ok(new_name)
 }
 
+#[expect(dead_code)]
 pub(super) fn has_unassigned_changes(ctx: &Context) -> anyhow::Result<bool> {
     let context_lines = ctx.settings.context_lines;
 
