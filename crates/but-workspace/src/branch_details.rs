@@ -227,11 +227,7 @@ fn local_commits_gix(
         authors.insert(author.clone());
         authors.insert(committer);
         let is_conflicted = commit.is_conflicted();
-        let message = if is_conflicted {
-            but_core::commit::strip_conflict_markers(commit.message.as_ref())
-        } else {
-            commit.message.clone()
-        };
+        let message = but_core::commit::strip_conflict_markers(commit.message.as_ref());
         out.push(ui::Commit {
             id: info.id,
             parent_ids: commit.parents.iter().cloned().collect(),

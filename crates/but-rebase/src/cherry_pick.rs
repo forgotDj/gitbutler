@@ -168,22 +168,16 @@ pub(crate) mod function {
         }
 
         let headers = to_rebase.headers();
-        let was_conflicted = to_rebase.is_conflicted();
         let mut new_commit = to_rebase.inner;
         new_commit.tree = resolved_tree_id.detach();
 
         // Assure the commit isn't thinking it's conflicted.
-        if was_conflicted {
-            // Strip the legacy header if present
-            if let Some(pos) = new_commit
-                .extra_headers()
-                .find_pos(HEADERS_CONFLICTED_FIELD)
-            {
-                new_commit.extra_headers.remove(pos);
-            }
-            // Strip conflict markers from the commit message
-            new_commit.message =
-                but_core::commit::strip_conflict_markers(new_commit.message.as_ref());
+        new_commit.message = but_core::commit::strip_conflict_markers(new_commit.message.as_ref());
+        if let Some(pos) = new_commit
+            .extra_headers()
+            .find_pos(HEADERS_CONFLICTED_FIELD)
+        {
+            new_commit.extra_headers.remove(pos);
         } else if headers.is_none() {
             let headers = Headers::from_config(&repo.config_snapshot());
             new_commit
@@ -251,10 +245,8 @@ pub(crate) mod function {
         set_parent(&mut to_rebase, head.id.detach())?;
 
         // Add conflict markers to the commit message
-        if !but_core::commit::message_is_conflicted(to_rebase.inner.message.as_ref()) {
-            to_rebase.inner.message =
-                but_core::commit::add_conflict_markers(to_rebase.inner.message.as_ref());
-        }
+        to_rebase.inner.message =
+            but_core::commit::add_conflict_markers(to_rebase.inner.message.as_ref());
 
         to_rebase.set_headers(&headers);
         Ok(crate::commit::create(

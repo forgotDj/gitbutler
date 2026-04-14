@@ -69,11 +69,7 @@ impl From<but_core::Commit<'_>> for Commit {
         let gix::objs::Commit {
             message, author, ..
         } = value.inner;
-        let message = if has_conflicts {
-            but_core::commit::strip_conflict_markers(message.as_ref())
-        } else {
-            message
-        };
+        let message = but_core::commit::strip_conflict_markers(message.as_ref());
         Commit {
             id,
             tree_id,
@@ -103,13 +99,8 @@ impl Commit {
         graph_commit: &but_graph::Commit,
     ) -> Self {
         let hdr = but_core::commit::Headers::try_from_commit(&commit);
-        let has_conflicts = but_core::commit::message_is_conflicted(commit.message.as_ref())
-            || hdr.as_ref().is_some_and(|hdr| hdr.is_conflicted());
-        let message = if has_conflicts {
-            but_core::commit::strip_conflict_markers(commit.message.as_ref())
-        } else {
-            commit.message
-        };
+        let has_conflicts = but_core::commit::is_conflicted(commit.message.as_ref(), hdr.as_ref());
+        let message = but_core::commit::strip_conflict_markers(commit.message.as_ref());
         Commit {
             id: graph_commit.id,
             parent_ids: commit.parents.into_iter().collect(),

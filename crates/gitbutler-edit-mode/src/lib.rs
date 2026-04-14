@@ -290,10 +290,7 @@ pub(crate) fn save_and_return_to_workspace(ctx: &Context, perm: &mut RepoExclusi
                 (&headers).into()
             })
             .unwrap_or_default();
-        // Strip conflict markers only for genuinely conflicted commit messages.
-        if but_core::commit::message_is_conflicted(commit.message.as_ref()) {
-            commit.message = but_core::commit::strip_conflict_markers(commit.message.as_ref());
-        }
+        commit.message = but_core::commit::strip_conflict_markers(commit.message.as_ref());
         but_rebase::commit::create(
             repo,
             gix::objs::Commit {
