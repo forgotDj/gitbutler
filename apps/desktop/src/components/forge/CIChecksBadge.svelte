@@ -85,19 +85,27 @@
 		}
 
 		if (checks) {
-			// GitHub only returns check runs that have actually been created.
-			// When required checks haven't reported yet, the API may return
-			// all existing checks as passed while the PR is still unmergeable.
-			if (checks.completed && checks.success) {
-				if (mergeableState === "blocked") {
-					return {
-						style: "warning",
-						icon: "warning",
-						text: "Blocked",
-						reducedText: "Blocked",
-						tooltip: "Some required checks have not reported yet.",
-					};
-				}
+			// When checks pass but the PR is blocked, it's typically because
+			// review approval is still required — not a CI issue.
+			if (checks.completed && checks.success && mergeableState === "blocked") {
+				return {
+					style: "warning",
+					icon: "eye",
+					text: "Needs review",
+					reducedText: "Needs review",
+					tooltip: "Checks passed but the PR still needs approval.",
+				};
+			}
+
+			// Merge conflicts can prevent checks from running at all.
+			if (mergeableState === "dirty") {
+				return {
+					style: "danger",
+					icon: "warning",
+					text: "Has conflicts",
+					reducedText: "Conflicts",
+					tooltip: "The PR has merge conflicts that need to be resolved.",
+				};
 			}
 
 			const style = checks.completed ? (checks.success ? "safe" : "danger") : "warning";
@@ -175,13 +183,7 @@
 			prUpdatedAtChangedTime !== undefined &&
 			Date.now() - prUpdatedAtChangedTime < STALE_GRACE_PERIOD_MS;
 		const checksCompleted = checksQuery?.response?.completed || checksQuery?.response === null;
-		// Don't stop polling if checks appear passed but the PR is blocked
-		// (some required checks may not have been created yet).
-		const blocked =
-			checksQuery?.response?.completed &&
-			checksQuery?.response?.success &&
-			mergeableState === "blocked";
-		shouldStop = !withinGracePeriod && checksCompleted && !blocked;
+		shouldStop = !withinGracePeriod && checksCompleted;
 
 		if (!isDone && loadedOnce && !loading && shouldStop) {
 			projectState.branchesToPoll.remove(branchName);
