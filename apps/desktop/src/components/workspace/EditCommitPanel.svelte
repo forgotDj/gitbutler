@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { goto } from "$app/navigation";
 	import ScrollableContainer from "$components/shared/AppScrollableContainer.svelte";
 	import ChangedFilesContextMenu from "$components/shared/ChangedFilesContextMenu.svelte";
 	import ReduxResult from "$components/shared/ReduxResult.svelte";
 	import EditModeFileListItem from "$components/workspace/EditModeFileListItem.svelte";
 	import { getEditorUri, URL_SERVICE } from "$lib/backend/url";
 	import { splitMessage } from "$lib/commits/commitMessage";
-	import { conflictEntryHint } from "$lib/files/conflictEntryPresence";
+	import { hasUnresolvedConflictsOnDisk } from "$lib/files/conflictCheck";
+	import { conflictEntryHint, getConflictState } from "$lib/files/conflictEntryPresence";
+	import { FILE_SERVICE } from "$lib/files/fileService";
 	import { computeChangeStatus } from "$lib/files/fileStatus";
 	import { MODE_SERVICE } from "$lib/mode/modeService";
 	import { vscodePath } from "$lib/project/project";
 	import { PROJECTS_SERVICE } from "$lib/project/projectsService";
-	import { workspacePath } from "$lib/routes/routes.svelte";
 	import { createCommitSelection } from "$lib/selection/key";
 	import { SETTINGS } from "$lib/settings/userSettings";
 	import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
@@ -19,7 +19,8 @@
 	import { inject } from "@gitbutler/core/context";
 
 	import { AsyncButton, Avatar, Badge, Button, InfoButton, Modal, TestId } from "@gitbutler/ui";
-	import { SvelteSet } from "svelte/reactivity";
+	import { SvelteMap, SvelteSet } from "svelte/reactivity";
+	import type { ConflictState } from "$lib/files/conflictEntryPresence";
 	import type { EditModeMetadata, TreeChange } from "@gitbutler/but-sdk";
 	import type { ConflictEntryPresence } from "@gitbutler/but-sdk";
 	import type { FileStatus } from "@gitbutler/ui/components/file/types";
@@ -39,6 +40,7 @@
 	const modeService = inject(MODE_SERVICE);
 	const userSettings = inject(SETTINGS);
 	const urlService = inject(URL_SERVICE);
+	const fileService = inject(FILE_SERVICE);
 
 	const initialFiles = $derived(modeService.initialEditModeState({ projectId }));
 	const uncommittedFiles = $derived(modeService.changesSinceInitialEditState({ projectId }));
@@ -123,23 +125,43 @@
 	const conflictedFiles = $derived(files.filter((file) => file.conflicted));
 
 	let manuallyResolvedFiles = new SvelteSet<string>();
-	let stillConflictedPaths = new SvelteSet<string>();
-	const hasUnresolvedConflicts = $derived(stillConflictedPaths.size > 0);
+
+	// Per-file conflict state, updated by re-reading file content from disk.
+	// Re-reads when uncommittedFiles changes (driven by the file watcher).
+	const conflictStates = new SvelteMap<string, ConflictState>();
+
+	$effect(() => {
+		// Subscribe to uncommittedFiles so we re-read when files change on disk.
+		void uncommittedFiles.response;
+
+		for (const file of files) {
+			if (!file.conflictEntryPresence) continue;
+			const presence = file.conflictEntryPresence;
+			const path = file.path;
+			fileService.readFromWorkspace(path, projectId).then((result) => {
+				conflictStates.set(path, getConflictState(presence, result.data.content));
+			});
+		}
+	});
 
 	async function abort(force: boolean) {
 		if (loading) return;
 		await abortEdit({ projectId, force });
-		goto(workspacePath(projectId));
+		// Force-refresh the mode cache so the edit route's $effect sees
+		// the updated mode immediately and navigates to workspace.
+		// Without this, the cache relies on async tag invalidation which
+		// can be delayed, leaving us stuck on the edit page.
+		await modeService.fetchMode(projectId);
 	}
 
 	async function save() {
 		if (loading) return;
 		await saveEdit({ projectId });
-		goto(workspacePath(projectId));
+		await modeService.fetchMode(projectId);
 	}
 
 	async function handleSave() {
-		if (hasUnresolvedConflicts) {
+		if (await hasUnresolvedConflictsOnDisk(files, manuallyResolvedFiles, fileService, projectId)) {
 			confirmSaveModal?.show();
 			return;
 		}
@@ -252,12 +274,12 @@
 						>
 							{#each files as file (file.path)}
 								<EditModeFileListItem
-									{projectId}
 									filePath={file.path}
 									pathFirst={$userSettings.pathFirst}
 									fileStatus={file.status}
 									conflictHint={file.conflictHint}
 									conflictEntryPresence={file.conflictEntryPresence}
+									conflictState={conflictStates.get(file.path) ?? "unknown"}
 									manuallyResolved={manuallyResolvedFiles.has(file.path)}
 									onresolveclick={file.conflicted
 										? () => manuallyResolvedFiles.add(file.path)
@@ -266,13 +288,6 @@
 										const treeChange = getTreeChangeForFile(file);
 										if (treeChange) {
 											contextMenu?.open(e, { changes: [treeChange] });
-										}
-									}}
-									onconflictchange={(conflicted) => {
-										if (conflicted) {
-											stillConflictedPaths.add(file.path);
-										} else {
-											stillConflictedPaths.delete(file.path);
 										}
 									}}
 								/>
