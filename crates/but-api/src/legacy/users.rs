@@ -106,7 +106,7 @@ pub fn get_login_token() -> Result<gitbutler_user::api::LoginToken> {
 }
 
 #[but_api]
-#[instrument(err(Debug))]
+#[instrument(skip(token), err(Debug))]
 pub fn login_with_token(token: String) -> Result<serde_json::Value> {
     gitbutler_user::api::fetch_user_by_token(&token)
 }

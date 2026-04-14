@@ -677,8 +677,14 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .route("/get_user", but_post(legacy::users::get_user_cmd))
         .route("/set_user", but_post(legacy::users::set_user_cmd))
         .route("/delete_user", but_post(legacy::users::delete_user_cmd))
-        .route("/get_login_token", post(get_login_token))
-        .route("/login_with_token", post(login_with_token))
+        .route(
+            "/get_login_token",
+            but_post(legacy::users::get_login_token_cmd),
+        )
+        .route(
+            "/login_with_token",
+            but_post(legacy::users::login_with_token_cmd),
+        )
         .route(
             "/update_project",
             but_post(legacy::projects::update_project_cmd),
@@ -1741,41 +1747,6 @@ fn to_json_or_panic(value: impl serde::Serialize) -> serde_json::Value {
 
 fn deserialize_json<T: serde::de::DeserializeOwned>(value: serde_json::Value) -> anyhow::Result<T> {
     Ok(serde_json::from_value(value)?)
-}
-
-/// `POST /get_login_token` — Server-side call to the GitButler API to get a login URL.
-///
-/// The frontend calls this instead of hitting `app.gitbutler.com/api/login/token.json`
-/// directly, which would be blocked by CORS when running in a browser.
-async fn get_login_token(State(_state): State<AppState>) -> Json<serde_json::Value> {
-    match tokio::task::spawn_blocking(gitbutler_user::api::fetch_login_token).await {
-        Ok(Ok(token)) => Json(json!(Response::Success(json!(token)))),
-        Ok(Err(e)) => Json(json!(Response::Error(json!(e.to_string())))),
-        Err(e) => Json(json!(Response::Error(json!(e.to_string())))),
-    }
-}
-
-/// `POST /login_with_token` — Validates an access token against the GitButler API server-side.
-///
-/// Accepts `{ "token": "..." }` and returns the user info from `login/whoami`.
-/// This avoids a cross-origin browser request to `app.gitbutler.com`.
-async fn login_with_token(
-    State(_state): State<AppState>,
-    Json(params): Json<serde_json::Value>,
-) -> Json<serde_json::Value> {
-    let token = match params.get("token").and_then(|t| t.as_str()) {
-        Some(t) => t.to_string(),
-        None => {
-            return Json(json!(Response::Error(json!("Missing 'token' parameter"))));
-        }
-    };
-    match tokio::task::spawn_blocking(move || gitbutler_user::api::fetch_user_by_token(&token))
-        .await
-    {
-        Ok(Ok(user)) => Json(json!(Response::Success(user))),
-        Ok(Err(e)) => Json(json!(Response::Error(json!(e.to_string())))),
-        Err(e) => Json(json!(Response::Error(json!(e.to_string())))),
-    }
 }
 
 #[cfg(test)]

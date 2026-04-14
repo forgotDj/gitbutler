@@ -113,14 +113,19 @@ pub fn fetch_user_by_token(token: &str) -> Result<serde_json::Value> {
 /// the remote-access auth middleware to verify that the authenticated user
 /// matches the local machine owner.
 ///
-/// Returns `Ok(false)` for invalid/expired tokens (upstream 4xx) so that
-/// callers can distinguish "not the owner" from actual errors. Only network
-/// failures and unexpected responses produce `Err`.
+/// Returns `Ok(false)` for authentication failures (401/403) so that
+/// callers can distinguish "not the owner" from actual errors. Other HTTP
+/// errors (e.g. 429 rate-limit, 5xx) and network failures produce `Err`.
 pub fn validate_token_owner(token: &str, expected_user_id: u64) -> Result<bool> {
     let user = match fetch_user_by_token(token) {
         Ok(user) => user,
         Err(e) => match e.downcast_ref::<ApiHttpError>() {
-            Some(http_err) if http_err.status.is_client_error() => return Ok(false),
+            Some(http_err)
+                if http_err.status == StatusCode::UNAUTHORIZED
+                    || http_err.status == StatusCode::FORBIDDEN =>
+            {
+                return Ok(false);
+            }
             _ => return Err(e),
         },
     };
