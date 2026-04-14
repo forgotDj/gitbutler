@@ -385,7 +385,6 @@ const Hunk: FC<{
 	editable: boolean;
 	headerStart?: ReactNode;
 	isSelected?: boolean;
-	isFocused: boolean;
 }> = ({
 	patch,
 	operationMode,
@@ -396,7 +395,6 @@ const Hunk: FC<{
 	editable,
 	headerStart,
 	isSelected,
-	isFocused,
 }) => {
 	const dispatch = useAppDispatch();
 	const headerRow = (
@@ -417,7 +415,7 @@ const Hunk: FC<{
 					}),
 				)
 			}
-			className={classes(styles.previewHunk, isSelected && isFocused && styles.previewHunkSelected)}
+			className={classes(styles.previewHunk, isSelected && styles.previewHunkSelected)}
 		>
 			{fileParent && editable
 				? (() => {
@@ -452,7 +450,6 @@ const FileDiff: FC<{
 	hunkDependencyDiffs?: Array<HunkDependencyDiff>;
 	diff: UnifiedPatch | null;
 	selectedHunk: string | undefined;
-	isFocused: boolean;
 }> = ({
 	operationMode,
 	projectId,
@@ -462,7 +459,6 @@ const FileDiff: FC<{
 	hunkDependencyDiffs,
 	diff,
 	selectedHunk,
-	isFocused,
 }) =>
 	Match.value(diff).pipe(
 		Match.when(null, () => <div>No diff available for this file.</div>),
@@ -492,7 +488,6 @@ const FileDiff: FC<{
 									hunk={hunk}
 									editable={editable}
 									isSelected={selectedHunk === fileHunkKey(change.path, hunk)}
-									isFocused={isFocused}
 									headerStart={
 										fileParent?._tag === "ChangesSection" &&
 										isNonEmptyArray(dependencyCommitIds) ? (
@@ -570,9 +565,8 @@ const ChangesPreview: FC<{
 	operationMode: OperationMode | null;
 	projectId: string;
 	selectedPath?: string;
-	isFocused: boolean;
 	ref?: Ref<PreviewImperativeHandle>;
-}> = ({ operationMode, projectId, selectedPath, isFocused, ref }) => {
+}> = ({ operationMode, projectId, selectedPath, ref }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
 		worktreeChanges.dependencies?.diffs ?? [],
@@ -616,7 +610,6 @@ const ChangesPreview: FC<{
 									hunkDependencyDiffs={hunkDependencyDiffsByPath.get(change.path)}
 									diff={diff}
 									selectedHunk={normalizedSelectedHunk}
-									isFocused={isFocused}
 								/>
 							</li>
 						);
@@ -633,9 +626,8 @@ const CommitPreview: FC<{
 	commitId: string;
 	selectedPath?: string | null;
 	editable: boolean;
-	isFocused: boolean;
 	ref?: Ref<PreviewImperativeHandle>;
-}> = ({ operationMode, projectId, commitId, selectedPath, editable, isFocused, ref }) => {
+}> = ({ operationMode, projectId, commitId, selectedPath, editable, ref }) => {
 	const { data: commitDetails } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
@@ -695,7 +687,6 @@ const CommitPreview: FC<{
 									editable={editable}
 									diff={diff}
 									selectedHunk={normalizedSelectedHunk}
-									isFocused={isFocused}
 								/>
 							</li>
 						);
@@ -710,9 +701,8 @@ const BranchPreview: FC<{
 	operationMode: OperationMode | null;
 	projectId: string;
 	branchRef: Array<number>;
-	isFocused: boolean;
 	ref?: Ref<PreviewImperativeHandle>;
-}> = ({ operationMode, projectId, branchRef, isFocused, ref }) => {
+}> = ({ operationMode, projectId, branchRef, ref }) => {
 	const branch = decodeRefName(branchRef);
 	const [{ data: branchDetails }, { data: branchDiff }] = useSuspenseQueries({
 		queries: [
@@ -749,7 +739,6 @@ const BranchPreview: FC<{
 								editable={false}
 								diff={diff}
 								selectedHunk={normalizedSelectedHunk}
-								isFocused={isFocused}
 							/>
 						</li>
 					))}
@@ -763,9 +752,8 @@ const Preview: FC<{
 	operationMode: OperationMode | null;
 	projectId: string;
 	selectedItem: Item;
-	isFocused: boolean;
 	ref?: Ref<PreviewImperativeHandle>;
-}> = ({ operationMode, projectId, selectedItem, isFocused, ref }) =>
+}> = ({ operationMode, projectId, selectedItem, ref }) =>
 	Match.value(selectedItem).pipe(
 		Match.tagsExhaustive({
 			Stack: () => null,
@@ -783,25 +771,18 @@ const Preview: FC<{
 						operationMode={operationMode}
 						projectId={projectId}
 						branchRef={branchRef}
-						isFocused={isFocused}
 						ref={ref}
 					/>
 				);
 			},
 			ChangesSection: () => (
-				<ChangesPreview
-					operationMode={operationMode}
-					projectId={projectId}
-					isFocused={isFocused}
-					ref={ref}
-				/>
+				<ChangesPreview operationMode={operationMode} projectId={projectId} ref={ref} />
 			),
 			Change: ({ path }) => (
 				<ChangesPreview
 					operationMode={operationMode}
 					projectId={projectId}
 					selectedPath={path}
-					isFocused={isFocused}
 					ref={ref}
 				/>
 			),
@@ -811,7 +792,6 @@ const Preview: FC<{
 					projectId={projectId}
 					commitId={selectedItem.commitId}
 					editable
-					isFocused={isFocused}
 					ref={ref}
 				/>
 			),
@@ -822,7 +802,6 @@ const Preview: FC<{
 					commitId={commitId}
 					selectedPath={path}
 					editable
-					isFocused={isFocused}
 					ref={ref}
 				/>
 			),
@@ -2049,7 +2028,6 @@ const ProjectPage: FC = () => {
 							operationMode={operationMode}
 							projectId={projectId}
 							selectedItem={selectedItem}
-							isFocused={getFocus(layoutState) === "preview"}
 							ref={previewRef}
 						/>
 					</Suspense>
