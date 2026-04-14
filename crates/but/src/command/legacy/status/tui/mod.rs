@@ -635,7 +635,7 @@ impl App {
                 }
             },
             Message::Move(move_message) => match move_message {
-                MoveMessage::Start => self.handle_move_start_message(),
+                MoveMessage::Start => self.handle_move_start(),
                 MoveMessage::SetInsertSide(insert_side) => {
                     self.handle_move_set_insert_side(insert_side)
                 }
@@ -1152,7 +1152,7 @@ impl App {
     }
 
     /// Handles creating an empty commit relative to the current selection.
-    fn handle_create_empty_commit(
+    fn handle_commit_create_empty(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
@@ -1433,7 +1433,13 @@ impl App {
         }
     }
 
-    fn handle_move_start_message(&mut self) {
+    fn handle_commit_toggle_empty_message(&mut self) {
+        if let Mode::Commit(mode) = &mut self.mode {
+            mode.empty_message = !mode.empty_message;
+        }
+    }
+
+    fn handle_move_start(&mut self) {
         let Some(selection) = self.cursor.selected_line(&self.status_lines) else {
             return;
         };
