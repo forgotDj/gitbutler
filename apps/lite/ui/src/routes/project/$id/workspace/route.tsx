@@ -825,10 +825,10 @@ const StackMenuPopup: FC<{
 	return (
 		<Menu.Popup className={classes(uiStyles.popup, uiStyles.menuPopup)}>
 			<Menu.Item className={uiStyles.menuItem} disabled>
-				Move to leftmost
+				Move up
 			</Menu.Item>
 			<Menu.Item className={uiStyles.menuItem} disabled>
-				Move to rightmost
+				Move down
 			</Menu.Item>
 			<Menu.Separator />
 			<Menu.Item
