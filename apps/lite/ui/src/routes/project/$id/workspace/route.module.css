@@ -73,7 +73,6 @@
 
 	.itemRow:hover &,
 	.itemRow:focus-within &,
-	.itemRow:has(.itemRowAction[aria-expanded="true"]) &,
 	.itemRowSelected & {
 		visibility: visible;
 	}

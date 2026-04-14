@@ -188,7 +188,7 @@ export declare function commitUncommitChanges(projectId: string, commitId: strin
  * When `dry_run` is enabled, the returned workspace previews the undo result
  * without materializing the rewrite or persisting an oplog entry.
  */
-export declare function commitUndo(projectId: string, subjectCommitId: string, stackId: string | null, dryRun: boolean): Promise<CommitUndoResult>
+export declare function commitUndo(projectId: string, subjectCommitId: string, assignTo: string | null, dryRun: boolean): Promise<CommitUndoResult>
 
 /**
  * Get the forge provider name.
