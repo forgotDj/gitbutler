@@ -41,6 +41,14 @@ export class ModeService {
 		);
 	}
 
+	/**
+	 * Force-fetch the current mode, bypassing the cache. This updates the
+	 * cache so that reactive subscribers see the new value immediately.
+	 */
+	async fetchMode(projectId: string) {
+		return await this.backendApi.endpoints.headAndMode.fetch({ projectId }, { forceRefetch: true });
+	}
+
 	head(projectId: string) {
 		return this.backendApi.endpoints.headSha.useQuery(
 			{ projectId },

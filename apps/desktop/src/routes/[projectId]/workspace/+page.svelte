@@ -33,7 +33,6 @@
 
 	$effect(() => {
 		if (mode.response?.type === "Edit") {
-			// That was causing an incorrect linting error when project.id was accessed inside the reactive block
 			gotoEdit();
 		}
 	});
