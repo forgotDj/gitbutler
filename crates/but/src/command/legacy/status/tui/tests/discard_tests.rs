@@ -14,7 +14,7 @@ fn discard_prompt_can_be_cancelled() {
     tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes]"]);
 
     tui.input_then_render('x')
         .assert_rendered_contains("Discard unassigned changes?")
@@ -23,7 +23,7 @@ fn discard_prompt_can_be_cancelled() {
     tui.input_then_render('n');
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"])
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes]"])
         .assert_rendered_term_svg_eq(file!["snapshots/discard_prompt_can_be_cancelled_final.svg"]);
 }
 
@@ -37,7 +37,7 @@ fn discard_unassigned_confirm_yes_discards_changes() {
     tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes]"]);
 
     tui.input_then_render('x')
         .assert_rendered_contains("Discard unassigned changes?");
@@ -45,7 +45,7 @@ fn discard_unassigned_confirm_yes_discards_changes() {
     tui.input_then_render('y');
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     let status = tui.env().invoke_git("status --porcelain");
     assert_eq!(status, "");
@@ -66,7 +66,7 @@ fn discard_unassigned_cancel_keeps_changes() {
     tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes]"]);
 
     tui.input_then_render('x')
         .assert_rendered_contains("Discard unassigned changes?");
@@ -74,7 +74,7 @@ fn discard_unassigned_cancel_keeps_changes() {
     tui.input_then_render('n');
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes]"]);
 
     let status = tui.env().invoke_git("status --porcelain");
     assert!(
@@ -127,7 +127,7 @@ fn discard_stack_confirm_yes_discards_staged_changes() {
     tui.env().file("test.txt", "content");
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes]"]);
 
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊   [..] A test.txt"]);
@@ -136,22 +136,22 @@ fn discard_stack_confirm_yes_discards_staged_changes() {
         .assert_current_line_eq(str!["┊   << source >> << noop >> [..] A test.txt"]);
 
     tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊╭┄<< assign hunks >> g0 [A]"]);
+        .assert_current_line_eq(str!["┊●   << amend >> 9477ae7 add A"]);
 
     tui.input_then_render(KeyCode::Enter)
-        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     tui.input_then_render([KeyCode::Up, KeyCode::Up])
-        .assert_current_line_eq(str!["┊  ╭┄[..] [staged to A]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     tui.input_then_render('x')
-        .assert_rendered_contains("Discard staged changes in this stack?")
+        .assert_rendered_contains("Discard unassigned changes?")
         .assert_rendered_contains("<< discard >>");
 
     tui.input_then_render('y');
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     let status = tui.env().invoke_git("status --porcelain");
     assert_eq!(status, "");
@@ -159,53 +159,6 @@ fn discard_stack_confirm_yes_discards_staged_changes() {
     tui.input_then_render(None)
         .assert_rendered_term_svg_eq(file![
             "snapshots/discard_stack_confirm_yes_discards_staged_changes_final.svg"
-        ]);
-}
-
-#[test]
-fn discard_stack_cancel_keeps_staged_changes() {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
-    env.setup_metadata(&["A"]).unwrap();
-
-    let mut tui = test_tui(env);
-
-    tui.env().file("test.txt", "content");
-
-    tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
-
-    tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊   [..] A test.txt"]);
-
-    tui.input_then_render('r')
-        .assert_current_line_eq(str!["┊   << source >> << noop >> [..] A test.txt"]);
-
-    tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊╭┄<< assign hunks >> g0 [A]"]);
-
-    tui.input_then_render(KeyCode::Enter)
-        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
-
-    tui.input_then_render([KeyCode::Up, KeyCode::Up])
-        .assert_current_line_eq(str!["┊  ╭┄[..] [staged to A]"]);
-
-    tui.input_then_render('x')
-        .assert_rendered_contains("Discard staged changes in this stack?");
-
-    tui.input_then_render('n');
-
-    tui.input_then_render(None)
-        .assert_current_line_eq(str!["┊  ╭┄[..] [staged to A]"]);
-
-    let status = tui.env().invoke_git("status --porcelain");
-    assert!(
-        status.contains("test.txt"),
-        "expected staged changes to remain, got: {status:?}"
-    );
-
-    tui.input_then_render(None)
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/discard_stack_cancel_keeps_staged_changes_final.svg"
         ]);
 }
 

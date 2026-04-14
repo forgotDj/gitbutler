@@ -342,8 +342,7 @@ fn move_branch_by_name_from_top_level_move() -> anyhow::Result<()> {
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   9477ae7 add A
@@ -379,8 +378,7 @@ Moved branch 'A' on top of 'C'.
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   afff88e add A
@@ -414,8 +412,7 @@ fn move_branch_by_cli_id_from_top_level_move() -> anyhow::Result<()> {
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   9477ae7 add A
@@ -462,8 +459,7 @@ Moved branch 'A' on top of 'C'.
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   afff88e add A
@@ -497,8 +493,7 @@ fn tear_off_branch_with_top_level_move_to_zz() -> anyhow::Result<()> {
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   9477ae7 add A
@@ -546,8 +541,7 @@ Unstacked branch 'C'.
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   9477ae7 add A
@@ -583,8 +577,7 @@ fn move_branch_with_after_flag_fails_from_top_level_move() -> anyhow::Result<()>
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   9477ae7 add A
@@ -616,8 +609,7 @@ Failed to move branch. The --after flag only makes sense when moving a commit to
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   9477ae7 add A

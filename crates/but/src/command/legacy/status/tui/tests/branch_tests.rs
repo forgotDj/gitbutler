@@ -12,7 +12,7 @@ fn branch_mode_from_unassigned_jumps_to_first_branch() {
     let mut tui = test_tui(env);
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     tui.input_then_render('b')
         .assert_current_line_eq(str!["┊╭┄<< target >> g0 [A]"])

@@ -884,14 +884,29 @@ fn movement_does_not_panic_or_move_when_cursor_is_out_of_bounds() {
 #[test]
 fn move_next_section_moves_to_next_jump_target() {
     let lines = vec![
-        line(StatusOutputLineData::UnassignedChanges {
-            cli_id: unassigned("u0"),
+        line(StatusOutputLineData::Branch {
+            cli_id: Arc::new(CliId::Branch {
+                name: "main".into(),
+                id: "a0".into(),
+                stack_id: None,
+            }),
         }),
-        line(StatusOutputLineData::UnassignedFile {
-            cli_id: unassigned("u1"),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id("1111111111111111111111111111111111111111", "c0"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
         }),
-        line(StatusOutputLineData::StagedChanges {
-            cli_id: unassigned("s0"),
+        line(StatusOutputLineData::Branch {
+            cli_id: Arc::new(CliId::Branch {
+                name: "other".into(),
+                id: "a1".into(),
+                stack_id: None,
+            }),
+        }),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id("2222222222222222222222222222222222222222", "c0"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
         }),
     ];
 
@@ -927,17 +942,29 @@ fn move_next_section_does_not_move_when_no_jump_target_below() {
 #[test]
 fn move_previous_section_moves_to_current_section_header_when_cursor_is_inside_it() {
     let lines = vec![
-        line(StatusOutputLineData::UnassignedChanges {
-            cli_id: unassigned("u0"),
+        line(StatusOutputLineData::Branch {
+            cli_id: Arc::new(CliId::Branch {
+                name: "main".into(),
+                id: "a0".into(),
+                stack_id: None,
+            }),
         }),
-        line(StatusOutputLineData::UnassignedFile {
-            cli_id: unassigned("u1"),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id("1111111111111111111111111111111111111111", "c0"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
         }),
-        line(StatusOutputLineData::StagedChanges {
-            cli_id: unassigned("s0"),
+        line(StatusOutputLineData::Branch {
+            cli_id: Arc::new(CliId::Branch {
+                name: "other".into(),
+                id: "a1".into(),
+                stack_id: None,
+            }),
         }),
-        line(StatusOutputLineData::StagedFile {
-            cli_id: unassigned("s1"),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id("2222222222222222222222222222222222222222", "c0"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
         }),
     ];
 
@@ -1315,8 +1342,12 @@ fn move_next_section_skips_non_jump_targets_like_commits() {
             stack_id: None,
             classification: CommitClassification::LocalOnly,
         }),
-        line(StatusOutputLineData::StagedChanges {
-            cli_id: unassigned("s0"),
+        line(StatusOutputLineData::Branch {
+            cli_id: Arc::new(CliId::Branch {
+                name: "other".into(),
+                id: "a0".into(),
+                stack_id: None,
+            }),
         }),
     ];
 
