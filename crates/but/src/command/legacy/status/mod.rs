@@ -5,6 +5,7 @@
 
 use std::collections::BTreeMap;
 
+use anyhow::Context as _;
 use assignment::FileAssignment;
 use bstr::{BStr, BString, ByteSlice};
 use but_api::diff::ComputeLineStats;
@@ -58,6 +59,16 @@ pub struct StatusFlags {
 
 impl StatusFlags {
     pub fn all_false() -> Self {
+        Self {
+            show_files: FilesStatusFlag::None,
+            verbose: false,
+            refresh_prs: false,
+            show_upstream: false,
+            hint: false,
+        }
+    }
+
+    pub fn for_tui() -> Self {
         Self {
             show_files: FilesStatusFlag::None,
             verbose: false,
@@ -708,28 +719,25 @@ fn print_assignments(
     unstaged: bool,
     output: &mut StatusOutput<'_>,
 ) -> anyhow::Result<()> {
-    // if there are no assignments and we're in the unstaged section, print "(no changes)" and return
-    if assignments.is_empty() && unstaged {
-        output.no_assignments_unstaged(
-            Vec::from([Span::raw("┊     ")]),
-            Vec::from([Span::styled("no changes", Style::default().dim().italic())]),
-        )?;
-        return Ok(());
-    }
-
     let id = stack
         .and_then(|s| status_ctx.id_map.resolve_stack(s))
         .map(|s| Span::styled(s.to_short_string(), Style::default().bold().blue()))
         .unwrap_or_default();
 
-    if !unstaged && !assignments.is_empty() {
-        let staged_changes_cli_id = stack
-            .and_then(|stack_id| status_ctx.id_map.resolve_stack(stack_id).cloned())
-            .ok_or_else(|| anyhow::anyhow!("Could not resolve stack CLI id for staged changes"))?;
+    if let Some(stack) = stack
+        && (!unstaged && !assignments.is_empty())
+    {
+        let staged_changes_cli_id = status_ctx
+            .id_map
+            .resolve_stack(stack)
+            .cloned()
+            .with_context(|| {
+                format!("Could not resolve stack CLI id for staged changes. stack_id={stack:?}")
+            })?;
 
         output.staged_changes(
             Vec::from([Span::raw("┊  ╭┄")]),
-            Vec::from([
+            [
                 id,
                 Span::raw(" ["),
                 Span::styled(
@@ -740,7 +748,21 @@ fn print_assignments(
                     Style::default().cyan().bold(),
                 ),
                 Span::raw("]"),
-            ]),
+            ]
+            .into_iter()
+            .chain(
+                assignments
+                    .is_empty()
+                    .then(|| {
+                        [
+                            Span::raw(" "),
+                            Span::styled("(no changes)", Style::default().dim().italic()),
+                        ]
+                    })
+                    .into_iter()
+                    .flatten(),
+            )
+            .collect(),
             staged_changes_cli_id,
         )?;
     }
@@ -1015,15 +1037,22 @@ fn print_group(
                 Style::default().bold().blue(),
             ),
             Span::raw(" ["),
-            Span::styled("unstaged changes", Style::default().bold().cyan()),
+            Span::styled("unassigned changes", Style::default().bold().cyan()),
             Span::raw("]"),
         ]);
+        if assignments.is_empty() {
+            line.extend([
+                Span::raw(" "),
+                Span::styled("(no changes)", Style::default().dim().italic()),
+            ]);
+        }
         if let Some(stack_mark) = stack_mark {
-            line.push(Span::raw(" "));
-            line.push(stack_mark.clone());
+            line.extend([Span::raw(" "), stack_mark.clone()]);
         }
         output.unstaged_changes(Vec::from([Span::raw("╭┄")]), line, cli_id.clone())?;
-        print_assignments(&repo, status_ctx, None, None, assignments, true, output)?;
+        if !assignments.is_empty() {
+            print_assignments(&repo, status_ctx, None, None, assignments, true, output)?;
+        }
     }
     if !first {
         output.connector(Vec::from([Span::raw("├╯")]))?;

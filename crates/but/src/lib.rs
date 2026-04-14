@@ -723,7 +723,7 @@ async fn match_subcommand(
             command::legacy::status::worktree(
                 &mut ctx,
                 out,
-                StatusFlags::all_false(),
+                StatusFlags::for_tui(),
                 StatusRenderMode::Tui(_options),
             )
             .await

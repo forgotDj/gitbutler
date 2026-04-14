@@ -179,22 +179,14 @@ pub(super) fn create_commit_legacy(
     .map(Some)
 }
 
-pub(super) fn rub_legacy(
-    ctx: &mut Context,
-    out: &mut OutputChannel,
-    operation: RubOperation<'_>,
-) -> anyhow::Result<()> {
-    operation.execute(ctx, out)
-}
-
-pub(super) fn rub_using_but_api(
+pub(super) fn rub(
     ctx: &mut Context,
     operation: &RubOperation<'_>,
 ) -> anyhow::Result<Option<SelectAfterReload>> {
     // `perform_operation` is in a legacy module but it's explicitly written to not use legacy code.
     // When it has reached feature parity with `but rub` it'll be promoted to a non-legacy module.
     // Hence why this function doesn't have the legacy postfix.
-    legacy::status::tui::rub_api::perform_operation(ctx, operation)
+    legacy::status::tui::rub::perform_operation(ctx, operation)
 }
 
 pub(super) fn reword_commit_with_editor_legacy(
@@ -322,7 +314,7 @@ pub(super) fn tear_off_branch(ctx: &mut Context, source_branch_name: &str) -> an
     let source_ref = repo.find_reference(source_branch_name)?.name().to_owned();
     drop(repo);
     but_api::branch::tear_off_branch(ctx, source_ref.as_ref(), DryRun::No)
-        .context("failed to tear off branch")?;
+        .context("failed to unstack branch")?;
     Ok(())
 }
 
@@ -355,6 +347,7 @@ pub(super) fn create_branch_legacy(ctx: &mut Context) -> anyhow::Result<String> 
     Ok(new_name)
 }
 
+#[expect(dead_code)]
 pub(super) fn has_unassigned_changes(ctx: &Context) -> anyhow::Result<bool> {
     let context_lines = ctx.settings.context_lines;
 
@@ -371,6 +364,24 @@ pub(super) fn has_unassigned_changes(ctx: &Context) -> anyhow::Result<bool> {
     Ok(assignments
         .into_iter()
         .any(|assignment| assignment.stack_id.is_none()))
+}
+
+pub(super) fn stack_has_assigned_changes(ctx: &Context, stack: StackId) -> anyhow::Result<bool> {
+    let context_lines = ctx.settings.context_lines;
+
+    let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
+    let changes = but_core::diff::ui::worktree_changes(&repo)?.changes;
+    let (assignments, _assignments_error) = but_hunk_assignment::assignments_with_fallback(
+        db.hunk_assignments_mut()?,
+        &repo,
+        &ws,
+        Some(changes),
+        context_lines,
+    )?;
+
+    Ok(assignments
+        .into_iter()
+        .any(|assignment| assignment.stack_id.is_some_and(|id| id == stack)))
 }
 
 pub(super) fn assigned_file_count_for_stack(

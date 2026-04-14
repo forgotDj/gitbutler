@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use bstr::BStr;
 use gitbutler_stack::StackId;
 
 use crate::{
@@ -188,6 +189,23 @@ impl Cursor {
         Some(Self(idx))
     }
 
+    /// Select the first uncommitted file line that points to the given path in the given stack.
+    pub(super) fn select_uncommitted_file(
+        path: &BStr,
+        stack_id: Option<StackId>,
+        lines: &[StatusOutputLine],
+    ) -> Option<Self> {
+        let idx = lines.iter().position(|line| {
+            if let Some(CliId::Uncommitted(uncommitted)) = line.data.cli_id().map(|id| &**id) {
+                let assignment = uncommitted.hunk_assignments.first();
+                &**assignment.path_bytes == path && assignment.stack_id == stack_id
+            } else {
+                false
+            }
+        })?;
+        Some(Self(idx))
+    }
+
     /// Select the first line that points to the unassigned section.
     pub(super) fn select_unassigned(lines: &[StatusOutputLine]) -> Option<Self> {
         let idx = lines.iter().position(|line| {
@@ -357,7 +375,9 @@ impl Cursor {
             return None;
         }
 
-        let current_line_is_section_header = lines.get(self.0).is_some_and(is_section_header);
+        let current_line_is_section_header = lines
+            .get(self.0)
+            .is_some_and(|line| is_section_header(line, mode));
         let search_end = if current_line_is_section_header {
             self.0
         } else {
@@ -482,14 +502,33 @@ fn is_discard_commit_boundary(line: &StatusOutputLine) -> bool {
 }
 
 /// Returns true if a line is a section header row.
-fn is_section_header(line: &StatusOutputLine) -> bool {
-    matches!(
-        line.data,
-        StatusOutputLineData::Branch { .. }
-            | StatusOutputLineData::StagedChanges { .. }
-            | StatusOutputLineData::UnassignedChanges { .. }
-            | StatusOutputLineData::MergeBase
-    )
+fn is_section_header(line: &StatusOutputLine, mode: &Mode) -> bool {
+    match mode {
+        Mode::Normal
+        | Mode::InlineReword(..)
+        | Mode::Command(..)
+        | Mode::Commit(..)
+        | Mode::Move(..)
+        | Mode::Branch
+        | Mode::Details => {
+            matches!(
+                line.data,
+                StatusOutputLineData::Branch { .. }
+                    | StatusOutputLineData::UnassignedChanges { .. }
+                    | StatusOutputLineData::MergeBase
+            )
+        }
+
+        Mode::Rub(..) => {
+            matches!(
+                line.data,
+                StatusOutputLineData::Branch { .. }
+                    | StatusOutputLineData::StagedChanges { .. }
+                    | StatusOutputLineData::UnassignedChanges { .. }
+                    | StatusOutputLineData::MergeBase
+            )
+        }
+    }
 }
 
 /// Returns true if a line is selectable and is a jump target in the given mode.
@@ -498,13 +537,13 @@ fn is_jump_target_in_mode(
     mode: &Mode,
     show_files: FilesStatusFlag,
 ) -> bool {
-    is_selectable_in_mode(line, mode, show_files) && is_section_header(line)
+    is_selectable_in_mode(line, mode, show_files) && is_section_header(line, mode)
 }
 
 pub(super) fn is_selectable_in_mode(
     line: &StatusOutputLine,
     mode: &Mode,
-    show_files: FilesStatusFlag,
+    show_files_flag: FilesStatusFlag,
 ) -> bool {
     if !line.is_selectable() {
         return false;
@@ -512,7 +551,7 @@ pub(super) fn is_selectable_in_mode(
 
     // selecting the source line should always be possible
     match mode {
-        Mode::Rub(rub_mode) | Mode::RubButApi(rub_mode) => {
+        Mode::Rub(rub_mode) => {
             if let Some(cli_id) = line.data.cli_id()
                 && rub_mode.source == **cli_id
             {
@@ -541,7 +580,7 @@ pub(super) fn is_selectable_in_mode(
     }
 
     match mode {
-        Mode::Normal | Mode::Details => match show_files {
+        Mode::Normal | Mode::Details => match show_files_flag {
             FilesStatusFlag::None | FilesStatusFlag::All => true,
             FilesStatusFlag::Commit(object_id) => {
                 if let Some(cli_id) = line.data.cli_id()
@@ -553,7 +592,7 @@ pub(super) fn is_selectable_in_mode(
                 }
             }
         },
-        Mode::Rub(rub_mode) | Mode::RubButApi(rub_mode) => line
+        Mode::Rub(rub_mode) => line
             .data
             .cli_id()
             .is_some_and(|cli_id| rub_mode.available_targets.contains(cli_id)),

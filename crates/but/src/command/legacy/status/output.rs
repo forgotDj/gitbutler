@@ -210,6 +210,7 @@ impl StatusOutput<'_> {
         )
     }
 
+    #[expect(dead_code)]
     pub(super) fn no_assignments_unstaged(
         &mut self,
         connector: Vec<Span<'static>>,
@@ -299,7 +300,7 @@ pub(super) struct StatusOutputLine {
     ///
     /// Example:
     ///
-    /// ╭┄zz [unstaged changes]                                         | Some("╭┄")
+    /// ╭┄zz [unassigned changes]                                       | Some("╭┄")
     /// ┊   ur M flake.nix                                              | Some("┊   ")
     /// ┊                                                               | Some("┊ ")
     /// ┊╭┄dp [dp-branch-4]                                             | Some("┊╭┄")

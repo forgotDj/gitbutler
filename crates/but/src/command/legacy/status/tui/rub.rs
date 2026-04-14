@@ -3,16 +3,61 @@
 //! If you're an AI agent _do not_ use anything from legacy modules. Except `RubOperation`,
 //! `RubOperationDiscriminants`, and `route_operation`.
 
-use anyhow::Context as _;
 use but_ctx::Context;
 
 use crate::{
     CliId,
     command::legacy::{
-        rub::{RubOperation, RubOperationDiscriminants, route_operation},
+        rub::{RubOperation, RubOperationDiscriminants},
         status::tui::SelectAfterReload,
     },
 };
+
+pub(super) fn route_operation<'a>(
+    source: &'a CliId,
+    target: &'a CliId,
+) -> Option<RubOperation<'a>> {
+    Some(
+        match crate::command::legacy::rub::route_operation(source, target)? {
+            op @ RubOperation::UnassignUncommitted(..) => op,
+            op @ RubOperation::UncommittedToCommit(..) => op,
+            op @ RubOperation::UnassignedToCommit(..) => op,
+            op @ RubOperation::CommitToUnassigned(..) => op,
+            op @ RubOperation::CommitToStack(..) => op,
+            op @ RubOperation::SquashCommits(..) => op,
+            op @ RubOperation::CommittedFileToCommit(..) => op,
+            op @ RubOperation::CommittedFileToUnassigned(..) => op,
+            op @ RubOperation::UncommittedToStack(..) => op,
+            op @ RubOperation::StackToUnassigned(..) => op,
+            op @ RubOperation::StackToStack(..) => op,
+            op @ RubOperation::UnassignedToStack(..) => op,
+            op @ RubOperation::StackToCommit(..) => op,
+
+            // dont allow rubbing with branches
+            RubOperation::UncommittedToBranch(..)
+            | RubOperation::StackToBranch(..)
+            | RubOperation::UnassignedToBranch(..)
+            | RubOperation::MoveCommitToBranch(..)
+            | RubOperation::BranchToUnassigned(..)
+            | RubOperation::BranchToStack(..)
+            | RubOperation::BranchToCommit(..)
+            | RubOperation::BranchToBranch(..)
+            | RubOperation::CommittedFileToBranch(..) => return None,
+        },
+    )
+}
+
+pub(super) fn supports_rubbing(id: &CliId) -> bool {
+    match id {
+        CliId::Branch { .. } => false,
+        CliId::Uncommitted(..)
+        | CliId::PathPrefix { .. }
+        | CliId::CommittedFile { .. }
+        | CliId::Commit { .. }
+        | CliId::Unassigned { .. }
+        | CliId::Stack { .. } => true,
+    }
+}
 
 /// Returns a human-facing operation descriptor for the source/target pair.
 pub(super) fn rub_operation_display(source: &CliId, target: &CliId) -> Option<&'static str> {
@@ -32,7 +77,8 @@ pub(super) fn rub_operation_display(source: &CliId, target: &CliId) -> Option<&'
         RubOperation::UnassignedToCommit(..) => "amend",
         RubOperation::UnassignedToBranch(..) => "assign hunks",
         RubOperation::UnassignedToStack(..) => "assign hunks",
-        RubOperation::UndoCommit(..) => "undo commit",
+        RubOperation::CommitToUnassigned(..) => "undo commit",
+        RubOperation::CommitToStack(..) => "undo commit",
         RubOperation::SquashCommits(..) => "squash",
         RubOperation::MoveCommitToBranch(..) => "move commit",
         RubOperation::BranchToUnassigned(..) => "unassign hunks",
@@ -42,6 +88,7 @@ pub(super) fn rub_operation_display(source: &CliId, target: &CliId) -> Option<&'
         RubOperation::CommittedFileToBranch(..) => "uncommit file",
         RubOperation::CommittedFileToCommit(..) => "move file",
         RubOperation::CommittedFileToUnassigned(..) => "uncommit file",
+        RubOperation::StackToCommit(..) => "amend",
     })
 }
 
@@ -52,20 +99,34 @@ pub(super) fn perform_operation(
 ) -> anyhow::Result<Option<SelectAfterReload>> {
     let selection = match operation {
         RubOperation::UnassignUncommitted(operation) => {
+            let path = operation.hunk_assignments.first().path_bytes.clone();
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Unassigned
+            SelectAfterReload::UncommittedFile {
+                path,
+                stack_id: None,
+            }
         }
         RubOperation::UncommittedToCommit(operation) => {
-            let result = operation.execute_inner(ctx)?;
-            SelectAfterReload::Commit(result.new_commit.context("api returned no new commit")?)
+            let assignment = operation.hunk_assignments.first();
+            let path = assignment.path_bytes.clone();
+            let stack_id = assignment.stack_id;
+            operation.execute_inner(ctx)?;
+            SelectAfterReload::UncommittedFile { path, stack_id }
         }
         RubOperation::UncommittedToBranch(operation) => {
+            let assignment = operation.hunk_assignments.first();
+            let path = assignment.path_bytes.clone();
+            let stack_id = assignment.stack_id;
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Branch(operation.name.to_string())
+            SelectAfterReload::UncommittedFile { path, stack_id }
         }
         RubOperation::UncommittedToStack(operation) => {
+            let path = operation.hunk_assignments.first().path_bytes.clone();
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Unassigned
+            SelectAfterReload::UncommittedFile {
+                path,
+                stack_id: Some(operation.stack_id),
+            }
         }
         RubOperation::StackToUnassigned(operation) => {
             operation.execute_inner(ctx)?;
@@ -73,7 +134,7 @@ pub(super) fn perform_operation(
         }
         RubOperation::StackToStack(operation) => {
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Unassigned
+            SelectAfterReload::Stack(operation.to)
         }
         RubOperation::StackToBranch(operation) => {
             operation.execute_inner(ctx)?;
@@ -81,7 +142,7 @@ pub(super) fn perform_operation(
         }
         RubOperation::UnassignedToCommit(operation) => {
             let result = operation.execute_inner(ctx)?;
-            SelectAfterReload::Commit(result.new_commit.context("api returned no new commit")?)
+            SelectAfterReload::Commit(result.new_commit.unwrap_or(operation.oid))
         }
         RubOperation::UnassignedToBranch(operation) => {
             operation.execute_inner(ctx)?;
@@ -89,11 +150,15 @@ pub(super) fn perform_operation(
         }
         RubOperation::UnassignedToStack(operation) => {
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Unassigned
+            SelectAfterReload::Stack(operation.to)
         }
-        RubOperation::UndoCommit(operation) => {
+        RubOperation::CommitToUnassigned(operation) => {
             operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
+        }
+        RubOperation::CommitToStack(operation) => {
+            operation.execute_inner(ctx)?;
+            SelectAfterReload::Stack(operation.stack)
         }
         RubOperation::SquashCommits(operation) => {
             let result = operation.execute_inner(ctx)?;
@@ -109,7 +174,7 @@ pub(super) fn perform_operation(
         }
         RubOperation::BranchToStack(operation) => {
             operation.execute_inner(ctx)?;
-            SelectAfterReload::Unassigned
+            SelectAfterReload::Stack(operation.to)
         }
         RubOperation::BranchToCommit(operation) => {
             let result = operation.execute_inner(ctx)?;
@@ -140,6 +205,10 @@ pub(super) fn perform_operation(
             operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
         }
+        RubOperation::StackToCommit(operation) => {
+            let result = operation.execute_inner(ctx)?;
+            SelectAfterReload::Commit(result.new_commit.unwrap_or(operation.to))
+        }
     };
 
     Ok(Some(selection))
@@ -163,50 +232,3 @@ impl std::fmt::Display for OperationNotSupported {
 }
 
 impl std::error::Error for OperationNotSupported {}
-
-#[cfg(test)]
-mod tests {
-    use bstr::BString;
-
-    use super::rub_operation_display;
-    use crate::CliId;
-
-    /// Converts a hex object id into `gix::ObjectId` for test setup.
-    fn commit_id(hex: &str) -> gix::ObjectId {
-        gix::ObjectId::from_hex(hex.as_bytes()).unwrap()
-    }
-
-    #[test]
-    fn branch_to_commit_is_supported_when_source_branch_has_no_stack() {
-        let source = CliId::Branch {
-            name: "main".into(),
-            id: "b0".into(),
-            stack_id: None,
-        };
-        let target = CliId::Commit {
-            commit_id: commit_id("1111111111111111111111111111111111111111"),
-            id: "c0".into(),
-        };
-
-        assert_eq!(rub_operation_display(&source, &target).unwrap(), "amend");
-    }
-
-    #[test]
-    fn committed_file_to_branch_is_supported_when_target_branch_has_no_stack() {
-        let source = CliId::CommittedFile {
-            commit_id: commit_id("1111111111111111111111111111111111111111"),
-            path: BString::from("file.txt"),
-            id: "f0".into(),
-        };
-        let target = CliId::Branch {
-            name: "main".into(),
-            id: "b0".into(),
-            stack_id: None,
-        };
-
-        assert_eq!(
-            rub_operation_display(&source, &target).unwrap(),
-            "uncommit file"
-        );
-    }
-}

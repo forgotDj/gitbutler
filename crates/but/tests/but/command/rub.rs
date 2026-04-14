@@ -685,8 +685,7 @@ fn uncommit_command_with_discard_on_commit() -> anyhow::Result<()> {
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   fce8ecc create a.txt and b.txt
@@ -733,8 +732,7 @@ Hint: run `but help` for all commands
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   9477ae7 add A
@@ -771,8 +769,7 @@ fn uncommit_command_with_discard_on_committed_file() -> anyhow::Result<()> {
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   fce8ecc create a.txt and b.txt
@@ -816,8 +813,7 @@ Hint: run `but help` for all commands
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   993513d create a.txt and b.txt
@@ -1464,6 +1460,40 @@ Moved [..] → [B]
 }
 
 #[test]
+fn rub_matrix_commit_to_stack_smoke() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
+    env.setup_metadata(&["A", "B"])?;
+
+    commit_two_files_as_two_hunks_each(&env, "A", "a.txt", "b.txt", "first commit");
+
+    let before = status_json(&env)?;
+    let source_commit = branch_commit_ids(&before, "A")[0].clone();
+
+    env.but(format!("rub {source_commit} B@{{stack}}"))
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Uncommitted [..] to [B]
+
+"#]])
+        .stderr_eq(str![""]);
+
+    let after = status_json(&env)?;
+    let commits_after = branch_commit_ids(&after, "A");
+    assert!(
+        !commits_after.contains(&source_commit),
+        "source commit should no longer be present in branch A after uncommit to stack"
+    );
+    assert!(
+        stack_assigned_contains_file(&after, "B", "a.txt")
+            && stack_assigned_contains_file(&after, "B", "b.txt"),
+        "source commit files should be assigned to branch B stack"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn rub_matrix_branch_to_unassigned_smoke() -> anyhow::Result<()> {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
     env.setup_metadata(&["A", "B"])?;
@@ -1698,6 +1728,46 @@ Staged all [A] changes to [B].
 }
 
 #[test]
+fn rub_matrix_stack_to_commit_smoke() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
+    env.setup_metadata(&["A", "B"])?;
+
+    env.file("stack-to-commit.txt", "content\n");
+    env.but("rub stack-to-commit.txt A")
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Staged the only hunk in stack-to-commit.txt in the unassigned area → [A].
+
+"#]])
+        .stderr_eq(str![""]);
+
+    let before = status_json(&env)?;
+    let target_commit = branch_commit_ids(&before, "A")[0].clone();
+
+    env.but(format!("rub A@{{stack}} {target_commit}"))
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Amended files assigned to [A] → [..]
+
+"#]])
+        .stderr_eq(str![""]);
+
+    let after = status_json(&env)?;
+    assert!(
+        !stack_assigned_contains_file(&after, "A", "stack-to-commit.txt"),
+        "file should no longer be assigned to stack A"
+    );
+    assert!(
+        branch_commits_contain_file(&after, "A", "stack-to-commit.txt"),
+        "file should be amended into a commit on branch A"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn rub_matrix_committed_file_to_branch_smoke() -> anyhow::Result<()> {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
     env.setup_metadata(&["A", "B"])?;
@@ -1777,23 +1847,7 @@ Rubbed the wrong way. Operation doesn't make sense.[..]
 
 "#]]);
 
-    env.but(format!("rub {commit} A@{{stack}}"))
-        .assert()
-        .failure()
-        .stderr_eq(str![[r#"
-Rubbed the wrong way. Operation doesn't make sense.[..]
-
-"#]]);
-
     env.but("rub A invalid-a.txt")
-        .assert()
-        .failure()
-        .stderr_eq(str![[r#"
-Rubbed the wrong way. Operation doesn't make sense.[..]
-
-"#]]);
-
-    env.but(format!("rub A@{{stack}} {commit}"))
         .assert()
         .failure()
         .stderr_eq(str![[r#"

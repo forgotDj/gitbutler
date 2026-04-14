@@ -20,7 +20,6 @@ pub(super) enum Mode {
     #[default]
     Normal,
     Rub(RubMode),
-    RubButApi(RubMode),
     InlineReword(InlineRewordMode),
     Command(CommandMode),
     Commit(CommitMode),
@@ -34,7 +33,7 @@ impl Mode {
         match self {
             Mode::Normal => Color::DarkGray,
             Mode::Commit(_) => Color::Green,
-            Mode::Rub(_) | Mode::RubButApi(_) => Color::Blue,
+            Mode::Rub(_) => Color::Blue,
             Mode::InlineReword(_) => Color::Magenta,
             Mode::Command(_) => Color::Yellow,
             Mode::Move(..) => Color::Cyan,
@@ -50,7 +49,6 @@ impl Mode {
             | Mode::Branch
             | Mode::Details
             | Mode::Rub(_)
-            | Mode::RubButApi(_)
             | Mode::InlineReword(_)
             | Mode::Move(..)
             | Mode::Command(_) => Color::Black,
@@ -133,6 +131,10 @@ pub(super) struct CommitMode {
     /// Note this is only respected when inserting at a commit. If inserting at a branch we'll
     /// always use [`InsertSide::Below`].
     pub(super) insert_side: InsertSide,
+    /// Create the commit with an empty message.
+    ///
+    /// By default an editor is opened for the user to write a commit message.
+    pub(super) empty_message: bool,
 }
 
 /// A subset of [`CliId`] that supports being committed
@@ -150,24 +152,21 @@ pub(super) struct UnassignedCommitSource {
 
 #[derive(Debug)]
 pub(super) struct StackCommitSource {
-    pub(super) id: ShortId,
     pub(super) stack_id: StackId,
 }
 
-impl TryFrom<CliId> for CommitSource {
-    type Error = anyhow::Error;
-
-    fn try_from(id: CliId) -> Result<Self, Self::Error> {
+impl CommitSource {
+    pub(super) fn try_new(id: CliId) -> Option<Self> {
         match id {
-            CliId::Unassigned { id } => Ok(Self::Unassigned(UnassignedCommitSource { id })),
+            CliId::Unassigned { id } => Some(Self::Unassigned(UnassignedCommitSource { id })),
             CliId::Uncommitted(uncommitted_cli_id) => {
-                Ok(Self::Uncommitted(Box::new(uncommitted_cli_id)))
+                Some(Self::Uncommitted(Box::new(uncommitted_cli_id)))
             }
-            CliId::Stack { id, stack_id } => Ok(Self::Stack(StackCommitSource { id, stack_id })),
+            CliId::Stack { stack_id, .. } => Some(Self::Stack(StackCommitSource { stack_id })),
             CliId::PathPrefix { .. }
             | CliId::CommittedFile { .. }
             | CliId::Branch { .. }
-            | CliId::Commit { .. } => anyhow::bail!("cannot commit: {id:?}"),
+            | CliId::Commit { .. } => None,
         }
     }
 }
@@ -190,15 +189,14 @@ impl PartialEq<CliId> for CommitSource {
                 }
             }
             CommitSource::Stack(StackCommitSource {
-                id: id_lhs,
                 stack_id: stack_id_lhs,
             }) => {
                 if let CliId::Stack {
-                    id: id_rhs,
                     stack_id: stack_id_rhs,
+                    ..
                 } = other
                 {
-                    id_lhs == id_rhs && stack_id_lhs == stack_id_rhs
+                    stack_id_lhs == stack_id_rhs
                 } else {
                     false
                 }

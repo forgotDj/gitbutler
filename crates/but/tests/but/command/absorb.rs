@@ -298,7 +298,7 @@ k0 a.txt│
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
+╭┄zz [unassigned changes]
 ┊   nk M a.txt
 ┊
 ┊╭┄g0 [A]
@@ -350,8 +350,7 @@ Hint: you can run `but undo` to undo these changes
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   4822140 partial change to a.txt 3
@@ -513,8 +512,7 @@ Hint: you can run `but undo` to undo these changes
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   27686df [AUTO-COMMIT] Generated commit message
@@ -630,7 +628,7 @@ Hint: you can run `but undo` to undo these changes
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
+╭┄zz [unassigned changes]
 ┊   nk M a.txt
 ┊
 ┊╭┄g0 [A]

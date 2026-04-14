@@ -23,8 +23,7 @@ Unstacked branch 'C'.
         .assert()
         .success()
         .stdout_eq(str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   9477ae7 add A
@@ -69,8 +68,7 @@ Unstacked branch 'C'.
         .assert()
         .success()
         .stdout_eq(str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   9477ae7 add A
@@ -115,8 +113,7 @@ Unstacked branch 'A'.
         .assert()
         .success()
         .stdout_eq(str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   9477ae7 add A
@@ -166,8 +163,7 @@ fn assert_initial_status(env: &Sandbox) {
         .assert()
         .success()
         .stdout_eq(str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A]
 ┊●   9477ae7 add A

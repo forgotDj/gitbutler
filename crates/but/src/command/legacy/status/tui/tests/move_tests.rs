@@ -15,7 +15,7 @@ fn esc_leaves_move_mode() {
     let mut tui = test_tui(env);
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
@@ -36,7 +36,7 @@ fn move_mode_keeps_selected_commit_and_extension_visible_when_scrolled() {
     let mut tui = test_tui_with_size(env, 100, 6);
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
@@ -67,7 +67,7 @@ fn move_commit_above_other_commit_reorders_tui() {
     let mut tui = test_tui(env);
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
@@ -105,7 +105,7 @@ fn move_commit_below_other_commit_reorders_tui() {
     let mut tui = test_tui(env);
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
@@ -149,7 +149,7 @@ fn move_branch_onto_other_branch_reorders_stacks() {
     let mut tui = test_tui(env);
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     tui.input_then_render(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
@@ -181,7 +181,7 @@ fn move_branch_to_merge_base_tears_off_branch() {
     let mut tui = test_tui(env);
 
     tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊╭┄h0 [C]"]);
@@ -191,11 +191,11 @@ fn move_branch_to_merge_base_tears_off_branch() {
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str![
-            "┴ << tear off branch >> [..] [origin/main] 2000-01-02 add M"
+            "┴ << unstack branch >> [..] [origin/main] 2000-01-02 add M"
         ]);
 
     tui.input_then_render(KeyCode::Enter)
-        .assert_current_line_eq(str!["╭┄zz [unstaged changes]"]);
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     tui = tui.recreate();
     tui.render_with_messages(

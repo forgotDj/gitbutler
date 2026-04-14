@@ -12,6 +12,7 @@ pub(super) enum ToastKind {
     Error,
     #[expect(dead_code)]
     Info,
+    Debug,
 }
 
 #[derive(Debug, Default)]
@@ -133,6 +134,7 @@ fn render_toast(frame: &mut Frame, area: Rect, margin: ToastMargin, toast: &Toas
     let border_style = match toast.kind {
         ToastKind::Error => Style::default().red(),
         ToastKind::Info => Style::default().green(),
+        ToastKind::Debug => Style::default().magenta(),
     };
 
     let widget = Paragraph::new(toast_text)

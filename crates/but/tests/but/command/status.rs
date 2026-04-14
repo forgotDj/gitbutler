@@ -559,8 +559,7 @@ fn status_upstream_and_merge_base_messages_truncate_when_unpaged() -> anyhow::Re
         .success()
         .stderr_eq(snapbox::str![])
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [unstaged changes]
-┊     no changes
+╭┄zz [unassigned changes] (no changes)
 ┊
 ┊╭┄g0 [A] [✓ upstream merges cleanly]
 ┊●   601614c add A
