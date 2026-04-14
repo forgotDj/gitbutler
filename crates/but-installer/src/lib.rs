@@ -126,12 +126,14 @@ fn run_installation_impl(config: InstallerConfig, interactive: bool) -> Result<(
         configure_shell(&config.home_dir)?;
 
         let but_binary = but_binary_path(&config.home_dir);
-        if skill::has_skill_install(&but_binary)
-            && ui::prompt_for_confirmation("Would you like to install the but agent skill?")
-        {
-            skill::but_skill_install_global(&but_binary);
-        } else {
-            info("Skipping skill install. If you change your mind, just run `but skill install`!");
+        if skill::has_skill_install(&but_binary) {
+            if ui::prompt_for_confirmation("Would you like to install the but skill files?") {
+                skill::but_skill_install_global(&but_binary);
+            } else {
+                info(
+                    "Skipping skill install. If you change your mind, just run `but skill install`!",
+                );
+            }
         }
     }
 

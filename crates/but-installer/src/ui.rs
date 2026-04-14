@@ -16,7 +16,7 @@ use owo_colors::{OwoColorize, Stream};
 ///
 /// Returns `None` if there is no controlling terminal (e.g., in a CI environment
 /// or a detached process).
-fn open_tty() -> Option<std::fs::File> {
+pub fn open_tty() -> Option<std::fs::File> {
     std::fs::File::open("/dev/tty").ok()
 }
 

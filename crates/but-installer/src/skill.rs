@@ -1,11 +1,12 @@
 //! Functions to install the GitButler skill files
 
 use std::{
+    io::{IsTerminal, stdin},
     path::Path,
     process::{Command, Stdio},
 };
 
-use crate::ui::warn;
+use crate::ui::{open_tty, warn};
 
 /// Check if `but skill install` is available
 pub(crate) fn has_skill_install(but_binary: &Path) -> bool {
@@ -22,10 +23,23 @@ pub(crate) fn has_skill_install(but_binary: &Path) -> bool {
 
 /// Install the GitButler skill files globally
 pub(crate) fn but_skill_install_global(but_binary: &Path) {
+    let stdin: Stdio = if stdin().is_terminal() {
+        Stdio::inherit()
+    } else {
+        match open_tty() {
+            Some(tty) => tty.into(),
+            None => {
+                warn("Could not open stdin to run `but skill install` interactively");
+                return;
+            }
+        }
+    };
+
     let status = Command::new(but_binary)
         .arg("skill")
         .arg("install")
         .arg("--global")
+        .stdin(stdin)
         .status();
 
     match status {
