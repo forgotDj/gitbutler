@@ -87,10 +87,7 @@
 	white-space: pre-wrap;
 }
 
-.fileButton,
-.segmentButton,
-.commitButton,
-.stackButton {
+.itemRowButton {
 	flex-grow: 1;
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
@@ -100,8 +97,7 @@
 	white-space: nowrap;
 }
 
-.stackButton,
-.segmentButton {
+.sectionButton {
 	font-weight: bold;
 }
 

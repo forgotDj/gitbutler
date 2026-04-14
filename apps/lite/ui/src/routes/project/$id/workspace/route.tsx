@@ -183,7 +183,7 @@ const FileButton: FC<
 		change: TreeChange;
 	} & ComponentProps<"button">
 > = ({ change, className, ...restProps }) => (
-	<button {...restProps} type="button" className={classes(className, styles.fileButton)}>
+	<button {...restProps} type="button" className={classes(className, styles.itemRowButton)}>
 		{Match.value(change.status).pipe(
 			Match.when({ type: "Addition" }, () => "A"),
 			Match.when({ type: "Deletion" }, () => "D"),
@@ -1057,7 +1057,7 @@ const CommitRow: FC<
 								<button
 									type="button"
 									className={classes(
-										styles.commitButton,
+										styles.itemRowButton,
 										isCommitMessagePending && styles.commitButtonPending,
 									)}
 									onClick={() => {
@@ -1391,7 +1391,7 @@ const ChangesSectionRow: FC<{
 					render={
 						<button
 							type="button"
-							className={styles.segmentButton}
+							className={classes(styles.itemRowButton, styles.sectionButton)}
 							onClick={() => {
 								dispatch(
 									projectActions.selectItem({
@@ -1708,7 +1708,7 @@ const SegmentRow: FC<
 											render={
 												<button
 													type="button"
-													className={styles.segmentButton}
+													className={classes(styles.itemRowButton, styles.sectionButton)}
 													onClick={() => dispatch(projectActions.selectItem({ projectId, item }))}
 												>
 													{optimisticBranchName ?? "Untitled"}
@@ -1886,7 +1886,7 @@ const StackC: FC<{
 						render={
 							<button
 								type="button"
-								className={styles.stackButton}
+								className={classes(styles.itemRowButton, styles.sectionButton)}
 								onClick={() => {
 									dispatch(projectActions.selectItem({ projectId, item }));
 								}}
