@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from "$app/navigation";
 	import ScrollableContainer from "$components/shared/AppScrollableContainer.svelte";
 	import ChangedFilesContextMenu from "$components/shared/ChangedFilesContextMenu.svelte";
 	import ReduxResult from "$components/shared/ReduxResult.svelte";
@@ -10,6 +11,7 @@
 	import { MODE_SERVICE } from "$lib/mode/modeService";
 	import { vscodePath } from "$lib/project/project";
 	import { PROJECTS_SERVICE } from "$lib/project/projectsService";
+	import { workspacePath } from "$lib/routes/routes.svelte";
 	import { createCommitSelection } from "$lib/selection/key";
 	import { SETTINGS } from "$lib/settings/userSettings";
 	import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
@@ -127,11 +129,13 @@
 	async function abort(force: boolean) {
 		if (loading) return;
 		await abortEdit({ projectId, force });
+		goto(workspacePath(projectId));
 	}
 
 	async function save() {
 		if (loading) return;
 		await saveEdit({ projectId });
+		goto(workspacePath(projectId));
 	}
 
 	async function handleSave() {
