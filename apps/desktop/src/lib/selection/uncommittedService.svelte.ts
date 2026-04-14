@@ -230,7 +230,7 @@ export class UncommittedService {
 				if (assignment.hunkHeader !== null) {
 					const hunkDiff = this.findHunkDiff(changeDiff, assignment.hunkHeader);
 					if (!hunkDiff) {
-						throw new Error("Hunk not found while commiting");
+						throw new Error("Hunk not found while committing");
 					}
 
 					if (lines.length === 0) {

@@ -84,6 +84,7 @@
 	const commits = $derived(allCommits?.response);
 	const branchType = $derived(commits?.at(0)?.state.type || "LocalOnly");
 	const isConflicted = $derived(commits?.some((commit) => commit.hasConflicts) ?? false);
+	const hasCommits = $derived((commits?.length ?? 0) > 0);
 
 	let aiConfigurationValid = $state(false);
 
@@ -246,7 +247,7 @@
 						label="Generate branch name"
 						icon="edit-ai"
 						testId={TestId.BranchHeaderContextMenu_GenerateBranchName}
-						disabled={isReadOnly}
+						disabled={isReadOnly || !hasCommits}
 						onclick={() => {
 							generateBranchName(stackId, branchName);
 							close();

@@ -99,7 +99,7 @@ export function parseQueryError(error: unknown): QueryError {
 export function emitQueryError(error: unknown) {
 	const { name, message, code } = parseQueryError(error);
 	posthog.capture(QUERY_ERROR_EVENT_NAME, {
-		erro_title: name,
+		error_title: name,
 		error_message: message,
 		error_code: code,
 	});

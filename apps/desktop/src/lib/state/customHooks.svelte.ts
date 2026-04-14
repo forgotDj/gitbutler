@@ -78,24 +78,18 @@ export function buildQueryHooks<Definitions extends ExtensionDefinitions>({
 		queryArg: unknown,
 		options?: { transform?: T; forceRefetch?: boolean },
 	) {
-		// const startTime = Date.now();
 		const dispatch = getDispatch();
-		const result = await dispatch(
+		const result = dispatch(
 			initiate(queryArg, {
 				subscribe: false,
 				forceRefetch: options?.forceRefetch,
 			}),
 		);
-		const { data, error } = result;
-		if (result.error) {
-			// track({ failure: true, startTime, error });
-			throw error;
-		}
-		// track({ failure: false, startTime });
+		const data = await result.unwrap();
 		if (options?.transform && data) {
 			return options.transform(data, queryArg);
 		}
-		return result.data;
+		return data;
 	}
 
 	function useQuery<T extends TransformerFn>(
