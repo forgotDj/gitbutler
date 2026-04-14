@@ -264,6 +264,19 @@ pub enum AiSubcommand {
         #[clap(long)]
         model: Option<String>,
     },
+
+    /// Configure OpenRouter as the active AI provider.
+    Openrouter {
+        /// Preferred model name (for example, openai/gpt-4.1-mini).
+        #[clap(long)]
+        model: Option<String>,
+        /// OpenRouter API key. Prefer --api-key-env to avoid shell history exposure.
+        #[clap(long, hide_env_values = true)]
+        api_key: Option<String>,
+        /// Name of an environment variable holding the OpenRouter API key.
+        #[clap(long)]
+        api_key_env: Option<String>,
+    },
 }
 
 /// Credential source options for OpenAI/Anthropic.
