@@ -5,7 +5,7 @@ use bstr::BStr;
 use but_api::commit::types::{
     CommitCreateResult, CommitMoveResult, CommitSquashResult, CommitUndoResult, MoveChangesResult,
 };
-use but_core::{DiffSpec, ref_metadata::StackId, sync::RepoExclusive};
+use but_core::{DiffSpec, DryRun, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use but_hunk_assignment::{HunkAssignment, HunkAssignmentRequest, HunkAssignmentTarget};
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
@@ -290,7 +290,7 @@ impl<'a> UncommittedToCommitOperation<'a> {
             &rename_previous_path_by_path,
         );
         let changes = but_workspace::flatten_diff_specs(changes);
-        but_api::commit::amend::commit_amend(ctx, self.oid, changes)
+        but_api::commit::amend::commit_amend(ctx, self.oid, changes, DryRun::No)
     }
 }
 
@@ -452,7 +452,7 @@ impl UnassignedToCommitOperation {
     /// Executes `UnassignedToCommit` and returns the exact commit-amend API result.
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitCreateResult> {
         let changes = changes_for_stack_assignment(ctx, None)?;
-        but_api::commit::amend::commit_amend(ctx, self.oid, changes)
+        but_api::commit::amend::commit_amend(ctx, self.oid, changes, DryRun::No)
     }
 }
 
@@ -524,7 +524,7 @@ impl UndoCommitOperation {
 
     /// Executes `UndoCommit` by uncommitting all changes from the selected commit.
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitUndoResult> {
-        but_api::commit::undo::commit_undo(ctx, self.oid)
+        but_api::commit::undo::commit_undo(ctx, self.oid, DryRun::No)
     }
 }
 
@@ -552,7 +552,7 @@ impl SquashCommitsOperation {
 
     /// Executes `SquashCommits` by squashing source into target.
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitSquashResult> {
-        but_api::commit::squash::commit_squash(ctx, self.source, self.destination)
+        but_api::commit::squash::commit_squash(ctx, self.source, self.destination, DryRun::No)
     }
 }
 
@@ -582,6 +582,7 @@ impl<'a> MoveCommitToBranchOperation<'a> {
             self.oid,
             RelativeTo::Reference(target_full_name),
             InsertSide::Below,
+            DryRun::No,
         )
     }
 }
@@ -671,7 +672,7 @@ impl<'a> BranchToCommitOperation<'a> {
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitCreateResult> {
         let stack_id = stack_id_for_branch_name(ctx, self.name)?;
         let changes = changes_for_stack_assignment(ctx, stack_id)?;
-        but_api::commit::amend::commit_amend(ctx, self.oid, changes)
+        but_api::commit::amend::commit_amend(ctx, self.oid, changes, DryRun::No)
     }
 }
 
@@ -724,6 +725,7 @@ impl<'a> CommittedFileToBranchOperation<'a> {
             self.commit_oid,
             relevant_changes,
             stack_id,
+            DryRun::No,
         )
     }
 }
@@ -748,6 +750,7 @@ impl<'a> CommittedFileToCommitOperation<'a> {
             self.commit_oid,
             self.oid,
             relevant_changes,
+            DryRun::No,
         )
     }
 }
@@ -772,6 +775,7 @@ impl<'a> CommittedFileToUnassignedOperation<'a> {
             self.commit_oid,
             relevant_changes,
             None,
+            DryRun::No,
         )
     }
 }
@@ -1220,7 +1224,7 @@ pub(crate) fn handle_uncommit(
         for source in sources {
             match source {
                 CliId::Commit { commit_id, .. } => {
-                    but_api::commit::discard_commit::commit_discard(ctx, commit_id)?;
+                    but_api::commit::discard_commit::commit_discard(ctx, commit_id, DryRun::No)?;
 
                     if !json_mode && let Some(out) = out.for_human() {
                         let repo = ctx.repo.get()?;

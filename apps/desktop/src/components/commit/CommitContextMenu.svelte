@@ -111,6 +111,7 @@
 			projectId,
 			relativeTo: { type: "commit", subject: commitId },
 			side: location,
+			dryRun: false,
 		});
 	}
 

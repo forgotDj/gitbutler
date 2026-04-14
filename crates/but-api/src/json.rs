@@ -131,6 +131,43 @@ mod hex_hash {
 }
 pub use hex_hash::{HexHash, HexHashString};
 
+/// Shared JSON transport type for mutation workspace results.
+#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceState {
+    /// Commits that were replaced by the operation. Maps `oldId -> newId`.
+    #[cfg_attr(
+        feature = "export-schema",
+        schemars(with = "std::collections::BTreeMap<String, String>")
+    )]
+    pub replaced_commits: std::collections::BTreeMap<HexHash, HexHash>,
+    /// The post-operation workspace view presented to the frontend.
+    pub head_info: but_workspace::ui::RefInfo,
+}
+
+#[cfg(feature = "export-schema")]
+but_schemars::register_sdk_type!(WorkspaceState);
+
+impl TryFrom<crate::WorkspaceState> for WorkspaceState {
+    type Error = anyhow::Error;
+
+    fn try_from(
+        crate::WorkspaceState {
+            replaced_commits,
+            head_info,
+        }: crate::WorkspaceState,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            replaced_commits: replaced_commits
+                .into_iter()
+                .map(|(old, new)| (HexHash::from(old), HexHash::from(new)))
+                .collect(),
+            head_info: head_info.try_into()?,
+        })
+    }
+}
+
 mod error {
     //! Utilities to control which errors show in the frontend.
     //!

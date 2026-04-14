@@ -53,6 +53,7 @@ export interface MoveBranchParams {
 	projectId: string;
 	subjectBranch: string;
 	targetBranch: string;
+	dryRun: boolean;
 }
 
 export interface UpdateBranchNameParams {
@@ -65,12 +66,14 @@ export interface UpdateBranchNameParams {
 export interface TearOffBranchParams {
 	projectId: string;
 	subjectBranch: string;
+	dryRun: boolean;
 }
 
 export interface CommitAmendParams {
 	projectId: string;
 	commitId: string;
 	changes: Array<DiffSpec>;
+	dryRun: boolean;
 }
 
 export interface CommitDetailsWithLineStatsParams {
@@ -84,11 +87,13 @@ export interface CommitCreateParams {
 	side: InsertSide;
 	changes: Array<DiffSpec>;
 	message: string;
+	dryRun: boolean;
 }
 
 export interface CommitDiscardParams {
 	projectId: string;
 	subjectCommitId: string;
+	dryRun: boolean;
 }
 
 export interface CommitMoveChangesBetweenParams {
@@ -96,12 +101,14 @@ export interface CommitMoveChangesBetweenParams {
 	sourceCommitId: string;
 	destinationCommitId: string;
 	changes: Array<DiffSpec>;
+	dryRun: boolean;
 }
 
 export interface CommitSquashParams {
 	projectId: string;
 	sourceCommitId: string;
 	destinationCommitId: string;
+	dryRun: boolean;
 }
 
 export interface CommitMoveParams {
@@ -109,18 +116,21 @@ export interface CommitMoveParams {
 	subjectCommitId: string;
 	relativeTo: RelativeTo;
 	side: InsertSide;
+	dryRun: boolean;
 }
 
 export interface CommitInsertBlankParams {
 	projectId: string;
 	relativeTo: RelativeTo;
 	side: InsertSide;
+	dryRun: boolean;
 }
 
 export interface CommitRewordParams {
 	projectId: string;
 	commitId: string;
 	message: string;
+	dryRun: boolean;
 }
 
 export interface CommitUncommitChangesParams {
@@ -128,6 +138,7 @@ export interface CommitUncommitChangesParams {
 	commitId: string;
 	changes: Array<DiffSpec>;
 	assignTo: string | null;
+	dryRun: boolean;
 }
 
 export interface AbsorptionPlanParams {

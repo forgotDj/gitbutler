@@ -26,9 +26,20 @@ import type { ReduxError } from "$lib/error/reduxError";
 import type { DefaultForgeFactory } from "$lib/forge/forgeFactory.svelte";
 import type { BackendApi } from "$lib/state/backendApi";
 import type { AppDispatch } from "$lib/state/clientState.svelte";
-import type { AbsorptionTarget, StackDetails } from "@gitbutler/but-sdk";
+import type { AbsorptionTarget, DiffSpec, RefInfo, StackDetails } from "@gitbutler/but-sdk";
 
 export { REJECTTION_REASONS } from "$lib/stacks/stackEndpoints";
+
+type LegacyResult = {
+	replacedCommits: [string, string][];
+};
+
+type NormalizedResult = {
+	workspace: {
+		replacedCommits: Record<string, string>;
+		headInfo?: RefInfo;
+	};
+};
 
 const PUSH_ERROR_REASONS: Record<string, string> = {
 	["errors.git.authentication"]: "an authentication failure",
@@ -597,19 +608,63 @@ export class StackService {
 		return this.backendApi.endpoints.discardChanges.mutate;
 	}
 
-	get moveChangesBetweenCommits() {
+	private normalizeResult(result: LegacyResult | NormalizedResult): NormalizedResult {
+		if ("workspace" in result) return result;
+		return {
+			workspace: {
+				replacedCommits: Object.fromEntries(result.replacedCommits),
+			},
+		};
+	}
+
+	async moveChangesBetweenCommits(args: {
+		projectId: string;
+		changes: DiffSpec[];
+		sourceCommitId: string;
+		sourceStackId: string;
+		destinationCommitId: string;
+		destinationStackId: string;
+		dryRun: boolean;
+	}) {
 		if (get(useNewRebaseEngine)) {
-			return this.backendApi.endpoints.commitMoveChangesBetween.mutate;
+			return this.normalizeResult(
+				await this.backendApi.endpoints.commitMoveChangesBetween.mutate({
+					projectId: args.projectId,
+					changes: args.changes,
+					sourceCommitId: args.sourceCommitId,
+					destinationCommitId: args.destinationCommitId,
+					dryRun: args.dryRun,
+				}),
+			);
 		} else {
-			return this.backendApi.endpoints.legacyMoveChangesBetweenCommits.mutate;
+			return this.normalizeResult(
+				await this.backendApi.endpoints.legacyMoveChangesBetweenCommits.mutate(args),
+			);
 		}
 	}
 
-	get uncommitChanges() {
+	async uncommitChanges(args: {
+		projectId: string;
+		changes: DiffSpec[];
+		commitId: string;
+		stackId: string;
+		assignTo?: string;
+		dryRun: boolean;
+	}) {
 		if (get(useNewRebaseEngine)) {
-			return this.backendApi.endpoints.commitUncommitChanges.mutate;
+			return this.normalizeResult(
+				await this.backendApi.endpoints.commitUncommitChanges.mutate({
+					projectId: args.projectId,
+					changes: args.changes,
+					commitId: args.commitId,
+					assignTo: args.assignTo,
+					dryRun: args.dryRun,
+				}),
+			);
 		} else {
-			return this.backendApi.endpoints.legacyUncommitChanges.mutate;
+			return this.normalizeResult(
+				await this.backendApi.endpoints.legacyUncommitChanges.mutate(args),
+			);
 		}
 	}
 

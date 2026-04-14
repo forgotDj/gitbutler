@@ -1,7 +1,6 @@
-use std::collections::BTreeMap;
-
+use crate::WorkspaceState;
 use but_api_macros::but_api;
-use but_core::{DiffSpec, sync::RepoExclusive};
+use but_core::{DiffSpec, DryRun, sync::RepoExclusive};
 use but_oplog::legacy::{OperationKind, SnapshotDetails};
 use but_rebase::graph_rebase::{Editor, LookupStep as _};
 use tracing::instrument;
@@ -11,13 +10,15 @@ use super::types::CommitCreateResult;
 /// Amends the commit at `commit_id` with `changes`.
 ///
 /// See [`but_workspace::commit::commit_amend()`] for lower-level implementation
-/// details.
-#[but_api(crate::commit::json::CommitCreateResult)]
+/// details. When `dry_run` is enabled, the returned workspace previews the
+/// amended commit without materializing the rebase.
+#[but_api(try_from = crate::commit::json::CommitCreateResult)]
 #[instrument(err(Debug))]
 pub fn commit_amend_only(
     ctx: &mut but_ctx::Context,
     commit_id: gix::ObjectId,
     changes: Vec<DiffSpec>,
+    dry_run: DryRun,
 ) -> anyhow::Result<CommitCreateResult> {
     let context_lines = ctx.settings.context_lines;
     let mut guard = ctx.exclusive_worktree_access();
@@ -25,6 +26,7 @@ pub fn commit_amend_only(
         ctx,
         commit_id,
         changes,
+        dry_run,
         context_lines,
         guard.write_permission(),
     )
@@ -34,6 +36,7 @@ pub(crate) fn commit_amend_only_impl(
     ctx: &mut but_ctx::Context,
     commit_id: gix::ObjectId,
     changes: Vec<DiffSpec>,
+    dry_run: DryRun,
     context_lines: u32,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitCreateResult> {
@@ -47,53 +50,54 @@ pub(crate) fn commit_amend_only_impl(
         rejected_specs,
     } = but_workspace::commit::commit_amend(editor, commit_id, changes, context_lines)?;
 
-    let (new_commit, replaced_commits) = match commit_selector {
-        Some(commit_selector) => {
-            let materialized = rebase.materialize()?;
-            let new_commit = materialized.lookup_pick(commit_selector)?;
-            let replaced_commits = materialized.history.commit_mappings();
-            (Some(new_commit), replaced_commits)
-        }
-        None => (None, BTreeMap::new()),
-    };
+    let new_commit = commit_selector
+        .map(|commit_selector| rebase.lookup_pick(commit_selector))
+        .transpose()?;
+    let workspace = WorkspaceState::from_successful_rebase(rebase, &repo, dry_run)?;
 
     Ok(CommitCreateResult {
         new_commit,
         rejected_specs,
-        replaced_commits,
+        workspace,
     })
 }
 
 /// Amend the commit at `commit_id` with `changes` and record an oplog snapshot on success.
 ///
 /// This performs the rewrite under exclusive worktree access and creates a
-/// best-effort `AmendCommit` oplog entry if the operation succeeds. For
-/// lower-level implementation details, see
+/// best-effort `AmendCommit` oplog entry if the operation succeeds. When
+/// `dry_run` is enabled, the returned workspace previews the amended commit
+/// and no oplog entry is persisted. For lower-level implementation details, see
 /// [`but_workspace::commit::commit_amend()`].
-#[but_api(napi, crate::commit::json::CommitCreateResult)]
+#[but_api(napi, try_from = crate::commit::json::CommitCreateResult)]
 #[instrument(err(Debug))]
 pub fn commit_amend(
     ctx: &mut but_ctx::Context,
     commit_id: gix::ObjectId,
     changes: Vec<DiffSpec>,
+    dry_run: DryRun,
 ) -> anyhow::Result<CommitCreateResult> {
     let context_lines = ctx.settings.context_lines;
-    let maybe_oplog_entry = but_oplog::UnmaterializedOplogSnapshot::from_details(
+    let mut guard = ctx.exclusive_worktree_access();
+    let maybe_oplog_entry = but_oplog::UnmaterializedOplogSnapshot::from_details_with_perm(
         ctx,
         SnapshotDetails::new(OperationKind::AmendCommit),
-    )
-    .ok();
+        guard.read_permission(),
+        dry_run,
+    );
 
-    let mut guard = ctx.exclusive_worktree_access();
     let res = commit_amend_only_impl(
         ctx,
         commit_id,
         changes,
+        dry_run,
         context_lines,
         guard.write_permission(),
     );
-    if let Some(snapshot) = maybe_oplog_entry.filter(|_| res.is_ok()) {
+    if let Some(snapshot) = maybe_oplog_entry
+        && res.is_ok()
+    {
         snapshot.commit(ctx, guard.write_permission()).ok();
-    };
+    }
     res
 }

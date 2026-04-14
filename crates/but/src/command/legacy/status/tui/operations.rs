@@ -12,7 +12,7 @@ use but_api::{
     },
     diff::ComputeLineStats,
 };
-use but_core::DiffSpec;
+use but_core::{DiffSpec, DryRun};
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
 use gitbutler_operating_modes::OperatingMode;
@@ -74,6 +74,7 @@ pub(super) fn create_empty_commit_relative_to_branch(
         ctx,
         RelativeTo::Reference(full_name),
         InsertSide::Below,
+        DryRun::No,
     )
 }
 
@@ -85,6 +86,7 @@ pub(super) fn create_empty_commit_relative_to_commit(
         ctx,
         RelativeTo::Commit(commit_id),
         InsertSide::Above,
+        DryRun::No,
     )
 }
 
@@ -170,6 +172,7 @@ pub(super) fn create_commit_legacy(
         changes_to_commit,
         // we reword the commit with the editor before the next render
         String::new(),
+        DryRun::No,
         guard.write_permission(),
     )
     .context("failed to create commit")
@@ -216,9 +219,14 @@ pub(super) fn reword_commit_with_editor_legacy(
         return Ok(None);
     }
 
-    but_api::commit::reword::commit_reword_only(ctx, commit_id, BString::from(new_message))
-        .with_context(|| format!("failed to reword {}", commit_id.to_hex_with_len(7)))
-        .map(Some)
+    but_api::commit::reword::commit_reword_only(
+        ctx,
+        commit_id,
+        BString::from(new_message),
+        DryRun::No,
+    )
+    .with_context(|| format!("failed to reword {}", commit_id.to_hex_with_len(7)))
+    .map(Some)
 }
 
 pub(super) fn current_commit_message(
@@ -247,9 +255,14 @@ pub(super) fn reword_commit_inline_legacy(
         return Ok(None);
     }
 
-    but_api::commit::reword::commit_reword_only(ctx, commit_id, BString::from(new_message))
-        .with_context(|| format!("failed to reword {}", commit_id.to_hex_with_len(7)))
-        .map(Some)
+    but_api::commit::reword::commit_reword_only(
+        ctx,
+        commit_id,
+        BString::from(new_message),
+        DryRun::No,
+    )
+    .with_context(|| format!("failed to reword {}", commit_id.to_hex_with_len(7)))
+    .map(Some)
 }
 
 pub(super) fn move_commit_to_branch(
@@ -269,6 +282,7 @@ pub(super) fn move_commit_to_branch(
         subject_commit_id,
         RelativeTo::Reference(target_branch_name),
         InsertSide::Below,
+        DryRun::No,
     )
     .context("failed to move commit")
 }
@@ -284,6 +298,7 @@ pub(super) fn move_commit_to_commit(
         subject_commit_id,
         RelativeTo::Commit(target_commit_id),
         insert_side,
+        DryRun::No,
     )
     .context("failed to move commit")
 }
@@ -297,7 +312,7 @@ pub(super) fn move_branch_onto_branch(
     let source_ref = repo.find_reference(source_branch_name)?.name().to_owned();
     let target_ref = repo.find_reference(target_branch_name)?.name().to_owned();
     drop(repo);
-    but_api::branch::move_branch(ctx, source_ref.as_ref(), target_ref.as_ref())
+    but_api::branch::move_branch(ctx, source_ref.as_ref(), target_ref.as_ref(), DryRun::No)
         .context("failed to move branch")?;
     Ok(())
 }
@@ -306,7 +321,7 @@ pub(super) fn tear_off_branch(ctx: &mut Context, source_branch_name: &str) -> an
     let repo = ctx.repo.get()?;
     let source_ref = repo.find_reference(source_branch_name)?.name().to_owned();
     drop(repo);
-    but_api::branch::tear_off_branch(ctx, source_ref.as_ref())
+    but_api::branch::tear_off_branch(ctx, source_ref.as_ref(), DryRun::No)
         .context("failed to tear off branch")?;
     Ok(())
 }
@@ -536,7 +551,7 @@ pub(super) fn commit_discard(
     ctx: &mut Context,
     commit_id: gix::ObjectId,
 ) -> anyhow::Result<CommitDiscardResult> {
-    but_api::commit::discard_commit::commit_discard(ctx, commit_id)
+    but_api::commit::discard_commit::commit_discard(ctx, commit_id, DryRun::No)
 }
 
 pub(super) fn remove_branch_legacy(

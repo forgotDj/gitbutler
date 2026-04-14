@@ -114,6 +114,7 @@
 			stackId: ensureValue(stackId),
 			commitId: commitKey.commitId,
 			message: commitMessage,
+			dryRun: false,
 		});
 
 		uiState

@@ -9,6 +9,10 @@
 #![cfg_attr(feature = "napi", deny(unsafe_code))]
 #![deny(missing_docs)]
 
+use std::collections::BTreeMap;
+
+use but_workspace::RefInfo;
+
 #[cfg(feature = "legacy")]
 pub mod legacy;
 
@@ -40,4 +44,17 @@ pub mod panic_capture;
 #[cfg(feature = "export-schema")]
 pub mod watcher;
 
-pub mod types;
+mod workspace_state;
+
+/// Represents the workspace for the frontend
+///
+/// This describes the post-operation workspace view that mutations should
+/// return regardless of whether they executed for real or as a dry-run.
+#[derive(Debug, Clone)]
+pub struct WorkspaceState {
+    /// Commits that were replaced by the operation. Maps `old_id -> new_id`.
+    pub replaced_commits: BTreeMap<gix::ObjectId, gix::ObjectId>,
+    /// The workspace presented for the frontend. See [`RefInfo`] for more
+    /// detail.
+    pub head_info: RefInfo,
+}

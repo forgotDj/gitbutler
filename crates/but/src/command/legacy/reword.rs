@@ -1,7 +1,7 @@
 use anyhow::{Result, bail};
 use bstr::{BString, ByteSlice};
 use but_api::diff::ComputeLineStats;
-use but_core::sync::RepoExclusive;
+use but_core::{DryRun, sync::RepoExclusive};
 use but_ctx::Context;
 use gix::prelude::ObjectIdExt;
 
@@ -193,6 +193,7 @@ fn edit_commit_message_by_id_and_reword_commit(
             ctx,
             commit_oid,
             BString::from(new_message),
+            DryRun::No,
             perm,
         )?;
 

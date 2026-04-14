@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
+use crate::WorkspaceState;
 use but_api_macros::but_api;
+use but_core::DryRun;
 use but_hunk_assignment::{HunkAssignmentRequest, HunkAssignmentTarget};
 use but_oplog::legacy::{OperationKind, SnapshotDetails};
 use but_rebase::graph_rebase::Editor;
@@ -14,14 +16,17 @@ use super::types::MoveChangesResult;
 /// This acquires exclusive worktree access from `ctx` before extracting the
 /// changes.
 ///
-/// See [`commit_uncommit_changes_only_with_perm()`] for details.
-#[but_api(crate::commit::json::MoveChangesResult)]
+/// When `dry_run` is enabled, the returned workspace previews the extracted
+/// changes without materializing the rebase. See
+/// [`commit_uncommit_changes_only_with_perm()`] for details.
+#[but_api(try_from = crate::commit::json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn commit_uncommit_changes_only(
     ctx: &mut but_ctx::Context,
     commit_id: gix::ObjectId,
     changes: Vec<but_core::DiffSpec>,
     assign_to: Option<but_core::ref_metadata::StackId>,
+    dry_run: DryRun,
 ) -> anyhow::Result<MoveChangesResult> {
     let mut guard = ctx.exclusive_worktree_access();
     commit_uncommit_changes_only_with_perm(
@@ -29,6 +34,7 @@ pub fn commit_uncommit_changes_only(
         commit_id,
         changes,
         assign_to,
+        dry_run,
         guard.write_permission(),
     )
 }
@@ -38,22 +44,26 @@ pub fn commit_uncommit_changes_only(
 ///
 /// The removed diff stays in the workspace as uncommitted changes. When
 /// `assign_to` is set, newly surfaced hunks are reassigned to that stack after
-/// the rebase is materialized. For lower-level implementation details, see
+/// the rebase is materialized. When `dry_run` is enabled, the returned
+/// workspace previews the extracted changes and no hunk assignments are
+/// persisted. For lower-level implementation details, see
 /// [`but_workspace::commit::uncommit_changes()`].
 pub fn commit_uncommit_changes_only_with_perm(
     ctx: &mut but_ctx::Context,
     commit_id: gix::ObjectId,
     changes: Vec<but_core::DiffSpec>,
     assign_to: Option<but_core::ref_metadata::StackId>,
+    dry_run: DryRun,
     perm: &mut but_ctx::access::RepoExclusive,
 ) -> anyhow::Result<MoveChangesResult> {
     let context_lines = ctx.settings.context_lines;
     let mut meta = ctx.meta()?;
     let (repo, mut ws, mut db) = ctx.workspace_mut_and_db_mut_with_perm(perm)?;
+    let mut tx = db.transaction()?;
 
     let before_assignments = if assign_to.is_some() {
         let (assignments, _) = but_hunk_assignment::assignments_with_fallback(
-            db.hunk_assignments_mut()?,
+            tx.hunk_assignments_mut()?,
             &repo,
             &ws,
             None::<Vec<but_core::TreeChange>>,
@@ -68,13 +78,27 @@ pub fn commit_uncommit_changes_only_with_perm(
     let outcome =
         but_workspace::commit::uncommit_changes(editor, commit_id, changes, context_lines)?;
 
-    let materialized = outcome.rebase.materialize_without_checkout()?;
+    let (workspace, replaced_commits, repo) = if dry_run.into() {
+        let graph = outcome.rebase.overlayed_graph()?;
+        (
+            &mut graph.into_workspace()?,
+            outcome.rebase.history.commit_mappings(),
+            outcome.rebase.repository(),
+        )
+    } else {
+        let materialized = outcome.rebase.materialize_without_checkout()?;
+        (
+            materialized.workspace,
+            materialized.history.commit_mappings(),
+            &*repo,
+        )
+    };
 
     if let (Some(before_assignments), Some(stack_id)) = (before_assignments, assign_to) {
         let (after_assignments, _) = but_hunk_assignment::assignments_with_fallback(
-            db.hunk_assignments_mut()?,
-            &repo,
-            materialized.workspace,
+            tx.hunk_assignments_mut()?,
+            repo,
+            workspace,
             None::<Vec<but_core::TreeChange>>,
             context_lines,
         )?;
@@ -95,16 +119,20 @@ pub fn commit_uncommit_changes_only_with_perm(
             .collect();
 
         but_hunk_assignment::assign(
-            db.hunk_assignments_mut()?,
-            &repo,
-            materialized.workspace,
+            tx.hunk_assignments_mut()?,
+            repo,
+            workspace,
             to_assign,
             context_lines,
         )?;
     }
 
+    if dry_run == DryRun::No {
+        tx.commit()?;
+    }
+
     Ok(MoveChangesResult {
-        replaced_commits: materialized.history.commit_mappings(),
+        workspace: WorkspaceState::from_workspace(workspace, repo, replaced_commits)?,
     })
 }
 
@@ -113,17 +141,27 @@ pub fn commit_uncommit_changes_only_with_perm(
 /// This acquires exclusive worktree access from `ctx` before extracting the
 /// changes.
 ///
-/// See [`commit_uncommit_changes_with_perm()`] for details.
-#[but_api(napi, crate::commit::json::MoveChangesResult)]
+/// When `dry_run` is enabled, the returned workspace previews the extracted
+/// changes and no oplog entry is persisted. See
+/// [`commit_uncommit_changes_with_perm()`] for details.
+#[but_api(napi, try_from = crate::commit::json::MoveChangesResult)]
 #[instrument(err(Debug))]
 pub fn commit_uncommit_changes(
     ctx: &mut but_ctx::Context,
     commit_id: gix::ObjectId,
     changes: Vec<but_core::DiffSpec>,
     assign_to: Option<but_core::ref_metadata::StackId>,
+    dry_run: DryRun,
 ) -> anyhow::Result<MoveChangesResult> {
     let mut guard = ctx.exclusive_worktree_access();
-    commit_uncommit_changes_with_perm(ctx, commit_id, changes, assign_to, guard.write_permission())
+    commit_uncommit_changes_with_perm(
+        ctx,
+        commit_id,
+        changes,
+        assign_to,
+        dry_run,
+        guard.write_permission(),
+    )
 }
 
 /// Extract `changes` from `commit_id` under caller-held exclusive repository
@@ -132,27 +170,33 @@ pub fn commit_uncommit_changes(
 /// When `assign_to` is set, newly surfaced hunks are assigned to that stack
 /// after the rebase is materialized. This prepares a best-effort
 /// `DiscardChanges` oplog snapshot and commits it only if the operation
-/// succeeds. For lower-level implementation details, see
+/// succeeds. When `dry_run` is enabled, it returns a preview of the resulting
+/// workspace state and skips both hunk-assignment persistence and oplog
+/// persistence. For lower-level implementation details, see
 /// [`but_workspace::commit::uncommit_changes()`].
 pub fn commit_uncommit_changes_with_perm(
     ctx: &mut but_ctx::Context,
     commit_id: gix::ObjectId,
     changes: Vec<but_core::DiffSpec>,
     assign_to: Option<but_core::ref_metadata::StackId>,
+    dry_run: DryRun,
     perm: &mut but_ctx::access::RepoExclusive,
 ) -> anyhow::Result<MoveChangesResult> {
     let maybe_oplog_entry = but_oplog::UnmaterializedOplogSnapshot::from_details_with_perm(
         ctx,
         SnapshotDetails::new(OperationKind::DiscardChanges),
         perm.read_permission(),
-    )
-    .ok();
+        dry_run,
+    );
 
-    let res = commit_uncommit_changes_only_with_perm(ctx, commit_id, changes, assign_to, perm);
+    let res =
+        commit_uncommit_changes_only_with_perm(ctx, commit_id, changes, assign_to, dry_run, perm);
 
-    if let Some(snapshot) = maybe_oplog_entry.filter(|_| res.is_ok()) {
+    if let Some(snapshot) = maybe_oplog_entry
+        && res.is_ok()
+    {
         snapshot.commit(ctx, perm).ok();
-    };
+    }
 
     res
 }

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context as _;
+use but_core::DryRun;
 use but_ctx::Context;
 use gitbutler_stack::StackId;
 
@@ -67,14 +68,16 @@ impl<'a> Operation<'a> {
                     *source_commit_id,
                     target,
                     changes,
+                    DryRun::No,
                 )?;
 
                 Ok(SelectAfterReload::Commit(
                     move_result
+                        .workspace
                         .replaced_commits
                         .get(&target)
                         .with_context(|| {
-                            format!("{target} not found in move_result.replaced_commits")
+                            format!("{target} not found in move_result.workspace.replaced_commits")
                         })
                         .copied()?,
                 ))
@@ -97,6 +100,7 @@ impl<'a> Operation<'a> {
                     *source_commit_id,
                     changes,
                     None,
+                    DryRun::No,
                 )?;
 
                 Ok(SelectAfterReload::Unassigned)
@@ -119,6 +123,7 @@ impl<'a> Operation<'a> {
                     *source_commit_id,
                     changes,
                     Some(*stack_id),
+                    DryRun::No,
                 )?;
 
                 Ok(SelectAfterReload::Stack(*stack_id))

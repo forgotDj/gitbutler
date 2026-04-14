@@ -59,10 +59,8 @@
 ///
 /// NOTE: if this utility type should really take a `Context` as parameter, it should be in `but-api`.
 pub struct UnmaterializedOplogSnapshot {
-    /// The tree containing all snapshot information.
     #[cfg(feature = "legacy")]
     tree_id: gix::ObjectId,
-    /// Details to pass when committing the snapshot.
     #[cfg(feature = "legacy")]
     details: gitbutler_oplog::entry::SnapshotDetails,
 }
@@ -75,6 +73,7 @@ pub mod legacy {
 
 #[cfg(feature = "legacy")]
 mod oplog_snapshot {
+    use but_core::DryRun;
     use but_ctx::{
         Context,
         access::{RepoExclusive, RepoShared},
@@ -86,27 +85,27 @@ mod oplog_snapshot {
     /// Lifecycle
     impl UnmaterializedOplogSnapshot {
         /// Create a new instance from `details`, which is a snapshot that isn't committed to the oplog yet.
-        /// This fails if the snapshot creation fails.
-        // TODO: deprecate this in favor of `_with_perm` version
-        pub fn from_details(
-            ctx: &but_ctx::Context,
-            details: gitbutler_oplog::entry::SnapshotDetails,
-        ) -> anyhow::Result<Self> {
-            // TODO: these guards are probably something to remove as they don't belong into a plumbing crate, neither does Context.
-            let guard = ctx.shared_worktree_access();
-            let tree_id = ctx.prepare_snapshot(guard.read_permission())?;
-            Ok(Self { tree_id, details })
-        }
-
-        /// Create a new instance from `details`, which is a snapshot that isn't committed to the oplog yet.
-        /// This fails if the snapshot creation fails.
+        /// When `dry_run` is enabled, return `None` instead of preparing
+        /// a snapshot tree. If snapshot preparation fails, the error is logged
+        /// as a warning and ignored, and return `None`.
         pub fn from_details_with_perm(
             ctx: &but_ctx::Context,
             details: gitbutler_oplog::entry::SnapshotDetails,
             perm: &RepoShared,
-        ) -> anyhow::Result<Self> {
-            let tree_id = ctx.prepare_snapshot(perm)?;
-            Ok(Self { tree_id, details })
+            dry_run: DryRun,
+        ) -> Option<Self> {
+            if dry_run.into() {
+                return None;
+            }
+
+            let tree_id = match ctx.prepare_snapshot(perm) {
+                Ok(tree_id) => tree_id,
+                Err(err) => {
+                    tracing::warn!(?err, "Failed to prepare unmaterialized oplog snapshot");
+                    return None;
+                }
+            };
+            Some(Self { tree_id, details })
         }
     }
 

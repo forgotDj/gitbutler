@@ -50,6 +50,7 @@ use std::{
     path::PathBuf,
 };
 
+use boolean_enums::gen_boolean_enum;
 use bstr::{BString, ByteSlice};
 use gix::{
     object::tree::EntryKind, refs::FullNameRef,
@@ -450,3 +451,7 @@ pub struct WorktreeChanges {
     /// The conflicting index entries, along with their relative path `(rela_path, [Entries(base, ours, theirs)])`.
     pub index_conflicts: Vec<(BString, Box<[Option<ConflictIndexEntry>; 3]>)>,
 }
+
+// Represents whether an operation should be materialized on disk or remain in
+// memory.
+gen_boolean_enum!(pub serde DryRun);
