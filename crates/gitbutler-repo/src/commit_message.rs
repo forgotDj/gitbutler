@@ -43,7 +43,7 @@ impl CommitMessage {
                 .map(|body_ref| {
                     body_ref
                         .trailers()
-                        .map(|trailer| (trailer.token.to_owned(), trailer.value.to_owned()))
+                        .map(|trailer| (trailer.token.to_owned(), trailer.value.into_owned()))
                         .collect::<Vec<_>>()
                 })
                 .unwrap_or_default(),
