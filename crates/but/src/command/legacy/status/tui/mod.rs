@@ -47,8 +47,9 @@ use crate::{
                 message_on_drop::MessageOnDrop,
                 mode::{
                     CommandMode, CommitMode, CommitSource, InlineRewordMode, Mode, MoveMode,
-                    MoveSource, RubMode, RubSource,
+                    MoveSource, RubMode, RubSource, StackCommitSource, UnassignedCommitSource,
                 },
+                operations::stack_has_assigned_changes,
                 toast::{ToastKind, Toasts},
             },
         },
@@ -1277,8 +1278,12 @@ impl App {
                     )
                 };
                 CommitMode {
+                    scope_to_stack,
+                    insert_side,
                     empty_message: false,
+                    source: Arc::new(source),
                 }
+            }
             StatusOutputLineData::Branch { cli_id } => {
                 let CliId::Branch { stack_id, .. } = &**cli_id else {
                     return Ok(());
@@ -1314,7 +1319,7 @@ impl App {
             | StatusOutputLineData::UpstreamChanges
             | StatusOutputLineData::Warning
             | StatusOutputLineData::Hint
-            | StatusOutputLineData::NoAssignmentsUnstaged => return Ok(())
+            | StatusOutputLineData::NoAssignmentsUnstaged => return Ok(()),
         };
 
         self.mode = Mode::Commit(commit_mode);
