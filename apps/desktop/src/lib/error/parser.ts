@@ -90,7 +90,7 @@ export function shouldOfferToIgnoreError(title: string): boolean {
 	return isGitHubOrgAuthError(title);
 }
 
-export function shouldIgnoreThistError(title: string): boolean {
+export function shouldIgnoreThisError(title: string): boolean {
 	if (isGitHubOrgAuthError(title)) {
 		return getSwallowGitHubOrgAuthErrors();
 	}

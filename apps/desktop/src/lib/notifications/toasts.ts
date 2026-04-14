@@ -22,8 +22,25 @@ export const toastStore: Writable<Toast[]> = writable([]);
 
 let idCounter = 0;
 
+const TOAST_CAPTURE_LIMIT = 60;
+const TOAST_CAPTURE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const toastCaptureTimestamps: number[] = [];
+
+function shouldCaptureToast(): boolean {
+	const now = Date.now();
+	const cutoff = now - TOAST_CAPTURE_WINDOW_MS;
+	while (toastCaptureTimestamps.length > 0 && toastCaptureTimestamps[0]! <= cutoff) {
+		toastCaptureTimestamps.shift();
+	}
+	if (toastCaptureTimestamps.length >= TOAST_CAPTURE_LIMIT) {
+		return false;
+	}
+	toastCaptureTimestamps.push(now);
+	return true;
+}
+
 export function showToast(toast: Toast) {
-	if (toast.error) {
+	if (toast.error && shouldCaptureToast()) {
 		posthog.capture("toast:show_error", {
 			error_test_id: toast.testId,
 			error_title: toast.title,
@@ -31,7 +48,7 @@ export function showToast(toast: Toast) {
 		});
 	}
 
-	if (toast.style === "warning") {
+	if (toast.style === "warning" && shouldCaptureToast()) {
 		posthog.capture("toast:show_warning", {
 			warning_test_id: toast.testId,
 			warning_title: toast.title,

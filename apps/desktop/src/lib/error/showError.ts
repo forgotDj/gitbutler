@@ -4,7 +4,7 @@ import {
 	isBundlingError,
 	isGitHubOrgAuthError,
 	parseError,
-	shouldIgnoreThistError,
+	shouldIgnoreThisError,
 } from "$lib/error/parser";
 import { showToast, type Toast } from "$lib/notifications/toasts";
 
@@ -22,7 +22,7 @@ export function showError(title: string, error: unknown, extraAction?: ExtraActi
 	}
 	const commonErrorTitle = getTitleFromCommonErrorMessage(message);
 	const actualTitle = name || commonErrorTitle || title;
-	const shouldIgnoreThisSpecificError = shouldIgnoreThistError(actualTitle);
+	const shouldIgnoreThisSpecificError = shouldIgnoreThisError(actualTitle);
 
 	if (!ignored && !shouldIgnoreThisSpecificError) {
 		const offerToIgnore = isGitHubOrgAuthError(actualTitle);
