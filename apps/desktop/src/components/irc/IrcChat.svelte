@@ -1,8 +1,8 @@
 <script lang="ts">
 	import IrcChannel from "$components/irc/IrcChannel.svelte";
 	import IrcChannels from "$components/irc/IrcChannels.svelte";
-	import SashLayer from "$components/shared/SashLayer.svelte";
 	import Resizer from "$components/shared/Resizer.svelte";
+	import SashLayer from "$components/shared/SashLayer.svelte";
 	import { UI_STATE } from "$lib/state/uiState.svelte";
 	import { inject } from "@gitbutler/core/context";
 
