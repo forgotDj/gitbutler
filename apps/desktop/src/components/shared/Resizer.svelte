@@ -89,12 +89,14 @@
 
 	const resizerId = Symbol();
 
-	// When a SashLayer ancestor is present the resizer teleports into its
-	// sash-container so it escapes overflow:hidden on pane wrappers. The
-	// SashLayer must be scoped to the same scroll context as the viewport
-	// so that getBoundingClientRect differences remain scroll-invariant.
-	const layerCtx = getContext<SashLayerContext | undefined>(SASH_LAYER);
-	let inLayer = $state(false);
+	// Resizer requires a SashLayer ancestor and always renders in that overlay.
+	// Keep SashLayer in the same scroll context as the viewport so
+	// getBoundingClientRect differences remain scroll-invariant.
+	const layerCtxMaybe = getContext<SashLayerContext | undefined>(SASH_LAYER);
+	if (!layerCtxMaybe) {
+		throw new Error("Resizer must be used inside <SashLayer>.");
+	}
+	const layerCtx = layerCtxMaybe;
 
 	let initial = 0;
 	let isResizing = $state(false);
@@ -167,7 +169,7 @@
 		lastShiftSyncedValue = undefined;
 
 		if (pausedAutoLayout) {
-			layerCtx?.setAutoLayoutPaused(false);
+			layerCtx.setAutoLayoutPaused(false);
 			pausedAutoLayout = false;
 		}
 	}
@@ -196,8 +198,8 @@
 				parseFloat(orientation === "horizontal" ? resizerDiv.style.left : resizerDiv.style.top) ||
 				0;
 		}
-		if (inLayer && !resizeGroup && !pausedAutoLayout) {
-			layerCtx?.setAutoLayoutPaused(true);
+		if (!resizeGroup && !pausedAutoLayout) {
+			layerCtx.setAutoLayoutPaused(true);
 			pausedAutoLayout = true;
 		}
 
@@ -249,11 +251,10 @@
 		const { newValue, overflow } = applyLimits(offsetRem);
 
 		if (newValue !== undefined && !passive && !disabled) {
-			// Fast path when the handle lives in a SashLayer and is NOT part of a
-			// resize group: move the sash div by the pointer delta (pure arithmetic,
-			// zero getBoundingClientRect calls during drag).  Geometry is re-synced
+			// Fast path for direct drag feedback: move sash by pointer delta
+			// (no getBoundingClientRect calls during drag). Geometry is re-synced
 			// once on mouse-up via requestLayout.
-			if (inLayer && !resizeGroup && resizerDiv) {
+			if (resizerDiv) {
 				const dx = move.clientX - lastDragClientX;
 				const dy = move.clientY - lastDragClientY;
 				if (orientation === "horizontal") {
@@ -319,7 +320,7 @@
 		processPointerMove();
 		cleanupPointerDragState();
 		// Re-sync sash to exact geometry once at the end of drag.
-		if (inLayer) layerCtx?.requestLayout();
+		layerCtx.requestLayout();
 		isResizing = false;
 		onResizing?.(false);
 	}
@@ -406,7 +407,7 @@
 		value.set(newValue);
 		updateDom(newValue, true);
 		reportWidth(newValue);
-		if (inLayer) layerCtx?.requestLayout();
+		layerCtx.requestLayout();
 	}
 
 	$effect(() => {
@@ -414,7 +415,7 @@
 			// It's important we do not make use of maxValue in the resize
 			// manager, and in this effect. It changes with the value of
 			// neighbors and would make this effect trigger constantly.
-			return resizeGroup?.register({
+			return resizeGroup.register({
 				resizerId,
 				getValue,
 				setValue,
@@ -445,14 +446,14 @@
 		}
 	});
 
-	// Teleportation effect: move the resizer div into the SashLayer overlay so
-	// it is never clipped by overflow:hidden on pane containers. Position is
+	// Overlay effect: move the resizer div into the SashLayer overlay so it is
+	// never clipped by overflow:hidden on pane containers. Position is
 	// kept in sync via ResizeObserver + window resize + shared per-layer
 	// scheduler notifications. No scroll tracking is needed — the SashLayer is
 	// always scoped inside the same scroll container as the viewport, so
 	// getBoundingClientRect differences are scroll-invariant.
 	$effect(() => {
-		const container = layerCtx?.container;
+		const container = layerCtx.container;
 		const div = resizerDiv;
 		const vp = viewport;
 		// Snapshot these so updatePosition closes over stable values. They are
@@ -476,7 +477,6 @@
 			? parseFloat(vpStyle?.marginRight || "0") || 0
 			: 0;
 
-		inLayer = true;
 		c.appendChild(d);
 
 		function updatePosition(containerRect?: DOMRectReadOnly) {
@@ -520,10 +520,9 @@
 
 		return () => {
 			if (pausedAutoLayout) {
-				layerCtx?.setAutoLayoutPaused(false);
+				layerCtx.setAutoLayoutPaused(false);
 				pausedAutoLayout = false;
 			}
-			inLayer = false;
 			unobserveLayoutTarget?.();
 			unsubscribeLayout?.();
 			d.remove();
@@ -543,7 +542,6 @@
 	{onclick}
 	class:disabled
 	class="resizer"
-	class:in-layer={inLayer}
 	class:is-resizing={isResizing}
 	class:vertical={orientation === "vertical"}
 	class:horizontal={orientation === "horizontal"}
@@ -560,8 +558,9 @@
 		--resizer-cursor: default;
 		position: absolute;
 		outline: none;
-		/* background-color: rgba(255, 0, 0, 0.345); */
 		cursor: var(--resizer-cursor);
+		/* background-color: rgba(255, 0, 0, 0.345); */
+		pointer-events: initial;
 
 		&.horizontal {
 			--resizer-cursor: col-resize;
@@ -577,24 +576,23 @@
 			height: var(--resizer-thickness);
 		}
 
-		/* Non-layer fallback positioning: when not teleported into SashLayer,
-		   anchor to the requested viewport edge via directional classes. */
-		&.horizontal.right:not(.in-layer) {
+		/* Anchor-to-edge defaults before the first layout pass. */
+		&.horizontal.right {
 			right: 0;
 			left: auto;
 		}
 
-		&.horizontal.left:not(.in-layer) {
+		&.horizontal.left {
 			right: auto;
 			left: 0;
 		}
 
-		&.vertical.down:not(.in-layer) {
+		&.vertical.down {
 			top: auto;
 			bottom: 0;
 		}
 
-		&.vertical.up:not(.in-layer) {
+		&.vertical.up {
 			top: 0;
 			bottom: auto;
 		}
@@ -602,16 +600,6 @@
 		&.disabled {
 			pointer-events: none;
 			--resizer-cursor: default;
-		}
-
-		/* When teleported into the SashLayer overlay the container has
-		   pointer-events:none, so individual resizers must opt back in. */
-		&.in-layer {
-			pointer-events: initial;
-		}
-
-		&.in-layer.disabled {
-			pointer-events: none;
 		}
 	}
 </style>

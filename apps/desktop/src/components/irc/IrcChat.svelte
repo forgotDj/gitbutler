@@ -2,6 +2,7 @@
 	import IrcChannel from "$components/irc/IrcChannel.svelte";
 	import IrcChannels from "$components/irc/IrcChannels.svelte";
 	import Resizer from "$components/shared/Resizer.svelte";
+	import SashLayer from "$components/shared/SashLayer.svelte";
 	import { UI_STATE } from "$lib/state/uiState.svelte";
 	import { inject } from "@gitbutler/core/context";
 
@@ -21,30 +22,32 @@
 	let sidebarEl = $state<HTMLDivElement>();
 </script>
 
-<div class="irc">
-	<div class="sidebar" bind:this={sidebarEl}>
-		<IrcChannels {projectId} />
-		{#if sidebarEl}
-			<Resizer
-				viewport={sidebarEl}
-				direction="right"
-				defaultValue={10}
-				minWidth={8}
-				maxWidth={24}
-				persistId="irc-sidebar-width"
-			/>
-		{/if}
+<SashLayer>
+	<div class="irc">
+		<div class="sidebar" bind:this={sidebarEl}>
+			<IrcChannels {projectId} />
+			{#if sidebarEl}
+				<Resizer
+					viewport={sidebarEl}
+					direction="right"
+					defaultValue={10}
+					minWidth={8}
+					maxWidth={24}
+					persistId="irc-sidebar-width"
+				/>
+			{/if}
+		</div>
+		<div class="right">
+			{#if currentName === "*" || !currentName}
+				<IrcChannel {projectId} type="server" {headerActions} />
+			{:else if currentName.startsWith("#")}
+				<IrcChannel {projectId} type="group" channel={currentName} autojoin {headerActions} />
+			{:else}
+				<IrcChannel {projectId} type="private" nick={currentName} {headerActions} />
+			{/if}
+		</div>
 	</div>
-	<div class="right">
-		{#if currentName === "*" || !currentName}
-			<IrcChannel {projectId} type="server" {headerActions} />
-		{:else if currentName.startsWith("#")}
-			<IrcChannel {projectId} type="group" channel={currentName} autojoin {headerActions} />
-		{:else}
-			<IrcChannel {projectId} type="private" nick={currentName} {headerActions} />
-		{/if}
-	</div>
-</div>
+</SashLayer>
 
 <style lang="postcss">
 	.irc {
