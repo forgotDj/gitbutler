@@ -59,10 +59,11 @@ pub fn commit_uncommit_changes_only_with_perm(
     let context_lines = ctx.settings.context_lines;
     let mut meta = ctx.meta()?;
     let (repo, mut ws, mut db) = ctx.workspace_mut_and_db_mut_with_perm(perm)?;
+    let mut tx = db.transaction()?;
 
-    let before_assignments = if dry_run == DryRun::No && assign_to.is_some() {
+    let before_assignments = if assign_to.is_some() {
         let (assignments, _) = but_hunk_assignment::assignments_with_fallback(
-            db.hunk_assignments_mut()?,
+            tx.hunk_assignments_mut()?,
             &repo,
             &ws,
             None::<Vec<but_core::TreeChange>>,
@@ -77,66 +78,62 @@ pub fn commit_uncommit_changes_only_with_perm(
     let outcome =
         but_workspace::commit::uncommit_changes(editor, commit_id, changes, context_lines)?;
 
-    let workspace = if dry_run.into() {
-        WorkspaceState::from_rebase_preview(
-            &outcome.rebase,
+    let (workspace, replaced_commits, repo) = if dry_run.into() {
+        let graph = outcome.rebase.overlayed_graph()?;
+        (
+            &mut graph.into_workspace()?,
             outcome.rebase.history.commit_mappings(),
-        )?
+            outcome.rebase.repository(),
+        )
     } else {
         let materialized = outcome.rebase.materialize_without_checkout()?;
-
-        if let (Some(before_assignments), Some(stack_id)) = (before_assignments, assign_to) {
-            let (after_assignments, _) = but_hunk_assignment::assignments_with_fallback(
-                db.hunk_assignments_mut()?,
-                &repo,
-                materialized.workspace,
-                None::<Vec<but_core::TreeChange>>,
-                context_lines,
-            )?;
-
-            let to_assign =
-                newly_surfaced_hunk_assignments(before_assignments, after_assignments, stack_id);
-
-            but_hunk_assignment::assign(
-                db.hunk_assignments_mut()?,
-                &repo,
-                materialized.workspace,
-                to_assign,
-                context_lines,
-            )?;
-        }
-
-        WorkspaceState::from_workspace(
+        (
             materialized.workspace,
-            &repo,
             materialized.history.commit_mappings(),
-        )?
+            &*repo,
+        )
     };
 
-    Ok(MoveChangesResult { workspace })
-}
+    if let (Some(before_assignments), Some(stack_id)) = (before_assignments, assign_to) {
+        let (after_assignments, _) = but_hunk_assignment::assignments_with_fallback(
+            tx.hunk_assignments_mut()?,
+            repo,
+            workspace,
+            None::<Vec<but_core::TreeChange>>,
+            context_lines,
+        )?;
 
-fn newly_surfaced_hunk_assignments(
-    before_assignments: Vec<but_hunk_assignment::HunkAssignment>,
-    after_assignments: Vec<but_hunk_assignment::HunkAssignment>,
-    stack_id: but_core::ref_metadata::StackId,
-) -> Vec<HunkAssignmentRequest> {
-    let before_ids: HashSet<_> = before_assignments
-        .into_iter()
-        .filter_map(|assignment| assignment.id)
-        .collect();
+        let before_ids: HashSet<_> = before_assignments
+            .into_iter()
+            .filter_map(|assignment| assignment.id)
+            .collect();
 
-    let to_assign: Vec<_> = after_assignments
-        .into_iter()
-        .filter(|assignment| assignment.id.is_some_and(|id| !before_ids.contains(&id)))
-        .map(|assignment| HunkAssignmentRequest {
-            hunk_header: assignment.hunk_header,
-            path_bytes: assignment.path_bytes,
-            target: Some(HunkAssignmentTarget::Stack { stack_id }),
-        })
-        .collect();
+        let to_assign: Vec<_> = after_assignments
+            .into_iter()
+            .filter(|assignment| assignment.id.is_some_and(|id| !before_ids.contains(&id)))
+            .map(|assignment| HunkAssignmentRequest {
+                hunk_header: assignment.hunk_header,
+                path_bytes: assignment.path_bytes,
+                target: Some(HunkAssignmentTarget::Stack { stack_id }),
+            })
+            .collect();
 
-    to_assign
+        but_hunk_assignment::assign(
+            tx.hunk_assignments_mut()?,
+            repo,
+            workspace,
+            to_assign,
+            context_lines,
+        )?;
+    }
+
+    if dry_run == DryRun::No {
+        tx.commit()?;
+    }
+
+    Ok(MoveChangesResult {
+        workspace: WorkspaceState::from_workspace(workspace, repo, replaced_commits)?,
+    })
 }
 
 /// Extract `changes` from `commit_id` and record the rewrite in the oplog.
