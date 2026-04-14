@@ -23,7 +23,8 @@ pub(super) fn route_operation<'a>(
             op @ RubOperation::UnassignUncommitted(..) => op,
             op @ RubOperation::UncommittedToCommit(..) => op,
             op @ RubOperation::UnassignedToCommit(..) => op,
-            op @ RubOperation::UndoCommit(..) => op,
+            op @ RubOperation::CommitToUnassigned(..) => op,
+            op @ RubOperation::CommitToStack(..) => op,
             op @ RubOperation::SquashCommits(..) => op,
             op @ RubOperation::CommittedFileToCommit(..) => op,
             op @ RubOperation::CommittedFileToUnassigned(..) => op,
@@ -77,7 +78,8 @@ pub(super) fn rub_operation_display(source: &CliId, target: &CliId) -> Option<&'
         RubOperation::UnassignedToCommit(..) => "amend",
         RubOperation::UnassignedToBranch(..) => "assign hunks",
         RubOperation::UnassignedToStack(..) => "assign hunks",
-        RubOperation::UndoCommit(..) => "undo commit",
+        RubOperation::CommitToUnassigned(..) => "undo commit",
+        RubOperation::CommitToStack(..) => "undo commit",
         RubOperation::SquashCommits(..) => "squash",
         RubOperation::MoveCommitToBranch(..) => "move commit",
         RubOperation::BranchToUnassigned(..) => "unassign hunks",
@@ -151,9 +153,13 @@ pub(super) fn perform_operation(
             operation.execute_inner(ctx)?;
             SelectAfterReload::Stack(operation.to)
         }
-        RubOperation::UndoCommit(operation) => {
+        RubOperation::CommitToUnassigned(operation) => {
             operation.execute_inner(ctx)?;
             SelectAfterReload::Unassigned
+        }
+        RubOperation::CommitToStack(operation) => {
+            operation.execute_inner(ctx)?;
+            SelectAfterReload::Stack(operation.stack)
         }
         RubOperation::SquashCommits(operation) => {
             let result = operation.execute_inner(ctx)?;

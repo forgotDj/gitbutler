@@ -1460,6 +1460,40 @@ Moved [..] → [B]
 }
 
 #[test]
+fn rub_matrix_commit_to_stack_smoke() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
+    env.setup_metadata(&["A", "B"])?;
+
+    commit_two_files_as_two_hunks_each(&env, "A", "a.txt", "b.txt", "first commit");
+
+    let before = status_json(&env)?;
+    let source_commit = branch_commit_ids(&before, "A")[0].clone();
+
+    env.but(format!("rub {source_commit} B@{{stack}}"))
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Uncommitted [..] to [B]
+
+"#]])
+        .stderr_eq(str![""]);
+
+    let after = status_json(&env)?;
+    let commits_after = branch_commit_ids(&after, "A");
+    assert!(
+        !commits_after.contains(&source_commit),
+        "source commit should no longer be present in branch A after uncommit to stack"
+    );
+    assert!(
+        stack_assigned_contains_file(&after, "B", "a.txt")
+            && stack_assigned_contains_file(&after, "B", "b.txt"),
+        "source commit files should be assigned to branch B stack"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn rub_matrix_branch_to_unassigned_smoke() -> anyhow::Result<()> {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
     env.setup_metadata(&["A", "B"])?;
@@ -1806,14 +1840,6 @@ fn rub_matrix_invalid_pairs_smoke() -> anyhow::Result<()> {
     let commit = branch_commit_ids(&status, "A")[0].clone();
 
     env.but("rub invalid-a.txt invalid-b.txt")
-        .assert()
-        .failure()
-        .stderr_eq(str![[r#"
-Rubbed the wrong way. Operation doesn't make sense.[..]
-
-"#]]);
-
-    env.but(format!("rub {commit} A@{{stack}}"))
         .assert()
         .failure()
         .stderr_eq(str![[r#"

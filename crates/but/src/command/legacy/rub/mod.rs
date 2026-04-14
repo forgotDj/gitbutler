@@ -130,9 +130,18 @@ pub(crate) struct UnassignedToStackOperation {
 
 /// Represents undoing a commit.
 #[derive(Debug)]
-pub(crate) struct UndoCommitOperation {
+pub(crate) struct CommitToUnassignedOperation {
     /// The commit id to undo.
     pub(crate) oid: gix::ObjectId,
+}
+
+/// Represents undoing a commit to a stack.
+#[derive(Debug)]
+pub(crate) struct CommitToStackOperation {
+    /// The commit id to undo.
+    pub(crate) oid: gix::ObjectId,
+    /// The stack to assign the changes to.
+    pub(crate) stack: StackId,
 }
 
 /// Represents squashing one commit into another.
@@ -233,7 +242,8 @@ pub(crate) enum RubOperation<'a> {
     UnassignedToCommit(UnassignedToCommitOperation),
     UnassignedToBranch(UnassignedToBranchOperation<'a>),
     UnassignedToStack(UnassignedToStackOperation),
-    UndoCommit(UndoCommitOperation),
+    CommitToUnassigned(CommitToUnassignedOperation),
+    CommitToStack(CommitToStackOperation),
     SquashCommits(SquashCommitsOperation),
     MoveCommitToBranch(MoveCommitToBranchOperation<'a>),
     BranchToUnassigned(BranchToUnassignedOperation<'a>),
@@ -468,7 +478,7 @@ impl StackToCommitOperation {
     /// Executes `StackToCommit` by squashing all hunks from the source stack to the target commit.
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitCreateResult> {
         let changes = changes_for_stack_assignment(ctx, Some(self.from))?;
-        but_api::commit::amend::commit_amend(ctx, self.to, changes)
+        but_api::commit::amend::commit_amend(ctx, self.to, changes, DryRun::No)
     }
 }
 
@@ -552,7 +562,7 @@ impl UnassignedToStackOperation {
     }
 }
 
-impl UndoCommitOperation {
+impl CommitToUnassignedOperation {
     /// Executes this operation.
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
@@ -571,8 +581,33 @@ impl UndoCommitOperation {
 
     /// Executes `UndoCommit` by uncommitting all changes from the selected commit.
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitUndoResult> {
-        // TODO(David): Have fun. - Love, Caleb
         but_api::commit::undo::commit_undo(ctx, self.oid, None, DryRun::No)
+    }
+}
+
+impl CommitToStackOperation {
+    /// Executes this operation.
+    pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
+        self.execute_inner(ctx)?;
+        if let Some(out) = out.for_human() {
+            let repo = ctx.repo.get()?;
+            writeln!(
+                out,
+                "Uncommitted {} to {}",
+                shorten_object_id(&repo, self.oid).blue(),
+                stack_id_to_branch_name(ctx, self.stack)
+                    .map(|b| format!("[{b}]").green())
+                    .unwrap_or_else(|| "stack".bold()),
+            )?;
+        } else if let Some(out) = out.for_json() {
+            out.write_value(serde_json::json!({"ok": true}))?;
+        }
+        Ok(())
+    }
+
+    /// Executes `UndoCommit` by uncommitting all changes from the selected commit.
+    pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitUndoResult> {
+        but_api::commit::undo::commit_undo(ctx, self.oid, Some(self.stack), DryRun::No)
     }
 }
 
@@ -842,7 +877,8 @@ impl<'a> RubOperation<'a> {
             RubOperation::UnassignedToCommit(operation) => operation.execute(ctx, out),
             RubOperation::UnassignedToBranch(operation) => operation.execute(ctx, out),
             RubOperation::UnassignedToStack(operation) => operation.execute(ctx, out),
-            RubOperation::UndoCommit(operation) => operation.execute(ctx, out),
+            RubOperation::CommitToUnassigned(operation) => operation.execute(ctx, out),
+            RubOperation::CommitToStack(operation) => operation.execute(ctx, out),
             RubOperation::SquashCommits(operation) => operation.execute(ctx, out),
             RubOperation::MoveCommitToBranch(operation) => operation.execute(ctx, out),
             RubOperation::BranchToUnassigned(operation) => operation.execute(ctx, out),
@@ -1016,11 +1052,9 @@ pub(crate) fn route_operation<'a>(
             UnassignedToStackOperation { to: *stack_id },
         )),
         // Commit -> *
-        (Commit { commit_id, .. }, Unassigned { .. }) => {
-            Some(RubOperation::UndoCommit(UndoCommitOperation {
-                oid: *commit_id,
-            }))
-        }
+        (Commit { commit_id, .. }, Unassigned { .. }) => Some(RubOperation::CommitToUnassigned(
+            CommitToUnassignedOperation { oid: *commit_id },
+        )),
         (
             Commit {
                 commit_id: source, ..
@@ -1039,6 +1073,12 @@ pub(crate) fn route_operation<'a>(
                 name,
             },
         )),
+        (Commit { commit_id, .. }, Stack { stack_id, .. }) => {
+            Some(RubOperation::CommitToStack(CommitToStackOperation {
+                oid: *commit_id,
+                stack: *stack_id,
+            }))
+        }
         // Branch -> *
         (Branch { name, .. }, Unassigned { .. }) => Some(RubOperation::BranchToUnassigned(
             BranchToUnassignedOperation { from: name },
@@ -1802,11 +1842,11 @@ mod tests {
         // Valid: Commit -> Branch
         assert!(route_operation(&commit, &branch_id()).is_some());
 
+        // Valid: Commit -> Stack
+        assert!(route_operation(&commit, &stack_id()).is_some());
+
         // Invalid: Commit -> Uncommitted
         assert!(route_operation(&commit, &uncommitted_id()).is_none());
-
-        // Invalid: Commit -> Stack
-        assert!(route_operation(&commit, &stack_id()).is_none());
 
         // Invalid: Commit -> CommittedFile
         assert!(route_operation(&commit, &committed_file_id()).is_none());
@@ -1936,10 +1976,16 @@ mod tests {
             _ => panic!("Expected SquashCommits variant"),
         }
 
-        // Commit -> Unassigned should be UndoCommit
+        // Commit -> Unassigned should be CommitToUnassigned
         match route_operation(&commit, &unassigned) {
-            Some(RubOperation::UndoCommit(..)) => {}
-            _ => panic!("Expected UndoCommit variant"),
+            Some(RubOperation::CommitToUnassigned(..)) => {}
+            _ => panic!("Expected CommitToUnassigned variant"),
+        }
+
+        // Commit -> Stack should be CommitToStack
+        match route_operation(&commit, &stack) {
+            Some(RubOperation::CommitToStack(..)) => {}
+            _ => panic!("Expected CommitToStack variant"),
         }
 
         // Branch -> Stack should be BranchToStack
