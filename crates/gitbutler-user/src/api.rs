@@ -7,10 +7,20 @@
 //! The public API is synchronous — async HTTP calls are executed on a dedicated
 //! thread with a short-lived Tokio runtime, following the same pattern as `but-forge`.
 
+use std::time::Duration;
+
 use anyhow::{Context, Result};
 use but_path::AppChannel;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+
+fn http_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(30))
+        .build()
+        .expect("failed to build HTTP client")
+}
 
 /// Error returned when the upstream API rejects a request with an HTTP error status.
 #[derive(Debug, thiserror::Error)]
@@ -64,7 +74,7 @@ pub fn fetch_login_token() -> Result<LoginToken> {
     let api_url = default_api_url();
     run_async(async move {
         let url = format!("{api_url}/api/login/token.json");
-        let client = reqwest::Client::new();
+        let client = http_client();
         let resp = client
             .post(&url)
             .send()
@@ -91,7 +101,7 @@ pub fn fetch_user_by_token(token: &str) -> Result<serde_json::Value> {
     let token = token.to_string();
     run_async(async move {
         let url = format!("{api_url}/api/login/whoami");
-        let client = reqwest::Client::new();
+        let client = http_client();
         let resp = client
             .get(&url)
             .header("X-Auth-Token", &token)
