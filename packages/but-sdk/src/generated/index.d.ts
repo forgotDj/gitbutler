@@ -74,8 +74,9 @@ export declare function changesInWorktreeWithPerm(projectId: string): Promise<Wo
  * Amend the commit at `commit_id` with `changes` and record an oplog snapshot on success.
  *
  * This performs the rewrite under exclusive worktree access and creates a
- * best-effort `AmendCommit` oplog entry if the operation succeeds. For
- * lower-level implementation details, see
+ * best-effort `AmendCommit` oplog entry if the operation succeeds. When
+ * `dry_run` is enabled, the returned workspace previews the amended commit
+ * and no oplog entry is persisted. For lower-level implementation details, see
  * [`but_workspace::commit::commit_amend()`].
  */
 export declare function commitAmend(projectId: string, commitId: string, changes: Array<DiffSpec>, dryRun: boolean): Promise<CommitCreateResult>
@@ -86,8 +87,9 @@ export declare function commitAmend(projectId: string, commitId: string, changes
  *
  * `relative_to` and `side` choose where the commit is inserted. `message` is
  * the entire commit message text, not just the title. On success, this commits
- * a best-effort `CreateCommit` oplog snapshot using the same lock. For
- * lower-level implementation details, see
+ * a best-effort `CreateCommit` oplog snapshot using the same lock. When
+ * `dry_run` is enabled, the returned workspace previews the inserted commit
+ * and no oplog entry is persisted. For lower-level implementation details, see
  * [`but_workspace::commit::commit_create()`].
  */
 export declare function commitCreate(projectId: string, relativeTo: RelativeTo, side: InsertSide, changes: Array<DiffSpec>, message: string, dryRun: boolean): Promise<CommitCreateResult>
@@ -103,6 +105,9 @@ export declare function commitDetailsWithLineStats(projectId: string, commitId: 
 /**
  * Discard `subject_commit_id` using the behavior described by
  * [`commit_discard_with_perm()`].
+ *
+ * When `dry_run` is enabled, the returned workspace previews the discard and
+ * no oplog entry is persisted.
  */
 export declare function commitDiscard(projectId: string, subjectCommitId: string, dryRun: boolean): Promise<CommitDiscardResult>
 
@@ -110,7 +115,9 @@ export declare function commitDiscard(projectId: string, subjectCommitId: string
  * Inserts a blank commit on `side` of `relative_to` and records an oplog
  * snapshot on success.
  *
- * For details, see [`commit_insert_blank_with_perm()`].
+ * When `dry_run` is enabled, the returned workspace previews the inserted
+ * commit and no oplog entry is persisted. For details, see
+ * [`commit_insert_blank_with_perm()`].
  */
 export declare function commitInsertBlank(projectId: string, relativeTo: RelativeTo, side: InsertSide, dryRun: boolean): Promise<CommitInsertBlankResult>
 
@@ -121,7 +128,8 @@ export declare function commitInsertBlank(projectId: string, relativeTo: Relativ
  * This acquires exclusive worktree access from `ctx` before moving the
  * commit.
  *
- * For details, see [`commit_move_with_perm()`].
+ * When `dry_run` is enabled, the returned workspace previews the moved commit
+ * and no oplog entry is persisted. For details, see [`commit_move_with_perm()`].
  */
 export declare function commitMove(projectId: string, subjectCommitId: string, relativeTo: RelativeTo, side: InsertSide, dryRun: boolean): Promise<CommitMoveResult>
 
@@ -132,7 +140,9 @@ export declare function commitMove(projectId: string, subjectCommitId: string, r
  * This acquires exclusive worktree access from `ctx` before moving the
  * changes.
  *
- * For details, see [`commit_move_changes_between_with_perm()`].
+ * When `dry_run` is enabled, the returned workspace previews the rewritten
+ * commits and no oplog entry is persisted. For details, see
+ * [`commit_move_changes_between_with_perm()`].
  */
 export declare function commitMoveChangesBetween(projectId: string, sourceCommitId: string, destinationCommitId: string, changes: Array<DiffSpec>, dryRun: boolean): Promise<MoveChangesResult>
 
@@ -141,7 +151,9 @@ export declare function commitMoveChangesBetween(projectId: string, sourceCommit
  * [`commit_reword_with_perm()`].
  *
  * This acquires exclusive worktree access from `ctx` before rewriting the
- * commit message and recording the oplog entry.
+ * commit message and recording the oplog entry. When `dry_run` is enabled,
+ * the returned workspace previews the rewritten message and no oplog entry is
+ * persisted.
  */
 export declare function commitReword(projectId: string, commitId: string, message: string, dryRun: boolean): Promise<CommitRewordResult>
 
@@ -152,7 +164,8 @@ export declare function commitReword(projectId: string, commitId: string, messag
  * This acquires exclusive worktree access from `ctx` before rewriting the
  * commits.
  *
- * For details, see [`commit_squash_with_perm()`].
+ * When `dry_run` is enabled, the returned workspace previews the squashed
+ * result and no oplog entry is persisted. For details, see [`commit_squash_with_perm()`].
  */
 export declare function commitSquash(projectId: string, subjectCommitId: string, targetCommitId: string, dryRun: boolean): Promise<CommitSquashResult>
 
@@ -162,15 +175,20 @@ export declare function commitSquash(projectId: string, subjectCommitId: string,
  * This acquires exclusive worktree access from `ctx` before extracting the
  * changes.
  *
- * See [`commit_uncommit_changes_with_perm()`] for details.
+ * When `dry_run` is enabled, the returned workspace previews the extracted
+ * changes and no oplog entry is persisted. See
+ * [`commit_uncommit_changes_with_perm()`] for details.
  */
 export declare function commitUncommitChanges(projectId: string, commitId: string, changes: Array<DiffSpec>, assignTo: string | null, dryRun: boolean): Promise<MoveChangesResult>
 
 /**
  * Undo `subject_commit_id` using the behavior described by
  * [`commit_undo_only_with_perm()`].
+ *
+ * When `dry_run` is enabled, the returned workspace previews the undo result
+ * without materializing the rewrite or persisting an oplog entry.
  */
-export declare function commitUndo(projectId: string, subjectCommitId: string, dryRun: boolean): Promise<CommitUndoResult>
+export declare function commitUndo(projectId: string, subjectCommitId: string, stackId: string | null, dryRun: boolean): Promise<CommitUndoResult>
 
 /**
  * Get the forge provider name.
@@ -203,7 +221,9 @@ export declare function mergeReview(projectId: string, reviewId: number): Promis
  * Moves a branch using the behavior described by [`move_branch_with_perm()`].
  *
  * This acquires exclusive worktree access from `ctx`, moves `subject_branch`
- * on top of `target_branch`, and records an oplog snapshot on success.
+ * on top of `target_branch`, and records an oplog snapshot on success. When
+ * `dry_run` is enabled, the returned workspace previews the move and no oplog
+ * entry is persisted.
  */
 export declare function moveBranch(projectId: string, subjectBranch: string, targetBranch: string, dryRun: boolean): Promise<MoveBranchResult>
 
@@ -246,7 +266,9 @@ export declare function setReviewTemplate(projectId: string, templatePath: strin
  * Tears off a branch using the behavior described by [`tear_off_branch_with_perm()`].
  *
  * This acquires exclusive worktree access from `ctx`, tears `subject_branch`
- * out of its current stack, and records an oplog snapshot on success.
+ * out of its current stack, and records an oplog snapshot on success. When
+ * `dry_run` is enabled, the returned workspace previews the tear-off and no
+ * oplog entry is persisted.
  */
 export declare function tearOffBranch(projectId: string, subjectBranch: string, dryRun: boolean): Promise<MoveBranchResult>
 

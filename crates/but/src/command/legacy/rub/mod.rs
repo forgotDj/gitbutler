@@ -524,7 +524,8 @@ impl UndoCommitOperation {
 
     /// Executes `UndoCommit` by uncommitting all changes from the selected commit.
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitUndoResult> {
-        but_api::commit::undo::commit_undo(ctx, self.oid, DryRun::No)
+        // TODO(David): Have fun. - Love, Caleb
+        but_api::commit::undo::commit_undo(ctx, self.oid, None, DryRun::No)
     }
 }
 
