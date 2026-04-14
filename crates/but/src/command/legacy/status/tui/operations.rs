@@ -314,7 +314,7 @@ pub(super) fn tear_off_branch(ctx: &mut Context, source_branch_name: &str) -> an
     let source_ref = repo.find_reference(source_branch_name)?.name().to_owned();
     drop(repo);
     but_api::branch::tear_off_branch(ctx, source_ref.as_ref(), DryRun::No)
-        .context("failed to tear off branch")?;
+        .context("failed to unstack branch")?;
     Ok(())
 }
 

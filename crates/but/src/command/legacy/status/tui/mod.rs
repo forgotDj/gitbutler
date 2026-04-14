@@ -2891,7 +2891,7 @@ fn move_operation_display(data: &StatusOutputLineData, mode: &MoveMode) -> Optio
         },
         MoveSource::Branch { .. } => match data {
             StatusOutputLineData::Branch { .. } => Some("move branch"),
-            StatusOutputLineData::MergeBase => Some("tear off branch"),
+            StatusOutputLineData::MergeBase => Some("unstack branch"),
             StatusOutputLineData::UpdateNotice
             | StatusOutputLineData::Commit { .. }
             | StatusOutputLineData::Connector

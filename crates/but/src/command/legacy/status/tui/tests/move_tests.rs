@@ -191,7 +191,7 @@ fn move_branch_to_merge_base_tears_off_branch() {
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str![
-            "┴ << tear off branch >> [..] [origin/main] 2000-01-02 add M"
+            "┴ << unstack branch >> [..] [origin/main] 2000-01-02 add M"
         ]);
 
     tui.input_then_render(KeyCode::Enter)
