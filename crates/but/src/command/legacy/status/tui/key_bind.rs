@@ -18,10 +18,12 @@ pub(super) fn default_key_binds() -> KeyBinds {
         match mode {
             ModeDiscriminant::Normal => {
                 register_global_key_binds(&mut key_binds, Vec::from([mode]));
+                register_unassigned_key_binds(&mut key_binds, Vec::from([mode]));
                 register_normal_mode_key_binds(&mut key_binds);
             }
             ModeDiscriminant::Rub => {
                 register_global_key_binds(&mut key_binds, Vec::from([mode]));
+                register_unassigned_key_binds(&mut key_binds, Vec::from([mode]));
                 register_rub_but_api_mode_key_binds(&mut key_binds);
             }
             ModeDiscriminant::InlineReword => {
@@ -32,10 +34,12 @@ pub(super) fn default_key_binds() -> KeyBinds {
             }
             ModeDiscriminant::Commit => {
                 register_global_key_binds(&mut key_binds, Vec::from([mode]));
+                register_unassigned_key_binds(&mut key_binds, Vec::from([mode]));
                 register_commit_mode_key_binds(&mut key_binds);
             }
             ModeDiscriminant::Move => {
                 register_global_key_binds(&mut key_binds, Vec::from([mode]));
+                register_unassigned_key_binds(&mut key_binds, Vec::from([mode]));
                 register_move_mode_key_binds(&mut key_binds);
             }
             ModeDiscriminant::Branch => {
@@ -248,7 +252,9 @@ fn register_global_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscrimina
         message: Message::Details(DetailsMessage::ToggleVisibility),
         hide_from_hotbar: false,
     });
+}
 
+fn register_unassigned_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscriminant>) {
     key_binds.register(StaticKeyBind {
         short_description: "unassigned",
         chord_display: "z",
