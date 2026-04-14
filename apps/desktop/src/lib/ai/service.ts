@@ -246,7 +246,7 @@ export class AIService {
 	}
 
 	async getOpenRouterModelName() {
-		return await this.gitConfig.getWithDefault<string>(
+		return await this.gitConfig.getWithDefault<OpenRouterModelName>(
 			GitAIConfigKey.OpenRouterModelName,
 			"openai/gpt-4.1-mini",
 		);
@@ -369,11 +369,7 @@ export class AIService {
 				throw new Error("When using OpenRouter, you must provide a valid API key");
 			}
 
-			return new OpenAIClient(
-				openRouterKey,
-				openRouterModelName as OpenRouterModelName,
-				"https://openrouter.ai/api/v1",
-			);
+			return new OpenAIClient(openRouterKey, openRouterModelName, "https://openrouter.ai/api/v1");
 		}
 
 		return undefined;

@@ -6,6 +6,7 @@ use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 
 use crate::{
+    AI_OPENROUTER_ENDPOINT_KEY, AI_OPENROUTER_MODEL_NAME_KEY,
     chat::ChatMessage,
     client::LLMClient,
     openai_utils::{
@@ -15,8 +16,6 @@ use crate::{
 };
 
 const OPENROUTER_API_BASE_DEFAULT: &str = "https://openrouter.ai/api/v1";
-const OPENROUTER_API_BASE_OPTION: &str = "gitbutler.aiOpenRouterEndpoint";
-const OPENROUTER_MODEL_NAME: &str = "gitbutler.aiOpenRouterModelName";
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct OpenRouterConfig {
@@ -34,7 +33,7 @@ impl Default for OpenRouterConfig {
 impl OpenRouterConfig {
     fn from_git_config(config: &gix::config::File<'static>) -> Self {
         let api_base = config
-            .string(OPENROUTER_API_BASE_OPTION)
+            .string(AI_OPENROUTER_ENDPOINT_KEY)
             .map(|v| v.to_string())
             .unwrap_or_else(|| OPENROUTER_API_BASE_DEFAULT.to_string());
 
@@ -92,7 +91,9 @@ impl LLMClient for OpenRouterProvider {
         Self: Sized,
     {
         let openrouter_config = OpenRouterConfig::from_git_config(config);
-        let model = config.string(OPENROUTER_MODEL_NAME).map(|v| v.to_string());
+        let model = config
+            .string(AI_OPENROUTER_MODEL_NAME_KEY)
+            .map(|v| v.to_string());
         let api_key = Self::retrieve_api_key()?;
         Some(Self {
             config: openrouter_config,
