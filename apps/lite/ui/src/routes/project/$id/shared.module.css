@@ -44,10 +44,6 @@
 	background-color: var(--color-separator);
 }
 
-.laneDiffColumn {
-	width: 500px;
-}
-
 .itemRow {
 	display: flex;
 	align-items: start;
