@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link, Outlet, useMatch, useNavigate } from "@tanstack/react-router";
+import { Outlet, useMatch, useNavigate } from "@tanstack/react-router";
 import { FC, useState } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext } from "@tanstack/react-router";
@@ -62,38 +62,6 @@ const ProjectSelect: FC = () => {
 	);
 };
 
-const SidebarNav: FC = () => {
-	const projectMatch = useMatch({
-		from: "/project/$id",
-		shouldThrow: false,
-	});
-	const selectedProjectId = projectMatch?.params.id;
-
-	if (selectedProjectId === undefined) return null;
-
-	return (
-		<nav className={styles.sidebarNav}>
-			<Link
-				to={"/project/$id/workspace"}
-				params={{ id: selectedProjectId }}
-				className={styles.navLink}
-				activeProps={{ className: styles.navLinkActive }}
-				activeOptions={{ exact: true }}
-			>
-				Workspace
-			</Link>
-			<Link
-				to="/project/$id/branches"
-				params={{ id: selectedProjectId }}
-				className={styles.navLink}
-				activeProps={{ className: styles.navLinkActive }}
-			>
-				Branches
-			</Link>
-		</nav>
-	);
-};
-
 const TopBarActions: FC = () => {
 	const dispatch = useAppDispatch();
 	const projectId = useMatch({
@@ -146,9 +114,6 @@ function RootLayout() {
 		<ShortcutsBarPortalContext value={shortcutsBarPortalNode}>
 			<main className={styles.layout}>
 				<TopBar />
-				<aside className={styles.sidebar}>
-					<SidebarNav />
-				</aside>
 				<section className={styles.content}>
 					<Outlet />
 				</section>

@@ -1,3 +1,4 @@
+import { PatchDiff } from "@pierre/diffs/react";
 import {
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
@@ -50,19 +51,12 @@ import {
 } from "#ui/routes/project/$id/workspace/OperationTargets.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import {
-	CommitFiles as SharedCommitFiles,
-	CommitsList,
-	FileButton,
 	formatHunkHeader,
-	HunkDiff,
-	Patch,
 	CommitLabel,
 	shortCommitId,
-	assignedHunks,
 	decodeRefName,
 	getAssignmentsByPath,
 	getRelative,
-	hunkKey,
 	encodeRefName,
 } from "#ui/routes/project/$id/shared.tsx";
 import uiStyles from "#ui/ui.module.css";
@@ -97,7 +91,6 @@ import {
 } from "react";
 import { Route as projectRoute } from "#ui/routes/project/$id/route.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
-import sharedStyles from "../shared.module.css";
 import {
 	baseCommitItem,
 	changeItem,
@@ -144,6 +137,147 @@ import {
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 const fileHunkKey = (path: string, hunk: HunkHeader): string => `${path}:${hunkKey(hunk)}`;
 
+const hunkHeaderEquals = (a: HunkHeader, b: HunkHeader): boolean =>
+	a.oldStart === b.oldStart &&
+	a.oldLines === b.oldLines &&
+	a.newStart === b.newStart &&
+	a.newLines === b.newLines;
+
+const assignedHunks = (
+	hunks: Array<DiffHunk>,
+	assignments: Array<HunkAssignment>,
+): Array<DiffHunk> => {
+	if (assignments.length === 0) return [];
+	if (assignments.some((assignment) => assignment.hunkHeader == null)) return hunks;
+
+	return hunks.filter((hunk) =>
+		assignments.some(
+			(assignment) =>
+				assignment.hunkHeader != null && hunkHeaderEquals(hunk, assignment.hunkHeader),
+		),
+	);
+};
+
+const lineEndingForDiff = (diff: string): string => (diff.includes("\r\n") ? "\r\n" : "\n");
+
+const patchHeaderForChange = (change: TreeChange, lineEnding: string): string =>
+	Match.value(change.status).pipe(
+		Match.when(
+			{ type: "Addition" },
+			() => `--- /dev/null${lineEnding}+++ ${change.path}${lineEnding}`,
+		),
+		Match.when(
+			{ type: "Deletion" },
+			() => `--- ${change.path}${lineEnding}+++ /dev/null${lineEnding}`,
+		),
+		Match.when(
+			{ type: "Modification" },
+			() => `--- ${change.path}${lineEnding}+++ ${change.path}${lineEnding}`,
+		),
+		Match.when(
+			{ type: "Rename" },
+			({ subject }) => `--- ${subject.previousPath}${lineEnding}+++ ${change.path}${lineEnding}`,
+		),
+		Match.exhaustive,
+	);
+
+const HunkDiff: FC<{
+	change: TreeChange;
+	diff: string;
+}> = ({ change, diff }) => (
+	<PatchDiff
+		patch={`${patchHeaderForChange(change, lineEndingForDiff(diff))}${diff}`}
+		options={{
+			diffStyle: "unified",
+			themeType: "system",
+			disableFileHeader: true,
+		}}
+	/>
+);
+
+const hunkKey = (hunk: HunkHeader): string =>
+	`${hunk.oldStart}:${hunk.oldLines}:${hunk.newStart}:${hunk.newLines}`;
+
+type Patch = Extract<UnifiedPatch, { type: "Patch" }>;
+
+const FileButton: FC<
+	{
+		change: TreeChange;
+	} & ComponentProps<"button">
+> = ({ change, className, ...restProps }) => (
+	<button {...restProps} type="button" className={classes(className, styles.fileButton)}>
+		{Match.value(change.status).pipe(
+			Match.when({ type: "Addition" }, () => "A"),
+			Match.when({ type: "Deletion" }, () => "D"),
+			Match.when({ type: "Modification" }, () => "M"),
+			Match.when({ type: "Rename" }, () => "R"),
+			Match.exhaustive,
+		)}{" "}
+		{change.path}
+	</button>
+);
+
+const CommitFiles: FC<{
+	projectId: string;
+	commitId: string;
+	renderFile: (change: TreeChange) => ReactNode;
+}> = ({ projectId, commitId, renderFile }) => {
+	const { data } = useSuspenseQuery(
+		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
+	);
+
+	const conflictedPaths = data.conflictEntries
+		? globalThis.Array.from(
+				new Set([
+					...data.conflictEntries.ancestorEntries,
+					...data.conflictEntries.ourEntries,
+					...data.conflictEntries.theirEntries,
+				]),
+			).sort((a: string, b: string) => a.localeCompare(b))
+		: [];
+
+	if (conflictedPaths.length === 0 && data.changes.length === 0)
+		return <div className={styles.itemRowEmpty}>No file changes.</div>;
+
+	return (
+		<>
+			{conflictedPaths.length > 0 && (
+				<div>
+					<div>Conflicts:</div>
+					<ul>
+						{conflictedPaths.map((path: string) => (
+							<li key={path}>{path}</li>
+						))}
+					</ul>
+				</div>
+			)}
+
+			{data.changes.length > 0 && (
+				<ul>
+					{data.changes.map((file) => (
+						<li key={file.path}>{renderFile(file)}</li>
+					))}
+				</ul>
+			)}
+		</>
+	);
+};
+
+const CommitsList: FC<{
+	commits: Array<Commit>;
+	children: (commit: Commit, index: number) => ReactNode;
+}> = ({ commits, children }) => {
+	if (commits.length === 0) return <div>No commits.</div>;
+
+	return (
+		<ul>
+			{commits.map((commit, index) => (
+				<li key={commit.id}>{children(commit, index)}</li>
+			))}
+		</ul>
+	);
+};
+
 const ItemRow: FC<
 	{
 		isSelected?: boolean;
@@ -151,7 +285,7 @@ const ItemRow: FC<
 > = ({ className, isSelected, ...props }) => (
 	<div
 		{...props}
-		className={classes(className, sharedStyles.itemRow, isSelected && sharedStyles.itemRowSelected)}
+		className={classes(className, styles.itemRow, isSelected && styles.itemRowSelected)}
 	/>
 );
 
@@ -274,9 +408,9 @@ const Hunk: FC<{
 }) => {
 	const dispatch = useAppDispatch();
 	const headerRow = (
-		<div className={sharedStyles.hunkHeaderRow}>
+		<div className={styles.hunkHeaderRow}>
 			{headerStart}
-			<div className={sharedStyles.hunkHeader}>{formatHunkHeader(hunk)}</div>
+			<div className={styles.hunkHeader}>{formatHunkHeader(hunk)}</div>
 		</div>
 	);
 
@@ -291,10 +425,7 @@ const Hunk: FC<{
 					}),
 				)
 			}
-			className={classes(
-				sharedStyles.previewHunk,
-				isSelected && isFocused && sharedStyles.previewHunkSelected,
-			)}
+			className={classes(styles.previewHunk, isSelected && isFocused && styles.previewHunkSelected)}
 		>
 			{fileParent && editable
 				? (() => {
@@ -550,7 +681,7 @@ const CommitPreview: FC<{
 						<CommitLabel commit={commitDetails.commit} />
 					</h3>
 					{commitDetails.commit.message.includes("\n") && (
-						<p className={sharedStyles.commitMessageBody}>
+						<p className={styles.commitMessageBody}>
 							{commitDetails.commit.message
 								.slice(commitDetails.commit.message.indexOf("\n") + 1)
 								.trim()}
@@ -946,7 +1077,7 @@ const CommitRow: FC<
 			{...restProps}
 			inert={!navigationIndexIncludes(navigationIndex, item)}
 			isSelected={selected !== null}
-			className={classes(restProps.className, isHighlighted && sharedStyles.itemRowHighlighted)}
+			className={classes(restProps.className, isHighlighted && styles.itemRowHighlighted)}
 		>
 			{isRewording ? (
 				<InlineCommitMessageEditor
@@ -963,8 +1094,8 @@ const CommitRow: FC<
 								<button
 									type="button"
 									className={classes(
-										sharedStyles.commitButton,
-										isCommitMessagePending && sharedStyles.commitButtonPending,
+										styles.commitButton,
+										isCommitMessagePending && styles.commitButtonPending,
 									)}
 									onClick={() => {
 										dispatch(projectActions.selectItem({ projectId, item }));
@@ -994,7 +1125,7 @@ const CommitRow: FC<
 								disableHoverablePopup
 							>
 								<Tooltip.Trigger
-									className={sharedStyles.itemRowAction}
+									className={styles.itemRowAction}
 									type="button"
 									onClick={() =>
 										dispatch(projectActions.toggleCommitFiles({ projectId, item: commitItemV }))
@@ -1013,7 +1144,7 @@ const CommitRow: FC<
 								</Tooltip.Portal>
 							</Tooltip.Root>
 							<Menu.Root>
-								<Menu.Trigger className={sharedStyles.itemRowAction} aria-label="Commit menu">
+								<Menu.Trigger className={styles.itemRowAction} aria-label="Commit menu">
 									<MenuTriggerIcon />
 								</Menu.Trigger>
 								<Menu.Portal>
@@ -1056,7 +1187,7 @@ const CommitFileRow: FC<{
 				<ItemRow
 					inert={!navigationIndexIncludes(navigationIndex, item)}
 					isSelected={isSelected}
-					className={sharedStyles.fileRow}
+					className={styles.fileRow}
 				/>
 			}
 		>
@@ -1133,8 +1264,8 @@ const CommitC: FC<{
 				navigationIndex={navigationIndex}
 			/>
 			{isExpanded && (
-				<Suspense fallback={<div className={sharedStyles.itemRowEmpty}>Loading commit files…</div>}>
-					<SharedCommitFiles
+				<Suspense fallback={<div className={styles.itemRowEmpty}>Loading commit files…</div>}>
+					<CommitFiles
 						projectId={projectId}
 						commitId={commit.id}
 						renderFile={(change) => (
@@ -1237,13 +1368,13 @@ const ChangeRow: FC<{
 				<DependencyIndicator
 					projectId={projectId}
 					commitIds={dependencyCommitIds}
-					className={sharedStyles.itemRowAction}
+					className={styles.itemRowAction}
 				>
 					<DependencyIcon />
 				</DependencyIndicator>
 			)}
 			<Menu.Root>
-				<Menu.Trigger className={sharedStyles.itemRowAction} aria-label={`${change.path} menu`}>
+				<Menu.Trigger className={styles.itemRowAction} aria-label={`${change.path} menu`}>
 					<MenuTriggerIcon />
 				</Menu.Trigger>
 				<Menu.Portal>
@@ -1335,7 +1466,7 @@ const ChangesSectionRow: FC<{
 				</ContextMenu.Portal>
 			</ContextMenu.Root>
 			<Menu.Root>
-				<Menu.Trigger className={sharedStyles.itemRowAction} aria-label={`${label} menu`}>
+				<Menu.Trigger className={styles.itemRowAction} aria-label={`${label} menu`}>
 					<MenuTriggerIcon />
 				</Menu.Trigger>
 				<Menu.Portal>
@@ -1433,11 +1564,7 @@ const Changes: FC<{
 				operationMode={operationMode}
 				projectId={projectId}
 				source={operationSourceFromItem(item)}
-				className={classes(
-					className,
-					sharedStyles.section,
-					isSectionSelected && sharedStyles.sectionSelected,
-				)}
+				className={classes(className, styles.section, isSectionSelected && styles.sectionSelected)}
 				render={
 					<OperationTarget
 						item={item}
@@ -1457,7 +1584,7 @@ const Changes: FC<{
 					stackId={stackId}
 				/>
 				{changes.length === 0 ? (
-					<div className={sharedStyles.itemRowEmpty}>No changes.</div>
+					<div className={styles.itemRowEmpty}>No changes.</div>
 				) : (
 					<ul>
 						{changes.map((change) => {
@@ -1679,17 +1806,14 @@ const SegmentRow: FC<
 										<>
 											<button
 												type="button"
-												className={sharedStyles.itemRowAction}
+												className={styles.itemRowAction}
 												aria-label="Push branch"
 												disabled
 											>
 												<PushIcon />
 											</button>
 											<Menu.Root>
-												<Menu.Trigger
-													className={sharedStyles.itemRowAction}
-													aria-label="Branch menu"
-												>
+												<Menu.Trigger className={styles.itemRowAction} aria-label="Branch menu">
 													<MenuTriggerIcon />
 												</Menu.Trigger>
 												<Menu.Portal>
@@ -1761,9 +1885,9 @@ const SegmentC: FC<{
 	return (
 		<div
 			className={classes(
-				sharedStyles.section,
+				styles.section,
 				styles.segment,
-				isSectionSelected && sharedStyles.sectionSelected,
+				isSectionSelected && styles.sectionSelected,
 			)}
 		>
 			<SegmentRow
@@ -1983,7 +2107,7 @@ const ProjectPage: FC = () => {
 				)
 			}
 		>
-			<div className={sharedStyles.lanes}>
+			<div className={styles.lanes}>
 				<div className={styles.unassignedChangesLane}>
 					<div className={styles.laneActions}>
 						<Menu.Root>
