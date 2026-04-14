@@ -47,6 +47,7 @@ export const headInfoQueryOptions = (projectId: string) =>
 		queryFn: () => window.lite.headInfo(projectId),
 	});
 
+/** @public */
 export const listBranchesQueryOptions = (projectId: string) =>
 	queryOptions({
 		queryKey: [QueryKey.Branches, projectId],

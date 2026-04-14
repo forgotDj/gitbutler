@@ -7,6 +7,7 @@ export type CommitUncommitParams = {
 	assignTo: string | null;
 };
 
+/** @public */
 export const applyBranchMutationOptions = mutationOptions({
 	mutationFn: window.lite.apply,
 	onSuccess: async (_data, _input, _ctx, { client }) => {
