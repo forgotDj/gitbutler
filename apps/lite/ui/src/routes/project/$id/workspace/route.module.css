@@ -85,6 +85,8 @@
 	white-space: pre-wrap;
 }
 
+.fileButton,
+.segmentButton,
 .commitButton {
 	flex-grow: 1;
 	padding-inline: var(--row-inline-padding);
@@ -95,18 +97,12 @@
 	white-space: nowrap;
 }
 
-.commitButtonPending {
-	opacity: 0.5;
+.segmentButton {
+	font-weight: bold;
 }
 
-.fileButton {
-	flex-grow: 1;
-	padding-inline: var(--row-inline-padding);
-	padding-block: var(--row-block-padding);
-	overflow: hidden;
-	line-height: var(--row-line-height);
-	text-overflow: ellipsis;
-	white-space: nowrap;
+.commitButtonPending {
+	opacity: 0.5;
 }
 
 .fileRow {
@@ -166,17 +162,6 @@
 .segment {
 	display: flex;
 	flex-direction: column;
-}
-
-.segmentButton {
-	flex-grow: 1;
-	padding-inline: var(--row-inline-padding);
-	padding-block: var(--row-block-padding);
-	overflow: hidden;
-	font-weight: bold;
-	line-height: var(--row-line-height);
-	text-overflow: ellipsis;
-	white-space: nowrap;
 }
 
 .renameBranchInput {
