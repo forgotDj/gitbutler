@@ -100,6 +100,7 @@ import {
 	type Item,
 	SegmentItem,
 	segmentItem,
+	stackItem,
 } from "./Item.ts";
 import {
 	buildNavigationIndex,
@@ -753,6 +754,7 @@ const Preview: FC<{
 }> = ({ operationMode, projectId, selectedItem, isFocused, ref }) =>
 	Match.value(selectedItem).pipe(
 		Match.tagsExhaustive({
+			Stack: () => null,
 			Segment: ({ branchRef }) => {
 				if (branchRef == null)
 					return (
@@ -1485,8 +1487,6 @@ const Changes: FC<{
 		worktreeChanges.dependencies?.diffs ?? [],
 	);
 
-	const isSectionSelected = isSelected || selectedPath !== null;
-
 	const item = changesSectionItem({});
 
 	return (
@@ -1494,7 +1494,7 @@ const Changes: FC<{
 			operationMode={operationMode}
 			projectId={projectId}
 			source={operationSourceFromItem(item)}
-			className={classes(className, styles.section, isSectionSelected && styles.sectionSelected)}
+			className={classes(className, styles.section)}
 			render={
 				<OperationTarget
 					item={item}
@@ -1802,17 +1802,9 @@ const SegmentC: FC<{
 		selectedItem.segmentIndex === segmentIndex
 			? selectedItem
 			: null;
-	const isSectionSelected =
-		selectedSegment !== null || selectedCommit !== null || selectedCommitFile !== null;
 
 	return (
-		<div
-			className={classes(
-				styles.section,
-				styles.segment,
-				isSectionSelected && styles.sectionSelected,
-			)}
-		>
+		<div className={classes(styles.section, styles.segment)}>
 			<SegmentRow
 				branchRenameFormRef={branchRenameFormRef}
 				operationMode={operationMode}
@@ -1878,11 +1870,39 @@ const StackC: FC<{
 	// oxlint-disable-next-line typescript/no-non-null-assertion -- [tag:stack-id-required]
 	const stackId = stack.id!;
 
+	const dispatch = useAppDispatch();
+
+	const item = stackItem({ stackId });
+
 	return (
-		<div className={styles.stack}>
-			<div className={styles.laneActions}>
+		<div className={classes(styles.stack, styles.section)}>
+			<ItemRow
+				isSelected={selectedItem?._tag === "Stack" && selectedItem.stackId === stackId}
+				inert={!navigationIndexIncludes(navigationIndex, item)}
+				className={styles.stackRow}
+			>
+				<ContextMenu.Root disabled={workspaceMode._tag !== "Default"}>
+					<ContextMenu.Trigger
+						render={
+							<button
+								type="button"
+								className={styles.stackButton}
+								onClick={() => {
+									dispatch(projectActions.selectItem({ projectId, item }));
+								}}
+							>
+								Stack
+							</button>
+						}
+					/>
+					<ContextMenu.Portal>
+						<ContextMenu.Positioner>
+							<StackMenuPopup projectId={projectId} stackId={stackId} />
+						</ContextMenu.Positioner>
+					</ContextMenu.Portal>
+				</ContextMenu.Root>
 				<Menu.Root>
-					<Menu.Trigger className={styles.stackMenuTrigger} aria-label="Stack menu">
+					<Menu.Trigger className={styles.itemRowAction} aria-label="Stack menu">
 						<MenuTriggerIcon />
 					</Menu.Trigger>
 					<Menu.Portal>
@@ -1891,7 +1911,7 @@ const StackC: FC<{
 						</Menu.Positioner>
 					</Menu.Portal>
 				</Menu.Root>
-			</div>
+			</ItemRow>
 
 			<ul className={styles.segments}>
 				{stack.segments.map((segment, segmentIndex) => (
@@ -2052,19 +2072,21 @@ const ProjectPage: FC = () => {
 					/>
 				))}
 
-				<OperationTarget
-					projectId={projectId}
-					item={baseCommitItem}
-					operationMode={operationMode}
-					selectedItem={selectedItem?._tag === "BaseCommit" ? selectedItem : null}
-					render={
-						<BaseCommitRow
-							commitId={commonBaseCommitId}
-							isSelected={selectedItem?._tag === "BaseCommit"}
-							navigationIndex={navigationIndex}
-						/>
-					}
-				/>
+				<div className={styles.section}>
+					<OperationTarget
+						projectId={projectId}
+						item={baseCommitItem}
+						operationMode={operationMode}
+						selectedItem={selectedItem?._tag === "BaseCommit" ? selectedItem : null}
+						render={
+							<BaseCommitRow
+								commitId={commonBaseCommitId}
+								isSelected={selectedItem?._tag === "BaseCommit"}
+								navigationIndex={navigationIndex}
+							/>
+						}
+					/>
+				</div>
 			</div>
 
 			<PositionedShortcutsBar

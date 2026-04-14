@@ -15,6 +15,7 @@ import {
 	commitFileItem,
 	itemIdentityKey,
 	segmentItem,
+	stackItem,
 } from "./Item.ts";
 import { getRelative } from "../shared.tsx";
 
@@ -79,9 +80,16 @@ const buildWorkspaceOutline = ({
 		...headInfo.stacks.flatMap((stack) => {
 			if (stack.id == null) return [];
 			const stackId = stack.id;
-			return stack.segments.map((segment, segmentIndex) =>
-				segmentSection(stackId, segmentIndex, segment),
-			);
+			const stackItemSection: WorkspaceSection = {
+				section: stackItem({ stackId }),
+				children: [],
+			};
+			return [
+				stackItemSection,
+				...stack.segments.map((segment, segmentIndex) =>
+					segmentSection(stackId, segmentIndex, segment),
+				),
+			];
 		}),
 
 		baseCommitSection,

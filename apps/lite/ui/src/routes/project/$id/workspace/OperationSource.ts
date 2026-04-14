@@ -16,6 +16,7 @@ export type FileOperationSource = { parent: FileParent; path: string };
 /** @public */
 export type HunkOperationSource = { parent: FileParent; path: string; hunkHeader: HunkHeader };
 /** @public */
+export type StackOperationSource = { stackId: string };
 export type SegmentOperationSource = { branchRef: Array<number> | null };
 
 /**
@@ -28,6 +29,7 @@ export type OperationSource =
 	| ({ _tag: "Commit" } & CommitOperationSource)
 	| ({ _tag: "File" } & FileOperationSource)
 	| ({ _tag: "Hunk" } & HunkOperationSource)
+	| ({ _tag: "Stack" } & StackOperationSource)
 	| ({ _tag: "Segment" } & SegmentOperationSource);
 
 /** @public */
@@ -69,6 +71,12 @@ export const hunkOperationSource = ({
 });
 
 /** @public */
+export const stackOperationSource = ({ stackId }: StackOperationSource): OperationSource => ({
+	_tag: "Stack",
+	stackId,
+});
+
+/** @public */
 export const segmentOperationSource = ({ branchRef }: SegmentOperationSource): OperationSource => ({
 	_tag: "Segment",
 	branchRef,
@@ -82,6 +90,7 @@ const operationSourceIdentityKey = (operationSource: OperationSource): string =>
 			Commit: ({ commitId }) => JSON.stringify(["Commit", commitId]),
 			File: ({ parent, path }) => JSON.stringify(["File", parent, path]),
 			Hunk: ({ parent, path, hunkHeader }) => JSON.stringify(["Hunk", parent, path, hunkHeader]),
+			Stack: ({ stackId }) => JSON.stringify(["Stack", stackId]),
 			Segment: ({ branchRef }) => JSON.stringify(["Segment", branchRef]),
 		}),
 	);
@@ -105,6 +114,7 @@ export const operationSourceFromItem = (item: Item): OperationSource =>
 					parent: commitFileParent({ commitId }),
 					path,
 				}),
+			Stack: ({ stackId }) => stackOperationSource({ stackId }),
 			Segment: ({ branchRef }) => segmentOperationSource({ branchRef }),
 		}),
 	);

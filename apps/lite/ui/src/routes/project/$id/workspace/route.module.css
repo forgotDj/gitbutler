@@ -11,6 +11,10 @@
 	flex-direction: column;
 }
 
+.stackRow {
+	background-color: var(--color-row-hover-bg);
+}
+
 .itemRow {
 	display: flex;
 	align-items: start;
@@ -44,9 +48,6 @@
 
 .section {
 	border-radius: 8px;
-}
-
-.sectionSelected {
 	background-color: var(--color-section-selected-bg);
 }
 
@@ -88,7 +89,8 @@
 
 .fileButton,
 .segmentButton,
-.commitButton {
+.commitButton,
+.stackButton {
 	flex-grow: 1;
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
@@ -98,6 +100,7 @@
 	white-space: nowrap;
 }
 
+.stackButton,
 .segmentButton {
 	font-weight: bold;
 }
@@ -206,28 +209,6 @@ we must use an overlay for the background. */
 	display: flex;
 	column-gap: 8px;
 	align-items: center;
-}
-
-.stackMenuTrigger {
-	display: grid;
-	margin-left: auto;
-	padding-inline: var(--row-inline-padding);
-	padding-block: var(--row-block-padding);
-	border-radius: 8px;
-
-	svg {
-		width: var(--row-line-height);
-		height: var(--row-line-height);
-	}
-
-	&:disabled {
-		opacity: 0.5;
-	}
-
-	&:enabled:hover,
-	&[aria-expanded="true"] {
-		background-color: var(--color-button-hover-bg);
-	}
 }
 
 .commonBaseCommit {

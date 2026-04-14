@@ -6,8 +6,12 @@ export type ChangesSectionItem = {};
 export type ChangeItem = ChangesSectionItem & { path: string };
 
 /** @public */
-export type SegmentItem = {
+export type StackItem = {
 	stackId: string;
+};
+
+/** @public */
+export type SegmentItem = StackItem & {
 	segmentIndex: number;
 	branchRef: Array<number> | null;
 };
@@ -22,6 +26,7 @@ export type CommitFileItem = CommitItem & { path: string };
 export type Item =
 	| ({ _tag: "ChangesSection" } & ChangesSectionItem)
 	| ({ _tag: "Change" } & ChangeItem)
+	| ({ _tag: "Stack" } & StackItem)
 	| ({ _tag: "Segment" } & SegmentItem)
 	| ({ _tag: "Commit" } & CommitItem)
 	| ({ _tag: "CommitFile" } & CommitFileItem)
@@ -37,6 +42,12 @@ export const changesSectionItem = (x: ChangesSectionItem): Item => ({
 export const changeItem = ({ path }: ChangeItem): Item => ({
 	_tag: "Change",
 	path,
+});
+
+/** @public */
+export const stackItem = ({ stackId }: StackItem): Item => ({
+	_tag: "Stack",
+	stackId,
 });
 
 /** @public */
@@ -82,6 +93,7 @@ export const itemIdentityKey = (item: Item): string =>
 		Match.tagsExhaustive({
 			ChangesSection: () => JSON.stringify(["ChangesSection"]),
 			Change: (item) => JSON.stringify(["Change", item.path]),
+			Stack: (item) => JSON.stringify(["Stack", item.stackId]),
 			Segment: (item) =>
 				JSON.stringify(["Segment", item.stackId, item.segmentIndex, item.branchRef]),
 			Commit: (item) => JSON.stringify(["Commit", item.stackId, item.segmentIndex, item.commitId]),
@@ -113,5 +125,6 @@ export const getParentSection = (item: Item): Item | null =>
 			ChangesSection: () => null,
 			BaseCommit: () => null,
 			Segment: () => null,
+			Stack: () => null,
 		}),
 	);
