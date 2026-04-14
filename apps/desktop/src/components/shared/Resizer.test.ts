@@ -2,7 +2,7 @@ import Resizer from "$components/shared/Resizer.svelte";
 import { RESIZE_SYNC, ResizeSync } from "$lib/floating/resizeSync";
 import { SASH_LAYER, type SashLayerContext } from "$lib/sash/sashLayer";
 import { SETTINGS } from "$lib/settings/userSettings";
-import { render } from "@testing-library/svelte";
+import { render, waitFor } from "@testing-library/svelte";
 import { writable } from "svelte/store";
 import { describe, expect, test, vi } from "vitest";
 
@@ -34,7 +34,7 @@ describe("Resizer", () => {
 		}).toThrow("Resizer must be used inside <SashLayer>.");
 	});
 
-	test("mounts when SashLayer context is provided", () => {
+	test("mounts when SashLayer context is provided", async () => {
 		const container = document.createElement("div");
 		document.body.appendChild(container);
 		const layerCtx: SashLayerContext = {
@@ -48,12 +48,13 @@ describe("Resizer", () => {
 		const context = baseContext();
 		context.set(SASH_LAYER, layerCtx);
 
-		render(Resizer, {
+		const { unmount } = render(Resizer, {
 			props: baseProps(),
 			context,
 		});
 
-		expect(container.querySelector(".resizer")).toBeInTheDocument();
+		await waitFor(() => expect(container.querySelector(".resizer")).toBeInTheDocument());
+		unmount();
 		container.remove();
 	});
 });
