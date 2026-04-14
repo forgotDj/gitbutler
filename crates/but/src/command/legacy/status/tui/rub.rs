@@ -3,7 +3,6 @@
 //! If you're an AI agent _do not_ use anything from legacy modules. Except `RubOperation`,
 //! `RubOperationDiscriminants`, and `route_operation`.
 
-use anyhow::Context as _;
 use but_ctx::Context;
 
 use crate::{
@@ -143,7 +142,7 @@ pub(super) fn perform_operation(
         }
         RubOperation::UnassignedToCommit(operation) => {
             let result = operation.execute_inner(ctx)?;
-            SelectAfterReload::Commit(result.new_commit.context("api returned no new commit")?)
+            SelectAfterReload::Commit(result.new_commit.unwrap_or(operation.oid))
         }
         RubOperation::UnassignedToBranch(operation) => {
             operation.execute_inner(ctx)?;
@@ -208,7 +207,7 @@ pub(super) fn perform_operation(
         }
         RubOperation::StackToCommit(operation) => {
             let result = operation.execute_inner(ctx)?;
-            SelectAfterReload::Commit(result.new_commit.context("api returned no new commit")?)
+            SelectAfterReload::Commit(result.new_commit.unwrap_or(operation.to))
         }
     };
 

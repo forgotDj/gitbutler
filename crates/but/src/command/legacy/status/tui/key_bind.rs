@@ -24,7 +24,7 @@ pub(super) fn default_key_binds() -> KeyBinds {
             ModeDiscriminant::Rub => {
                 register_global_key_binds(&mut key_binds, Vec::from([mode]));
                 register_unassigned_key_binds(&mut key_binds, Vec::from([mode]));
-                register_rub_but_api_mode_key_binds(&mut key_binds);
+                register_rub_mode_key_binds(&mut key_binds);
             }
             ModeDiscriminant::InlineReword => {
                 register_inline_reword_mode_key_binds(&mut key_binds);
@@ -413,7 +413,7 @@ fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
     });
 }
 
-fn register_rub_but_api_mode_key_binds(key_binds: &mut KeyBinds) {
+fn register_rub_mode_key_binds(key_binds: &mut KeyBinds) {
     key_binds.register(StaticKeyBind {
         short_description: "confirm",
         chord_display: "enter",
