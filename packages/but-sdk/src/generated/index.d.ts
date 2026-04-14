@@ -10,19 +10,13 @@
  * Before applying the plan, this records an `Absorb` oplog snapshot and refreshes the
  * synthetic workspace commit after the rewritten commits are in place.
  */
-export declare function absorb(
-	projectId: string,
-	absorptionPlan: Array<CommitAbsorption>,
-): Promise<number>;
+export declare function absorb(projectId: string, absorptionPlan: Array<CommitAbsorption>): Promise<number>
 
 /**
  * Build an absorption plan for `target` using the behavior documented by
  * [`absorption_plan_with_perm()`].
  */
-export declare function absorptionPlan(
-	projectId: string,
-	target: AbsorptionTarget,
-): Promise<Array<CommitAbsorption>>;
+export declare function absorptionPlan(projectId: string, target: AbsorptionTarget): Promise<Array<CommitAbsorption>>
 
 /**
  * Applies `existing_branch` using the behavior described by
@@ -31,7 +25,7 @@ export declare function absorptionPlan(
  * This acquires exclusive worktree access from `ctx`, applies
  * `existing_branch`, and records an oplog snapshot on success.
  */
-export declare function apply(projectId: string, existingBranch: string): Promise<ApplyOutcome>;
+export declare function apply(projectId: string, existingBranch: string): Promise<ApplyOutcome>
 
 /**
  * Persists `assignments` for the current workspace and records an oplog
@@ -42,16 +36,9 @@ export declare function apply(projectId: string, existingBranch: string): Promis
  *
  * See [`assign_hunk_with_perm()`] for details.
  */
-export declare function assignHunk(
-	projectId: string,
-	assignments: Array<HunkAssignmentRequest>,
-): Promise<void>;
+export declare function assignHunk(projectId: string, assignments: Array<HunkAssignmentRequest>): Promise<void>
 
-export declare function branchDetails(
-	projectId: string,
-	branchName: string,
-	remote: string | null,
-): Promise<BranchDetails>;
+export declare function branchDetails(projectId: string, branchName: string, remote: string | null): Promise<BranchDetails>
 
 /**
  * Computes the worktree-visible diff for `branch` in the current workspace.
@@ -60,10 +47,10 @@ export declare function branchDetails(
  * diff is computed against the current workspace state. For lower-level
  * implementation details, see [`but_workspace::ui::diff::changes_in_branch()`].
  */
-export declare function branchDiff(projectId: string, branch: string): Promise<TreeChanges>;
+export declare function branchDiff(projectId: string, branch: string): Promise<TreeChanges>
 
 /** See [`changes_in_worktree_with_perm()`]. */
-export declare function changesInWorktree(projectId: string): Promise<WorktreeChanges>;
+export declare function changesInWorktree(projectId: string): Promise<WorktreeChanges>
 
 /**
  * This UI-version of [`but_core::diff::worktree_changes()`] simplifies the `git status` information for display in
@@ -81,7 +68,7 @@ export declare function changesInWorktree(projectId: string): Promise<WorktreeCh
  * [`but_hunk_assignment::assignments_with_fallback()`], and
  * [`but_hunk_dependency::ui::hunk_dependencies_for_workspace_changes_by_worktree_dir()`].
  */
-export declare function changesInWorktreeWithPerm(projectId: string): Promise<WorktreeChanges>;
+export declare function changesInWorktreeWithPerm(projectId: string): Promise<WorktreeChanges>
 
 /**
  * Amend the commit at `commit_id` with `changes` and record an oplog snapshot on success.
@@ -91,11 +78,7 @@ export declare function changesInWorktreeWithPerm(projectId: string): Promise<Wo
  * lower-level implementation details, see
  * [`but_workspace::commit::commit_amend()`].
  */
-export declare function commitAmend(
-	projectId: string,
-	commitId: string,
-	changes: Array<DiffSpec>,
-): Promise<CommitCreateResult>;
+export declare function commitAmend(projectId: string, commitId: string, changes: Array<DiffSpec>): Promise<CommitCreateResult>
 
 /**
  * Insert a new commit built from `changes` and record an oplog snapshot on
@@ -107,13 +90,7 @@ export declare function commitAmend(
  * lower-level implementation details, see
  * [`but_workspace::commit::commit_create()`].
  */
-export declare function commitCreate(
-	projectId: string,
-	relativeTo: RelativeTo,
-	side: InsertSide,
-	changes: Array<DiffSpec>,
-	message: string,
-): Promise<CommitCreateResult>;
+export declare function commitCreate(projectId: string, relativeTo: RelativeTo, side: InsertSide, changes: Array<DiffSpec>, message: string): Promise<CommitCreateResult>
 
 /**
  * Computes commit details for `commit_id` with line statistics enabled.
@@ -121,19 +98,13 @@ export declare function commitCreate(
  * This exists for callers that always want line statistics without passing
  * `line_stats` explicitly.
  */
-export declare function commitDetailsWithLineStats(
-	projectId: string,
-	commitId: string,
-): Promise<CommitDetails>;
+export declare function commitDetailsWithLineStats(projectId: string, commitId: string): Promise<CommitDetails>
 
 /**
  * Discard `subject_commit_id` using the behavior described by
  * [`commit_discard_with_perm()`].
  */
-export declare function commitDiscard(
-	projectId: string,
-	subjectCommitId: string,
-): Promise<CommitDiscardResult>;
+export declare function commitDiscard(projectId: string, subjectCommitId: string): Promise<CommitDiscardResult>
 
 /**
  * Inserts a blank commit on `side` of `relative_to` and records an oplog
@@ -141,11 +112,7 @@ export declare function commitDiscard(
  *
  * For details, see [`commit_insert_blank_with_perm()`].
  */
-export declare function commitInsertBlank(
-	projectId: string,
-	relativeTo: RelativeTo,
-	side: InsertSide,
-): Promise<CommitInsertBlankResult>;
+export declare function commitInsertBlank(projectId: string, relativeTo: RelativeTo, side: InsertSide): Promise<CommitInsertBlankResult>
 
 /**
  * Moves `subject_commit_id` to `side` of `relative_to` and records an oplog
@@ -156,12 +123,7 @@ export declare function commitInsertBlank(
  *
  * For details, see [`commit_move_with_perm()`].
  */
-export declare function commitMove(
-	projectId: string,
-	subjectCommitId: string,
-	relativeTo: RelativeTo,
-	side: InsertSide,
-): Promise<CommitMoveResult>;
+export declare function commitMove(projectId: string, subjectCommitId: string, relativeTo: RelativeTo, side: InsertSide): Promise<CommitMoveResult>
 
 /**
  * Moves `changes` from `source_commit_id` to `destination_commit_id` and
@@ -172,12 +134,7 @@ export declare function commitMove(
  *
  * For details, see [`commit_move_changes_between_with_perm()`].
  */
-export declare function commitMoveChangesBetween(
-	projectId: string,
-	sourceCommitId: string,
-	destinationCommitId: string,
-	changes: Array<DiffSpec>,
-): Promise<MoveChangesResult>;
+export declare function commitMoveChangesBetween(projectId: string, sourceCommitId: string, destinationCommitId: string, changes: Array<DiffSpec>): Promise<MoveChangesResult>
 
 /**
  * Reword `commit_id` to `message` using the behavior described by
@@ -186,11 +143,7 @@ export declare function commitMoveChangesBetween(
  * This acquires exclusive worktree access from `ctx` before rewriting the
  * commit message and recording the oplog entry.
  */
-export declare function commitReword(
-	projectId: string,
-	commitId: string,
-	message: string,
-): Promise<CommitRewordResult>;
+export declare function commitReword(projectId: string, commitId: string, message: string): Promise<CommitRewordResult>
 
 /**
  * Squash `subject_commit_id` into `target_commit_id` and record an oplog
@@ -201,11 +154,7 @@ export declare function commitReword(
  *
  * For details, see [`commit_squash_with_perm()`].
  */
-export declare function commitSquash(
-	projectId: string,
-	subjectCommitId: string,
-	targetCommitId: string,
-): Promise<CommitSquashResult>;
+export declare function commitSquash(projectId: string, subjectCommitId: string, targetCommitId: string): Promise<CommitSquashResult>
 
 /**
  * Extract `changes` from `commit_id` and record the rewrite in the oplog.
@@ -215,12 +164,7 @@ export declare function commitSquash(
  *
  * See [`commit_uncommit_changes_with_perm()`] for details.
  */
-export declare function commitUncommitChanges(
-	projectId: string,
-	commitId: string,
-	changes: Array<DiffSpec>,
-	assignTo: string | null,
-): Promise<MoveChangesResult>;
+export declare function commitUncommitChanges(projectId: string, commitId: string, changes: Array<DiffSpec>, assignTo: string | null): Promise<MoveChangesResult>
 
 /** Undo `subject_commit_id` using the behavior described by [`commit_undo_only_with_perm()`]. */
 export declare function commitUndo(projectId: string, subjectCommitId: string): Promise<CommitUndoResult>
@@ -230,41 +174,27 @@ export declare function commitUndo(projectId: string, subjectCommitId: string): 
  *
  * This is determined by the forge the base branch is pointing to.
  */
-export declare function forgeProvider(projectId: string): Promise<ForgeName | null>;
+export declare function forgeProvider(projectId: string): Promise<ForgeName | null>
 
-export declare function getReview(projectId: string, reviewId: number): Promise<ForgeReview>;
+export declare function getReview(projectId: string, reviewId: number): Promise<ForgeReview>
 
-export declare function headInfo(projectId: string): Promise<RefInfo>;
+export declare function headInfo(projectId: string): Promise<RefInfo>
 
 /** Get the list of review template paths for the given project. */
-export declare function listAvailableReviewTemplates(projectId: string): Promise<Array<string>>;
+export declare function listAvailableReviewTemplates(projectId: string): Promise<Array<string>>
 
-export declare function listBranches(
-	projectId: string,
-	filter: BranchListingFilter | null,
-): Promise<Array<BranchListing>>;
+export declare function listBranches(projectId: string, filter: BranchListingFilter | null): Promise<Array<BranchListing>>
 
-export declare function listCiChecksAndUpdateCache(
-	projectId: string,
-	reference: string,
-	cacheConfig: CacheConfig | null,
-): Promise<Array<CiCheck>>;
+export declare function listCiChecksAndUpdateCache(projectId: string, reference: string, cacheConfig: CacheConfig | null): Promise<Array<CiCheck>>
 
-export declare function listProjectsStateless(): Promise<Array<ProjectForFrontend>>;
+export declare function listProjectsStateless(): Promise<Array<ProjectForFrontend>>
 
-export declare function listReviews(
-	projectId: string,
-	cacheConfig: CacheConfig | null,
-): Promise<Array<ForgeReview>>;
+export declare function listReviews(projectId: string, cacheConfig: CacheConfig | null): Promise<Array<ForgeReview>>
 
-export declare function listReviewsForBranch(
-	projectId: string,
-	branch: string,
-	filter: ForgeReviewFilter | null,
-): Promise<Array<ForgeReview>>;
+export declare function listReviewsForBranch(projectId: string, branch: string, filter: ForgeReviewFilter | null): Promise<Array<ForgeReview>>
 
 /** Merge a review on the forge. */
-export declare function mergeReview(projectId: string, reviewId: number): Promise<void>;
+export declare function mergeReview(projectId: string, reviewId: number): Promise<void>
 
 /**
  * Moves a branch using the behavior described by [`move_branch_with_perm()`].
@@ -272,25 +202,11 @@ export declare function mergeReview(projectId: string, reviewId: number): Promis
  * This acquires exclusive worktree access from `ctx`, moves `subject_branch`
  * on top of `target_branch`, and records an oplog snapshot on success.
  */
-export declare function moveBranch(
-	projectId: string,
-	subjectBranch: string,
-	targetBranch: string,
-): Promise<MoveBranchResult>;
+export declare function moveBranch(projectId: string, subjectBranch: string, targetBranch: string): Promise<MoveBranchResult>
 
-export declare function publishReview(
-	projectId: string,
-	params: CreateForgeReviewParams,
-): Promise<ForgeReview>;
+export declare function publishReview(projectId: string, params: CreateForgeReviewParams): Promise<ForgeReview>
 
-export declare function pushStackLegacy(
-	projectId: string,
-	stackId: string,
-	withForce: boolean,
-	skipForcePushProtection: boolean,
-	branch: string,
-	runHooks: boolean,
-): Promise<PushResult>;
+export declare function pushStackLegacy(projectId: string, stackId: string, withForce: boolean, skipForcePushProtection: boolean, branch: string, runHooks: boolean): Promise<PushResult>
 
 /**
  * Remove a branch from a stack.
@@ -301,11 +217,7 @@ export declare function pushStackLegacy(
  * This can only be called on a branch that's inside of a stack of multiple branches and is not the top branch,
  * or on a branch that's empty.
  */
-export declare function removeBranch(
-	projectId: string,
-	stackId: string,
-	branchName: string,
-): Promise<void>;
+export declare function removeBranch(projectId: string, stackId: string, branchName: string): Promise<void>
 
 /**
  * Get the review template content for the given project and relative path.
@@ -313,30 +225,19 @@ export declare function removeBranch(
  * This function determines the forge of a project and retrieves the review template
  * from the git config.
  */
-export declare function reviewTemplate(projectId: string): Promise<ReviewTemplateInfo | null>;
+export declare function reviewTemplate(projectId: string): Promise<ReviewTemplateInfo | null>
 
 /** Enable or disable a review's auto-merge. */
-export declare function setReviewAutoMerge(
-	projectId: string,
-	reviewId: number,
-	enable: boolean,
-): Promise<void>;
+export declare function setReviewAutoMerge(projectId: string, reviewId: number, enable: boolean): Promise<void>
 
 /** Set a review to draft or ready-for-review */
-export declare function setReviewDraftiness(
-	projectId: string,
-	reviewId: number,
-	draft: boolean,
-): Promise<void>;
+export declare function setReviewDraftiness(projectId: string, reviewId: number, draft: boolean): Promise<void>
 
 /**
  * Set the review template path in the git configuration for the given project.
  * The template path will be validated.
  */
-export declare function setReviewTemplate(
-	projectId: string,
-	templatePath: string | null,
-): Promise<void>;
+export declare function setReviewTemplate(projectId: string, templatePath: string | null): Promise<void>
 
 /**
  * Tears off a branch using the behavior described by [`tear_off_branch_with_perm()`].
@@ -344,10 +245,7 @@ export declare function setReviewTemplate(
  * This acquires exclusive worktree access from `ctx`, tears `subject_branch`
  * out of its current stack, and records an oplog snapshot on success.
  */
-export declare function tearOffBranch(
-	projectId: string,
-	subjectBranch: string,
-): Promise<MoveBranchResult>;
+export declare function tearOffBranch(projectId: string, subjectBranch: string): Promise<MoveBranchResult>
 
 /**
  * Produces a unified patch for `change`.
@@ -355,10 +253,7 @@ export declare function tearOffBranch(
  * `change` must not be a type change or a submodule change. For lower-level
  * implementation details, see [`but_core::TreeChange::unified_patch()`].
  */
-export declare function treeChangeDiffs(
-	projectId: string,
-	change: TreeChange,
-): Promise<UnifiedPatch | null>;
+export declare function treeChangeDiffs(projectId: string, change: TreeChange): Promise<UnifiedPatch | null>
 
 /**
  * Take the stack identified by `stack_id` out of the workspace.
@@ -369,7 +264,7 @@ export declare function treeChangeDiffs(
  * See [`unapply_stack_with_perm()`] for how assigned changes are collected before
  * delegating to the underlying mutation.
  */
-export declare function unapplyStack(projectId: string, stackId: string): Promise<void>;
+export declare function unapplyStack(projectId: string, stackId: string): Promise<void>
 
 /**
  * Change the branch name from `branch_name` to `new_name` in the stack
@@ -380,18 +275,10 @@ export declare function unapplyStack(projectId: string, stackId: string): Promis
  *
  * See [`update_branch_name_with_perm()`] for the underlying mutation.
  */
-export declare function updateBranchName(
-	projectId: string,
-	stackId: string,
-	branchName: string,
-	newName: string,
-): Promise<void>;
+export declare function updateBranchName(projectId: string, stackId: string, branchName: string, newName: string): Promise<void>
 
 /** Update the stacked review descriptions to have the correct footers. */
-export declare function updateReviewFooters(
-	projectId: string,
-	reviews: Array<ForgeReviewDescriptionUpdate>,
-): Promise<void>;
+export declare function updateReviewFooters(projectId: string, reviews: Array<ForgeReviewDescriptionUpdate>): Promise<void>
 
 /**
  * Warm up the CI checks cache for all applied branches with PRs.
@@ -400,17 +287,17 @@ export declare function updateReviewFooters(
  * Additionally, it cleans up stale CI check entries for references that are no longer
  * part of any applied stack.
  */
-export declare function warmCiChecksCache(projectId: string): Promise<void>;
+export declare function warmCiChecksCache(projectId: string): Promise<void>
 export declare class WatcherHandle {
-	/** Stop the underlying watcher if it is still active. */
-	stop(): boolean;
-	/** Returns true if this handle still owns a running watcher. */
-	get active(): boolean;
+  /** Stop the underlying watcher if it is still active. */
+  stop(): boolean
+  /** Returns true if this handle still owns a running watcher. */
+  get active(): boolean
 }
 
 export interface WatcherEvent {
-	name: string;
-	payload: WatcherPayload;
+  name: string
+  payload: WatcherPayload
 }
 
 /**
@@ -419,12 +306,7 @@ export interface WatcherEvent {
  * `project_id` can be a project handle or legacy project id.
  * `callback` receives watcher events shaped as `{ name, payload }`.
  */
-export declare function watcherStart(
-	projectId: string,
-	callback: (err: Error | null, arg: WatcherEvent) => any,
-): Promise<WatcherHandle>;
-
-
+export declare function watcherStart(projectId: string, callback: ((err: Error | null, arg: WatcherEvent) => any)): Promise<WatcherHandle>
 
 // Auto-generated by but-ts. Do not edit manually.
 // Generated from JSON schemas registered by #[but_api] functions.
