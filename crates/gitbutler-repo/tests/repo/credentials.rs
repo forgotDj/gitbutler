@@ -1,29 +1,20 @@
-use std::{path::PathBuf, str};
+use std::path::PathBuf;
 
 use crate::support::{setup_blackhole_store, test_repository};
 use but_ctx::{Context, RepoOpenMode};
 use but_settings::AppSettings;
 use gitbutler_project as projects;
 use gitbutler_repo::credentials::{Credential, SshCredential, help};
-use gitbutler_user as users;
 
 #[derive(Default)]
 struct TestCase<'a> {
     remote_url: &'a str,
-    with_github_login: bool,
     preferred_key: projects::AuthKey,
 }
 
 impl TestCase<'_> {
     fn run(&self) -> Vec<(String, Vec<Credential>)> {
         setup_blackhole_store();
-        let user: users::User = serde_json::from_str(if self.with_github_login {
-            include_str!("../../tests/fixtures/users/with-github.v1")
-        } else {
-            include_str!("../../tests/fixtures/users/login-only.v1")
-        })
-        .expect("valid v1 sample user");
-        gitbutler_user::set_user(&user).unwrap();
 
         let (repo, _tmp) = test_repository();
         repo.remote("origin", self.remote_url).unwrap();
@@ -58,7 +49,6 @@ mod not_github {
         fn https() {
             let test_case = TestCase {
                 remote_url: "https://gitlab.com/test-gitbutler/test.git",
-                with_github_login: true,
                 preferred_key: projects::AuthKey::Local {
                     private_key_path: PathBuf::from("/tmp/id_rsa"),
                 },
@@ -82,7 +72,6 @@ mod not_github {
         fn ssh() {
             let test_case = TestCase {
                 remote_url: "git@gitlab.com:test-gitbutler/test.git",
-                with_github_login: true,
                 preferred_key: projects::AuthKey::Local {
                     private_key_path: PathBuf::from("/tmp/id_rsa"),
                 },
@@ -117,7 +106,6 @@ mod github {
             fn https() {
                 let test_case = TestCase {
                     remote_url: "https://github.com/gitbutlerapp/gitbutler.git",
-                    with_github_login: true,
                     preferred_key: projects::AuthKey::Local {
                         private_key_path: PathBuf::from("/tmp/id_rsa"),
                     },
@@ -141,7 +129,6 @@ mod github {
             fn ssh() {
                 let test_case = TestCase {
                     remote_url: "git@github.com:gitbutlerapp/gitbutler.git",
-                    with_github_login: true,
                     preferred_key: projects::AuthKey::Local {
                         private_key_path: PathBuf::from("/tmp/id_rsa"),
                     },
