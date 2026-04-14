@@ -29,7 +29,6 @@ import {
 } from "#ui/domain/FileParent.ts";
 import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
 import { ProjectPreviewLayout } from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
-import { getFocus } from "#ui/routes/project/$id/state/layout.ts";
 import {
 	projectActions,
 	selectProjectExpandedCommitId,
