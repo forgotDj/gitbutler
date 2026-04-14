@@ -83,6 +83,7 @@ import {
 	Ref,
 	Suspense,
 	useImperativeHandle,
+	useLayoutEffect,
 	useOptimistic,
 	useRef,
 	useTransition,
@@ -260,12 +261,25 @@ const ItemRow: FC<
 	{
 		isSelected?: boolean;
 	} & ComponentProps<"div">
-> = ({ className, isSelected, ...props }) => (
-	<div
-		{...props}
-		className={classes(className, styles.itemRow, isSelected && styles.itemRowSelected)}
-	/>
-);
+> = ({ className, isSelected, ...props }) => {
+	const rowRef = useRef<HTMLDivElement | null>(null);
+
+	useLayoutEffect(() => {
+		if (!isSelected) return;
+		rowRef.current?.scrollIntoView({
+			block: "nearest",
+			inline: "nearest",
+		});
+	}, [isSelected]);
+
+	return (
+		<div
+			{...props}
+			ref={rowRef}
+			className={classes(className, styles.itemRow, isSelected && styles.itemRowSelected)}
+		/>
+	);
+};
 
 const DependencyIndicator: FC<
 	{
