@@ -25,7 +25,7 @@ use config::{Channel, InstallerConfig};
 pub use config::{Version, VersionRequest};
 use install::but_binary_path;
 use release::fetch_release;
-use shell::setup_path;
+use shell::configure_shell;
 use ui::{info, success};
 
 #[cfg(target_os = "linux")]
@@ -63,17 +63,22 @@ pub fn run_installation_with_version(
 /// Reads version from command-line arguments or GITBUTLER_VERSION environment variable.
 /// If neither is provided, installs the latest release.
 ///
-/// This is the entry point for the standalone installer binary, so it runs in
-/// interactive mode (runs onboarding and prints usage instructions).
+/// This is the entry point for the standalone installer binary, and runs in interactive mode with
+/// shell configuration and other onboarding if there is a terminal connected. Otherwise it runs
+/// non-interactively.
 ///
 /// Returns an error if any step fails. The function will attempt to rollback
 /// changes on installation failure.
 pub fn run_installation() -> Result<()> {
     let config = InstallerConfig::new()?;
-    run_installation_impl(config, true)
+    run_installation_impl(config, ui::is_connected_to_terminal())
 }
 
 fn run_installation_impl(config: InstallerConfig, interactive: bool) -> Result<()> {
+    if interactive && !ui::is_connected_to_terminal() {
+        anyhow::bail!("interactive mode requested, but there is no terminal to prompt on");
+    }
+
     info(&format!("Detected platform: {}", config.platform));
 
     // Fetch release information
@@ -115,8 +120,10 @@ fn run_installation_impl(config: InstallerConfig, interactive: bool) -> Result<(
 
     download_and_install_app(&config, platform_info, &release, channel)?;
 
-    // Setup PATH
-    setup_path(&config.home_dir)?;
+    if interactive {
+        info("Checking shell configuration");
+        configure_shell(&config.home_dir)?;
+    }
 
     ui::println_empty();
     success(&format!(
