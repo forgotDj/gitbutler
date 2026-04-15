@@ -10,7 +10,7 @@ use but_core::{
 };
 use gix::{objs::tree::EntryKind, prelude::ObjectIdExt as _};
 
-use crate::{cherry_pick::function::ConflictEntries, commit::DateMode};
+use crate::{cherry_pick::ConflictEntries, commit::DateMode};
 
 /// Describes the outcome of cherrypick.
 #[derive(Debug, Clone)]

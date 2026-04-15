@@ -5,23 +5,23 @@ use but_core::ref_metadata::MaybeDebug;
 use crate::WorkspaceCommit;
 
 pub mod reword;
-pub use reword::function::reword;
+pub use reword::reword;
 pub mod commit_create;
-pub use commit_create::function::{CommitCreateOutcome, commit_create};
+pub use commit_create::{CommitCreateOutcome, commit_create};
 pub mod commit_amend;
-pub use commit_amend::function::{CommitAmendOutcome, commit_amend};
+pub use commit_amend::{CommitAmendOutcome, commit_amend};
 pub mod insert_blank_commit;
-pub use insert_blank_commit::function::insert_blank_commit;
+pub use insert_blank_commit::insert_blank_commit;
 pub mod move_changes;
-pub use move_changes::function::{MoveChangesOutcome, move_changes_between_commits};
+pub use move_changes::{MoveChangesOutcome, move_changes_between_commits};
 pub mod uncommit_changes;
-pub use uncommit_changes::function::{UncommitChangesOutcome, uncommit_changes};
+pub use uncommit_changes::{UncommitChangesOutcome, uncommit_changes};
 pub mod move_commit;
-pub use move_commit::function::move_commit;
+pub use move_commit::move_commit;
 pub mod discard_commit;
-pub use discard_commit::function::discard_commit;
+pub use discard_commit::discard_commit;
 pub mod squash_commits;
-pub use squash_commits::function::{SquashCommitsOutcome, squash_commits};
+pub use squash_commits::{SquashCommitsOutcome, squash_commits};
 
 /// A minimal stack for use by [WorkspaceCommit::new_from_stacks()].
 #[derive(Clone)]

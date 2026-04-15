@@ -8,7 +8,7 @@ use gix::{
 use itertools::Itertools;
 
 use crate::{
-    ref_info::function::workspace_data_of_default_workspace_branch,
+    ref_info::workspace_data_of_default_workspace_branch,
     ui,
     ui::{CommitState, PushStatus, UpstreamCommit},
 };

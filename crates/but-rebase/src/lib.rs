@@ -16,7 +16,7 @@ pub mod graph_rebase;
 
 /// Types for use with cherry-picking
 pub mod cherry_pick;
-pub use cherry_pick::function::cherry_pick_one;
+pub use cherry_pick::cherry_pick_one;
 
 use crate::cherry_pick::{EmptyCommit, PickMode};
 

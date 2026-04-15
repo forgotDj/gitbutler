@@ -29,7 +29,7 @@ use crate::{
 };
 
 fn default_workspace_metadata(meta: &impl RefMetadata) -> anyhow::Result<Option<Workspace>> {
-    ref_info::function::workspace_data_of_default_workspace_branch(meta)
+    ref_info::workspace_data_of_default_workspace_branch(meta)
 }
 
 /// Build a lookup from workspace branch ref names to their stable stack IDs.
