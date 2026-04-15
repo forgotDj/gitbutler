@@ -308,6 +308,15 @@ fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
     });
 
     key_binds.register(StaticKeyBind {
+        short_description: "reverse rub",
+        chord_display: "shift+r",
+        key_matcher: press().shift().code(KeyCode::Char('R')),
+        modes: Vec::from([ModeDiscriminant::Normal]),
+        message: Message::Rub(RubMessage::StartReverse),
+        hide_from_hotbar: false,
+    });
+
+    key_binds.register(StaticKeyBind {
         short_description: "commit",
         chord_display: "c",
         key_matcher: press().code(KeyCode::Char('c')),
@@ -367,15 +376,6 @@ fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
         key_matcher: press().shift().code(KeyCode::Char('M')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Reword(RewordMessage::WithEditor),
-        hide_from_hotbar: false,
-    });
-
-    key_binds.register(StaticKeyBind {
-        short_description: "amend",
-        chord_display: "a",
-        key_matcher: press().code(KeyCode::Char('a')),
-        modes: Vec::from([ModeDiscriminant::Normal]),
-        message: Message::Amend,
         hide_from_hotbar: false,
     });
 
