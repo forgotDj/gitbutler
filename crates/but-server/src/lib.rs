@@ -686,6 +686,14 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(legacy::users::login_with_token_cmd),
         )
         .route(
+            "/get_user_profile",
+            but_post(legacy::users::get_user_profile_cmd),
+        )
+        .route(
+            "/update_user_profile",
+            but_post(legacy::users::update_user_profile_cmd),
+        )
+        .route(
             "/update_project",
             but_post(legacy::projects::update_project_cmd),
         )

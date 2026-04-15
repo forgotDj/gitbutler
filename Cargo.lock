@@ -4340,6 +4340,7 @@ name = "gitbutler-user"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "but-path",
  "but-secret",
  "but-utils",

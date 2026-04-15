@@ -110,3 +110,17 @@ pub fn get_login_token() -> Result<gitbutler_user::api::LoginToken> {
 pub fn login_with_token(token: String) -> Result<serde_json::Value> {
     gitbutler_user::api::fetch_user_by_token(&token)
 }
+
+#[but_api]
+#[instrument(err(Debug))]
+pub fn get_user_profile() -> Result<serde_json::Value> {
+    gitbutler_user::api::fetch_user_profile()
+}
+
+#[but_api]
+#[instrument(skip(params), err(Debug))]
+pub fn update_user_profile(
+    params: gitbutler_user::api::UpdateUserParams,
+) -> Result<serde_json::Value> {
+    gitbutler_user::api::update_user_profile(params)
+}

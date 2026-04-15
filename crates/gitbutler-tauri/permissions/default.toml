@@ -92,6 +92,7 @@ commands.allow = [
   "get_project",
   "get_project_archive_path",
   "get_user",
+  "get_user_profile",
   "get_workspace_file",
   "git_clone_repository",
   "git_get_global_config",
@@ -221,6 +222,7 @@ commands.allow = [
   "update_telemetry",
   "update_telemetry_distinct_id",
   "update_ui",
+  "update_user_profile",
   "update_workspace_rule",
   "upstream_integration_statuses",
 ]

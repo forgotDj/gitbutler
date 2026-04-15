@@ -324,6 +324,8 @@ fn main() -> anyhow::Result<()> {
                 legacy::users::tauri_get_user::get_user,
                 legacy::users::tauri_get_login_token::get_login_token,
                 legacy::users::tauri_login_with_token::login_with_token,
+                legacy::users::tauri_get_user_profile::get_user_profile,
+                legacy::users::tauri_update_user_profile::update_user_profile,
                 legacy::projects::tauri_add_project::add_project,
                 legacy::projects::tauri_add_project_best_effort::add_project_best_effort,
                 legacy::projects::tauri_get_project::get_project,

@@ -117,6 +117,116 @@ pub fn fetch_user_by_token(token: &str) -> Result<serde_json::Value> {
     })
 }
 
+/// Read the stored user's access token from disk.
+fn stored_access_token() -> Result<String> {
+    let user = crate::get_user()?.context("No logged-in user")?;
+    Ok(user.access_token()?.0)
+}
+
+/// Fetch the authenticated user's profile from the GitButler API.
+///
+/// Calls `GET /api/user.json` using the stored user's access token.
+pub fn fetch_user_profile() -> Result<serde_json::Value> {
+    let api_url = default_api_url();
+    let token = stored_access_token()?;
+    run_async(async move {
+        let url = format!("{api_url}/api/user.json");
+        let client = http_client();
+        let resp = client
+            .get(&url)
+            .header("X-Auth-Token", &token)
+            .send()
+            .await
+            .context("Failed to reach GitButler API for user profile")?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(ApiHttpError { status, body }.into());
+        }
+        resp.json()
+            .await
+            .context("Failed to parse user profile response")
+    })
+}
+
+/// Parameters for updating the user profile.
+#[derive(Debug, Deserialize)]
+pub struct UpdateUserParams {
+    pub name: Option<String>,
+    pub website: Option<String>,
+    pub twitter: Option<String>,
+    pub bluesky: Option<String>,
+    pub timezone: Option<String>,
+    pub location: Option<String>,
+    pub email_share: Option<bool>,
+    /// Base64-encoded avatar image bytes.
+    pub avatar_base64: Option<String>,
+    /// Original filename of the avatar (e.g. "photo.png").
+    pub avatar_filename: Option<String>,
+}
+
+/// Update the authenticated user's profile on the GitButler API.
+///
+/// Calls `PUT /api/user.json` with multipart form data.
+pub fn update_user_profile(params: UpdateUserParams) -> Result<serde_json::Value> {
+    let api_url = default_api_url();
+    let token = stored_access_token()?;
+    run_async(async move {
+        let url = format!("{api_url}/api/user.json");
+        let client = http_client();
+
+        let mut form = reqwest::multipart::Form::new();
+        if let Some(name) = params.name {
+            form = form.text("name", name);
+        }
+        if let Some(website) = params.website {
+            form = form.text("website", website);
+        }
+        if let Some(twitter) = params.twitter {
+            form = form.text("twitter", twitter);
+        }
+        if let Some(bluesky) = params.bluesky {
+            form = form.text("bluesky", bluesky);
+        }
+        if let Some(timezone) = params.timezone {
+            form = form.text("timezone", timezone);
+        }
+        if let Some(location) = params.location {
+            form = form.text("location", location);
+        }
+        if let Some(email_share) = params.email_share {
+            form = form.text("email_share", email_share.to_string());
+        }
+        if let Some(avatar_b64) = params.avatar_base64 {
+            use base64::Engine as _;
+            let bytes = base64::engine::general_purpose::STANDARD
+                .decode(&avatar_b64)
+                .context("Invalid base64 in avatar data")?;
+            let filename = params
+                .avatar_filename
+                .unwrap_or_else(|| "avatar".to_string());
+            let part = reqwest::multipart::Part::bytes(bytes).file_name(filename);
+            form = form.part("avatar", part);
+        }
+
+        let resp = client
+            .put(&url)
+            .header("X-Auth-Token", &token)
+            .multipart(form)
+            .send()
+            .await
+            .context("Failed to reach GitButler API for profile update")?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            return Err(ApiHttpError { status, body }.into());
+        }
+        resp.json()
+            .await
+            .context("Failed to parse profile update response")
+    })
+}
+
 /// Check whether a token belongs to a specific user.
 ///
 /// This is a convenience wrapper around [`fetch_user_by_token`] used by

@@ -15,6 +15,7 @@ but-utils = { workspace = true, features = ["legacy"] }
 but-path.workspace = true
 
 anyhow.workspace = true
+base64.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 thiserror.workspace = true
