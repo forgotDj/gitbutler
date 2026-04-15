@@ -338,7 +338,7 @@ impl Details {
         Ok(())
     }
 
-    fn ensure_selection_visible(&mut self, viewport: Rect) {
+    pub(super) fn ensure_selection_visible(&mut self, viewport: Rect) {
         let Some(selection) = self.cursor.selection() else {
             return;
         };

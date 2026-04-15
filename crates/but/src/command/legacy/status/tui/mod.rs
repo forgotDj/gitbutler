@@ -711,20 +711,18 @@ impl App {
                 });
             }
             Message::GrowDetails => {
-                if self.details.is_visible() {
-                    self.status_width_percentage = self
-                        .status_width_percentage
-                        .saturating_sub(DETAILS_SIZE_ADJUSTMENT_PERCENTAGE)
-                        .max(100 - DETAILS_MAX_SIZE_PERCENTAGE);
-                }
+                self.update_status_width_percentage(
+                    self.status_width_percentage
+                        .saturating_sub(DETAILS_SIZE_ADJUSTMENT_PERCENTAGE),
+                    terminal_area,
+                );
             }
             Message::ShrinkDetails => {
-                if self.details.is_visible() {
-                    self.status_width_percentage = self
-                        .status_width_percentage
-                        .saturating_add(DETAILS_SIZE_ADJUSTMENT_PERCENTAGE)
-                        .min(100 - DETAILS_MIN_SIZE_PERCENTAGE);
-                }
+                self.update_status_width_percentage(
+                    self.status_width_percentage
+                        .saturating_add(DETAILS_SIZE_ADJUSTMENT_PERCENTAGE),
+                    terminal_area,
+                );
             }
         }
 
@@ -2695,6 +2693,20 @@ impl App {
         );
 
         frame.render_widget(list, area);
+    }
+
+    fn update_status_width_percentage(&mut self, new: u16, terminal_area: Rect) {
+        if !self.details.is_visible() {
+            return;
+        }
+
+        self.status_width_percentage = new.clamp(
+            100 - DETAILS_MAX_SIZE_PERCENTAGE,
+            100 - DETAILS_MIN_SIZE_PERCENTAGE,
+        );
+
+        let details_viewport = self.details_viewport(terminal_area);
+        self.details.ensure_selection_visible(details_viewport);
     }
 }
 

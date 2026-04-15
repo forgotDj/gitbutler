@@ -245,3 +245,28 @@ fn details_view_resize_clamps_to_max_and_min_width() {
             "snapshots/details_view_resize_clamps_to_max_and_min_width_001.svg"
         ]);
 }
+
+#[test]
+fn details_cursor_stays_visible_after_resizing() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+
+    let long_lines = (1..=80)
+        .map(|line| format!("this is a deliberately long line in alpha.txt #{line:03} that should wrap in narrow detail panes\n"))
+        .collect::<String>();
+
+    env.file("alpha.txt", long_lines);
+    env.file("beta.txt", "beta\n");
+
+    let mut tui = test_tui_with_size(env, 80, 10);
+
+    tui.input_then_render('d');
+    tui.input_then_render('l');
+    tui.input_then_render("----------");
+    tui.input_then_render('j');
+
+    tui.input_then_render("++++++++++")
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/details_cursor_stays_visible_after_resizing_001.svg"
+        ]);
+}
