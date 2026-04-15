@@ -380,15 +380,6 @@ fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
     });
 
     key_binds.register(StaticKeyBind {
-        short_description: "amend",
-        chord_display: "a",
-        key_matcher: press().code(KeyCode::Char('a')),
-        modes: Vec::from([ModeDiscriminant::Normal]),
-        message: Message::Amend,
-        hide_from_hotbar: false,
-    });
-
-    key_binds.register(StaticKeyBind {
         short_description: "files",
         chord_display: "f",
         key_matcher: press().code(KeyCode::Char('f')),

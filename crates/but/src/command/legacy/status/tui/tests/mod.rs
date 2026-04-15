@@ -565,46 +565,6 @@ fn key_b_creates_new_branch_from_selected_branch() {
 }
 
 #[test]
-fn key_a_amends_selected_commit() {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
-    env.setup_metadata(&["A"]).unwrap();
-
-    let mut tui = test_tui(env);
-
-    tui.env().file("test.txt", "content");
-
-    tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unassigned changes]"]);
-
-    tui.input_then_render([KeyCode::Down, KeyCode::Down, KeyCode::Down])
-        .assert_current_line_eq(str!["┊●   [..] add A"]);
-
-    tui.input_then_render('a')
-        .assert_current_line_eq(str!["┊●   [..] add A"])
-        .assert_rendered_contains("Amend unassigned into");
-
-    tui.input_then_render('y')
-        .assert_current_line_eq(str!["┊●   [..] add A"]);
-
-    let status = tui.env().invoke_git("status --porcelain");
-    assert_eq!(status, "", "expected amend to consume all worktree changes");
-}
-
-#[test]
-fn key_a_on_non_commit_selection_is_noop() {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
-    env.setup_metadata(&["A"]).unwrap();
-
-    let mut tui = test_tui(env);
-
-    tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
-
-    tui.input_then_render('a')
-        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
-}
-
-#[test]
 fn rubbing() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
     env.setup_metadata(&["A"]).unwrap();
