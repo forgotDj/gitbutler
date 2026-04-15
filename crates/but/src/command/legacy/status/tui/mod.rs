@@ -33,7 +33,10 @@ use crate::{
     CliId,
     command::legacy::{
         reword::get_branch_name_from_editor,
-        rub::RubOperationDiscriminants,
+        rub::{
+            RubOperation, RubOperationDiscriminants, StackToCommitOperation,
+            UnassignedToCommitOperation,
+        },
         status::{
             CommitLineContent, FileLineContent, StatusFlags, StatusOutputLine, TuiLaunchOptions,
             output::BranchLineContent,
@@ -723,6 +726,9 @@ impl App {
                         .saturating_add(DETAILS_SIZE_ADJUSTMENT_PERCENTAGE),
                     terminal_area,
                 );
+            }
+            Message::Amend => {
+                self.handle_amend(ctx)?;
             }
         }
 
@@ -2689,6 +2695,57 @@ impl App {
         let details_viewport = self.details_viewport(terminal_area);
         self.details.ensure_selection_visible(details_viewport);
     }
+
+    fn handle_amend(&mut self, ctx: &mut Context) -> anyhow::Result<()> {
+        let Some(selection) = self
+            .cursor
+            .selected_line(&self.status_lines)
+            .and_then(|line| line.data.cli_id())
+        else {
+            return Ok(());
+        };
+
+        let CliId::Commit { commit_id, .. } = &**selection else {
+            return Ok(());
+        };
+
+        let stack_id = {
+            let (_guard, _, ws, _) = ctx.workspace_and_db()?;
+            ws.find_commit_and_containers(*commit_id)
+                .and_then(|(stack, _, _)| stack.id)
+        };
+
+        let (operation, confirm_message) = if let Some(stack_id) = stack_id
+            && operations::stack_has_assigned_changes(ctx, stack_id)?
+        {
+            (
+                RubOperation::StackToCommit(StackToCommitOperation {
+                    from: stack_id,
+                    to: *commit_id,
+                }),
+                format!(
+                    "Amend changes assigned to stack into {}?",
+                    commit_id.to_hex_with_len(7)
+                ),
+            )
+        } else {
+            (
+                RubOperation::UnassignedToCommit(UnassignedToCommitOperation { oid: *commit_id }),
+                format!("Amend unassigned into {}?", commit_id.to_hex_with_len(7)),
+            )
+        };
+
+        self.confirm = Some(Confirm::new(
+            confirm_message,
+            run_after_confirmation_msg(move |_, ctx, messages| {
+                let what_to_select = operations::rub(ctx, &operation)?;
+                messages.push(Message::Reload(what_to_select));
+                Ok(())
+            }),
+        ));
+
+        Ok(())
+    }
 }
 
 fn event_to_messages(ev: Event, key_binds: &KeyBinds, mode: &Mode, messages: &mut Vec<Message>) {
@@ -2775,6 +2832,7 @@ enum Message {
     EnterDetailsMode,
     LeaveDetailsMode,
     NewBranch,
+    Amend,
 
     // Utilities
     CopySelection,
