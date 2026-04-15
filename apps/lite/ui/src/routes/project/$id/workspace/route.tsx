@@ -64,6 +64,7 @@ import {
 } from "#ui/native-menu.ts";
 import uiStyles from "#ui/ui.module.css";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
+import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import {
 	AbsorptionTarget,
 	Commit,
@@ -265,8 +266,9 @@ const ItemRow: FC<
 	{
 		isSelected?: boolean;
 	} & ComponentProps<"div">
-> = ({ className, isSelected, ...props }) => {
+> = ({ className, isSelected, ref: refProp, ...props }) => {
 	const rowRef = useRef<HTMLDivElement | null>(null);
+	const mergedRef = useMergedRefs(rowRef, refProp);
 
 	useLayoutEffect(() => {
 		if (!isSelected) return;
@@ -279,7 +281,7 @@ const ItemRow: FC<
 	return (
 		<div
 			{...props}
-			ref={rowRef}
+			ref={mergedRef}
 			className={classes(className, styles.itemRow, isSelected && styles.itemRowSelected)}
 		/>
 	);
