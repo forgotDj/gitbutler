@@ -16,6 +16,7 @@ export const OperationSourceLabel: FC<{
 }> = ({ source, headInfo }) =>
 	Match.value(source).pipe(
 		Match.tagsExhaustive({
+			Stack: () => "Stack",
 			Segment: ({ branchRef }) => {
 				const segment = findSegmentByBranchRef({ headInfo, branchRef });
 				if (segment?.refName) return segment.refName.displayName;

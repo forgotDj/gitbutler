@@ -21,6 +21,8 @@ import {
 	type Item,
 	segmentItem,
 	type SegmentItem,
+	StackItem,
+	stackItem,
 } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
 import { operationSourceFromItem } from "./OperationSource.ts";
@@ -251,6 +253,11 @@ type SegmentDefaultModeScope = {
 	context: SegmentItem;
 };
 
+type StackDefaultModeScope = {
+	bindings: Array<ShortcutBinding<PrimaryPanelAction>>;
+	context: StackItem;
+};
+
 type DefaultModeScope =
 	| ({ _tag: "BaseCommit" } & BaseCommitDefaultModeScope)
 	| ({ _tag: "Branch" } & BranchDefaultModeScope)
@@ -258,6 +265,7 @@ type DefaultModeScope =
 	| ({ _tag: "ChangesSection" } & ChangesSectionDefaultModeScope)
 	| ({ _tag: "Commit" } & CommitDefaultModeScope)
 	| ({ _tag: "CommitFile" } & CommitFileDefaultModeScope)
+	| ({ _tag: "Stack" } & StackDefaultModeScope)
 	| ({ _tag: "Segment" } & SegmentDefaultModeScope);
 
 const baseCommitDefaultModeScope = ({
@@ -312,6 +320,12 @@ const commitFileDefaultModeScope = ({
 	context,
 });
 
+const stackDefaultModeScope = ({ bindings, context }: StackDefaultModeScope): DefaultModeScope => ({
+	_tag: "Stack",
+	bindings,
+	context,
+});
+
 const segmentDefaultModeScope = ({
 	bindings,
 	context,
@@ -348,6 +362,11 @@ const getDefaultModeScope = (selectedItem: Item): DefaultModeScope =>
 					bindings: commitFilesBindings,
 					context: selectedItem,
 				}),
+			Stack: (selectedItem) =>
+				stackDefaultModeScope({
+					bindings: primaryPanelBindings,
+					context: selectedItem,
+				}),
 			Segment: (selectedItem) =>
 				selectedItem.branchRef === null
 					? segmentDefaultModeScope({
@@ -370,6 +389,7 @@ const getDefaultModeScopeLabel = (scope: DefaultModeScope): string =>
 			ChangesSection: () => "Changes",
 			Commit: () => "Commit",
 			CommitFile: () => "Commit file",
+			Stack: () => "Stack",
 			Segment: () => "Segment",
 		}),
 	);
@@ -873,6 +893,12 @@ export const useWorkspaceShortcuts = ({
 					if (!action) return;
 					event.preventDefault();
 					handleCommitFileScopeAction(action, scope.context);
+				},
+				Stack: (scope) => {
+					const action = getAction(scope.bindings, event);
+					if (!action) return;
+					event.preventDefault();
+					handlePrimaryPanelAction(action, stackItem(scope.context));
 				},
 				Segment: (scope) => {
 					const action = getAction(scope.bindings, event);

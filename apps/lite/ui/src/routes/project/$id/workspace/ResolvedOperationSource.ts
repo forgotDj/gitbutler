@@ -39,6 +39,8 @@ type TreeChangeWithHunkHeaders = {
 /** @public */
 export type CommitResolvedOperationSource = { commitId: string };
 /** @public */
+export type StackResolvedOperationSource = { stackId: string };
+/** @public */
 export type SegmentResolvedOperationSource = { branchRef: Array<number> | null };
 /** @public */
 export type TreeChangesResolvedOperationSource = {
@@ -52,6 +54,7 @@ export type TreeChangesResolvedOperationSource = {
 export type ResolvedOperationSource =
 	| { _tag: "BaseCommit" }
 	| ({ _tag: "Commit" } & CommitResolvedOperationSource)
+	| ({ _tag: "Stack" } & StackResolvedOperationSource)
 	| ({ _tag: "Segment" } & SegmentResolvedOperationSource)
 	| ({ _tag: "TreeChanges" } & TreeChangesResolvedOperationSource);
 
@@ -66,6 +69,14 @@ export const commitResolvedOperationSource = ({
 }: CommitResolvedOperationSource): ResolvedOperationSource => ({
 	_tag: "Commit",
 	commitId,
+});
+
+/** @public */
+export const stackResolvedOperationSource = ({
+	stackId,
+}: StackResolvedOperationSource): ResolvedOperationSource => ({
+	_tag: "Stack",
+	stackId,
 });
 
 /** @public */
@@ -97,6 +108,7 @@ const resolveOperationSource = ({
 }) =>
 	Match.value(operationSource).pipe(
 		Match.tagsExhaustive({
+			Stack: ({ stackId }) => stackResolvedOperationSource({ stackId }),
 			Segment: ({ branchRef }) => segmentResolvedOperationSource({ branchRef }),
 			BaseCommit: () => baseCommitResolvedOperationSource,
 			Commit: ({ commitId }) => commitResolvedOperationSource({ commitId }),
@@ -202,6 +214,7 @@ export const getCombineOperation = ({
 }): Operation | null =>
 	Match.value(resolvedOperationSource).pipe(
 		Match.tagsExhaustive({
+			Stack: () => null,
 			Segment: () => null,
 			BaseCommit: () => null,
 			Commit: ({ commitId: sourceCommitId }) =>
