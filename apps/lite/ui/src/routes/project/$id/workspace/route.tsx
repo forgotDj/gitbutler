@@ -830,16 +830,16 @@ const EditorHelp: FC<{
 const InlineCommitMessageEditor: FC<{
 	message: string;
 	onSubmit: (value: string) => void;
-	onCancel: () => void;
+	onExit: () => void;
 	formRef?: Ref<HTMLFormElement>;
-}> = ({ message, onSubmit, onCancel, formRef }) => (
+}> = ({ message, onSubmit, onExit, formRef }) => (
 	<form
 		ref={formRef}
 		className={styles.editorForm}
 		onSubmit={(event) => {
 			event.preventDefault();
 			const formData = new FormData(event.currentTarget);
-			onCancel();
+			onExit();
 			onSubmit(formData.get("message") as string);
 		}}
 	>
@@ -1007,7 +1007,7 @@ const CommitRow: FC<
 					formRef={commitMessageFormRef}
 					message={optimisticMessage}
 					onSubmit={saveNewMessage}
-					onCancel={endEditing}
+					onExit={endEditing}
 				/>
 			) : (
 				<>
