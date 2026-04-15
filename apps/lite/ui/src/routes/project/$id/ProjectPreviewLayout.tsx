@@ -32,6 +32,8 @@ export const ProjectPreviewLayout: FC<{
 		? ["primary", "preview"]
 		: ["primary"];
 	const focus = getFocus(layoutState);
+	const focusPrimary = () => dispatch(projectActions.focusPrimary({ projectId }));
+	const focusPreview = () => dispatch(projectActions.focusPreview({ projectId }));
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
 		id: `project:${projectId}:layout`,
 		panelIds,
@@ -53,6 +55,7 @@ export const ProjectPreviewLayout: FC<{
 				<Panel
 					id={"primary" satisfies PanelType}
 					minSize={400}
+					onPointerDown={focusPrimary}
 					className={classes(
 						sharedStyles.panel,
 						sharedStyles.primaryPanel,
@@ -68,6 +71,7 @@ export const ProjectPreviewLayout: FC<{
 							id={"preview" satisfies PanelType}
 							minSize={300}
 							defaultSize="70%"
+							onPointerDown={focusPreview}
 							className={classes(
 								sharedStyles.panel,
 								sharedStyles.previewPanel,
