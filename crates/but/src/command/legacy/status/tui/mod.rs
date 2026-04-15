@@ -604,6 +604,9 @@ impl App {
                 } => {
                     self.handle_start_rub_with_source(source, unlock_details);
                 }
+                RubMessage::StartReverse => {
+                    self.handle_rub_start_reverse(ctx)?;
+                }
                 RubMessage::Confirm => self.handle_confirm_rub(ctx, messages)?,
             },
             Message::EnterNormalMode => {
@@ -813,6 +816,24 @@ impl App {
         self.handle_start_rub_with_source(RubSource::CliId(Arc::clone(cli_id)), None);
     }
 
+    fn available_targets_for_rub_mode(&self, source: &RubSource) -> Vec<Arc<CliId>> {
+        self
+            .status_lines
+            .iter()
+            .filter_map(|line| line.data.cli_id())
+            .filter(|target| {
+                *source == ***target
+                    || match &source {
+                        RubSource::CliId(source) => rub::route_operation(source, target).is_some(),
+                        RubSource::CommittedHunk(hunk) => {
+                            rub_from_detail_view::route_operation(hunk, target).is_some()
+                        }
+                    }
+            })
+            .cloned()
+            .collect::<Vec<_>>()
+    }
+
     fn handle_start_rub_with_source(
         &mut self,
         source: RubSource,
@@ -827,21 +848,7 @@ impl App {
             RubSource::CommittedHunk(..) => {}
         }
 
-        let available_targets = self
-            .status_lines
-            .iter()
-            .filter_map(|line| line.data.cli_id())
-            .filter(|target| {
-                source == ***target
-                    || match &source {
-                        RubSource::CliId(source) => rub::route_operation(source, target).is_some(),
-                        RubSource::CommittedHunk(hunk) => {
-                            rub_from_detail_view::route_operation(hunk, target).is_some()
-                        }
-                    }
-            })
-            .cloned()
-            .collect::<Vec<_>>();
+        let available_targets = self.available_targets_for_rub_mode(&source);
 
         self.mode = Mode::Rub(RubMode {
             source,
@@ -870,6 +877,61 @@ impl App {
         {
             self.cursor = new_cursor;
         }
+    }
+
+    fn handle_rub_start_reverse(&mut self, ctx: &mut Context) -> anyhow::Result<()> {
+        let Some(selection) = self
+            .cursor
+            .selected_line(&self.status_lines)
+            .and_then(|line| line.data.cli_id())
+        else {
+            return Ok(());
+        };
+
+        let CliId::Commit { commit_id, .. } = &**selection else {
+            return Ok(());
+        };
+
+        let stack_id = {
+            let (_guard, _, ws, _) = ctx.workspace_and_db()?;
+            ws.find_commit_and_containers(*commit_id)
+                .and_then(|(stack, _, _)| stack.id)
+        };
+
+        let source = if let Some(stack_id) = stack_id
+            && operations::stack_has_assigned_changes(ctx, stack_id)?
+            && let Some(id) = self
+                .status_lines
+                .iter()
+                .filter_map(|line| line.data.cli_id())
+                .find_map(|id| {
+                    if let CliId::Stack { id, stack_id: sid } = &**id
+                        && *sid == stack_id
+                    {
+                        Some(id)
+                    } else {
+                        None
+                    }
+                }) {
+            RubSource::CliId(Arc::new(CliId::Stack {
+                id: id.to_owned(),
+                stack_id,
+            }))
+        } else {
+            RubSource::CliId(Arc::new(CliId::Unassigned {
+                id: UNASSIGNED.to_owned(),
+            }))
+        };
+
+        let available_targets = self.available_targets_for_rub_mode(&source);
+
+        self.mode = Mode::Rub(RubMode {
+            source,
+            available_targets,
+            _unlock_details: None,
+        });
+
+        Ok(())
     }
 
     /// Handles toggling file visibility and requests a status reload.
@@ -2887,6 +2949,7 @@ enum RubMessage {
         source: RubSource,
         unlock_details: Option<MessageOnDrop>,
     },
+    StartReverse,
     Confirm,
 }
 

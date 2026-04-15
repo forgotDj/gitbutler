@@ -111,6 +111,71 @@ fn rub_api_cannot_rub_into_branches() {
         ]);
 }
 
+// Tests RubMessage::StartReverse on a commit when unassigned has changes.
+#[test]
+fn rub_api_reverse_rub_uses_unassigned_source_when_unassigned_has_changes() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.env().file("test.txt", "content");
+    tui.env().invoke_git("add test.txt");
+
+    tui.input_then_render(None)
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes]"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
+        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
+
+    tui.input_then_render(KeyCode::Down)
+        .assert_current_line_eq(str!["┊●   [..] add A"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+        .assert_current_line_eq(str!["┊●   << amend >> [..] add A"]);
+
+    tui.input_then_render([KeyCode::Up, KeyCode::Up])
+        .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unassigned changes]"]);
+}
+
+// Tests RubMessage::StartReverse with unassigned source when stack has no assigned changes.
+#[test]
+fn rub_api_reverse_rub_uses_unassigned_source_when_stack_has_no_assigned_changes() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render(None)
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
+
+    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+        .assert_current_line_eq(str!["┊●   [..] add A"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+        .assert_current_line_eq(str!["┊●   << amend >> [..] add A"]);
+
+    tui.input_then_render([KeyCode::Up, KeyCode::Up])
+        .assert_current_line_eq(str![
+            "╭┄<< source >> << noop >> zz [unassigned changes] (no changes)"
+        ]);
+}
+
+// Tests RubMessage::StartReverse is a no-op when not selecting a commit.
+#[test]
+fn rub_api_reverse_rub_is_noop_on_non_commit_selection() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render(None)
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('R')))
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
+}
+
 // Tests RubOperation::UndoCommit.
 #[test]
 fn rub_api_undo_commit_operation() {
