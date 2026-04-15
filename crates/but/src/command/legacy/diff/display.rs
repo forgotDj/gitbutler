@@ -3,14 +3,15 @@ use but_hunk_assignment::HunkAssignment;
 use colored::Colorize;
 
 use crate::command::legacy::status::status_letter_ui;
+use crate::theme::Paint as _;
 
-// TODO: replace this with `crate::command::legacy::status::path_with_color_ui`
 fn path_with_color_ui(status: &ui::TreeStatus, path: String) -> colored::ColoredString {
+    let t = crate::theme::get();
     match status {
-        ui::TreeStatus::Addition { .. } => path.green(),
-        ui::TreeStatus::Deletion { .. } => path.red(),
-        ui::TreeStatus::Modification { .. } => path.yellow(),
-        ui::TreeStatus::Rename { .. } => path.purple(),
+        ui::TreeStatus::Addition { .. } => t.addition.paint(&path),
+        ui::TreeStatus::Deletion { .. } => t.deletion.paint(&path),
+        ui::TreeStatus::Modification { .. } => t.modification.paint(&path),
+        ui::TreeStatus::Rename { .. } => t.renaming.paint(&path),
     }
 }
 
@@ -158,14 +159,18 @@ fn fmt_hunk(hunk: &DiffHunk) -> String {
             '+' => {
                 // Added line: show blank old line number, show new line number
                 let line_nums = format!("{:>width$} {:>width$}", "", new_line, width = width);
-                let formatted_line = format!("{line_nums}│+{content_str}").green();
+                let formatted_line = crate::theme::get()
+                    .addition
+                    .paint(&format!("{line_nums}│+{content_str}"));
                 output.push_str(&format!("   {formatted_line}\n"));
                 new_line += 1;
             }
             '-' => {
                 // Removed line: show old line number, blank new line number
                 let line_nums = format!("{:>width$} {:>width$}", old_line, "", width = width);
-                let formatted_line = format!("{line_nums}│-{content_str}").red();
+                let formatted_line = crate::theme::get()
+                    .deletion
+                    .paint(&format!("{line_nums}│-{content_str}"));
                 output.push_str(&format!("   {formatted_line}\n"));
                 old_line += 1;
             }
@@ -196,9 +201,16 @@ impl DiffDisplay for HunkAssignment {
         // ─────────╯
         output.push_str(&format!("{}╮\n", "─".repeat(content_width).dimmed()));
         if let Some(id) = &short_id {
-            output.push_str(&format!("{} {}│\n", id.blue().bold(), self.path.bold()));
+            output.push_str(&format!(
+                "{} {}│\n",
+                crate::theme::get().cli_id.paint(id),
+                crate::theme::get().important.paint(&self.path)
+            ));
         } else {
-            output.push_str(&format!("{}│\n", self.path.bold()));
+            output.push_str(&format!(
+                "{}│\n",
+                crate::theme::get().important.paint(&self.path)
+            ));
         }
         output.push_str(&format!("{}╯\n", "─".repeat(content_width).dimmed()));
 
