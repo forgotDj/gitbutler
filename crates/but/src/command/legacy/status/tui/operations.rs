@@ -209,6 +209,7 @@ pub(super) fn reword_commit_with_editor_with_message_legacy(
         ctx,
         commit_details,
         editor_initial_message,
+        &current_message,
         ShowDiffInEditor::Unspecified,
     )?;
 

@@ -441,6 +441,30 @@ fn inline_reword() {
 }
 
 #[test]
+fn inline_reword_open_editor_keeps_inline_message_when_editor_makes_no_changes() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+
+    env.file(".git/editor.sh", "exit 0\n");
+    let editor_path = env.projects_root().join(".git/editor.sh");
+    let editor_command = format!("sh {}", editor_path.display());
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+        .assert_current_line_eq(str!["┊●   [..] add A"]);
+
+    tui.input_then_render(KeyCode::Enter);
+    tui.input_then_render(" updated")
+        .assert_rendered_contains("add A updated");
+
+    with_var("GIT_EDITOR", Some(editor_command), || {
+        tui.input_then_render((KeyModifiers::ALT, KeyCode::Char('e')))
+            .assert_current_line_eq(str!["┊●   [..] add A updated"]);
+    });
+}
+
+#[test]
 fn esc_leaves_rub_mode() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
     env.setup_metadata(&["A"]).unwrap();

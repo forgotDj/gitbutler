@@ -125,7 +125,8 @@ fn prepare_provided_message(msg: Option<&str>, entity: &str) -> Option<Result<St
 pub(crate) fn get_commit_message_from_editor(
     ctx: &mut Context,
     commit_details: but_core::diff::CommitDetails,
-    current_message: String,
+    editor_initial_message: String,
+    current_message_for_comparison: &str,
     show_diff_in_editor: ShowDiffInEditor,
 ) -> Result<Option<String>> {
     let changed_files = get_changed_files_from_commit_details(&commit_details);
@@ -144,10 +145,13 @@ pub(crate) fn get_commit_message_from_editor(
         })
         .transpose()?;
 
-    let new_message =
-        actually_get_commit_message_from_editor(&current_message, &changed_files, diff.as_deref())?;
+    let new_message = actually_get_commit_message_from_editor(
+        &editor_initial_message,
+        &changed_files,
+        diff.as_deref(),
+    )?;
 
-    if should_update_commit_message(&current_message, &new_message) {
+    if should_update_commit_message(current_message_for_comparison, &new_message) {
         Ok(Some(normalize_commit_message(&new_message).to_owned()))
     } else {
         Ok(None)
@@ -183,6 +187,7 @@ fn edit_commit_message_by_id_and_reword_commit(
             ctx,
             commit_details,
             current_message.clone(),
+            &current_message,
             show_diff_in_editor,
         )?
     }
