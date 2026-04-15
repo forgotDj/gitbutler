@@ -34,7 +34,7 @@ pub fn apply(mut ctx: Context, branch_name: &str, out: &mut OutputChannel) -> an
             }?;
         }
     } else if let Some(out) = out.for_shell() {
-        writeln!(out, "{reference}", reference = reference.name.shorten())?;
+        writeln!(out, "{reference}", reference = reference.name)?;
     }
 
     if let Some(out) = out.for_json() {

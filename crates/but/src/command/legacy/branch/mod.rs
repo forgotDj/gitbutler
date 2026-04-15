@@ -8,7 +8,6 @@ use crate::{
     utils::{Confirm, ConfirmDefault, OutputChannel, shorten_object_id},
 };
 
-pub mod apply;
 mod json;
 mod list;
 mod show;

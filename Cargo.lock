@@ -851,7 +851,6 @@ dependencies = [
  "gitbutler-operating-modes",
  "gitbutler-oplog",
  "gitbutler-project",
- "gitbutler-reference",
  "gitbutler-repo",
  "gitbutler-repo-actions",
  "gitbutler-stack",
