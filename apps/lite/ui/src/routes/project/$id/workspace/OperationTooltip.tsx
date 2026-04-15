@@ -35,23 +35,24 @@ export const OperationTooltip: FC<
 		isSource ? (
 			<>Select a target</>
 		) : operation ? (
-			controls ? (
-				<>
-					<button type="button" className={uiStyles.button} onClick={controls.onConfirm}>
-						{operationLabel(operation)}
-					</button>
-					<button
-						type="button"
-						className={uiStyles.button}
-						aria-label="Cancel"
-						onClick={controls.onCancel}
-					>
-						Cancel
-					</button>
-				</>
-			) : (
-				<>{operationLabel(operation)}</>
-			)
+			<>
+				{operationLabel(operation)}
+				{controls && (
+					<>
+						<button type="button" className={uiStyles.button} onClick={controls.onConfirm}>
+							Confirm
+						</button>
+						<button
+							type="button"
+							className={uiStyles.button}
+							aria-label="Cancel"
+							onClick={controls.onCancel}
+						>
+							Cancel
+						</button>
+					</>
+				)}
+			</>
 		) : null
 	) : null;
 
