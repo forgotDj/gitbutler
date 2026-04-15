@@ -83,8 +83,14 @@ export type ExclusiveAction =
 			branchName: string;
 	  };
 
+export type StackBusyState = {
+	commitId?: string;
+	stackIds?: string[];
+};
+
 export type ProjectUiState = {
 	exclusiveAction: ExclusiveAction | undefined;
+	stackBusy: StackBusyState | undefined;
 	branchesToPoll: string[];
 	selectedClaudeSession: { stackId: string; head: string } | undefined;
 	thinkingLevel: ThinkingLevel;
@@ -199,6 +205,7 @@ export class UiState {
 	/** Properties scoped to a specific project. */
 	readonly project = this.buildScopedProps<ProjectUiState>(this.scopesCache.projects, {
 		exclusiveAction: undefined,
+		stackBusy: undefined,
 		branchesToPoll: [],
 		selectedClaudeSession: undefined,
 		thinkingLevel: "normal",

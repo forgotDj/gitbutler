@@ -286,7 +286,7 @@ export function initDependencies(args: {
 	// ============================================================================
 
 	const imeHandler = new IMECompositionHandler();
-	const reorderDropzoneFactory = new ReorderDropzoneFactory(stackService);
+	const reorderDropzoneFactory = new ReorderDropzoneFactory(stackService, uiState);
 	const shortcutService = new ShortcutService(backend);
 	const dragStateService = new DragStateService();
 	const dropzoneRegistry = new DropzoneRegistry();

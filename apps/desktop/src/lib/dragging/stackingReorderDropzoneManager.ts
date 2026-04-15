@@ -1,7 +1,8 @@
-import { CommitDropData } from "$lib/dragging/dropHandlers/commitDropHandler";
+import { CommitDropData, withStackBusy } from "$lib/dragging/dropHandlers/commitDropHandler";
 import { InjectionToken } from "@gitbutler/core/context";
 import type { DropzoneHandler } from "$lib/dragging/handler";
 import type { StackService } from "$lib/stacks/stackService.svelte";
+import type { UiState } from "$lib/state/uiState.svelte";
 import type { StackOrder } from "@gitbutler/but-sdk";
 
 export class ReorderCommitDzHandler implements DropzoneHandler {
@@ -9,6 +10,7 @@ export class ReorderCommitDzHandler implements DropzoneHandler {
 		private projectId: string,
 		private branchId: string,
 		private stackService: StackService,
+		private uiState: UiState,
 		private currentSeriesName: string,
 		private series: { name: string; commitIds: string[] }[],
 		public commitId: string,
@@ -38,11 +40,18 @@ export class ReorderCommitDzHandler implements DropzoneHandler {
 		);
 
 		if (stackOrder) {
-			await this.stackService.reorderStack({
-				projectId: this.projectId,
-				stackId: data.stackId,
-				stackOrder,
-			});
+			await withStackBusy(
+				this.uiState,
+				this.projectId,
+				{ commitId: data.commit.id, stackIds: [data.stackId] },
+				async () => {
+					await this.stackService.reorderStack({
+						projectId: this.projectId,
+						stackId: data.stackId,
+						stackOrder,
+					});
+				},
+			);
 		}
 	}
 }
@@ -53,6 +62,7 @@ export class ReorderCommitDzFactory {
 	constructor(
 		private projectId: string,
 		private stackService: StackService,
+		private uiState: UiState,
 		private stack: { name: string; commitIds: string[] }[],
 		private laneId: string,
 	) {
@@ -73,6 +83,7 @@ export class ReorderCommitDzFactory {
 			this.projectId,
 			this.laneId,
 			this.stackService,
+			this.uiState,
 			currentSeries.name,
 			this.stack,
 			"top",
@@ -89,6 +100,7 @@ export class ReorderCommitDzFactory {
 			this.projectId,
 			this.laneId,
 			this.stackService,
+			this.uiState,
 			currentSeries.name,
 			this.stack,
 			commitId,
@@ -101,10 +113,13 @@ export const REORDER_DROPZONE_FACTORY = new InjectionToken<ReorderDropzoneFactor
 );
 
 export class ReorderDropzoneFactory {
-	constructor(private stackService: StackService) {}
+	constructor(
+		private stackService: StackService,
+		private uiState: UiState,
+	) {}
 
 	build(projectId: string, laneId: string, series: { name: string; commitIds: string[] }[]) {
-		return new ReorderCommitDzFactory(projectId, this.stackService, series, laneId);
+		return new ReorderCommitDzFactory(projectId, this.stackService, this.uiState, series, laneId);
 	}
 }
 
