@@ -11,6 +11,7 @@ use std::{
 
 use anyhow::Context as _;
 use bstr::{BString, ByteSlice};
+use but_api::diff::ComputeLineStats;
 use but_core::tree::create_tree::RejectionReason;
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::InsertSide;
@@ -31,6 +32,7 @@ use unicode_width::UnicodeWidthStr;
 use crate::{
     CliId,
     command::legacy::{
+        reword::get_branch_name_from_editor,
         rub::RubOperationDiscriminants,
         status::{
             CommitLineContent, FileLineContent, StatusFlags, StatusOutputLine, TuiLaunchOptions,
@@ -641,6 +643,9 @@ impl App {
                 RewordMessage::InlineStart => self.handle_start_reword_inline(ctx, messages)?,
                 RewordMessage::InlineInput(ev) => self.handle_reword_inline_input(ev),
                 RewordMessage::InlineConfirm => self.handle_confirm_inline_reword(ctx, messages)?,
+                RewordMessage::OpenEditor => {
+                    self.handle_inline_reword_open_editor(ctx, terminal_guard, messages)?;
+                }
             },
             Message::Command(command_message) => match command_message {
                 CommandMessage::Start => self.handle_enter_command_mode(),
@@ -1903,7 +1908,7 @@ impl App {
         match inline_reword_mode {
             InlineRewordMode::Commit { commit_id, .. } => {
                 let Some(reword_result) =
-                    operations::reword_commit_inline_legacy(ctx, *commit_id, first_line)?
+                    operations::reword_commit_legacy(ctx, *commit_id, first_line)?
                 else {
                     messages.push(Message::EnterNormalMode);
                     return Ok(());
@@ -1915,7 +1920,7 @@ impl App {
                 ]);
             }
             InlineRewordMode::Branch { name, stack_id, .. } => {
-                let new_name = operations::reword_branch_inline_legacy(
+                let new_name = operations::reword_branch_legacy(
                     ctx,
                     *stack_id,
                     name.to_owned(),
@@ -1928,6 +1933,59 @@ impl App {
                 ]);
             }
         }
+
+        Ok(())
+    }
+
+    fn handle_inline_reword_open_editor<T>(
+        &mut self,
+        ctx: &mut Context,
+        terminal_guard: &mut T,
+        messages: &mut Vec<Message>,
+    ) -> anyhow::Result<()>
+    where
+        T: TerminalGuard,
+        anyhow::Error: From<<T::Backend as Backend>::Error>,
+    {
+        let Mode::InlineReword(inline_reword_mode) = &self.mode else {
+            return Ok(());
+        };
+
+        let textarea = inline_reword_mode.textarea();
+        let Some(line) = textarea.lines().first() else {
+            return Ok(());
+        };
+
+        let _suspend_guard = terminal_guard.suspend()?;
+        let what_to_select = match inline_reword_mode {
+            InlineRewordMode::Commit { commit_id, .. } => {
+                let commit_details =
+                    but_api::diff::commit_details(ctx, *commit_id, ComputeLineStats::No)?;
+                if let Some(reword_result) =
+                    operations::reword_commit_with_editor_with_message_legacy(
+                        ctx,
+                        commit_details,
+                        line.to_owned(),
+                    )?
+                {
+                    SelectAfterReload::Commit(reword_result.new_commit)
+                } else {
+                    SelectAfterReload::Commit(*commit_id)
+                }
+            }
+            InlineRewordMode::Branch { name, stack_id, .. } => {
+                let new_name = get_branch_name_from_editor(line)?;
+                let normalized_name =
+                    operations::reword_branch_legacy(ctx, *stack_id, name.clone(), new_name)?;
+                SelectAfterReload::Branch(normalized_name)
+            }
+        };
+        drop(_suspend_guard);
+
+        messages.extend([
+            Message::EnterNormalMode,
+            Message::Reload(Some(what_to_select)),
+        ]);
 
         Ok(())
     }
@@ -2860,6 +2918,7 @@ enum RubMessage {
 #[derive(Debug, Clone)]
 enum RewordMessage {
     WithEditor,
+    OpenEditor,
     InlineStart,
     InlineInput(Event),
     InlineConfirm,

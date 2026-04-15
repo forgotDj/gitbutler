@@ -222,7 +222,9 @@ impl Details {
                 RubMessage::Confirm => true,
             },
             Message::Reword(reword_message) => match reword_message {
-                RewordMessage::WithEditor | RewordMessage::InlineConfirm => true,
+                RewordMessage::OpenEditor
+                | RewordMessage::WithEditor
+                | RewordMessage::InlineConfirm => true,
                 RewordMessage::InlineStart | RewordMessage::InlineInput(_) => false,
             },
             Message::Command(command_message) => match command_message {
