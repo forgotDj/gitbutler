@@ -193,9 +193,12 @@ impl Details {
             | Message::LeaveDetailsMode
             | Message::Discard
             | Message::DropToBeDiscarded
+            | Message::Debug(_)
             | Message::ShowError(_)
             | Message::ShowToast { .. }
             | Message::Confirm(_)
+            | Message::GrowDetails
+            | Message::ShrinkDetails
             | Message::RegisterMessageOnDrop(_)
             | Message::WithOneFrameDelay(_)
             | Message::EnterNormalMode => false,
@@ -335,7 +338,7 @@ impl Details {
         Ok(())
     }
 
-    fn ensure_selection_visible(&mut self, viewport: Rect) {
+    pub(super) fn ensure_selection_visible(&mut self, viewport: Rect) {
         let Some(selection) = self.cursor.selection() else {
             return;
         };

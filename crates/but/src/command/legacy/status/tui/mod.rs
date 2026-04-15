@@ -90,6 +90,12 @@ static DETAILS_CURSOR_BG: LazyLock<Color> =
 const NOOP: &str = "noop";
 const CURSOR_CONTEXT_ROWS: usize = 3;
 
+/// How much does the detail area grow/shrink with when adjusted
+const DETAILS_SIZE_ADJUSTMENT_PERCENTAGE: u16 = 5;
+
+const DETAILS_MIN_SIZE_PERCENTAGE: u16 = 30;
+const DETAILS_MAX_SIZE_PERCENTAGE: u16 = 90;
+
 pub(super) async fn render_tui(
     ctx: &mut Context,
     out: &mut OutputChannel,
@@ -349,6 +355,7 @@ struct App {
     incoming_out_of_band_messages: Vec<Rc<Receiver<Message>>>,
     fps: FpsCounter,
     to_be_discarded: Option<Arc<CliId>>,
+    status_width_percentage: u16,
 }
 
 impl App {
@@ -391,6 +398,7 @@ impl App {
             confirm: None,
             details,
             options,
+            status_width_percentage: 50,
         }
     }
 
@@ -695,6 +703,26 @@ impl App {
                     .await?;
                 Box::pin(self.try_handle_message(ctx, out, mode, terminal_guard, messages, *rhs))
                     .await?;
+            }
+            Message::Debug(text) => {
+                messages.push(Message::ShowToast {
+                    kind: ToastKind::Debug,
+                    text: text.to_owned(),
+                });
+            }
+            Message::GrowDetails => {
+                self.update_status_width_percentage(
+                    self.status_width_percentage
+                        .saturating_sub(DETAILS_SIZE_ADJUSTMENT_PERCENTAGE),
+                    terminal_area,
+                );
+            }
+            Message::ShrinkDetails => {
+                self.update_status_width_percentage(
+                    self.status_width_percentage
+                        .saturating_add(DETAILS_SIZE_ADJUSTMENT_PERCENTAGE),
+                    terminal_area,
+                );
             }
         }
 
@@ -2062,9 +2090,11 @@ impl App {
         let (status_area, details_area) = match self.details.visibility() {
             DetailsVisibility::Hidden => (area, None),
             DetailsVisibility::VisibleVertical => {
-                let layout =
-                    Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
-                        .split(area);
+                let layout = Layout::horizontal([
+                    Constraint::Percentage(self.status_width_percentage),
+                    Constraint::Percentage(100 - self.status_width_percentage),
+                ])
+                .split(area);
                 (layout[0], Some(layout[1]))
             }
         };
@@ -2664,6 +2694,20 @@ impl App {
 
         frame.render_widget(list, area);
     }
+
+    fn update_status_width_percentage(&mut self, new: u16, terminal_area: Rect) {
+        if !self.details.is_visible() {
+            return;
+        }
+
+        self.status_width_percentage = new.clamp(
+            100 - DETAILS_MAX_SIZE_PERCENTAGE,
+            100 - DETAILS_MIN_SIZE_PERCENTAGE,
+        );
+
+        let details_viewport = self.details_viewport(terminal_area);
+        self.details.ensure_selection_visible(details_viewport);
+    }
 }
 
 fn event_to_messages(ev: Event, key_binds: &KeyBinds, mode: &Mode, messages: &mut Vec<Message>) {
@@ -2735,6 +2779,8 @@ enum Message {
     Confirm(ConfirmMessage),
     Discard,
     DropToBeDiscarded,
+    GrowDetails,
+    ShrinkDetails,
 
     // Cursor movement
     MoveCursorUp,
@@ -2781,6 +2827,8 @@ enum Message {
         lhs: Box<Message>,
         rhs: Box<Message>,
     },
+    #[allow(dead_code)]
+    Debug(&'static str),
 }
 
 impl Message {
