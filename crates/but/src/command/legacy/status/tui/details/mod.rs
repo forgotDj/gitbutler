@@ -201,6 +201,7 @@ impl Details {
             | Message::ShrinkDetails
             | Message::RegisterMessageOnDrop(_)
             | Message::WithOneFrameDelay(_)
+            | Message::Amend
             | Message::EnterNormalMode => false,
 
             Message::MoveCursorUp
