@@ -72,7 +72,9 @@ export const showNativeContextMenu = async (
 			? getBottomLeft(event.currentTarget)
 			: {
 					x: Math.round(event.clientX),
-					y: Math.round(event.clientY),
+					// Position just below the cursor so the first item is not hovered on
+					// open.
+					y: Math.round(event.clientY) + 1,
 				};
 
 	await showNativeMenu(items, position);

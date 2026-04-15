@@ -32,13 +32,12 @@ export const OperationTooltip: FC<
 	const isSource = source && operationSourceMatchesItem(source, item);
 
 	const tooltip = enabled ? (
-		isSource ? (
-			<>Select a target</>
-		) : operation ? (
-			controls ? (
+		<>
+			{isSource ? <>Select a target</> : operation ? operationLabel(operation) : null}
+			{controls && (
 				<>
 					<button type="button" className={uiStyles.button} onClick={controls.onConfirm}>
-						{operationLabel(operation)}
+						Confirm
 					</button>
 					<button
 						type="button"
@@ -49,10 +48,8 @@ export const OperationTooltip: FC<
 						Cancel
 					</button>
 				</>
-			) : (
-				<>{operationLabel(operation)}</>
-			)
-		) : null
+			)}
+		</>
 	) : null;
 
 	const trigger = useRender({ render, props });

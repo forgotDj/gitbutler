@@ -64,6 +64,7 @@ import {
 } from "#ui/native-menu.ts";
 import uiStyles from "#ui/ui.module.css";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
+import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import {
 	AbsorptionTarget,
 	Commit,
@@ -265,8 +266,9 @@ const ItemRow: FC<
 	{
 		isSelected?: boolean;
 	} & ComponentProps<"div">
-> = ({ className, isSelected, ...props }) => {
+> = ({ className, isSelected, ref: refProp, ...props }) => {
 	const rowRef = useRef<HTMLDivElement | null>(null);
+	const mergedRef = useMergedRefs(rowRef, refProp);
 
 	useLayoutEffect(() => {
 		if (!isSelected) return;
@@ -279,7 +281,7 @@ const ItemRow: FC<
 	return (
 		<div
 			{...props}
-			ref={rowRef}
+			ref={mergedRef}
 			className={classes(className, styles.itemRow, isSelected && styles.itemRowSelected)}
 		/>
 	);
@@ -830,34 +832,33 @@ const EditorHelp: FC<{
 const InlineCommitMessageEditor: FC<{
 	message: string;
 	onSubmit: (value: string) => void;
-	onCancel: () => void;
+	onExit: () => void;
 	formRef?: Ref<HTMLFormElement>;
-}> = ({ message, onSubmit, onCancel, formRef }) => (
-	<form
-		ref={formRef}
-		className={styles.editorForm}
-		onSubmit={(event) => {
-			event.preventDefault();
-			const formData = new FormData(event.currentTarget);
-			onCancel();
-			onSubmit(formData.get("message") as string);
-		}}
-	>
-		<textarea
-			ref={(el) => {
-				if (!el) return;
-				el.focus();
-				const cursorPosition = el.value.length;
-				el.setSelectionRange(cursorPosition, cursorPosition);
-			}}
-			aria-label="Commit message"
-			name="message"
-			defaultValue={message.trim()}
-			className={classes(styles.editorInput, styles.editCommitMessageInput)}
-		/>
-		<EditorHelp bindings={rewordCommitBindings} />
-	</form>
-);
+}> = ({ message, onSubmit, onExit, formRef }) => {
+	const submit = (event: React.SyntheticEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		const formData = new FormData(event.currentTarget);
+		onExit();
+		onSubmit(formData.get("message") as string);
+	};
+	return (
+		<form ref={formRef} className={styles.editorForm} onSubmit={submit} onBlur={submit}>
+			<textarea
+				ref={(el) => {
+					if (!el) return;
+					el.focus();
+					const cursorPosition = el.value.length;
+					el.setSelectionRange(cursorPosition, cursorPosition);
+				}}
+				aria-label="Commit message"
+				name="message"
+				defaultValue={message.trim()}
+				className={classes(styles.editorInput, styles.editCommitMessageInput)}
+			/>
+			<EditorHelp bindings={rewordCommitBindings} />
+		</form>
+	);
+};
 
 const CommitRow: FC<
 	{
@@ -1007,7 +1008,7 @@ const CommitRow: FC<
 					formRef={commitMessageFormRef}
 					message={optimisticMessage}
 					onSubmit={saveNewMessage}
-					onCancel={endEditing}
+					onExit={endEditing}
 				/>
 			) : (
 				<>
@@ -1444,31 +1445,30 @@ const InlineBranchNameEditor: FC<{
 	onSubmit: (value: string) => void;
 	onExit: () => void;
 	formRef?: Ref<HTMLFormElement>;
-}> = ({ branchName, onSubmit, onExit, formRef }) => (
-	<form
-		ref={formRef}
-		className={styles.editorForm}
-		onSubmit={(event) => {
-			event.preventDefault();
-			const formData = new FormData(event.currentTarget);
-			onExit();
-			onSubmit(formData.get("branchName") as string);
-		}}
-	>
-		<input
-			aria-label="Branch name"
-			ref={(el) => {
-				if (!el) return;
-				el.focus();
-				el.select();
-			}}
-			name="branchName"
-			defaultValue={branchName}
-			className={classes(styles.editorInput, styles.renameBranchInput)}
-		/>
-		<EditorHelp bindings={renameBranchBindings} />
-	</form>
-);
+}> = ({ branchName, onSubmit, onExit, formRef }) => {
+	const submit = (event: React.SyntheticEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		const formData = new FormData(event.currentTarget);
+		onExit();
+		onSubmit(formData.get("branchName") as string);
+	};
+	return (
+		<form ref={formRef} className={styles.editorForm} onSubmit={submit} onBlur={submit}>
+			<input
+				aria-label="Branch name"
+				ref={(el) => {
+					if (!el) return;
+					el.focus();
+					el.select();
+				}}
+				name="branchName"
+				defaultValue={branchName}
+				className={classes(styles.editorInput, styles.renameBranchInput)}
+			/>
+			<EditorHelp bindings={renameBranchBindings} />
+		</form>
+	);
+};
 
 const SegmentRow: FC<
 	{

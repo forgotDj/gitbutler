@@ -121,14 +121,16 @@
 
 .previewHunk {
 	padding: 4px 6px;
+	border: 2px solid transparent;
+	border-radius: 8px;
 
 	&:where(:hover) {
-		outline: 2px solid var(--color-separator);
+		border-color: var(--color-separator);
 	}
 }
 
 .previewHunkSelected {
-	outline: 2px solid light-dark(black, white);
+	border-color: light-dark(black, white);
 }
 
 .segments {

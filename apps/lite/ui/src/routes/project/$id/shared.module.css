@@ -18,6 +18,14 @@
 	padding: var(--panel-padding);
 }
 
+.panel {
+	border-bottom: 2px solid transparent;
+}
+
+.focusedPanel {
+	border-bottom-color: var(--color-black);
+}
+
 .previewDialogPopup {
 	display: flex;
 	position: fixed;

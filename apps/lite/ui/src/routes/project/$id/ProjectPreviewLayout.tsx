@@ -2,7 +2,12 @@ import { Dialog } from "@base-ui/react";
 import { FC, ReactNode, use, useState } from "react";
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import { ShortcutButton } from "#ui/ShortcutButton.tsx";
-import { isPreviewPanelVisible, Panel as PanelType } from "#ui/routes/project/$id/state/layout.ts";
+import { classes } from "#ui/classes.ts";
+import {
+	getFocus,
+	isPreviewPanelVisible,
+	Panel as PanelType,
+} from "#ui/routes/project/$id/state/layout.ts";
 import {
 	projectActions,
 	selectProjectLayoutState,
@@ -26,6 +31,9 @@ export const ProjectPreviewLayout: FC<{
 	const panelIds: Array<PanelType> = isPreviewPanelVisible(layoutState)
 		? ["primary", "preview"]
 		: ["primary"];
+	const focus = getFocus(layoutState);
+	const focusPrimary = () => dispatch(projectActions.focusPrimary({ projectId }));
+	const focusPreview = () => dispatch(projectActions.focusPreview({ projectId }));
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
 		id: `project:${projectId}:layout`,
 		panelIds,
@@ -47,7 +55,12 @@ export const ProjectPreviewLayout: FC<{
 				<Panel
 					id={"primary" satisfies PanelType}
 					minSize={400}
-					className={sharedStyles.primaryPanel}
+					onPointerDown={focusPrimary}
+					className={classes(
+						sharedStyles.panel,
+						sharedStyles.primaryPanel,
+						focus === "primary" && sharedStyles.focusedPanel,
+					)}
 				>
 					{children}
 				</Panel>
@@ -58,7 +71,12 @@ export const ProjectPreviewLayout: FC<{
 							id={"preview" satisfies PanelType}
 							minSize={300}
 							defaultSize="70%"
-							className={sharedStyles.previewPanel}
+							onPointerDown={focusPreview}
+							className={classes(
+								sharedStyles.panel,
+								sharedStyles.previewPanel,
+								focus === "preview" && sharedStyles.focusedPanel,
+							)}
 						>
 							{
 								// There can only be one user of the ref at a time.
