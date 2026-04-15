@@ -692,6 +692,6 @@ impl ConflictEntries {
 
 mod conflict;
 pub use conflict::{
-    CONFLICT_MESSAGE_PREFIX, add_conflict_markers, is_conflicted, message_is_conflicted,
+    add_conflict_markers, is_conflicted, message_is_conflicted,
     rewrite_conflict_markers_on_message_change, strip_conflict_markers,
 };

@@ -3,12 +3,12 @@ use bstr::{BStr, BString, ByteSlice};
 use super::Headers;
 
 /// The prefix prepended to the commit subject line to mark a conflicted commit.
-pub const CONFLICT_MESSAGE_PREFIX: &str = "[conflict] ";
+const CONFLICT_MESSAGE_PREFIX: &[u8] = b"[conflict] ";
 
 /// The git trailer token used to identify GitButler-managed conflicted commits.
 /// The description explaining the conflict is embedded as the multi-line trailer
 /// value, with continuation lines indented by 3 spaces per git convention.
-const CONFLICT_TRAILER_TOKEN: &str = "GitButler-Conflict";
+const CONFLICT_TRAILER_TOKEN: &[u8] = b"GitButler-Conflict";
 
 /// The full multi-line git trailer appended to conflicted commit messages.
 /// The description is the trailer value; continuation lines are indented with
@@ -36,24 +36,26 @@ pub fn add_conflict_markers(message: &BStr) -> BString {
     if message_is_conflicted(message) {
         return message.into();
     }
-    let trimmed = message
-        .as_bytes()
-        .strip_suffix(b"\n")
-        .unwrap_or(message.as_bytes());
+    let trimmed = strip_single_trailing_newline(message.as_bytes());
+    let clean = trimmed
+        .strip_prefix(CONFLICT_MESSAGE_PREFIX)
+        .unwrap_or(trimmed);
+    let line_ending = line_ending_for(message.as_bytes());
+    let has_trailer_block = gix::objs::commit::MessageRef::from_bytes(clean)
+        .body()
+        .is_some_and(|body| body.trailers().next().is_some());
 
-    let capacity = CONFLICT_MESSAGE_PREFIX.len() + trimmed.len() + 2 + CONFLICT_TRAILER.len() + 1;
-    let mut result = BString::from(Vec::with_capacity(capacity));
-    result.extend_from_slice(CONFLICT_MESSAGE_PREFIX.as_bytes());
-    result.extend_from_slice(trimmed);
+    let mut result = BString::default();
+    result.extend_from_slice(CONFLICT_MESSAGE_PREFIX);
+    result.extend_from_slice(clean);
 
-    // Trailers must be in the last paragraph — join directly if one exists.
-    if ends_in_trailer_block(trimmed) {
-        result.push(b'\n');
-    } else {
-        result.extend_from_slice(b"\n\n");
+    // Keep trailers in the last paragraph if the message already has a trailer block.
+    result.extend_from_slice(line_ending);
+    if !has_trailer_block {
+        result.extend_from_slice(line_ending);
     }
-    result.extend_from_slice(CONFLICT_TRAILER.as_bytes());
-    result.push(b'\n');
+    push_with_line_endings(&mut result, CONFLICT_TRAILER.as_bytes(), line_ending);
+    result.extend_from_slice(line_ending);
     result
 }
 
@@ -66,68 +68,47 @@ pub fn add_conflict_markers(message: &BStr) -> BString {
 /// continuation lines.
 ///
 /// Note: the returned message may not be byte-identical to the original —
-/// trailing newlines are not preserved and line endings may be normalized.
+/// trailing newlines are not preserved.
 pub fn strip_conflict_markers(message: &BStr) -> BString {
-    if !message_is_conflicted(message) {
-        return message.to_owned();
-    }
-
-    let bytes = message.as_bytes();
+    let msg_bytes = message.as_bytes();
+    let line_ending = line_ending_for(msg_bytes);
 
     // Strip the subject prefix if present.
-    let without_prefix = bytes
-        .strip_prefix(CONFLICT_MESSAGE_PREFIX.as_bytes())
-        .unwrap_or(bytes);
+    let without_prefix = msg_bytes
+        .strip_prefix(CONFLICT_MESSAGE_PREFIX)
+        .unwrap_or(msg_bytes);
+    let message = gix::objs::commit::MessageRef::from_bytes(without_prefix);
+    let trailer_bytes = conflict_trailer_bytes(line_ending);
+    let trailer_start = message.body.and_then(|body| {
+        let body_offset = subslice_offset(without_prefix, body.as_bytes());
+        gix::objs::commit::message::BodyRef::from_bytes(body.as_bytes())
+            .trailers()
+            .find(|trailer| trailer.token.eq_ignore_ascii_case(CONFLICT_TRAILER_TOKEN))
+            .map(|trailer| body_offset + subslice_offset(body.as_bytes(), trailer.token.as_bytes()))
+    });
 
-    // Remove the GitButler-Conflict trailer only from the last paragraph
-    // to avoid accidentally stripping user-authored content earlier in the body
-    // that happens to match the trailer token.
-    let lines: Vec<&[u8]> = without_prefix.lines().collect();
-    let mut result_lines: Vec<&[u8]> = Vec::with_capacity(lines.len());
-
-    // Find the start of the last paragraph (after the last blank line).
-    let last_para_start = lines
-        .iter()
-        .enumerate()
-        .rev()
-        .find(|(_, l)| l.is_empty())
-        .map(|(i, _)| i + 1)
-        .unwrap_or(0);
-
-    // Copy everything before the last paragraph unchanged.
-    let mut i = 0;
-    while i < last_para_start {
-        result_lines.push(lines[i]);
-        i += 1;
-    }
-
-    // In the last paragraph, strip the conflict trailer and its continuation lines.
-    while i < lines.len() {
-        let line = lines[i];
-        if line_starts_with_conflict_trailer(line) {
-            i += 1;
-            while i < lines.len() && lines[i].first().is_some_and(|b| b.is_ascii_whitespace()) {
-                i += 1;
-            }
-        } else {
-            result_lines.push(line);
-            i += 1;
+    if let Some(trailer_start) = trailer_start {
+        if without_prefix[trailer_start..].starts_with(trailer_bytes.as_slice()) {
+            let before = &without_prefix[..trailer_start];
+            let after = &without_prefix[trailer_start + trailer_bytes.len()..];
+            let mut out = BString::from(before);
+            out.extend_from_slice(after);
+            return trim_trailing_line_endings(out.as_ref()).into();
         }
+
+        return trim_trailing_line_endings(&without_prefix[..trailer_start]).into();
     }
 
-    // Drop trailing blank lines left behind after removing the trailer.
-    while result_lines.last().is_some_and(|l| l.is_empty()) {
-        result_lines.pop();
-    }
-
-    let mut result = BString::from(Vec::new());
-    for (idx, line) in result_lines.iter().enumerate() {
-        if idx > 0 {
-            result.push(b'\n');
-        }
-        result.extend_from_slice(line);
-    }
-    result
+    without_prefix.find(trailer_bytes.as_slice()).map_or_else(
+        || msg_bytes.into(),
+        |trailer_start| {
+            let before = trim_trailing_line_endings(&without_prefix[..trailer_start]);
+            let after = &without_prefix[trailer_start + trailer_bytes.len()..];
+            let mut out = BString::from(before);
+            out.extend_from_slice(after);
+            out
+        },
+    )
 }
 
 /// Returns `true` when the commit is conflicted either by message marker
@@ -137,28 +118,18 @@ pub fn is_conflicted(message: &BStr, headers: Option<&Headers>) -> bool {
 }
 
 /// Returns `true` when the commit message contains a `GitButler-Conflict:`
-/// trailer in the last paragraph. The `[conflict] ` subject prefix is
-/// informational and not required for detection.
+/// trailer. The `[conflict] ` subject prefix is informational and
+/// not required for detection.
 ///
 /// Trailing blank lines are skipped so that messages edited by users or tools
 /// that append newlines are still detected correctly.
 pub fn message_is_conflicted(message: &BStr) -> bool {
-    let bytes = message.as_bytes();
-    let mut in_content = false;
-    for line in bytes.lines().rev() {
-        if line.is_empty() {
-            if in_content {
-                break;
-            }
-            // Skip trailing blank lines before the last paragraph.
-            continue;
-        }
-        in_content = true;
-        if line_starts_with_conflict_trailer(line) {
-            return true;
-        }
-    }
-    false
+    let message = gix::objs::commit::MessageRef::from_bytes(message.as_bytes());
+    let Some(body) = message.body() else {
+        return false;
+    };
+    body.trailers()
+        .any(|trailer| trailer.token.eq_ignore_ascii_case(CONFLICT_TRAILER_TOKEN))
 }
 
 /// If `old_message` is conflicted but `new_message` is not, re-apply the
@@ -173,86 +144,73 @@ pub fn rewrite_conflict_markers_on_message_change(
     new_message: BString,
 ) -> BString {
     if message_is_conflicted(old_message) && !message_is_conflicted(new_message.as_ref()) {
-        // Strip the `[conflict] ` prefix if the user left it in,
-        // then re-add the full set of markers.
-        let clean = new_message
-            .as_bytes()
-            .strip_prefix(CONFLICT_MESSAGE_PREFIX.as_bytes())
-            .map(BString::from)
-            .unwrap_or(new_message);
-        add_conflict_markers(clean.as_ref())
+        add_conflict_markers(new_message.as_ref())
     } else {
         new_message
     }
 }
 
-/// Returns `true` if `bytes` ends with a git trailer block — a paragraph where
-/// every line is either a `Token: value` trailer or an indented continuation.
-fn ends_in_trailer_block(bytes: &[u8]) -> bool {
-    let lines: Vec<&[u8]> = bytes.lines().collect();
-
-    // Trailers must be in a paragraph separated by a blank line from the subject.
-    // If there is no blank line, there is no trailer block.
-    let Some(blank_pos) = lines
-        .iter()
-        .enumerate()
-        .rev()
-        .find(|(_, l)| l.is_empty())
-        .map(|(i, _)| i)
-    else {
-        return false;
-    };
-    let para_start = blank_pos + 1;
-
-    let para = &lines[para_start..];
-    if para.is_empty() {
-        return false;
+fn line_ending_for(message: &[u8]) -> &'static [u8] {
+    if message.find(b"\r\n").is_some() {
+        b"\r\n"
+    } else {
+        b"\n"
     }
+}
 
-    let mut found_any = false;
-    let mut prev_was_trailer_or_continuation = false;
-    for line in para {
-        let is_continuation = line.first().is_some_and(|b| b.is_ascii_whitespace());
-        if is_continuation {
-            if !prev_was_trailer_or_continuation {
-                return false;
-            }
-            prev_was_trailer_or_continuation = true;
-        } else if is_trailer_line(line) {
-            found_any = true;
-            prev_was_trailer_or_continuation = true;
-        } else {
-            return false;
+fn strip_single_trailing_newline(bytes: &[u8]) -> &[u8] {
+    bytes
+        .strip_suffix(b"\r\n")
+        .or_else(|| bytes.strip_suffix(b"\n"))
+        .unwrap_or(bytes)
+}
+
+fn subslice_offset(base: &[u8], subslice: &[u8]) -> usize {
+    subslice.as_ptr() as usize - base.as_ptr() as usize
+}
+
+fn trim_trailing_line_endings(mut bytes: &[u8]) -> &[u8] {
+    while let Some(stripped) = bytes
+        .strip_suffix(b"\r\n")
+        .or_else(|| bytes.strip_suffix(b"\n"))
+        .or_else(|| bytes.strip_suffix(b"\r"))
+    {
+        bytes = stripped;
+    }
+    bytes
+}
+
+fn conflict_trailer_bytes(line_ending: &[u8]) -> BString {
+    let mut out = BString::default();
+    push_with_line_endings(&mut out, CONFLICT_TRAILER.as_bytes(), line_ending);
+    out.extend_from_slice(line_ending);
+    out
+}
+
+fn push_with_line_endings(out: &mut BString, text: &[u8], line_ending: &[u8]) {
+    let mut start = 0;
+    for (idx, byte) in text.iter().enumerate() {
+        if *byte == b'\n' {
+            out.extend_from_slice(&text[start..idx]);
+            out.extend_from_slice(line_ending);
+            start = idx + 1;
         }
     }
-    found_any
-}
-
-/// Returns `true` for lines of the form `Token: value` where `Token` contains
-/// no spaces and the value is non-empty (i.e. `: ` follows the token).
-fn is_trailer_line(line: &[u8]) -> bool {
-    let Some(colon) = line.find_byte(b':') else {
-        return false;
-    };
-    if colon == 0 {
-        return false;
-    }
-    let token = &line[..colon];
-    !token.contains(&b' ') && line.get(colon + 1) == Some(&b' ')
-}
-
-/// Returns `true` when `line` starts with `GitButler-Conflict:`.
-fn line_starts_with_conflict_trailer(line: &[u8]) -> bool {
-    line.strip_prefix(CONFLICT_TRAILER_TOKEN.as_bytes())
-        .is_some_and(|rest| rest.first() == Some(&b':'))
+    out.extend_from_slice(&text[start..]);
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::commit::Headers;
-    use bstr::BStr;
+    use crate::commit::{
+        Headers, add_conflict_markers, is_conflicted, message_is_conflicted,
+        rewrite_conflict_markers_on_message_change, strip_conflict_markers,
+    };
+    use bstr::{BStr, BString, ByteSlice};
 
-    use super::*;
+    use super::CONFLICT_TRAILER;
+
+    const CONFLICT_MESSAGE_PREFIX: &str = "[conflict] ";
+    const CONFLICT_TRAILER_TOKEN: &str = "GitButler-Conflict";
 
     fn marked(msg: &str) -> String {
         String::from_utf8(add_conflict_markers(BStr::new(msg)).into()).unwrap()
@@ -264,6 +222,18 @@ mod tests {
 
     fn message_is_marked_conflicted(msg: &str) -> bool {
         message_is_conflicted(BStr::new(msg))
+    }
+
+    fn assert_only_crlf_line_endings(message: &[u8]) {
+        for (idx, byte) in message.iter().enumerate() {
+            if *byte == b'\n' {
+                assert_eq!(
+                    idx.checked_sub(1).and_then(|idx| message.get(idx)),
+                    Some(&b'\r'),
+                    "found bare LF at byte index {idx} in {message:?}"
+                );
+            }
+        }
     }
 
     /// Round-trip: add then strip returns the original (modulo the trailing
@@ -367,6 +337,16 @@ mod tests {
     }
 
     #[test]
+    fn add_does_not_double_prefix_prefix_only_messages() {
+        let partial = format!("{CONFLICT_MESSAGE_PREFIX}subject");
+        let result = marked(&partial);
+
+        assert_eq!(result.matches(CONFLICT_MESSAGE_PREFIX).count(), 1);
+        assert!(message_is_marked_conflicted(&result));
+        assert_eq!(stripped(&result), "subject");
+    }
+
+    #[test]
     fn strip_is_idempotent() {
         let original = marked("subject");
         let once = stripped(&original);
@@ -404,14 +384,42 @@ mod tests {
     }
 
     #[test]
+    fn strip_removes_our_trailer_even_with_arbitrary_suffix_after_it() {
+        let original = "subject\n\nbody";
+        let suffixed = format!(
+            "{marked_message}\n\nthis suffix is arbitrary prose, not a trailer",
+            marked_message = marked(original)
+        );
+
+        assert_eq!(
+            stripped(&suffixed),
+            "subject\n\nbody\n\nthis suffix is arbitrary prose, not a trailer"
+        );
+    }
+
+    #[test]
+    fn strip_preserves_following_official_trailer_in_same_trailer_block() {
+        let original = "subject\n\nbody";
+        let suffixed = format!(
+            "{marked_message}Signed-off-by: A U Thor <author@example.com>\n",
+            marked_message = marked(original)
+        );
+
+        assert_eq!(
+            stripped(&suffixed),
+            "subject\n\nbody\n\nSigned-off-by: A U Thor <author@example.com>"
+        );
+    }
+
+    #[test]
     fn rewrite_does_not_double_prefix() {
         let original = "fix bug";
         let conflicted = marked(original);
         // Simulate a new message that already has the prefix but no trailer.
-        let partial = format!("{CONFLICT_MESSAGE_PREFIX}fix bug");
+        let new_message_with_accidental_prefix = format!("{CONFLICT_MESSAGE_PREFIX}fix bug");
         let result = rewrite_conflict_markers_on_message_change(
-            BStr::new(&conflicted),
-            BString::from(partial),
+            conflicted.as_str().into(),
+            new_message_with_accidental_prefix.into(),
         );
         let result_str = std::str::from_utf8(result.as_ref()).unwrap();
         // Must not produce "[conflict] [conflict] fix bug".
@@ -436,33 +444,6 @@ mod tests {
         assert!(!is_conflicted(BStr::new("ordinary message"), None));
     }
 
-    /// Verify that gix parses the `GitButler-Conflict` trailer alongside
-    /// other standard trailers (Byron's review feedback).
-    #[test]
-    fn gix_parses_conflict_trailer_with_existing_trailers() {
-        let original =
-            "fix the bug\n\nSome body.\n\nChange-Id: I1234567\nSigned-off-by: A <a@b.com>";
-        let result = marked(original);
-
-        let msg = gix::objs::commit::MessageRef::from_bytes(BStr::new(&result));
-        let body = msg.body().expect("message must have a body");
-        let trailers: Vec<_> = body.trailers().collect();
-
-        let tokens: Vec<&str> = trailers.iter().map(|t| t.token.to_str().unwrap()).collect();
-        assert!(
-            tokens.contains(&"Change-Id"),
-            "Change-Id trailer must be parseable by gix, got: {tokens:?}"
-        );
-        assert!(
-            tokens.contains(&"Signed-off-by"),
-            "Signed-off-by trailer must be parseable by gix, got: {tokens:?}"
-        );
-        assert!(
-            tokens.contains(&"GitButler-Conflict"),
-            "GitButler-Conflict trailer must be parseable by gix, got: {tokens:?}"
-        );
-    }
-
     /// The `GitButler-Conflict` trailer must always be the last trailer in
     /// the message so it does not interfere with other trailer-based tools.
     #[test]
@@ -483,12 +464,6 @@ mod tests {
 
     /// Verify gix sees the `[conflict]` prefix in the title even for
     /// subject-only messages.
-    ///
-    /// Note: gix's trailer parser does not detect trailers when the body
-    /// consists of only a single trailer paragraph (no preceding body text).
-    /// Our manual detection handles this case; the gix interop tests below
-    /// verify that messages WITH body text are parsed correctly by standard
-    /// git trailer tools.
     #[test]
     fn subject_only_roundtrip_with_gix() {
         let original = "fix the bug";
@@ -503,5 +478,60 @@ mod tests {
 
         // Round-trip
         assert_eq!(stripped(&result), original);
+    }
+
+    #[test]
+    fn mutating_functions_preserve_windows_line_endings() {
+        let original = "fix the bug\r\n\r\nDetailed explanation here.\r\n\r\nChange-Id: I1234567\r\nSigned-off-by: A <a@b.com>";
+        let marked = add_conflict_markers(BStr::new(original));
+        assert_only_crlf_line_endings(marked.as_ref());
+        assert!(message_is_conflicted(marked.as_ref()));
+
+        let stripped = strip_conflict_markers(marked.as_ref());
+        assert_only_crlf_line_endings(stripped.as_ref());
+        assert_eq!(stripped.as_bytes(), original.as_bytes());
+
+        let rewritten_message = BString::from(
+            "[conflict] rewritten subject\r\n\r\nUpdated body.\r\n\r\nChange-Id: I7654321",
+        );
+        let rewritten =
+            rewrite_conflict_markers_on_message_change(marked.as_ref(), rewritten_message.clone());
+        assert_only_crlf_line_endings(rewritten.as_ref());
+        assert!(message_is_conflicted(rewritten.as_ref()));
+        assert_eq!(
+            strip_conflict_markers(rewritten.as_ref()).as_bytes(),
+            rewritten_message
+                .as_bytes()
+                .strip_prefix(CONFLICT_MESSAGE_PREFIX.as_bytes())
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn mutating_functions_preserve_mixed_line_endings() {
+        let original = "fix the bug\r\n\r\nDetailed explanation here.\n\nChange-Id: I1234567\r\nSigned-off-by: A <a@b.com>";
+        let marked = add_conflict_markers(BStr::new(original));
+        assert!(
+            marked[CONFLICT_MESSAGE_PREFIX.len()..].starts_with(original.as_bytes()),
+            "existing message content must remain byte-for-byte intact"
+        );
+        assert!(message_is_conflicted(marked.as_ref()));
+
+        let stripped = strip_conflict_markers(marked.as_ref());
+        assert_eq!(stripped.as_bytes(), original.as_bytes());
+
+        let rewritten_message = BString::from(
+            "[conflict] rewritten subject\n\r\nUpdated body.\r\n\nChange-Id: I7654321",
+        );
+        let rewritten =
+            rewrite_conflict_markers_on_message_change(marked.as_ref(), rewritten_message.clone());
+        assert!(message_is_conflicted(rewritten.as_ref()));
+        assert_eq!(
+            strip_conflict_markers(rewritten.as_ref()).as_bytes(),
+            rewritten_message
+                .as_bytes()
+                .strip_prefix(CONFLICT_MESSAGE_PREFIX.as_bytes())
+                .unwrap()
+        );
     }
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::{Context as _, Result, bail};
-use bstr::BString;
+use bstr::{BString, ByteSlice};
 use but_core::{
     Commit, RepositoryExt, TreeChange,
     commit::{Headers, SignCommit},
@@ -16,7 +16,7 @@ use but_oxidize::{ObjectIdExt as _, gix_to_git2_index};
 use but_rebase::graph_rebase::{Editor, Pick, Step};
 use git2::build::CheckoutBuilder;
 use gitbutler_cherry_pick::{ConflictedTreeKey, GixRepositoryExt as _};
-use gitbutler_commit::commit_ext::CommitExt;
+use gitbutler_commit::commit_ext::{CommitExt, CommitMessageBstr};
 use gitbutler_operating_modes::{
     EDIT_BRANCH_REF, EditModeMetadata, INTEGRATION_BRANCH_REF, OperatingMode, WORKSPACE_BRANCH_REF,
     operating_mode, read_edit_mode_metadata, write_edit_mode_metadata,
@@ -28,6 +28,17 @@ use serde::Serialize;
 pub mod commands;
 
 const UNCOMMITTED_CHANGES_REF: &str = "refs/gitbutler/edit-uncommitted-changes";
+
+fn commit_title_to_merge_conflict_label(commit: &gix::Commit<'_>) -> String {
+    gix::objs::commit::MessageRef::from_bytes(
+        but_core::commit::strip_conflict_markers(commit.message_bstr()).as_ref(),
+    )
+    .title
+    .to_str_lossy()
+    .chars()
+    .take(80)
+    .collect()
+}
 
 /// Returns an index of the tree of `commit` if it is unconflicted, *or* produce a merged tree
 /// if `commit` is conflicted. That tree is turned into an index that records the conflicts that occurred
@@ -117,11 +128,11 @@ fn checkout_edit_branch(ctx: &Context, commit_id: gix::ObjectId) -> Result<()> {
     let repo = &*ctx.repo.get()?;
     #[expect(deprecated, reason = "checkout/index materialization boundary")]
     let git2_repo = &*ctx.git2_repo.get()?;
-    let commit = git2_repo.find_commit(commit_id.to_git2())?;
+    let commit = commit_id.attach(repo).object()?.try_into_commit()?;
 
     // Checkout commits's parent
     let commit_parent_id = find_or_create_base_commit(repo, commit_id)?;
-    let commit_parent = git2_repo.find_commit(commit_parent_id.to_git2())?;
+    let commit_parent = commit_parent_id.attach(repo).object()?.try_into_commit()?;
     let edit_branch_ref: gix::refs::FullName = EDIT_BRANCH_REF.try_into()?;
     repo.reference(
         edit_branch_ref.as_ref(),
@@ -142,30 +153,10 @@ fn checkout_edit_branch(ctx: &Context, commit_id: gix::ObjectId) -> Result<()> {
     // TODO this may not be necessary if the commit is unconflicted
     let mut index = get_commit_index(ctx, commit_id)?;
 
-    let their_commit_msg = commit
-        .message()
-        .and_then(|m| m.lines().next())
-        .map(|l| {
-            l.strip_prefix(but_core::commit::CONFLICT_MESSAGE_PREFIX)
-                .unwrap_or(l)
-                .chars()
-                .take(80)
-                .collect::<String>()
-        })
-        .unwrap_or("".into());
+    let their_commit_msg = commit_title_to_merge_conflict_label(&commit);
     let their_label = format!("Current commit: {their_commit_msg}");
 
-    let our_commit_msg = commit_parent
-        .message()
-        .and_then(|m| m.lines().next())
-        .map(|l| {
-            l.strip_prefix(but_core::commit::CONFLICT_MESSAGE_PREFIX)
-                .unwrap_or(l)
-                .chars()
-                .take(80)
-                .collect::<String>()
-        })
-        .unwrap_or("".into());
+    let our_commit_msg = commit_title_to_merge_conflict_label(&commit_parent);
     let our_label = format!("New base: {our_commit_msg}");
 
     git2_repo.checkout_index(
