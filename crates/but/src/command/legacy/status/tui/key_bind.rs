@@ -478,6 +478,15 @@ fn register_inline_reword_mode_key_binds(key_binds: &mut KeyBinds) {
     });
 
     key_binds.register(StaticKeyBind {
+        short_description: "open editor",
+        chord_display: "alt+e",
+        key_matcher: press().alt().code(KeyCode::Char('e')),
+        modes: Vec::from([ModeDiscriminant::InlineReword]),
+        message: Message::Reword(RewordMessage::OpenEditor),
+        hide_from_hotbar: false,
+    });
+
+    key_binds.register(StaticKeyBind {
         short_description: "back",
         chord_display: "esc",
         key_matcher: press().code(KeyCode::Esc),
@@ -785,6 +794,11 @@ struct KeyMatcher {
 }
 
 impl KeyMatcher {
+    #[inline]
+    fn alt(self) -> Self {
+        self.modifiers(KeyModifiers::ALT)
+    }
+
     #[inline]
     fn shift(self) -> Self {
         self.modifiers(KeyModifiers::SHIFT)

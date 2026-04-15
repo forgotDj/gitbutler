@@ -12,7 +12,7 @@ use but_api::{
     },
     diff::ComputeLineStats,
 };
-use but_core::{DiffSpec, DryRun};
+use but_core::{DiffSpec, DryRun, diff::CommitDetails};
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
 use gitbutler_operating_modes::OperatingMode;
@@ -195,11 +195,20 @@ pub(super) fn reword_commit_with_editor_legacy(
 ) -> anyhow::Result<Option<CommitRewordResult>> {
     let commit_details = but_api::diff::commit_details(ctx, commit_id, ComputeLineStats::No)?;
     let current_message = commit_details.commit.inner.message.to_string();
+    reword_commit_with_editor_with_message_legacy(ctx, commit_details, current_message)
+}
 
+pub(super) fn reword_commit_with_editor_with_message_legacy(
+    ctx: &mut Context,
+    commit_details: CommitDetails,
+    editor_initial_message: String,
+) -> anyhow::Result<Option<CommitRewordResult>> {
+    let commit_id = commit_details.commit.id;
+    let current_message = commit_details.commit.inner.message.to_string();
     let new_message = legacy::reword::get_commit_message_from_editor(
         ctx,
         commit_details,
-        current_message.clone(),
+        editor_initial_message,
         ShowDiffInEditor::Unspecified,
     )?;
 
@@ -233,7 +242,7 @@ pub(super) fn commit_message_has_multiple_lines_legacy(message: &str) -> bool {
     legacy::commit_message_prep::commit_message_has_multiple_lines(message)
 }
 
-pub(super) fn reword_commit_inline_legacy(
+pub(super) fn reword_commit_legacy(
     ctx: &mut Context,
     commit_id: gix::ObjectId,
     new_message: &str,
