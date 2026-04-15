@@ -832,32 +832,31 @@ const InlineCommitMessageEditor: FC<{
 	onSubmit: (value: string) => void;
 	onExit: () => void;
 	formRef?: Ref<HTMLFormElement>;
-}> = ({ message, onSubmit, onExit, formRef }) => (
-	<form
-		ref={formRef}
-		className={styles.editorForm}
-		onSubmit={(event) => {
-			event.preventDefault();
-			const formData = new FormData(event.currentTarget);
-			onExit();
-			onSubmit(formData.get("message") as string);
-		}}
-	>
-		<textarea
-			ref={(el) => {
-				if (!el) return;
-				el.focus();
-				const cursorPosition = el.value.length;
-				el.setSelectionRange(cursorPosition, cursorPosition);
-			}}
-			aria-label="Commit message"
-			name="message"
-			defaultValue={message.trim()}
-			className={classes(styles.editorInput, styles.editCommitMessageInput)}
-		/>
-		<EditorHelp bindings={rewordCommitBindings} />
-	</form>
-);
+}> = ({ message, onSubmit, onExit, formRef }) => {
+	const submit = (event: React.SyntheticEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		const formData = new FormData(event.currentTarget);
+		onExit();
+		onSubmit(formData.get("message") as string);
+	};
+	return (
+		<form ref={formRef} className={styles.editorForm} onSubmit={submit} onBlur={submit}>
+			<textarea
+				ref={(el) => {
+					if (!el) return;
+					el.focus();
+					const cursorPosition = el.value.length;
+					el.setSelectionRange(cursorPosition, cursorPosition);
+				}}
+				aria-label="Commit message"
+				name="message"
+				defaultValue={message.trim()}
+				className={classes(styles.editorInput, styles.editCommitMessageInput)}
+			/>
+			<EditorHelp bindings={rewordCommitBindings} />
+		</form>
+	);
+};
 
 const CommitRow: FC<
 	{
@@ -1444,31 +1443,30 @@ const InlineBranchNameEditor: FC<{
 	onSubmit: (value: string) => void;
 	onExit: () => void;
 	formRef?: Ref<HTMLFormElement>;
-}> = ({ branchName, onSubmit, onExit, formRef }) => (
-	<form
-		ref={formRef}
-		className={styles.editorForm}
-		onSubmit={(event) => {
-			event.preventDefault();
-			const formData = new FormData(event.currentTarget);
-			onExit();
-			onSubmit(formData.get("branchName") as string);
-		}}
-	>
-		<input
-			aria-label="Branch name"
-			ref={(el) => {
-				if (!el) return;
-				el.focus();
-				el.select();
-			}}
-			name="branchName"
-			defaultValue={branchName}
-			className={classes(styles.editorInput, styles.renameBranchInput)}
-		/>
-		<EditorHelp bindings={renameBranchBindings} />
-	</form>
-);
+}> = ({ branchName, onSubmit, onExit, formRef }) => {
+	const submit = (event: React.SyntheticEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		const formData = new FormData(event.currentTarget);
+		onExit();
+		onSubmit(formData.get("branchName") as string);
+	};
+	return (
+		<form ref={formRef} className={styles.editorForm} onSubmit={submit} onBlur={submit}>
+			<input
+				aria-label="Branch name"
+				ref={(el) => {
+					if (!el) return;
+					el.focus();
+					el.select();
+				}}
+				name="branchName"
+				defaultValue={branchName}
+				className={classes(styles.editorInput, styles.renameBranchInput)}
+			/>
+			<EditorHelp bindings={renameBranchBindings} />
+		</form>
+	);
+};
 
 const SegmentRow: FC<
 	{
