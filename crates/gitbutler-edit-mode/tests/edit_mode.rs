@@ -362,7 +362,7 @@ fn enter_edit_mode_checks_out_conflicted_commit() -> Result<()> {
     );
     insta::assert_debug_snapshot!(
         repo.head_commit()?.message()?.summary(),
-        @r#""Changes to make millions""#
+        @r#""[conflict] Changes to make millions""#
     );
 
     insta::assert_snapshot!(

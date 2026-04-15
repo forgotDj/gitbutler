@@ -555,8 +555,11 @@ impl<'repo> Commit<'repo> {
     }
 
     /// Return `true` if this commit contains a tree that is conflicted.
+    ///
+    /// Checks the commit message for conflict markers first (new style),
+    /// then falls back to the `gitbutler-conflicted` header (legacy).
     pub fn is_conflicted(&self) -> bool {
-        self.headers().is_some_and(|hdr| hdr.is_conflicted())
+        is_conflicted(self.inner.message.as_ref(), self.headers().as_ref())
     }
 
     /// If the commit is conflicted, then it returns the auto-resolution tree,
@@ -686,3 +689,9 @@ impl ConflictEntries {
         set.len()
     }
 }
+
+mod conflict;
+pub use conflict::{
+    add_conflict_markers, is_conflicted, message_is_conflicted,
+    rewrite_conflict_markers_on_message_change, strip_conflict_markers,
+};

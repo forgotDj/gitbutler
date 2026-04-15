@@ -226,11 +226,13 @@ fn local_commits_gix(
         let committer: ui::Author = commit.committer.to_ref(&mut buf).into();
         authors.insert(author.clone());
         authors.insert(committer);
+        let is_conflicted = commit.is_conflicted();
+        let message = but_core::commit::strip_conflict_markers(commit.message.as_ref());
         out.push(ui::Commit {
             id: info.id,
             parent_ids: commit.parents.iter().cloned().collect(),
-            message: commit.message.clone(),
-            has_conflicts: commit.is_conflicted(),
+            message,
+            has_conflicts: is_conflicted,
             state: CommitState::LocalAndRemote(info.id),
             created_at: i128::from(commit.committer.time.seconds) * 1000,
             author,

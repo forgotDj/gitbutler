@@ -660,8 +660,10 @@ impl TryFrom<&gix::Commit<'_>> for CommitData {
     type Error = anyhow::Error;
 
     fn try_from(commit: &gix::Commit<'_>) -> std::result::Result<Self, Self::Error> {
+        let raw_message: BString = commit.message_bstr().into();
+        let message = but_core::commit::strip_conflict_markers(raw_message.as_ref());
         Ok(CommitData {
-            message: commit.message_bstr().into(),
+            message,
             author: commit.author()?.into(),
         })
     }

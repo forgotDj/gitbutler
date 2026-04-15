@@ -361,7 +361,7 @@ Uncommitted changes
 ...
               "changes": [
                 {
-                  "cliId": "76:nk",
+                  "cliId": "fd:nk",
                   "filePath": "a.txt",
                   "changeType": "modified"
                 }

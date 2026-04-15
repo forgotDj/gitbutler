@@ -74,7 +74,9 @@ gitbutler-headers-version 2
 change-id 00000000-0000-0000-0000-000000000001
 gitbutler-conflicted 1
 
-Changes to make millions
+[conflict] Changes to make millions
+
+GitButler-Conflict: fixture marker
 
 EOF
   )

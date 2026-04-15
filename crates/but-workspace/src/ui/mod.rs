@@ -118,17 +118,18 @@ impl TryFrom<gix::Commit<'_>> for Commit {
         let commit_id = commit.id;
         let commit = commit.decode()?;
         let headers = but_core::commit::Headers::try_from_commit_headers(|| commit.extra_headers());
-        let has_conflicts = headers.as_ref().is_some_and(|hdr| hdr.is_conflicted());
+        let has_conflicts = but_core::commit::is_conflicted(commit.message, headers.as_ref());
         let change_id = headers
             .unwrap_or_default()
             .ensure_change_id(commit_id)
             .change_id
             .expect("change-id is ensured")
             .to_string();
+        let message = but_core::commit::strip_conflict_markers(commit.message);
         Ok(Commit {
             id: commit_id,
             parent_ids: commit.parents().collect(),
-            message: commit.message.to_owned(),
+            message,
             has_conflicts,
             state: CommitState::LocalAndRemote(commit_id),
             created_at: i128::from(commit.time()?.seconds) * 1000,
@@ -142,7 +143,8 @@ impl TryFrom<gix::Commit<'_>> for Commit {
 impl From<but_core::CommitOwned> for Commit {
     fn from(CommitOwned { id, inner }: CommitOwned) -> Self {
         let headers = commit::Headers::try_from_commit(&inner);
-        let has_conflicts = headers.as_ref().is_some_and(|hdr| hdr.is_conflicted());
+        let has_conflicts =
+            but_core::commit::is_conflicted(inner.message.as_ref(), headers.as_ref());
         let change_id = headers
             .unwrap_or_default()
             .ensure_change_id(id)
@@ -158,6 +160,7 @@ impl From<but_core::CommitOwned> for Commit {
             message,
             extra_headers: _,
         } = inner;
+        let message = but_core::commit::strip_conflict_markers(message.as_ref());
         Commit {
             id,
             parent_ids: parents.into_iter().collect(),

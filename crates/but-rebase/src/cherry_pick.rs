@@ -23,7 +23,7 @@ pub enum EmptyCommit {
 }
 
 pub(crate) mod function {
-    use std::{collections::HashSet, path::PathBuf};
+    use std::path::PathBuf;
 
     use anyhow::{Context as _, bail};
     use bstr::BString;
@@ -168,18 +168,16 @@ pub(crate) mod function {
         }
 
         let headers = to_rebase.headers();
-        let to_rebase_is_conflicted = headers.as_ref().is_some_and(|hdr| hdr.is_conflicted());
         let mut new_commit = to_rebase.inner;
         new_commit.tree = resolved_tree_id.detach();
 
         // Assure the commit isn't thinking it's conflicted.
-        if to_rebase_is_conflicted {
-            if let Some(pos) = new_commit
-                .extra_headers()
-                .find_pos(HEADERS_CONFLICTED_FIELD)
-            {
-                new_commit.extra_headers.remove(pos);
-            }
+        new_commit.message = but_core::commit::strip_conflict_markers(new_commit.message.as_ref());
+        if let Some(pos) = new_commit
+            .extra_headers()
+            .find_pos(HEADERS_CONFLICTED_FIELD)
+        {
+            new_commit.extra_headers.remove(pos);
         } else if headers.is_none() {
             let headers = Headers::from_config(&repo.config_snapshot());
             new_commit
@@ -204,10 +202,6 @@ pub(crate) mod function {
         treat_as_unresolved: gix::merge::tree::TreatAsUnresolved,
     ) -> anyhow::Result<gix::Id<'repo>> {
         let repo = resolved_tree_id.repo;
-        // in case someone checks this out with vanilla Git, we should warn why it looks like this
-        let readme_content =
-            b"You have checked out a GitButler Conflicted commit. You probably didn't mean to do this.";
-        let readme_blob = repo.write_blob(readme_content)?;
 
         let conflicted_files =
             extract_conflicted_files(resolved_tree_id, cherry_pick, treat_as_unresolved)?;
@@ -242,14 +236,17 @@ pub(crate) mod function {
             resolved_tree_id,
         )?;
         tree.upsert(".conflict-files", EntryKind::Blob, conflicted_files_blob)?;
-        tree.upsert("CONFLICT-README.txt", EntryKind::Blob, readme_blob)?;
 
         let mut headers = to_rebase
             .headers()
             .unwrap_or_else(|| Headers::from_config(&repo.config_snapshot()));
-        headers.conflicted = conflicted_files.conflicted_header_field();
+        headers.conflicted = None;
         to_rebase.tree = tree.write().context("failed to write tree")?.detach();
         set_parent(&mut to_rebase, head.id.detach())?;
+
+        // Add conflict markers to the commit message
+        to_rebase.inner.message =
+            but_core::commit::add_conflict_markers(to_rebase.inner.message.as_ref());
 
         to_rebase.set_headers(&headers);
         Ok(crate::commit::create(
@@ -340,23 +337,6 @@ pub(crate) mod function {
             !self.ancestor_entries.is_empty()
                 || !self.our_entries.is_empty()
                 || !self.their_entries.is_empty()
-        }
-
-        fn total_entries(&self) -> usize {
-            let set = self
-                .ancestor_entries
-                .iter()
-                .chain(self.our_entries.iter())
-                .chain(self.their_entries.iter())
-                .collect::<HashSet<_>>();
-
-            set.len()
-        }
-
-        /// Return the `conflicted` header field value.
-        pub(crate) fn conflicted_header_field(&self) -> Option<u64> {
-            let entries = self.total_entries();
-            Some(if entries > 0 { entries as u64 } else { 1 })
         }
     }
 }

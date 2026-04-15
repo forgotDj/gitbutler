@@ -27,13 +27,11 @@ impl CommitExt for gix::Commit<'_> {
     }
 
     fn is_conflicted(&self) -> bool {
-        self.decode()
-            .ok()
-            .and_then(|commit| {
-                let headers = Headers::try_from_commit_headers(|| commit.extra_headers())?;
-                Some(headers.conflicted? > 0)
-            })
-            .unwrap_or(false)
+        let Ok(commit) = self.decode() else {
+            return false;
+        };
+        let headers = Headers::try_from_commit_headers(|| commit.extra_headers());
+        but_core::commit::is_conflicted(commit.message, headers.as_ref())
     }
 }
 
