@@ -1,5 +1,5 @@
 use but_testsupport::Sandbox;
-use crossterm::event::{KeyCode, KeyModifiers};
+use crossterm::event::KeyCode;
 use snapbox::{file, str};
 
 use crate::command::legacy::status::tui::tests::utils::test_tui;
@@ -169,13 +169,10 @@ fn discard_branch_confirm_yes_removes_branch() {
 
     let mut tui = test_tui(env);
 
+    tui.input_then_render(KeyCode::Down)
+        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
+
     tui.input_then_render('b')
-        .assert_current_line_eq(str!["┊╭┄<< target >> g0 [A]"]);
-
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
-        .assert_current_line_eq(str!["┴ << target >> [..] [origin/main] 2000-01-02 add M"]);
-
-    tui.input_then_render('n')
         .assert_current_line_eq(str!["┊╭┄br [c-branch-1] (no commits)"]);
 
     tui.input_then_render('x')
@@ -206,13 +203,10 @@ fn discard_branch_cancel_keeps_branch() {
 
     let mut tui = test_tui(env);
 
+    tui.input_then_render(KeyCode::Down)
+        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
+
     tui.input_then_render('b')
-        .assert_current_line_eq(str!["┊╭┄<< target >> g0 [A]"]);
-
-    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
-        .assert_current_line_eq(str!["┴ << target >> [..] [origin/main] 2000-01-02 add M"]);
-
-    tui.input_then_render('n')
         .assert_current_line_eq(str!["┊╭┄br [c-branch-1] (no commits)"]);
 
     tui.input_then_render('x')

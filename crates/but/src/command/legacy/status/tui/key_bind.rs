@@ -9,7 +9,7 @@ use crate::command::legacy::status::tui::{
     mode::ModeDiscriminant,
 };
 
-use super::{BranchMessage, CommitMessage, DetailsMessage, FilesMessage, MoveMessage};
+use super::{CommitMessage, DetailsMessage, FilesMessage, MoveMessage};
 
 pub(super) fn default_key_binds() -> KeyBinds {
     let mut key_binds = KeyBinds::new();
@@ -41,10 +41,6 @@ pub(super) fn default_key_binds() -> KeyBinds {
                 register_global_key_binds(&mut key_binds, Vec::from([mode]));
                 register_unassigned_key_binds(&mut key_binds, Vec::from([mode]));
                 register_move_mode_key_binds(&mut key_binds);
-            }
-            ModeDiscriminant::Branch => {
-                register_global_key_binds(&mut key_binds, Vec::from([mode]));
-                register_branch_mode_key_binds(&mut key_binds);
             }
             ModeDiscriminant::Details => {
                 register_detail_key_binds(&mut key_binds);
@@ -343,7 +339,7 @@ fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
         chord_display: "b",
         key_matcher: press().code(KeyCode::Char('b')),
         modes: Vec::from([ModeDiscriminant::Normal]),
-        message: Message::Branch(BranchMessage::Start),
+        message: Message::NewBranch,
         hide_from_hotbar: false,
     });
 
@@ -632,44 +628,6 @@ fn register_move_mode_key_binds(key_binds: &mut KeyBinds) {
         chord_display: "esc",
         key_matcher: press().code(KeyCode::Esc),
         modes: Vec::from([ModeDiscriminant::Move]),
-        message: Message::EnterNormalMode,
-        hide_from_hotbar: false,
-    });
-}
-
-fn register_branch_mode_key_binds(key_binds: &mut KeyBinds) {
-    key_binds.register(StaticKeyBind {
-        short_description: "new",
-        chord_display: "n",
-        key_matcher: press().code(KeyCode::Char('n')),
-        modes: Vec::from([ModeDiscriminant::Branch]),
-        message: Message::Branch(BranchMessage::New),
-        hide_from_hotbar: false,
-    });
-
-    key_binds.register(StaticKeyBind {
-        short_description: "move",
-        chord_display: "m",
-        key_matcher: press().code(KeyCode::Char('m')),
-        modes: Vec::from([ModeDiscriminant::Branch]),
-        message: Message::Move(MoveMessage::Start),
-        hide_from_hotbar: false,
-    });
-
-    key_binds.register(StaticKeyBind {
-        short_description: "back",
-        chord_display: "b",
-        key_matcher: press().code(KeyCode::Char('b')),
-        modes: Vec::from([ModeDiscriminant::Branch]),
-        message: Message::EnterNormalMode,
-        hide_from_hotbar: true,
-    });
-
-    key_binds.register(StaticKeyBind {
-        short_description: "back",
-        chord_display: "esc",
-        key_matcher: press().code(KeyCode::Esc),
-        modes: Vec::from([ModeDiscriminant::Branch]),
         message: Message::EnterNormalMode,
         hide_from_hotbar: false,
     });

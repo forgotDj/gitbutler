@@ -56,6 +56,7 @@ fn branch_cli_id(name: &str, id: &str, stack_id: Option<StackId>) -> Arc<CliId> 
     })
 }
 
+#[expect(dead_code)]
 fn stack_cli_id(id: &str, stack_id: StackId) -> Arc<CliId> {
     Arc::new(CliId::Stack {
         id: id.into(),
@@ -877,7 +878,6 @@ fn movement_does_not_panic_or_move_when_cursor_is_out_of_bounds() {
         cursor = new_cursor;
     }
 
-    assert_eq!(cursor.closest_branch_cursor(&lines), None);
     assert_eq!(cursor, Cursor(99));
 }
 
@@ -1042,163 +1042,6 @@ fn move_previous_section_does_not_move_when_on_first_jump_target() {
     }
 
     assert_eq!(cursor, Cursor(0));
-}
-
-#[test]
-fn closest_branch_cursor_from_commit_selects_nearest_preceding_branch() {
-    let lines = vec![
-        line(StatusOutputLineData::Branch {
-            cli_id: branch_cli_id("main", "b0", None),
-        }),
-        line(StatusOutputLineData::Commit {
-            cli_id: commit_cli_id("1111111111111111111111111111111111111111", "c0"),
-            stack_id: None,
-            classification: CommitClassification::LocalOnly,
-        }),
-        line(StatusOutputLineData::Branch {
-            cli_id: branch_cli_id("feature", "b1", None),
-        }),
-        line(StatusOutputLineData::Commit {
-            cli_id: commit_cli_id("2222222222222222222222222222222222222222", "c1"),
-            stack_id: None,
-            classification: CommitClassification::LocalOnly,
-        }),
-    ];
-
-    let cursor = Cursor(3);
-
-    assert_eq!(cursor.closest_branch_cursor(&lines), Some(Cursor(2)));
-}
-
-#[test]
-fn closest_branch_cursor_from_committed_file_selects_nearest_preceding_branch() {
-    let lines = vec![
-        line(StatusOutputLineData::Branch {
-            cli_id: branch_cli_id("main", "b0", None),
-        }),
-        line(StatusOutputLineData::Commit {
-            cli_id: commit_cli_id("1111111111111111111111111111111111111111", "c0"),
-            stack_id: None,
-            classification: CommitClassification::LocalOnly,
-        }),
-        line(StatusOutputLineData::File {
-            cli_id: committed_file_cli_id(
-                "1111111111111111111111111111111111111111",
-                "src/lib.rs",
-                "f0",
-            ),
-        }),
-    ];
-
-    let cursor = Cursor(2);
-
-    assert_eq!(cursor.closest_branch_cursor(&lines), Some(Cursor(0)));
-}
-
-#[test]
-fn closest_branch_cursor_from_branch_is_noop() {
-    let lines = vec![line(StatusOutputLineData::Branch {
-        cli_id: branch_cli_id("main", "b0", None),
-    })];
-
-    let cursor = Cursor(0);
-
-    assert_eq!(cursor.closest_branch_cursor(&lines), Some(Cursor(0)));
-}
-
-#[test]
-fn closest_branch_cursor_from_unassigned_changes_selects_first_branch() {
-    let lines = vec![
-        line(StatusOutputLineData::UnassignedChanges {
-            cli_id: unassigned("u0"),
-        }),
-        line(StatusOutputLineData::Branch {
-            cli_id: branch_cli_id("first", "b0", None),
-        }),
-        line(StatusOutputLineData::Branch {
-            cli_id: branch_cli_id("second", "b1", None),
-        }),
-    ];
-
-    let cursor = Cursor(0);
-
-    assert_eq!(cursor.closest_branch_cursor(&lines), Some(Cursor(1)));
-}
-
-#[test]
-fn closest_branch_cursor_from_unassigned_file_selects_first_branch() {
-    let lines = vec![
-        line(StatusOutputLineData::File {
-            cli_id: unassigned("u0"),
-        }),
-        line(StatusOutputLineData::Branch {
-            cli_id: branch_cli_id("first", "b0", None),
-        }),
-    ];
-
-    let cursor = Cursor(0);
-
-    assert_eq!(cursor.closest_branch_cursor(&lines), Some(Cursor(1)));
-}
-
-#[test]
-fn closest_branch_cursor_from_staged_file_prefers_branch_for_matching_stack() {
-    let stack_a = StackId::generate();
-    let stack_b = StackId::generate();
-    let lines = vec![
-        line(StatusOutputLineData::Branch {
-            cli_id: branch_cli_id("a", "b0", Some(stack_a)),
-        }),
-        line(StatusOutputLineData::Branch {
-            cli_id: branch_cli_id("b", "b1", Some(stack_b)),
-        }),
-        line(StatusOutputLineData::StagedFile {
-            cli_id: stack_cli_id("s0", stack_b),
-        }),
-    ];
-
-    let cursor = Cursor(2);
-
-    assert_eq!(cursor.closest_branch_cursor(&lines), Some(Cursor(1)));
-}
-
-#[test]
-fn closest_branch_cursor_from_merge_base_is_noop() {
-    let lines = vec![
-        line(StatusOutputLineData::Branch {
-            cli_id: branch_cli_id("main", "b0", None),
-        }),
-        line(StatusOutputLineData::MergeBase),
-    ];
-
-    let cursor = Cursor(1);
-
-    assert_eq!(cursor.closest_branch_cursor(&lines), Some(Cursor(1)));
-}
-
-#[test]
-fn closest_branch_cursor_falls_back_to_merge_base_when_no_branch_exists() {
-    let lines = vec![
-        line(StatusOutputLineData::UnassignedChanges {
-            cli_id: unassigned("u0"),
-        }),
-        line(StatusOutputLineData::MergeBase),
-    ];
-
-    let cursor = Cursor(0);
-
-    assert_eq!(cursor.closest_branch_cursor(&lines), Some(Cursor(1)));
-}
-
-#[test]
-fn closest_branch_cursor_is_none_when_no_branch_exists() {
-    let lines = vec![line(StatusOutputLineData::UnassignedChanges {
-        cli_id: unassigned("u0"),
-    })];
-
-    let cursor = Cursor(0);
-
-    assert_eq!(cursor.closest_branch_cursor(&lines), None);
 }
 
 #[test]

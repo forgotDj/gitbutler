@@ -661,14 +661,9 @@ impl App {
                 }
                 MoveMessage::Confirm => self.handle_move_confirm(ctx, messages)?,
             },
-            Message::Branch(branch_message) => match branch_message {
-                BranchMessage::Start => {
-                    self.handle_start_branch_mode(messages);
-                }
-                BranchMessage::New => {
-                    self.handle_create_new_branch(ctx, messages)?;
-                }
-            },
+            Message::NewBranch => {
+                self.handle_new_branch(ctx, messages)?;
+            }
             Message::CopySelection => {
                 self.handle_copy_selection()?;
             }
@@ -966,7 +961,6 @@ impl App {
                 }
             }
             Mode::Normal
-            | Mode::Branch
             | Mode::Details
             | Mode::InlineReword(..)
             | Mode::Command(..)
@@ -1011,6 +1005,11 @@ impl App {
                 SelectAfterReload::CliId(cli_id) => Cursor::restore(&cli_id, &new_lines),
             }
         } else {
+            let selected_merge_base = self
+                .cursor
+                .selected_line(&self.status_lines)
+                .is_some_and(|line| matches!(line.data, StatusOutputLineData::MergeBase));
+
             let default_restore = || {
                 self.cursor
                     .selection_cli_id_for_reload(&self.status_lines, self.flags.show_files)
@@ -1019,13 +1018,7 @@ impl App {
                     })
             };
 
-            let selected_merge_base_in_branch_mode = matches!(self.mode, Mode::Branch)
-                && self
-                    .cursor
-                    .selected_line(&self.status_lines)
-                    .is_some_and(|line| matches!(line.data, StatusOutputLineData::MergeBase));
-
-            if selected_merge_base_in_branch_mode {
+            if selected_merge_base {
                 Cursor::select_merge_base(&new_lines).or_else(default_restore)
             } else {
                 default_restore()
@@ -1656,51 +1649,11 @@ impl App {
         Ok(())
     }
 
-    fn handle_start_branch_mode(&mut self, messages: &mut Vec<Message>) {
-        let Some(new_cursor) = self.cursor.closest_branch_cursor(&self.status_lines) else {
-            return;
-        };
-
-        let Some(selection) = new_cursor.selected_line(&self.status_lines) else {
-            return;
-        };
-
-        match &selection.data {
-            StatusOutputLineData::Branch { .. } | StatusOutputLineData::MergeBase => {}
-            StatusOutputLineData::UpdateNotice
-            | StatusOutputLineData::Connector
-            | StatusOutputLineData::StagedChanges { .. }
-            | StatusOutputLineData::StagedFile { .. }
-            | StatusOutputLineData::UnassignedChanges { .. }
-            | StatusOutputLineData::UnassignedFile { .. }
-            | StatusOutputLineData::Commit { .. }
-            | StatusOutputLineData::CommitMessage
-            | StatusOutputLineData::EmptyCommitMessage
-            | StatusOutputLineData::File { .. }
-            | StatusOutputLineData::UpstreamChanges
-            | StatusOutputLineData::Warning
-            | StatusOutputLineData::Hint
-            | StatusOutputLineData::NoAssignmentsUnstaged => return,
-        }
-
-        self.cursor = new_cursor;
-        self.mode = Mode::Branch;
-
-        if !self.flags.show_files.is_none() {
-            self.flags.show_files = FilesStatusFlag::None;
-            messages.push(Message::Reload(None));
-        }
-    }
-
-    fn handle_create_new_branch(
+    fn handle_new_branch(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
     ) -> anyhow::Result<()> {
-        if !matches!(self.mode, Mode::Branch) {
-            return Ok(());
-        }
-
         let Some(selection) = self.cursor.selected_line(&self.status_lines) else {
             return Ok(());
         };
@@ -1729,10 +1682,7 @@ impl App {
             | StatusOutputLineData::NoAssignmentsUnstaged => return Ok(()),
         };
 
-        messages.extend([
-            Message::EnterNormalMode,
-            Message::Reload(Some(SelectAfterReload::Branch(new_name))),
-        ]);
+        messages.push(Message::Reload(Some(SelectAfterReload::Branch(new_name))));
 
         Ok(())
     }
@@ -2247,17 +2197,10 @@ impl App {
                         self.render_move_labels_for_selected_line(data, move_mode, &mut line);
                     }
                 }
-                Mode::Branch => {
-                    self.render_branch_labels_for_selected_line(data, &mut line);
-                }
             }
         } else {
             match &self.mode {
-                Mode::Normal
-                | Mode::InlineReword(..)
-                | Mode::Command(..)
-                | Mode::Branch
-                | Mode::Details => {}
+                Mode::Normal | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
                 Mode::Rub(RubMode {
                     source,
                     available_targets: _,
@@ -2382,7 +2325,6 @@ impl App {
                 }
             }
             Mode::Normal
-            | Mode::Branch
             | Mode::Details
             | Mode::Move(..)
             | Mode::Command(..)
@@ -2453,7 +2395,6 @@ impl App {
                     }
                 }
                 Mode::Commit(..)
-                | Mode::Branch
                 | Mode::Normal
                 | Mode::Details
                 | Mode::Rub(..)
@@ -2559,22 +2500,6 @@ impl App {
         }
     }
 
-    fn render_branch_labels_for_selected_line(
-        &self,
-        data: &StatusOutputLineData,
-        line: &mut Line<'static>,
-    ) {
-        let Some(display) = branch_operation_display(data) else {
-            return;
-        };
-        line.extend([
-            Span::raw("<< ").mode_colors(&self.mode),
-            Span::raw(display).mode_colors(&self.mode),
-            Span::raw(" >>").mode_colors(&self.mode),
-            Span::raw(" "),
-        ]);
-    }
-
     fn render_hotbar(&self, area: Rect, frame: &mut Frame) {
         let mode_span = Span::raw(format!(
             "  {}  ",
@@ -2585,7 +2510,6 @@ impl App {
                 Mode::Command(..) => "command",
                 Mode::Commit(..) => "commit",
                 Mode::Move(..) => "move",
-                Mode::Branch => "branch",
                 Mode::Details => "details",
             }
         ))
@@ -2604,7 +2528,6 @@ impl App {
 
         match &self.mode {
             Mode::Normal
-            | Mode::Branch
             | Mode::Details
             | Mode::Rub(..)
             | Mode::Commit(..)
@@ -2788,7 +2711,6 @@ fn event_to_messages(ev: Event, key_binds: &KeyBinds, mode: &Mode, messages: &mu
                         messages.push(Message::Command(CommandMessage::Input(ev)));
                     }
                     Mode::Normal
-                    | Mode::Branch
                     | Mode::Details
                     | Mode::Rub(..)
                     | Mode::Commit(..)
@@ -2806,12 +2728,7 @@ fn event_to_messages(ev: Event, key_binds: &KeyBinds, mode: &Mode, messages: &mu
             Mode::Command(..) => {
                 messages.push(Message::Command(CommandMessage::Input(ev)));
             }
-            Mode::Normal
-            | Mode::Branch
-            | Mode::Details
-            | Mode::Rub(..)
-            | Mode::Commit(..)
-            | Mode::Move(..) => {
+            Mode::Normal | Mode::Details | Mode::Rub(..) | Mode::Commit(..) | Mode::Move(..) => {
                 messages.push(Message::JustRender);
             }
         },
@@ -2854,10 +2771,10 @@ enum Message {
     Command(CommandMessage),
     Files(FilesMessage),
     Move(MoveMessage),
-    Branch(BranchMessage),
     Details(DetailsMessage),
     EnterDetailsMode,
     LeaveDetailsMode,
+    NewBranch,
 
     // Utilities
     CopySelection,
@@ -2945,12 +2862,6 @@ enum MoveMessage {
     Start,
     SetInsertSide(InsertSide),
     Confirm,
-}
-
-#[derive(Debug, Clone)]
-enum BranchMessage {
-    Start,
-    New,
 }
 
 #[derive(Debug, Clone)]
@@ -3099,26 +3010,6 @@ fn move_operation_display(data: &StatusOutputLineData, mode: &MoveMode) -> Optio
             | StatusOutputLineData::Hint
             | StatusOutputLineData::NoAssignmentsUnstaged => None,
         },
-    }
-}
-
-fn branch_operation_display(data: &StatusOutputLineData) -> Option<&'static str> {
-    match data {
-        StatusOutputLineData::Branch { .. } | StatusOutputLineData::MergeBase => Some("target"),
-        StatusOutputLineData::UpdateNotice
-        | StatusOutputLineData::Connector
-        | StatusOutputLineData::StagedChanges { .. }
-        | StatusOutputLineData::StagedFile { .. }
-        | StatusOutputLineData::UnassignedChanges { .. }
-        | StatusOutputLineData::UnassignedFile { .. }
-        | StatusOutputLineData::Commit { .. }
-        | StatusOutputLineData::CommitMessage
-        | StatusOutputLineData::EmptyCommitMessage
-        | StatusOutputLineData::File { .. }
-        | StatusOutputLineData::UpstreamChanges
-        | StatusOutputLineData::Warning
-        | StatusOutputLineData::Hint
-        | StatusOutputLineData::NoAssignmentsUnstaged => None,
     }
 }
 

@@ -198,7 +198,7 @@ fn section_jumps_shift_j_k() {
         .assert_current_line_eq(str!["┴ 0dc3733 [origin/main] 2000-01-02 add M"]);
 
     tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('K')))
-        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
+        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
     tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('K')))
         .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
@@ -293,7 +293,7 @@ fn scrolling_keeps_three_rows_of_context_when_possible() {
     env.setup_metadata(&["A", "B"]).unwrap();
 
     let mut tui = test_tui_with_size(env, 100, 8);
-    let visible_height = 7;
+    let visible_height = 6;
 
     tui.input_then_render(None);
     assert_cursor_context_rows(&tui, visible_height, 3);
@@ -336,20 +336,20 @@ fn section_jumps_scroll_viewport_when_target_is_offscreen() {
 }
 
 #[test]
-fn moving_to_merge_base_in_branch_mode_scrolls_to_keep_selection_visible() {
+fn moving_to_merge_base_scrolls_to_keep_selection_visible() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
     env.setup_metadata(&["A", "B"]).unwrap();
 
     let mut tui = test_tui_with_size(env, 100, 8);
 
-    tui.input_then_render('b')
-        .assert_current_line_eq(str!["┊╭┄<< target >> g0 [A]"]);
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
+        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
     tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
-        .assert_current_line_eq(str!["┊╭┄<< target >> h0 [B]"]);
+        .assert_current_line_eq(str!["┊╭┄h0 [B]"]);
 
-    tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["[..]<< target >> [..] [origin/main] 2000-01-02 add M"]);
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
+        .assert_current_line_eq(str!["┴ [..] [origin/main] 2000-01-02 add M"]);
 }
 
 #[test]
@@ -551,20 +551,17 @@ fn mode_toggle_key_m_enters_and_leaves_move_mode() {
 }
 
 #[test]
-fn mode_toggle_key_b_enters_and_leaves_branch_mode() {
+fn key_b_creates_new_branch_from_selected_branch() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
     env.setup_metadata(&["A"]).unwrap();
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render('b')
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/mode_toggle_key_b_enters_and_leaves_branch_mode_001.svg"
-        ])
-        .assert_current_line_eq(str!["┊╭┄<< target >> g0 [A]"]);
+    tui.input_then_render(KeyCode::Down)
+        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
     tui.input_then_render('b')
-        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
+        .assert_current_line_eq(str!["┊╭┄br [c-branch-1] (no commits)"]);
 }
 
 #[test]

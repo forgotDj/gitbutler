@@ -44,7 +44,7 @@ use crate::{
     id::{UncommittedCliId, UncommittedHunk},
 };
 
-use super::{BranchMessage, RubSource};
+use super::RubSource;
 
 mod details_cursor;
 
@@ -209,6 +209,7 @@ impl Details {
             | Message::MoveCursorNextSection
             | Message::SelectUnassigned
             | Message::Reload(_)
+            | Message::NewBranch
             | Message::RunAfterConfirmation(_) => true,
 
             Message::Commit(commit_message) => match commit_message {
@@ -237,10 +238,6 @@ impl Details {
             Message::Move(move_message) => match move_message {
                 MoveMessage::Start | MoveMessage::SetInsertSide(_) => false,
                 MoveMessage::Confirm => true,
-            },
-            Message::Branch(branch_message) => match branch_message {
-                BranchMessage::Start => false,
-                BranchMessage::New => true,
             },
             Message::Details(details_message) => match details_message {
                 DetailsMessage::Unlock // `unlock` sets the dirty flag if necessary

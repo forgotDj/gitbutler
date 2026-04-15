@@ -24,7 +24,6 @@ pub(super) enum Mode {
     Command(CommandMode),
     Commit(CommitMode),
     Move(MoveMode),
-    Branch,
     Details,
 }
 
@@ -37,7 +36,6 @@ impl Mode {
             Mode::InlineReword(_) => Color::Magenta,
             Mode::Command(_) => Color::Yellow,
             Mode::Move(..) => Color::Cyan,
-            Mode::Branch => Color::Red,
             Mode::Details => Color::Rgb(255, 165, 0), // orange
         }
     }
@@ -46,7 +44,6 @@ impl Mode {
         match self {
             Mode::Normal => Color::White,
             Mode::Commit(_)
-            | Mode::Branch
             | Mode::Details
             | Mode::Rub(_)
             | Mode::InlineReword(_)
