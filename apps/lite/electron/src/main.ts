@@ -22,9 +22,11 @@ import {
 	type TreeChangeDiffParams,
 	type UpdateBranchNameParams,
 	type ApplyParams,
+	type ShowNativeMenuParams,
 	type UnapplyStackParams,
 	WatcherSubscribeParams,
 	WatcherUnsubscribeParams,
+	NativeMenuPopupItem,
 } from "./ipc.js";
 import {
 	absorb,
@@ -55,13 +57,29 @@ import {
 	updateBranchName,
 	BranchListingFilter,
 } from "@gitbutler/but-sdk";
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, type MenuItemConstructorOptions } from "electron";
 import { REACT_DEVELOPER_TOOLS, installExtension } from "electron-devtools-installer";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = path.dirname(currentFilePath);
+
+const buildNativeMenuTemplate = (
+	items: Array<NativeMenuPopupItem>,
+	onItem: (itemId: string) => void,
+): Array<MenuItemConstructorOptions> =>
+	items.map((item): MenuItemConstructorOptions => {
+		if (item._tag === "Separator") return { type: "separator" };
+		const itemId = item.itemId;
+
+		return {
+			label: item.label,
+			enabled: item.enabled,
+			click: itemId !== undefined ? () => onItem(itemId) : undefined,
+			submenu: item.submenu ? buildNativeMenuTemplate(item.submenu, onItem) : undefined,
+		};
+	});
 
 function registerIpcHandlers(): void {
 	ipcMain.handle(
@@ -175,6 +193,31 @@ function registerIpcHandlers(): void {
 		liteIpcChannels.pushStackLegacy,
 		(_e, { projectId, stackId, branch }: PushStackLegacyParams) =>
 			pushStackLegacy(projectId, stackId, false, false, branch, true),
+	);
+	ipcMain.handle(
+		liteIpcChannels.showNativeMenu,
+		async (event, { items, position }: ShowNativeMenuParams) => {
+			const window = BrowserWindow.fromWebContents(event.sender);
+			if (!window) return null;
+
+			let selectedItemId: string | null = null;
+			const menu = Menu.buildFromTemplate(
+				buildNativeMenuTemplate(items, (itemId) => {
+					selectedItemId = itemId;
+				}),
+			);
+
+			await new Promise<void>((resolve) => {
+				menu.popup({
+					window,
+					x: Math.round(position.x),
+					y: Math.round(position.y),
+					callback: () => resolve(),
+				});
+			});
+
+			return selectedItemId;
+		},
 	);
 	ipcMain.handle(
 		liteIpcChannels.treeChangeDiffs,

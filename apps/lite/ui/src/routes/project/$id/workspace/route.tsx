@@ -57,8 +57,13 @@ import {
 	getRelative,
 	encodeRefName,
 } from "#ui/routes/project/$id/shared.tsx";
+import {
+	type NativeMenuItem,
+	showNativeContextMenu,
+	showNativeMenuFromTrigger,
+} from "#ui/native-menu.ts";
 import uiStyles from "#ui/ui.module.css";
-import { ContextMenu, Menu, mergeProps, Tooltip, useRender } from "@base-ui/react";
+import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import {
 	AbsorptionTarget,
 	Commit,
@@ -808,34 +813,6 @@ const Preview: FC<{
 		}),
 	);
 
-const StackMenuPopup: FC<{
-	projectId: string;
-	stackId: string;
-}> = ({ projectId, stackId }) => {
-	const unapplyStack = useMutation(unapplyStackMutationOptions);
-
-	return (
-		<Menu.Popup className={classes(uiStyles.popup, uiStyles.menuPopup)}>
-			<Menu.Item className={uiStyles.menuItem} disabled>
-				Move up
-			</Menu.Item>
-			<Menu.Item className={uiStyles.menuItem} disabled>
-				Move down
-			</Menu.Item>
-			<Menu.Separator />
-			<Menu.Item
-				className={uiStyles.menuItem}
-				disabled={unapplyStack.isPending}
-				onClick={() => {
-					unapplyStack.mutate({ projectId, stackId });
-				}}
-			>
-				Unapply stack
-			</Menu.Item>
-		</Menu.Popup>
-	);
-};
-
 const EditorHelp: FC<{
 	bindings: Array<ShortcutBinding<ShortcutActionBase>>;
 }> = ({ bindings }) => (
@@ -881,72 +858,6 @@ const InlineCommitMessageEditor: FC<{
 		<EditorHelp bindings={rewordCommitBindings} />
 	</form>
 );
-
-const CommitMenuPopup: FC<{
-	projectId: string;
-	commitId: string;
-	canReword: boolean;
-	onReword: () => void;
-	parts: typeof Menu | typeof ContextMenu;
-}> = ({ projectId, commitId, canReword, onReword, parts }) => {
-	const commitInsertBlank = useMutation(commitInsertBlankMutationOptions);
-	const commitDiscard = useMutation(commitDiscardMutationOptions);
-	const { Popup, Item, SubmenuRoot, SubmenuTrigger, Positioner } = parts;
-
-	return (
-		<Popup className={classes(uiStyles.popup, uiStyles.menuPopup)}>
-			<Item className={uiStyles.menuItem} disabled={!canReword} onClick={onReword}>
-				Reword commit
-			</Item>
-			<SubmenuRoot>
-				<SubmenuTrigger className={uiStyles.menuItem}>Add empty commit</SubmenuTrigger>
-				<Positioner>
-					<Popup className={classes(uiStyles.popup, uiStyles.menuPopup)}>
-						<Item
-							className={uiStyles.menuItem}
-							onClick={() => {
-								commitInsertBlank.mutate({
-									projectId,
-									relativeTo: { type: "commit", subject: commitId },
-									side: "above",
-									dryRun: false,
-								});
-							}}
-						>
-							Above
-						</Item>
-						<Item
-							className={uiStyles.menuItem}
-							onClick={() => {
-								commitInsertBlank.mutate({
-									projectId,
-									relativeTo: { type: "commit", subject: commitId },
-									side: "below",
-									dryRun: false,
-								});
-							}}
-						>
-							Below
-						</Item>
-					</Popup>
-				</Positioner>
-			</SubmenuRoot>
-			<Item
-				className={uiStyles.menuItem}
-				disabled={commitDiscard.isPending}
-				onClick={() => {
-					commitDiscard.mutate({
-						projectId,
-						subjectCommitId: commitId,
-						dryRun: false,
-					});
-				}}
-			>
-				Delete commit
-			</Item>
-		</Popup>
-	);
-};
 
 const CommitRow: FC<
 	{
@@ -999,6 +910,8 @@ const CommitRow: FC<
 		message: optimisticMessage,
 	};
 
+	const commitInsertBlank = useMutation(commitInsertBlankMutationOptions);
+	const commitDiscard = useMutation(commitDiscardMutationOptions);
 	const commitReword = useMutation(commitRewordMutationOptions);
 
 	const startEditing = () => {
@@ -1031,6 +944,57 @@ const CommitRow: FC<
 		});
 	};
 
+	const menuItems: Array<NativeMenuItem> = [
+		{
+			_tag: "Item",
+			label: "Reword commit",
+			enabled: !isCommitMessagePending,
+			onSelect: startEditing,
+		},
+		{
+			_tag: "Item",
+			label: "Add empty commit",
+			submenu: [
+				{
+					_tag: "Item",
+					label: "Above",
+					onSelect: () => {
+						commitInsertBlank.mutate({
+							projectId,
+							relativeTo: { type: "commit", subject: commit.id },
+							side: "above",
+							dryRun: false,
+						});
+					},
+				},
+				{
+					_tag: "Item",
+					label: "Below",
+					onSelect: () => {
+						commitInsertBlank.mutate({
+							projectId,
+							relativeTo: { type: "commit", subject: commit.id },
+							side: "below",
+							dryRun: false,
+						});
+					},
+				},
+			],
+		},
+		{
+			_tag: "Item",
+			label: "Delete commit",
+			enabled: !commitDiscard.isPending,
+			onSelect: () => {
+				commitDiscard.mutate({
+					projectId,
+					subjectCommitId: commit.id,
+					dryRun: false,
+				});
+			},
+		},
+	];
+
 	return (
 		<ItemRow
 			{...restProps}
@@ -1047,35 +1011,25 @@ const CommitRow: FC<
 				/>
 			) : (
 				<>
-					<ContextMenu.Root disabled={workspaceMode._tag !== "Default"}>
-						<ContextMenu.Trigger
-							render={
-								<button
-									type="button"
-									className={classes(
-										styles.itemRowButton,
-										isCommitMessagePending && styles.commitButtonPending,
-									)}
-									onClick={() => {
-										dispatch(projectActions.selectItem({ projectId, item }));
-									}}
-								>
-									<CommitLabel commit={commitWithOptimisticMessage} />
-								</button>
-							}
-						/>
-						<ContextMenu.Portal>
-							<ContextMenu.Positioner>
-								<CommitMenuPopup
-									projectId={projectId}
-									commitId={commit.id}
-									canReword={!isCommitMessagePending}
-									onReword={startEditing}
-									parts={ContextMenu}
-								/>
-							</ContextMenu.Positioner>
-						</ContextMenu.Portal>
-					</ContextMenu.Root>
+					<button
+						type="button"
+						className={classes(
+							styles.itemRowButton,
+							isCommitMessagePending && styles.commitButtonPending,
+						)}
+						onClick={() => {
+							dispatch(projectActions.selectItem({ projectId, item }));
+						}}
+						onContextMenu={
+							workspaceMode._tag === "Default"
+								? (event) => {
+										void showNativeContextMenu(event, menuItems);
+									}
+								: undefined
+						}
+					>
+						<CommitLabel commit={commitWithOptimisticMessage} />
+					</button>
 					{workspaceMode._tag === "Default" && (
 						<>
 							<Tooltip.Root
@@ -1102,22 +1056,16 @@ const CommitRow: FC<
 									</Tooltip.Positioner>
 								</Tooltip.Portal>
 							</Tooltip.Root>
-							<Menu.Root>
-								<Menu.Trigger className={styles.itemRowAction} aria-label="Commit menu">
-									<MenuTriggerIcon />
-								</Menu.Trigger>
-								<Menu.Portal>
-									<Menu.Positioner align="end">
-										<CommitMenuPopup
-											projectId={projectId}
-											commitId={commit.id}
-											canReword={!isCommitMessagePending}
-											onReword={startEditing}
-											parts={Menu}
-										/>
-									</Menu.Positioner>
-								</Menu.Portal>
-							</Menu.Root>
+							<button
+								type="button"
+								className={styles.itemRowAction}
+								aria-label="Commit menu"
+								onClick={(event) => {
+									void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+								}}
+							>
+								<MenuTriggerIcon />
+							</button>
 						</>
 					)}
 				</>
@@ -1244,32 +1192,6 @@ const CommitC: FC<{
 	);
 };
 
-const ChangeRowMenuPopup: FC<{
-	change: TreeChange;
-	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	parts: typeof Menu | typeof ContextMenu;
-}> = ({ change, onAbsorbChanges, parts }) => {
-	const { Popup, Item } = parts;
-
-	const absorb = () => {
-		onAbsorbChanges({
-			type: "treeChanges",
-			subject: {
-				changes: [change],
-				assignedStackId: null,
-			},
-		});
-	};
-
-	return (
-		<Popup className={classes(uiStyles.popup, uiStyles.menuPopup)}>
-			<Item className={uiStyles.menuItem} onClick={absorb}>
-				Absorb
-			</Item>
-		</Popup>
-	);
-};
-
 const ChangeRow: FC<{
 	change: TreeChange;
 	dependencyCommitIds: Array<string>;
@@ -1289,6 +1211,23 @@ const ChangeRow: FC<{
 }) => {
 	const dispatch = useAppDispatch();
 	const item = changeItem({ path: change.path });
+
+	const menuItems: Array<NativeMenuItem> = [
+		{
+			_tag: "Item",
+			label: "Absorb",
+			onSelect: () => {
+				onAbsorbChanges({
+					type: "treeChanges",
+					subject: {
+						changes: [change],
+						assignedStackId: null,
+					},
+				});
+			},
+		},
+	];
+
 	return (
 		<OperationSourceC
 			operationMode={operationMode}
@@ -1298,27 +1237,15 @@ const ChangeRow: FC<{
 				<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected} />
 			}
 		>
-			<ContextMenu.Root>
-				<ContextMenu.Trigger
-					render={
-						<FileButton
-							change={change}
-							onClick={() => {
-								dispatch(projectActions.selectItem({ projectId, item }));
-							}}
-						/>
-					}
-				/>
-				<ContextMenu.Portal>
-					<ContextMenu.Positioner>
-						<ChangeRowMenuPopup
-							change={change}
-							onAbsorbChanges={onAbsorbChanges}
-							parts={ContextMenu}
-						/>
-					</ContextMenu.Positioner>
-				</ContextMenu.Portal>
-			</ContextMenu.Root>
+			<FileButton
+				change={change}
+				onClick={() => {
+					dispatch(projectActions.selectItem({ projectId, item }));
+				}}
+				onContextMenu={(event) => {
+					void showNativeContextMenu(event, menuItems);
+				}}
+			/>
 			{isNonEmptyArray(dependencyCommitIds) && (
 				<DependencyIndicator
 					projectId={projectId}
@@ -1328,43 +1255,17 @@ const ChangeRow: FC<{
 					<DependencyIcon />
 				</DependencyIndicator>
 			)}
-			<Menu.Root>
-				<Menu.Trigger className={styles.itemRowAction} aria-label={`${change.path} menu`}>
-					<MenuTriggerIcon />
-				</Menu.Trigger>
-				<Menu.Portal>
-					<Menu.Positioner align="end">
-						<ChangeRowMenuPopup change={change} onAbsorbChanges={onAbsorbChanges} parts={Menu} />
-					</Menu.Positioner>
-				</Menu.Portal>
-			</Menu.Root>
+			<button
+				type="button"
+				className={styles.itemRowAction}
+				aria-label={`${change.path} menu`}
+				onClick={(event) => {
+					void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+				}}
+			>
+				<MenuTriggerIcon />
+			</button>
 		</OperationSourceC>
-	);
-};
-
-const ChangesSectionRowMenuPopup: FC<{
-	changes: Array<TreeChange>;
-	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	parts: typeof Menu | typeof ContextMenu;
-}> = ({ changes, onAbsorbChanges, parts }) => {
-	const { Popup, Item } = parts;
-
-	const absorb = () => {
-		onAbsorbChanges({
-			type: "treeChanges",
-			subject: {
-				changes,
-				assignedStackId: null,
-			},
-		});
-	};
-
-	return (
-		<Popup className={classes(uiStyles.popup, uiStyles.menuPopup)}>
-			<Item className={uiStyles.menuItem} disabled={changes.length === 0} onClick={absorb}>
-				Absorb
-			</Item>
-		</Popup>
 	);
 };
 
@@ -1377,54 +1278,55 @@ const ChangesSectionRow: FC<{
 }> = ({ changes, isSelected, navigationIndex, onAbsorbChanges, projectId }) => {
 	const dispatch = useAppDispatch();
 
+	const menuItems: Array<NativeMenuItem> = [
+		{
+			_tag: "Item",
+			label: "Absorb",
+			enabled: changes.length > 0,
+			onSelect: () => {
+				onAbsorbChanges({
+					type: "treeChanges",
+					subject: {
+						changes,
+						assignedStackId: null,
+					},
+				});
+			},
+		},
+	];
+
 	return (
 		<ItemRow
 			inert={!navigationIndexIncludes(navigationIndex, changesSectionItem({}))}
 			isSelected={isSelected}
 		>
-			<ContextMenu.Root>
-				<ContextMenu.Trigger
-					render={
-						<button
-							type="button"
-							className={classes(styles.itemRowButton, styles.sectionButton)}
-							onClick={() => {
-								dispatch(
-									projectActions.selectItem({
-										projectId,
-										item: changesSectionItem({}),
-									}),
-								);
-							}}
-						>
-							Changes
-						</button>
-					}
-				/>
-				<ContextMenu.Portal>
-					<ContextMenu.Positioner>
-						<ChangesSectionRowMenuPopup
-							changes={changes}
-							onAbsorbChanges={onAbsorbChanges}
-							parts={ContextMenu}
-						/>
-					</ContextMenu.Positioner>
-				</ContextMenu.Portal>
-			</ContextMenu.Root>
-			<Menu.Root>
-				<Menu.Trigger className={styles.itemRowAction} aria-label={`Changes menu`}>
-					<MenuTriggerIcon />
-				</Menu.Trigger>
-				<Menu.Portal>
-					<Menu.Positioner align="end">
-						<ChangesSectionRowMenuPopup
-							changes={changes}
-							onAbsorbChanges={onAbsorbChanges}
-							parts={Menu}
-						/>
-					</Menu.Positioner>
-				</Menu.Portal>
-			</Menu.Root>
+			<button
+				type="button"
+				className={classes(styles.itemRowButton, styles.sectionButton)}
+				onClick={() => {
+					dispatch(
+						projectActions.selectItem({
+							projectId,
+							item: changesSectionItem({}),
+						}),
+					);
+				}}
+				onContextMenu={(event) => {
+					void showNativeContextMenu(event, menuItems);
+				}}
+			>
+				Changes
+			</button>
+			<button
+				type="button"
+				className={styles.itemRowAction}
+				aria-label="Changes menu"
+				onClick={(event) => {
+					void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+				}}
+			>
+				<MenuTriggerIcon />
+			</button>
 		</ItemRow>
 	);
 };
@@ -1534,22 +1436,6 @@ const Changes: FC<{
 				</ul>
 			)}
 		</OperationSourceC>
-	);
-};
-
-const SegmentMenuPopup: FC<{
-	canRename: boolean;
-	onRename: () => void;
-	parts: typeof Menu | typeof ContextMenu;
-}> = ({ canRename, onRename, parts }) => {
-	const { Popup, Item } = parts;
-
-	return (
-		<Popup className={classes(uiStyles.popup, uiStyles.menuPopup)}>
-			<Item className={uiStyles.menuItem} disabled={!canRename} onClick={onRename}>
-				Rename branch
-			</Item>
-		</Popup>
 	);
 };
 
@@ -1673,6 +1559,15 @@ const SegmentRow: FC<
 		});
 	};
 
+	const menuItems: Array<NativeMenuItem> = [
+		{
+			_tag: "Item",
+			label: "Rename branch",
+			enabled: branchName !== null && !isRenamePending,
+			onSelect: startEditing,
+		},
+	];
+
 	return (
 		<OperationTarget
 			{...restProps}
@@ -1699,28 +1594,20 @@ const SegmentRow: FC<
 								/>
 							) : (
 								<>
-									<ContextMenu.Root disabled={workspaceMode._tag !== "Default"}>
-										<ContextMenu.Trigger
-											render={
-												<button
-													type="button"
-													className={classes(styles.itemRowButton, styles.sectionButton)}
-													onClick={() => dispatch(projectActions.selectItem({ projectId, item }))}
-												>
-													{optimisticBranchName ?? "Untitled"}
-												</button>
-											}
-										/>
-										<ContextMenu.Portal>
-											<ContextMenu.Positioner>
-												<SegmentMenuPopup
-													canRename={branchName !== null && !isRenamePending}
-													onRename={startEditing}
-													parts={ContextMenu}
-												/>
-											</ContextMenu.Positioner>
-										</ContextMenu.Portal>
-									</ContextMenu.Root>
+									<button
+										type="button"
+										className={classes(styles.itemRowButton, styles.sectionButton)}
+										onClick={() => dispatch(projectActions.selectItem({ projectId, item }))}
+										onContextMenu={
+											workspaceMode._tag === "Default"
+												? (event) => {
+														void showNativeContextMenu(event, menuItems);
+													}
+												: undefined
+										}
+									>
+										{optimisticBranchName ?? "Untitled"}
+									</button>
 									{workspaceMode._tag === "Default" && (
 										<>
 											<button
@@ -1731,20 +1618,16 @@ const SegmentRow: FC<
 											>
 												<PushIcon />
 											</button>
-											<Menu.Root>
-												<Menu.Trigger className={styles.itemRowAction} aria-label="Branch menu">
-													<MenuTriggerIcon />
-												</Menu.Trigger>
-												<Menu.Portal>
-													<Menu.Positioner align="end">
-														<SegmentMenuPopup
-															canRename={branchName !== null && !isRenamePending}
-															onRename={startEditing}
-															parts={Menu}
-														/>
-													</Menu.Positioner>
-												</Menu.Portal>
-											</Menu.Root>
+											<button
+												type="button"
+												className={styles.itemRowAction}
+												aria-label="Branch menu"
+												onClick={(event) => {
+													void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+												}}
+											>
+												<MenuTriggerIcon />
+											</button>
 										</>
 									)}
 								</>
@@ -1867,8 +1750,23 @@ const StackC: FC<{
 	const stackId = stack.id!;
 
 	const dispatch = useAppDispatch();
+	const unapplyStack = useMutation(unapplyStackMutationOptions);
 
 	const item = stackItem({ stackId });
+
+	const menuItems: Array<NativeMenuItem> = [
+		{ _tag: "Item", label: "Move up", enabled: false },
+		{ _tag: "Item", label: "Move down", enabled: false },
+		{ _tag: "Separator" },
+		{
+			_tag: "Item",
+			label: "Unapply stack",
+			enabled: !unapplyStack.isPending,
+			onSelect: () => {
+				unapplyStack.mutate({ projectId, stackId });
+			},
+		},
+	];
 
 	return (
 		<div className={classes(styles.stack, styles.section)}>
@@ -1877,36 +1775,32 @@ const StackC: FC<{
 				inert={!navigationIndexIncludes(navigationIndex, item)}
 				className={styles.stackRow}
 			>
-				<ContextMenu.Root disabled={workspaceMode._tag !== "Default"}>
-					<ContextMenu.Trigger
-						render={
-							<button
-								type="button"
-								className={classes(styles.itemRowButton, styles.sectionButton)}
-								onClick={() => {
-									dispatch(projectActions.selectItem({ projectId, item }));
-								}}
-							>
-								Stack
-							</button>
-						}
-					/>
-					<ContextMenu.Portal>
-						<ContextMenu.Positioner>
-							<StackMenuPopup projectId={projectId} stackId={stackId} />
-						</ContextMenu.Positioner>
-					</ContextMenu.Portal>
-				</ContextMenu.Root>
-				<Menu.Root>
-					<Menu.Trigger className={styles.itemRowAction} aria-label="Stack menu">
-						<MenuTriggerIcon />
-					</Menu.Trigger>
-					<Menu.Portal>
-						<Menu.Positioner align="end">
-							<StackMenuPopup projectId={projectId} stackId={stackId} />
-						</Menu.Positioner>
-					</Menu.Portal>
-				</Menu.Root>
+				<button
+					type="button"
+					className={classes(styles.itemRowButton, styles.sectionButton)}
+					onClick={() => {
+						dispatch(projectActions.selectItem({ projectId, item }));
+					}}
+					onContextMenu={
+						workspaceMode._tag === "Default"
+							? (event) => {
+									void showNativeContextMenu(event, menuItems);
+								}
+							: undefined
+					}
+				>
+					Stack
+				</button>
+				<button
+					type="button"
+					className={styles.itemRowAction}
+					aria-label="Stack menu"
+					onClick={(event) => {
+						void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+					}}
+				>
+					<MenuTriggerIcon />
+				</button>
 			</ItemRow>
 
 			<ul className={styles.segments}>

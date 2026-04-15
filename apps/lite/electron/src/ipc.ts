@@ -180,6 +180,27 @@ export interface WatcherSubscribeResult {
 	eventChannel: string;
 }
 
+export interface NativeMenuPosition {
+	x: number;
+	y: number;
+}
+
+type NativeMenuPopupItemData = {
+	label: string;
+	enabled?: boolean;
+	itemId?: string;
+	submenu?: Array<NativeMenuPopupItem>;
+};
+
+export type NativeMenuPopupItem =
+	| { _tag: "Separator" }
+	| ({ _tag: "Item" } & NativeMenuPopupItemData);
+
+export interface ShowNativeMenuParams {
+	items: Array<NativeMenuPopupItem>;
+	position: NativeMenuPosition;
+}
+
 export interface LiteElectronApi {
 	absorptionPlan: (params: AbsorptionPlanParams) => Promise<Array<CommitAbsorption>>;
 	absorb: (params: AbsorbParams) => Promise<number>;
@@ -210,6 +231,7 @@ export interface LiteElectronApi {
 	tearOffBranch: (params: TearOffBranchParams) => Promise<MoveBranchResult>;
 	ping: (input: string) => Promise<string>;
 	pushStackLegacy: (params: PushStackLegacyParams) => Promise<PushResult>;
+	showNativeMenu: (params: ShowNativeMenuParams) => Promise<string | null>;
 	treeChangeDiffs: (params: TreeChangeDiffParams) => Promise<UnifiedPatch | null>;
 	unapplyStack: (params: UnapplyStackParams) => Promise<void>;
 	watcherSubscribe: (projectId: string, callback: (event: WatcherEvent) => void) => Promise<string>;
@@ -244,6 +266,7 @@ export const liteIpcChannels = {
 	tearOffBranch: "workspace:tear-off-branch",
 	ping: "lite:ping",
 	pushStackLegacy: "workspace:push-stack-legacy",
+	showNativeMenu: "lite:show-native-menu",
 	treeChangeDiffs: "workspace:tree-change-diffs",
 	unapplyStack: "workspace:unapply-stack",
 	watcherSubscribe: "workspace:watcher-subscribe",
