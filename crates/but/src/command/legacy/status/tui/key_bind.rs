@@ -193,6 +193,9 @@ fn register_detail_key_binds(key_binds: &mut KeyBinds) {
         message: Message::EnterNormalMode,
         hide_from_hotbar: true,
     });
+
+    register_grow_shrink_details_key_binds(key_binds, Vec::from([ModeDiscriminant::Details]));
+
     register_quit_key_binds(key_binds, Vec::from([ModeDiscriminant::Details]));
 }
 
@@ -252,6 +255,8 @@ fn register_global_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscrimina
         message: Message::Details(DetailsMessage::ToggleVisibility),
         hide_from_hotbar: false,
     });
+
+    register_grow_shrink_details_key_binds(key_binds, modes);
 }
 
 fn register_unassigned_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscriminant>) {
@@ -262,6 +267,26 @@ fn register_unassigned_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscri
         modes: modes.clone(),
         message: Message::SelectUnassigned,
         hide_from_hotbar: false,
+    });
+}
+
+fn register_grow_shrink_details_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscriminant>) {
+    key_binds.register(StaticKeyBind {
+        short_description: "grow details",
+        chord_display: "+",
+        key_matcher: press().code(KeyCode::Char('+')),
+        modes: modes.clone(),
+        message: Message::GrowDetails,
+        hide_from_hotbar: true,
+    });
+
+    key_binds.register(StaticKeyBind {
+        short_description: "shrink details",
+        chord_display: "-",
+        key_matcher: press().code(KeyCode::Char('-')),
+        modes: modes.clone(),
+        message: Message::ShrinkDetails,
+        hide_from_hotbar: true,
     });
 }
 

@@ -218,3 +218,30 @@ fn details_view_syntax_highlighting_survives_scrolling() {
             "snapshots/details_view_syntax_highlighting_survives_scrolling_003.svg"
         ]);
 }
+
+#[test]
+fn details_view_can_grow_and_shrink() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+
+    let mut tui = test_tui_with_size(env, 100, 16);
+
+    tui.input_then_render('d');
+    tui.input_then_render("++-")
+        .assert_rendered_term_svg_eq(file!["snapshots/details_view_can_grow_and_shrink_001.svg"]);
+}
+
+#[test]
+fn details_view_resize_clamps_to_max_and_min_width() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+
+    let mut tui = test_tui_with_size(env, 100, 16);
+
+    tui.input_then_render('d');
+    tui.input_then_render("++++++++++++++++++++");
+    tui.input_then_render("--------------------")
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/details_view_resize_clamps_to_max_and_min_width_001.svg"
+        ]);
+}

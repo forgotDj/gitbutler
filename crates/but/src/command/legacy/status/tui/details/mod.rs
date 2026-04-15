@@ -193,9 +193,12 @@ impl Details {
             | Message::LeaveDetailsMode
             | Message::Discard
             | Message::DropToBeDiscarded
+            | Message::Debug(_)
             | Message::ShowError(_)
             | Message::ShowToast { .. }
             | Message::Confirm(_)
+            | Message::GrowDetails
+            | Message::ShrinkDetails
             | Message::RegisterMessageOnDrop(_)
             | Message::WithOneFrameDelay(_)
             | Message::EnterNormalMode => false,
