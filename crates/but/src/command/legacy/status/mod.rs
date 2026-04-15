@@ -98,6 +98,7 @@ impl FilesStatusFlag {
         }
     }
 
+    #[expect(dead_code)]
     pub fn is_none(self) -> bool {
         matches!(self, Self::None)
     }
