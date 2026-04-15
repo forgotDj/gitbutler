@@ -423,7 +423,7 @@ pub(super) fn commit_is_empty(ctx: &mut Context, commit_id: gix::ObjectId) -> an
     Ok(commit_details.diff_with_first_parent.is_empty())
 }
 
-pub(super) fn reword_branch_inline_legacy(
+pub(super) fn reword_branch_legacy(
     ctx: &mut Context,
     stack_id: StackId,
     branch_name: String,

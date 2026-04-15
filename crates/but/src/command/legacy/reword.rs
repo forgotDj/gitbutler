@@ -282,7 +282,7 @@ fn actually_get_commit_message_from_editor(
     Ok(lossy_message)
 }
 
-fn get_branch_name_from_editor(current_name: &str) -> Result<String> {
+pub(crate) fn get_branch_name_from_editor(current_name: &str) -> Result<String> {
     let mut template = String::new();
     template.push_str(current_name);
     if !current_name.is_empty() && !current_name.ends_with('\n') {

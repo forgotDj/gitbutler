@@ -32,6 +32,7 @@ use unicode_width::UnicodeWidthStr;
 use crate::{
     CliId,
     command::legacy::{
+        reword::get_branch_name_from_editor,
         rub::RubOperationDiscriminants,
         status::{
             CommitLineContent, FileLineContent, StatusFlags, StatusOutputLine, TuiLaunchOptions,
@@ -56,7 +57,7 @@ use crate::{
         },
     },
     id::UNASSIGNED,
-    tui::{CrosstermTerminalGuard, HeadlessTerminalGuard, TerminalGuard, get_text::from_editor},
+    tui::{CrosstermTerminalGuard, HeadlessTerminalGuard, TerminalGuard},
     utils::{DebugAsType, OutputChannel, binary_path::current_exe_for_but_exec},
 };
 
@@ -643,7 +644,7 @@ impl App {
                 RewordMessage::InlineInput(ev) => self.handle_reword_inline_input(ev),
                 RewordMessage::InlineConfirm => self.handle_confirm_inline_reword(ctx, messages)?,
                 RewordMessage::OpenEditor => {
-                    self.handle_inline_reword_open_editor(ctx, terminal_guard, messages);
+                    self.handle_inline_reword_open_editor(ctx, terminal_guard, messages)?;
                 }
             },
             Message::Command(command_message) => match command_message {
@@ -1919,7 +1920,7 @@ impl App {
                 ]);
             }
             InlineRewordMode::Branch { name, stack_id, .. } => {
-                let new_name = operations::reword_branch_inline_legacy(
+                let new_name = operations::reword_branch_legacy(
                     ctx,
                     *stack_id,
                     name.to_owned(),
@@ -1972,8 +1973,11 @@ impl App {
                     SelectAfterReload::Commit(*commit_id)
                 }
             }
-            InlineRewordMode::Branch { .. } => {
-                return Ok(());
+            InlineRewordMode::Branch { name, stack_id, .. } => {
+                let new_name = get_branch_name_from_editor(line)?;
+                let normalized_name =
+                    operations::reword_branch_legacy(ctx, *stack_id, name.clone(), new_name)?;
+                SelectAfterReload::Branch(normalized_name)
             }
         };
         drop(_suspend_guard);
