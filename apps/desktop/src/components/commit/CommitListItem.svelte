@@ -28,6 +28,7 @@
 		disableCommitActions?: boolean;
 		active?: boolean;
 		hasConflicts?: boolean;
+		busy?: boolean;
 		disabled?: boolean;
 		editable?: boolean;
 		gerritReviewUrl?: string;
@@ -78,6 +79,7 @@
 		borderTop,
 		disabled,
 		hasConflicts,
+		busy,
 		active,
 		editable,
 		gerritReviewUrl,
@@ -214,7 +216,11 @@
 				{/if}
 			</div>
 
-			{#if !args.disableCommitActions}
+			{#if busy}
+				<div class="commit-busy-spinner">
+					<Icon name="spinner" size={14} />
+				</div>
+			{:else if !args.disableCommitActions}
 				{@render menu?.({ rightClickTrigger: container })}
 			{/if}
 		</div>
@@ -341,6 +347,12 @@
 		display: flex;
 		margin-right: 4px;
 		color: var(--fill-danger-bg);
+	}
+
+	.commit-busy-spinner {
+		display: flex;
+		align-items: center;
+		color: var(--text-2);
 	}
 
 	.commit-row__drag-handle {

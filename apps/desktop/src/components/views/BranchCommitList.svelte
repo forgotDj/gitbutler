@@ -269,6 +269,7 @@
 									commitMessage={commit.message}
 									type={commit.state.type}
 									hasConflicts={commit.hasConflicts}
+									busy={controller.busyCommitId === commit.id}
 									diverged={commit.state.type === "LocalAndRemote" &&
 										commit.id !== commit.state.subject}
 									createdAt={commitCreatedAt(commit)}

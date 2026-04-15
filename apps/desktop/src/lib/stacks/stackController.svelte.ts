@@ -150,6 +150,20 @@ export class StackController {
 		);
 	}
 
+	private get stackBusyState() {
+		return this.projectState.stackBusy.current;
+	}
+
+	/** True when this stack is involved in a busy operation and should block interaction. */
+	get stackBusy(): boolean {
+		const stackIds = this.stackBusyState?.stackIds;
+		return !!stackIds && !!this.stackId && stackIds.includes(this.stackId);
+	}
+
+	get busyCommitId(): string | undefined {
+		return this.stackBusyState?.commitId;
+	}
+
 	get activeSelectionId(): SelectionId | undefined {
 		if (this.commitId) {
 			return createCommitSelection({ commitId: this.commitId, stackId: this.stackId });
