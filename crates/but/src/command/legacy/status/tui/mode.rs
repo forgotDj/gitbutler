@@ -34,7 +34,9 @@ impl Mode {
             Mode::Commit(_) => Color::Green,
             Mode::Rub(_) => Color::Blue,
             Mode::InlineReword(_) => Color::Magenta,
-            Mode::Command(_) => Color::Yellow,
+            Mode::Command(CommandMode { kind, .. }) => match kind {
+                CommandModeKind::But | CommandModeKind::Shell => Color::Yellow,
+            },
             Mode::Move(..) => Color::Cyan,
             Mode::Details => Color::Rgb(255, 165, 0), // orange
         }
@@ -114,6 +116,13 @@ impl InlineRewordMode {
 #[derive(Debug)]
 pub(super) struct CommandMode {
     pub(super) textarea: Box<TextArea<'static>>,
+    pub(super) kind: CommandModeKind,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub(super) enum CommandModeKind {
+    But,
+    Shell,
 }
 
 #[derive(Debug)]

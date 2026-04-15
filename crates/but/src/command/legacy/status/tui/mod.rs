@@ -48,8 +48,9 @@ use crate::{
                 key_bind::{KeyBinds, confirm_key_binds, default_key_binds},
                 message_on_drop::MessageOnDrop,
                 mode::{
-                    CommandMode, CommitMode, CommitSource, InlineRewordMode, Mode, MoveMode,
-                    MoveSource, RubMode, RubSource, StackCommitSource, UnassignedCommitSource,
+                    CommandMode, CommandModeKind, CommitMode, CommitSource, InlineRewordMode, Mode,
+                    MoveMode, MoveSource, RubMode, RubSource, StackCommitSource,
+                    UnassignedCommitSource,
                 },
                 operations::stack_has_assigned_changes,
                 toast::{ToastKind, Toasts},
@@ -651,7 +652,7 @@ impl App {
                 }
             },
             Message::Command(command_message) => match command_message {
-                CommandMessage::Start => self.handle_enter_command_mode(),
+                CommandMessage::Start(kind) => self.handle_enter_command_mode(kind),
                 CommandMessage::Input(ev) => self.handle_command_input(ev),
                 CommandMessage::Confirm => {
                     self.handle_run_command(terminal_guard, out, messages)?
@@ -2001,18 +2002,19 @@ impl App {
         Ok(())
     }
 
-    fn handle_enter_command_mode(&mut self) {
+    fn handle_enter_command_mode(&mut self, kind: CommandModeKind) {
         let mut textarea = TextArea::default();
         textarea.set_cursor_line_style(Style::default());
         textarea.move_cursor(CursorMove::End);
 
         self.mode = Mode::Command(CommandMode {
             textarea: Box::new(textarea),
+            kind,
         });
     }
 
     fn handle_command_input(&mut self, ev: Event) {
-        if let Mode::Command(CommandMode { textarea }) = &mut self.mode {
+        if let Mode::Command(CommandMode { textarea, .. }) = &mut self.mode {
             textarea.input(ev);
         }
     }
@@ -2027,7 +2029,7 @@ impl App {
         T: TerminalGuard,
         anyhow::Error: From<<T::Backend as Backend>::Error>,
     {
-        let Mode::Command(CommandMode { textarea }) = &self.mode else {
+        let Mode::Command(CommandMode { textarea, kind }) = &self.mode else {
             messages.push(Message::EnterNormalMode);
             return Ok(());
         };
@@ -2036,18 +2038,31 @@ impl App {
             return Ok(());
         };
 
-        let binary_path = current_exe_for_but_exec()?;
-        let args = shell_words::split(input)?.into_iter().map(OsString::from);
-
-        let mut cmd = Command::new(binary_path);
-        cmd.args(args);
-
         let _suspend_guard = terminal_guard.suspend()?;
+
+        let mut cmd = match kind {
+            CommandModeKind::But => {
+                let binary_path = current_exe_for_but_exec()?;
+                let args = shell_words::split(input)?.into_iter().map(OsString::from);
+                let mut cmd = Command::new(binary_path);
+                cmd.args(args);
+                cmd
+            }
+            CommandModeKind::Shell => {
+                let mut args = shell_words::split(input)?.into_iter().map(OsString::from);
+                let Some(binary) = args.next() else {
+                    messages.push(Message::EnterNormalMode);
+                    return Ok(());
+                };
+                let mut cmd = Command::new(binary);
+                cmd.args(args);
+                cmd
+            }
+        };
+
         let status = cmd.spawn()?.wait()?;
 
         self.prompt_to_continue(out)?;
-
-        drop(_suspend_guard);
 
         if status.success() {
             messages.extend([Message::EnterNormalMode, Message::Reload(None)]);
@@ -2057,6 +2072,8 @@ impl App {
                 format_exit_status(status)
             )));
         }
+
+        drop(_suspend_guard);
 
         Ok(())
     }
@@ -2614,12 +2631,24 @@ impl App {
 
                 frame.render_widget(line, layout[2]);
             }
-            Mode::Command(CommandMode { textarea }) => {
-                let command_layout =
-                    Layout::horizontal([Constraint::Length(4), Constraint::Min(1)])
-                        .split(layout[2]);
+            Mode::Command(CommandMode { textarea, kind }) => {
+                let command_layout = Layout::horizontal([
+                    match kind {
+                        CommandModeKind::But => Constraint::Length(4),
+                        CommandModeKind::Shell => Constraint::Length(2),
+                    },
+                    Constraint::Min(1),
+                ])
+                .split(layout[2]);
 
-                frame.render_widget("but ", command_layout[0]);
+                match kind {
+                    CommandModeKind::But => {
+                        frame.render_widget("but ", command_layout[0]);
+                    }
+                    CommandModeKind::Shell => {
+                        frame.render_widget("$ ", command_layout[0]);
+                    }
+                }
                 frame.render_widget(&**textarea, command_layout[1]);
             }
         }
@@ -2905,7 +2934,7 @@ enum RewordMessage {
 
 #[derive(Debug, Clone)]
 enum CommandMessage {
-    Start,
+    Start(CommandModeKind),
     Input(Event),
     Confirm,
 }
