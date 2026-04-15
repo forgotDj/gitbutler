@@ -99,19 +99,15 @@ pub(super) fn perform_operation(
 ) -> anyhow::Result<Option<SelectAfterReload>> {
     let selection = match operation {
         RubOperation::UnassignUncommitted(operation) => {
-            let path = operation.hunk_assignments.first().path_bytes.clone();
             operation.execute_inner(ctx)?;
-            SelectAfterReload::UncommittedFile {
-                path,
-                stack_id: None,
-            }
+            SelectAfterReload::Unassigned
         }
         RubOperation::UncommittedToCommit(operation) => {
-            let assignment = operation.hunk_assignments.first();
-            let path = assignment.path_bytes.clone();
-            let stack_id = assignment.stack_id;
-            operation.execute_inner(ctx)?;
-            SelectAfterReload::UncommittedFile { path, stack_id }
+            let result = operation.execute_inner(ctx)?;
+            result
+                .new_commit
+                .map(SelectAfterReload::Commit)
+                .unwrap_or(SelectAfterReload::Unassigned)
         }
         RubOperation::UncommittedToBranch(operation) => {
             let assignment = operation.hunk_assignments.first();
