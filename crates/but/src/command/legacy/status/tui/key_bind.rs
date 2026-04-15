@@ -9,7 +9,7 @@ use crate::command::legacy::status::tui::{
     mode::ModeDiscriminant,
 };
 
-use super::{CommitMessage, DetailsMessage, FilesMessage, MoveMessage};
+use super::{CommandModeKind, CommitMessage, DetailsMessage, FilesMessage, MoveMessage};
 
 pub(super) fn default_key_binds() -> KeyBinds {
     let mut key_binds = KeyBinds::new();
@@ -177,7 +177,16 @@ fn register_detail_key_binds(key_binds: &mut KeyBinds) {
         chord_display: ":",
         key_matcher: press().code(KeyCode::Char(':')),
         modes: Vec::from([ModeDiscriminant::Details]),
-        message: Message::Command(CommandMessage::Start),
+        message: Message::Command(CommandMessage::Start(CommandModeKind::But)),
+        hide_from_hotbar: false,
+    });
+
+    key_binds.register(StaticKeyBind {
+        short_description: "shell command",
+        chord_display: "!",
+        key_matcher: press().code(KeyCode::Char('!')),
+        modes: Vec::from([ModeDiscriminant::Details]),
+        message: Message::Command(CommandMessage::Start(CommandModeKind::Shell)),
         hide_from_hotbar: false,
     });
 
@@ -411,7 +420,16 @@ fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
         chord_display: ":",
         key_matcher: press().code(KeyCode::Char(':')),
         modes: Vec::from([ModeDiscriminant::Normal]),
-        message: Message::Command(CommandMessage::Start),
+        message: Message::Command(CommandMessage::Start(CommandModeKind::But)),
+        hide_from_hotbar: false,
+    });
+
+    key_binds.register(StaticKeyBind {
+        short_description: "shell command",
+        chord_display: "!",
+        key_matcher: press().code(KeyCode::Char('!')),
+        modes: Vec::from([ModeDiscriminant::Normal]),
+        message: Message::Command(CommandMessage::Start(CommandModeKind::Shell)),
         hide_from_hotbar: false,
     });
 

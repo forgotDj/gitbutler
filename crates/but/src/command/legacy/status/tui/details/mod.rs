@@ -231,7 +231,7 @@ impl Details {
                 RewordMessage::InlineStart | RewordMessage::InlineInput(_) => false,
             },
             Message::Command(command_message) => match command_message {
-                CommandMessage::Start | CommandMessage::Input(_) => false,
+                CommandMessage::Start(_) | CommandMessage::Input(_) => false,
                 CommandMessage::Confirm => true,
             },
             Message::Files(files_message) => match files_message {
