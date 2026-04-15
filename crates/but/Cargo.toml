@@ -43,7 +43,6 @@ legacy = [
     "dep:gitbutler-stack",
     "dep:gitbutler-branch-actions",
     "dep:gitbutler-branch",
-    "dep:gitbutler-reference",
     "dep:gitbutler-oplog",
     "dep:gitbutler-edit-mode",
     "dep:gitbutler-operating-modes",
@@ -100,7 +99,6 @@ gitbutler-commit = { workspace = true, optional = true }
 gitbutler-stack = { workspace = true, optional = true }
 gitbutler-branch-actions = { workspace = true, optional = true }
 gitbutler-branch = { workspace = true, optional = true }
-gitbutler-reference = { workspace = true, optional = true }
 gitbutler-oplog = { workspace = true, optional = true }
 gitbutler-edit-mode = { workspace = true, optional = true }
 gitbutler-operating-modes = { workspace = true, optional = true }
