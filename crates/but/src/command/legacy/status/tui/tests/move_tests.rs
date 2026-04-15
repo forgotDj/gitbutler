@@ -195,7 +195,7 @@ fn move_branch_to_merge_base_tears_off_branch() {
         ]);
 
     tui.input_then_render(KeyCode::Enter)
-        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
+        .assert_current_line_eq(str!["┊╭┄i0 [C]"]);
 
     tui = tui.recreate();
     tui.render_with_messages(

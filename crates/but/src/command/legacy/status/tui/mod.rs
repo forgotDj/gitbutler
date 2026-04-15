@@ -1005,11 +1005,24 @@ impl App {
                 SelectAfterReload::CliId(cli_id) => Cursor::restore(&cli_id, &new_lines),
             }
         } else {
-            self.cursor
-                .selection_cli_id_for_reload(&self.status_lines, self.flags.show_files)
-                .and_then(|previously_selected_cli_id| {
-                    Cursor::restore(previously_selected_cli_id, &new_lines)
-                })
+            let selected_merge_base = self
+                .cursor
+                .selected_line(&self.status_lines)
+                .is_some_and(|line| matches!(line.data, StatusOutputLineData::MergeBase));
+
+            let default_restore = || {
+                self.cursor
+                    .selection_cli_id_for_reload(&self.status_lines, self.flags.show_files)
+                    .and_then(|previously_selected_cli_id| {
+                        Cursor::restore(previously_selected_cli_id, &new_lines)
+                    })
+            };
+
+            if selected_merge_base {
+                Cursor::select_merge_base(&new_lines).or_else(default_restore)
+            } else {
+                default_restore()
+            }
         }
         .unwrap_or_else(|| Cursor::new(&new_lines));
 
