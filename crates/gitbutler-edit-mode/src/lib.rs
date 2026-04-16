@@ -96,10 +96,22 @@ fn find_or_create_base_commit(
 
     let base_tree = repo.find_real_tree(&commit, ConflictedTreeKey::Ours)?;
 
+    let concrete_commit = gix::objs::Commit::try_from(commit.decode()?)?;
+    let extra_headers: Vec<(BString, BString)> = Headers::try_from_commit(&concrete_commit)
+        .map(|commit_headers| {
+            let headers = Headers {
+                conflicted: None,
+                ..commit_headers
+            };
+            (&headers).into()
+        })
+        .unwrap_or_default();
+    let message = but_core::commit::strip_conflict_markers(concrete_commit.message.as_ref());
     let commit = gix::objs::Commit {
         tree: base_tree.into(),
-        extra_headers: Vec::new(),
-        ..gix::objs::Commit::try_from(commit.decode()?)?
+        extra_headers,
+        message,
+        ..concrete_commit
     };
     Ok(repo.write_object(&commit)?.detach())
 }
@@ -271,22 +283,11 @@ pub(crate) fn save_and_return_to_workspace(ctx: &Context, perm: &mut RepoExclusi
     let new_commit_oid = if decoded_head_commit.tree() == tree_id {
         head_commit.id
     } else {
-        let mut commit = gix::objs::Commit::try_from(decoded_head_commit.clone())?;
-        let extra_headers: Vec<(BString, BString)> = Headers::try_from_commit(&commit)
-            .map(|commit_headers| {
-                let headers = Headers {
-                    conflicted: None,
-                    ..commit_headers
-                };
-                (&headers).into()
-            })
-            .unwrap_or_default();
-        commit.message = but_core::commit::strip_conflict_markers(commit.message.as_ref());
+        let commit = gix::objs::Commit::try_from(decoded_head_commit.clone())?;
         but_rebase::commit::create(
             repo,
             gix::objs::Commit {
                 tree: tree_id,
-                extra_headers,
                 ..commit
             },
             but_rebase::commit::DateMode::CommitterUpdateAuthorKeep,
