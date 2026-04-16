@@ -365,6 +365,74 @@ fn two_dependent_branches_rebased_with_remotes() -> anyhow::Result<()> {
 }
 
 #[test]
+fn stacked_bottom_remote_still_points_at_now_split_top() -> anyhow::Result<()> {
+    let (repo, mut meta) =
+        read_only_in_memory_scenario("stacked-bottom-remote-still-points-at-now-split-top")?;
+    // origin/bottom still points at the previously-pushed combined commit (T),
+    // but the local stack has been split so `bottom` now contains only B and
+    // `top` contains T on top of bottom. To remove T from origin/bottom we'd
+    // need to force-push, so bottom must report `UnpushedCommitsRequiringForce`.
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
+    * 5c66c47 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    * bfbff44 (origin/bottom, top) T
+    * 7fdb58d (bottom) B
+    * fafd9d0 (origin/main, main) init
+    ");
+
+    add_stack_with_segments(&mut meta, 0, "top", StackState::InWorkspace, &["bottom"]);
+
+    let opts = standard_options();
+    let info = head_info(&repo, &meta, opts)?;
+    let bottom = info
+        .stacks
+        .first()
+        .and_then(|s| {
+            s.segments.iter().find(|seg| {
+                seg.ref_info
+                    .as_ref()
+                    .is_some_and(|ri| ri.ref_name.as_bstr() == "refs/heads/bottom")
+            })
+        })
+        .expect("bottom segment present");
+    assert_eq!(
+        bottom.push_status,
+        but_workspace::ui::PushStatus::UnpushedCommitsRequiringForce,
+        "bottom needs a force-push because origin/bottom is at T (now owned by top)"
+    );
+    let remote_ids: Vec<_> = bottom
+        .commits_on_remote
+        .iter()
+        .map(|c| c.id.to_hex().to_string())
+        .collect();
+    assert_eq!(
+        remote_ids.len(),
+        1,
+        "bottom's commits_on_remote contains exactly T, which would be lost on force-push"
+    );
+    assert!(
+        remote_ids[0].starts_with("bfbff44"),
+        "expected T (bfbff44...) in commits_on_remote, got: {remote_ids:?}"
+    );
+
+    // The `top` segment is unaffected: origin/bottom is unrelated to it, and
+    // there's no remote tracking ref configured for `top` itself.
+    let top = info.stacks[0]
+        .segments
+        .iter()
+        .find(|seg| {
+            seg.ref_info
+                .as_ref()
+                .is_some_and(|ri| ri.ref_name.as_bstr() == "refs/heads/top")
+        })
+        .expect("top segment present");
+    assert_eq!(
+        top.push_status,
+        but_workspace::ui::PushStatus::CompletelyUnpushed
+    );
+    Ok(())
+}
+
+#[test]
 fn two_dependent_branches_rebased_explicit_remote_in_extra_segment() -> anyhow::Result<()> {
     let (repo, mut meta) = read_only_in_memory_scenario(
         "two-dependent-branches-rebased-explicit-remote-in-extra-segment",

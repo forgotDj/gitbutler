@@ -251,6 +251,22 @@ cp -R two-dependent-branches-rebased-with-remotes two-dependent-branches-rebased
   git branch base-of-A origin/A
 )
 
+git init stacked-bottom-remote-still-points-at-now-split-top
+(cd stacked-bottom-remote-still-points-at-now-split-top
+  git commit -m "init" --allow-empty
+  setup_target_to_match_main
+  git checkout -b bottom
+  git commit -m "B" --allow-empty
+  git checkout -b top
+  git commit -m "T" --allow-empty
+  # origin/bottom previously pointed at the combined push (T), but the
+  # branches were since split locally so that bottom now contains only B
+  # and top contains T on top of bottom. Force-push is required to clear
+  # T from origin/bottom.
+  setup_remote_tracking top bottom 'cp'
+  create_workspace_commit_once top
+)
+
 git init two-branches-one-advanced-ws-commit-on-top-of-stack
 (cd two-branches-one-advanced-ws-commit-on-top-of-stack
   git commit -m "init" --allow-empty
