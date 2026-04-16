@@ -168,6 +168,7 @@ syntect = { version = "5.3.0", default-features = false, features = [
 ] }
 tracing-appender = "0.2.4"
 uuid.workspace = true
+fuzzy-matcher = "0.3.7"
 
 [dev-dependencies]
 but-graph.workspace = true

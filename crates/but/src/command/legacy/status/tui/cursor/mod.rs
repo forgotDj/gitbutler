@@ -159,7 +159,7 @@ impl Cursor {
     }
 
     /// Select the first line that points to the given branch name.
-    pub(super) fn select_branch(branch_name: String, lines: &[StatusOutputLine]) -> Option<Self> {
+    pub(super) fn select_branch(branch_name: &str, lines: &[StatusOutputLine]) -> Option<Self> {
         let idx = lines.iter().position(|line| {
             if let Some(CliId::Branch { name, .. }) = line.data.cli_id().map(|id| &**id)
                 && *name == branch_name
