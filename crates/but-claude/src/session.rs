@@ -857,7 +857,7 @@ For help with available commands, consult `{but_path} --help`.
 - `{but_path} commit -m \"message\"` - Commit changes to this branch
 
 **Modifying commits:**
-- `{but_path} describe <commit>` - Edit a commit message
+- `{but_path} reword <commit>` - Edit a commit message
 - `{but_path} absorb` - Absorb uncommitted changes into existing commits automatically
 - `{but_path} rub <source> <target>` - Move changes between commits, squash, amend, or assign files
 
