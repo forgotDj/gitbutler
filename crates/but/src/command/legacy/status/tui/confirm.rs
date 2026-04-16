@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use but_ctx::Context;
 use ratatui::{
     Frame,
     layout::{Constraint, Flex, Layout, Rect},
@@ -9,21 +10,24 @@ use ratatui::{
 };
 use unicode_width::UnicodeWidthStr;
 
-use crate::command::legacy::status::tui::Message;
+use crate::{command::legacy::status::tui::Message, utils::DebugAsType};
 
 #[derive(Debug)]
 pub(super) struct Confirm {
     text: Cow<'static, str>,
     yes_selected: bool,
-    message_if_yes: Message,
+    on_yes: DebugAsType<Box<dyn FnOnce(&mut Context, &mut Vec<Message>) -> anyhow::Result<()>>>,
 }
 
 impl Confirm {
-    pub(super) fn new(text: impl Into<Cow<'static, str>>, message_if_yes: Message) -> Self {
+    pub(super) fn new<F>(text: impl Into<Cow<'static, str>>, on_yes: F) -> Self
+    where
+        F: FnOnce(&mut Context, &mut Vec<Message>) -> anyhow::Result<()> + 'static,
+    {
         Self {
             text: text.into(),
             yes_selected: true,
-            message_if_yes,
+            on_yes: DebugAsType(Box::new(on_yes)),
         }
     }
 
@@ -70,27 +74,28 @@ impl Confirm {
     pub(super) fn handle_message(
         self,
         msg: ConfirmMessage,
+        ctx: &mut Context,
         messages: &mut Vec<Message>,
-    ) -> Option<Self> {
+    ) -> anyhow::Result<Option<Self>> {
         match msg {
-            ConfirmMessage::Left => Some(Self {
+            ConfirmMessage::Left => Ok(Some(Self {
                 yes_selected: true,
                 ..self
-            }),
-            ConfirmMessage::Right => Some(Self {
+            })),
+            ConfirmMessage::Right => Ok(Some(Self {
                 yes_selected: false,
                 ..self
-            }),
+            })),
             ConfirmMessage::Yes => {
-                messages.push(self.message_if_yes);
-                None
+                (self.on_yes.0)(ctx, messages)?;
+                Ok(None)
             }
-            ConfirmMessage::No => None,
+            ConfirmMessage::No => Ok(None),
             ConfirmMessage::Confirm => {
                 if self.yes_selected {
-                    messages.push(self.message_if_yes);
+                    (self.on_yes.0)(ctx, messages)?;
                 }
-                None
+                Ok(None)
             }
         }
     }

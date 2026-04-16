@@ -212,8 +212,7 @@ impl Details {
             | Message::MoveCursorNextSection
             | Message::SelectUnassigned
             | Message::Reload(_)
-            | Message::NewBranch
-            | Message::RunAfterConfirmation(_) => true,
+            | Message::NewBranch => true,
 
             Message::Commit(commit_message) => match commit_message {
                 CommitMessage::Confirm | CommitMessage::CreateEmpty => true,

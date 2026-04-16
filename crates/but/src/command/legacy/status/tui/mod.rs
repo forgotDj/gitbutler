@@ -2,7 +2,6 @@
 
 use std::{
     borrow::Cow,
-    cell::RefCell,
     ffi::OsString,
     iter::once,
     process::Command,
@@ -711,7 +710,12 @@ impl App {
                 self.confirm = self
                     .confirm
                     .take()
-                    .and_then(|confirm| confirm.handle_message(confirm_message, messages));
+                    .and_then(|confirm| {
+                        confirm
+                            .handle_message(confirm_message, ctx, messages)
+                            .transpose()
+                    })
+                    .transpose()?;
             }
             Message::BranchPicker(branch_picker_message) => {
                 self.branch_picker = self
@@ -723,11 +727,6 @@ impl App {
                             .transpose()
                     })
                     .transpose()?;
-            }
-            Message::RunAfterConfirmation(f) => {
-                if let Some(f) = f.0.try_borrow_mut().ok().and_then(|mut f| f.take()) {
-                    (f)(self, ctx, messages)?;
-                }
             }
             Message::Details(details_message) => {
                 let details_viewport = self.details_viewport(terminal_area);
@@ -1181,15 +1180,12 @@ impl App {
                 self.to_be_discarded = Some(Arc::clone(cli_id));
                 let drop_to_be_discarded =
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
-                Confirm::new(
-                    "Discard unassigned changes?",
-                    run_after_confirmation_msg(move |_, ctx, messages| {
-                        operations::discard_unassigned_legacy(ctx)?;
-                        messages.push(Message::Reload(Some(SelectAfterReload::Unassigned)));
-                        drop(drop_to_be_discarded);
-                        Ok(())
-                    }),
-                )
+                Confirm::new("Discard unassigned changes?", move |ctx, messages| {
+                    operations::discard_unassigned_legacy(ctx)?;
+                    messages.push(Message::Reload(Some(SelectAfterReload::Unassigned)));
+                    drop(drop_to_be_discarded);
+                    Ok(())
+                })
             }
             CliId::Uncommitted(uncommitted) => {
                 self.to_be_discarded = Some(Arc::clone(cli_id));
@@ -1217,7 +1213,7 @@ impl App {
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
                 Confirm::new(
                     format!("Discard {}?", uncommitted.describe()),
-                    run_after_confirmation_msg(move |_, ctx, messages| {
+                    move |ctx, messages| {
                         let hunk_assignments = uncommitted
                             .hunk_assignments
                             .iter()
@@ -1227,7 +1223,7 @@ impl App {
                         messages.push(Message::Reload(Some(select_after_reload)));
                         drop(drop_to_be_discarded);
                         Ok(())
-                    }),
+                    },
                 )
             }
             CliId::Stack { stack_id, .. } => {
@@ -1240,12 +1236,12 @@ impl App {
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
                 Confirm::new(
                     "Discard staged changes in this stack?",
-                    run_after_confirmation_msg(move |_, ctx, messages| {
+                    move |ctx, messages| {
                         operations::discard_stack(ctx, stack_id)?;
                         messages.push(Message::Reload(Some(select_after_reload)));
                         drop(drop_to_be_discarded);
                         Ok(())
-                    }),
+                    },
                 )
             }
             CliId::Commit { commit_id, .. } => {
@@ -1258,7 +1254,7 @@ impl App {
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
                 Confirm::new(
                     format!("Discard commit {}?", commit_id.to_hex_with_len(7)),
-                    run_after_confirmation_msg(move |_, ctx, messages| {
+                    move |ctx, messages| {
                         let discard_result = operations::commit_discard(ctx, commit_id)?;
                         let select_after_reload =
                             select_after_reload.map(|selection| match selection {
@@ -1276,7 +1272,7 @@ impl App {
                         messages.push(Message::Reload(select_after_reload));
                         drop(drop_to_be_discarded);
                         Ok(())
-                    }),
+                    },
                 )
             }
             CliId::Branch { name, stack_id, .. } => {
@@ -1291,15 +1287,12 @@ impl App {
                     .select_after_discarded_branch(&self.status_lines);
                 let drop_to_be_discarded =
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
-                Confirm::new(
-                    format!("Discard branch {name}?"),
-                    run_after_confirmation_msg(move |_, ctx, messages| {
-                        operations::remove_branch_legacy(ctx, stack_id, name)?;
-                        messages.push(Message::Reload(select_after_reload));
-                        drop(drop_to_be_discarded);
-                        Ok(())
-                    }),
-                )
+                Confirm::new(format!("Discard branch {name}?"), move |ctx, messages| {
+                    operations::remove_branch_legacy(ctx, stack_id, name)?;
+                    messages.push(Message::Reload(select_after_reload));
+                    drop(drop_to_be_discarded);
+                    Ok(())
+                })
             }
             CliId::PathPrefix { .. } | CliId::CommittedFile { .. } => return,
         });
@@ -2993,23 +2986,6 @@ enum Message {
 
     // Utilities
     CopySelection,
-    RunAfterConfirmation(
-        DebugAsType<
-            Rc<
-                RefCell<
-                    Option<
-                        Box<
-                            dyn FnOnce(
-                                &mut App,
-                                &mut Context,
-                                &mut Vec<Message>,
-                            ) -> anyhow::Result<()>,
-                        >,
-                    >,
-                >,
-            >,
-        >,
-    ),
     RegisterMessageOnDrop(Rc<Receiver<Message>>),
     WithOneFrameDelay(Box<Message>),
     AndThen {
@@ -3266,15 +3242,6 @@ enum MoveTarget<'a> {
     Branch { name: &'a str },
     Commit { commit_id: gix::ObjectId },
     MergeBase,
-}
-
-fn run_after_confirmation_msg<F>(f: F) -> Message
-where
-    F: FnOnce(&mut App, &mut Context, &mut Vec<Message>) -> anyhow::Result<()> + 'static,
-{
-    Message::RunAfterConfirmation(DebugAsType(Rc::new(RefCell::new(Some(Box::new(
-        move |app, ctx, messages| f(app, ctx, messages),
-    ))))))
 }
 
 struct StatusLayout {
