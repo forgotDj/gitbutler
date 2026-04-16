@@ -843,7 +843,7 @@ dependencies = [
  "colored",
  "command-group",
  "crossterm 0.29.0",
- "dirs 6.0.0",
+ "dirs",
  "fuzzy-matcher",
  "gitbutler-branch",
  "gitbutler-branch-actions",
@@ -1080,7 +1080,7 @@ dependencies = [
  "but-workspace",
  "chrono",
  "claude-agent-sdk-rs",
- "dirs 6.0.0",
+ "dirs",
  "futures",
  "gitbutler-branch",
  "gitbutler-branch-actions",
@@ -1352,7 +1352,7 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "curl",
- "dirs 6.0.0",
+ "dirs",
  "flate2",
  "minisign-verify",
  "owo-colors",
@@ -1471,7 +1471,7 @@ name = "but-path"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "dirs 6.0.0",
+ "dirs",
  "open",
 ]
 
@@ -2906,20 +2906,11 @@ dependencies = [
 
 [[package]]
 name = "dirs"
-version = "4.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3aa72a6f96ea37bbc5aa912f6788242832f75369bdfdadcb0e38423f100059"
-dependencies = [
- "dirs-sys 0.3.7",
-]
-
-[[package]]
-name = "dirs"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3e8aa94d75141228480295a7d0e7feb620b1a5ad9f12bc40be62411e38cce4e"
 dependencies = [
- "dirs-sys 0.5.0",
+ "dirs-sys",
 ]
 
 [[package]]
@@ -2930,17 +2921,6 @@ checksum = "b98cf8ebf19c3d1b223e151f99a4f9f0690dca41414773390fc824184ac833e1"
 dependencies = [
  "cfg-if",
  "dirs-sys-next",
-]
-
-[[package]]
-name = "dirs-sys"
-version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
-dependencies = [
- "libc",
- "redox_users 0.4.6",
- "winapi",
 ]
 
 [[package]]
@@ -4181,7 +4161,6 @@ dependencies = [
  "but-utils",
  "gix",
  "insta",
- "resolve-path",
  "schemars 1.2.1",
  "serde",
  "serde_json",
@@ -4220,7 +4199,6 @@ dependencies = [
  "gitbutler-cherry-pick",
  "gitbutler-project",
  "gitbutler-reference",
- "gitbutler-url",
  "gitbutler-user",
  "gix",
  "ignore",
@@ -4228,12 +4206,10 @@ dependencies = [
  "insta",
  "itertools",
  "keyring",
- "resolve-path",
  "scopeguard",
  "serde",
  "serde_json",
  "tempfile",
- "thiserror 2.0.18",
  "toml 0.9.12+spec-1.1.0",
  "tracing",
 ]
@@ -4246,9 +4222,7 @@ dependencies = [
  "but-core",
  "but-ctx",
  "but-error",
- "git2",
  "gitbutler-git",
- "gitbutler-project",
  "gitbutler-reference",
  "gitbutler-repo",
  "gitbutler-stack",
@@ -8925,15 +8899,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "resolve-path"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "321e5e41b3b192dab6f1e75b9deacb6688b4b8c5e68906a78e8f43e7c2887bb5"
-dependencies = [
- "dirs 4.0.0",
-]
-
-[[package]]
 name = "rfd"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9799,7 +9764,7 @@ version = "3.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32824fab5e16e6c4d86dc1ba84489390419a39f97699852b66480bb87d297ed8"
 dependencies = [
- "dirs 6.0.0",
+ "dirs",
 ]
 
 [[package]]
@@ -10302,7 +10267,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "cookie",
- "dirs 6.0.0",
+ "dirs",
  "dunce",
  "embed_plist",
  "getrandom 0.3.4",
@@ -10352,7 +10317,7 @@ checksum = "4bbc990d1dbf57a8e1c7fa2327f2a614d8b757805603c1b9ba5c81bade09fd4d"
 dependencies = [
  "anyhow",
  "cargo_toml",
- "dirs 6.0.0",
+ "dirs",
  "glob",
  "heck 0.5.0",
  "json-patch",
@@ -10621,7 +10586,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fe8e9bebd88fc222938ffdfbdcfa0307081423bd01e3252fc337d8bde81fc61"
 dependencies = [
  "base64 0.22.1",
- "dirs 6.0.0",
+ "dirs",
  "flate2",
  "futures-util",
  "http",
@@ -11440,7 +11405,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5e85aa143ceb072062fc4d6356c1b520a51d636e7bc8e77ec94be3608e5e80c"
 dependencies = [
  "crossbeam-channel",
- "dirs 6.0.0",
+ "dirs",
  "libappindicator",
  "muda",
  "objc2",
@@ -12909,7 +12874,7 @@ dependencies = [
  "block2",
  "cookie",
  "crossbeam-channel",
- "dirs 6.0.0",
+ "dirs",
  "dpi",
  "dunce",
  "gdkx11",

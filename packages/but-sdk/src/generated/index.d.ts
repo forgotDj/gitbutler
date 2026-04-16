@@ -417,12 +417,6 @@ export type ApplyOutcome = {
   workspaceRefCreated: boolean;
 };
 
-export type AuthKey = "gitCredentialsHelper" | "systemExecutable" | {
-  local: {
-    private_key_path: string;
-  };
-};
-
 /** Represents the author of a commit. */
 export type Author = {
   /** The name from the git commit signature */
@@ -1513,7 +1507,6 @@ export type ProjectForFrontend = {
    * This is the only value we need to access everything related to the Git repository.
    */
   git_dir?: string;
-  preferred_key?: AuthKey;
   /**
    * if ok_with_force_push is true, we'll not try to avoid force pushing
    * for example, when updating base branch

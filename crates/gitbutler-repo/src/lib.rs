@@ -29,7 +29,6 @@ pub use remote::GitRemote;
 mod repository_ext;
 pub use repository_ext::{commit_with_signature_gix, commit_without_signature_gix};
 
-pub mod credentials;
 pub mod hooks;
 pub mod managed_hooks;
 mod remote;

@@ -16,11 +16,9 @@ but-ctx.workspace = true
 
 gitbutler-stack.workspace = true
 gitbutler-git.workspace = true
-gitbutler-project.workspace = true
 gitbutler-reference.workspace = true
 gitbutler-repo.workspace = true
 
-git2.workspace = true
 gix.workspace = true
 serde.workspace = true
 tokio = { workspace = true, features = [

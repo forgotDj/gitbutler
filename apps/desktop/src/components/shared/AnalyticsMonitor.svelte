@@ -4,8 +4,6 @@ This component keeps the analytics context up-to-date, i.e. the metadata
 attached to posthog events.
 -->
 <script lang="ts">
-	import { gitAuthType } from "$lib/project/project";
-	import { PROJECTS_SERVICE } from "$lib/project/projectsService";
 	import { SETTINGS_SERVICE } from "$lib/settings/appSettings";
 	import { SETTINGS } from "$lib/settings/userSettings";
 	import { UI_STATE } from "$lib/state/uiState.svelte";
@@ -16,10 +14,8 @@ attached to posthog events.
 
 	const uiState = inject(UI_STATE);
 	const eventContext = inject(EVENT_CONTEXT);
-	const projectsService = inject(PROJECTS_SERVICE);
 	const settingsService = inject(SETTINGS_SERVICE);
 
-	const projectQuery = $derived(projectsService.getProject(projectId));
 	const globalState = uiState.global;
 	const projectState = $derived(uiState.project(projectId));
 
@@ -47,15 +43,6 @@ attached to posthog events.
 			aiSummariesEnabled: $settings.aiSummariesEnabled,
 			diffLigatures: $settings.diffLigatures,
 		});
-	});
-
-	$effect(() => {
-		const project = projectQuery.response;
-		if (project) {
-			eventContext.update({
-				gitAuthType: gitAuthType(project.preferred_key),
-			});
-		}
 	});
 
 	$effect(() => {

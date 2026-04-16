@@ -9,22 +9,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{ProjectHandle, ProjectHandleOrLegacyProjectId, default_true::DefaultTrue};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
-#[serde(rename_all = "camelCase")]
-pub enum AuthKey {
-    GitCredentialsHelper,
-    Local {
-        private_key_path: PathBuf,
-    },
-    // There used to be more auth option variants that we are deprecating and replacing with this
-    #[serde(other)]
-    #[default]
-    SystemExecutable,
-}
-#[cfg(feature = "export-schema")]
-but_schemars::register_sdk_type!(AuthKey);
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 pub struct ApiProject {
@@ -112,8 +96,6 @@ pub struct Project {
     // TODO(1.0): remove the `default` which is just needed while there is project files without it.
     #[serde(default)]
     pub(crate) git_dir: PathBuf,
-    #[serde(default)]
-    pub preferred_key: AuthKey,
     /// if ok_with_force_push is true, we'll not try to avoid force pushing
     /// for example, when updating base branch
     #[serde(default)]
@@ -161,7 +143,6 @@ impl Project {
             description: None,
             worktree_dir: Default::default(),
             git_dir: Default::default(),
-            preferred_key: Default::default(),
             ok_with_force_push: Default::default(),
             force_push_protection: false,
             husky_hooks_enabled: false,
@@ -210,14 +191,13 @@ impl Project {
     }
 
     /// A special constructor needed as `worktree_dir` isn't accessible anymore.
-    pub fn new_for_gitbutler_repo(worktree_dir: PathBuf, preferred_key: AuthKey) -> Self {
+    pub fn new_for_gitbutler_repo(worktree_dir: PathBuf) -> Self {
         let project_id = ProjectHandleOrLegacyProjectId::ProjectHandle(
             ProjectHandle::from_path(&worktree_dir)
                 .expect("repo projects require a valid path for ProjectHandle"),
         );
         Project {
             worktree_dir,
-            preferred_key,
             ..Project::default_with_id(project_id)
         }
         .migrated()
