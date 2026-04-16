@@ -143,11 +143,6 @@ pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
             .filter(|p| p.exists())
             .and_then(|p| theme::load(&p).ok())
             .unwrap_or_default();
-        tracing::warn!(
-            "{:?}",
-            dirs::config_dir().map(|dir| dir.join("gitbutler").join("but-theme.json"))
-        );
-        tracing::warn!("{:?}", theme);
         theme::init(theme);
     }
 

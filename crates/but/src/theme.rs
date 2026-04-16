@@ -1,7 +1,7 @@
 //! A global, serializable color theme for CLI output.
 //!
 //! Styled output *must* begin from one of the global theme's styles. Using [`colored`] or [`Style`]
-//! indepentently of this theme is prohibited, as that breaks user-defined theming.
+//! independently of this theme is prohibited, as that breaks user-defined theming.
 //!
 //! The theme controls the styling of semantic elements (branch names, commit IDs, file statuses,
 //! etc.) for human-readable output modes. It can be loaded from a JSON file so users can customize
@@ -12,8 +12,8 @@
 //! Call [`init`] exactly once before any output is produced (typically in [`crate::handle_args`]).
 //! After that, [`get`] returns a `&'static Theme`.
 //!
-//! Note that unit tests **do not need to initialize** the theme as we always return the hard-coded
-//! default for tests.
+//! Note that unit tests **do not need to initializes** the theme as they will automatically fall
+//! back on the default if not initialized.
 //!
 //!
 //! # Serialization
@@ -52,12 +52,7 @@ pub fn init(theme: Theme) {
 pub fn get() -> &'static Theme {
     #[cfg(test)]
     {
-        let theme = THEME.get();
-        if let Some(theme) = theme {
-            return theme;
-        }
-        let _ = THEME.set(Theme::default());
-        get()
+        THEME.get_or_init(Theme::default)
     }
     #[cfg(not(test))]
     {
