@@ -3,9 +3,7 @@ use std::path::PathBuf;
 use anyhow::{Context as _, Result};
 use serde::Deserialize;
 
-use crate::{
-    ApiProject, AuthKey, CodePushState, FetchResult, Project, ProjectHandleOrLegacyProjectId,
-};
+use crate::{ApiProject, CodePushState, FetchResult, Project, ProjectHandleOrLegacyProjectId};
 
 const PROJECTS_FILE: &str = "projects.json";
 
@@ -25,7 +23,6 @@ pub struct UpdateRequest {
     #[serde(default = "default_false")]
     pub unset_api: bool,
     pub gitbutler_data_last_fetched: Option<FetchResult>,
-    pub preferred_key: Option<AuthKey>,
     pub ok_with_force_push: Option<bool>,
     pub force_push_protection: Option<bool>,
     pub husky_hooks_enabled: Option<bool>,
@@ -52,7 +49,6 @@ impl UpdateRequest {
             api: None,
             unset_api: false,
             gitbutler_data_last_fetched: None,
-            preferred_key: None,
             ok_with_force_push: None,
             force_push_protection: None,
             husky_hooks_enabled: None,
@@ -76,7 +72,6 @@ impl From<Project> for UpdateRequest {
             description,
             worktree_dir,
             git_dir,
-            preferred_key,
             ok_with_force_push,
             force_push_protection,
             husky_hooks_enabled,
@@ -99,7 +94,6 @@ impl From<Project> for UpdateRequest {
             api,
             unset_api: false,
             gitbutler_data_last_fetched: gitbutler_data_last_fetch,
-            preferred_key: Some(preferred_key),
             ok_with_force_push: Some(ok_with_force_push.into()),
             force_push_protection: Some(force_push_protection),
             husky_hooks_enabled: Some(husky_hooks_enabled),
@@ -171,7 +165,6 @@ impl Storage {
             api,
             unset_api,
             gitbutler_data_last_fetched,
-            preferred_key,
             ok_with_force_push,
             force_push_protection,
             husky_hooks_enabled,
@@ -225,10 +218,6 @@ impl Storage {
 
         if unset_forge_override {
             project.forge_override = None;
-        }
-
-        if let Some(preferred_key) = preferred_key {
-            project.preferred_key = preferred_key.clone();
         }
 
         if let Some(gitbutler_data_last_fetched) = gitbutler_data_last_fetched.as_ref() {

@@ -4,7 +4,7 @@ use anyhow::{Context as _, Result, anyhow, bail};
 use but_error::Code;
 
 use super::{Project, storage, storage::UpdateRequest};
-use crate::{AuthKey, ProjectHandle, ProjectHandleOrLegacyProjectId, project::AddProjectOutcome};
+use crate::{ProjectHandle, ProjectHandleOrLegacyProjectId, project::AddProjectOutcome};
 
 #[derive(Clone, Debug)]
 pub(crate) struct Controller {
@@ -252,36 +252,7 @@ impl Controller {
         Ok(AddProjectOutcome::Added(project))
     }
 
-    #[cfg_attr(not(windows), allow(unused_mut))]
-    pub(crate) fn update(&self, mut project: UpdateRequest) -> Result<Project> {
-        #[cfg(not(windows))]
-        if let Some(AuthKey::Local {
-            private_key_path, ..
-        }) = &project.preferred_key
-        {
-            use resolve_path::PathResolveExt;
-            let private_key_path = private_key_path.resolve();
-
-            if !private_key_path.exists() {
-                bail!(
-                    "private key at \"{}\" not found",
-                    private_key_path.display()
-                );
-            }
-
-            if !private_key_path.is_file() {
-                bail!(
-                    "private key at \"{}\" is not a file",
-                    private_key_path.display()
-                );
-            }
-        }
-
-        #[cfg(windows)]
-        {
-            project.preferred_key = Some(AuthKey::SystemExecutable);
-        }
-
+    pub(crate) fn update(&self, project: UpdateRequest) -> Result<Project> {
         self.projects_storage.update(project)
     }
 
@@ -292,9 +263,7 @@ impl Controller {
     /// Only get the project information. No state validation is done.
     /// This is intended to be used only when updating the path of a missing project.
     pub(crate) fn get_raw(&self, id: ProjectHandleOrLegacyProjectId) -> Result<Project> {
-        #[cfg_attr(not(windows), allow(unused_mut))]
-        let project = self.projects_storage.get(id)?;
-        Ok(project)
+        self.projects_storage.get(id)
     }
 
     /// Like [`Self::get()`], but will assure the project still exists and is valid by
@@ -304,7 +273,6 @@ impl Controller {
     }
 
     fn get_inner(&self, id: ProjectHandleOrLegacyProjectId, validate: bool) -> Result<Project> {
-        #[cfg_attr(not(windows), allow(unused_mut))]
         let mut project = self.projects_storage.get(id)?;
         // BACKWARD-COMPATIBLE MIGRATION
         project.migrate()?;
@@ -342,11 +310,6 @@ impl Controller {
             && let Err(error) = std::fs::remove_file(old_virtual_branches_path)
         {
             tracing::error!(project_id = %project.id, ?error, "failed to remove old virtual_branches.toml");
-        }
-
-        #[cfg(windows)]
-        {
-            project.preferred_key = AuthKey::SystemExecutable;
         }
 
         Ok(project)

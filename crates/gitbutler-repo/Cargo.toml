@@ -17,7 +17,6 @@ but-ctx = { workspace = true, features = ["legacy"] }
 
 gitbutler-project.workspace = true
 gitbutler-reference.workspace = true
-gitbutler-url.workspace = true
 gitbutler-cherry-pick.workspace = true
 
 git2.workspace = true
@@ -28,8 +27,6 @@ bstr.workspace = true
 tracing.workspace = true
 tempfile.workspace = true
 serde.workspace = true
-thiserror.workspace = true
-resolve-path = "0.1.0"
 itertools.workspace = true
 toml.workspace = true
 base64 = "0.22.1"

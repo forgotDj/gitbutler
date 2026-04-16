@@ -1,11 +1,10 @@
 use std::{str::FromStr, time::UNIX_EPOCH};
 
-use anyhow::{Context as _, Result, anyhow, bail};
+use anyhow::{Context as _, Result, anyhow};
 use but_ctx::Context;
 use but_error::Code;
-use gitbutler_project::AuthKey;
 use gitbutler_reference::{Refname, RemoteRefname};
-use gitbutler_repo::{credentials, first_parent_commit_ids_until};
+use gitbutler_repo::first_parent_commit_ids_until;
 use gitbutler_stack::{Stack, StackId};
 
 use crate::askpass;
@@ -143,198 +142,109 @@ impl RepoActionsExt for Context {
         askpass_broker: Option<Option<StackId>>,
         push_opts: Vec<String>,
     ) -> Result<String> {
-        let use_git_executable = self.legacy_project.preferred_key == AuthKey::SystemExecutable;
-        if !use_git_executable && force_push_protection {
-            bail!("Force push protection is only supported when 'Using the Git executable'");
-        }
-        let refspec = refspec.unwrap_or_else(|| {
-            // The Git executable has flags set related to force, and these flags don't play well
-            // with the refspec force-format which seems to override them, leading to incorrect results
-            // in conjunction with `force_push_protection`.
-            let prefix = if with_force && !use_git_executable {
-                "+"
-            } else {
-                Default::default()
-            };
-            format!("{prefix}{}:refs/heads/{}", head, branch.branch())
-        });
+        let refspec = refspec.unwrap_or_else(|| format!("{}:refs/heads/{}", head, branch.branch()));
 
-        // NOTE(qix-): This is a nasty hack, however the codebase isn't structured
-        // NOTE(qix-): in a way that allows us to really incorporate new backends
-        // NOTE(qix-): without a lot of work. This is a temporary measure to
-        // NOTE(qix-): work around a time-sensitive change that was necessary
-        // NOTE(qix-): without having to refactor a large portion of the codebase.
-        if use_git_executable {
-            let on_prompt = if askpass::get_broker().is_some() {
-                Some(move |prompt: String| handle_git_prompt_push(prompt, askpass_broker))
-            } else {
-                None
-            };
-
-            let repo_path = self.workdir_or_gitdir()?;
-            let remote = branch.remote().to_string();
-            match std::thread::spawn(move || {
-                tokio::runtime::Runtime::new()
-                    .unwrap()
-                    .block_on(gitbutler_git::push(
-                        repo_path,
-                        gitbutler_git::tokio::TokioExecutor,
-                        &remote,
-                        gitbutler_git::RefSpec::parse(refspec).unwrap(),
-                        with_force,
-                        force_push_protection,
-                        on_prompt,
-                        push_opts,
-                    ))
-            })
-            .join()
-            .unwrap() {
-                Ok(result) => Ok(result),
-                Err(err) => match err {
-                    gitbutler_git::Error::ForcePushProtection(e) => {
-                        Err(anyhow!("The force push was blocked because the remote branch contains commits that would be overwritten.\n\n{e}")
-                            .context(Code::GitForcePushProtection))
-                    },
-                    gitbutler_git::Error::GerritNoNewChanges(_) => {
-                        // Treat "no new changes" as success for Gerrit
-                        Ok("".to_string())
-                    },
-                    _ => Err(err.into())
-                }
-            }
+        let on_prompt = if askpass::get_broker().is_some() {
+            Some(move |prompt: String| handle_git_prompt_push(prompt, askpass_broker))
         } else {
-            #[expect(deprecated, reason = "libgit2 transport/auth adapter")]
-            let git2_repo = self.git2_repo.get()?;
-            let auth_flows = credentials::help(&git2_repo, &self.legacy_project, branch.remote())?;
-            for (mut remote, callbacks) in auth_flows {
-                let mut update_refs_error: Option<git2::Error> = None;
-                for callback in callbacks {
-                    let mut cbs: git2::RemoteCallbacks = callback.into();
-                    if self.legacy_project.omit_certificate_check.unwrap_or(false) {
-                        cbs.certificate_check(|_, _| {
-                            Ok(git2::CertificateCheckStatus::CertificateOk)
-                        });
-                    }
-                    cbs.push_update_reference(|_reference: &str, status: Option<&str>| {
-                        if let Some(status) = status {
-                            update_refs_error = Some(git2::Error::from_str(status));
-                            return Err(git2::Error::from_str(status));
-                        };
-                        Ok(())
-                    });
+            None
+        };
 
-                    let push_result = remote.push(
-                        &[refspec.as_str()],
-                        Some(&mut git2::PushOptions::new().remote_callbacks(cbs)),
-                    );
-                    match push_result {
-                        Ok(()) => {
-                            tracing::info!(
-                                project_id = %self.legacy_project.id,
-                                remote = %branch.remote(),
-                                %head,
-                                branch = branch.branch(),
-                                "pushed git branch"
-                            );
-                            return Ok("".to_string());
-                        }
-                        Err(err) => match err.class() {
-                            git2::ErrorClass::Net | git2::ErrorClass::Http => {
-                                tracing::warn!(project_id = %self.legacy_project.id, ?err, "push failed due to network");
-                                continue;
-                            }
-                            _ => match err.code() {
-                                git2::ErrorCode::Auth => {
-                                    tracing::warn!(project_id = %self.legacy_project.id, ?err, "push failed due to auth");
-                                    continue;
-                                }
-                                _ => {
-                                    if let Some(update_refs_err) = update_refs_error {
-                                        return Err(update_refs_err).context(err);
-                                    }
-                                    return Err(err.into());
-                                }
-                            },
-                        },
-                    }
+        let repo_path = self.workdir_or_gitdir()?;
+        let remote = branch.remote().to_string();
+        let result = std::thread::spawn(move || -> Result<_> {
+            let runtime = tokio::runtime::Runtime::new().context(
+                but_error::Context::new("failed to initialize async runtime for git push")
+                    .with_code(Code::Unknown),
+            )?;
+            let refspec = gitbutler_git::RefSpec::parse(&refspec).context(
+                but_error::Context::new(format!("failed to parse git push refspec `{refspec}`"))
+                    .with_code(Code::Validation),
+            )?;
+            Ok(runtime.block_on(gitbutler_git::push(
+                repo_path,
+                gitbutler_git::tokio::TokioExecutor,
+                &remote,
+                refspec,
+                with_force,
+                force_push_protection,
+                on_prompt,
+                push_opts,
+            )))
+        })
+        .join()
+        .map_err(|panic| {
+            let reason = if let Some(message) = panic.downcast_ref::<String>() {
+                message.clone()
+            } else if let Some(message) = panic.downcast_ref::<&'static str>() {
+                (*message).to_owned()
+            } else {
+                "unknown panic payload".to_owned()
+            };
+
+            anyhow!("git push worker thread panicked: {reason}").context(
+                but_error::Context::new("git push failed unexpectedly").with_code(Code::Unknown),
+            )
+        })??;
+        match result {
+            Ok(result) => Ok(result),
+            Err(err) => match err {
+                gitbutler_git::Error::ForcePushProtection(e) => Err(anyhow!(
+                    "The force push was blocked because the remote branch contains commits that would be overwritten.\n\n{e}"
+                )
+                .context(Code::GitForcePushProtection)),
+                gitbutler_git::Error::GerritNoNewChanges(_) => {
+                    // Treat "no new changes" as success for Gerrit
+                    Ok("".to_string())
                 }
-            }
-
-            Err(anyhow!("authentication failed").context(Code::ProjectGitAuth))
+                _ => Err(err.into()),
+            },
         }
     }
 
     fn fetch(&self, remote_name: &str, askpass: Option<String>) -> Result<()> {
         let refspec = format!("+refs/heads/*:refs/remotes/{remote_name}/*");
 
-        // NOTE(qix-): This is a nasty hack, however the codebase isn't structured
-        // NOTE(qix-): in a way that allows us to really incorporate new backends
-        // NOTE(qix-): without a lot of work. This is a temporary measure to
-        // NOTE(qix-): work around a time-sensitive change that was necessary
-        // NOTE(qix-): without having to refactor a large portion of the codebase.
-        if self.legacy_project.preferred_key == AuthKey::SystemExecutable {
-            let on_prompt = if askpass::get_broker().is_some() {
-                Some(move |prompt: String| handle_git_prompt_fetch(prompt, askpass.clone()))
+        let on_prompt = if askpass::get_broker().is_some() {
+            Some(move |prompt: String| handle_git_prompt_fetch(prompt, askpass.clone()))
+        } else {
+            None
+        };
+
+        let repo_path = self.workdir_or_gitdir()?;
+        let remote = remote_name.to_string();
+        let result = std::thread::spawn(move || -> Result<_> {
+            let runtime = tokio::runtime::Runtime::new().context(
+                but_error::Context::new("failed to initialize async runtime for git fetch")
+                    .with_code(Code::Unknown),
+            )?;
+            let refspec = gitbutler_git::RefSpec::parse(&refspec).context(
+                but_error::Context::new(format!("failed to parse git fetch refspec `{refspec}`"))
+                    .with_code(Code::Validation),
+            )?;
+            Ok(runtime.block_on(gitbutler_git::fetch(
+                repo_path,
+                gitbutler_git::tokio::TokioExecutor,
+                &remote,
+                refspec,
+                on_prompt,
+            )))
+        })
+        .join()
+        .map_err(|panic| {
+            let reason = if let Some(message) = panic.downcast_ref::<String>() {
+                message.clone()
+            } else if let Some(message) = panic.downcast_ref::<&'static str>() {
+                (*message).to_owned()
             } else {
-                None
+                "unknown panic payload".to_owned()
             };
 
-            let repo_path = self.workdir_or_gitdir()?;
-            let remote = remote_name.to_string();
-            return std::thread::spawn(move || {
-                tokio::runtime::Runtime::new()
-                    .unwrap()
-                    .block_on(gitbutler_git::fetch(
-                        repo_path,
-                        gitbutler_git::tokio::TokioExecutor,
-                        &remote,
-                        gitbutler_git::RefSpec::parse(refspec).unwrap(),
-                        on_prompt,
-                    ))
-            })
-            .join()
-            .unwrap()
-            .map_err(Into::into);
-        }
-
-        #[expect(deprecated, reason = "libgit2 transport/auth adapter")]
-        let git2_repo = self.git2_repo.get()?;
-        let auth_flows = credentials::help(&git2_repo, &self.legacy_project, remote_name)?;
-        for (mut remote, callbacks) in auth_flows {
-            for callback in callbacks {
-                let mut fetch_opts = git2::FetchOptions::new();
-                let mut cbs: git2::RemoteCallbacks = callback.into();
-                if self.legacy_project.omit_certificate_check.unwrap_or(false) {
-                    cbs.certificate_check(|_, _| Ok(git2::CertificateCheckStatus::CertificateOk));
-                }
-                fetch_opts.remote_callbacks(cbs);
-                fetch_opts.prune(git2::FetchPrune::On);
-
-                match remote.fetch(&[&refspec], Some(&mut fetch_opts), None) {
-                    Ok(()) => {
-                        tracing::info!(project_id = %self.legacy_project.id, %refspec, "git fetched");
-                        return Ok(());
-                    }
-                    Err(err) => match err.class() {
-                        git2::ErrorClass::Net | git2::ErrorClass::Http => {
-                            tracing::warn!(project_id = %self.legacy_project.id, ?err, "fetch failed due to network");
-                            continue;
-                        }
-                        _ => match err.code() {
-                            git2::ErrorCode::Auth => {
-                                tracing::warn!(project_id = %self.legacy_project.id, ?err, "fetch failed due to auth");
-                                continue;
-                            }
-                            _ => {
-                                return Err(err.into());
-                            }
-                        },
-                    },
-                }
-            }
-        }
-
-        Err(anyhow!("authentication failed")).context(Code::ProjectGitAuth)
+            anyhow!("git fetch worker thread panicked: {reason}").context(
+                but_error::Context::new("git fetch failed unexpectedly").with_code(Code::Unknown),
+            )
+        })??;
+        result.map_err(Into::into)
     }
 }
 
