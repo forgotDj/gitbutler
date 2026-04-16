@@ -2,7 +2,6 @@
 	import { page } from "$app/state";
 	import ProjectNotFound from "$components/onboarding/ProjectNotFound.svelte";
 	import RouteErrorView from "$components/shared/RouteErrorView.svelte";
-	import { Code } from "$lib/error/knownErrors";
 
 	const code = $derived(page.error?.errorCode);
 	const status = $derived(page.status);
@@ -11,7 +10,7 @@
 	const error = $derived(message ? message : status === 404 ? "Page not found" : "Unknown error");
 </script>
 
-{#if code === Code.ProjectMissing}
+{#if code === "ProjectMissing"}
 	<!-- We assume `projectId` is in the path given the code. -->
 	{@const projectId = page.params.projectId!}
 	<ProjectNotFound {projectId} />

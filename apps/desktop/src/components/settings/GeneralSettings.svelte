@@ -5,7 +5,6 @@
 	import { BACKEND } from "$lib/backend";
 	import { getUserErrorCode } from "$lib/backend/ipc";
 	import { CLI_MANAGER } from "$lib/config/cli";
-	import { Code } from "$lib/error/knownErrors";
 	import { showError } from "$lib/error/showError";
 	import { showToast } from "$lib/notifications/toasts";
 	import { PROJECTS_SERVICE } from "$lib/project/projectsService";
@@ -332,7 +331,7 @@
 									// The backend tags that specific case with a
 									// `CliInstallCancelled` code so we can show an info
 									// toast instead of an error toast.
-									if (getUserErrorCode(err) === Code.CliInstallCancelled) {
+									if (getUserErrorCode(err) === "CliInstallCancelled") {
 										showToast({
 											style: "info",
 											message: "CLI install cancelled.",

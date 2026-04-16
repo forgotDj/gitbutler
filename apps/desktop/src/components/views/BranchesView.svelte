@@ -125,7 +125,7 @@
 
 	function onerror(err: unknown) {
 		// Clear selection if branch not found.
-		if (isParsedError(err) && err.code === "errors.branch.notfound") {
+		if (isParsedError(err) && err.code === "BranchNotFound") {
 			selection = { type: "target" };
 			console.warn("Branches selection cleared");
 		}

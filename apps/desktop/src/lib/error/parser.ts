@@ -8,11 +8,12 @@ import {
 } from "$lib/error/typeguards";
 import { isStr } from "@gitbutler/ui/utils/string";
 import { isErrorlike } from "@gitbutler/ui/utils/typeguards";
+import type { Code } from "@gitbutler/but-sdk";
 
 export interface ParsedError {
 	message: string;
 	name?: string;
-	code?: string;
+	code?: Code;
 	ignored?: boolean;
 	description?: string;
 }

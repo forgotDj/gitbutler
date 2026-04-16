@@ -84,7 +84,7 @@
 	);
 
 	function onerror(err: unknown) {
-		if (isParsedError(err) && err.code === "errors.branch.notfound") {
+		if (isParsedError(err) && err.code === "BranchNotFound") {
 			controller.selection.set(undefined);
 			console.warn("Workspace selection cleared");
 		}

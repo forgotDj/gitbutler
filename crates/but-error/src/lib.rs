@@ -68,7 +68,7 @@
 //!
 //!
 //! assert_eq!(format!("{:#}", a().unwrap_err()),
-//!            "errors.unknown: whatever comes before a `Code` context shows in frontend, so THIS: this didn't work",
+//!            "Unknown: whatever comes before a `Code` context shows in frontend, so THIS: this didn't work",
 //!            "however, that Code also shows up in the error chain in logs - context is just like an Error for anyhow");
 //!
 //! ```
@@ -151,27 +151,9 @@ pub enum Code {
 
 impl std::fmt::Display for Code {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let code = match self {
-            Code::Unknown => "errors.unknown",
-            Code::RepoOwnership => "errors.repo_ownership",
-            Code::Validation => "errors.validation",
-            Code::ProjectGitAuth => "errors.projects.git.auth",
-            Code::DefaultTargetNotFound => "errors.projects.default_target.not_found",
-            Code::CommitSigningFailed => "errors.commit.signing_failed",
-            Code::CommitMergeConflictFailure => "errors.commit.merge_conflict_failure",
-            Code::AuthorMissing => "errors.git.author_missing",
-            Code::ProjectMissing => "errors.projects.missing",
-            Code::BranchNotFound => "errors.branch.notfound",
-            Code::SecretKeychainNotFound => "errors.secret.keychain_notfound",
-            Code::MissingLoginKeychain => "errors.secret.missing_login_keychain",
-            Code::GitForcePushProtection => "errors.git.force_push_protection",
-            Code::NetworkError => "errors.network",
-            Code::ProjectDatabaseIncompatible => "errors.projectdb.migration",
-            Code::DefaultTerminalNotFound => "errors.terminal.not_found",
-            Code::CliInstallCancelled => "errors.cli.install_cancelled",
-            Code::GitHubTokenExpired => "errors.github.expired_token",
-        };
-        f.write_str(code)
+        // `Debug` on a unit variant prints just the variant name, which is
+        // the wire-level identifier shared with the frontend.
+        std::fmt::Debug::fmt(self, f)
     }
 }
 

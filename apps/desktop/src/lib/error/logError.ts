@@ -101,7 +101,7 @@ export function logError(error: unknown, options?: LogErrorOptions) {
 	}
 }
 
-function reduxErrorToException(error: { name: string; message: string; code?: string }): Error {
+function reduxErrorToException(error: { name?: string; message: string; code?: string }): Error {
 	const err = new Error(error.message);
 	// Prefer the backend-provided name (e.g. "API error: (push_stack)") over
 	// the default "Error" so Sentry's title grouping matches the PostHog

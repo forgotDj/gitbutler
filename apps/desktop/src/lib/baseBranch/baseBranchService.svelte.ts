@@ -1,4 +1,3 @@
-import { Code } from "$lib/error/knownErrors";
 import { isReduxError } from "$lib/error/reduxError";
 import { showError } from "$lib/error/showError";
 import { parseRemoteUrl } from "$lib/git/gitUrl";
@@ -80,18 +79,18 @@ export default class BaseBranchService {
 					return;
 				}
 				const { code } = error;
-				if (code === Code.DefaultTargetNotFound) {
+				if (code === "DefaultTargetNotFound") {
 					// Swallow this error since user should be taken to project setup page
 					return;
 				}
 
-				if (code === Code.ProjectsGitAuth) {
+				if (code === "ProjectGitAuth") {
 					if (action === "auto") return;
 					showError("Failed to authenticate", error.message);
 					return;
 				}
 
-				if (code === Code.Unknown && error.message?.includes("cargo build -p gitbutler-git")) {
+				if (code === "Unknown" && error.message?.includes("cargo build -p gitbutler-git")) {
 					showError("Run `cargo build -p gitbutler-git`", error.message);
 					return;
 				}

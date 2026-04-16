@@ -4,7 +4,6 @@
 	import IllustrationSplitLayout from "$components/shared/IllustrationSplitLayout.svelte";
 	import loadErrorSvg from "$lib/assets/illustrations/load-error.svg?raw";
 	import { parseQueryError } from "$lib/error/error";
-	import { Code } from "$lib/error/knownErrors";
 	import { Button, InfoMessage } from "@gitbutler/ui";
 
 	type Props = {
@@ -29,7 +28,7 @@
 	}
 </script>
 
-{#if parsedError.code === Code.ProjectMissing}
+{#if parsedError.code === "ProjectMissing"}
 	<ProjectNotFound {projectId} />
 {:else}
 	<IllustrationSplitLayout img={loadErrorSvg}>
