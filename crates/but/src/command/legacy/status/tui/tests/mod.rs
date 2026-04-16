@@ -512,6 +512,72 @@ fn mode_toggle_key_r_enters_and_leaves_rub_mode() {
 }
 
 #[test]
+fn rub_mode_shift_j_lands_on_first_selectable_in_next_branch() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
+    env.setup_metadata(&["A", "B"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.env().file("test.txt", "content");
+
+    tui.input_then_render(KeyCode::Down)
+        .assert_current_line_eq(str!["┊   vo A test.txt"]);
+
+    tui.input_then_render('r')
+        .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
+        .assert_current_line_eq(str!["┊●   << amend >> [..] add A"]);
+}
+
+#[test]
+fn rub_mode_shift_j_can_jump_between_branches() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
+    env.setup_metadata(&["A", "B"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.env().file("test.txt", "content");
+
+    tui.input_then_render(KeyCode::Down)
+        .assert_current_line_eq(str!["┊   vo A test.txt"]);
+
+    tui.input_then_render('r')
+        .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
+        .assert_current_line_eq(str!["┊●   << amend >> [..] add A"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
+        .assert_current_line_eq(str!["┊●   << amend >> [..] add B"]);
+}
+
+#[test]
+fn rub_mode_shift_k_jumps_to_first_selectable_in_previous_branch() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
+    env.setup_metadata(&["A", "B"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.env().file("test.txt", "content");
+
+    tui.input_then_render(KeyCode::Down)
+        .assert_current_line_eq(str!["┊   vo A test.txt"]);
+
+    tui.input_then_render('r')
+        .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
+        .assert_current_line_eq(str!["┊●   << amend >> [..] add A"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
+        .assert_current_line_eq(str!["┊●   << amend >> [..] add B"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('K')))
+        .assert_current_line_eq(str!["┊●   << amend >> [..] add A"]);
+}
+
+#[test]
 fn mode_toggle_key_c_enters_and_leaves_commit_mode() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
     env.setup_metadata(&["A"]).unwrap();

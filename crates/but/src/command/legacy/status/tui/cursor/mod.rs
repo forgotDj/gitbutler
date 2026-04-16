@@ -336,7 +336,7 @@ impl Cursor {
         Some(Self(idx))
     }
 
-    /// Moves the cursor to the next selectable jump-target line after the current cursor position.
+    /// Moves the cursor to the first selectable row in the next section.
     #[must_use]
     pub(super) fn move_next_section(
         self,
@@ -348,19 +348,23 @@ impl Cursor {
             return None;
         }
 
-        let (idx, _) = lines
-            .iter()
-            .enumerate()
-            .skip(self.0 + 1)
-            .find(|(_, line)| is_jump_target_in_mode(line, mode, show_files))?;
-        Some(Self(idx))
+        let mut next_section_start = find_next_section_start(lines, mode, self.0)?;
+        loop {
+            if let Some(idx) =
+                first_selectable_in_section(lines, mode, show_files, next_section_start)
+            {
+                return Some(Self(idx));
+            }
+
+            next_section_start = find_next_section_start(lines, mode, next_section_start)?;
+        }
     }
 
-    /// Moves the cursor to the previous selectable jump-target line.
+    /// Moves the cursor to the first selectable row in the previous section.
     ///
-    /// If the cursor is inside a section (for example, on a file or commit row), this jumps to the
-    /// current section header first. If the cursor is already on a section header, this jumps to the
-    /// previous section header.
+    /// If the cursor is inside a section, this jumps to that section's first selectable row first.
+    /// If the cursor is already on that row, this jumps to the previous section's first selectable
+    /// row.
     #[must_use]
     pub(super) fn move_previous_section(
         self,
@@ -372,23 +376,89 @@ impl Cursor {
             return None;
         }
 
-        let current_line_is_section_header = lines
-            .get(self.0)
-            .is_some_and(|line| is_section_header(line, mode));
-        let search_end = if current_line_is_section_header {
-            self.0
-        } else {
-            self.0 + 1
-        };
+        let current_section_start = find_section_start_at_or_before(lines, mode, self.0)?;
 
-        let (target_idx, _) = lines
-            .iter()
-            .enumerate()
-            .take(search_end)
-            .rev()
-            .find(|(_, line)| is_jump_target_in_mode(line, mode, show_files))?;
-        Some(Self(target_idx))
+        if let Some(current_section_first_selectable) =
+            first_selectable_in_section(lines, mode, show_files, current_section_start)
+            && self.0 != current_section_first_selectable
+        {
+            return Some(Self(current_section_first_selectable));
+        }
+
+        let mut search_end = current_section_start;
+        while let Some(previous_section_start) =
+            find_previous_section_start(lines, mode, search_end)
+        {
+            if let Some(idx) =
+                first_selectable_in_section(lines, mode, show_files, previous_section_start)
+            {
+                return Some(Self(idx));
+            }
+
+            search_end = previous_section_start;
+        }
+
+        None
     }
+}
+
+/// Finds the start index of the nearest section at or before `idx`.
+fn find_section_start_at_or_before(
+    lines: &[StatusOutputLine],
+    mode: &Mode,
+    idx: usize,
+) -> Option<usize> {
+    lines
+        .iter()
+        .enumerate()
+        .take(idx + 1)
+        .rev()
+        .find(|(_, line)| is_section_header(line, mode))
+        .map(|(idx, _)| idx)
+}
+
+/// Finds the next section start after `idx`.
+fn find_next_section_start(lines: &[StatusOutputLine], mode: &Mode, idx: usize) -> Option<usize> {
+    lines
+        .iter()
+        .enumerate()
+        .skip(idx + 1)
+        .find(|(_, line)| is_section_header(line, mode))
+        .map(|(idx, _)| idx)
+}
+
+/// Finds the previous section start before `search_end`.
+fn find_previous_section_start(
+    lines: &[StatusOutputLine],
+    mode: &Mode,
+    search_end: usize,
+) -> Option<usize> {
+    lines
+        .iter()
+        .enumerate()
+        .take(search_end)
+        .rev()
+        .find(|(_, line)| is_section_header(line, mode))
+        .map(|(idx, _)| idx)
+}
+
+/// Finds the first selectable line in the section starting at `section_start`.
+fn first_selectable_in_section(
+    lines: &[StatusOutputLine],
+    mode: &Mode,
+    show_files: FilesStatusFlag,
+    section_start: usize,
+) -> Option<usize> {
+    let next_section_start =
+        find_next_section_start(lines, mode, section_start).unwrap_or(lines.len());
+
+    lines
+        .iter()
+        .enumerate()
+        .skip(section_start)
+        .take(next_section_start.saturating_sub(section_start))
+        .find(|(_, line)| is_selectable_in_mode(line, mode, show_files))
+        .map(|(idx, _)| idx)
 }
 
 /// Returns true if a line marks the boundary of a commit list within a branch section.
@@ -440,15 +510,6 @@ fn is_section_header(line: &StatusOutputLine, mode: &Mode) -> bool {
             )
         }
     }
-}
-
-/// Returns true if a line is selectable and is a jump target in the given mode.
-fn is_jump_target_in_mode(
-    line: &StatusOutputLine,
-    mode: &Mode,
-    show_files: FilesStatusFlag,
-) -> bool {
-    is_selectable_in_mode(line, mode, show_files) && is_section_header(line, mode)
 }
 
 pub(super) fn is_selectable_in_mode(
