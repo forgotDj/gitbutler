@@ -76,7 +76,7 @@ pub fn load(path: &Path) -> anyhow::Result<Theme> {
     Ok(theme)
 }
 
-/// Extension trait that lets a [`Style`] paint a string via the [`colored`] crate.
+/// Extension trait that lets us apply a [`Style`] to "paint" a string with raw ANSI escape codes.
 ///
 /// ```ignore
 /// use crate::theme::Paint;
@@ -84,13 +84,27 @@ pub fn load(path: &Path) -> anyhow::Result<Theme> {
 /// writeln!(out, "{}", t.local_branch.paint(&name))?;
 /// ```
 pub trait Paint {
-    /// Apply this style to `text`, producing a [`ColoredString`].
-    fn paint(&self, text: &str) -> ColoredString;
+    /// Apply this style to `text`, producing a [`String`] with ANSI escape codes baked in.
+    ///
+    /// Each paint application produces an independently styled [`String`] in the sense that it is
+    /// terminated with a reset code.
+    ///
+    /// Note that at this time, any implementation _must_ respect the control mechanisms via
+    /// [`colored::control::SHOULD_COLORIZE`] for enabling/disabling styled output. If we require
+    /// multiple implementations of this trait in the future, we'll probably want to roll our own
+    /// control mechanism.
+    fn paint<S: AsRef<str>>(&self, text: S) -> String;
 }
 
 impl Paint for Style {
-    fn paint(&self, text: &str) -> ColoredString {
-        let mut styled = text.normal();
+    fn paint<S: AsRef<str>>(&self, text: S) -> String {
+        // This is technically unnecessary as `colored` performs this check internally, it's just
+        // here for clarity of intent
+        if !colored::control::SHOULD_COLORIZE.should_colorize() {
+            return text.as_ref().to_string();
+        }
+
+        let mut styled = text.as_ref().normal();
 
         if let Some(fg) = self.fg {
             styled = apply_foreground(styled, fg);
@@ -100,7 +114,7 @@ impl Paint for Style {
         }
         styled = apply_modifiers(styled, self.add_modifier);
 
-        styled
+        styled.to_string()
     }
 }
 
@@ -310,9 +324,16 @@ mod tests {
     }
 
     #[test]
-    fn paint_produces_colored_output() {
+    /// This test demonstrates that each invocation of Style.paint() produces an "independently
+    /// styled" string, in the sense that the styling is prepended and a reset is appended.
+    fn paint_produces_self_contained_string_styling() {
         let style = style_fg_bold(Color::Green);
         let result = style.paint("hello");
-        assert!(result.to_string().contains("hello"));
+
+        let bold_green = "\x1b[1;32m";
+        let reset = "\x1b[0m";
+        let expected = format!("{bold_green}hello{reset}");
+
+        assert_eq!(result.to_string(), expected);
     }
 }

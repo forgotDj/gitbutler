@@ -5,7 +5,7 @@ use colored::Colorize;
 use crate::command::legacy::status::status_letter_ui;
 use crate::theme::Paint as _;
 
-fn path_with_color_ui(status: &ui::TreeStatus, path: String) -> colored::ColoredString {
+fn path_with_color_ui(status: &ui::TreeStatus, path: String) -> String {
     let t = crate::theme::get();
     match status {
         ui::TreeStatus::Addition { .. } => t.addition.paint(&path),
@@ -161,7 +161,7 @@ fn fmt_hunk(hunk: &DiffHunk) -> String {
                 let line_nums = format!("{:>width$} {:>width$}", "", new_line, width = width);
                 let formatted_line = crate::theme::get()
                     .addition
-                    .paint(&format!("{line_nums}│+{content_str}"));
+                    .paint(format!("{line_nums}│+{content_str}"));
                 output.push_str(&format!("   {formatted_line}\n"));
                 new_line += 1;
             }
@@ -170,7 +170,7 @@ fn fmt_hunk(hunk: &DiffHunk) -> String {
                 let line_nums = format!("{:>width$} {:>width$}", old_line, "", width = width);
                 let formatted_line = crate::theme::get()
                     .deletion
-                    .paint(&format!("{line_nums}│-{content_str}"));
+                    .paint(format!("{line_nums}│-{content_str}"));
                 output.push_str(&format!("   {formatted_line}\n"));
                 old_line += 1;
             }
