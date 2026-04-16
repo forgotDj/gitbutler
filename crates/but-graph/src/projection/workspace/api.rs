@@ -324,11 +324,14 @@ impl Workspace {
     /// This uses the stack segment's `commits_by_segment` offsets to map a projected
     /// commit back to its source graph segment.
     pub fn find_commit_segment_index(&self, commit_id: gix::ObjectId) -> Option<SegmentIndex> {
-        let (_, stack_segment, _) = self.find_commit_and_containers(commit_id)?;
-        let commit_offset = stack_segment
-            .commits
-            .iter()
-            .position(|c| c.id == commit_id)?;
+        let (stack_segment, commit_offset) = self.stacks.iter().find_map(|stack| {
+            stack.segments.iter().find_map(|seg| {
+                seg.commits
+                    .iter()
+                    .enumerate()
+                    .find_map(|(offset, commit)| (commit.id == commit_id).then_some((seg, offset)))
+            })
+        })?;
 
         let mut owning_segment = stack_segment.id;
         for (segment_id, offset) in &stack_segment.commits_by_segment {
