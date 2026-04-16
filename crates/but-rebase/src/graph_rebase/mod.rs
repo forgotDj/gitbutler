@@ -21,6 +21,7 @@ pub mod cherry_pick;
 pub mod commit;
 pub mod materialize;
 pub mod mutate;
+pub mod ordering;
 pub(crate) mod util;
 
 /// Utilities for testing
