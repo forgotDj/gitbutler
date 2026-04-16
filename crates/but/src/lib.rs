@@ -54,6 +54,7 @@ pub use utils::binary_path::is_executed_as_but;
 mod alias;
 /// A place for all command implementations.
 pub(crate) mod command;
+pub mod theme;
 mod tui;
 
 const CLI_DATE: CustomFormat = gix::date::time::format::ISO8601;
@@ -135,6 +136,16 @@ pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
 
     // If no subcommand is provided, but we have source and target, default to rub
     let mut out = OutputChannel::new_with_optional_pager(output_format, use_pager);
+    // Initialize the global color theme, loading from a user config file if present.
+    {
+        let theme = dirs::config_dir()
+            .map(|dir| dir.join("gitbutler").join("but-theme.json"))
+            .filter(|p| p.exists())
+            .and_then(|p| theme::load(&p).ok())
+            .unwrap_or_default();
+        theme::init(theme);
+    }
+
     match args.cmd.take() {
         None if args.source_or_path.is_some() && args.target.is_some() => {
             // Default to rub when two arguments are provided without a subcommand
