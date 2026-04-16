@@ -41,11 +41,6 @@ type NormalizedResult = {
 	};
 };
 
-const PUSH_ERROR_REASONS: Record<string, string> = {
-	["errors.git.authentication"]: "an authentication failure",
-	["errors.git.force_push_protection"]: "force push protection",
-};
-
 export const STACK_SERVICE = new InjectionToken<StackService>("StackService");
 
 export class StackService {
@@ -425,10 +420,11 @@ export class StackService {
 			},
 			onError: (commandError: ReduxError) => {
 				const { code, message } = commandError;
-				if (code === "errors.git.force_push_protection") {
+				if (code === "GitForcePushProtection") {
 					throw commandError;
 				}
-				const reason = PUSH_ERROR_REASONS[code ?? ""] ?? "an unforeseen error";
+				const reason =
+					code === "ProjectGitAuth" ? "an authentication failure" : "an unforeseen error";
 				showToast({
 					title: "Git push failed",
 					message: `Your branch cannot be pushed due to ${reason}.\n\nPlease check our [documentation](https://docs.gitbutler.com/troubleshooting/fetch-push)\non fetching and pushing for ways to resolve the problem.`,

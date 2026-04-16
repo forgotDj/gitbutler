@@ -14,7 +14,7 @@ export function shouldRaiseDependencyError(
 	error: DependencyError | null,
 ): error is DependencyError {
 	if (!error) return false;
-	if (error.description === "errors.projects.default_target.not_found") return false;
+	if (error.description === "DefaultTargetNotFound") return false;
 	return true;
 }
 

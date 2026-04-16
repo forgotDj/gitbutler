@@ -17,7 +17,7 @@ export function shouldRaiseHunkAssignmentError(
 	error: HunkAssignmentError | null,
 ): error is HunkAssignmentError {
 	if (!error) return false;
-	if (error.description === "errors.projects.default_target.not_found") return false;
+	if (error.description === "DefaultTargetNotFound") return false;
 	return true;
 }
 

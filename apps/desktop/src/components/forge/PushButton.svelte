@@ -121,7 +121,7 @@
 					: branchName;
 			chipToasts.success(`Pushed ${branchText} successfully`);
 		} catch (error: any) {
-			if (error?.code === "errors.git.force_push_protection") {
+			if (error?.code === "GitForcePushProtection") {
 				forcePushProtectionModal?.show();
 				return;
 			}

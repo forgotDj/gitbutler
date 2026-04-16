@@ -5,7 +5,7 @@ import {
 import { PROJECTS_SERVICE } from "$lib/project/projectsService";
 import { inject } from "@gitbutler/core/context";
 import { reactive } from "@gitbutler/shared/reactiveUtils.svelte";
-import type { GithubAccountIdentifier } from "@gitbutler/but-sdk";
+import type { Code, GithubAccountIdentifier } from "@gitbutler/but-sdk";
 import type { Reactive } from "@gitbutler/shared/storeUtils";
 
 type GitHubPreferences = {
@@ -57,7 +57,7 @@ type GitHubAccess = {
 	host: Reactive<string | undefined>;
 	accessToken: Reactive<string | undefined>;
 	isLoading: Reactive<boolean>;
-	error: Reactive<{ code: string; message: string } | undefined>;
+	error: Reactive<{ code?: Code; message: string } | undefined>;
 	isError: Reactive<boolean>;
 };
 
@@ -83,7 +83,7 @@ export function useGitHubAccessToken(projectId: Reactive<string>): GitHubAccess 
 		accessToken: reactive(() => aceessToken),
 		isLoading: reactive(() => ghUserResponse?.result.isLoading ?? false),
 		error: reactive(
-			() => ghUserResponse?.result.error as { code: string; message: string } | undefined,
+			() => ghUserResponse?.result.error as { code?: Code; message: string } | undefined,
 		),
 		isError: reactive(() => ghUserResponse?.result.isError ?? false),
 	};

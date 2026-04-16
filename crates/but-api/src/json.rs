@@ -293,7 +293,7 @@ mod error {
             );
             assert_eq!(
                 json(err),
-                "{\"code\":\"errors.unknown\",\"message\":\"err msg\"}",
+                "{\"code\":\"Unknown\",\"message\":\"err msg\"}",
                 "if there is no explicit error code or context, the original error message is shown (and chain)"
             );
         }
@@ -303,12 +303,12 @@ mod error {
             let err = anyhow!("err msg").context(Code::Validation);
             assert_eq!(
                 format!("{err:#}"),
-                "errors.validation: err msg",
+                "Validation: err msg",
                 "note how the context becomes an error, in front of the original one"
             );
             assert_eq!(
                 json(err),
-                "{\"code\":\"errors.validation\",\"message\":\"err msg\"}",
+                "{\"code\":\"Validation\",\"message\":\"err msg\"}",
                 "the 'code' is available as string, but the message is taken from the source error"
             );
         }
@@ -320,7 +320,7 @@ mod error {
 
             insta::assert_json_snapshot!(Error(err), @r#"
             {
-              "code": "errors.unknown",
+              "code": "Unknown",
               "message": "err msg\n\nCaused by:\n    1: actual cause\n"
             }
             "#);
@@ -335,12 +335,12 @@ mod error {
 
             assert_eq!(
                 format!("{err:#}"),
-                "errors.validation: err msg: actual cause",
+                "Validation: err msg: actual cause",
                 "an even longer chain, with the cause as root as one might expect"
             );
             assert_eq!(
                 json(err),
-                "{\"code\":\"errors.validation\",\"message\":\"err msg\"}",
+                "{\"code\":\"Validation\",\"message\":\"err msg\"}",
                 "in order to attach a custom message to an original cause, our messaging (and Code) is the tail"
             );
         }
@@ -351,7 +351,7 @@ mod error {
             assert_eq!(format!("{err:#}"), "ctx msg: err msg");
             assert_eq!(
                 json(err),
-                "{\"code\":\"errors.validation\",\"message\":\"ctx msg\"}",
+                "{\"code\":\"Validation\",\"message\":\"ctx msg\"}",
                 "Contexts often provide their own message, so the error message is ignored"
             );
         }
@@ -366,7 +366,7 @@ mod error {
             );
             assert_eq!(
                 json(err),
-                "{\"code\":\"errors.validation\",\"message\":\"err msg\"}",
+                "{\"code\":\"Validation\",\"message\":\"err msg\"}",
                 "Contexts without a message show the error's message as well"
             );
         }
@@ -378,12 +378,12 @@ mod error {
                 .context(Code::Validation);
             assert_eq!(
                 format!("{err:#}"),
-                "errors.validation: top msg: bottom msg",
+                "Validation: top msg: bottom msg",
                 "now it's clear why bottom is bottom"
             );
             assert_eq!(
                 json(err),
-                "{\"code\":\"errors.validation\",\"message\":\"top msg\"}",
+                "{\"code\":\"Validation\",\"message\":\"top msg\"}",
                 "the 'code' gets the message of the error that it provides context to, and it finds it down the chain"
             );
         }
@@ -396,12 +396,12 @@ mod error {
                 .context(Code::Validation);
             assert_eq!(
                 format!("{err:#}"),
-                "errors.validation: top msg: errors.projects.git.auth: bottom msg",
+                "Validation: top msg: ProjectGitAuth: bottom msg",
                 "each code is treated like its own error in the chain"
             );
             assert_eq!(
                 json(err),
-                "{\"code\":\"errors.validation\",\"message\":\"top msg\"}",
+                "{\"code\":\"Validation\",\"message\":\"top msg\"}",
                 "it finds the most recent 'code' (and the same would be true for contexts, of course)"
             );
         }
