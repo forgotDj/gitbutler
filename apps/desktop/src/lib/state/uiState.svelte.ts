@@ -396,3 +396,22 @@ export type WritableReactive<T> = {
 export type WritableReactiveStore<T extends DefaultConfig> = {
 	[K in keyof T]: WritableReactive<T[K]>;
 };
+
+/**
+ * Sets the `stackBusy` state while running `fn`, and clears it afterwards.
+ * Used to show a busy spinner on commits and block interaction on affected
+ * stacks during operations like squash, move, uncommit, etc.
+ */
+export async function withStackBusy(
+	uiState: UiState,
+	projectId: string,
+	opts: { commitId?: string; stackIds?: string[] },
+	fn: () => Promise<void>,
+) {
+	uiState.project(projectId).stackBusy.set({ commitId: opts.commitId, stackIds: opts.stackIds });
+	try {
+		await fn();
+	} finally {
+		uiState.project(projectId).stackBusy.set(undefined);
+	}
+}
