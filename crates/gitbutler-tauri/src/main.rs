@@ -454,6 +454,7 @@ fn main() -> anyhow::Result<()> {
                 askpass::submit_prompt_response,
                 menu::menu_item_set_enabled,
                 projects::list_projects,
+                projects::server_capabilities,
                 projects::set_project_active,
                 projects::open_project_in_window,
                 zip::get_logs_archive_path,

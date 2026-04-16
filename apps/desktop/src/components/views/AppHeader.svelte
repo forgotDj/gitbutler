@@ -29,6 +29,8 @@
 	const { createAiStack } = useCreateAiStack(reactive(() => projectId));
 
 	const projectsService = inject(PROJECTS_SERVICE);
+	const serverCapabilitiesQuery = $derived(projectsService.serverCapabilities());
+	const canAddProjects = $derived(serverCapabilitiesQuery.response?.canAddProjects ?? true);
 	const baseBranchService = inject(BASE_BRANCH_SERVICE);
 	const settingsService = inject(SETTINGS_SERVICE);
 	const modeService = inject(MODE_SERVICE);
@@ -176,28 +178,30 @@
 				{/snippet}
 
 				<OptionsGroup>
-					<SelectItem
-						icon="plus"
-						testId={TestId.ChromeHeaderProjectSelectorAddLocalProject}
-						loading={newProjectLoading}
-						onClick={async () => {
-							newProjectLoading = true;
-							try {
-								const outcome = await projectsService.addProject();
-								if (!outcome) {
-									// User cancelled the project creation
-									newProjectLoading = false;
-									return;
-								}
+					{#if canAddProjects}
+						<SelectItem
+							icon="plus"
+							testId={TestId.ChromeHeaderProjectSelectorAddLocalProject}
+							loading={newProjectLoading}
+							onClick={async () => {
+								newProjectLoading = true;
+								try {
+									const outcome = await projectsService.addProject();
+									if (!outcome) {
+										// User cancelled the project creation
+										newProjectLoading = false;
+										return;
+									}
 
-								handleAddProjectOutcome(outcome, (project) => goto(projectPath(project.id)));
-							} finally {
-								newProjectLoading = false;
-							}
-						}}
-					>
-						Add local repository
-					</SelectItem>
+									handleAddProjectOutcome(outcome, (project) => goto(projectPath(project.id)));
+								} finally {
+									newProjectLoading = false;
+								}
+							}}
+						>
+							Add local repository
+						</SelectItem>
+					{/if}
 					<SelectItem
 						icon="clone"
 						onClick={() => {

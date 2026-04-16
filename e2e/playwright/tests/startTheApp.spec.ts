@@ -5,6 +5,7 @@ import {
 	clickByTestId,
 	fillByTestId,
 	getByTestId,
+	mockPickDirectory,
 	sleep,
 	textEditorFillByTestId,
 	waitForTestId,
@@ -37,11 +38,8 @@ test("should start the application and be able to commit", async ({ page, contex
 	clickByTestId(page, "analytics-continue");
 
 	// Add a local project
-	const fileChooserPromise = page.waitForEvent("filechooser");
-	clickByTestId(page, "add-local-project");
-
-	const fileChooser = await fileChooserPromise;
-	await fileChooser.setFiles(projectPath);
+	await mockPickDirectory(page, projectPath);
+	await clickByTestId(page, "add-local-project");
 
 	// Should see the set target page
 	await waitForTestId(page, "project-setup-page");
@@ -108,11 +106,8 @@ test("no author setup - should start the application and be able to commit", asy
 	clickByTestId(page, "analytics-continue");
 
 	// Add a local project
-	const fileChooserPromise = page.waitForEvent("filechooser");
-	clickByTestId(page, "add-local-project");
-
-	const fileChooser = await fileChooserPromise;
-	await fileChooser.setFiles(projectPath);
+	await mockPickDirectory(page, projectPath);
+	await clickByTestId(page, "add-local-project");
 
 	// Should see the set target page
 	await waitForTestId(page, "project-setup-page");

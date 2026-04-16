@@ -11,6 +11,8 @@
 
 	const projectsService = inject(PROJECTS_SERVICE);
 	const projectsQuery = $derived(projectsService.projects());
+	const serverCapabilitiesQuery = $derived(projectsService.serverCapabilities());
+	const canAddProjects = $derived(serverCapabilitiesQuery.response?.canAddProjects ?? true);
 
 	let selectedId = $state<string | undefined>(untrack(() => projectId));
 
@@ -43,26 +45,28 @@
 		{/snippet}
 
 		<OptionsGroup>
-			<SelectItem
-				icon="plus"
-				loading={newProjectLoading}
-				onClick={async () => {
-					newProjectLoading = true;
-					try {
-						const outcome = await projectsService.addProject();
-						if (!outcome) {
-							// User cancelled the project creation
+			{#if canAddProjects}
+				<SelectItem
+					icon="plus"
+					loading={newProjectLoading}
+					onClick={async () => {
+						newProjectLoading = true;
+						try {
+							const outcome = await projectsService.addProject();
+							if (!outcome) {
+								// User cancelled the project creation
+								newProjectLoading = false;
+								return;
+							}
+							handleAddProjectOutcome(outcome, (project) => goto(projectPath(project.id)));
+						} finally {
 							newProjectLoading = false;
-							return;
 						}
-						handleAddProjectOutcome(outcome, (project) => goto(projectPath(project.id)));
-					} finally {
-						newProjectLoading = false;
-					}
-				}}
-			>
-				Add local repository
-			</SelectItem>
+					}}
+				>
+					Add local repository
+				</SelectItem>
+			{/if}
 			<SelectItem
 				icon="clone"
 				loading={cloneProjectLoading}
