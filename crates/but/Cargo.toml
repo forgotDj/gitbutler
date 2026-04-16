@@ -177,6 +177,7 @@ snapbox = { workspace = true, features = ["term-svg"] }
 shell-words.workspace = true
 insta.workspace = true
 temp-env = "0.3"
+serial_test = "3.2.0"
 
 [lints]
 workspace = true

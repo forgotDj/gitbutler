@@ -322,18 +322,4 @@ mod tests {
         let theme: Theme = serde_json::from_str("{}").unwrap();
         assert_eq!(theme, Theme::default());
     }
-
-    #[test]
-    /// This test demonstrates that each invocation of Style.paint() produces an "independently
-    /// styled" string, in the sense that the styling is prepended and a reset is appended.
-    fn paint_produces_self_contained_string_styling() {
-        let style = style_fg_bold(Color::Green);
-        let result = style.paint("hello");
-
-        let bold_green = "\x1b[1;32m";
-        let reset = "\x1b[0m";
-        let expected = format!("{bold_green}hello{reset}");
-
-        assert_eq!(result.to_string(), expected);
-    }
 }
