@@ -4,6 +4,21 @@ on:
     branches:
       - master
   pull_request:
+    paths-ignore:
+      - "*.md"
+      - ".cargo/**"
+      - ".claude/**"
+      - ".vscode/**"
+      - ".oxlintrc.json"
+      - "deny.toml"
+      - "scripts/**"
+      - "apps/web/**"
+      - "apps/lite/**"
+      - "crates/gitbutler-cli/**"
+      - "crates/but/**"
+      - "crates/but-clap/**"
+      - "crates/but-debugging/**"
+      - "crates/but-installer/**"
   workflow_dispatch:
     inputs:
       sha:
@@ -19,7 +34,7 @@ jobs:
       contents: read
       packages: read
     container:
-      image: ghcr.io/gitbutlerapp/ci-base-image@sha256:3eaeae1b07072796a53dc1e7585cdc1f462d0b11d10ecd3685c6fa8082d647dd
+      image: ghcr.io/gitbutlerapp/ci-base-image@sha256:c0ab58bb5f1cd99beb36861f460895be77515f4dd252df736c27c117a8e04a92
     timeout-minutes: 60
     env:
       DESKTOP_PORT: 3000
@@ -61,25 +76,33 @@ jobs:
           path: |
             ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ steps.get_playwright_version.outputs.playwright-version }}
-      - run: cd e2e && pnpm exec playwright install --with-deps
-        if: ${{ steps.playwright-cache.outputs.cache-hit != 'true' && github.ref != 'refs/heads/master' }}
-      - run: apt-get update && apt-get install -y libnss3
-        if: ${{ steps.playwright-cache.outputs.cache-hit == 'true' && github.ref != 'refs/heads/master' }}
-        name: Install missing deps after cache hit
-      - name: Build gitbutler-git
-        run: cargo build -p gitbutler-git
-      - name: Build but-server
-        run: cargo build -p but-server
-      - name: Build but-testing
-        run: cargo build -p but-testing
-      - name: Build SvelteKit
-        run: pnpm build:desktop
+      - name: Build Rust binaries, SvelteKit, and install Playwright
         if: ${{ github.ref != 'refs/heads/master' }}
+        env:
+          PLAYWRIGHT_CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
+        run: |
+          cargo build -p gitbutler-git -p but-server -p but-testing &
+          cargo_pid=$!
+          pnpm build:desktop &
+          pnpm_pid=$!
+          pw_pid=""
+          if [ "$PLAYWRIGHT_CACHE_HIT" != "true" ]; then
+            (apt-get update && cd e2e && pnpm exec playwright install chromium webkit) &
+            pw_pid=$!
+          fi
+          status=0
+          wait "$cargo_pid" || status=1
+          wait "$pnpm_pid" || status=1
+          [ -n "$pw_pid" ] && { wait "$pw_pid" || status=1; }
+          exit "$status"
+      - name: Build Rust binaries
+        if: ${{ github.ref == 'refs/heads/master' }}
+        run: cargo build -p gitbutler-git -p but-server -p but-testing
       - name: Run Playwright tests
         run: pnpm exec turbo run test:e2e:playwright
         if: ${{ github.ref != 'refs/heads/master' }}
       - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        if: ${{ !cancelled() }}
+        if: failure()
         with:
           name: playwright-report
           path: |
