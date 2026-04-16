@@ -364,20 +364,17 @@ impl InputOutputChannel<'_> {
                     }
                     KeyEditAction::Ignore => {}
                 },
-                Event::Paste(text) => {
-                    if !text.is_empty() {
-                        line.push_str(&text);
-                        match echo {
-                            InputEcho::Visible => {
-                                self.out.stdout.write_all(text.as_bytes())?;
-                                self.out.stdout.flush()?;
-                            }
-                            InputEcho::Hidden => {
-                                let placeholders =
-                                    PLACEHOLDER_FOR_SECRET.repeat(text.chars().count());
-                                self.out.stdout.write_all(placeholders.as_bytes())?;
-                                self.out.stdout.flush()?;
-                            }
+                Event::Paste(text) if !text.is_empty() => {
+                    line.push_str(&text);
+                    match echo {
+                        InputEcho::Visible => {
+                            self.out.stdout.write_all(text.as_bytes())?;
+                            self.out.stdout.flush()?;
+                        }
+                        InputEcho::Hidden => {
+                            let placeholders = PLACEHOLDER_FOR_SECRET.repeat(text.chars().count());
+                            self.out.stdout.write_all(placeholders.as_bytes())?;
+                            self.out.stdout.flush()?;
                         }
                     }
                 }

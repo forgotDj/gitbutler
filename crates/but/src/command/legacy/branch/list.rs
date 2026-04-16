@@ -157,7 +157,7 @@ pub fn list(
     }
 
     // Sort all branches by last commit date (most recent first)
-    branches.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+    branches.sort_by_key(|branch| std::cmp::Reverse(branch.updated_at));
 
     // Limit branches unless --all flag is set
     let (branches_to_show, more_count) = if all {

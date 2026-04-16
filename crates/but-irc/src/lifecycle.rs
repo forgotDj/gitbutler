@@ -755,13 +755,12 @@ fn try_buffer_history_message(
         // Skip join/part/quit from history replay — they're noise in the chat timeline.
         IrcEvent::UserJoined { batch, .. }
         | IrcEvent::UserParted { batch, .. }
-        | IrcEvent::UserQuit { batch, .. } => {
+        | IrcEvent::UserQuit { batch, .. }
             if batch
                 .as_ref()
-                .is_some_and(|b| history_batch_channels.contains_key(b.as_str()))
-            {
-                return true;
-            }
+                .is_some_and(|b| history_batch_channels.contains_key(b.as_str())) =>
+        {
+            return true;
         }
         IrcEvent::NickChanged {
             old_nick,
@@ -799,23 +798,21 @@ fn try_buffer_history_message(
             }
         }
         // Typing indicators from history are stale — silently discard them.
-        IrcEvent::Typing { batch, .. } => {
+        IrcEvent::Typing { batch, .. }
             if batch
                 .as_ref()
-                .is_some_and(|b| history_batch_channels.contains_key(b.as_str()))
-            {
-                return true;
-            }
+                .is_some_and(|b| history_batch_channels.contains_key(b.as_str())) =>
+        {
+            return true;
         }
         // TAGMSG reactions from history: let them fall through to
         // process_event_for_store so reactions get indexed.
-        IrcEvent::TagReaction { batch, .. } => {
+        IrcEvent::TagReaction { batch, .. }
             if batch
                 .as_ref()
-                .is_some_and(|b| history_batch_channels.contains_key(b.as_str()))
-            {
-                return false;
-            }
+                .is_some_and(|b| history_batch_channels.contains_key(b.as_str())) =>
+        {
+            return false;
         }
         _ => {}
     }
@@ -1554,41 +1551,39 @@ pub async fn process_event_for_store(
             emoji,
             remove,
             ..
-        } => {
-            if !msgid.is_empty() {
+        } if !msgid.is_empty() => {
+            if *remove {
+                manager
+                    .remove_message_reaction(connection_id, msgid, from, emoji)
+                    .await;
+            } else {
+                manager
+                    .store_message_reaction(connection_id, msgid, from, emoji)
+                    .await;
+            }
+            emitter.emit(
+                &format!("irc:{}:message-reaction", connection_id),
+                json!({ "msgId": msgid }),
+            );
+            // Derive commit-reaction index if the reacted-to message is a shared-commit.
+            if let Some(target_data) = manager
+                .find_message_data_by_msgid(connection_id, msgid)
+                .await
+                && let Some(commit_id) = try_extract_shared_commit_id(&target_data)
+            {
                 if *remove {
                     manager
-                        .remove_message_reaction(connection_id, msgid, from, emoji)
+                        .remove_reaction(connection_id, &commit_id, from, emoji)
                         .await;
                 } else {
                     manager
-                        .store_message_reaction(connection_id, msgid, from, emoji)
+                        .store_reaction(connection_id, &commit_id, from, emoji)
                         .await;
                 }
                 emitter.emit(
-                    &format!("irc:{}:message-reaction", connection_id),
-                    json!({ "msgId": msgid }),
+                    &format!("irc:{}:commit-reaction", connection_id),
+                    json!({ "commitId": commit_id }),
                 );
-                // Derive commit-reaction index if the reacted-to message is a shared-commit.
-                if let Some(target_data) = manager
-                    .find_message_data_by_msgid(connection_id, msgid)
-                    .await
-                    && let Some(commit_id) = try_extract_shared_commit_id(&target_data)
-                {
-                    if *remove {
-                        manager
-                            .remove_reaction(connection_id, &commit_id, from, emoji)
-                            .await;
-                    } else {
-                        manager
-                            .store_reaction(connection_id, &commit_id, from, emoji)
-                            .await;
-                    }
-                    emitter.emit(
-                        &format!("irc:{}:commit-reaction", connection_id),
-                        json!({ "commitId": commit_id }),
-                    );
-                }
             }
         }
         IrcEvent::Raw { command, params } => {
