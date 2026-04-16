@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -18,7 +20,9 @@ use but_rebase::graph_rebase::mutate::InsertSide;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use gitbutler_operating_modes::OperatingMode;
 use gitbutler_stack::StackId;
+use gix::refs::FullName;
 use itertools::Either;
+use nonempty::NonEmpty;
 use ratatui::{
     Frame,
     palette::Hsl,
@@ -38,6 +42,7 @@ use crate::{
             CommitLineContent, FileLineContent, StatusFlags, StatusOutputLine, TuiLaunchOptions,
             output::BranchLineContent,
             tui::{
+                branch_picker::{BranchPicker, BranchPickerMessage},
                 confirm::{Confirm, ConfirmMessage},
                 cursor::{Cursor, is_selectable_in_mode},
                 details::{Details, DetailsMessage, DetailsVisibility, RenderNextChunkResult},
@@ -45,7 +50,9 @@ use crate::{
                 fps::FpsCounter,
                 graph_extension::{ExtensionDirection, extend_connector_spans},
                 highlight::{Highlights, with_highlight},
-                key_bind::{KeyBinds, confirm_key_binds, default_key_binds},
+                key_bind::{
+                    KeyBinds, branch_picker_key_binds, confirm_key_binds, default_key_binds,
+                },
                 message_on_drop::MessageOnDrop,
                 mode::{
                     CommandMode, CommandModeKind, CommitMode, CommitSource, InlineRewordMode, Mode,
@@ -67,6 +74,7 @@ use super::{
     output::{StatusOutputContent, StatusOutputLineData},
 };
 
+mod branch_picker;
 mod confirm;
 mod cursor;
 mod details;
@@ -253,7 +261,13 @@ where
     };
     // poll terminal events
     for event in event_polling.poll(event_poll_timeout)? {
-        event_to_messages(event, app.active_key_binds(), &app.mode, messages);
+        event_to_messages(
+            event,
+            app.active_key_binds(),
+            &app.mode,
+            app.branch_picker.as_ref(),
+            messages,
+        );
     }
 
     // check for any out of band messages
@@ -347,6 +361,7 @@ struct App {
     mode: Mode,
     key_binds: KeyBinds,
     confirm_key_binds: KeyBinds,
+    branch_picker_key_binds: KeyBinds,
     toasts: Toasts,
     renders: u64,
     updates: u64,
@@ -359,6 +374,7 @@ struct App {
     fps: FpsCounter,
     to_be_discarded: Option<Arc<CliId>>,
     status_width_percentage: u16,
+    branch_picker: Option<BranchPicker>,
 }
 
 impl App {
@@ -390,6 +406,7 @@ impl App {
             mode: Mode::default(),
             key_binds: default_key_binds(),
             confirm_key_binds: confirm_key_binds(),
+            branch_picker_key_binds: branch_picker_key_binds(),
             toasts: Default::default(),
             renders: 0,
             updates: 0,
@@ -397,6 +414,7 @@ impl App {
             delayed_messages: Default::default(),
             incoming_out_of_band_messages: Default::default(),
             to_be_discarded: Default::default(),
+            branch_picker: Default::default(),
             fps: FpsCounter::new(),
             confirm: None,
             details,
@@ -408,6 +426,8 @@ impl App {
     fn active_key_binds(&self) -> &KeyBinds {
         if self.confirm.is_some() {
             &self.confirm_key_binds
+        } else if self.branch_picker.is_some() {
+            &self.branch_picker_key_binds
         } else {
             &self.key_binds
         }
@@ -582,6 +602,19 @@ impl App {
                     self.cursor = new_cursor;
                 }
             }
+            Message::SelectBranch(branch_name) => {
+                if let Some(new_cursor) =
+                    Cursor::select_branch(&branch_name.shorten().to_str_lossy(), &self.status_lines)
+                {
+                    self.cursor = if matches!(self.mode, Mode::Rub(_)) {
+                        new_cursor
+                            .move_down(&self.status_lines, &self.mode, self.flags.show_files)
+                            .unwrap_or(new_cursor)
+                    } else {
+                        new_cursor
+                    };
+                }
+            }
             Message::SelectUnassigned => {
                 let new_cursor = Cursor::new(&self.status_lines);
                 if let Some(unassigned_line) = new_cursor.selected_line(&self.status_lines)
@@ -680,6 +713,17 @@ impl App {
                     .take()
                     .and_then(|confirm| confirm.handle_message(confirm_message, messages));
             }
+            Message::BranchPicker(branch_picker_message) => {
+                self.branch_picker = self
+                    .branch_picker
+                    .take()
+                    .and_then(|branch_picker| {
+                        branch_picker
+                            .handle_message(branch_picker_message, messages)
+                            .transpose()
+                    })
+                    .transpose()?;
+            }
             Message::RunAfterConfirmation(f) => {
                 if let Some(f) = f.0.try_borrow_mut().ok().and_then(|mut f| f.take()) {
                     (f)(self, ctx, messages)?;
@@ -727,6 +771,9 @@ impl App {
                         .saturating_add(DETAILS_SIZE_ADJUSTMENT_PERCENTAGE),
                     terminal_area,
                 );
+            }
+            Message::PickAndGotoBranch => {
+                self.handle_pick_and_goto_branch(ctx)?;
             }
         }
 
@@ -1055,7 +1102,7 @@ impl App {
                 SelectAfterReload::Commit(commit_id) => {
                     Cursor::select_commit(commit_id, &new_lines)
                 }
-                SelectAfterReload::Branch(branch) => Cursor::select_branch(branch, &new_lines),
+                SelectAfterReload::Branch(branch) => Cursor::select_branch(&branch, &new_lines),
                 SelectAfterReload::Unassigned => Cursor::select_unassigned(&new_lines),
                 SelectAfterReload::UncommittedFile { path, stack_id } => {
                     Cursor::select_uncommitted_file(path.as_ref(), stack_id, &new_lines)
@@ -2213,6 +2260,10 @@ impl App {
         if let Some(confirm) = &self.confirm {
             confirm.render(content_area, frame);
         }
+
+        if let Some(branch_picker) = &self.branch_picker {
+            branch_picker.render(content_area, frame);
+        }
     }
 
     fn render_status_list_item(
@@ -2779,9 +2830,76 @@ impl App {
         let details_viewport = self.details_viewport(terminal_area);
         self.details.ensure_selection_visible(details_viewport);
     }
+
+    fn handle_pick_and_goto_branch(&mut self, ctx: &mut Context) -> anyhow::Result<()> {
+        match self.flags.show_files {
+            FilesStatusFlag::None | FilesStatusFlag::All => {}
+            FilesStatusFlag::Commit(_) => return Ok(()),
+        }
+
+        let head_info = {
+            let meta = ctx.meta()?;
+            but_workspace::head_info(
+                &*ctx.repo.get()?,
+                &meta,
+                but_workspace::ref_info::Options::default(),
+            )?
+        };
+
+        let branch_names = head_info
+            .stacks
+            .iter()
+            .flat_map(|stack| &stack.segments)
+            .filter_map(|segment| {
+                let ref_info = segment.ref_info.as_ref()?;
+                Some(&ref_info.ref_name)
+            })
+            .filter(|name| {
+                if matches!(self.mode, Mode::Rub(_)) {
+                    true
+                } else {
+                    // not all branches are selectable all the time, for example if we're committing
+                    // changes assigned to a stack then we cannot select branches outside the stack
+                    self.status_lines
+                        .iter()
+                        .find(|line| {
+                            if let Some(id) = line.data.cli_id()
+                                && let CliId::Branch {
+                                    name: name_on_line, ..
+                                } = &**id
+                                && name_on_line == name.shorten()
+                            {
+                                true
+                            } else {
+                                false
+                            }
+                        })
+                        .is_none_or(|line| {
+                            is_selectable_in_mode(line, &self.mode, self.flags.show_files)
+                        })
+                }
+            })
+            .map(|name| name.to_owned())
+            .collect::<Vec<_>>();
+
+        if let Some(branch_names) = NonEmpty::from_vec(branch_names) {
+            self.branch_picker = Some(BranchPicker::new(branch_names, |branch_name, messages| {
+                messages.push(Message::SelectBranch(branch_name));
+                Ok(())
+            }));
+        }
+
+        Ok(())
+    }
 }
 
-fn event_to_messages(ev: Event, key_binds: &KeyBinds, mode: &Mode, messages: &mut Vec<Message>) {
+fn event_to_messages(
+    ev: Event,
+    key_binds: &KeyBinds,
+    mode: &Mode,
+    branch_picker: Option<&BranchPicker>,
+    messages: &mut Vec<Message>,
+) {
     match ev {
         Event::Key(key) => {
             let mut handled = false;
@@ -2793,18 +2911,22 @@ fn event_to_messages(ev: Event, key_binds: &KeyBinds, mode: &Mode, messages: &mu
             }
 
             if !handled {
-                match mode {
-                    Mode::InlineReword(..) => {
-                        messages.push(Message::Reword(RewordMessage::InlineInput(ev)));
+                if branch_picker.is_some() {
+                    messages.push(Message::BranchPicker(BranchPickerMessage::Input(ev)));
+                } else {
+                    match mode {
+                        Mode::InlineReword(..) => {
+                            messages.push(Message::Reword(RewordMessage::InlineInput(ev)));
+                        }
+                        Mode::Command(..) => {
+                            messages.push(Message::Command(CommandMessage::Input(ev)));
+                        }
+                        Mode::Normal
+                        | Mode::Details
+                        | Mode::Rub(..)
+                        | Mode::Commit(..)
+                        | Mode::Move(..) => {}
                     }
-                    Mode::Command(..) => {
-                        messages.push(Message::Command(CommandMessage::Input(ev)));
-                    }
-                    Mode::Normal
-                    | Mode::Details
-                    | Mode::Rub(..)
-                    | Mode::Commit(..)
-                    | Mode::Move(..) => {}
                 }
             }
         }
@@ -2853,6 +2975,8 @@ enum Message {
     MoveCursorPreviousSection,
     MoveCursorNextSection,
     SelectUnassigned,
+    PickAndGotoBranch,
+    SelectBranch(FullName),
 
     // Features
     Commit(CommitMessage),
@@ -2862,13 +2986,13 @@ enum Message {
     Files(FilesMessage),
     Move(MoveMessage),
     Details(DetailsMessage),
+    BranchPicker(BranchPickerMessage),
     EnterDetailsMode,
     LeaveDetailsMode,
     NewBranch,
 
     // Utilities
     CopySelection,
-    #[expect(clippy::type_complexity)]
     RunAfterConfirmation(
         DebugAsType<
             Rc<

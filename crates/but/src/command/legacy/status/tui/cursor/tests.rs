@@ -455,10 +455,7 @@ fn select_branch_finds_branch_line_by_name() {
         }),
     ];
 
-    assert_eq!(
-        Cursor::select_branch("main".into(), &lines),
-        Some(Cursor(1))
-    );
+    assert_eq!(Cursor::select_branch("main", &lines), Some(Cursor(1)));
 }
 
 #[test]
@@ -471,7 +468,7 @@ fn select_branch_returns_none_when_branch_is_missing() {
         }),
     })];
 
-    assert_eq!(Cursor::select_branch("feature".into(), &lines), None);
+    assert_eq!(Cursor::select_branch("feature", &lines), None);
 }
 
 #[test]
@@ -493,10 +490,7 @@ fn select_branch_uses_first_matching_line_when_branch_appears_multiple_times() {
         }),
     ];
 
-    assert_eq!(
-        Cursor::select_branch("main".into(), &lines),
-        Some(Cursor(0))
-    );
+    assert_eq!(Cursor::select_branch("main", &lines), Some(Cursor(0)));
 }
 
 #[test]

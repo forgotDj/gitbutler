@@ -197,14 +197,17 @@ impl Details {
             | Message::ShowError(_)
             | Message::ShowToast { .. }
             | Message::Confirm(_)
+            | Message::BranchPicker(_)
             | Message::GrowDetails
             | Message::ShrinkDetails
+            | Message::PickAndGotoBranch
             | Message::RegisterMessageOnDrop(_)
             | Message::WithOneFrameDelay(_)
             | Message::EnterNormalMode => false,
 
             Message::MoveCursorUp
             | Message::MoveCursorDown
+            | Message::SelectBranch(_)
             | Message::MoveCursorPreviousSection
             | Message::MoveCursorNextSection
             | Message::SelectUnassigned

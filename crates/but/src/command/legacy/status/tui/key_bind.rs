@@ -5,7 +5,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use strum::IntoEnumIterator;
 
 use crate::command::legacy::status::tui::{
-    CommandMessage, ConfirmMessage, Message, Mode, RewordMessage, RubMessage,
+    BranchPickerMessage, CommandMessage, ConfirmMessage, Message, Mode, RewordMessage, RubMessage,
     mode::ModeDiscriminant,
 };
 
@@ -19,11 +19,13 @@ pub(super) fn default_key_binds() -> KeyBinds {
             ModeDiscriminant::Normal => {
                 register_global_key_binds(&mut key_binds, Vec::from([mode]));
                 register_unassigned_key_binds(&mut key_binds, Vec::from([mode]));
+                register_branch_picker_key_binds(&mut key_binds, Vec::from([mode]));
                 register_normal_mode_key_binds(&mut key_binds);
             }
             ModeDiscriminant::Rub => {
                 register_global_key_binds(&mut key_binds, Vec::from([mode]));
                 register_unassigned_key_binds(&mut key_binds, Vec::from([mode]));
+                register_branch_picker_key_binds(&mut key_binds, Vec::from([mode]));
                 register_rub_mode_key_binds(&mut key_binds);
             }
             ModeDiscriminant::InlineReword => {
@@ -35,11 +37,13 @@ pub(super) fn default_key_binds() -> KeyBinds {
             ModeDiscriminant::Commit => {
                 register_global_key_binds(&mut key_binds, Vec::from([mode]));
                 register_unassigned_key_binds(&mut key_binds, Vec::from([mode]));
+                register_branch_picker_key_binds(&mut key_binds, Vec::from([mode]));
                 register_commit_mode_key_binds(&mut key_binds);
             }
             ModeDiscriminant::Move => {
                 register_global_key_binds(&mut key_binds, Vec::from([mode]));
                 register_unassigned_key_binds(&mut key_binds, Vec::from([mode]));
+                register_branch_picker_key_binds(&mut key_binds, Vec::from([mode]));
                 register_move_mode_key_binds(&mut key_binds);
             }
             ModeDiscriminant::Details => {
@@ -100,6 +104,50 @@ pub(super) fn confirm_key_binds() -> KeyBinds {
         key_matcher: press().code(KeyCode::Char('l')).alt_code(KeyCode::Right),
         modes: all_modes.clone(),
         message: Message::Confirm(ConfirmMessage::Right),
+        hide_from_hotbar: false,
+    });
+
+    key_binds
+}
+
+pub(super) fn branch_picker_key_binds() -> KeyBinds {
+    let mut key_binds = KeyBinds::new();
+
+    let all_modes = ModeDiscriminant::iter().collect::<Vec<_>>();
+
+    key_binds.register(StaticKeyBind {
+        short_description: "down",
+        chord_display: "↓",
+        key_matcher: press().alt_code(KeyCode::Down),
+        modes: all_modes.clone(),
+        message: Message::BranchPicker(BranchPickerMessage::MoveCursorDown),
+        hide_from_hotbar: false,
+    });
+
+    key_binds.register(StaticKeyBind {
+        short_description: "up",
+        chord_display: "↑",
+        key_matcher: press().alt_code(KeyCode::Up),
+        modes: all_modes.clone(),
+        message: Message::BranchPicker(BranchPickerMessage::MoveCursorUp),
+        hide_from_hotbar: false,
+    });
+
+    key_binds.register(StaticKeyBind {
+        short_description: "confirm",
+        chord_display: "enter",
+        key_matcher: press().code(KeyCode::Enter),
+        modes: all_modes.clone(),
+        message: Message::BranchPicker(BranchPickerMessage::Confirm),
+        hide_from_hotbar: false,
+    });
+
+    key_binds.register(StaticKeyBind {
+        short_description: "back",
+        chord_display: "esc",
+        key_matcher: press().code(KeyCode::Esc),
+        modes: all_modes.clone(),
+        message: Message::BranchPicker(BranchPickerMessage::Close),
         hide_from_hotbar: false,
     });
 
@@ -271,6 +319,17 @@ fn register_unassigned_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscri
         key_matcher: press().code(KeyCode::Char('z')),
         modes: modes.clone(),
         message: Message::SelectUnassigned,
+        hide_from_hotbar: false,
+    });
+}
+
+fn register_branch_picker_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscriminant>) {
+    key_binds.register(StaticKeyBind {
+        short_description: "goto branch",
+        chord_display: "t",
+        key_matcher: press().code(KeyCode::Char('t')),
+        modes: modes.clone(),
+        message: Message::PickAndGotoBranch,
         hide_from_hotbar: false,
     });
 }
