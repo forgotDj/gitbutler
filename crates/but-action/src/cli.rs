@@ -1,4 +1,5 @@
 use anyhow::{Context as _, anyhow, bail};
+use but_error::{Code, Context as ErrorContext};
 
 pub fn get_cli_path() -> anyhow::Result<std::path::PathBuf> {
     let cli_path = std::env::current_exe()?;
@@ -75,8 +76,25 @@ pub fn do_install_cli(mode: InstallMode) -> anyhow::Result<()> {
 
         if status.success() {
             Ok(())
+        } else if status.code() == Some(1) {
+            // osascript exits 1 when the user dismisses the admin-privileges
+            // prompt. This is a benign abort, not an error — tag it with a
+            // dedicated Code so the frontend can react based on the code
+            // rather than matching on an English message.
+            Err(
+                anyhow!("osascript exited with status 1").context(ErrorContext::new_static(
+                    Code::CliInstallCancelled,
+                    "CLI install cancelled",
+                )),
+            )
         } else {
-            Err(anyhow!("error running osascript"))
+            Err(anyhow!(
+                "osascript exited with status {}",
+                status
+                    .code()
+                    .map(|c| c.to_string())
+                    .unwrap_or_else(|| "unknown".into())
+            ))
         }
     } else {
         Err(anyhow!(

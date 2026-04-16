@@ -3,8 +3,11 @@
 	import CliSymlinkSetup from "$components/settings/CliSymlinkSetup.svelte";
 	import AccessTokenSignIn from "$components/shared/AccessTokenSignIn.svelte";
 	import { BACKEND } from "$lib/backend";
+	import { getUserErrorCode } from "$lib/backend/ipc";
 	import { CLI_MANAGER } from "$lib/config/cli";
+	import { Code } from "$lib/error/knownErrors";
 	import { showError } from "$lib/error/showError";
+	import { showToast } from "$lib/notifications/toasts";
 	import { PROJECTS_SERVICE } from "$lib/project/projectsService";
 	import { SETTINGS_SERVICE } from "$lib/settings/appSettings";
 	import {
@@ -320,7 +323,25 @@
 						<Button
 							style="pop"
 							icon="play"
-							onclick={async () => await instalCLI()}
+							onclick={async () => {
+								try {
+									await instalCLI();
+								} catch (err: unknown) {
+									// osascript returns a generic non-success when the
+									// user dismisses the macOS admin-privileges prompt.
+									// The backend tags that specific case with a
+									// `CliInstallCancelled` code so we can show an info
+									// toast instead of an error toast.
+									if (getUserErrorCode(err) === Code.CliInstallCancelled) {
+										showToast({
+											style: "info",
+											message: "CLI install cancelled.",
+										});
+										return;
+									}
+									throw err;
+								}
+							}}
 							loading={installingCLI.current.isLoading}
 						>
 							Install But CLI</Button

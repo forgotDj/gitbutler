@@ -1,5 +1,6 @@
 import { goto } from "$app/navigation";
 import { showError } from "$lib/error/showError";
+import { showToast } from "$lib/notifications/toasts";
 import { handleAddProjectOutcome, type Project } from "$lib/project/project";
 import { projectPath } from "$lib/routes/routes.svelte";
 import { getCookie } from "$lib/utils/cookies";
@@ -140,22 +141,34 @@ export class ProjectsService {
 	}
 
 	validateProjectPath(path: string) {
+		// These two paths represent unsupported-configuration guidance, not
+		// runtime errors. Surface them as info toasts so they don't pollute
+		// error telemetry — they previously accounted for 53 + many events
+		// of noisy toast:show_error captures.
 		if (/^\\\\wsl.localhost/i.test(path)) {
-			const errorMsg =
-				"For WSL2 projects, install the Linux version of GitButler inside of your WSL2 distro";
-			console.error(errorMsg);
-			showError("Use the Linux version of GitButler", errorMsg);
+			const message =
+				"For WSL2 projects, install the Linux version of GitButler inside of your WSL2 distro.";
+			console.warn(message);
+			showToast({
+				style: "info",
+				title: "Use the Linux version of GitButler",
+				message,
+			});
 
 			return false;
 		}
 
 		if (/^\\\\/i.test(path)) {
-			const errorMsg =
+			const message =
 				"Using git across a network is not recommended. Either clone " +
 				"the repo locally, or use the NET USE command to map a " +
-				"network drive";
-			console.error(errorMsg);
-			showError("UNC Paths are not directly supported", errorMsg);
+				"network drive.";
+			console.warn(message);
+			showToast({
+				style: "info",
+				title: "UNC paths are not directly supported",
+				message,
+			});
 
 			return false;
 		}

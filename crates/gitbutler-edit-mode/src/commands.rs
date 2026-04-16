@@ -1,7 +1,9 @@
 use anyhow::{Context as _, Result};
 use but_core::{ref_metadata::StackId, ui::TreeChange};
 use but_ctx::Context;
-use gitbutler_operating_modes::{EditModeMetadata, ensure_edit_mode, ensure_open_workspace_mode};
+use gitbutler_operating_modes::{
+    EditModeMetadata, ensure_edit_mode, ensure_open_workspace_mode, in_edit_mode,
+};
 use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
@@ -67,7 +69,13 @@ pub fn starting_index_state(
 pub fn changes_from_initial(ctx: &mut Context) -> Result<Vec<TreeChange>> {
     let guard = ctx.exclusive_worktree_access();
 
-    ensure_edit_mode(ctx, guard.read_permission())?;
+    // The frontend's `worktree_changes` listener may fire one last event
+    // after the workspace has already left edit mode. Treat that as "no
+    // changes" instead of an error so the listener can stay simple and
+    // PostHog/Sentry don't see a noisy benign error.
+    if !in_edit_mode(ctx, guard.read_permission())? {
+        return Ok(Vec::new());
+    }
 
     let state = crate::changes_from_initial(ctx, guard.read_permission())?;
     Ok(state.into_iter().map(|a| a.into()).collect())
