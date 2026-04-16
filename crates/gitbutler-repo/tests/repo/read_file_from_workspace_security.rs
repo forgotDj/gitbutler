@@ -117,6 +117,26 @@ fn reads_deleted_file_from_head_commit() {
 }
 
 #[test]
+fn returns_empty_for_directory_path() {
+    // Directories on disk — including git submodules, which appear as real
+    // directories in the worktree but as commit entries in the tree — should
+    // not error out. Callers (conflict checks, diff viewers) depend on getting
+    // a FileInfo back rather than an exception.
+    let (repo, _tmp) = test_repository();
+    let workdir = repo.workdir().expect("workdir exists");
+    fs::create_dir(workdir.join("subdir")).expect("create directory");
+
+    let ctx = context_for_repo(workdir);
+    let info = ctx
+        .read_file_from_workspace(Path::new("subdir"))
+        .expect("directory path should be readable as empty FileInfo");
+
+    assert_eq!(info.content, Some(String::new()));
+    assert_eq!(info.size, Some(0));
+    assert_eq!(info.mime_type, None);
+}
+
+#[test]
 fn keeps_absolute_inside_worktree_behavior() {
     let (repo, _tmp) = test_repository();
     let workdir = repo.workdir().expect("workdir exists");

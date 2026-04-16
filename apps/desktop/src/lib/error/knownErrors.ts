@@ -11,6 +11,8 @@ export enum Code {
 	GitHubTokenExpired = "errors.github.expired_token",
 	ProjectDatabaseIncompatible = "errors.projectdb.migration",
 	DefaultTerminalNotFound = "errors.terminal.not_found",
+	CliInstallCancelled = "errors.cli.install_cancelled",
+	NotInEditMode = "errors.edit_mode.not_active",
 }
 
 export const KNOWN_ERRORS: Record<string, string> = {

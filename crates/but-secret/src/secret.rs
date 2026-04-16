@@ -37,42 +37,59 @@ pub fn persist(handle: &str, secret: &Sensitive<String>, namespace: Namespace) -
 /// Obtain the previously [stored](persist()) secret known as `handle` from `namespace`.
 pub fn retrieve(handle: &str, namespace: Namespace) -> Result<Option<Sensitive<String>>> {
     match entry_for(handle, namespace)
-        .map_err(annotate_linux_keychain)?
+        .map_err(annotate_keychain_error)?
         .get_password()
     {
         Ok(secret) => Ok(Some(Sensitive(secret))),
         Err(keyring::Error::NoEntry) => Ok(None),
-        Err(err) => Err(annotate_linux_keychain(err.into())),
+        Err(err) => Err(annotate_keychain_error(err.into())),
     }
 }
 
-fn annotate_linux_keychain(err: anyhow::Error) -> anyhow::Error {
-    if !cfg!(target_os = "linux") {
-        return err;
+fn annotate_keychain_error(err: anyhow::Error) -> anyhow::Error {
+    let err_string = err.to_string();
+
+    if cfg!(target_os = "linux") {
+        // We could try to match on the original, but due to a lack of testing
+        // we have to blanket-catch these errors in multiple places.
+        // This is fine, except for when we might be dependent on the locale.
+        // If this is an issue, actually test this.
+        if err_string.contains(" org.freedesktop.secrets ")
+            // This is supposed to prevent the DBus-Error to trigger a popup on CI which disturbs E2E tests.
+            // Ideally, e2e could be made to auto-confirm this particular message after a timeout, maybe?
+            || (!cfg!(debug_assertions) && err_string.contains("DBus error"))
+        {
+            // Attach an explicit, stable message alongside the Code so the
+            // frontend/telemetry see a human-readable label instead of the raw
+            // DBus error string (which varies by distro/locale and leaks the
+            // i18n translation key into PostHog).
+            return err.context(but_error::Context::new_static(
+                but_error::Code::SecretKeychainNotFound,
+                "System keychain is not available",
+            ));
+        } else if err_string.contains("Secret Service: no result found") {
+            return err.context(but_error::Context::new_static(
+                but_error::Code::MissingLoginKeychain,
+                "Login keychain is missing",
+            ));
+        }
     }
 
-    // We could try to match on the original, but due to a lack of testing
-    // we have to blanket-catch these errors in multiple places.
-    // This is fine, except for when we might be dependent on the locale.
-    // If this is an issue, actually test this.
-    let err_string = err.to_string();
-    if err_string.contains(" org.freedesktop.secrets ")
-        // This is supposed to prevent the DBus-Error to trigger a popup on CI which disturbs E2E tests.
-        // Ideally, e2e could be made to auto-confirm this particular message after a timeout, maybe?
-        || (!cfg!(debug_assertions) && err_string.contains("DBus error"))
-    {
-        err.context(but_error::Code::SecretKeychainNotFound)
-    } else if err_string.contains("Secret Service: no result found") {
-        err.context(but_error::Code::MissingLoginKeychain)
-    } else {
-        err
-    }
+    // On macOS/Windows the platform-level keychain is always present, so we
+    // don't have a dedicated Code for these cases. Still attach a stable
+    // English label so PostHog can aggregate these instead of bucketing
+    // every localized platform error separately. Linux errors that didn't
+    // match a known shape fall through here too.
+    err.context(but_error::Context::new_static(
+        but_error::Code::Unknown,
+        "System keychain access failed",
+    ))
 }
 
 /// Delete the secret at `handle` permanently from `namespace`.
 pub fn delete(handle: &str, namespace: Namespace) -> Result<()> {
     match entry_for(handle, namespace)
-        .map_err(annotate_linux_keychain)?
+        .map_err(annotate_keychain_error)?
         .delete_credential()
     {
         Ok(_) => Ok(()),
@@ -80,7 +97,7 @@ pub fn delete(handle: &str, namespace: Namespace) -> Result<()> {
             // Fail silently if it doesn't exist.
             Ok(())
         }
-        Err(err) => Err(annotate_linux_keychain(err.into())),
+        Err(err) => Err(annotate_keychain_error(err.into())),
     }
 }
 

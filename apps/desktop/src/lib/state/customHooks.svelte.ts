@@ -127,7 +127,7 @@ export function buildQueryHooks<Definitions extends ExtensionDefinitions>({
 			if (result.error) {
 				const error = result.error;
 				// track({ failure: true, startTime, error });
-				emitQueryError(error);
+				emitQueryError(posthog, error, { command, actionName });
 			}
 			if (options?.transform && data) {
 				data = options.transform(data, queryArg);

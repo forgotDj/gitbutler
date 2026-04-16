@@ -1,5 +1,6 @@
 import { SilentError } from "$lib/error/error";
 import { parseError } from "$lib/error/parser";
+import { isReduxError } from "$lib/error/reduxError";
 import { showError } from "$lib/error/showError";
 import { captureException } from "@sentry/sveltekit";
 
@@ -59,19 +60,35 @@ export function logError(error: unknown, options?: LogErrorOptions) {
 	}
 
 	try {
-		captureException(error, {
-			mechanism: {
-				type: "sveltekit",
-				handled: false,
-			},
-		});
-
-		// Unwrap error if it's an unhandled promise rejection.
+		// Unwrap promise rejections first so Sentry sees the underlying reason
+		// rather than the event wrapper, and so SilentError detection works
+		// against the actual thrown value.
 		if (error instanceof PromiseRejectionEvent) {
 			error = error.reason;
 		}
 
-		if (!options?.skipToast && !(error instanceof SilentError)) {
+		// `SilentError` indicates the caller already handled (or chose to
+		// suppress) the error — skip both Sentry capture and the toast so
+		// they don't double-up on noise or surface anything unexpected.
+		const silent = error instanceof SilentError;
+
+		if (!silent) {
+			// Tauri rejections arrive as plain `{name, message, code}` objects
+			// rather than `Error` instances. Sentry can't extract a stack from
+			// those, so it buckets every variant under generic
+			// "Object captured as promise rejection" groups. Wrap them in a
+			// proper Error so Sentry groups by name + message.
+			const forSentry =
+				isReduxError(error) && !(error instanceof Error) ? reduxErrorToException(error) : error;
+			captureException(forSentry, {
+				mechanism: {
+					type: "sveltekit",
+					handled: false,
+				},
+			});
+		}
+
+		if (!options?.skipToast && !silent) {
 			showError("Unhandled exception", error);
 		}
 
@@ -82,4 +99,16 @@ export function logError(error: unknown, options?: LogErrorOptions) {
 	} catch (err: unknown) {
 		console.error("Error while trying to log error.", err);
 	}
+}
+
+function reduxErrorToException(error: { name: string; message: string; code?: string }): Error {
+	const err = new Error(error.message);
+	// Prefer the backend-provided name (e.g. "API error: (push_stack)") over
+	// the default "Error" so Sentry's title grouping matches the PostHog
+	// taxonomy we already filter by.
+	err.name = error.name || "Error";
+	if (error.code) {
+		(err as Error & { code?: string }).code = error.code;
+	}
+	return err;
 }

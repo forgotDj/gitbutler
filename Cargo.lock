@@ -899,6 +899,7 @@ dependencies = [
  "but-core",
  "but-ctx",
  "but-db",
+ "but-error",
  "but-hunk-assignment",
  "but-llm",
  "but-schemars",

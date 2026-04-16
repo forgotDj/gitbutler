@@ -102,9 +102,11 @@
 
 		const commits = await getAllCommits();
 		const commitMessages = commits?.map((commit) => commit.message) ?? [];
-		if (commitMessages.length === 0) {
-			throw new Error("There must be commits in the branch before you can generate a branch name");
-		}
+		// The context-menu entry is disabled via `hasCommits` when there are
+		// no commits yet. Guard defensively against a race (freshly-fetched
+		// commits may lag the reactive query) — silently no-op rather than
+		// raising an error toast.
+		if (commitMessages.length === 0) return;
 
 		const prompt = promptService.selectedBranchPrompt(projectId);
 		const newBranchName = await aiService.summarizeBranch({

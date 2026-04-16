@@ -6,6 +6,7 @@ import {
 	lineIdsToHunkHeaders,
 	orderHeaders,
 } from "$lib/hunks/hunk";
+import { showToast } from "$lib/notifications/toasts";
 import { compositeKey, partialKey, type HunkSelection } from "$lib/selection/entityAdapters";
 import {
 	uncommittedSelectors,
@@ -73,15 +74,19 @@ export class UncommittedService {
 		this.dispatch(uncommittedActions.clearHunkSelection({ stackId: stackId || null }));
 	}
 
-	async getUnifiedDiff(projectId: string, change: TreeChange): Promise<UnifiedDiff> {
-		const changeDiff = await this.diffService.fetchDiff(projectId, change);
-		if (!changeDiff) {
-			throw new Error("Failed to fetch diff");
-		}
-		return changeDiff;
+	async getUnifiedDiff(projectId: string, change: TreeChange): Promise<UnifiedDiff | null> {
+		// Real IPC / query failures now surface via RTK `unwrap()` in the
+		// underlying fetch path, so they throw and propagate as structured
+		// errors. A `null` result just means no patch data is available
+		// (e.g. binary content or an edge-case rename) — what callers do
+		// with that varies: hunk selection treats it as "no hunks to
+		// match" and may skip the path, while whole-file commits happen
+		// only when no hunks were requested or a caller explicitly falls
+		// back to that.
+		return await this.diffService.fetchDiff(projectId, change);
 	}
 
-	findHunkDiff(changeDiff: UnifiedDiff, hunk: HunkHeader): DiffHunk | undefined {
+	findHunkDiff(changeDiff: UnifiedDiff | null, hunk: HunkHeader): DiffHunk | undefined {
 		if (changeDiff?.type !== "Patch") return undefined;
 
 		const hunkDiff = changeDiff.subject.hunks.find(
@@ -97,7 +102,7 @@ export class UncommittedService {
 	/**
 	 * Check whether the given hunks represent a completely selected file.
 	 */
-	isCompletelySelectedFile(changeDiff: UnifiedDiff, hunkHeaders: HunkHeader[]): boolean {
+	isCompletelySelectedFile(changeDiff: UnifiedDiff | null, hunkHeaders: HunkHeader[]): boolean {
 		if (changeDiff?.type !== "Patch") return false;
 		const fileHunks = changeDiff.subject.hunks;
 
@@ -123,7 +128,7 @@ export class UncommittedService {
 	}
 
 	processHunkHeaders(
-		changeDiff: UnifiedDiff,
+		changeDiff: UnifiedDiff | null,
 		preprocessedHeaders: PreprocessedHunkHeader[],
 	): HunkHeader[] {
 		const finalHunkHeaders: HunkHeader[] = [];
@@ -193,6 +198,7 @@ export class UncommittedService {
 		}, {});
 
 		const worktreeChanges: DiffSpec[] = [];
+		const skippedStalePaths: string[] = [];
 		for (const [path, selection] of Object.entries(pathGroups)) {
 			const preprocessedHeaders: PreprocessedHunkHeader[] = [];
 			const change = uncommittedSelectors.treeChanges.selectById(state.treeChanges, path)!;
@@ -220,6 +226,7 @@ export class UncommittedService {
 			}
 
 			const changeDiff = await this.getUnifiedDiff(projectId, change);
+			let staleSkipped = 0;
 			for (const { lines, assignmentId } of selection) {
 				// We want to use `null` to commit from unassigned changes if new stack was created.
 				const assignment = uncommittedSelectors.hunkAssignments.selectById(
@@ -230,7 +237,13 @@ export class UncommittedService {
 				if (assignment.hunkHeader !== null) {
 					const hunkDiff = this.findHunkDiff(changeDiff, assignment.hunkHeader);
 					if (!hunkDiff) {
-						throw new Error("Hunk not found while committing");
+						// The diff has shifted since the hunk was selected (file was
+						// edited, saved, or a refresh raced the commit). Skip this
+						// stale selection rather than failing the whole commit — any
+						// still-matching hunks in the same file commit normally.
+						console.warn("Skipping stale hunk selection while committing", assignment.hunkHeader);
+						staleSkipped++;
+						continue;
 					}
 
 					if (lines.length === 0) {
@@ -254,10 +267,29 @@ export class UncommittedService {
 				}
 			}
 
+			// If the user had specific hunk selections but every one of them
+			// was stale, do NOT fall through to "commit the whole file" — that
+			// would silently commit more than the user asked for. Skip the
+			// file entirely and surface a notice so they can reselect.
+			if (preprocessedHeaders.length === 0 && staleSkipped > 0) {
+				skippedStalePaths.push(path);
+				continue;
+			}
+
 			worktreeChanges.push({
 				pathBytes: change.pathBytes,
 				previousPathBytes,
 				hunkHeaders: await this.processHunkHeaders(changeDiff, preprocessedHeaders),
+			});
+		}
+
+		if (skippedStalePaths.length > 0) {
+			const label =
+				skippedStalePaths.length === 1 ? skippedStalePaths[0] : `${skippedStalePaths.length} files`;
+			showToast({
+				style: "info",
+				title: "Some selections skipped",
+				message: `The diff for ${label} shifted since you selected it. Please reselect to commit those changes.`,
 			});
 		}
 

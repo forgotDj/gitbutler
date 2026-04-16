@@ -138,6 +138,15 @@ pub enum Code {
     NetworkError,
     ProjectDatabaseIncompatible,
     DefaultTerminalNotFound,
+    /// The user dismissed the macOS admin-privileges prompt when installing
+    /// the `but` CLI. Not a real failure — the frontend swaps it for a
+    /// neutral info toast.
+    CliInstallCancelled,
+    /// The GitHub access token was rejected. Currently only synthesized by
+    /// the frontend when an Octokit response message starts with
+    /// "Not Found -" — kept here so the wire-level `Code` enum is the
+    /// single source of truth for codes the desktop app may surface.
+    GitHubTokenExpired,
 }
 
 impl std::fmt::Display for Code {
@@ -159,6 +168,8 @@ impl std::fmt::Display for Code {
             Code::NetworkError => "errors.network",
             Code::ProjectDatabaseIncompatible => "errors.projectdb.migration",
             Code::DefaultTerminalNotFound => "errors.terminal.not_found",
+            Code::CliInstallCancelled => "errors.cli.install_cancelled",
+            Code::GitHubTokenExpired => "errors.github.expired_token",
         };
         f.write_str(code)
     }

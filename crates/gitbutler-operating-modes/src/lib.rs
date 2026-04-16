@@ -1,6 +1,6 @@
 use std::{fs, path::PathBuf};
 
-use anyhow::{Context as _, Result, bail};
+use anyhow::{Context as _, Result, anyhow, bail};
 use bstr::BString;
 use but_core::{ref_metadata::StackId, sync::RepoShared};
 use but_ctx::Context;
@@ -198,7 +198,7 @@ pub fn in_edit_mode(ctx: &Context, perm: &RepoShared) -> Result<bool> {
 pub fn ensure_edit_mode(ctx: &Context, perm: &RepoShared) -> Result<EditModeMetadata> {
     match operating_mode(ctx, perm)? {
         OperatingMode::Edit(edit_mode_metadata) => Ok(edit_mode_metadata),
-        _ => bail!("Expected to be in edit mode"),
+        _ => Err(anyhow!("Expected to be in edit mode")),
     }
 }
 

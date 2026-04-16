@@ -36,6 +36,19 @@ impl FileInfo {
         Self::default()
     }
 
+    /// A placeholder for a path that points at a directory rather than a
+    /// regular file (typically a git submodule surfacing as a real
+    /// directory in the worktree). Returns empty text content so existing
+    /// text-rendering consumers can display it without error.
+    pub fn directory(path_in_worktree: &Path) -> Self {
+        FileInfo {
+            content: Some(String::new()),
+            file_name: Self::file_name_str(path_in_worktree),
+            size: Some(0),
+            mime_type: None,
+        }
+    }
+
     pub fn from_content(path_in_worktree: &Path, content: &[u8]) -> Self {
         if Self::is_binary(content) {
             FileInfo::image_or_empty(path_in_worktree, content)
@@ -295,10 +308,15 @@ impl RepoCommands for Context {
                     let content = std::fs::read_link(&path)?;
                     FileInfo::utf8_text_or_binary(&relative_path, &gix::path::into_bstr(content))
                 } else if md.is_dir() {
-                    bail!(
-                        "Path to read from at '{}' is a directory",
-                        relative_path.display(),
-                    );
+                    // Directories on disk (notably git submodules, which appear
+                    // as real directories in the worktree but are represented
+                    // as commit entries in the tree) have no readable file
+                    // content. Return a placeholder FileInfo so callers —
+                    // conflict checks, diff viewers — can handle the case
+                    // gracefully, rather than surfacing an opaque "is a
+                    // directory" toast. Note that the placeholder is shaped
+                    // identically to a real zero-byte text file.
+                    FileInfo::directory(&relative_path)
                 } else {
                     warn!(
                         ?relative_path,
