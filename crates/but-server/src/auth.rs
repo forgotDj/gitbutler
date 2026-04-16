@@ -23,56 +23,34 @@ const TOKEN_CACHE_TTL: Duration = Duration::from_secs(300);
 
 const COOKIE_NAME: &str = "butler_token";
 
-/// Partial user response from the GitButler API `/api/login/whoami` endpoint.
-#[derive(Debug, Deserialize)]
-struct ApiUser {
-    id: u64,
-}
-
-/// Response from `POST /api/login/token`.
-#[derive(Debug, Deserialize)]
-struct LoginTokenResponse {
-    /// The full URL to redirect the user's browser to for login.
-    url: String,
-}
-
 /// A cached token validation result.
 struct CachedValidation {
     token: String,
-    user_id: u64,
     validated_at: std::time::Instant,
+    is_owner: bool,
 }
 
 /// Shared authentication state.
 pub struct AuthState {
     owner_id: u64,
-    http: reqwest::Client,
     cache: RwLock<Option<CachedValidation>>,
     /// Base path prefix for auth routes, e.g. "/api" when `--base-path=/api`.
     base_path: String,
-    /// GitButler API base URL, e.g. "https://app.gitbutler.com".
-    api_url: String,
 }
 
 impl AuthState {
-    /// Create a new auth state for the given local owner user ID, base path, and API URL.
-    pub fn new(owner_id: u64, base_path: impl Into<String>, api_url: impl Into<String>) -> Self {
+    /// Create a new auth state for the given local owner user ID and base path.
+    pub fn new(owner_id: u64, base_path: impl Into<String>) -> Self {
         Self {
             owner_id,
-            http: reqwest::Client::builder()
-                .timeout(Duration::from_secs(10))
-                .connect_timeout(Duration::from_secs(5))
-                .build()
-                .expect("failed to build reqwest client"),
             cache: RwLock::new(None),
             base_path: base_path.into(),
-            api_url: api_url.into(),
         }
     }
 
     /// Validate an access token against the GitButler API.
     /// Returns `true` if the token belongs to the local owner.
-    pub async fn validate_token(&self, token: &str) -> Result<bool, reqwest::Error> {
+    pub async fn validate_token(&self, token: &str) -> anyhow::Result<bool> {
         // Check cache first.
         {
             let cache = self.cache.read().await;
@@ -80,50 +58,37 @@ impl AuthState {
                 && cached.token == token
                 && cached.validated_at.elapsed() < TOKEN_CACHE_TTL
             {
-                return Ok(cached.user_id == self.owner_id);
+                return Ok(cached.is_owner);
             }
         }
 
-        // Call the GitButler API.
-        let url = format!("{}/api/login/whoami", self.api_url);
-        let resp = self
-            .http
-            .get(&url)
-            .header("X-Auth-Token", token)
-            .send()
-            .await?;
-
-        if !resp.status().is_success() {
-            return Ok(false);
-        }
-
-        let user: ApiUser = resp.json().await?;
+        let token_owned = token.to_string();
+        let owner_id = self.owner_id;
+        let is_owner = tokio::task::spawn_blocking(move || {
+            gitbutler_user::api::validate_token_owner(&token_owned, owner_id)
+        })
+        .await
+        .map_err(|e| anyhow::anyhow!("validate_token_owner task failed: {e}"))??;
 
         // Update cache.
         {
             let mut cache = self.cache.write().await;
             *cache = Some(CachedValidation {
                 token: token.to_string(),
-                user_id: user.id,
                 validated_at: std::time::Instant::now(),
+                is_owner,
             });
         }
 
-        Ok(user.id == self.owner_id)
+        Ok(is_owner)
     }
 
     /// Get the gitbutler.com login URL for the user to visit.
     async fn login_url(&self) -> anyhow::Result<String> {
-        let url = format!("{}/api/login/token", self.api_url);
-        let resp: LoginTokenResponse = self
-            .http
-            .post(&url)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
-        Ok(resp.url)
+        let token = tokio::task::spawn_blocking(gitbutler_user::api::fetch_login_token)
+            .await
+            .map_err(|e| anyhow::anyhow!("fetch_login_token task failed: {e}"))??;
+        Ok(token.url)
     }
 }
 

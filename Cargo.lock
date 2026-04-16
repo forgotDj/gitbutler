@@ -1585,7 +1585,6 @@ dependencies = [
  "gitbutler-user",
  "gitbutler-watcher",
  "mime_guess",
- "reqwest 0.12.28",
  "rust-embed",
  "serde",
  "serde_json",
@@ -4340,14 +4339,18 @@ name = "gitbutler-user"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "but-path",
  "but-secret",
  "but-utils",
  "keyring",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "serial_test",
  "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]

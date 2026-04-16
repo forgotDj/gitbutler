@@ -192,8 +192,6 @@ pub struct Config {
     pub base_path: Option<String>,
     /// Disable authentication entirely. DANGEROUS — only use on trusted networks.
     pub allow_anyone: bool,
-    /// Use the staging GitButler API (<https://app.staging.gitbutler.com>) instead of production.
-    pub dev: bool,
     /// If set, auto-activate this directory's project on startup and prevent switching to others.
     pub project_path: Option<std::path::PathBuf>,
     /// Show cloudflared output on stderr. Enabled by `-v` in the CLI.
@@ -328,12 +326,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         eprintln!("WARNING: --dangerously-allow-anyone is set — authentication is disabled");
     }
 
-    let api_url = if config.dev {
-        "https://app.staging.gitbutler.com"
-    } else {
-        "https://app.gitbutler.com"
-    }
-    .to_owned();
+    let api_url = gitbutler_user::api::default_api_url();
 
     let port: u16 = config
         .port
@@ -541,7 +534,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
                         user.id,
                         api_url,
                     );
-                    Some(Arc::new(auth::AuthState::new(user.id, &api_base, &api_url)))
+                    Some(Arc::new(auth::AuthState::new(user.id, &api_base)))
                 }
                 Ok(None) => {
                     anyhow::bail!(
@@ -684,6 +677,22 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .route("/get_user", but_post(legacy::users::get_user_cmd))
         .route("/set_user", but_post(legacy::users::set_user_cmd))
         .route("/delete_user", but_post(legacy::users::delete_user_cmd))
+        .route(
+            "/get_login_token",
+            but_post(legacy::users::get_login_token_cmd),
+        )
+        .route(
+            "/login_with_token",
+            but_post(legacy::users::login_with_token_cmd),
+        )
+        .route(
+            "/get_user_profile",
+            but_post(legacy::users::get_user_profile_cmd),
+        )
+        .route(
+            "/update_user_profile",
+            but_post(legacy::users::update_user_profile_cmd),
+        )
         .route(
             "/update_project",
             but_post(legacy::projects::update_project_cmd),
@@ -1261,7 +1270,7 @@ fn build_csp(remote_origin: Option<&str>, port: u16, script_hashes: &[String]) -
     // Always allow WebSocket to the loopback addresses on this port.
     // `'self'` covers http/https but not the ws/wss scheme change, so without
     // these entries the browser will block /ws in local mode.
-    let mut ws_origins = format!(" ws://localhost:{port} ws://127.0.0.1:{port} ws://[::1]:{port}");
+    let mut ws_origins = format!(" ws://localhost:{port} ws://127.0.0.1:{port}");
 
     // In remote-access mode also allow the wss form of the tunnel origin
     // (https://foo.com → wss://foo.com).

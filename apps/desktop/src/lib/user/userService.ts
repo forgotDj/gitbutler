@@ -30,11 +30,7 @@ export class UserService {
 	readonly userLogin = derived<Readable<User | undefined>, string | undefined>(
 		this.user,
 		(user, set) => {
-			if (user) {
-				this.getUser().then((user) => set(user.login ?? undefined));
-			} else {
-				set(undefined);
-			}
+			set(user?.login ?? undefined);
 		},
 	);
 	readonly error = writable();
@@ -95,11 +91,7 @@ export class UserService {
 				return;
 			}
 
-			const user = await this.httpClient.get<User>("login/whoami", {
-				headers: {
-					"X-Auth-Token": token,
-				},
-			});
+			const user = await this.backend.invoke<User>("login_with_token", { token });
 
 			if (bypassConfirmationToast) {
 				// In the case that the token is e.g. pasted directly, we don't need a confirmation toast.
@@ -139,10 +131,9 @@ export class UserService {
 	}
 
 	private async getLoginUrl(): Promise<string> {
-		this.forgetUserCredentials();
+		await this.forgetUserCredentials();
 		try {
-			// Get the login url from the backend
-			const token = await this.httpClient.post<LoginToken>("login/token.json");
+			const token = await this.backend.invoke<LoginToken>("get_login_token");
 			const url = new URL(token.url);
 			url.host = this.httpClient.apiUrl.host;
 			const buildType = await this.backend.invoke<string>("build_type").catch(() => undefined);
@@ -176,7 +167,7 @@ export class UserService {
 	}
 
 	async getUser(): Promise<ApiUser> {
-		return await this.httpClient.get("user.json");
+		return await this.backend.invoke<ApiUser>("get_user_profile");
 	}
 
 	async updateUser(params: {
@@ -189,21 +180,30 @@ export class UserService {
 		location?: string;
 		emailShare?: boolean;
 	}): Promise<any> {
-		const formData = new FormData();
-		if (params.name) formData.append("name", params.name);
-		if (params.picture) formData.append("avatar", params.picture);
-		if (params.website !== undefined) formData.append("website", params.website);
-		if (params.twitter !== undefined) formData.append("twitter", params.twitter);
-		if (params.bluesky !== undefined) formData.append("bluesky", params.bluesky);
-		if (params.timezone !== undefined) formData.append("timezone", params.timezone);
-		if (params.location !== undefined) formData.append("location", params.location);
-		if (params.emailShare !== undefined)
-			formData.append("email_share", params.emailShare.toString());
+		let avatarBase64: string | undefined;
+		let avatarFilename: string | undefined;
+		if (params.picture) {
+			const bytes = new Uint8Array(await params.picture.arrayBuffer());
+			const chunks: string[] = [];
+			for (let i = 0; i < bytes.length; i += 0x8000) {
+				chunks.push(String.fromCharCode(...bytes.subarray(i, i + 0x8000)));
+			}
+			avatarBase64 = btoa(chunks.join(""));
+			avatarFilename = params.picture.name;
+		}
 
-		// Content Type must be unset for the right form-data border to be set automatically
-		return await this.httpClient.put("user.json", {
-			body: formData,
-			headers: { "Content-Type": undefined },
+		return await this.backend.invoke("update_user_profile", {
+			params: {
+				name: params.name,
+				website: params.website,
+				twitter: params.twitter,
+				bluesky: params.bluesky,
+				timezone: params.timezone,
+				location: params.location,
+				email_share: params.emailShare,
+				avatar_base64: avatarBase64,
+				avatar_filename: avatarFilename,
+			},
 		});
 	}
 }
