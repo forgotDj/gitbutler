@@ -1,0 +1,58 @@
+name: "Lite"
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch: {}
+
+env:
+  RUST_BACKTRACE: full
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-15 # [macOs, ARM64]
+          - platform: ubuntu-22.04 # [linux, x64]
+          - platform: windows-latest # [windows, x64]
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_PROFILE_RELEASE_LTO: fat
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 1
+      CARGO_PROFILE_RELEASE_OPT_LEVEL: s
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install pkg-config libxss-dev libdbus-1-dev
+      - uses: ./.github/actions/init-env-node
+      - name: Set version
+        working-directory: apps/lite
+        run: pnpm version "0.0.${{ github.run_number }}" --no-git-tag-version
+      - name: Build
+        env:
+          CHANNEL: nightly
+          VERSION: "0.0.${{ github.run_number }}"
+        run: |
+          pnpm --filter @gitbutler/but-sdk build
+          pnpm --filter @gitbutler/lite bundle
+
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        name: Upload artifacts
+        with:
+          name: gitbutler-lite-${{ github.run_number }}-${{ matrix.platform }}
+          path: apps/lite/release/
+          if-no-files-found: error
+          retention-days: 7

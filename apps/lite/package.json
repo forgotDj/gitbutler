@@ -1,5 +1,7 @@
 {
 	"name": "@gitbutler/lite",
+	"productName": "gitbutler-lite",
+	"homepage": "https://gitbutler.com",
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
@@ -32,6 +34,31 @@
 		],
 		"mac": {
 			"target": "dmg"
+		},
+		"linux": {
+			"target": [
+				"deb",
+				"appimage"
+			],
+			"maintainer": "GitButler <gitbutler@gitbutler.com>"
+		},
+		"win": {
+			"target": [
+				"portable"
+			]
+		},
+		"deb": {
+			"packageName": "gitbutler-lite",
+			"artifactName": "${productName}-${version}-${arch}.${ext}",
+			"depends": [
+				"libnotify4",
+				"libxtst6",
+				"libnss3",
+				"libxss1"
+			]
+		},
+		"appImage": {
+			"artifactName": "${productName}-${version}-${arch}.${ext}"
 		}
 	},
 	"dependencies": {
@@ -46,7 +73,6 @@
 		"@tanstack/react-query-devtools": "^5.91.3",
 		"@tanstack/react-router": "^1.167.4",
 		"effect": "^3.20.0",
-		"electron": "^41.1.0",
 		"electron-devtools-installer": "^4.0.0",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
@@ -61,6 +87,7 @@
 		"@typescript/native-preview": "7.0.0-dev.20260311.1",
 		"@vitejs/plugin-react": "^5.2.0",
 		"babel-plugin-react-compiler": "^1.0.0",
+		"electron": "^41.1.0",
 		"concurrently": "^9.2.1",
 		"cross-env": "^10.1.0",
 		"electron-builder": "^26.8.1",
