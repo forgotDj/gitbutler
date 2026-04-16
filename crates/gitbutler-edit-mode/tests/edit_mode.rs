@@ -362,7 +362,22 @@ fn enter_edit_mode_checks_out_conflicted_commit() -> Result<()> {
     );
     insta::assert_debug_snapshot!(
         repo.head_commit()?.message()?.summary(),
-        @r#""[conflict] Changes to make millions""#
+        @r#""Changes to make millions""#
+    );
+    insta::assert_debug_snapshot!(
+        repo.head_commit()?.decode()?.extra_headers,
+        @r#"
+    [
+        (
+            "gitbutler-headers-version",
+            "2",
+        ),
+        (
+            "change-id",
+            "00000000-0000-0000-0000-000000000001",
+        ),
+    ]
+    "#
     );
 
     insta::assert_snapshot!(
