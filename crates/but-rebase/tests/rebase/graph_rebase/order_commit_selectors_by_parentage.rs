@@ -166,7 +166,7 @@ fn orders_disjoint_commits_by_editor_graph_traversal_2() -> Result<()> {
 
     // The tip of A
     let a = repo.rev_parse_single("A")?.detach();
-    // The thip of B
+    // The tip of B
     let b = repo.rev_parse_single("B")?.detach();
     // The first parent of the tip of B
     let b1 = repo.rev_parse_single("B~")?.detach();
