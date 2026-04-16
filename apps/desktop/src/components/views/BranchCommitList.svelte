@@ -36,6 +36,7 @@
 	import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
 
 	import { combineResults } from "$lib/state/helpers";
+	import { UI_STATE, withStackBusy } from "$lib/state/uiState.svelte";
 	import { ensureValue } from "$lib/utils/validation";
 	import { inject } from "@gitbutler/core/context";
 	import { TestId } from "@gitbutler/ui";
@@ -63,6 +64,7 @@
 	const settingsService = inject(SETTINGS_SERVICE);
 	const dropzoneRegistry = inject(DROPZONE_REGISTRY);
 	const dragStateService = inject(DRAG_STATE_SERVICE);
+	const uiState = inject(UI_STATE);
 
 	const projectId = $derived(controller.projectId);
 	const stackId = $derived(controller.stackId);
@@ -100,11 +102,14 @@
 	}
 
 	async function handleUncommit(commitId: string) {
-		await stackService.uncommit({
-			projectId,
-			stackId: ensureValue(stackId),
-			branchName,
-			commitId,
+		const targetStackId = ensureValue(stackId);
+		await withStackBusy(uiState, projectId, { commitId, stackIds: [targetStackId] }, async () => {
+			await stackService.uncommit({
+				projectId,
+				stackId: targetStackId,
+				branchName,
+				commitId,
+			});
 		});
 	}
 

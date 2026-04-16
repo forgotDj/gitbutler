@@ -1,8 +1,8 @@
-import { CommitDropData, withStackBusy } from "$lib/dragging/dropHandlers/commitDropHandler";
+import { CommitDropData } from "$lib/dragging/dropHandlers/commitDropHandler";
+import { withStackBusy, type UiState } from "$lib/state/uiState.svelte";
 import { InjectionToken } from "@gitbutler/core/context";
 import type { DropzoneHandler } from "$lib/dragging/handler";
 import type { StackService } from "$lib/stacks/stackService.svelte";
-import type { UiState } from "$lib/state/uiState.svelte";
 import type { StackOrder } from "@gitbutler/but-sdk";
 
 export class ReorderCommitDzHandler implements DropzoneHandler {

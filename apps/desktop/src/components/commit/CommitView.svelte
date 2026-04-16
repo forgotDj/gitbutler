@@ -13,7 +13,7 @@
 	import { MODE_SERVICE } from "$lib/mode/modeService";
 	import { showToast } from "$lib/notifications/toasts";
 	import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
-	import { UI_STATE } from "$lib/state/uiState.svelte";
+	import { UI_STATE, withStackBusy } from "$lib/state/uiState.svelte";
 	import { ensureValue } from "$lib/utils/validation";
 	import { inject, injectOptional } from "@gitbutler/core/context";
 	import { Button, TestId } from "@gitbutler/ui";
@@ -125,12 +125,20 @@
 
 	async function handleUncommit() {
 		if (!branchName) return;
-		await stackService.uncommit({
+		const targetStackId = ensureValue(stackId);
+		await withStackBusy(
+			uiState,
 			projectId,
-			stackId: ensureValue(stackId),
-			branchName,
-			commitId: commitKey.commitId,
-		});
+			{ commitId: commitKey.commitId, stackIds: [targetStackId] },
+			async () => {
+				await stackService.uncommit({
+					projectId,
+					stackId: targetStackId,
+					branchName,
+					commitId: commitKey.commitId,
+				});
+			},
+		);
 	}
 
 	function canEdit() {

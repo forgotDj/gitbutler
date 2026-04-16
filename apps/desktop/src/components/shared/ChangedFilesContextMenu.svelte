@@ -18,7 +18,7 @@
 	import { FILE_SELECTION_MANAGER } from "$lib/selection/fileSelectionManager.svelte";
 	import { SETTINGS } from "$lib/settings/userSettings";
 	import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
-	import { UI_STATE } from "$lib/state/uiState.svelte";
+	import { UI_STATE, withStackBusy } from "$lib/state/uiState.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import {
 		ContextMenu,
@@ -158,25 +158,27 @@
 	}
 
 	async function uncommitChanges(stackId: string, commitId: string, changes: TreeChange[]) {
-		const { workspace } = await stackService.uncommitChanges({
-			projectId,
-			stackId,
-			commitId,
-			changes: changesToDiffSpec(changes),
-			dryRun: false,
+		await withStackBusy(uiState, projectId, { commitId, stackIds: [stackId] }, async () => {
+			const { workspace } = await stackService.uncommitChanges({
+				projectId,
+				stackId,
+				commitId,
+				changes: changesToDiffSpec(changes),
+				dryRun: false,
+			});
+			const newCommitId = workspace.replacedCommits[commitId];
+			const branchName = uiState.lane(stackId).selection.current?.branchName;
+			const selectedFiles = changes.map((change) => ({ ...selectionId, path: change.path }));
+
+			// Unselect the uncommitted files
+			idSelection.removeMany(selectedFiles);
+
+			if (newCommitId && branchName) {
+				const previewOpen = uiState.lane(stackId).selection.current?.previewOpen ?? false;
+				// Update the selection to the new commit
+				uiState.lane(stackId).selection.set({ branchName, commitId: newCommitId, previewOpen });
+			}
 		});
-		const newCommitId = workspace.replacedCommits[commitId];
-		const branchName = uiState.lane(stackId).selection.current?.branchName;
-		const selectedFiles = changes.map((change) => ({ ...selectionId, path: change.path }));
-
-		// Unselect the uncommitted files
-		idSelection.removeMany(selectedFiles);
-
-		if (newCommitId && branchName) {
-			const previewOpen = uiState.lane(stackId).selection.current?.previewOpen ?? false;
-			// Update the selection to the new commit
-			uiState.lane(stackId).selection.set({ branchName, commitId: newCommitId, previewOpen });
-		}
 		contextMenu.close();
 	}
 
