@@ -1813,8 +1813,6 @@ const ProjectPage: FC = () => {
 	// TODO: handle project not found error. or only run when project is not null? waterfall.
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 
-	const commonBaseCommitId = getCommonBaseCommitId(headInfo);
-
 	const workspaceOutline = useWorkspaceOutline({ projectId, expandedCommitId });
 
 	const navigationIndexUnfiltered = buildNavigationIndex(workspaceOutline);
@@ -1927,7 +1925,7 @@ const ProjectPage: FC = () => {
 
 				<div className={styles.section}>
 					<BaseCommitRow
-						commitId={commonBaseCommitId}
+						commitId={getCommonBaseCommitId(headInfo)}
 						isSelected={selectedItem?._tag === "BaseCommit"}
 						navigationIndex={navigationIndex}
 						operationMode={operationMode}
