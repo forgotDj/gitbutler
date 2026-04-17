@@ -30,9 +30,7 @@ export const tauriBaseQuery: TauriBaseQueryFn = async (
 	} catch (error: unknown) {
 		const name = `API error: (${command})`;
 		if (isReduxError(error)) {
-			const newMessage =
-				`command: ${command}\nparams: ${JSON.stringify(args)})\n\n` + error.message;
-			return { error: { name, message: newMessage, code: error.code } };
+			return { error: { name, message: error.message, code: error.code } };
 		}
 
 		if (isErrorlike(error)) {

@@ -1,4 +1,6 @@
+import { SilentError } from "$lib/error/error";
 import { ConflictEntries, type ConflictEntriesObj } from "$lib/files/conflicts";
+import { showToast } from "$lib/notifications/toasts";
 import { createSelectByIds, createSelectNth } from "$lib/state/customSelectors";
 import {
 	invalidatesItem,
@@ -526,6 +528,19 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				const normalizedResponse = normalizeCreateCommitOutcome(response);
 				if (normalizedResponse.newCommit) {
 					return normalizedResponse.newCommit;
+				}
+
+				const allNoEffect = normalizedResponse.rejectedChanges.every(
+					({ reason }) => reason === "noEffectiveChanges",
+				);
+				if (allNoEffect) {
+					showToast({
+						title: "No changes to amend",
+						message:
+							"The selected changes are already part of this commit, so amending had no effect.",
+						style: "info",
+					});
+					throw new SilentError("No effective changes to amend");
 				}
 
 				const rejected = normalizedResponse.rejectedChanges
