@@ -54,7 +54,6 @@ import {
 	CommitLabel,
 	shortCommitId,
 	decodeRefName,
-	getRelative,
 	encodeRefName,
 	assert,
 } from "#ui/routes/project/$id/shared.tsx";
@@ -541,7 +540,7 @@ const usePreviewDiffState = ({
 				dispatch(
 					projectActions.selectHunk({
 						projectId,
-						hunk: getRelative(hunkKeys, currentIndex, offset),
+						hunk: hunkKeys[currentIndex + offset] ?? normalizedSelectedHunk,
 					}),
 				);
 			},

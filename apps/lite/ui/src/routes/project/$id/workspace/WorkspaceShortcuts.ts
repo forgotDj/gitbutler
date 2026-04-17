@@ -29,8 +29,8 @@ import { operationSourceFromItem } from "./OperationSource.ts";
 import { useResolveOperationSource } from "./ResolvedOperationSource.ts";
 import { PreviewImperativeHandle } from "./route.tsx";
 import {
-	getAdjacentItem,
-	getAdjacentSection,
+	getAdjacent,
+	getNextSection,
 	getPreviousSection,
 	type NavigationIndex,
 } from "./WorkspaceModel.ts";
@@ -745,10 +745,27 @@ export const useWorkspaceShortcuts = ({
 						}),
 					),
 				Move: ({ offset }) =>
-					selectItem(getAdjacentItem(navigationIndex, selectedItem, offset) ?? null),
-				NextSection: () => selectItem(getAdjacentSection(navigationIndex, selectedItem, 1) ?? null),
+					selectItem(
+						getAdjacent({
+							navigationIndex,
+							selectedItem,
+							offset,
+						}) ?? selectedItem,
+					),
+				NextSection: () =>
+					selectItem(
+						getNextSection({
+							navigationIndex,
+							selectedItem,
+						}) ?? selectedItem,
+					),
 				PreviousSection: () =>
-					selectItem(getPreviousSection(navigationIndex, selectedItem) ?? null),
+					selectItem(
+						getPreviousSection({
+							navigationIndex,
+							selectedItem,
+						}) ?? selectedItem,
+					),
 			}),
 		);
 
