@@ -1,6 +1,6 @@
 # GitButler CLI Skill
 
-Claude Code skill for working with the GitButler CLI (`but` command) in workspace mode.
+Agent skill for working with the GitButler CLI (`but` command) in workspace mode.
 
 ## Installation
 
@@ -10,7 +10,7 @@ Install this skill using the GitButler CLI:
 but skill install    # Prompts for scope and format
 ```
 
-The command prompts you to choose local (repository) or global (home directory) scope first, then prompts you to select a skill format (Claude Code, OpenCode, Codex, GitHub Copilot, Cursor, or Windsurf) and installs to the appropriate location. When run outside a git repository, local scope is unavailable and the default install location is global (home directory), but you can still install to a custom location with `--path` using an absolute or `~` path.
+The command prompts you to choose local (repository) or global (home directory) scope first, then prompts you to select a skill format (Agent Skills / `.agents/skills`, Claude Code, OpenCode, Codex, GitHub Copilot, Cursor, or Windsurf) and installs to the appropriate location. When run outside a git repository, local scope is unavailable and the default install location is global (home directory), but you can still install to a custom location with `--path` using an absolute or `~` path.
 
 **Options:**
 - `--path <path>` - Install to a custom path (outside a repository, relative paths require `--global`)
@@ -20,7 +20,7 @@ In non-interactive mode, use `--path` or `--detect`.
 
 **Requirements:**
 - **GitButler CLI** installed: `curl -sSL https://gitbutler.com/install.sh | sh`
-- **Claude Code, OpenCode, Codex, GitHub Copilot, Cursor, or Windsurf**
+- **An AI assistant with skills support** such as Agent Skills / `.agents/skills`, Claude Code, OpenCode, Codex, GitHub Copilot, Cursor, or Windsurf
 - Repository initialized with GitButler: `but setup` (only for local installs)
 
 **Updating:**

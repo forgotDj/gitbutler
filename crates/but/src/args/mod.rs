@@ -1102,10 +1102,10 @@ pub enum Subcommands {
         branch: Option<String>,
     },
 
-    /// Manage Claude AI skills for GitButler.
+    /// Manage AI agent skills for GitButler.
     ///
     /// Skills provide enhanced AI capabilities for working with GitButler through
-    /// Claude Code and other AI assistants.
+    /// Claude Code, Codex, and other AI assistants.
     ///
     /// Use `but skill install` to install the GitButler skill files. By default,
     /// it prompts for scope (repository or global home directory) and then format.
