@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 
 use but_rebase::graph_rebase::mutate::InsertSide;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -62,45 +62,40 @@ pub(super) fn confirm_key_binds() -> KeyBinds {
 
     register_quit_key_binds(&mut key_binds, all_modes.clone());
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "select",
-        chord_display: "enter",
         key_matcher: press().code(KeyCode::Enter),
         modes: all_modes.clone(),
         message: Message::Confirm(ConfirmMessage::Confirm),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "yes",
-        chord_display: "y",
         key_matcher: press().code(KeyCode::Char('y')),
         modes: all_modes.clone(),
         message: Message::Confirm(ConfirmMessage::Yes),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "no",
-        chord_display: "esc/n",
         key_matcher: press().code(KeyCode::Char('n')).alt_code(KeyCode::Esc),
         modes: all_modes.clone(),
         message: Message::Confirm(ConfirmMessage::No),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "left",
-        chord_display: "←/h",
         key_matcher: press().code(KeyCode::Char('h')).alt_code(KeyCode::Left),
         modes: all_modes.clone(),
         message: Message::Confirm(ConfirmMessage::Left),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "right",
-        chord_display: "→/l",
         key_matcher: press().code(KeyCode::Char('l')).alt_code(KeyCode::Right),
         modes: all_modes.clone(),
         message: Message::Confirm(ConfirmMessage::Right),
@@ -115,36 +110,32 @@ pub(super) fn branch_picker_key_binds() -> KeyBinds {
 
     let all_modes = ModeDiscriminant::iter().collect::<Vec<_>>();
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "down",
-        chord_display: "↓",
         key_matcher: press().alt_code(KeyCode::Down),
         modes: all_modes.clone(),
         message: Message::BranchPicker(BranchPickerMessage::MoveCursorDown),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "up",
-        chord_display: "↑",
         key_matcher: press().alt_code(KeyCode::Up),
         modes: all_modes.clone(),
         message: Message::BranchPicker(BranchPickerMessage::MoveCursorUp),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "confirm",
-        chord_display: "enter",
         key_matcher: press().code(KeyCode::Enter),
         modes: all_modes.clone(),
         message: Message::BranchPicker(BranchPickerMessage::Confirm),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "back",
-        chord_display: "esc",
         key_matcher: press().code(KeyCode::Esc),
         modes: all_modes.clone(),
         message: Message::BranchPicker(BranchPickerMessage::Close),
@@ -155,18 +146,16 @@ pub(super) fn branch_picker_key_binds() -> KeyBinds {
 }
 
 fn register_detail_key_binds(key_binds: &mut KeyBinds) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "next hunk",
-        chord_display: "↓/j",
         key_matcher: press().code(KeyCode::Char('j')).alt_code(KeyCode::Down),
         modes: Vec::from([ModeDiscriminant::Details]),
         message: Message::Details(DetailsMessage::SelectNextSection),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "prev hunk",
-        chord_display: "↑/k",
         key_matcher: press().code(KeyCode::Char('k')).alt_code(KeyCode::Up),
         modes: Vec::from([ModeDiscriminant::Details]),
         message: Message::Details(DetailsMessage::SelectPrevSection),
@@ -175,72 +164,64 @@ fn register_detail_key_binds(key_binds: &mut KeyBinds) {
 
     let scroll_distance = 5;
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "scroll down",
-        chord_display: "shift+j",
         key_matcher: press().shift().code(KeyCode::Char('J')),
         modes: Vec::from([ModeDiscriminant::Details]),
         message: Message::Details(DetailsMessage::ScrollDown(scroll_distance)),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "scroll up",
-        chord_display: "shift+k",
         key_matcher: press().shift().code(KeyCode::Char('K')),
         modes: Vec::from([ModeDiscriminant::Details]),
         message: Message::Details(DetailsMessage::ScrollUp(scroll_distance)),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "rub",
-        chord_display: "r",
         key_matcher: press().code(KeyCode::Char('r')),
         modes: Vec::from([ModeDiscriminant::Details]),
         message: Message::Details(DetailsMessage::StartRub),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "focus status",
-        chord_display: "h",
         key_matcher: press().code(KeyCode::Char('h')),
         modes: Vec::from([ModeDiscriminant::Details]),
         message: Message::EnterNormalMode,
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "hide details",
-        chord_display: "d",
         key_matcher: press().code(KeyCode::Char('d')),
         modes: Vec::from([ModeDiscriminant::Details]),
         message: Message::Details(DetailsMessage::ToggleVisibility),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "command",
-        chord_display: ":",
         key_matcher: press().code(KeyCode::Char(':')),
         modes: Vec::from([ModeDiscriminant::Details]),
         message: Message::Command(CommandMessage::Start(CommandModeKind::But)),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "shell command",
-        chord_display: "!",
         key_matcher: press().code(KeyCode::Char('!')),
         modes: Vec::from([ModeDiscriminant::Details]),
         message: Message::Command(CommandMessage::Start(CommandModeKind::Shell)),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "normal mode",
-        chord_display: "ctrl+[",
         key_matcher: press().control().code(KeyCode::Char('[')),
         modes: Vec::from([ModeDiscriminant::Details]),
         message: Message::EnterNormalMode,
@@ -253,36 +234,32 @@ fn register_detail_key_binds(key_binds: &mut KeyBinds) {
 }
 
 fn register_global_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscriminant>) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "down",
-        chord_display: "↓/j",
         key_matcher: press().code(KeyCode::Char('j')).alt_code(KeyCode::Down),
         modes: modes.clone(),
         message: Message::MoveCursorDown,
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "up",
-        chord_display: "↑/k",
         key_matcher: press().code(KeyCode::Char('k')).alt_code(KeyCode::Up),
         modes: modes.clone(),
         message: Message::MoveCursorUp,
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "next section",
-        chord_display: "shift+j",
         key_matcher: press().shift().code(KeyCode::Char('J')),
         modes: modes.clone(),
         message: Message::MoveCursorNextSection,
         hide_from_hotbar: true,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "prev section",
-        chord_display: "shift+k",
         key_matcher: press().shift().code(KeyCode::Char('K')),
         modes: modes.clone(),
         message: Message::MoveCursorPreviousSection,
@@ -291,18 +268,16 @@ fn register_global_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscrimina
 
     register_quit_key_binds(key_binds, modes.clone());
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "normal mode",
-        chord_display: "ctrl+[",
         key_matcher: press().control().code(KeyCode::Char('[')),
         modes: modes.clone(),
         message: Message::EnterNormalMode,
         hide_from_hotbar: true,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "details",
-        chord_display: "d",
         key_matcher: press().code(KeyCode::Char('d')),
         modes: modes.clone(),
         message: Message::Details(DetailsMessage::ToggleVisibility),
@@ -313,9 +288,8 @@ fn register_global_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscrimina
 }
 
 fn register_unassigned_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscriminant>) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "unassigned",
-        chord_display: "z",
         key_matcher: press().code(KeyCode::Char('z')),
         modes: modes.clone(),
         message: Message::SelectUnassigned,
@@ -324,9 +298,8 @@ fn register_unassigned_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscri
 }
 
 fn register_branch_picker_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscriminant>) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "goto branch",
-        chord_display: "t",
         key_matcher: press().code(KeyCode::Char('t')),
         modes: modes.clone(),
         message: Message::PickAndGotoBranch,
@@ -335,18 +308,16 @@ fn register_branch_picker_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDis
 }
 
 fn register_grow_shrink_details_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscriminant>) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "grow details",
-        chord_display: "+",
         key_matcher: press().code(KeyCode::Char('+')),
         modes: modes.clone(),
         message: Message::GrowDetails,
         hide_from_hotbar: true,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "shrink details",
-        chord_display: "-",
         key_matcher: press().code(KeyCode::Char('-')),
         modes: modes.clone(),
         message: Message::ShrinkDetails,
@@ -355,9 +326,8 @@ fn register_grow_shrink_details_key_binds(key_binds: &mut KeyBinds, modes: Vec<M
 }
 
 fn register_quit_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscriminant>) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "quit",
-        chord_display: "q",
         key_matcher: press().code(KeyCode::Char('q')),
         modes,
         message: Message::Quit,
@@ -366,153 +336,136 @@ fn register_quit_key_binds(key_binds: &mut KeyBinds, modes: Vec<ModeDiscriminant
 }
 
 fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "rub",
-        chord_display: "r",
         key_matcher: press().code(KeyCode::Char('r')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Rub(RubMessage::Start),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "reverse rub",
-        chord_display: "shift+r",
         key_matcher: press().shift().code(KeyCode::Char('R')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Rub(RubMessage::StartReverse),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "commit",
-        chord_display: "c",
         key_matcher: press().code(KeyCode::Char('c')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Commit(CommitMessage::Start),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "new commit",
-        chord_display: "n",
         key_matcher: press().code(KeyCode::Char('n')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Commit(CommitMessage::CreateEmpty),
         hide_from_hotbar: true,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "move",
-        chord_display: "m",
         key_matcher: press().code(KeyCode::Char('m')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Move(MoveMessage::Start),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "branch",
-        chord_display: "b",
         key_matcher: press().code(KeyCode::Char('b')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::NewBranch,
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "focus details",
-        chord_display: "l",
         key_matcher: press().code(KeyCode::Char('l')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::EnterDetailsMode,
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "reword inline",
-        chord_display: "enter",
         key_matcher: press().code(KeyCode::Enter),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Reword(RewordMessage::InlineStart),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "reword",
-        chord_display: "shift+m",
         key_matcher: press().shift().code(KeyCode::Char('M')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Reword(RewordMessage::WithEditor),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "files",
-        chord_display: "f",
         key_matcher: press().code(KeyCode::Char('f')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Files(FilesMessage::ToggleFilesForCommit),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "show all files",
-        chord_display: "shift+f",
         key_matcher: press().shift().code(KeyCode::Char('F')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Files(FilesMessage::ToggleGlobalFilesList),
         hide_from_hotbar: true,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "discard",
-        chord_display: "x",
         key_matcher: press().code(KeyCode::Char('x')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Discard,
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "command",
-        chord_display: ":",
         key_matcher: press().code(KeyCode::Char(':')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Command(CommandMessage::Start(CommandModeKind::But)),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "shell command",
-        chord_display: "!",
         key_matcher: press().code(KeyCode::Char('!')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Command(CommandMessage::Start(CommandModeKind::Shell)),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "reload",
-        chord_display: "ctrl+r",
         key_matcher: press().control().code(KeyCode::Char('r')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::Reload(None),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "copy",
-        chord_display: "shift+c",
         key_matcher: press().shift().code(KeyCode::Char('C')),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::CopySelection,
         hide_from_hotbar: true,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "back",
-        chord_display: "esc",
         key_matcher: press().code(KeyCode::Esc),
         modes: Vec::from([ModeDiscriminant::Normal]),
         message: Message::EnterNormalMode,
@@ -521,27 +474,24 @@ fn register_normal_mode_key_binds(key_binds: &mut KeyBinds) {
 }
 
 fn register_rub_mode_key_binds(key_binds: &mut KeyBinds) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "confirm",
-        chord_display: "enter",
         key_matcher: press().code(KeyCode::Enter),
         modes: Vec::from([ModeDiscriminant::Rub]),
         message: Message::Rub(RubMessage::Confirm),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "back",
-        chord_display: "esc",
         key_matcher: press().code(KeyCode::Esc),
         modes: Vec::from([ModeDiscriminant::Rub]),
         message: Message::EnterNormalMode,
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "back",
-        chord_display: "r",
         key_matcher: press().code(KeyCode::Char('r')),
         modes: Vec::from([ModeDiscriminant::Rub]),
         message: Message::EnterNormalMode,
@@ -550,36 +500,32 @@ fn register_rub_mode_key_binds(key_binds: &mut KeyBinds) {
 }
 
 fn register_inline_reword_mode_key_binds(key_binds: &mut KeyBinds) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "confirm",
-        chord_display: "enter",
         key_matcher: press().code(KeyCode::Enter),
         modes: Vec::from([ModeDiscriminant::InlineReword]),
         message: Message::Reword(RewordMessage::InlineConfirm),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "open editor",
-        chord_display: "alt+e",
         key_matcher: press().alt().code(KeyCode::Char('e')),
         modes: Vec::from([ModeDiscriminant::InlineReword]),
         message: Message::Reword(RewordMessage::OpenEditor),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "back",
-        chord_display: "esc",
         key_matcher: press().code(KeyCode::Esc),
         modes: Vec::from([ModeDiscriminant::InlineReword]),
         message: Message::EnterNormalMode,
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "normal mode",
-        chord_display: "ctrl+[",
         key_matcher: press().control().code(KeyCode::Char('[')),
         modes: Vec::from([ModeDiscriminant::InlineReword]),
         message: Message::EnterNormalMode,
@@ -588,27 +534,24 @@ fn register_inline_reword_mode_key_binds(key_binds: &mut KeyBinds) {
 }
 
 fn register_command_mode_key_binds(key_binds: &mut KeyBinds) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "run",
-        chord_display: "enter",
         key_matcher: press().code(KeyCode::Enter),
         modes: Vec::from([ModeDiscriminant::Command]),
         message: Message::Command(CommandMessage::Confirm),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "back",
-        chord_display: "esc",
         key_matcher: press().code(KeyCode::Esc),
         modes: Vec::from([ModeDiscriminant::Command]),
         message: Message::EnterNormalMode,
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "normal mode",
-        chord_display: "ctrl+[",
         key_matcher: press().control().code(KeyCode::Char('[')),
         modes: Vec::from([ModeDiscriminant::Command]),
         message: Message::EnterNormalMode,
@@ -617,54 +560,48 @@ fn register_command_mode_key_binds(key_binds: &mut KeyBinds) {
 }
 
 fn register_commit_mode_key_binds(key_binds: &mut KeyBinds) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "commit",
-        chord_display: "enter",
         key_matcher: press().code(KeyCode::Enter),
         modes: Vec::from([ModeDiscriminant::Commit]),
         message: Message::Commit(CommitMessage::Confirm),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "above",
-        chord_display: "a",
         key_matcher: press().code(KeyCode::Char('a')),
         modes: Vec::from([ModeDiscriminant::Commit]),
         message: Message::Commit(CommitMessage::SetInsertSide(InsertSide::Above)),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "below",
-        chord_display: "b",
         key_matcher: press().code(KeyCode::Char('b')),
         modes: Vec::from([ModeDiscriminant::Commit]),
         message: Message::Commit(CommitMessage::SetInsertSide(InsertSide::Below)),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "empty message",
-        chord_display: "e",
         key_matcher: press().code(KeyCode::Char('e')),
         modes: Vec::from([ModeDiscriminant::Commit]),
         message: Message::Commit(CommitMessage::ToggleEmptyMessage),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "back",
-        chord_display: "c",
         key_matcher: press().code(KeyCode::Char('c')),
         modes: Vec::from([ModeDiscriminant::Commit]),
         message: Message::EnterNormalMode,
         hide_from_hotbar: true,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "back",
-        chord_display: "esc",
         key_matcher: press().code(KeyCode::Esc),
         modes: Vec::from([ModeDiscriminant::Commit]),
         message: Message::EnterNormalMode,
@@ -673,45 +610,40 @@ fn register_commit_mode_key_binds(key_binds: &mut KeyBinds) {
 }
 
 fn register_move_mode_key_binds(key_binds: &mut KeyBinds) {
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "move",
-        chord_display: "enter",
         key_matcher: press().code(KeyCode::Enter),
         modes: Vec::from([ModeDiscriminant::Move]),
         message: Message::Move(MoveMessage::Confirm),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "above",
-        chord_display: "a",
         key_matcher: press().code(KeyCode::Char('a')),
         modes: Vec::from([ModeDiscriminant::Move]),
         message: Message::Move(MoveMessage::SetInsertSide(InsertSide::Above)),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "below",
-        chord_display: "b",
         key_matcher: press().code(KeyCode::Char('b')),
         modes: Vec::from([ModeDiscriminant::Move]),
         message: Message::Move(MoveMessage::SetInsertSide(InsertSide::Below)),
         hide_from_hotbar: false,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "back",
-        chord_display: "m",
         key_matcher: press().code(KeyCode::Char('m')),
         modes: Vec::from([ModeDiscriminant::Move]),
         message: Message::EnterNormalMode,
         hide_from_hotbar: true,
     });
 
-    key_binds.register(StaticKeyBind {
+    key_binds.register(KeyBindDef {
         short_description: "back",
-        chord_display: "esc",
         key_matcher: press().code(KeyCode::Esc),
         modes: Vec::from([ModeDiscriminant::Move]),
         message: Message::EnterNormalMode,
@@ -740,8 +672,10 @@ impl KeyBinds {
 
     fn register<T>(&mut self, key_bind: T) -> KeyBindId
     where
-        T: KeyBind,
+        T: IntoKeyBind,
     {
+        let key_bind = key_bind.into_key_bind();
+
         let id = KeyBindId(self.all_key_binds.len());
 
         for mode in ModeDiscriminant::iter() {
@@ -769,10 +703,27 @@ impl KeyBinds {
     }
 }
 
-pub(super) trait KeyBind: std::fmt::Debug + 'static {
-    fn short_description(&self) -> &'static str;
+pub(super) trait IntoKeyBind {
+    type KeyBind: KeyBind;
 
-    fn chord_display(&self) -> &'static str;
+    fn into_key_bind(self) -> Self::KeyBind;
+}
+
+impl<T> IntoKeyBind for T
+where
+    T: KeyBind,
+{
+    type KeyBind = T;
+
+    fn into_key_bind(self) -> Self::KeyBind {
+        self
+    }
+}
+
+pub(super) trait KeyBind: std::fmt::Debug + 'static {
+    fn short_description(&self) -> &str;
+
+    fn chord_display(&self) -> &str;
 
     fn hide_from_hotbar(&self) -> bool {
         false
@@ -786,9 +737,33 @@ pub(super) trait KeyBind: std::fmt::Debug + 'static {
 }
 
 #[derive(Debug)]
+struct KeyBindDef {
+    short_description: &'static str,
+    key_matcher: KeyMatcher,
+    modes: Vec<ModeDiscriminant>,
+    message: Message,
+    hide_from_hotbar: bool,
+}
+
+impl IntoKeyBind for KeyBindDef {
+    type KeyBind = StaticKeyBind;
+
+    fn into_key_bind(self) -> Self::KeyBind {
+        StaticKeyBind {
+            short_description: self.short_description,
+            chord_display: self.key_matcher.chord_display(),
+            key_matcher: self.key_matcher,
+            modes: self.modes,
+            message: self.message,
+            hide_from_hotbar: self.hide_from_hotbar,
+        }
+    }
+}
+
+#[derive(Debug)]
 struct StaticKeyBind {
     short_description: &'static str,
-    chord_display: &'static str,
+    chord_display: Cow<'static, str>,
     key_matcher: KeyMatcher,
     modes: Vec<ModeDiscriminant>,
     message: Message,
@@ -796,12 +771,12 @@ struct StaticKeyBind {
 }
 
 impl KeyBind for StaticKeyBind {
-    fn short_description(&self) -> &'static str {
+    fn short_description(&self) -> &str {
         self.short_description
     }
 
-    fn chord_display(&self) -> &'static str {
-        self.chord_display
+    fn chord_display(&self) -> &str {
+        &self.chord_display
     }
 
     fn available_in_mode(&self, mode: ModeDiscriminant) -> bool {
@@ -871,6 +846,47 @@ impl KeyMatcher {
         self
     }
 
+    /// Render this matcher into the hotbar chord display format.
+    fn chord_display(&self) -> Cow<'static, str> {
+        let mut codes = self.codes.into_iter().flatten().collect::<Vec<_>>();
+        codes.sort_by_key(|code| self.display_sort_key(*code));
+
+        let displays = codes
+            .into_iter()
+            .map(|code| self.format_code(code))
+            .collect::<Vec<_>>();
+        Cow::Owned(displays.join("/"))
+    }
+
+    /// Return the sort key used to produce a stable, user-facing display order.
+    fn display_sort_key(&self, code: KeyCode) -> u8 {
+        match code {
+            KeyCode::Char(_) => 1,
+            _ => 0,
+        }
+    }
+
+    /// Format a single key code together with this matcher's modifiers.
+    fn format_code(&self, code: KeyCode) -> String {
+        let mut prefixes = Vec::new();
+        if self.modifiers.contains(KeyModifiers::CONTROL) {
+            prefixes.push("ctrl");
+        }
+        if self.modifiers.contains(KeyModifiers::ALT) {
+            prefixes.push("alt");
+        }
+        if self.modifiers.contains(KeyModifiers::SHIFT) {
+            prefixes.push("shift");
+        }
+
+        let key = format_key_code(code, self.modifiers.contains(KeyModifiers::SHIFT));
+        if prefixes.is_empty() {
+            key
+        } else {
+            format!("{}+{key}", prefixes.join("+"))
+        }
+    }
+
     #[inline]
     fn matches(self, ev: &KeyEvent) -> bool {
         if self.kind != ev.kind {
@@ -885,5 +901,123 @@ impl KeyMatcher {
             .into_iter()
             .flatten()
             .any(|key_code| key_code == ev.code)
+    }
+}
+
+/// Format a key code into the hotbar display representation.
+fn format_key_code(code: KeyCode, shifted: bool) -> String {
+    match code {
+        KeyCode::Backspace => "backspace".to_owned(),
+        KeyCode::Enter => "enter".to_owned(),
+        KeyCode::Left => "←".to_owned(),
+        KeyCode::Right => "→".to_owned(),
+        KeyCode::Up => "↑".to_owned(),
+        KeyCode::Down => "↓".to_owned(),
+        KeyCode::Home => "home".to_owned(),
+        KeyCode::End => "end".to_owned(),
+        KeyCode::PageUp => "pageup".to_owned(),
+        KeyCode::PageDown => "pagedown".to_owned(),
+        KeyCode::Tab => "tab".to_owned(),
+        KeyCode::BackTab => "backtab".to_owned(),
+        KeyCode::Delete => "del".to_owned(),
+        KeyCode::Insert => "ins".to_owned(),
+        KeyCode::Esc => "esc".to_owned(),
+        KeyCode::Char(ch) => normalize_char_for_display(ch, shifted).to_string(),
+        KeyCode::Null => "null".to_owned(),
+        KeyCode::CapsLock => "capslock".to_owned(),
+        KeyCode::ScrollLock => "scrolllock".to_owned(),
+        KeyCode::NumLock => "numlock".to_owned(),
+        KeyCode::PrintScreen => "printscreen".to_owned(),
+        KeyCode::Pause => "pause".to_owned(),
+        KeyCode::Menu => "menu".to_owned(),
+        KeyCode::KeypadBegin => "keypadbegin".to_owned(),
+        KeyCode::Media(_) => "media".to_owned(),
+        KeyCode::Modifier(_) => "modifier".to_owned(),
+        KeyCode::F(number) => format!("f{number}"),
+    }
+}
+
+/// Normalize a character for chord display rendering.
+fn normalize_char_for_display(ch: char, shifted: bool) -> char {
+    if shifted && ch.is_ascii_alphabetic() {
+        ch.to_ascii_lowercase()
+    } else {
+        ch
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chord_display_for_plain_and_modified_keys() {
+        assert_eq!(press().code(KeyCode::Char('q')).chord_display(), "q");
+        assert_eq!(press().code(KeyCode::Enter).chord_display(), "enter");
+        assert_eq!(press().code(KeyCode::Esc).chord_display(), "esc");
+        assert_eq!(
+            press().control().code(KeyCode::Char('r')).chord_display(),
+            "ctrl+r"
+        );
+        assert_eq!(
+            press().control().code(KeyCode::Char('[')).chord_display(),
+            "ctrl+["
+        );
+        assert_eq!(
+            press().alt().code(KeyCode::Char('e')).chord_display(),
+            "alt+e"
+        );
+        assert_eq!(
+            press().shift().code(KeyCode::Char('J')).chord_display(),
+            "shift+j"
+        );
+    }
+
+    #[test]
+    fn chord_display_for_alternate_codes() {
+        assert_eq!(
+            press()
+                .code(KeyCode::Char('j'))
+                .alt_code(KeyCode::Down)
+                .chord_display(),
+            "↓/j"
+        );
+        assert_eq!(
+            press()
+                .code(KeyCode::Char('k'))
+                .alt_code(KeyCode::Up)
+                .chord_display(),
+            "↑/k"
+        );
+        assert_eq!(
+            press()
+                .code(KeyCode::Char('h'))
+                .alt_code(KeyCode::Left)
+                .chord_display(),
+            "←/h"
+        );
+        assert_eq!(
+            press()
+                .code(KeyCode::Char('l'))
+                .alt_code(KeyCode::Right)
+                .chord_display(),
+            "→/l"
+        );
+        assert_eq!(
+            press()
+                .code(KeyCode::Char('n'))
+                .alt_code(KeyCode::Esc)
+                .chord_display(),
+            "esc/n"
+        );
+    }
+
+    #[test]
+    fn matcher_still_matches_primary_and_alternate_codes() {
+        let matcher = press().code(KeyCode::Char('j')).alt_code(KeyCode::Down);
+
+        assert!(matcher.matches(&KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE)));
+        assert!(matcher.matches(&KeyEvent::new(KeyCode::Down, KeyModifiers::NONE)));
+        assert!(!matcher.matches(&KeyEvent::new(KeyCode::Char('j'), KeyModifiers::SHIFT)));
     }
 }
