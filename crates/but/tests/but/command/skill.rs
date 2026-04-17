@@ -2,6 +2,12 @@ use snapbox::str;
 
 use crate::utils::{CommandExt, Sandbox};
 
+fn path_ends_with_gitbutler_agents_dir(path: &str) -> bool {
+    let normalized = path.replace('\\', "/");
+    normalized.ends_with("/.agents/skills/gitbutler")
+        || normalized.ends_with(".agents/skills/gitbutler")
+}
+
 #[test]
 fn skill_check_local_outside_repo_fails() -> anyhow::Result<()> {
     let env = Sandbox::empty()?;
@@ -107,6 +113,74 @@ fn skill_install_absolute_path_outside_repo_does_not_require_global() -> anyhow:
     assert_eq!(
         json.get("path").and_then(|v| v.as_str()),
         Some(expected_path.as_str())
+    );
+
+    Ok(())
+}
+
+#[test]
+fn skill_check_detects_agent_skills_installation_in_repo() -> anyhow::Result<()> {
+    let env = Sandbox::open_with_default_settings("repo-no-remote")?;
+
+    env.but("skill install --json --path .agents/skills/gitbutler")
+        .allow_json()
+        .assert()
+        .success();
+
+    let output = env
+        .but("skill check --local --json")
+        .allow_json()
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json: serde_json::Value = serde_json::from_slice(&output)?;
+    let skills = json
+        .get("skills")
+        .and_then(|value| value.as_array())
+        .expect("skills array should be present");
+
+    assert!(
+        skills.iter().any(|skill| {
+            skill
+                .get("path")
+                .and_then(|value| value.as_str())
+                .is_some_and(path_ends_with_gitbutler_agents_dir)
+                && skill.get("format_name").and_then(|value| value.as_str()) == Some("Agent Skills")
+                && skill.get("scope").and_then(|value| value.as_str()) == Some("local")
+        }),
+        "expected Agent Skills installation in .agents/skills/gitbutler, got: {skills:?}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn skill_install_detect_finds_agent_skills_installation_in_repo() -> anyhow::Result<()> {
+    let env = Sandbox::open_with_default_settings("repo-no-remote")?;
+
+    env.but("skill install --json --path .agents/skills/gitbutler")
+        .allow_json()
+        .assert()
+        .success();
+
+    let output = env
+        .but("skill install --json --detect")
+        .allow_json()
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let json: serde_json::Value = serde_json::from_slice(&output)?;
+    assert!(
+        json.get("path")
+            .and_then(|value| value.as_str())
+            .is_some_and(path_ends_with_gitbutler_agents_dir),
+        "expected detect to reuse .agents/skills/gitbutler, got: {json:?}"
     );
 
     Ok(())

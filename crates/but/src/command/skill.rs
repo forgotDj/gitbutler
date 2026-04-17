@@ -99,6 +99,12 @@ impl SkillFormat {
 // Common skill folder formats
 const SKILL_FORMATS: &[SkillFormat] = &[
     SkillFormat {
+        name: "Agent Skills",
+        description: "Shared .agents/skills format",
+        availability: SkillFormatAvailability::LocalAndGlobal,
+        path: ".agents/skills/gitbutler",
+    },
+    SkillFormat {
         name: "Claude Code",
         description: "Claude Code CLI skill format",
         availability: SkillFormatAvailability::LocalAndGlobal,
