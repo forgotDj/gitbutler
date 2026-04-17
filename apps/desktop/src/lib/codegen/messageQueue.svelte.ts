@@ -15,6 +15,7 @@ import {
 } from "$lib/state/uiState.svelte";
 import { inject } from "@gitbutler/core/context";
 import { chipToasts } from "@gitbutler/ui";
+import { SvelteMap } from "svelte/reactivity";
 import type { PromptAttachment } from "$lib/codegen/types";
 import type { ModelType, PermissionMode, ThinkingLevel } from "$lib/state/uiState.svelte";
 import type { Reactive } from "@gitbutler/shared/storeUtils";
@@ -22,6 +23,12 @@ import type { Reactive } from "@gitbutler/shared/storeUtils";
 /**
  * Performs the actual message sending logic.
  * Shared by both MessageSender instances and MessageQueueProcessor.
+ *
+ * Returns `true` when a message was dispatched that will asynchronously
+ * activate the Claude stack (so callers that care about ordering must wait
+ * for the stack to become active before starting the next send). Returns
+ * `false` for operations that complete inline without activating the stack
+ * (slash commands, compaction — which awaits end-to-end).
  */
 async function performSend({
 	prompt,
@@ -45,13 +52,13 @@ async function performSend({
 	claudeCodeService: ClaudeCodeService;
 	codegenAnalytics: CodegenAnalytics;
 	attachments?: PromptAttachment[];
-}) {
+}): Promise<boolean> {
 	if (prompt.startsWith("/compact")) {
 		await claudeCodeService.compactHistory({
 			projectId,
 			stackId,
 		});
-		return;
+		return false;
 	}
 
 	// Handle /add-dir command
@@ -65,12 +72,12 @@ async function performSend({
 				chipToasts.error(`Invalid directory path: ${path}`);
 			}
 		}
-		return;
+		return false;
 	}
 
 	if (prompt.startsWith("/")) {
 		chipToasts.warning("Slash commands are not yet supported");
-		return;
+		return false;
 	}
 
 	// Await analytics data before sending message
@@ -96,6 +103,7 @@ async function performSend({
 		},
 		{ properties: analyticsProperties },
 	);
+	return true;
 }
 
 export class MessageQueueProcessor {
@@ -103,6 +111,18 @@ export class MessageQueueProcessor {
 	private claudeCodeService: ClaudeCodeService;
 	private codegenAnalytics: CodegenAnalytics;
 	private uiState: UiState;
+
+	/**
+	 * Per-stack flag tracking whether we've dispatched a send and are waiting
+	 * for the backend to confirm the stack became active. We cannot rely on the
+	 * sendMessage mutation's own promise for this: the backend inserts into its
+	 * active-stacks map inside a `tokio::spawn`, so the mutation resolves
+	 * before the stack is observably active. Until we see isActive flip to
+	 * true, releasing isProcessing would let the main effect fire another send
+	 * against a still-reportedly-inactive stack, which the backend then rejects
+	 * with "Claude is currently thinking".
+	 */
+	private awaitingActivation = new SvelteMap<string, boolean>();
 
 	constructor() {
 		this.clientState = inject(CLIENT_STATE);
@@ -126,9 +146,25 @@ export class MessageQueueProcessor {
 		});
 	}
 
+	private releaseProcessing(stackId: string) {
+		this.awaitingActivation.set(stackId, false);
+		const current = messageQueueSelectors.selectById(this.clientState.messageQueue, stackId);
+		if (!current?.isProcessing) return;
+		this.clientState.dispatch(
+			messageQueueSlice.actions.upsert({
+				...current,
+				isProcessing: false,
+			}),
+		);
+	}
+
 	private handleQueue(queue: MessageQueue) {
 		$effect(() => {
-			if (queue.messages.length === 0 && queue.isProcessing) {
+			if (
+				queue.messages.length === 0 &&
+				queue.isProcessing &&
+				!this.awaitingActivation.get(queue.stackId)
+			) {
 				this.clientState.dispatch(
 					messageQueueSlice.actions.upsert({
 						...queue,
@@ -144,10 +180,20 @@ export class MessageQueueProcessor {
 			stackId: queue.stackId,
 		});
 
+		// Once the backend confirms the stack is active, our send was
+		// registered. Release isProcessing so the main effect can pick up the
+		// next queued message when the stack becomes inactive again.
+		$effect(() => {
+			if (this.awaitingActivation.get(queue.stackId) && isActive.response === true) {
+				this.releaseProcessing(queue.stackId);
+			}
+		});
+
 		$effect(() => {
 			if (
 				queue.messages.length > 0 &&
 				!queue.isProcessing &&
+				!this.awaitingActivation.get(queue.stackId) &&
 				events.response &&
 				isActive.response !== undefined &&
 				!isActive.response
@@ -160,6 +206,7 @@ export class MessageQueueProcessor {
 					status.type === "noMessagesSent"
 				) {
 					const message = queue.messages[0]!;
+					this.awaitingActivation.set(queue.stackId, true);
 					this.clientState.dispatch(
 						messageQueueSlice.actions.upsert({
 							...queue,
@@ -179,19 +226,20 @@ export class MessageQueueProcessor {
 						claudeCodeService: this.claudeCodeService,
 						codegenAnalytics: this.codegenAnalytics,
 						attachments: message.attachments,
-					}).finally(() => {
-						const queue2 = messageQueueSelectors.selectById(
-							this.clientState.messageQueue,
-							queue.stackId,
-						);
-						if (!queue2) return;
-						this.clientState.dispatch(
-							messageQueueSlice.actions.upsert({
-								...queue2,
-								isProcessing: false,
-							}),
-						);
-					});
+					})
+						.then((activatesStack) => {
+							// Slash commands (and compaction, which awaits
+							// end-to-end on the backend) don't leave the stack
+							// active after they resolve, so we won't observe an
+							// isActive→true transition. Release now so the queue
+							// can progress.
+							if (!activatesStack) {
+								this.releaseProcessing(queue.stackId);
+							}
+						})
+						.catch(() => {
+							this.releaseProcessing(queue.stackId);
+						});
 				}
 			}
 		});
