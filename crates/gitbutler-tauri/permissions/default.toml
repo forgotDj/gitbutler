@@ -179,6 +179,7 @@ commands.allow = [
   "secret_delete_global",
   "secret_get_global",
   "secret_set_global",
+  "server_capabilities",
   "set_base_branch",
   "set_gb_config",
   "set_project_active",

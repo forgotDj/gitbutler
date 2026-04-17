@@ -13,6 +13,8 @@
 
 	const projectsService = inject(PROJECTS_SERVICE);
 	const posthog = inject(POSTHOG_WRAPPER);
+	const serverCapabilitiesQuery = $derived(projectsService.serverCapabilities());
+	const canAddProjects = $derived(serverCapabilitiesQuery.response?.canAddProjects ?? true);
 
 	let newProjectLoading = $state(false);
 	let directoryInputElement = $state<HTMLInputElement | undefined>();
@@ -49,20 +51,22 @@
 				bind:this={directoryInputElement}
 				data-testid="test-directory-path"
 			/>
-			<WelcomeAction
-				title="Add local project"
-				loading={newProjectLoading}
-				onclick={onNewProject}
-				dimMessage
-				testId={TestId.WelcomePageAddLocalProjectButton}
-			>
-				{#snippet icon()}
-					{@html newProjectSvg}
-				{/snippet}
-				{#snippet message()}
-					Should be a valid git repository
-				{/snippet}
-			</WelcomeAction>
+			{#if canAddProjects}
+				<WelcomeAction
+					title="Add local project"
+					loading={newProjectLoading}
+					onclick={onNewProject}
+					dimMessage
+					testId={TestId.WelcomePageAddLocalProjectButton}
+				>
+					{#snippet icon()}
+						{@html newProjectSvg}
+					{/snippet}
+					{#snippet message()}
+						Should be a valid git repository
+					{/snippet}
+				</WelcomeAction>
+			{/if}
 			<WelcomeAction title="Clone repository" onclick={onCloneProject} dimMessage>
 				{#snippet icon()}
 					{@html cloneRepoSvg}

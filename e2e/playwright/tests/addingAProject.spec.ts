@@ -1,5 +1,5 @@
 import { getBaseURL, startGitButler, type GitButler } from "../src/setup.ts";
-import { clickByTestId, getByTestId, waitForTestId } from "../src/util.ts";
+import { clickByTestId, getByTestId, mockPickDirectory, waitForTestId } from "../src/util.ts";
 import { expect, test } from "@playwright/test";
 
 let gitbutler: GitButler;
@@ -29,11 +29,8 @@ test("should handle gracefully adding an existing project", async ({ page, conte
 	// Open the project selector
 	await clickByTestId(page, "chrome-header-project-selector");
 	// Click the add local project button
-	const fileChooserPromise = page.waitForEvent("filechooser");
+	await mockPickDirectory(page, projectPath);
 	await clickByTestId(page, "chrome-header-project-selector-add-local-project");
-
-	const fileChooser = await fileChooserPromise;
-	await fileChooser.setFiles(projectPath);
 
 	// Should display the "project already exists" modal
 	await waitForTestId(page, "add-project-already-exists-modal");
@@ -64,11 +61,8 @@ test("should handle gracefully adding bare repo", async ({ page, context }, test
 	clickByTestId(page, "analytics-continue");
 
 	// Add a local project
-	const fileChooserPromise = page.waitForEvent("filechooser");
-	clickByTestId(page, "add-local-project");
-
-	const fileChooser = await fileChooserPromise;
-	await fileChooser.setFiles(projectPath);
+	await mockPickDirectory(page, projectPath);
+	await clickByTestId(page, "add-local-project");
 
 	await waitForTestId(page, "add-project-bare-repo-modal");
 });
@@ -89,11 +83,8 @@ test("should handle gracefully adding a non-git directory", async ({ page, conte
 	clickByTestId(page, "analytics-continue");
 
 	// Add a local project
-	const fileChooserPromise = page.waitForEvent("filechooser");
-	clickByTestId(page, "add-local-project");
-
-	const fileChooser = await fileChooserPromise;
-	await fileChooser.setFiles(projectPath);
+	await mockPickDirectory(page, projectPath);
+	await clickByTestId(page, "add-local-project");
 
 	await waitForTestId(page, "add-project-not-a-git-repo-modal");
 });
@@ -119,11 +110,8 @@ test("should handle adding a project with extra commit and uncommitted changes o
 	clickByTestId(page, "analytics-continue");
 
 	// Click the add local project button
-	const fileChooserPromise = page.waitForEvent("filechooser");
-	clickByTestId(page, "add-local-project");
-
-	const fileChooser = await fileChooserPromise;
-	await fileChooser.setFiles(projectPath);
+	await mockPickDirectory(page, projectPath);
+	await clickByTestId(page, "add-local-project");
 
 	clickByTestId(page, "set-base-branch");
 

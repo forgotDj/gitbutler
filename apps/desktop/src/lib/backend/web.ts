@@ -114,16 +114,22 @@ async function webDocumentDir(): Promise<string> {
 async function webFilePicker<T extends OpenDialogOptions>(
 	options?: T,
 ): Promise<OpenDialogReturn<T>> {
+	// For directory picks, delegate to the backend's native OS dialog which
+	// returns an absolute path. The browser's <input> file picker cannot
+	// provide absolute paths, making it useless for "add project".
+	if (options?.directory) {
+		const result: { path: string | null } = await webInvoke("pick_directory");
+		if (result.path) {
+			return result.path as OpenDialogReturn<T>;
+		}
+		return null as OpenDialogReturn<T>;
+	}
+
 	const fileInput = document.createElement("input");
-	const projectPath = getCookie("PROJECT_PATH") || "";
 	fileInput.type = "file";
 
 	if (options?.multiple) {
 		fileInput.multiple = true;
-	}
-
-	if (options?.directory) {
-		fileInput.webkitdirectory = true; // This is a web-specific feature for directory selection
 	}
 
 	const promise = new Promise<OpenDialogReturn<T>>((resolve) => {
@@ -131,15 +137,6 @@ async function webFilePicker<T extends OpenDialogOptions>(
 			const files = fileInput.files;
 			if (!files || files.length === 0) {
 				resolve(null);
-				return;
-			}
-
-			if (options?.directory) {
-				const file = files[0]!;
-				const filePath = file.webkitRelativePath || file.name;
-				const dirPath = filePath.split("/").slice(0, -1).join("/");
-				const absolute = projectPath + "/" + dirPath;
-				resolve(absolute as OpenDialogReturn<T>);
 				return;
 			}
 

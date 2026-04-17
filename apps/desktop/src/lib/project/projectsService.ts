@@ -28,6 +28,15 @@ export class ProjectsService {
 		return this.backendApi.endpoints.listProjects.useQuery();
 	}
 
+	/**
+	 * Capabilities that vary by how the backend was launched (local Tauri app
+	 * vs. but-server running behind a tunnel). Used to hide UI entry points
+	 * that require the user to be on the same machine as the backend.
+	 */
+	serverCapabilities() {
+		return this.backendApi.endpoints.serverCapabilities.useQuery();
+	}
+
 	getProject(projectId: string, noValidation?: boolean) {
 		return this.backendApi.endpoints.project.useQuery({ projectId, noValidation });
 	}
@@ -112,6 +121,15 @@ export class ProjectsService {
 	}
 
 	async addProject(path?: string) {
+		const capabilities = await this.backendApi.endpoints.serverCapabilities.fetch();
+		if (!capabilities?.canAddProjects) {
+			showToast({
+				style: "info",
+				title: "Adding projects is disabled",
+				message: "Projects can only be added when GitButler runs on your local machine.",
+			});
+			return;
+		}
 		if (!path) {
 			path = await this.getValidPath();
 			if (!path) return;

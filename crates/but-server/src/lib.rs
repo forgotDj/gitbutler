@@ -68,8 +68,6 @@ pub(crate) struct Request {
 pub(crate) struct Extra {
     active_projects: Arc<Mutex<ActiveProjects>>,
     archival: Arc<but_feedback::Archival>,
-    /// When set, restricts project switching to only this project.
-    pinned_project: Option<but_ctx::ProjectHandleOrLegacyProjectId>,
 }
 
 #[derive(Clone)]
@@ -117,6 +115,179 @@ where
         let res = f(params).await;
         cmd_result_to_json(res)
     })
+}
+
+/// Like `but_post`, but rejects the request when the server is running in
+/// remote mode (tunnel active). Used for commands that only make sense when
+/// the user is on the same machine as the server, e.g. adding a project from
+/// a local filesystem path.
+fn local_only_post<F, S>(f: F) -> MethodRouter<S, Infallible>
+where
+    F: Fn(serde_json::Value) -> anyhow::Result<serde_json::Value> + Copy + Send + Sync + 'static,
+    S: Clone + Send + Sync + 'static,
+{
+    post(move |Json(params)| async move {
+        let res = if is_remote() {
+            Err(anyhow::anyhow!(
+                "This action is disabled when but-server is running in remote mode"
+            ))
+        } else {
+            tokio::task::spawn_blocking(move || f(params))
+                .await
+                .unwrap_or_else(|e| Err(anyhow::anyhow!("handler task panicked: {e}")))
+        };
+        cmd_result_to_json(res)
+    })
+}
+
+/// Reports capabilities that depend on how but-server was launched, so the
+/// frontend can hide affordances that would fail on the backend (e.g. "Add
+/// project" when the server is behind a tunnel and the user's filesystem is
+/// not reachable).
+fn server_capabilities(_params: serde_json::Value) -> anyhow::Result<serde_json::Value> {
+    let remote = is_remote();
+    Ok(serde_json::to_value(
+        but_api::platform::ServerCapabilities {
+            is_remote: remote,
+            can_add_projects: !remote,
+        },
+    )?)
+}
+
+/// Opens a native directory picker on the machine running but-server.
+/// Only available in local mode — remote clients cannot trigger a dialog on
+/// the server's display.
+///
+/// `rfd` cannot be used here because but-server is a headless process without
+/// an NSApplication run loop, so on macOS it would panic trying to show a
+/// dialog off the main thread. Instead we shell out to `osascript` (macOS) or
+/// `zenity`/`kdialog` (Linux) which work from any thread and any process.
+async fn pick_directory(_params: serde_json::Value) -> anyhow::Result<serde_json::Value> {
+    if is_remote() {
+        anyhow::bail!("Native file picker is not available in remote mode");
+    }
+    let path = tokio::task::spawn_blocking(native_pick_directory).await??;
+    match path {
+        Some(p) => Ok(json!({ "path": p })),
+        None => Ok(json!({ "path": null })),
+    }
+}
+
+/// Shell out to a platform-native directory picker.
+fn native_pick_directory() -> anyhow::Result<Option<String>> {
+    #[cfg(target_os = "macos")]
+    {
+        let output = std::process::Command::new("osascript")
+            .arg("-e")
+            .arg(
+                r#"set theFolder to choose folder with prompt "Select a Git repository"
+return POSIX path of theFolder"#,
+            )
+            .output()?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            // osascript exits with code 1 and "User canceled" on cancel
+            if stderr.contains("User canceled") || stderr.contains("(-128)") {
+                return Ok(None);
+            }
+            anyhow::bail!(
+                "osascript directory picker failed (exit {:?}): {}",
+                output.status.code(),
+                if stderr.is_empty() {
+                    "unknown error"
+                } else {
+                    &stderr
+                }
+            );
+        }
+        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if path.is_empty() {
+            return Ok(None);
+        }
+        // osascript returns paths with a trailing slash — strip it
+        Ok(Some(path.trim_end_matches('/').to_string()))
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Try zenity first, fall back to kdialog
+        let output = std::process::Command::new("zenity")
+            .args([
+                "--file-selection",
+                "--directory",
+                "--title=Select a Git repository",
+            ])
+            .output()
+            .or_else(|_| {
+                std::process::Command::new("kdialog")
+                    .args([
+                        "--getexistingdirectory",
+                        ".",
+                        "--title",
+                        "Select a Git repository",
+                    ])
+                    .output()
+            })?;
+        if !output.status.success() {
+            // zenity exits 1 on cancel, kdialog exits 1 on cancel
+            let code = output.status.code().unwrap_or(-1);
+            if code == 1 {
+                return Ok(None);
+            }
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            anyhow::bail!(
+                "directory picker failed (exit {code}): {}",
+                if stderr.is_empty() {
+                    "unknown error"
+                } else {
+                    &stderr
+                }
+            );
+        }
+        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if path.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(path))
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // Use the modern IFileOpenDialog via PowerShell (STA is required for
+        // any Windows Forms/COM dialog). FolderBrowserDialog is directory-only.
+        // The script outputs the selected path on OK, or empty string on cancel.
+        // A non-zero exit means PowerShell itself failed (e.g. Add-Type error).
+        let output = std::process::Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-STA",
+                "-Command",
+                r#"Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; $f.Description = 'Select a Git repository'; $f.UseDescriptionForTitle = $true; if ($f.ShowDialog() -eq 'OK') { $f.SelectedPath } else { '' }"#,
+            ])
+            .output()?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            anyhow::bail!(
+                "PowerShell directory picker failed (exit {:?}): {}",
+                output.status.code(),
+                if stderr.is_empty() {
+                    "unknown error"
+                } else {
+                    &stderr
+                }
+            );
+        }
+        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if path.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(path))
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    {
+        anyhow::bail!("Native file picker is not supported on this platform")
+    }
 }
 
 fn cmd_result_to_json(res: anyhow::Result<serde_json::Value>) -> Json<serde_json::Value> {
@@ -194,7 +365,7 @@ pub struct Config {
     pub base_path: Option<String>,
     /// Disable authentication entirely. DANGEROUS — only use on trusted networks.
     pub allow_anyone: bool,
-    /// If set, auto-activate this directory's project on startup and prevent switching to others.
+    /// If set, auto-activate this directory's project on startup.
     pub project_path: Option<std::path::PathBuf>,
     /// Show cloudflared output on stderr. Enabled by `-v` in the CLI.
     pub verbose: bool,
@@ -211,6 +382,15 @@ fn allowed_remote_origin() -> Option<&'static str> {
 /// Whether authentication is disabled via --dangerously-allow-anyone.
 pub(crate) fn allow_anyone() -> bool {
     ALLOW_ANYONE.get().copied().unwrap_or(false)
+}
+
+/// Whether but-server is reachable from outside localhost (a tunnel is active).
+///
+/// Used to gate features that only make sense when the user is on the same
+/// machine as the server — notably adding projects, which needs a filesystem
+/// path the user can actually pick from their own machine.
+pub(crate) fn is_remote() -> bool {
+    allowed_remote_origin().is_some()
 }
 
 /// Check if an origin matches the configured remote origin.
@@ -404,10 +584,9 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         cache_dir: app_data_dir.join("cache").clone(),
         logs_dir: app_data_dir.join("logs").clone(),
     });
-    let mut extra = Extra {
+    let extra = Extra {
         active_projects: Arc::new(Mutex::new(ActiveProjects::new())),
         archival,
-        pinned_project: None,
     };
     #[cfg_attr(not(feature = "irc"), allow(unused_mut))]
     let mut app_settings =
@@ -470,14 +649,13 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     #[cfg(feature = "irc")]
     let working_files_broadcast = WorkingFilesBroadcast::new(irc_manager.clone());
 
-    // If a project path was provided, auto-activate that project and pin it.
+    // If a project path was provided, auto-activate that project.
     if let Some(ref project_path) = config.project_path {
         match but_ctx::Context::discover(project_path) {
             Ok(mut ctx) => {
                 but_api::legacy::projects::prepare_project_for_activation(&mut ctx).ok();
-                let project_id = ctx.legacy_project.id.clone();
                 let mut active = extra.active_projects.lock().await;
-                let activated = active
+                if active
                     .set_active(
                         &ctx,
                         &app,
@@ -485,15 +663,9 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
                         #[cfg(feature = "irc")]
                         working_files_broadcast.clone(),
                     )
-                    .is_ok();
-                drop(active);
-                if activated {
-                    extra.pinned_project = Some(project_id);
-                } else {
-                    tracing::warn!(
-                        "Failed to activate project at {}; project switching will not be locked",
-                        project_path.display()
-                    );
+                    .is_err()
+                {
+                    tracing::warn!("Failed to activate project at {}", project_path.display());
                 }
             }
             Err(err) => {
@@ -563,6 +735,8 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
     };
 
     let app = Router::new()
+        .route("/server_capabilities", but_post(server_capabilities))
+        .route("/pick_directory", but_post_async(pick_directory))
         .route(
             "/git_remote_branches",
             but_post(legacy::git::git_remote_branches_cmd),
@@ -699,10 +873,13 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             "/update_project",
             but_post(legacy::projects::update_project_cmd),
         )
-        .route("/add_project", but_post(legacy::projects::add_project_cmd))
+        .route(
+            "/add_project",
+            local_only_post(legacy::projects::add_project_cmd),
+        )
         .route(
             "/add_project_best_effort",
-            but_post(legacy::projects::add_project_best_effort_cmd),
+            local_only_post(legacy::projects::add_project_best_effort_cmd),
         )
         .route("/get_project", but_post(legacy::projects::get_project_cmd))
         .route(

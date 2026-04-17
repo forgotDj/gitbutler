@@ -116,3 +116,21 @@ export async function textEditorFillByTestId(page: Page, testId: TestIdValues, v
 export async function sleep(ms: number): Promise<void> {
 	return await new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * Mock the backend's native directory picker to return a specific path.
+ *
+ * The web frontend calls `POST /pick_directory` to open a native OS file dialog.
+ * In e2e tests we intercept this request and return the desired path directly.
+ * Must be called before the action that triggers the picker.
+ */
+export async function mockPickDirectory(page: Page, directoryPath: string): Promise<void> {
+	await page.unroute("**/pick_directory");
+	await page.route("**/pick_directory", async (route) => {
+		await route.fulfill({
+			status: 200,
+			contentType: "application/json",
+			body: JSON.stringify({ type: "success", subject: { path: directoryPath } }),
+		});
+	});
+}

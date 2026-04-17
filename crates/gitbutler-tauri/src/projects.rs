@@ -22,6 +22,17 @@ pub fn list_projects(
     but_api::legacy::projects::list_projects(open_projects).map_err(Into::into)
 }
 
+/// Reports capabilities that vary by how the backend was launched.
+/// In the Tauri app these are always "local-mode" values — the user is
+/// by definition on the same machine.
+#[tauri::command(async)]
+pub fn server_capabilities() -> Result<but_api::platform::ServerCapabilities, json::Error> {
+    Ok(but_api::platform::ServerCapabilities {
+        is_remote: false,
+        can_add_projects: true,
+    })
+}
+
 /// Additional information to help the user interface communicate what happened with the project.
 #[derive(Debug, serde::Serialize)]
 pub struct ProjectInfo {
