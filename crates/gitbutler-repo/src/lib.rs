@@ -4,21 +4,45 @@ mod commands;
 mod traversal {
     use anyhow::Result;
 
-    /// Return first-parent ancestors from `from` until `stop_before`, excluding `stop_before`.
+    /// Return commits on `from`'s first-parent chain, stopping before the first
+    /// commit that is reachable from `stop_before`.
+    ///
+    /// The returned commits are ordered from `from` backwards along the first-parent chain, excluding
+    /// the first commit that is reachable from `stop_before` by ancestry.
+    ///
+    /// This matches the semantics of a first-parent walk with `stop_before` hidden, but avoids the
+    /// up-front hidden-side graph painting that makes `with_hidden(stop_before)` expensive in large
+    /// repositories.
     pub fn first_parent_commit_ids_until(
         repo: &gix::Repository,
         from: gix::ObjectId,
         stop_before: gix::ObjectId,
     ) -> Result<Vec<gix::ObjectId>> {
-        use gix::prelude::ObjectIdExt as _;
+        let cache = repo.commit_graph_if_enabled()?;
+        let mut graph = repo.revision_graph(cache.as_ref());
+        let mut commit_ids = Vec::new();
+        let mut current = Some(from);
 
-        from.attach(repo)
-            .ancestors()
-            .first_parent_only()
-            .with_hidden(Some(stop_before))
-            .all()?
-            .map(|info| Ok(info?.id))
-            .collect()
+        while let Some(commit_id) = current {
+            let reaches_hidden_history =
+                match repo.merge_base_with_graph(commit_id, stop_before, &mut graph) {
+                    Ok(merge_base) => merge_base.detach() == commit_id,
+                    Err(gix::repository::merge_base_with_graph::Error::NotFound { .. }) => false,
+                    Err(err) => return Err(err.into()),
+                };
+            if reaches_hidden_history {
+                break;
+            }
+
+            commit_ids.push(commit_id);
+            current = repo
+                .find_commit(commit_id)?
+                .parent_ids()
+                .next()
+                .map(|parent_id| parent_id.detach());
+        }
+
+        Ok(commit_ids)
     }
 }
 pub use traversal::first_parent_commit_ids_until;
