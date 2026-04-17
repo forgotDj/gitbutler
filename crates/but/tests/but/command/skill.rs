@@ -2,6 +2,12 @@ use snapbox::str;
 
 use crate::utils::{CommandExt, Sandbox};
 
+fn relative_agent_skill_path(agent_dir: &str) -> std::path::PathBuf {
+    std::path::PathBuf::from(agent_dir)
+        .join("skills")
+        .join("gitbutler")
+}
+
 fn path_ends_with_gitbutler_agents_dir(path: &str) -> bool {
     let normalized = path.replace('\\', "/");
     normalized.ends_with("/.agents/skills/gitbutler")
@@ -73,8 +79,14 @@ Error: In non-interactive mode, you must specify --path or --detect. Use --path 
 #[test]
 fn skill_install_path_outside_repo_requires_global() -> anyhow::Result<()> {
     let env = Sandbox::empty()?;
+    let install_path = relative_agent_skill_path(".claude");
 
-    env.but("skill install --json --path .claude/skills/gitbutler")
+    env.but("")
+        .arg("skill")
+        .arg("install")
+        .arg("--json")
+        .arg("--path")
+        .arg(&install_path)
         .allow_json()
         .assert()
         .failure()
@@ -121,8 +133,14 @@ fn skill_install_absolute_path_outside_repo_does_not_require_global() -> anyhow:
 #[test]
 fn skill_check_detects_agent_skills_installation_in_repo() -> anyhow::Result<()> {
     let env = Sandbox::open_with_default_settings("repo-no-remote")?;
+    let install_path = relative_agent_skill_path(".agents");
 
-    env.but("skill install --json --path .agents/skills/gitbutler")
+    env.but("")
+        .arg("skill")
+        .arg("install")
+        .arg("--json")
+        .arg("--path")
+        .arg(&install_path)
         .allow_json()
         .assert()
         .success();
@@ -160,8 +178,14 @@ fn skill_check_detects_agent_skills_installation_in_repo() -> anyhow::Result<()>
 #[test]
 fn skill_install_detect_finds_agent_skills_installation_in_repo() -> anyhow::Result<()> {
     let env = Sandbox::open_with_default_settings("repo-no-remote")?;
+    let install_path = relative_agent_skill_path(".agents");
 
-    env.but("skill install --json --path .agents/skills/gitbutler")
+    env.but("")
+        .arg("skill")
+        .arg("install")
+        .arg("--json")
+        .arg("--path")
+        .arg(&install_path)
         .allow_json()
         .assert()
         .success();

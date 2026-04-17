@@ -28,33 +28,50 @@ const REFERENCE_MD: &[u8] = include_bytes!("../../skill/references/reference.md"
 
 /// Metadata for a skill file to be installed
 struct SkillFile {
-    /// Relative path from install directory (e.g., "SKILL.md" or "references/concepts.md")
-    path: &'static str,
+    /// Relative path components from install directory.
+    path_components: &'static [&'static str],
     /// Embedded content
     content: &'static [u8],
     /// Display name for output
     display_name: &'static str,
 }
 
+impl SkillFile {
+    /// Get the actual installation path given a base directory.
+    fn get_install_path(&self, base_dir: &std::path::Path) -> PathBuf {
+        join_relative_path(base_dir, self.path_components)
+    }
+
+    /// Format the relative path for output and JSON.
+    fn display_path(&self) -> String {
+        self.path_components.join("/")
+    }
+
+    /// True if this is the main SKILL.md entry point.
+    fn is_main_skill_file(&self) -> bool {
+        self.path_components == ["SKILL.md"]
+    }
+}
+
 /// All skill files to be installed
 const SKILL_FILES: &[SkillFile] = &[
     SkillFile {
-        path: "SKILL.md",
+        path_components: &["SKILL.md"],
         content: SKILL_MD,
         display_name: "SKILL.md",
     },
     SkillFile {
-        path: "references/concepts.md",
+        path_components: &["references", "concepts.md"],
         content: CONCEPTS_MD,
         display_name: "concepts.md",
     },
     SkillFile {
-        path: "references/examples.md",
+        path_components: &["references", "examples.md"],
         content: EXAMPLES_MD,
         display_name: "examples.md",
     },
     SkillFile {
-        path: "references/reference.md",
+        path_components: &["references", "reference.md"],
         content: REFERENCE_MD,
         display_name: "reference.md",
     },
@@ -69,8 +86,8 @@ struct SkillFormat {
     description: &'static str,
     /// Whether this format should be offered for local and/or global installs.
     availability: SkillFormatAvailability,
-    /// Path relative to repository root (for local) or home directory (for global)
-    path: &'static str,
+    /// Relative path components from repository root or home directory.
+    path_components: &'static [&'static str],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -83,7 +100,7 @@ enum SkillFormatAvailability {
 impl SkillFormat {
     /// Get the actual installation path given a base directory
     fn get_install_path(&self, base_dir: &std::path::Path) -> PathBuf {
-        base_dir.join(self.path)
+        join_relative_path(base_dir, self.path_components)
     }
 
     fn is_available_for(&self, global: bool) -> bool {
@@ -96,55 +113,64 @@ impl SkillFormat {
     }
 }
 
+/// Join a relative path from components using platform-native separators.
+fn join_relative_path(base_dir: &std::path::Path, components: &[&str]) -> PathBuf {
+    components
+        .iter()
+        .fold(base_dir.to_path_buf(), |path, component| {
+            path.join(component)
+        })
+}
+
 // Common skill folder formats
 const SKILL_FORMATS: &[SkillFormat] = &[
     SkillFormat {
         name: "Agent Skills",
         description: "Shared .agents/skills format",
         availability: SkillFormatAvailability::LocalAndGlobal,
-        path: ".agents/skills/gitbutler",
+        path_components: &[".agents", "skills", "gitbutler"],
     },
     SkillFormat {
         name: "Claude Code",
         description: "Claude Code CLI skill format",
         availability: SkillFormatAvailability::LocalAndGlobal,
-        path: ".claude/skills/gitbutler",
+        path_components: &[".claude", "skills", "gitbutler"],
     },
     SkillFormat {
         name: "OpenCode",
         description: "OpenCode AI skill format",
         availability: SkillFormatAvailability::LocalAndGlobal,
-        path: ".opencode/skills/gitbutler",
+        path_components: &[".opencode", "skills", "gitbutler"],
     },
     SkillFormat {
         name: "Codex",
         description: "Codex skill format",
         availability: SkillFormatAvailability::LocalAndGlobal,
-        path: ".codex/skills/gitbutler",
+        path_components: &[".codex", "skills", "gitbutler"],
     },
     SkillFormat {
         name: "GitHub Copilot",
         description: "GitHub Copilot local (repo) skill format",
         availability: SkillFormatAvailability::LocalOnly,
-        path: ".github/skills/gitbutler",
+        path_components: &[".github", "skills", "gitbutler"],
     },
     SkillFormat {
         name: "GitHub Copilot",
         description: "GitHub Copilot global skill format",
         availability: SkillFormatAvailability::GlobalOnly,
-        path: ".copilot/skills/gitbutler",
+        path_components: &[".copilot", "skills", "gitbutler"],
     },
     SkillFormat {
         name: "Cursor",
         description: "Cursor AI skill format",
         availability: SkillFormatAvailability::LocalAndGlobal,
-        path: ".cursor/skills/gitbutler",
+        path_components: &[".cursor", "skills", "gitbutler"],
     },
     SkillFormat {
         name: "Windsurf",
         description: "Windsurf skill format",
         availability: SkillFormatAvailability::LocalAndGlobal,
-        path: ".windsurf/skills/gitbutler",
+        path_components: &[".windsurf", "skills", "gitbutler"],
     },
 ];
 
@@ -861,8 +887,22 @@ fn install_skill(
     debug_assert!(
         SKILL_FORMATS
             .iter()
-            .all(|f| !f.name.is_empty() && !f.path.is_empty()),
-        "SkillFormat name and path must not be empty"
+            .all(|f| !f.name.is_empty() && !f.path_components.is_empty()),
+        "SkillFormat name and path components must not be empty"
+    );
+    debug_assert!(
+        SKILL_FILES.iter().all(|file| {
+            !file.path_components.is_empty()
+                && file
+                    .path_components
+                    .iter()
+                    .all(|component| !component.is_empty())
+                && file
+                    .path_components
+                    .iter()
+                    .all(|component| !component.contains('/') && !component.contains('\\'))
+        }),
+        "SkillFile path components must be non-empty and separator-free"
     );
 
     let mut progress = out.progress_channel();
@@ -931,8 +971,8 @@ fn install_skill(
 
     // Write all files
     for file in SKILL_FILES {
-        let file_path = install_path.join(file.path);
-        let content = if file.path == "SKILL.md" {
+        let file_path = file.get_install_path(&install_path);
+        let content = if file.is_main_skill_file() {
             // Use the version-injected content for SKILL.md
             skill_md_content.as_bytes()
         } else {
@@ -957,12 +997,12 @@ fn install_skill(
     writeln!(progress)?;
     writeln!(progress, "  Files installed:")?;
     for file in SKILL_FILES {
-        writeln!(progress, "    • {}", file.path)?;
+        writeln!(progress, "    • {}", file.display_path())?;
     }
     writeln!(progress)?;
 
     if let Some(out) = out.for_json() {
-        let file_paths: Vec<&str> = SKILL_FILES.iter().map(|f| f.path).collect();
+        let file_paths: Vec<String> = SKILL_FILES.iter().map(|f| f.display_path()).collect();
         let result = serde_json::json!({
             "success": true,
             "version": version,
@@ -1085,10 +1125,23 @@ mod tests {
                 !format.description.is_empty(),
                 "Format description cannot be empty"
             );
-            assert!(!format.path.is_empty(), "Format path cannot be empty");
             assert!(
-                !format.path.starts_with('/'),
-                "Format path should be relative"
+                !format.path_components.is_empty(),
+                "Format path components cannot be empty"
+            );
+            assert!(
+                format
+                    .path_components
+                    .iter()
+                    .all(|component| !component.is_empty()),
+                "Format path components must not be empty"
+            );
+            assert!(
+                format
+                    .path_components
+                    .iter()
+                    .all(|component| !component.contains('/') && !component.contains('\\')),
+                "Format path components must not contain path separators"
             );
         }
     }
@@ -1099,13 +1152,35 @@ mod tests {
             name: "Test",
             description: "Test format",
             availability: SkillFormatAvailability::LocalAndGlobal,
-            path: ".test/skills/foo",
+            path_components: &[".test", "skills", "foo"],
         };
 
-        let base = PathBuf::from("/home/user");
+        let base = PathBuf::from("home").join("user");
         let result = format.get_install_path(&base);
 
-        assert_eq!(result, PathBuf::from("/home/user/.test/skills/foo"));
+        assert_eq!(result, base.join(".test").join("skills").join("foo"));
+    }
+
+    #[test]
+    fn skill_files_are_valid() {
+        for file in SKILL_FILES {
+            assert!(
+                !file.path_components.is_empty(),
+                "SkillFile path components cannot be empty"
+            );
+            assert!(
+                file.path_components
+                    .iter()
+                    .all(|component| !component.is_empty()),
+                "SkillFile path components must not be empty"
+            );
+            assert!(
+                file.path_components
+                    .iter()
+                    .all(|component| !component.contains('/') && !component.contains('\\')),
+                "SkillFile path components must not contain path separators"
+            );
+        }
     }
 
     #[test]
@@ -1136,7 +1211,11 @@ mod tests {
     fn embedded_files_are_not_empty() {
         // This catches build issues where files aren't properly embedded
         for file in SKILL_FILES {
-            assert!(!file.content.is_empty(), "{} should be embedded", file.path);
+            assert!(
+                !file.content.is_empty(),
+                "{} should be embedded",
+                file.display_path()
+            );
         }
     }
 
@@ -1147,9 +1226,15 @@ mod tests {
             assert!(
                 std::str::from_utf8(file.content).is_ok(),
                 "{} should be valid UTF-8",
-                file.path
+                file.display_path()
             );
         }
+    }
+
+    #[test]
+    fn skill_file_display_path_is_derived_from_components() {
+        assert_eq!(SKILL_FILES[0].display_path(), "SKILL.md");
+        assert_eq!(SKILL_FILES[1].display_path(), "references/concepts.md");
     }
 
     #[test]
@@ -1344,19 +1429,31 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
 
         // Create a Claude Code skill installation
-        let claude_skill_dir = temp_dir.path().join(".claude/skills/gitbutler");
+        let claude_skill_dir = temp_dir
+            .path()
+            .join(".claude")
+            .join("skills")
+            .join("gitbutler");
         fs::create_dir_all(&claude_skill_dir).unwrap();
         let claude_skill_content = "---\nname: but\nversion: 1.0.0\n---\n# GitButler CLI Skill";
         fs::write(claude_skill_dir.join("SKILL.md"), claude_skill_content).unwrap();
 
         // Create a Cursor skill installation
-        let cursor_skill_dir = temp_dir.path().join(".cursor/skills/gitbutler");
+        let cursor_skill_dir = temp_dir
+            .path()
+            .join(".cursor")
+            .join("skills")
+            .join("gitbutler");
         fs::create_dir_all(&cursor_skill_dir).unwrap();
         let cursor_skill_content = "---\nname: but\nversion: 0.9.0\n---\n# GitButler CLI Skill";
         fs::write(cursor_skill_dir.join("SKILL.md"), cursor_skill_content).unwrap();
 
         // Create a non-GitButler skill (should be ignored)
-        let other_skill_dir = temp_dir.path().join(".opencode/skills/gitbutler");
+        let other_skill_dir = temp_dir
+            .path()
+            .join(".opencode")
+            .join("skills")
+            .join("gitbutler");
         fs::create_dir_all(&other_skill_dir).unwrap();
         fs::write(other_skill_dir.join("SKILL.md"), "# Some other skill").unwrap();
 
