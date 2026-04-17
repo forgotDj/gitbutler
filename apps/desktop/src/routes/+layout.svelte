@@ -20,7 +20,7 @@
 	import { initDependencies } from "$lib/bootstrap/deps";
 	import { MessageQueueProcessor } from "$lib/codegen/messageQueue.svelte";
 	import { GIT_CONFIG_SERVICE } from "$lib/config/gitConfigService";
-	import { fModeEnabled } from "$lib/config/uiFeatureFlags";
+	import { fModeEnabled, migrateUseNewRebaseEngineDefaultToTrue } from "$lib/config/uiFeatureFlags";
 	import { PROJECTS_SERVICE } from "$lib/project/projectsService";
 	import { SETTINGS_SERVICE } from "$lib/settings/appSettings";
 	import { createKeybind } from "$lib/shortcuts/hotkeys";
@@ -106,6 +106,11 @@
 	// IRC connections are managed by the Rust backend (irc_lifecycle.rs).
 	// The backend handles auto-connect on startup and reacts to settings changes.
 	// Frontend queries IRC state via RTKQ endpoints (ircApi.ts).
+
+	// Migrate into the new rebase engine, once.
+	$effect(() => {
+		migrateUseNewRebaseEngineDefaultToTrue();
+	});
 
 	// =============================================================================
 	// DEBUG & DEVELOPMENT TOOLS
