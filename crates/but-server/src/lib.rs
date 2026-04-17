@@ -98,7 +98,9 @@ where
     S: Clone + Send + Sync + 'static,
 {
     post(move |Json(params)| async move {
-        let res = f(params);
+        let res = tokio::task::spawn_blocking(move || f(params))
+            .await
+            .unwrap_or_else(|e| Err(anyhow::anyhow!("handler task panicked: {e}")));
         cmd_result_to_json(res)
     })
 }
