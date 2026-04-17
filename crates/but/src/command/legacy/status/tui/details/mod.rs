@@ -216,9 +216,7 @@ impl Details {
 
             Message::Commit(commit_message) => match commit_message {
                 CommitMessage::Confirm | CommitMessage::CreateEmpty => true,
-                CommitMessage::Start
-                | CommitMessage::SetInsertSide(_)
-                | CommitMessage::ToggleEmptyMessage => false,
+                CommitMessage::Start | CommitMessage::ToggleEmptyMessage => false,
             },
             Message::Rub(rub_message) => match rub_message {
                 RubMessage::Start
@@ -240,7 +238,7 @@ impl Details {
                 FilesMessage::ToggleGlobalFilesList | FilesMessage::ToggleFilesForCommit => true,
             },
             Message::Move(move_message) => match move_message {
-                MoveMessage::Start | MoveMessage::SetInsertSide(_) => false,
+                MoveMessage::Start => false,
                 MoveMessage::Confirm => true,
             },
             Message::Details(details_message) => match details_message {

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use but_rebase::graph_rebase::mutate::InsertSide;
 use gitbutler_stack::StackId;
 use ratatui_textarea::TextArea;
 
@@ -1528,7 +1527,6 @@ fn is_selectable_in_commit_mode_scopes_commit_targets_to_stack() {
             id: "zz".into(),
         })),
         scope_to_stack: Some(scoped_stack_id),
-        insert_side: InsertSide::Above,
         empty_message: false,
     });
 
