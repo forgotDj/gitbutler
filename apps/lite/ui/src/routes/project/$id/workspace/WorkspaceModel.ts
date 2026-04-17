@@ -132,13 +132,15 @@ export type NavigationIndex = {
 	indexByKey: Map<string, number>;
 };
 
+const createNavigationIndex = (): NavigationIndex => ({
+	items: [],
+	sectionStartIndexes: [],
+	sectionIndexByItemIndex: [],
+	indexByKey: new Map<string, number>(),
+});
+
 export const buildNavigationIndex = (outline: WorkspaceOutline): NavigationIndex => {
-	const index: NavigationIndex = {
-		items: [],
-		sectionStartIndexes: [],
-		sectionIndexByItemIndex: [],
-		indexByKey: new Map<string, number>(),
-	};
+	const index = createNavigationIndex();
 
 	const addItem = (item: Item, sectionIndex: number) => {
 		index.indexByKey.set(itemIdentityKey(item), index.items.length);
@@ -161,12 +163,7 @@ export const filterNavigationIndex = (
 	index: NavigationIndex,
 	predicate: (item: Item) => boolean,
 ): NavigationIndex => {
-	const filteredIndex: NavigationIndex = {
-		items: [],
-		sectionStartIndexes: [],
-		sectionIndexByItemIndex: [],
-		indexByKey: new Map<string, number>(),
-	};
+	const filteredIndex = createNavigationIndex();
 
 	let currentSectionIndex = -1;
 	let filteredSectionIndex = -1;
