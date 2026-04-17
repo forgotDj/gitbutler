@@ -273,10 +273,9 @@ mod util {
         stack_ids: impl Iterator<Item = impl ToString>,
         mut to_simplify: String,
     ) -> String {
-        let mut count = 1;
-        for stack_id in stack_ids {
+        for (count, stack_id) in stack_ids.enumerate() {
+            let count = count + 1;
             to_simplify = to_simplify.replace(&stack_id.to_string(), &format!("stack_{count}"));
-            count += 1;
         }
         to_simplify
     }

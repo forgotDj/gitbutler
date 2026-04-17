@@ -583,10 +583,8 @@ impl EditorApp {
         match ev {
             Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
                 KeyCode::Esc => self.active_menu = None,
-                KeyCode::Up => {
-                    if self.menu_item_index > 0 {
-                        self.menu_item_index -= 1;
-                    }
+                KeyCode::Up if self.menu_item_index > 0 => {
+                    self.menu_item_index -= 1;
                 }
                 KeyCode::Down => {
                     if let Some(mi) = self.active_menu {

@@ -799,9 +799,9 @@ async fn tool_calling_stream(
                                 }
                             }
                         }
-                        "message_stop" => {
+                        "message_stop"
                             // Check if we have tool calls to return
-                            if !tool_calls.is_empty() {
+                            if !tool_calls.is_empty() => {
                                 let calls: Vec<ToolCall> = tool_calls.values().cloned().collect();
                                 let text = if response_text.is_empty() {
                                     None
@@ -810,7 +810,6 @@ async fn tool_calling_stream(
                                 };
                                 return Ok((Some(calls), text));
                             }
-                        }
                         _ => {}
                     }
                 }

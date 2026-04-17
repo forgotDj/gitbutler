@@ -639,7 +639,7 @@ fn show_branch_summary(out: &mut dyn std::fmt::Write, commits: &[BranchCommitInf
 
         // Show top changed files
         let mut files_vec: Vec<_> = file_changes.iter().collect();
-        files_vec.sort_by(|a, b| (b.1.0 + b.1.1).cmp(&(a.1.0 + a.1.1)));
+        files_vec.sort_by_key(|file| std::cmp::Reverse(file.1.0 + file.1.1));
 
         writeln!(out)?;
         writeln!(out, "  {}:", "Files changed".dimmed())?;

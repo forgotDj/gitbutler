@@ -706,7 +706,7 @@ fn deletion_modification_addition_of_hunks_mixed_discard_all_in_workspace() -> a
     "#);
 
     let specs = to_change_specs_all_hunks(&repo, wt_changes)?;
-    let dropped = discard_workspace_changes(&repo, specs.into_iter(), CONTEXT_LINES)?;
+    let dropped = discard_workspace_changes(&repo, specs, CONTEXT_LINES)?;
     assert!(dropped.is_empty());
 
     // Only the data is undone; the executable bit change can be undone in the next discard,

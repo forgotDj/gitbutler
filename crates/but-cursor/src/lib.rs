@@ -6,7 +6,7 @@ use but_hunk_assignment::{HunkAssignmentRequest, HunkAssignmentTarget};
 use but_llm::LLMProvider;
 use but_workspace::legacy::StacksFilter;
 use gix::diff::blob::{
-    Algorithm, UnifiedDiff,
+    Algorithm, InternedInput, UnifiedDiff,
     unified_diff::{ConsumeBinaryHunk, ContextSize},
 };
 use serde::{Deserialize, Serialize};
@@ -59,19 +59,15 @@ impl gix::diff::blob::unified_diff::ConsumeBinaryHunkDelegate for ProduceDiffHun
 
 impl Edit {
     fn generate_headers(&self) -> anyhow::Result<Vec<but_core::HunkHeader>> {
-        let interner = gix::diff::blob::intern::InternedInput::new(
-            self.old_string.as_bytes(),
-            self.new_string.as_bytes(),
-        );
-        let headers = gix::diff::blob::diff(
-            Algorithm::Myers,
+        let interner = InternedInput::new(self.old_string.as_bytes(), self.new_string.as_bytes());
+        let diff = gix::diff::blob::diff_with_slider_heuristics(Algorithm::Myers, &interner);
+        let headers = UnifiedDiff::new(
+            &diff,
             &interner,
-            UnifiedDiff::new(
-                &interner,
-                ConsumeBinaryHunk::new(ProduceDiffHunk::default(), "\n"),
-                ContextSize::symmetrical(0), // Zero context lines is fine since the hunk will be reconciled later with but_hunk_assignment::assignments_with_fallback
-            ),
-        )?
+            ConsumeBinaryHunk::new(ProduceDiffHunk::default(), "\n"),
+            ContextSize::symmetrical(0), // Zero context lines is fine since the hunk will be reconciled later with but_hunk_assignment::assignments_with_fallback
+        )
+        .consume()?
         .headers;
         Ok(headers)
     }
