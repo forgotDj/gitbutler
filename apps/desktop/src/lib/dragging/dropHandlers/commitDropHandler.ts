@@ -9,6 +9,7 @@ import {
 	HunkDropDataV3,
 	type ChangeDropData,
 } from "$lib/dragging/draggables";
+import { showError } from "$lib/error/showError";
 import { HOOKS_SERVICE } from "$lib/git/hooksService";
 import { showToast } from "$lib/notifications/toasts";
 import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
@@ -153,7 +154,12 @@ export class AmendCommitWithChangeDzHandler implements DropzoneHandler {
 				const worktreeChanges = changesToDiffSpec(await data.treeChanges(), assignments);
 
 				if (this.runHooks) {
-					await this.hooksService.runPreCommitHooks(this.projectId, worktreeChanges);
+					try {
+						await this.hooksService.runPreCommitHooks(this.projectId, worktreeChanges);
+					} catch (err) {
+						showError("Git hook failed", err);
+						return;
+					}
 				}
 
 				this.onresult(
@@ -167,7 +173,12 @@ export class AmendCommitWithChangeDzHandler implements DropzoneHandler {
 				);
 
 				if (this.runHooks) {
-					await this.hooksService.runPostCommitHooks(this.projectId);
+					try {
+						await this.hooksService.runPostCommitHooks(this.projectId);
+					} catch (err) {
+						showError("Git hook failed", err);
+						return;
+					}
 				}
 			}
 		}
@@ -385,7 +396,8 @@ export class AmendCommitWithHunkDzHandler implements DropzoneHandler {
 			if (runHooks) {
 				try {
 					await this.hooksService.runPreCommitHooks(projectId, worktreeChanges);
-				} catch {
+				} catch (err) {
+					showError("Git hook failed", err);
 					return;
 				}
 			}
@@ -399,7 +411,8 @@ export class AmendCommitWithHunkDzHandler implements DropzoneHandler {
 			if (runHooks) {
 				try {
 					await this.hooksService.runPostCommitHooks(projectId);
-				} catch {
+				} catch (err) {
+					showError("Git hook failed", err);
 					return;
 				}
 			}

@@ -24,7 +24,7 @@ export class HooksService {
 
 			if (result?.status === "failure") {
 				chipToasts.removeChipToast(loadingToastId);
-				throw new Error(formatError(result.error));
+				throw newHookError(formatError(result.error));
 			}
 
 			chipToasts.removeChipToast(loadingToastId);
@@ -45,7 +45,7 @@ export class HooksService {
 
 			if (result?.status === "failure") {
 				chipToasts.removeChipToast(loadingToastId);
-				throw new Error(formatError(result.error));
+				throw newHookError(formatError(result.error));
 			}
 
 			chipToasts.removeChipToast(loadingToastId);
@@ -55,6 +55,12 @@ export class HooksService {
 			throw e;
 		}
 	}
+}
+
+function newHookError(message: string): Error {
+	const error = new Error(message);
+	error.name = "Git hook failed";
+	return error;
 }
 
 function formatError(error: string): string {
