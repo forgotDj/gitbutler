@@ -5,7 +5,20 @@ on:
       - master
   pull_request:
     paths-ignore:
+      - "*.md"
+      - ".cargo/**"
+      - ".claude/**"
+      - ".vscode/**"
+      - ".oxlintrc.json"
+      - "deny.toml"
+      - "scripts/**"
       - "apps/web/**"
+      - "apps/lite/**"
+      - "crates/but/**"
+      - "crates/but-clap/**"
+      - "crates/but-debugging/**"
+      - "crates/but-installer/**"
+      - "crates/but-testing/**"
   workflow_dispatch:
     inputs:
       sha:
@@ -21,7 +34,7 @@ jobs:
       contents: read
       packages: read
     container:
-      image: ghcr.io/gitbutlerapp/ci-base-image@sha256:3eaeae1b07072796a53dc1e7585cdc1f462d0b11d10ecd3685c6fa8082d647dd
+      image: ghcr.io/gitbutlerapp/ci-base-image@sha256:c0ab58bb5f1cd99beb36861f460895be77515f4dd252df736c27c117a8e04a92
     env:
       CARGO_TERM_COLOR: always
     steps:
@@ -36,10 +49,6 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ github.event.inputs.sha }}
-      # TODO: put these into the docker image
-      - name: Install Webdriver dependencies
-        run: apt update && apt install -y webkit2gtk-driver ffmpeg xvfb
-        if: ${{ github.ref != 'refs/heads/master' }}
       - name: Rust Cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
@@ -47,18 +56,30 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/master' }}
       - name: Setup node environment
         uses: ./.github/actions/init-env-node
-      - name: Build CLI
-        run: cargo build -p gitbutler-cli
-      - name: Build SvelteKit
-        run: pnpm build:desktop -- --mode development
-      - name: Build Tauri
-        run: pnpm build:test
-      - name: Install tauri-driver
+        if: ${{ github.ref != 'refs/heads/master' }}
+      - name: Build CLI, SvelteKit, and tauri-driver
         if: ${{ github.ref != 'refs/heads/master' }}
         run: |
+          cargo build -p gitbutler-cli &
+          cargo_pid=$!
+          pnpm build:desktop -- --mode development &
+          pnpm_pid=$!
+          td_pid=""
           if [ ! -e "$HOME/.cargo/bin/tauri-driver" ]; then
-            cargo install tauri-driver
+            cargo install tauri-driver &
+            td_pid=$!
           fi
+          status=0
+          wait "$cargo_pid" || status=1
+          wait "$pnpm_pid" || status=1
+          [ -n "$td_pid" ] && { wait "$td_pid" || status=1; }
+          exit "$status"
+      - name: Build Tauri
+        if: ${{ github.ref != 'refs/heads/master' }}
+        run: pnpm build:test
+      - name: Build CLI (cache warming)
+        if: ${{ github.ref == 'refs/heads/master' }}
+        run: cargo build -p gitbutler-cli
 
       # Run it through `xvfb-run` to have a fake display server which allows our
       # application to run headless without any changes to the code
