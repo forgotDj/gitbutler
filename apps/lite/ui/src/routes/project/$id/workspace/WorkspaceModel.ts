@@ -40,10 +40,10 @@ const buildWorkspaceOutline = ({
 	expandedCommitId = null,
 	expandedCommitPaths,
 }: BuildWorkspaceOutlineArgs): WorkspaceOutline => {
-	const changesSection = (stackId: string | null): WorkspaceSection => ({
-		section: changesSectionItem({ stackId }),
+	const changesSection: WorkspaceSection = {
+		section: changesSectionItem({}),
 		children: changes.map((change) => changeItem({ path: change.path })),
-	});
+	};
 
 	const segmentChildren = (stackId: string, segment: Segment): Array<Item> =>
 		segment.commits.flatMap(
@@ -78,7 +78,7 @@ const buildWorkspaceOutline = ({
 	};
 
 	return [
-		changesSection(null),
+		changesSection,
 
 		...headInfo.stacks.flatMap((stack) => {
 			// oxlint-disable-next-line typescript/no-non-null-assertion -- [ref:stack-id-required]
