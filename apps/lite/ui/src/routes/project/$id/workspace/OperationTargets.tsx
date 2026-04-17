@@ -163,7 +163,7 @@ export const OperationTarget: FC<
 			controls={controls}
 			enabled={isActiveTarget}
 			sourceItem={item}
-			operation={operation ?? null}
+			operation={operation}
 			render={target}
 			sourceOperation={source}
 		/>
@@ -254,7 +254,7 @@ export const CommitTarget: FC<
 				controls={controls}
 				enabled={isActiveTarget}
 				sourceItem={item}
-				operation={targetTooltipOperation ?? null}
+				operation={targetTooltipOperation}
 				render={target}
 				sourceOperation={source}
 			/>
