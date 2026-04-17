@@ -727,15 +727,6 @@ export const useWorkspaceShortcuts = ({
 			}),
 		);
 
-	const selectRelativeItem = (selectedItem: Item, offset: -1 | 1) =>
-		selectItem(getAdjacentItem(navigationIndex, selectedItem, offset) ?? null);
-
-	const selectPreviousSectionItem = (selectedItem: Item) =>
-		selectItem(getPreviousSection(navigationIndex, selectedItem));
-
-	const selectNextSectionItem = (selectedItem: Item) =>
-		selectItem(getAdjacentSection(navigationIndex, selectedItem, 1) ?? null);
-
 	const handleItemSelectionAction = (action: ItemSelectionAction, selectedItem: Item) =>
 		Match.value(action).pipe(
 			Match.tagsExhaustive({
@@ -753,9 +744,11 @@ export const useWorkspaceShortcuts = ({
 							source: operationSourceFromItem(selectedItem),
 						}),
 					),
-				Move: ({ offset }) => selectRelativeItem(selectedItem, offset),
-				NextSection: () => selectNextSectionItem(selectedItem),
-				PreviousSection: () => selectPreviousSectionItem(selectedItem),
+				Move: ({ offset }) =>
+					selectItem(getAdjacentItem(navigationIndex, selectedItem, offset) ?? null),
+				NextSection: () => selectItem(getAdjacentSection(navigationIndex, selectedItem, 1) ?? null),
+				PreviousSection: () =>
+					selectItem(getPreviousSection(navigationIndex, selectedItem) ?? null),
 			}),
 		);
 
