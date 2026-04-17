@@ -665,9 +665,6 @@ impl App {
                 CommitMessage::CreateEmpty => self.handle_commit_create_empty(ctx, messages)?,
                 CommitMessage::Start => self.handle_commit_start(ctx)?,
                 CommitMessage::Confirm => self.handle_commit_confirm(ctx, messages)?,
-                CommitMessage::SetInsertSide(insert_side) => {
-                    self.handle_commit_set_insert_side(insert_side);
-                }
                 CommitMessage::ToggleEmptyMessage => {
                     self.handle_commit_toggle_empty_message();
                 }
@@ -692,9 +689,6 @@ impl App {
             },
             Message::Move(move_message) => match move_message {
                 MoveMessage::Start => self.handle_move_start(),
-                MoveMessage::SetInsertSide(insert_side) => {
-                    self.handle_move_set_insert_side(insert_side)
-                }
                 MoveMessage::Confirm => self.handle_move_confirm(ctx, messages)?,
             },
             Message::NewBranch => {
@@ -1360,8 +1354,6 @@ impl App {
             return Ok(());
         };
 
-        let insert_side = InsertSide::Above;
-
         let commit_mode = match &selection.data {
             StatusOutputLineData::UnassignedChanges { cli_id } => {
                 let Some(source) = CommitSource::try_new(Arc::unwrap_or_clone(Arc::clone(cli_id)))
@@ -1371,7 +1363,6 @@ impl App {
                 CommitMode {
                     source: Arc::new(source),
                     scope_to_stack: None,
-                    insert_side,
                     empty_message: false,
                 }
             }
@@ -1385,7 +1376,6 @@ impl App {
                 CommitMode {
                     source: Arc::new(source),
                     scope_to_stack: cli_id.stack_id(),
-                    insert_side,
                     empty_message: false,
                 }
             }
@@ -1407,7 +1397,6 @@ impl App {
                 };
                 CommitMode {
                     scope_to_stack,
-                    insert_side,
                     empty_message: false,
                     source: Arc::new(source),
                 }
@@ -1434,7 +1423,6 @@ impl App {
                 CommitMode {
                     source: Arc::new(source),
                     scope_to_stack,
-                    insert_side,
                     empty_message: false,
                 }
             }
@@ -1463,7 +1451,6 @@ impl App {
         let Mode::Commit(CommitMode {
             source,
             scope_to_stack,
-            insert_side,
             empty_message,
         }) = &self.mode
         else {
@@ -1504,8 +1491,13 @@ impl App {
             }
         };
 
-        let Some(commit_create_result) =
-            operations::create_commit_legacy(ctx, target, source, *scope_to_stack, *insert_side)?
+        let Some(commit_create_result) = operations::create_commit_legacy(
+            ctx,
+            target,
+            source,
+            *scope_to_stack,
+            InsertSide::Below,
+        )?
         else {
             return Ok(());
         };
@@ -1578,12 +1570,6 @@ impl App {
         Ok(())
     }
 
-    fn handle_commit_set_insert_side(&mut self, insert_side: InsertSide) {
-        if let Mode::Commit(mode) = &mut self.mode {
-            mode.insert_side = insert_side;
-        }
-    }
-
     fn handle_commit_toggle_empty_message(&mut self) {
         if let Mode::Commit(mode) = &mut self.mode {
             mode.empty_message = !mode.empty_message;
@@ -1604,7 +1590,6 @@ impl App {
                 };
                 MoveMode {
                     source: Arc::new(source),
-                    insert_side: InsertSide::Above,
                 }
             }
             StatusOutputLineData::UpdateNotice
@@ -1626,22 +1611,12 @@ impl App {
         self.mode = Mode::Move(move_mode);
     }
 
-    fn handle_move_set_insert_side(&mut self, insert_side: InsertSide) {
-        if let Mode::Move(mode) = &mut self.mode {
-            mode.insert_side = insert_side;
-        }
-    }
-
     fn handle_move_confirm(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
     ) -> anyhow::Result<()> {
-        let Mode::Move(MoveMode {
-            source,
-            insert_side,
-        }) = &self.mode
-        else {
+        let Mode::Move(MoveMode { source }) = &self.mode else {
             return Ok(());
         };
 
@@ -1709,7 +1684,7 @@ impl App {
                         ctx,
                         *source_commit_id,
                         target_commit_id,
-                        *insert_side,
+                        InsertSide::Below,
                     )?,
                     MoveTarget::MergeBase => return Ok(()),
                 };
@@ -2300,9 +2275,6 @@ impl App {
                     if data
                         .cli_id()
                         .is_some_and(|target| *commit_mode.source == **target)
-                        // only target branches here, and not commits. Commits are handled at the
-                        // end of this function because they require [`extend_connector_spans`]
-                        || matches!(data, StatusOutputLineData::Branch { .. })
                     {
                         self.render_commit_labels_for_selected_line(data, commit_mode, &mut line);
                     }
@@ -2311,9 +2283,6 @@ impl App {
                     if data
                         .cli_id()
                         .is_some_and(|target| *move_mode.source == **target)
-                        // only target branches here, and not commits. Commits are handled at the
-                        // end of this function because they require [`extend_connector_spans`]
-                        || matches!(data, StatusOutputLineData::Branch { .. })
                         || matches!(data, StatusOutputLineData::MergeBase)
                     {
                         self.render_move_labels_for_selected_line(data, move_mode, &mut line);
@@ -2465,32 +2434,24 @@ impl App {
         }
 
         if is_selected {
-            line = line.bg(*CURSOR_BG);
-        }
-
-        if is_selected {
             match &self.mode {
-                Mode::Commit(commit_mode)
-                    if matches!(data, StatusOutputLineData::Commit { .. }) =>
-                {
-                    let mut extension_line = Line::default().bg(*CURSOR_BG);
-                    extend_connector_spans(
-                        connector.as_deref().unwrap_or_default(),
-                        match commit_mode.insert_side {
-                            InsertSide::Above => ExtensionDirection::Above,
-                            InsertSide::Below => ExtensionDirection::Below,
-                        },
-                        &mut extension_line,
-                    );
-                    self.render_commit_labels_for_selected_line(
-                        data,
-                        commit_mode,
-                        &mut extension_line,
-                    );
-                    return match commit_mode.insert_side {
-                        InsertSide::Above => StatusListItem::Double(extension_line, line),
-                        InsertSide::Below => StatusListItem::Double(line, extension_line),
-                    };
+                Mode::Commit(commit_mode) => {
+                    if matches!(data, StatusOutputLineData::Commit { .. })
+                        || matches!(data, StatusOutputLineData::Branch { .. })
+                    {
+                        let mut extension_line = Line::default().bg(*CURSOR_BG);
+                        extend_connector_spans(
+                            connector.as_deref().unwrap_or_default(),
+                            ExtensionDirection::Below,
+                            &mut extension_line,
+                        );
+                        self.render_commit_labels_for_selected_line(
+                            data,
+                            commit_mode,
+                            &mut extension_line,
+                        );
+                        return StatusListItem::Double(line, extension_line);
+                    }
                 }
                 Mode::Move(move_mode) => {
                     if let StatusOutputLineData::Commit { cli_id: target, .. } = data
@@ -2499,10 +2460,7 @@ impl App {
                         let mut extension_line = Line::default().bg(*CURSOR_BG);
                         extend_connector_spans(
                             connector.as_deref().unwrap_or_default(),
-                            match move_mode.insert_side {
-                                InsertSide::Above => ExtensionDirection::Above,
-                                InsertSide::Below => ExtensionDirection::Below,
-                            },
+                            ExtensionDirection::Below,
                             &mut extension_line,
                         );
                         self.render_move_labels_for_selected_line(
@@ -2510,19 +2468,49 @@ impl App {
                             move_mode,
                             &mut extension_line,
                         );
-                        return match move_mode.insert_side {
-                            InsertSide::Above => StatusListItem::Double(extension_line, line),
-                            InsertSide::Below => StatusListItem::Double(line, extension_line),
-                        };
+                        return StatusListItem::Double(line, extension_line);
+                    } else if let StatusOutputLineData::Branch { cli_id: target, .. } = data
+                        && *move_mode.source != **target
+                    {
+                        if move_mode.source.is_commit() {
+                            let mut extension_line = Line::default().bg(*CURSOR_BG);
+                            extend_connector_spans(
+                                connector.as_deref().unwrap_or_default(),
+                                ExtensionDirection::Below,
+                                &mut extension_line,
+                            );
+                            self.render_move_labels_for_selected_line(
+                                data,
+                                move_mode,
+                                &mut extension_line,
+                            );
+                            return StatusListItem::Double(line, extension_line);
+                        } else {
+                            let mut extension_line = Line::default().bg(*CURSOR_BG);
+                            extend_connector_spans(
+                                connector.as_deref().unwrap_or_default(),
+                                ExtensionDirection::Above,
+                                &mut extension_line,
+                            );
+                            self.render_move_labels_for_selected_line(
+                                data,
+                                move_mode,
+                                &mut extension_line,
+                            );
+                            return StatusListItem::Double(extension_line, line);
+                        }
                     }
                 }
-                Mode::Commit(..)
-                | Mode::Normal
+                Mode::Normal
                 | Mode::Details
                 | Mode::Rub(..)
                 | Mode::InlineReword(..)
                 | Mode::Command(..) => {}
             }
+        }
+
+        if is_selected {
+            line = line.bg(*CURSOR_BG);
         }
 
         StatusListItem::Single(line)
@@ -3043,7 +3031,6 @@ enum CommandMessage {
 enum CommitMessage {
     CreateEmpty,
     Start,
-    SetInsertSide(InsertSide),
     ToggleEmptyMessage,
     Confirm,
 }
@@ -3051,7 +3038,6 @@ enum CommitMessage {
 #[derive(Debug, Clone)]
 enum MoveMessage {
     Start,
-    SetInsertSide(InsertSide),
     Confirm,
 }
 
@@ -3127,7 +3113,7 @@ fn commit_operation_display(
                 // don't allow selecting branches outside the scoped stack
                 None
             } else {
-                Some("commit to branch")
+                Some("insert commit")
             }
         }
         StatusOutputLineData::Commit { stack_id, .. } => {
@@ -3137,10 +3123,7 @@ fn commit_operation_display(
                 // don't allow selecting commits outside the scoped stack
                 None
             } else {
-                match mode.insert_side {
-                    InsertSide::Above => Some("insert commit above"),
-                    InsertSide::Below => Some("insert commit below"),
-                }
+                Some("insert commit")
             }
         }
         StatusOutputLineData::StagedChanges { .. }
@@ -3163,11 +3146,9 @@ fn commit_operation_display(
 fn move_operation_display(data: &StatusOutputLineData, mode: &MoveMode) -> Option<&'static str> {
     match &*mode.source {
         MoveSource::Commit { .. } => match data {
-            StatusOutputLineData::Commit { .. } => match mode.insert_side {
-                InsertSide::Above => Some("move commit above"),
-                InsertSide::Below => Some("move commit below"),
-            },
-            StatusOutputLineData::Branch { .. } => Some("move commit to branch"),
+            StatusOutputLineData::Commit { .. } | StatusOutputLineData::Branch { .. } => {
+                Some("move commit")
+            }
             StatusOutputLineData::UpdateNotice
             | StatusOutputLineData::Connector
             | StatusOutputLineData::StagedChanges { .. }

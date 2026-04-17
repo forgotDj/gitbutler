@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use bstr::BString;
 use but_core::HunkHeader;
-use but_rebase::graph_rebase::mutate::InsertSide;
 use gitbutler_stack::StackId;
 use ratatui::style::Color;
 use ratatui_textarea::TextArea;
@@ -132,11 +131,6 @@ pub(super) struct CommitMode {
     ///
     /// Used when committing changes staged to a specific stack
     pub(super) scope_to_stack: Option<StackId>,
-    /// The side to insert the new commit on, relative to the target commit.
-    ///
-    /// Note this is only respected when inserting at a commit. If inserting at a branch we'll
-    /// always use [`InsertSide::Below`].
-    pub(super) insert_side: InsertSide,
     /// Create the commit with an empty message.
     ///
     /// By default an editor is opened for the user to write a commit message.
@@ -214,7 +208,6 @@ impl PartialEq<CliId> for CommitSource {
 #[derive(Debug)]
 pub(super) struct MoveMode {
     pub(super) source: Arc<MoveSource>,
-    pub(super) insert_side: InsertSide,
 }
 
 /// A subset of [`CliId`] that supports being moved
@@ -229,6 +222,12 @@ pub(super) enum MoveSource {
         id: ShortId,
         stack_id: Option<StackId>,
     },
+}
+
+impl MoveSource {
+    pub(super) fn is_commit(&self) -> bool {
+        matches!(self, Self::Commit { .. })
+    }
 }
 
 impl TryFrom<CliId> for MoveSource {

@@ -54,9 +54,9 @@ fn move_mode_keeps_selected_commit_and_extension_visible_when_scrolled() {
         .assert_current_line_eq(str!["┊●   << source >> << noop >> [..] add A"]);
 
     tui.input_then_render(KeyCode::Up)
-        .assert_rendered_contains("<< move commit above >>")
+        .assert_rendered_contains("<< move commit >>")
         .assert_rendered_contains("(no commit message) (no changes)")
-        .assert_current_line_eq(str!["┊│   << move commit above >>"]);
+        .assert_current_line_eq(str!["┊│   << move commit >>"]);
 }
 
 #[test]
@@ -85,7 +85,10 @@ fn move_commit_above_other_commit_reorders_tui() {
         .assert_current_line_eq(str!["┊●   << source >> << noop >> [..] add A"]);
 
     tui.input_then_render([KeyCode::Up, KeyCode::Up])
-        .assert_current_line_eq(str!["┊│   << move commit above >>"]);
+        .assert_current_line_eq(str!["┊│   << move commit >>"]);
+
+    tui.input_then_render(KeyCode::Up)
+        .assert_current_line_eq(str!["┊│ << move commit >>"]);
 
     tui.input_then_render(KeyCode::Enter)
         .assert_current_line_eq(str!["┊●   [..] add A"]);
@@ -94,47 +97,6 @@ fn move_commit_above_other_commit_reorders_tui() {
     tui.input_then_render(None)
         .assert_rendered_term_svg_eq(file![
             "snapshots/move_commit_above_other_commit_reorders_tui_final.svg"
-        ]);
-}
-
-#[test]
-fn move_commit_below_other_commit_reorders_tui() {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
-    env.setup_metadata(&["A"]).unwrap();
-
-    let mut tui = test_tui(env);
-
-    tui.input_then_render(None)
-        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
-
-    tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
-
-    tui.input_then_render('n')
-        .assert_current_line_eq(str!["┊●   [..] (no commit message) (no changes)"]);
-
-    tui.input_then_render('n')
-        .assert_current_line_eq(str!["┊●   [..] (no commit message) (no changes)"]);
-
-    tui.input_then_render([KeyCode::Down, KeyCode::Down])
-        .assert_current_line_eq(str!["┊●   [..] add A"]);
-
-    tui.input_then_render('m')
-        .assert_current_line_eq(str!["┊●   << source >> << noop >> [..] add A"]);
-
-    tui.input_then_render([KeyCode::Up, KeyCode::Up])
-        .assert_current_line_eq(str!["┊│   << move commit above >>"]);
-
-    tui.input_then_render('b')
-        .assert_current_line_eq(str!["┊●   [..] (no commit message) (no changes)"]);
-
-    tui.input_then_render(KeyCode::Enter)
-        .assert_current_line_eq(str!["┊●   [..] add A"]);
-
-    tui = tui.recreate();
-    tui.input_then_render(None)
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/move_commit_below_other_commit_reorders_tui_final.svg"
         ]);
 }
 
@@ -158,7 +120,7 @@ fn move_branch_onto_other_branch_reorders_stacks() {
         .assert_current_line_eq(str!["┊╭┄<< source >> << noop >> g0 [A]"]);
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
-        .assert_current_line_eq(str!["┊├┄<< move branch >> [..] [B]"]);
+        .assert_current_line_eq(str!["┊│ << move branch >>"]);
 
     tui.input_then_render(KeyCode::Enter)
         .assert_current_line_eq(str!["┊├┄[..] [A]"]);

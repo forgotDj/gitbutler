@@ -1,6 +1,5 @@
 use std::{borrow::Cow, collections::HashMap};
 
-use but_rebase::graph_rebase::mutate::InsertSide;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use strum::IntoEnumIterator;
 
@@ -569,22 +568,6 @@ fn register_commit_mode_key_binds(key_binds: &mut KeyBinds) {
     });
 
     key_binds.register(KeyBindDef {
-        short_description: "above",
-        key_matcher: press().code(KeyCode::Char('a')),
-        modes: Vec::from([ModeDiscriminant::Commit]),
-        message: Message::Commit(CommitMessage::SetInsertSide(InsertSide::Above)),
-        hide_from_hotbar: false,
-    });
-
-    key_binds.register(KeyBindDef {
-        short_description: "below",
-        key_matcher: press().code(KeyCode::Char('b')),
-        modes: Vec::from([ModeDiscriminant::Commit]),
-        message: Message::Commit(CommitMessage::SetInsertSide(InsertSide::Below)),
-        hide_from_hotbar: false,
-    });
-
-    key_binds.register(KeyBindDef {
         short_description: "empty message",
         key_matcher: press().code(KeyCode::Char('e')),
         modes: Vec::from([ModeDiscriminant::Commit]),
@@ -615,22 +598,6 @@ fn register_move_mode_key_binds(key_binds: &mut KeyBinds) {
         key_matcher: press().code(KeyCode::Enter),
         modes: Vec::from([ModeDiscriminant::Move]),
         message: Message::Move(MoveMessage::Confirm),
-        hide_from_hotbar: false,
-    });
-
-    key_binds.register(KeyBindDef {
-        short_description: "above",
-        key_matcher: press().code(KeyCode::Char('a')),
-        modes: Vec::from([ModeDiscriminant::Move]),
-        message: Message::Move(MoveMessage::SetInsertSide(InsertSide::Above)),
-        hide_from_hotbar: false,
-    });
-
-    key_binds.register(KeyBindDef {
-        short_description: "below",
-        key_matcher: press().code(KeyCode::Char('b')),
-        modes: Vec::from([ModeDiscriminant::Move]),
-        message: Message::Move(MoveMessage::SetInsertSide(InsertSide::Below)),
         hide_from_hotbar: false,
     });
 

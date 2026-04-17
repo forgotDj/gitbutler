@@ -23,7 +23,7 @@ fn commit_mode_enter_and_escape() {
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unassigned changes]"]);
 
     tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊╭┄<< commit to branch >> g0 [A]"]);
+        .assert_current_line_eq(str!["┊│ << insert commit >>"]);
 
     tui.input_then_render(KeyCode::Esc)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"])
@@ -66,13 +66,16 @@ fn commiting_with_no_unassigned_changes() {
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
     tui.input_then_render('c')
-        .assert_current_line_eq(str!["┊╭┄<< commit to branch >> g0 [A]"]);
+        .assert_current_line_eq(str!["┊│ << insert commit >>"]);
 
     tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊│   << insert commit above >>"]);
+        .assert_current_line_eq(str!["┊│   << insert commit >>"]);
+
+    tui.input_then_render(KeyCode::Up)
+        .assert_current_line_eq(str!["┊│ << insert commit >>"]);
 
     tui.input_then_render('e')
-        .assert_current_line_eq(str!["┊│   << insert commit above (empty message) >>"]);
+        .assert_current_line_eq(str!["┊│ << insert commit (empty message) >>"]);
 
     tui.input_then_render(KeyCode::Enter)
         .assert_current_line_eq(str!["┊●   [..] (no commit message) (no changes)"])
@@ -102,7 +105,7 @@ fn commit_from_unstaged_changes_creates_commit_visible_in_tui() {
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unassigned changes]"]);
 
     tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊╭┄<< commit to branch >> g0 [A]"]);
+        .assert_current_line_eq(str!["┊│ << insert commit >>"]);
 
     with_var("GIT_EDITOR", Some(editor_command), || {
         tui.input_then_render(KeyCode::Enter)
@@ -145,7 +148,7 @@ fn commit_from_unstaged_changes_with_multiple_hunks_in_same_file_commits_all_cha
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unassigned changes]"]);
 
     tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊╭┄<< commit to branch >> g0 [A]"]);
+        .assert_current_line_eq(str!["┊│ << insert commit >>"]);
 
     with_var("GIT_EDITOR", Some(editor_command.clone()), || {
         tui.input_then_render(KeyCode::Enter)
@@ -174,7 +177,7 @@ fn commit_from_unstaged_changes_with_multiple_hunks_in_same_file_commits_all_cha
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unassigned changes]"]);
 
     tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊╭┄<< commit to branch >> g0 [A]"]);
+        .assert_current_line_eq(str!["┊│ << insert commit >>"]);
 
     with_var("GIT_EDITOR", Some(editor_command), || {
         tui.input_then_render(KeyCode::Enter)
@@ -204,14 +207,14 @@ fn commit_mode_shows_commit_above_on_commit_rows() {
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unassigned changes]"]);
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
-        .assert_current_line_eq(str!["┊│   << insert commit above >>"])
+        .assert_current_line_eq(str!["┊│   << insert commit >>"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/commit_mode_shows_commit_above_on_commit_rows_final.svg"
         ]);
 }
 
 #[test]
-fn commit_mode_can_toggle_commit_target_insert_side() {
+fn commit_mode_ignores_commit_target_insert_side_keys() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
     env.setup_metadata(&["A"]).unwrap();
 
@@ -226,13 +229,13 @@ fn commit_mode_can_toggle_commit_target_insert_side() {
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unassigned changes]"]);
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
-        .assert_current_line_eq(str!["┊│   << insert commit above >>"]);
+        .assert_current_line_eq(str!["┊│   << insert commit >>"]);
 
     tui.input_then_render('b')
-        .assert_current_line_eq(str!["┊●   [..] add A"]);
+        .assert_current_line_eq(str!["┊│   << insert commit >>"]);
 
     tui.input_then_render('a')
-        .assert_current_line_eq(str!["┊│   << insert commit above >>"])
+        .assert_current_line_eq(str!["┊│   << insert commit >>"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/commit_mode_can_toggle_commit_target_insert_side_final.svg"
         ]);
@@ -261,7 +264,10 @@ fn commit_to_commit_above_creates_commit_visible_in_tui() {
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unassigned changes]"]);
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
-        .assert_current_line_eq(str!["┊│   << insert commit above >>"]);
+        .assert_current_line_eq(str!["┊│   << insert commit >>"]);
+
+    tui.input_then_render(KeyCode::Up)
+        .assert_current_line_eq(str!["┊│ << insert commit >>"]);
 
     with_var("GIT_EDITOR", Some(editor_command), || {
         tui.input_then_render(KeyCode::Enter)
@@ -298,10 +304,7 @@ fn commit_to_commit_below_creates_commit_visible_in_tui() {
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unassigned changes]"]);
 
     tui.input_then_render([KeyCode::Down, KeyCode::Down])
-        .assert_current_line_eq(str!["┊│   << insert commit above >>"]);
-
-    tui.input_then_render('b')
-        .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
+        .assert_current_line_eq(str!["┊│   << insert commit >>"]);
 
     with_var("GIT_EDITOR", Some(editor_command), || {
         tui.input_then_render(KeyCode::Enter)
@@ -347,13 +350,13 @@ fn commit_mode_from_staged_changes_stays_within_current_stack() {
     ]);
 
     tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊╭┄<< commit to branch >> [..] [A]"]);
+        .assert_current_line_eq(str!["┊│ << insert commit >>"]);
 
     tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊│   << insert commit above >>"]);
+        .assert_current_line_eq(str!["┊│   << insert commit >>"]);
 
     tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str!["┊╭┄<< commit to branch >> h0 [B]"])
+        .assert_current_line_eq(str!["┊│ << insert commit >>"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/commit_mode_from_staged_changes_stays_within_current_stack_final.svg"
         ]);
