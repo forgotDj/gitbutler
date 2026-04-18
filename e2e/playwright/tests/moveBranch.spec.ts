@@ -1,6 +1,7 @@
 import { getBaseURL, type GitButler, startGitButler } from "../src/setup.ts";
+import { test } from "../src/test.ts";
 import { dragAndDropByLocator, sleep, waitForTestId } from "../src/util.ts";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 let gitbutler: GitButler;
 

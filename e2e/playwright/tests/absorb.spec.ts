@@ -1,7 +1,8 @@
 import { assertFileContent, writeToFile } from "../src/file.ts";
 import { getBaseURL, startGitButler, type GitButler } from "../src/setup.ts";
+import { test } from "../src/test.ts";
 import { clickByTestId, waitForTestId } from "../src/util.ts";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 let gitbutler: GitButler;
 

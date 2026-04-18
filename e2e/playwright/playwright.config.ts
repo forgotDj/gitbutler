@@ -34,8 +34,8 @@ export default defineConfig({
 
 		/* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
 		// I have no idea why, but with this disabled, some tests just always fail. I have no idea why.
-		trace: "on",
-		video: process.env.CI ? "on-first-retry" : "retain-on-failure",
+		trace: "retain-on-failure",
+		video: "retain-on-failure",
 	},
 
 	/* Configure projects for major browsers */

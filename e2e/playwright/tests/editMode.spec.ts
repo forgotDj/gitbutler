@@ -1,6 +1,7 @@
 import { getBaseURL, startGitButler, type GitButler } from "../src/setup.ts";
+import { test } from "../src/test.ts";
 import { clickByTestId, waitForTestId } from "../src/util.ts";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { readFileSync, writeFileSync } from "fs";
 
 let gitbutler: GitButler;

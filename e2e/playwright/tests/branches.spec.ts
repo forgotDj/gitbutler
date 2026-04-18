@@ -1,5 +1,6 @@
 import { createNewBranch, deleteBranch, unapplyStack } from "../src/branch.ts";
 import { getBaseURL, type GitButler, startGitButler } from "../src/setup.ts";
+import { test } from "../src/test.ts";
 import {
 	clickByTestId,
 	fillByTestId,
@@ -8,7 +9,7 @@ import {
 	waitForTestId,
 	waitForTestIdToNotExist,
 } from "../src/util.ts";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 
 let gitbutler: GitButler;

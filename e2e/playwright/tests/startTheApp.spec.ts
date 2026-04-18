@@ -1,6 +1,7 @@
 import { GIT_CONFIG_GLOBAL } from "../src/env.ts";
 import { writeToFile } from "../src/file.ts";
 import { getBaseURL, type GitButler, startGitButler } from "../src/setup.ts";
+import { test } from "../src/test.ts";
 import {
 	clickByTestId,
 	fillByTestId,
@@ -10,7 +11,7 @@ import {
 	textEditorFillByTestId,
 	waitForTestId,
 } from "../src/util.ts";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 let gitbutler: GitButler;
 

@@ -1,7 +1,7 @@
 import { assertBranch } from "../src/branch.ts";
 import { getBaseURL, type GitButler, startGitButler } from "../src/setup.ts";
+import { test } from "../src/test.ts";
 import { waitForTestId, waitForTestIdToNotExist } from "../src/util.ts";
-import { test } from "@playwright/test";
 
 let gitbutler: GitButler;
 

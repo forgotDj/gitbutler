@@ -6,8 +6,9 @@ import {
 	assertFileIsUnstaged,
 } from "../src/file.ts";
 import { getBaseURL, type GitButler, startGitButler } from "../src/setup.ts";
+import { test } from "../src/test.ts";
 import { clickByTestId, dragAndDropByLocator, getByTestId, waitForTestId } from "../src/util.ts";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { writeFileSync } from "fs";
 
 let gitbutler: GitButler;

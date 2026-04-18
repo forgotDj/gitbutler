@@ -8,6 +8,7 @@ import {
 } from "../src/commit.ts";
 import { stageFirstFile, unstageAllFiles, writeFiles } from "../src/file.ts";
 import { getBaseURL, type GitButler, startGitButler } from "../src/setup.ts";
+import { test } from "../src/test.ts";
 import {
 	clickByTestId,
 	dragAndDropByLocator,
@@ -15,7 +16,7 @@ import {
 	waitForTestId,
 	waitForTestIdToNotExist,
 } from "../src/util.ts";
-import { expect, Page, test } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { copyFileSync, writeFileSync } from "fs";
 import { join } from "path";
 
