@@ -9,7 +9,7 @@ use but_core::ref_metadata::{
     self, StackId,
     StackKind::{Applied, AppliedAndUnapplied},
 };
-use gix::refs::Category;
+use gix::{ObjectId, refs::Category};
 use itertools::Itertools;
 use petgraph::{
     Direction,
@@ -386,7 +386,7 @@ impl Graph {
         target_ref: Option<&TargetRef>,
         target_commit: Option<&TargetCommit>,
         additional: impl IntoIterator<Item = SegmentIndex>,
-    ) -> Option<(gix::ObjectId, SegmentIndex)> {
+    ) -> Option<(ObjectId, SegmentIndex)> {
         // It's important to not start from the tip, but instead find paths to the merge-base from each stack individually.
         // Otherwise, we may end up with a short path to a segment that isn't actually reachable by all stacks.
         let (tips, actual_tip) = match tip {
@@ -834,23 +834,26 @@ impl WorkspaceState {
     /// - commits that are purely remote (never existed locally or pre-rebase versions), and
     /// - non-integrated commits from upper stack segments that are still on the
     ///   remote (the "branch split" case — a previously combined push left the
-    ///   remote pointing at commits that now belong to a higher branch).
+    ///   remote pointing at commits that now belong to branch above it).
     fn add_commits_on_remote(&mut self, graph: &Graph) {
         for stack in &mut self.stacks {
             let mut above_commit_ids = HashSet::new();
             for seg_idx in 0..stack.segments.len() {
                 let Some(rsidx) = stack.segments[seg_idx].remote_tracking_branch_segment_id else {
                     // Still accumulate this segment's commits for lower segments.
-                    for commit in &stack.segments[seg_idx].commits {
-                        above_commit_ids.insert(commit.id);
-                    }
+                    above_commit_ids.extend(stack.segments[seg_idx].commits.iter().map(|c| c.id));
                     continue;
                 };
 
-                // All-parents walk: collect commits from fully-remote segments.
+                // All-parents walk: collect commits from *fully*-remote segments.
                 // Stop at segments that contain non-remote commits or that belong
-                // to another remote-branch (unless we started empty, which signals
-                // ambiguous ownership).
+                // to another remote-branch, unless this segment is empty and
+                // the first reachable remote commits can't be uniquely attributed.
+                // This happens if multiple remote tracking branches point to the same commit,
+                // which is when ours might be empty because it was traversed after the one which
+                // then gets to own the commit.
+                // So `may_take_from_first_remote` allows us to pretend that these commits
+                // belong to our remote (which they do as well from a pure graph perspective).
                 let mut may_take_from_first_remote = graph[rsidx].commits.is_empty();
                 let mut remote_commits = Vec::new();
                 graph.visit_all_segments_including_start_until(
@@ -879,18 +882,10 @@ impl WorkspaceState {
                 );
 
                 // First-parent walk: detect non-integrated commits from upper
-                // stack segments that are still on the remote (branch-split case).
+                // stack segments that are still reachable by the remote tracking branch.
                 if !above_commit_ids.is_empty() {
                     let mut seen: HashSet<_> = remote_commits.iter().map(|c| c.id).collect();
                     let mut extra = Vec::new();
-                    for commit in &graph[rsidx].commits {
-                        if above_commit_ids.contains(&commit.id)
-                            && !commit.flags.contains(CommitFlags::Integrated)
-                            && seen.insert(commit.id)
-                        {
-                            extra.push(StackCommit::from_graph_commit(commit));
-                        }
-                    }
                     graph.visit_segments_downward_along_first_parent_exclude_start(rsidx, |s| {
                         if s.ref_name()
                             .is_some_and(|rn| rn.category() == Some(Category::RemoteBranch))
@@ -913,9 +908,7 @@ impl WorkspaceState {
                 stack.segments[seg_idx].commits_on_remote = remote_commits;
 
                 // Accumulate this segment's commits for lower segments.
-                for commit in &stack.segments[seg_idx].commits {
-                    above_commit_ids.insert(commit.id);
-                }
+                above_commit_ids.extend(stack.segments[seg_idx].commits.iter().map(|c| c.id));
             }
         }
     }
