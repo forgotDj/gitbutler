@@ -1,7 +1,7 @@
-import { findCommitWithContext, findSegmentByBranchRef } from "#ui/domain/RefInfo.ts";
+import { findCommit, findSegmentByBranchRef } from "#ui/domain/RefInfo.ts";
 import {
+	assert,
 	CommitLabel,
-	decodeRefName,
 	formatHunkHeader,
 	shortCommitId,
 } from "#ui/routes/project/$id/shared.tsx";
@@ -17,15 +17,13 @@ export const OperationSourceLabel: FC<{
 	Match.value(source).pipe(
 		Match.tagsExhaustive({
 			Stack: () => "Stack",
-			Segment: ({ branchRef }) => {
+			Branch: ({ branchRef }) => {
 				const segment = findSegmentByBranchRef({ headInfo, branchRef });
-				if (segment?.refName) return segment.refName.displayName;
-				if (branchRef) return decodeRefName(branchRef);
-				return "Segment";
+				return assert(segment?.refName).displayName;
 			},
 			BaseCommit: () => "Base commit",
 			Commit: ({ commitId }) => {
-				const commit = findCommitWithContext({ headInfo, commitId })?.commit;
+				const commit = findCommit({ headInfo, commitId });
 				return commit ? <CommitLabel commit={commit} /> : shortCommitId(commitId);
 			},
 			ChangesSection: () => "Changes",

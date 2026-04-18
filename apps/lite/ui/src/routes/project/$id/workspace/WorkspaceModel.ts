@@ -7,20 +7,21 @@ import { Segment, type RefInfo, type TreeChange } from "@gitbutler/but-sdk";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { type NonEmptyArray } from "effect/Array";
 import {
+	branchItem,
 	baseCommitItem,
 	changeItem,
 	changesSectionItem,
 	type Item,
 	commitItem,
 	commitFileItem,
+	itemEquals,
 	itemIdentityKey,
-	segmentItem,
 	stackItem,
 } from "./Item.ts";
 import { getRelative } from "../shared.tsx";
 
 type WorkspaceSection = {
-	section: Item;
+	section: Item | null;
 	children: Array<Item>;
 };
 
@@ -39,33 +40,35 @@ const buildWorkspaceOutline = ({
 	expandedCommitId = null,
 	expandedCommitPaths,
 }: BuildWorkspaceOutlineArgs): WorkspaceOutline => {
-	const changesSection = (stackId: string | null): WorkspaceSection => ({
-		section: changesSectionItem({ stackId }),
+	const changesSection: WorkspaceSection = {
+		section: changesSectionItem({}),
 		children: changes.map((change) => changeItem({ path: change.path })),
-	});
+	};
 
-	const segmentSection = (
-		stackId: string,
-		segmentIndex: number,
-		segment: Segment,
-	): WorkspaceSection => {
-		const branchRef = segment.refName?.fullNameBytes ?? null;
-		return {
-			section: segmentItem({ stackId, segmentIndex, branchRef }),
-			children: segment.commits.flatMap((commit) => [
-				commitItem({ stackId, segmentIndex, branchRef, commitId: commit.id }),
+	const segmentChildren = (stackId: string, segment: Segment): Array<Item> =>
+		segment.commits.flatMap(
+			(commit): Array<Item> => [
+				commitItem({ stackId, commitId: commit.id }),
 				...(commit.id === expandedCommitId
 					? (expandedCommitPaths ?? []).map((path) =>
 							commitFileItem({
 								stackId,
-								segmentIndex,
-								branchRef,
 								commitId: commit.id,
 								path,
 							}),
 						)
 					: []),
-			]),
+			],
+		);
+
+	const segmentSection = (stackId: string, segment: Segment): WorkspaceSection | null => {
+		const children = segmentChildren(stackId, segment);
+		const branchRef = segment.refName?.fullNameBytes;
+		if (!branchRef && children.length === 0) return null;
+
+		return {
+			section: branchRef ? branchItem({ stackId, branchRef }) : null,
+			children,
 		};
 	};
 
@@ -75,20 +78,21 @@ const buildWorkspaceOutline = ({
 	};
 
 	return [
-		changesSection(null),
+		changesSection,
 
 		...headInfo.stacks.flatMap((stack) => {
-			if (stack.id == null) return [];
-			const stackId = stack.id;
+			// oxlint-disable-next-line typescript/no-non-null-assertion -- [ref:stack-id-required]
+			const stackId = stack.id!;
 			const stackItemSection: WorkspaceSection = {
 				section: stackItem({ stackId }),
 				children: [],
 			};
 			return [
 				stackItemSection,
-				...stack.segments.map((segment, segmentIndex) =>
-					segmentSection(stackId, segmentIndex, segment),
-				),
+				...stack.segments.flatMap((segment) => {
+					const section = segmentSection(stackId, segment);
+					return section ? [section] : [];
+				}),
 			];
 		}),
 
@@ -129,7 +133,7 @@ export type NavigationIndex = {
 };
 
 export const buildNavigationIndex = (outline: WorkspaceOutline): NavigationIndex => {
-	const model: NavigationIndex = {
+	const index: NavigationIndex = {
 		items: [],
 		sectionStartIndexes: [],
 		sectionIndexByItemIndex: [],
@@ -137,20 +141,20 @@ export const buildNavigationIndex = (outline: WorkspaceOutline): NavigationIndex
 	};
 
 	const addItem = (item: Item, sectionIndex: number) => {
-		model.indexByKey.set(itemIdentityKey(item), model.items.length);
-		model.sectionIndexByItemIndex.push(sectionIndex);
-		model.items.push(item);
+		index.indexByKey.set(itemIdentityKey(item), index.items.length);
+		index.sectionIndexByItemIndex.push(sectionIndex);
+		index.items.push(item);
 	};
 
 	for (const { section, children } of outline) {
-		const sectionIndex = model.sectionStartIndexes.length;
-		model.sectionStartIndexes.push(model.items.length);
-		addItem(section, sectionIndex);
+		const sectionIndex = index.sectionStartIndexes.length;
+		index.sectionStartIndexes.push(index.items.length);
+		if (section) addItem(section, sectionIndex);
 
 		for (const item of children) addItem(item, sectionIndex);
 	}
 
-	return model;
+	return index;
 };
 
 export const filterNavigationIndex = (
@@ -189,22 +193,34 @@ export const filterNavigationIndex = (
 
 export const getAdjacentItem = (
 	index: NavigationIndex,
-	selection: Item | null,
+	selectedItem: Item | null,
 	offset: -1 | 1,
 ): Item | null => {
-	if (!selection) return null;
-	const currentIndex = index.indexByKey.get(itemIdentityKey(selection));
+	if (!selectedItem) return null;
+	const currentIndex = index.indexByKey.get(itemIdentityKey(selectedItem));
 	if (currentIndex === undefined) return null;
 	return getRelative(index.items, currentIndex, offset);
 };
 
+const getCurrentSection = (index: NavigationIndex, selectedItem: Item | null): Item | null => {
+	if (!selectedItem) return null;
+	const currentIndex = index.indexByKey.get(itemIdentityKey(selectedItem));
+	if (currentIndex === undefined) return null;
+	const currentSectionIndex = index.sectionIndexByItemIndex[currentIndex] ?? -1;
+	if (currentSectionIndex === -1) return null;
+	const currentSectionStartIndex = index.sectionStartIndexes[currentSectionIndex];
+	if (currentSectionStartIndex === undefined) return null;
+	return index.items[currentSectionStartIndex] ?? null;
+};
+
 export const getAdjacentSection = (
 	index: NavigationIndex,
-	selection: Item | null,
+	selectedItem: Item | null,
 	offset: -1 | 1,
 ): Item | null => {
-	if (!selection) return null;
-	const currentIndex = index.indexByKey.get(itemIdentityKey(selection));
+	const currentSection = getCurrentSection(index, selectedItem);
+	if (currentSection === null) return null;
+	const currentIndex = index.indexByKey.get(itemIdentityKey(currentSection));
 	if (currentIndex === undefined) return null;
 	const currentSectionIndex = index.sectionIndexByItemIndex[currentIndex] ?? -1;
 	if (currentSectionIndex === -1) return null;
@@ -217,8 +233,16 @@ export const getAdjacentSection = (
 	return index.items[adjacentSectionStartIndex] ?? null;
 };
 
+export const getPreviousSection = (
+	index: NavigationIndex,
+	selectedItem: Item | null,
+): Item | null => {
+	const currentSection = getCurrentSection(index, selectedItem);
+	if (currentSection === null) return null;
+	return selectedItem !== null && !itemEquals(currentSection, selectedItem)
+		? currentSection
+		: getAdjacentSection(index, currentSection, -1);
+};
+
 export const navigationIndexIncludes = (navigationIndex: NavigationIndex, item: Item): boolean =>
 	navigationIndex.indexByKey.has(itemIdentityKey(item));
-
-export const getDefaultItem = (navigationIndex: NavigationIndex): Item | null =>
-	navigationIndex.items[0] ?? null;
