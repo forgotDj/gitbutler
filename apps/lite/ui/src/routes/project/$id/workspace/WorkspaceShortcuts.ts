@@ -38,23 +38,19 @@ import { OperationMode, type WorkspaceMode } from "./WorkspaceMode.ts";
 
 type MoveItemSelectionAction = { offset: -1 | 1 };
 
-type ItemSelectionAction =
-	| { _tag: "EnterMoveMode" }
-	| { _tag: "EnterRubMode" }
+type ItemMoveSelectionAction =
 	| ({ _tag: "Move" } & MoveItemSelectionAction)
 	| { _tag: "NextSection" }
 	| { _tag: "PreviousSection" };
 
-const enterMoveModeAction: ItemSelectionAction = { _tag: "EnterMoveMode" };
-const enterRubModeAction: ItemSelectionAction = { _tag: "EnterRubMode" };
-const moveItemSelectionAction = ({ offset }: MoveItemSelectionAction): ItemSelectionAction => ({
+const moveItemSelectionAction = ({ offset }: MoveItemSelectionAction): ItemMoveSelectionAction => ({
 	_tag: "Move",
 	offset,
 });
-const nextSectionAction: ItemSelectionAction = { _tag: "NextSection" };
-const previousSectionAction: ItemSelectionAction = { _tag: "PreviousSection" };
+const nextSectionAction: ItemMoveSelectionAction = { _tag: "NextSection" };
+const previousSectionAction: ItemMoveSelectionAction = { _tag: "PreviousSection" };
 
-const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
+const itemMoveSelectionBindings: Array<ShortcutBinding<ItemMoveSelectionAction>> = [
 	{
 		id: "item-selection-move-up",
 		description: "up",
@@ -81,6 +77,18 @@ const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
 		action: nextSectionAction,
 		showInShortcutsBar: false,
 	},
+];
+
+type ItemSelectionAction =
+	| { _tag: "EnterMoveMode" }
+	| { _tag: "EnterRubMode" }
+	| ItemMoveSelectionAction;
+
+const enterMoveModeAction: ItemSelectionAction = { _tag: "EnterMoveMode" };
+const enterRubModeAction: ItemSelectionAction = { _tag: "EnterRubMode" };
+
+const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
+	...itemMoveSelectionBindings,
 	{
 		id: "item-selection-enter-rub-mode",
 		description: "Rub",
@@ -727,23 +735,9 @@ export const useWorkspaceShortcuts = ({
 			}),
 		);
 
-	const handleItemSelectionAction = (action: ItemSelectionAction, selectedItem: Item) =>
+	const handleItemMoveSelectionAction = (action: ItemMoveSelectionAction, selectedItem: Item) =>
 		Match.value(action).pipe(
 			Match.tagsExhaustive({
-				EnterMoveMode: () =>
-					dispatch(
-						projectActions.enterMoveMode({
-							projectId,
-							source: operationSourceFromItem(selectedItem),
-						}),
-					),
-				EnterRubMode: () =>
-					dispatch(
-						projectActions.enterRubMode({
-							projectId,
-							source: operationSourceFromItem(selectedItem),
-						}),
-					),
 				Move: ({ offset }) =>
 					selectItem(
 						getAdjacent({
@@ -766,6 +760,29 @@ export const useWorkspaceShortcuts = ({
 							selectedItem,
 						}) ?? selectedItem,
 					),
+			}),
+		);
+
+	const handleItemSelectionAction = (action: ItemSelectionAction, selectedItem: Item) =>
+		Match.value(action).pipe(
+			Match.tags({
+				EnterMoveMode: () =>
+					dispatch(
+						projectActions.enterMoveMode({
+							projectId,
+							source: operationSourceFromItem(selectedItem),
+						}),
+					),
+				EnterRubMode: () =>
+					dispatch(
+						projectActions.enterRubMode({
+							projectId,
+							source: operationSourceFromItem(selectedItem),
+						}),
+					),
+			}),
+			Match.orElse((action) => {
+				handleItemMoveSelectionAction(action, selectedItem);
 			}),
 		);
 
