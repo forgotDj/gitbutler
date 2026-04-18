@@ -49,6 +49,7 @@ const ProjectSelect: FC = () => {
 				});
 				window.localStorage.setItem(lastOpenedProjectKey, nextProjectId);
 			}}
+			className={uiStyles.button}
 		>
 			<option value="" disabled>
 				Select a project
