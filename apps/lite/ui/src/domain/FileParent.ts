@@ -12,6 +12,6 @@ export const commitFileParent = ({ commitId }: CommitFileParent): FileParent => 
 });
 
 /** @public */
-export const changesSectionFileParent: ChangesSectionFileParent = {
+export const changesSectionFileParent: FileParent = {
 	_tag: "ChangesSection",
 };

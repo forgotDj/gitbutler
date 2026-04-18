@@ -38,7 +38,7 @@ export const baseCommitOperationSource: OperationSource = {
 };
 
 /** @public */
-export const changesSectionOperationSource: ChangesSectionOperationSource = {
+export const changesSectionOperationSource: OperationSource = {
 	_tag: "ChangesSection",
 };
 
