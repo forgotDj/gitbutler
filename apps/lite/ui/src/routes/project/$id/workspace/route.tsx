@@ -1321,13 +1321,13 @@ const ChangesSectionRow: FC<{
 
 const BaseCommitRow: FC<
 	{
+		projectId: string;
 		commitId?: string;
 		navigationIndex: NavigationIndex;
 		operationMode: OperationMode | null;
 	} & ComponentProps<"div">
-> = ({ commitId, navigationIndex, operationMode, ...props }) => {
+> = ({ projectId, commitId, navigationIndex, operationMode, ...props }) => {
 	const dispatch = useAppDispatch();
-	const projectId = Route.useParams().id;
 	const item = baseCommitItem;
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
@@ -1906,6 +1906,7 @@ const ProjectPage: FC = () => {
 
 				<div className={styles.section}>
 					<BaseCommitRow
+						projectId={projectId}
 						commitId={getCommonBaseCommitId(headInfo)}
 						navigationIndex={navigationIndex}
 						operationMode={operationMode}
