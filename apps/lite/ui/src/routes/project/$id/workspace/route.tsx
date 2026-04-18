@@ -94,17 +94,18 @@ import {
 } from "react";
 import { Route as projectRoute } from "#ui/routes/project/$id/route.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
+import type { RootState } from "#ui/state/store.ts";
 import {
 	branchItem,
 	baseCommitItem,
 	changeFileItem,
 	changesSectionItem,
 	type BranchItem,
-	CommitFileItem,
 	commitFileItem,
-	CommitItem,
+	type CommitItem,
 	commitItem,
 	itemEquals,
+	itemIdentityKey,
 	type Item,
 	stackItem,
 } from "./Item.ts";
@@ -140,6 +141,43 @@ import {
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 const fileHunkKey = (path: string, hunk: HunkHeader): string => `${path}:${hunkKey(hunk)}`;
+
+const selectNormalizedSelectedItem = (
+	state: RootState,
+	{
+		projectId,
+		navigationIndex,
+	}: {
+		projectId: string;
+		navigationIndex: NavigationIndex;
+	},
+): Item | null => {
+	const selectedItem = selectProjectSelectedItem(state, projectId);
+	return selectedItem && navigationIndexIncludes(navigationIndex, selectedItem)
+		? selectedItem
+		: (navigationIndex.items[0] ?? null);
+};
+
+const useIsItemSelected = ({
+	projectId,
+	item,
+	navigationIndex,
+}: {
+	projectId: string;
+	item: Item;
+	navigationIndex: NavigationIndex;
+}): boolean => {
+	const itemKey = itemIdentityKey(item);
+
+	return useAppSelector((state) => {
+		const selectedItem = selectNormalizedSelectedItem(state, {
+			projectId,
+			navigationIndex,
+		});
+
+		return selectedItem !== null && itemIdentityKey(selectedItem) === itemKey;
+	});
+};
 
 const lineEndingForDiff = (diff: string): string => (diff.includes("\r\n") ? "\r\n" : "\n");
 
@@ -1045,12 +1083,12 @@ const CommitFileRow: FC<{
 	change: TreeChange;
 	operationMode: OperationMode | null;
 	parentCommitItem: CommitItem;
-	isSelected: boolean;
 	navigationIndex: NavigationIndex;
 	projectId: string;
-}> = ({ change, operationMode, parentCommitItem, isSelected, navigationIndex, projectId }) => {
+}> = ({ change, operationMode, parentCommitItem, navigationIndex, projectId }) => {
 	const dispatch = useAppDispatch();
 	const item = commitFileItem({ ...parentCommitItem, path: change.path });
+	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	return (
 		<OperationSourceC
@@ -1080,8 +1118,6 @@ const CommitC: FC<{
 	commitMessageFormRef: Ref<HTMLFormElement>;
 	operationMode: OperationMode | null;
 	workspaceMode: WorkspaceMode;
-	isSelected: boolean;
-	selectedFile: CommitFileItem | null;
 	projectId: string;
 	stackId: string;
 	navigationIndex: NavigationIndex;
@@ -1090,8 +1126,6 @@ const CommitC: FC<{
 	commitMessageFormRef,
 	operationMode,
 	workspaceMode,
-	isSelected,
-	selectedFile,
 	projectId,
 	stackId,
 	navigationIndex,
@@ -1104,6 +1138,8 @@ const CommitC: FC<{
 	);
 	const commitItemV: CommitItem = { stackId, commitId: commit.id };
 	const item = commitItem(commitItemV);
+	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
+
 	return (
 		<OperationSourceC
 			operationMode={operationMode}
@@ -1141,7 +1177,6 @@ const CommitC: FC<{
 								change={change}
 								operationMode={operationMode}
 								parentCommitItem={commitItemV}
-								isSelected={selectedFile?.path === change.path}
 								navigationIndex={navigationIndex}
 								projectId={projectId}
 							/>
@@ -1156,7 +1191,6 @@ const CommitC: FC<{
 const ChangeFileRow: FC<{
 	change: TreeChange;
 	dependencyCommitIds: Array<string>;
-	isSelected: boolean;
 	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	operationMode: OperationMode | null;
@@ -1164,7 +1198,6 @@ const ChangeFileRow: FC<{
 }> = ({
 	change,
 	dependencyCommitIds,
-	isSelected,
 	navigationIndex,
 	onAbsorbChanges,
 	operationMode,
@@ -1172,6 +1205,7 @@ const ChangeFileRow: FC<{
 }) => {
 	const dispatch = useAppDispatch();
 	const item = changeFileItem({ path: change.path });
+	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	const menuItems: Array<NativeMenuItem> = [
 		{
@@ -1232,12 +1266,13 @@ const ChangeFileRow: FC<{
 
 const ChangesSectionRow: FC<{
 	changes: Array<TreeChange>;
-	isSelected: boolean;
 	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	projectId: string;
-}> = ({ changes, isSelected, navigationIndex, onAbsorbChanges, projectId }) => {
+}> = ({ changes, navigationIndex, onAbsorbChanges, projectId }) => {
 	const dispatch = useAppDispatch();
+	const item = changesSectionItem;
+	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	const menuItems: Array<NativeMenuItem> = [
 		{
@@ -1257,10 +1292,7 @@ const ChangesSectionRow: FC<{
 	];
 
 	return (
-		<ItemRow
-			inert={!navigationIndexIncludes(navigationIndex, changesSectionItem)}
-			isSelected={isSelected}
-		>
+		<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected}>
 			<button
 				type="button"
 				className={classes(styles.itemRowButton, styles.sectionButton)}
@@ -1268,7 +1300,7 @@ const ChangesSectionRow: FC<{
 					dispatch(
 						projectActions.selectItem({
 							projectId,
-							item: changesSectionItem,
+							item,
 						}),
 					);
 				}}
@@ -1295,31 +1327,32 @@ const ChangesSectionRow: FC<{
 const BaseCommitRow: FC<
 	{
 		commitId?: string;
-		isSelected: boolean;
 		navigationIndex: NavigationIndex;
 		operationMode: OperationMode | null;
 	} & ComponentProps<"div">
-> = ({ commitId, isSelected, navigationIndex, operationMode, ...props }) => {
+> = ({ commitId, navigationIndex, operationMode, ...props }) => {
 	const dispatch = useAppDispatch();
 	const projectId = Route.useParams().id;
+	const item = baseCommitItem;
+	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	return (
 		<OperationTarget
 			projectId={projectId}
-			item={baseCommitItem}
+			item={item}
 			operationMode={operationMode}
 			isSelected={isSelected}
 			render={
 				<ItemRow
 					{...props}
-					inert={!navigationIndexIncludes(navigationIndex, baseCommitItem)}
+					inert={!navigationIndexIncludes(navigationIndex, item)}
 					isSelected={isSelected}
 				>
 					<button
 						type="button"
 						className={styles.commonBaseCommit}
 						onClick={() => {
-							dispatch(projectActions.selectItem({ projectId, item: baseCommitItem }));
+							dispatch(projectActions.selectItem({ projectId, item }));
 						}}
 					>
 						{commitId !== undefined
@@ -1335,20 +1368,10 @@ const BaseCommitRow: FC<
 const Changes: FC<{
 	operationMode: OperationMode | null;
 	projectId: string;
-	isSelected: boolean;
-	selectedPath: string | null;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	className?: string;
 	navigationIndex: NavigationIndex;
-}> = ({
-	operationMode,
-	projectId,
-	isSelected,
-	selectedPath,
-	onAbsorbChanges,
-	className,
-	navigationIndex,
-}) => {
+}> = ({ operationMode, projectId, onAbsorbChanges, className, navigationIndex }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
@@ -1356,6 +1379,7 @@ const Changes: FC<{
 	);
 
 	const item = changesSectionItem;
+	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	return (
 		<OperationSourceC
@@ -1374,7 +1398,6 @@ const Changes: FC<{
 		>
 			<ChangesSectionRow
 				changes={worktreeChanges.changes}
-				isSelected={isSelected}
 				navigationIndex={navigationIndex}
 				onAbsorbChanges={onAbsorbChanges}
 				projectId={projectId}
@@ -1394,7 +1417,6 @@ const Changes: FC<{
 								<ChangeFileRow
 									change={change}
 									dependencyCommitIds={dependencyCommitIds}
-									isSelected={selectedPath === change.path}
 									navigationIndex={navigationIndex}
 									onAbsorbChanges={onAbsorbChanges}
 									operationMode={operationMode}
@@ -1443,7 +1465,6 @@ const BranchRow: FC<
 	{
 		branchRenameFormRef: Ref<HTMLFormElement>;
 		operationMode: OperationMode | null;
-		isSelected: boolean;
 		workspaceMode: WorkspaceMode;
 		projectId: string;
 		branchName: string;
@@ -1454,7 +1475,6 @@ const BranchRow: FC<
 > = ({
 	branchRenameFormRef,
 	operationMode,
-	isSelected,
 	workspaceMode,
 	projectId,
 	branchName,
@@ -1469,6 +1489,7 @@ const BranchRow: FC<
 		branchRef,
 	};
 	const item = branchItem(branchItemV);
+	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 	const isRenaming =
 		workspaceMode._tag === "RenameBranch" &&
 		itemEquals(
@@ -1609,15 +1630,15 @@ const BranchRow: FC<
 
 const StackRow: FC<
 	{
-		isSelected: boolean;
 		navigationIndex: NavigationIndex;
 		projectId: string;
 		stackId: string;
 		workspaceMode: WorkspaceMode;
 	} & ComponentProps<"div">
-> = ({ isSelected, navigationIndex, projectId, stackId, workspaceMode, ...restProps }) => {
+> = ({ navigationIndex, projectId, stackId, workspaceMode, ...restProps }) => {
 	const dispatch = useAppDispatch();
 	const item = stackItem({ stackId });
+	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	const unapplyStack = useMutation(unapplyStackMutationOptions);
 
@@ -1676,7 +1697,6 @@ const StackC: FC<{
 	commitMessageFormRef: Ref<HTMLFormElement>;
 	operationMode: OperationMode | null;
 	projectId: string;
-	selectedItem: Item | null;
 	stack: Stack;
 	workspaceMode: WorkspaceMode;
 	navigationIndex: NavigationIndex;
@@ -1685,7 +1705,6 @@ const StackC: FC<{
 	commitMessageFormRef,
 	operationMode,
 	projectId,
-	selectedItem,
 	stack,
 	workspaceMode,
 	navigationIndex,
@@ -1703,7 +1722,6 @@ const StackC: FC<{
 	return (
 		<div className={classes(styles.stack, styles.section)}>
 			<StackRow
-				isSelected={selectedItem?._tag === "Stack" && selectedItem.stackId === stackId}
 				workspaceMode={workspaceMode}
 				projectId={projectId}
 				stackId={stackId}
@@ -1716,21 +1734,6 @@ const StackC: FC<{
 					const branchRef = segment.refName?.fullNameBytes;
 
 					if (!branchRef && segment.commits.length === 0) return null;
-
-					const selectedBranch =
-						branchRef && selectedItem?._tag === "Branch"
-							? itemEquals(selectedItem, branchItem({ stackId, branchRef }))
-								? selectedItem
-								: null
-							: null;
-					const selectedCommit =
-						selectedItem?._tag === "Commit" && selectedItem.stackId === stackId
-							? selectedItem
-							: null;
-					const selectedCommitFile =
-						selectedItem?._tag === "CommitFile" && selectedItem.stackId === stackId
-							? selectedItem
-							: null;
 
 					const segmentKey = branchRef
 						? JSON.stringify(branchRef)
@@ -1745,7 +1748,6 @@ const StackC: FC<{
 									<BranchRow
 										branchRenameFormRef={branchRenameFormRef}
 										operationMode={operationMode}
-										isSelected={!!selectedBranch}
 										workspaceMode={workspaceMode}
 										projectId={projectId}
 										branchName={segment.refName.displayName}
@@ -1759,26 +1761,19 @@ const StackC: FC<{
 									<div className={styles.itemRowEmpty}>No commits.</div>
 								) : (
 									<ul>
-										{segment.commits.map((commit) => {
-											const isSelected = selectedCommit?.commitId === commit.id;
-											return (
-												<li key={commit.id}>
-													<CommitC
-														commit={commit}
-														commitMessageFormRef={commitMessageFormRef}
-														operationMode={operationMode}
-														workspaceMode={workspaceMode}
-														isSelected={isSelected}
-														selectedFile={
-															selectedCommitFile?.commitId === commit.id ? selectedCommitFile : null
-														}
-														projectId={projectId}
-														stackId={stackId}
-														navigationIndex={navigationIndex}
-													/>
-												</li>
-											);
-										})}
+										{segment.commits.map((commit) => (
+											<li key={commit.id}>
+												<CommitC
+													commit={commit}
+													commitMessageFormRef={commitMessageFormRef}
+													operationMode={operationMode}
+													workspaceMode={workspaceMode}
+													projectId={projectId}
+													stackId={stackId}
+													navigationIndex={navigationIndex}
+												/>
+											</li>
+										))}
 									</ul>
 								)}
 							</div>
@@ -1797,7 +1792,6 @@ const ProjectPage: FC = () => {
 		selectProjectExpandedCommitId(state, projectId),
 	);
 	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
-	const selectedItemState = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
 	const workspaceModeState = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
@@ -1836,10 +1830,9 @@ const ProjectPage: FC = () => {
 			)
 		: navigationIndexUnfiltered;
 
-	const selectedItem =
-		selectedItemState && navigationIndexIncludes(navigationIndex, selectedItemState)
-			? selectedItemState
-			: (navigationIndex.items[0] ?? null);
+	const selectedItem = useAppSelector((state) =>
+		selectNormalizedSelectedItem(state, { projectId, navigationIndex }),
+	);
 
 	const shortcutScope = getScope({ selectedItem, layoutState, workspaceMode });
 
@@ -1898,8 +1891,6 @@ const ProjectPage: FC = () => {
 					<Changes
 						operationMode={operationMode}
 						projectId={projectId}
-						isSelected={selectedItem?._tag === "ChangesSection"}
-						selectedPath={selectedItem?._tag === "ChangeFile" ? selectedItem.path : null}
 						onAbsorbChanges={requestAbsorptionPlan}
 						navigationIndex={navigationIndex}
 					/>
@@ -1916,7 +1907,6 @@ const ProjectPage: FC = () => {
 						commitMessageFormRef={commitMessageFormRef}
 						operationMode={operationMode}
 						projectId={project.id}
-						selectedItem={selectedItem}
 						stack={stack}
 						workspaceMode={workspaceMode}
 						navigationIndex={navigationIndex}
@@ -1926,7 +1916,6 @@ const ProjectPage: FC = () => {
 				<div className={styles.section}>
 					<BaseCommitRow
 						commitId={getCommonBaseCommitId(headInfo)}
-						isSelected={selectedItem?._tag === "BaseCommit"}
 						navigationIndex={navigationIndex}
 						operationMode={operationMode}
 					/>
