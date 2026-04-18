@@ -723,10 +723,6 @@ export const useWorkspaceShortcuts = ({
 	const resolveOperationSource = useResolveOperationSource(projectId);
 	const runOperation = useRunOperation();
 
-	const resolvedOperationModeSource = operationMode
-		? resolveOperationSource(operationMode.source)
-		: null;
-
 	const handleItemMoveSelectionAction = (action: ItemMoveSelectionAction, selectedItem: Item) => {
 		const newItem = Match.value(action).pipe(
 			Match.tagsExhaustive({
@@ -922,6 +918,10 @@ export const useWorkspaceShortcuts = ({
 
 	const confirmOperationMode = (selectedItem: Item | null) => {
 		dispatch(projectActions.exitMode({ projectId }));
+
+		const resolvedOperationModeSource = operationMode
+			? resolveOperationSource(operationMode.source)
+			: null;
 
 		const operationModeOperation =
 			operationMode && selectedItem && resolvedOperationModeSource
