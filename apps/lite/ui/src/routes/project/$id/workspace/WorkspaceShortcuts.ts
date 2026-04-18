@@ -25,7 +25,6 @@ import {
 import { operationModeToOperation } from "./OperationMode.tsx";
 import { operationSourceFromItem } from "./OperationSource.ts";
 import { useResolveOperationSource } from "./ResolvedOperationSource.ts";
-import { PreviewImperativeHandle } from "./route.tsx";
 import {
 	getAdjacent,
 	getNextSection,
@@ -390,20 +389,10 @@ const getDefaultModeScopeLabel = (scope: DefaultModeScope): string =>
 		}),
 	);
 
-type HunkSelectionAction = { offset: -1 | 1 };
-
-type PreviewAction =
-	| { _tag: "ClosePreview" }
-	| { _tag: "FocusPrimary" }
-	| ({ _tag: "Move" } & HunkSelectionAction)
-	| GlobalPreviewAction;
+type PreviewAction = { _tag: "ClosePreview" } | { _tag: "FocusPrimary" } | GlobalPreviewAction;
 
 const closePreviewAction: PreviewAction = { _tag: "ClosePreview" };
 const focusPrimaryAction: PreviewAction = { _tag: "FocusPrimary" };
-const moveHunkSelectionAction = ({ offset }: HunkSelectionAction): PreviewAction => ({
-	_tag: "Move",
-	offset,
-});
 
 export const closePreviewBinding: ShortcutBinding<PreviewAction> = {
 	id: "preview-close",
@@ -414,18 +403,6 @@ export const closePreviewBinding: ShortcutBinding<PreviewAction> = {
 };
 
 const previewBindings: Array<ShortcutBinding<PreviewAction>> = [
-	{
-		id: "preview-move-up",
-		description: "up",
-		keys: ["ArrowUp", "k"],
-		action: moveHunkSelectionAction({ offset: -1 }),
-	},
-	{
-		id: "preview-move-down",
-		description: "down",
-		keys: ["ArrowDown", "j"],
-		action: moveHunkSelectionAction({ offset: 1 }),
-	},
 	{
 		id: "preview-focus-primary",
 		description: "Focus primary",
@@ -718,7 +695,6 @@ export const useWorkspaceShortcuts = ({
 	navigationIndex,
 	requestAbsorptionPlan,
 	operationMode,
-	previewRef,
 }: {
 	inlineRenameBranchFormRef: RefObject<HTMLFormElement | null>;
 	inlineRewordCommitFormRef: RefObject<HTMLFormElement | null>;
@@ -727,7 +703,6 @@ export const useWorkspaceShortcuts = ({
 	navigationIndex: NavigationIndex;
 	requestAbsorptionPlan: (target: AbsorptionTarget) => void;
 	operationMode: OperationMode | null;
-	previewRef: RefObject<PreviewImperativeHandle | null>;
 }) => {
 	const dispatch = useAppDispatch();
 	const resolveOperationSource = useResolveOperationSource(projectId);
@@ -919,7 +894,6 @@ export const useWorkspaceShortcuts = ({
 			Match.tagsExhaustive({
 				ClosePreview: () => dispatch(projectActions.closePreview({ projectId })),
 				FocusPrimary: () => dispatch(projectActions.focusPrimary({ projectId })),
-				Move: ({ offset }) => previewRef.current?.moveSelection(offset),
 				ToggleFullscreenPreview: () =>
 					dispatch(projectActions.toggleFullscreenPreview({ projectId })),
 				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),

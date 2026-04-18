@@ -78,10 +78,7 @@ export const ProjectPreviewLayout: FC<{
 								focus === "preview" && styles.focusedPanel,
 							)}
 						>
-							{
-								// There can only be one user of the ref at a time.
-								layoutState.isFullscreenPreviewOpen ? null : preview
-							}
+							{preview}
 						</Panel>
 					</>
 				)}

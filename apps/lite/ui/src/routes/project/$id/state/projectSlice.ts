@@ -47,12 +47,6 @@ const projectSlice = createSlice({
 			layout.focusPrimary(projectState.layout);
 			workspace.selectItem(projectState.workspace, item);
 		},
-		selectHunk: (state, action: PayloadAction<{ projectId: string; hunk: string | null }>) => {
-			const { projectId, hunk } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			layout.focusPreview(projectState.layout);
-			workspace.selectHunk(projectState.workspace, hunk);
-		},
 		startRewordCommit: (state, action: PayloadAction<{ projectId: string; item: CommitItem }>) => {
 			const { projectId, item } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
@@ -156,9 +150,6 @@ const selectProjectWorkspaceState = (state: RootState, projectId: string) =>
 
 export const selectProjectSelectedItem = (state: RootState, projectId: string) =>
 	workspace.selectSelectedItem(selectProjectWorkspaceState(state, projectId));
-
-export const selectProjectSelectedHunk = (state: RootState, projectId: string) =>
-	workspace.selectSelectedHunk(selectProjectWorkspaceState(state, projectId));
 
 export const selectProjectWorkspaceModeState = (state: RootState, projectId: string) =>
 	workspace.selectMode(selectProjectWorkspaceState(state, projectId));

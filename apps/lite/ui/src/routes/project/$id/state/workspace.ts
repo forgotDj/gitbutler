@@ -17,12 +17,10 @@ import {
 } from "../workspace/WorkspaceMode.ts";
 
 export type WorkspaceSelectionState = {
-	hunk: string | null;
 	item: Item | null;
 };
 
 const createInitialWorkspaceSelectionState = (): WorkspaceSelectionState => ({
-	hunk: null,
 	item: null,
 });
 
@@ -64,13 +62,8 @@ export const openCommitFiles = (state: WorkspaceState, item: CommitItem) => {
 	selectItem(state, commitItem(item));
 };
 
-export const selectHunk = (state: WorkspaceState, hunk: string | null) => {
-	state.selection.hunk = hunk;
-};
-
 export const selectItem = (state: WorkspaceState, item: Item | null) => {
 	state.selection.item = item;
-	state.selection.hunk = null;
 	if (!item || !isValidWorkspaceModeForItem({ mode: state.mode, item }))
 		state.mode = defaultWorkspaceMode;
 };
@@ -113,9 +106,6 @@ const selectSelection = (state: WorkspaceState): WorkspaceSelectionState => stat
 export const selectSelectedItem = (state: WorkspaceState): Item | null =>
 	selectSelection(state).item;
 
-export const selectSelectedHunk = (state: WorkspaceState): string | null =>
-	selectSelection(state).hunk;
-
 export const selectMode = (state: WorkspaceState): WorkspaceMode => state.mode;
 
 export const selectExpandedCommitId = (state: WorkspaceState): string | null =>
@@ -123,14 +113,3 @@ export const selectExpandedCommitId = (state: WorkspaceState): string | null =>
 
 export const selectHighlightedCommitIds = (state: WorkspaceState): Array<string> =>
 	state.highlightedCommitIds;
-
-export const normalizeSelectedHunk = ({
-	hunkKeys,
-	selectedHunk,
-}: {
-	hunkKeys: Array<string>;
-	selectedHunk: string | null;
-}): string | undefined => {
-	if (selectedHunk !== null && hunkKeys.includes(selectedHunk)) return selectedHunk;
-	return hunkKeys[0];
-};
