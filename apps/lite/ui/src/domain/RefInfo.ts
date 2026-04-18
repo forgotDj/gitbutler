@@ -9,12 +9,12 @@ export const getCommonBaseCommitId = (headInfo: RefInfo): string | undefined => 
 	return bases.every((base) => base === first) ? first : undefined;
 };
 
-export const getBranchNameByCommitId = (headInfo: RefInfo): Map<string, string> => {
-	const byCommitId = new Map<string, string>();
+export const getBranchNameByCommitId = (headInfo: RefInfo): Map<string, string | undefined> => {
+	const byCommitId = new Map<string, string | undefined>();
 
 	for (const stack of headInfo.stacks)
 		for (const segment of stack.segments) {
-			const branchName = segment.refName?.displayName ?? "Untitled";
+			const branchName = segment.refName?.displayName;
 			for (const commit of segment.commits) byCommitId.set(commit.id, branchName);
 		}
 
