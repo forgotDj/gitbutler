@@ -12,15 +12,6 @@ export const decodeRefName = (fullNameBytes: Array<number>): string =>
 export const encodeRefName = (fullName: string): Array<number> =>
 	Array.from(new TextEncoder().encode(fullName));
 
-export const isTypingTarget = (target: EventTarget | null) => {
-	if (!(target instanceof HTMLElement)) return false;
-	return (
-		target.isContentEditable ||
-		target instanceof HTMLInputElement ||
-		target instanceof HTMLTextAreaElement
-	);
-};
-
 export const formatHunkHeader = (hunk: HunkHeader): string =>
 	`-${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines}`;
 

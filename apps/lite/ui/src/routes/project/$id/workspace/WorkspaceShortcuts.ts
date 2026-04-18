@@ -1,6 +1,5 @@
 import { getAction, type ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import { useRunOperation } from "#ui/Operation.ts";
-import { isTypingTarget } from "#ui/routes/project/$id/shared.tsx";
 import { getFocus, type ProjectLayoutState } from "#ui/routes/project/$id/state/layout.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { useAppDispatch } from "#ui/state/hooks.ts";
@@ -35,6 +34,15 @@ import {
 	type NavigationIndex,
 } from "./WorkspaceModel.ts";
 import { OperationMode, type WorkspaceMode } from "./WorkspaceMode.ts";
+
+const isTypingTarget = (target: EventTarget | null) => {
+	if (!(target instanceof HTMLElement)) return false;
+	return (
+		target.isContentEditable ||
+		target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement
+	);
+};
 
 type MoveItemSelectionAction = { offset: -1 | 1 };
 
