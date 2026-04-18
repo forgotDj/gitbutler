@@ -200,7 +200,7 @@ fn collect_all_schemas(
     }
 
     // Order output types by name
-    types.sort_by_cached_key(|t| t.name.to_string());
+    types.sort_by(|a, b| a.name.cmp(&b.name));
 
     Ok(types
         .into_iter()

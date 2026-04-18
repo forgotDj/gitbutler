@@ -27,7 +27,7 @@ pub fn rewrite(
         .values_mut()
         .filter(|stack| stack.in_workspace)
         .collect();
-    stacks_ordered.sort_by_key(|a| a.name());
+    stacks_ordered.sort_by_cached_key(|a| a.name());
     for (old, new) in changed_commits {
         let mut already_updated_refs = Vec::<BString>::new();
         for stack in &mut stacks_ordered {
@@ -112,6 +112,6 @@ pub fn rewrite(
     repo.edit_references(ref_edits)?;
     // Due to the way these are processed, they aren't stable.
     // Make tests reproducible, hoping that soon we don't need hashmaps in the backend anymore.
-    updated_refs.sort_by_key(|a| a.reference.to_string());
+    updated_refs.sort_by_cached_key(|a| a.reference.to_string());
     Ok(())
 }

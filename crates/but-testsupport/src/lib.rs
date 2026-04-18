@@ -360,7 +360,7 @@ pub fn visualize_disk_tree_skip_dot_git(root: &Path) -> anyhow::Result<termtree:
         });
 
         let mut entries: Vec<_> = std::fs::read_dir(p)?.filter_map(|e| e.ok()).collect();
-        entries.sort_by_key(|e| e.file_name());
+        entries.sort_by_cached_key(|e| e.file_name());
         for entry in entries {
             let md = entry.metadata()?;
             if md.is_dir() && entry.file_name() != ".git" {

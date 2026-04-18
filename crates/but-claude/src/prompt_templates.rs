@@ -113,7 +113,7 @@ pub fn list_templates(project_data_dir: &Path) -> Result<Vec<PromptTemplate>> {
     }
 
     let mut out = out.into_values().collect::<Vec<_>>();
-    out.sort_by_key(|a| a.file_name.clone());
+    out.sort_by(|a, b| a.file_name.cmp(&b.file_name));
 
     Ok(out)
 }
