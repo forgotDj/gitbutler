@@ -235,11 +235,8 @@
 
 		&.dropzone-activated {
 			& .assigned-changes-empty {
-				padding: 20px 8px 20px;
 				background-color: var(--bg-1);
-				transition:
-					background-color var(--transition-fast),
-					padding var(--transition-fast);
+				transition: background-color var(--transition-fast);
 			}
 
 			& .assigned-changes-empty__text {
