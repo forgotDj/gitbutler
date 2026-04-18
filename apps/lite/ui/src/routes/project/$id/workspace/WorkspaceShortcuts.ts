@@ -727,14 +727,6 @@ export const useWorkspaceShortcuts = ({
 		? resolveOperationSource(operationMode.source)
 		: null;
 
-	const selectItem = (item: Item | null) =>
-		dispatch(
-			projectActions.selectItem({
-				projectId,
-				item,
-			}),
-		);
-
 	const handleItemMoveSelectionAction = (action: ItemMoveSelectionAction, selectedItem: Item) => {
 		const newItem = Match.value(action).pipe(
 			Match.tagsExhaustive({
@@ -757,7 +749,7 @@ export const useWorkspaceShortcuts = ({
 			}),
 		);
 		if (!newItem) return;
-		selectItem(newItem);
+		dispatch(projectActions.selectItem({ projectId, item: newItem }));
 	};
 
 	const handleItemSelectionAction = (action: ItemSelectionAction, selectedItem: Item) =>
@@ -794,7 +786,8 @@ export const useWorkspaceShortcuts = ({
 						}),
 					),
 				FocusPreview: () => dispatch(projectActions.focusPreview({ projectId })),
-				SelectUnassignedChanges: () => selectItem(changesSectionItem),
+				SelectUnassignedChanges: () =>
+					dispatch(projectActions.selectItem({ projectId, item: changesSectionItem })),
 				ToggleFullscreenPreview: () =>
 					dispatch(projectActions.toggleFullscreenPreview({ projectId })),
 				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
