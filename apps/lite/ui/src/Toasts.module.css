@@ -1,4 +1,4 @@
-.toastViewport {
+.viewport {
 	display: flex;
 	/* Appear above other floating UI e.g. dialogs. */
 	z-index: 1;
@@ -11,6 +11,6 @@
 	max-width: 400px;
 }
 
-.toastRoot {
+.root {
 	padding: 8px;
 }
