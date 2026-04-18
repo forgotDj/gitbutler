@@ -19,11 +19,11 @@
 }
 
 .panel {
-	border-bottom: 2px solid transparent;
+	border-top: 2px solid transparent;
 }
 
 .focusedPanel {
-	border-bottom-color: var(--color-black);
+	border-top-color: var(--color-black);
 }
 
 .previewDialogPopup {
