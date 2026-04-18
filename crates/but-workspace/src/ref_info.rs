@@ -252,6 +252,9 @@ pub struct Segment {
     /// The name of the remote tracking branch of this segment, if present, i.e. `refs/remotes/origin/main`.
     /// Its presence means that a remote is configured and that the stack content
     pub remote_tracking_ref_name: Option<gix::refs::FullName>,
+    /// The graph segment id of the remote-tracking branch (see `remote_tracking_ref_name`) associated
+    /// with this segment, if present.
+    pub remote_tracking_branch_segment_id: Option<SegmentIndex>,
     /// The portion of commits that can be reached from the tip of the *branch* downwards, so that they are unique
     /// for that stack segment and not included in any other stack or stack segment.
     ///
@@ -306,6 +309,7 @@ impl std::fmt::Debug for Segment {
             commits_on_remote,
             commits_outside,
             remote_tracking_ref_name,
+            remote_tracking_branch_segment_id: _,
             metadata,
             is_entrypoint,
             push_status,
@@ -549,7 +553,7 @@ impl crate::ref_info::Segment {
             base_segment_id: _,
             remote_tracking_ref_name,
             sibling_segment_id: _,
-            remote_tracking_branch_segment_id: _,
+            remote_tracking_branch_segment_id,
             id,
             commits,
             // TODO: make it visible in this this data structure.
@@ -586,6 +590,7 @@ impl crate::ref_info::Segment {
             ref_info: ref_info.clone(),
             id: *id,
             remote_tracking_ref_name: remote_tracking_ref_name.clone(),
+            remote_tracking_branch_segment_id: *remote_tracking_branch_segment_id,
             commits,
             commits_on_remote,
             commits_outside,

@@ -1557,6 +1557,7 @@ mod util {
             ref_info,
             id: Default::default(),
             remote_tracking_ref_name: None,
+            remote_tracking_branch_segment_id: None,
             commits,
             commits_on_remote,
             commits_outside: None,

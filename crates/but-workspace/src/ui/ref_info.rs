@@ -324,6 +324,7 @@ impl Segment {
             ref_info,
             id: _,
             remote_tracking_ref_name,
+            remote_tracking_branch_segment_id: _,
             commits,
             commits_on_remote,
             commits_outside,
