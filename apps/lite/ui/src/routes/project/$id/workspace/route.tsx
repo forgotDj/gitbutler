@@ -1297,12 +1297,7 @@ const ChangesSectionRow: FC<{
 				type="button"
 				className={classes(styles.itemRowButton, styles.sectionButton)}
 				onClick={() => {
-					dispatch(
-						projectActions.selectItem({
-							projectId,
-							item,
-						}),
-					);
+					dispatch(projectActions.selectItem({ projectId, item }));
 				}}
 				onContextMenu={(event) => {
 					void showNativeContextMenu(event, menuItems);
@@ -1533,16 +1528,12 @@ const BranchRow: FC<
 				// error boundaries.
 				return;
 			}
-			dispatch(
-				projectActions.selectItem({
-					projectId,
-					item: branchItem({
-						stackId,
-						// TODO: ideally the API would return the new ref?
-						branchRef: encodeRefName(`refs/heads/${trimmed}`),
-					}),
-				}),
-			);
+			const newItem = branchItem({
+				stackId,
+				// TODO: ideally the API would return the new ref?
+				branchRef: encodeRefName(`refs/heads/${trimmed}`),
+			});
+			dispatch(projectActions.selectItem({ projectId, item: newItem }));
 			dispatch(projectActions.exitMode({ projectId }));
 		});
 	};
