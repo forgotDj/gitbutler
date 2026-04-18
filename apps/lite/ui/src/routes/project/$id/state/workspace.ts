@@ -92,7 +92,10 @@ export const startRenameBranch = (state: WorkspaceState, item: BranchItem) => {
 
 export const startRewordCommit = (state: WorkspaceState, item: CommitItem) => {
 	selectItem(state, commitItem(item));
-	state.mode = rewordCommitWorkspaceMode({ commitId: item.commitId });
+	state.mode = rewordCommitWorkspaceMode({
+		stackId: item.stackId,
+		commitId: item.commitId,
+	});
 };
 
 export const toggleCommitFiles = (state: WorkspaceState, item: CommitItem) => {

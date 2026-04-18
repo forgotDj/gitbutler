@@ -890,7 +890,15 @@ const CommitRow: FC<
 	};
 	const item = commitItem(commitItemV);
 	const isRewording =
-		isSelected && workspaceMode._tag === "RewordCommit" && workspaceMode.commitId === commit.id;
+		isSelected &&
+		workspaceMode._tag === "RewordCommit" &&
+		itemEquals(
+			item,
+			commitItem({
+				stackId: workspaceMode.stackId,
+				commitId: workspaceMode.commitId,
+			}),
+		);
 	const [optimisticMessage, setOptimisticMessage] = useOptimistic(
 		commit.message,
 		(_currentMessage, nextMessage: string) => nextMessage,

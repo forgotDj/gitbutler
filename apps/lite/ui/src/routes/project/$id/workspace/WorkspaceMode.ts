@@ -1,6 +1,6 @@
 import { Match } from "effect";
 import { type OperationSource, operationSourceMatchesItem } from "./OperationSource.ts";
-import { branchItem, itemEquals, type Item } from "./Item.ts";
+import { branchItem, commitItem, itemEquals, type Item } from "./Item.ts";
 import { type NavigationIndex } from "./WorkspaceModel.ts";
 
 /** @public */
@@ -12,7 +12,7 @@ export type OperationMode =
 	| ({ _tag: "Move" } & MoveOperationMode);
 
 /** @public */
-export type RewordCommitWorkspaceMode = { commitId: string };
+export type RewordCommitWorkspaceMode = { stackId: string; commitId: string };
 /** @public */
 export type RenameBranchWorkspaceMode = { stackId: string; branchRef: Array<number> };
 export type WorkspaceMode =
@@ -40,9 +40,11 @@ export const defaultWorkspaceMode: WorkspaceMode = {
 
 /** @public */
 export const rewordCommitWorkspaceMode = ({
+	stackId,
 	commitId,
 }: RewordCommitWorkspaceMode): WorkspaceMode => ({
 	_tag: "RewordCommit",
+	stackId,
 	commitId,
 });
 
@@ -74,8 +76,14 @@ export const isValidWorkspaceMode = ({
 			Move: (mode) =>
 				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item)),
 			RewordCommit: (mode) =>
-				navigationIndex.items.some(
-					(item) => item._tag === "Commit" && item.commitId === mode.commitId,
+				navigationIndex.items.some((item) =>
+					itemEquals(
+						item,
+						commitItem({
+							stackId: mode.stackId,
+							commitId: mode.commitId,
+						}),
+					),
 				),
 			RenameBranch: (mode) =>
 				navigationIndex.items.some((item) =>
@@ -102,7 +110,15 @@ export const isValidWorkspaceModeForItem = ({
 			Default: () => true,
 			Rub: () => true,
 			Move: () => true,
-			RewordCommit: (mode) => item?._tag === "Commit" && item.commitId === mode.commitId,
+			RewordCommit: (mode) =>
+				item !== null &&
+				itemEquals(
+					item,
+					commitItem({
+						stackId: mode.stackId,
+						commitId: mode.commitId,
+					}),
+				),
 			RenameBranch: (mode) =>
 				item !== null &&
 				itemEquals(

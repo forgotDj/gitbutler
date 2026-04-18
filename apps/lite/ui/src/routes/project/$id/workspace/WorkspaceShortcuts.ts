@@ -627,7 +627,14 @@ const getModeScope = ({
 						})
 					: null,
 			RewordCommit: (workspaceMode) =>
-				selectedItem?._tag === "Commit" && workspaceMode.commitId === selectedItem.commitId
+				selectedItem?._tag === "Commit" &&
+				itemEquals(
+					selectedItem,
+					commitItem({
+						stackId: workspaceMode.stackId,
+						commitId: workspaceMode.commitId,
+					}),
+				)
 					? rewordCommitModeScope({
 							bindings: rewordCommitBindings,
 							context: selectedItem,
