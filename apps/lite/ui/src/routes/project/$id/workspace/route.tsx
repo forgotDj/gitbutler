@@ -587,15 +587,14 @@ const ChangesPreview: FC<{
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
 		worktreeChanges.dependencies?.diffs ?? [],
 	);
-	const changes = worktreeChanges.changes;
 	const selectedChange =
 		selectedPath !== undefined
-			? changes.find((candidate) => candidate.path === selectedPath)
+			? worktreeChanges.changes.find((candidate) => candidate.path === selectedPath)
 			: undefined;
-	const visibleChanges = selectedChange ? [selectedChange] : changes;
+	const changes = selectedChange ? [selectedChange] : worktreeChanges.changes;
 	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
 		projectId,
-		changes: visibleChanges,
+		changes,
 		ref,
 	});
 
@@ -651,11 +650,11 @@ const CommitPreview: FC<{
 		selectedPath !== undefined
 			? commitDetails.changes.find((candidate) => candidate.path === selectedPath)
 			: undefined;
-	const visibleChanges =
+	const changes =
 		selectedPath === undefined ? commitDetails.changes : selectedChange ? [selectedChange] : [];
 	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
 		projectId,
-		changes: visibleChanges,
+		changes,
 		ref,
 	});
 
