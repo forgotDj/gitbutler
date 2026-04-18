@@ -796,7 +796,7 @@ export const useWorkspaceShortcuts = ({
 		const resolvedOperationSource = resolveOperationSource(operationSource);
 
 		if (resolvedOperationSource?._tag !== "TreeChanges") return;
-		if (resolvedOperationSource.parent._tag !== "ChangesSection") return;
+		if (resolvedOperationSource.parent._tag !== "Change") return;
 
 		requestAbsorptionPlan({
 			type: "treeChanges",

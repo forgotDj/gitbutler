@@ -1,7 +1,7 @@
 /** @public */
 export type CommitFileParent = { commitId: string };
 
-export type FileParent = ({ _tag: "Commit" } & CommitFileParent) | { _tag: "ChangesSection" };
+export type FileParent = ({ _tag: "Commit" } & CommitFileParent) | { _tag: "Change" };
 
 /** @public */
 export const commitFileParent = ({ commitId }: CommitFileParent): FileParent => ({
@@ -10,6 +10,6 @@ export const commitFileParent = ({ commitId }: CommitFileParent): FileParent => 
 });
 
 /** @public */
-export const changesSectionFileParent: FileParent = {
-	_tag: "ChangesSection",
+export const changeFileParent: FileParent = {
+	_tag: "Change",
 };

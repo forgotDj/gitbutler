@@ -17,7 +17,7 @@ import {
 	type Operation,
 } from "#ui/Operation.ts";
 import { createDiffSpec } from "#ui/domain/DiffSpec.ts";
-import { changesSectionFileParent, type FileParent } from "#ui/domain/FileParent.ts";
+import { changeFileParent, type FileParent } from "#ui/domain/FileParent.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	CommitDetails,
@@ -125,14 +125,14 @@ const resolveOperationSource = ({
 				);
 
 				return treeChangesResolvedOperationSource({
-					parent: changesSectionFileParent,
+					parent: changeFileParent,
 					changes,
 				});
 			},
 			File: ({ parent, path }) => {
 				const change = Match.value(parent).pipe(
 					Match.tagsExhaustive({
-						ChangesSection: () => {
+						Change: () => {
 							if (!worktreeChanges) return null;
 
 							return worktreeChanges.changes.find((candidate) => candidate.path === path) ?? null;
@@ -156,7 +156,7 @@ const resolveOperationSource = ({
 			Hunk: ({ parent, path, hunkHeader }) => {
 				const change = Match.value(parent).pipe(
 					Match.tagsExhaustive({
-						ChangesSection: () => {
+						Change: () => {
 							if (!worktreeChanges) return null;
 
 							return worktreeChanges.changes.find((candidate) => candidate.path === path) ?? null;
@@ -220,7 +220,7 @@ export const getCombineOperation = ({
 			Commit: ({ commitId: sourceCommitId }) =>
 				Match.value(target).pipe(
 					Match.tagsExhaustive({
-						ChangesSection: () =>
+						Change: () =>
 							commitUncommitOperation({
 								commitId: sourceCommitId,
 								assignTo: null,
@@ -240,10 +240,10 @@ export const getCombineOperation = ({
 
 				return Match.value(parent).pipe(
 					Match.tagsExhaustive({
-						ChangesSection: () =>
+						Change: () =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
-									ChangesSection: () =>
+									Change: () =>
 										assignHunkOperation({
 											assignments: sourceChanges.flatMap(({ change, hunkHeaders }) =>
 												hunkHeaders.map(
@@ -266,7 +266,7 @@ export const getCombineOperation = ({
 						Commit: ({ commitId: sourceCommitId }) =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
-									ChangesSection: () =>
+									Change: () =>
 										commitUncommitChangesOperation({
 											commitId: sourceCommitId,
 											assignTo: null,
@@ -313,7 +313,7 @@ export const getCommitTargetMoveOperation = ({
 
 				return Match.value(parent).pipe(
 					Match.tags({
-						ChangesSection: () =>
+						Change: () =>
 							commitCreateOperation({
 								relativeTo: { type: "commit", subject: commitId },
 								side,
@@ -369,7 +369,7 @@ export const getBranchTargetOperation = ({
 
 				return Match.value(source.parent).pipe(
 					Match.tagsExhaustive({
-						ChangesSection: () =>
+						Change: () =>
 							commitCreateOperation({
 								relativeTo: { type: "referenceBytes", subject: branchRef },
 								side: "below",

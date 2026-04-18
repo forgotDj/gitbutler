@@ -22,11 +22,7 @@ import {
 	MenuTriggerIcon,
 	PushIcon,
 } from "#ui/components/icons.tsx";
-import {
-	changesSectionFileParent,
-	commitFileParent,
-	type FileParent,
-} from "#ui/domain/FileParent.ts";
+import { changeFileParent, commitFileParent, type FileParent } from "#ui/domain/FileParent.ts";
 import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
 import { ProjectPreviewLayout } from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
 import {
@@ -517,8 +513,7 @@ const FileDiff: FC<{
 									editable={editable}
 									isSelected={selectedHunk === fileHunkKey(change.path, hunk)}
 									headerStart={
-										fileParent?._tag === "ChangesSection" &&
-										isNonEmptyArray(dependencyCommitIds) ? (
+										fileParent?._tag === "Change" && isNonEmptyArray(dependencyCommitIds) ? (
 											<DependencyIndicator projectId={projectId} commitIds={dependencyCommitIds}>
 												<DependencyIcon />
 											</DependencyIndicator>
@@ -618,7 +613,7 @@ const ChangesPreview: FC<{
 			) : (
 				<ul>
 					{changesWithDiffs.map(([change, diff]) => {
-						const parent = changesSectionFileParent;
+						const parent = changeFileParent;
 						const source = fileOperationSource({ parent, path: change.path });
 						return (
 							<li key={change.path}>
