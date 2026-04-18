@@ -13,7 +13,7 @@ import {
 	type TearOffBranchParams,
 	CommitSquashParams,
 } from "#electron/ipc.ts";
-import { rejectedChangesToastOptions } from "#ui/components/RejectedChanges.tsx";
+import { rejectedChangesToastOptions } from "#ui/RejectedChanges.tsx";
 import {
 	assignHunkMutationOptions,
 	commitAmendMutationOptions,

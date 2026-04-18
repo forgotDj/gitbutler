@@ -16,12 +16,7 @@ import {
 	treeChangeDiffsQueryOptions,
 } from "#ui/api/queries.ts";
 import { classes } from "#ui/classes.ts";
-import {
-	DependencyIcon,
-	ExpandCollapseIcon,
-	MenuTriggerIcon,
-	PushIcon,
-} from "#ui/components/icons.tsx";
+import { DependencyIcon, ExpandCollapseIcon, MenuTriggerIcon, PushIcon } from "#ui/icons.tsx";
 import { changeFileParent, commitFileParent, type FileParent } from "#ui/domain/FileParent.ts";
 import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
 import { ProjectPreviewLayout } from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
