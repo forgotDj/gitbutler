@@ -1927,7 +1927,7 @@ const ProjectPage: FC = () => {
 				</div>
 			)}
 
-			{absorptionPlan !== null && (
+			{absorptionPlan && (
 				<AbsorptionDialog
 					absorptionPlan={absorptionPlan}
 					isPending={isAbsorbing}
