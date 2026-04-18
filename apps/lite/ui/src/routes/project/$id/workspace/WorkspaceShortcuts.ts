@@ -735,33 +735,29 @@ export const useWorkspaceShortcuts = ({
 			}),
 		);
 
-	const handleItemMoveSelectionAction = (action: ItemMoveSelectionAction, selectedItem: Item) =>
-		Match.value(action).pipe(
+	const handleItemMoveSelectionAction = (action: ItemMoveSelectionAction, selectedItem: Item) => {
+		const newItem = Match.value(action).pipe(
 			Match.tagsExhaustive({
 				Move: ({ offset }) =>
-					selectItem(
-						getAdjacent({
-							navigationIndex,
-							selectedItem,
-							offset,
-						}) ?? selectedItem,
-					),
+					getAdjacent({
+						navigationIndex,
+						selectedItem,
+						offset,
+					}),
 				NextSection: () =>
-					selectItem(
-						getNextSection({
-							navigationIndex,
-							selectedItem,
-						}) ?? selectedItem,
-					),
+					getNextSection({
+						navigationIndex,
+						selectedItem,
+					}),
 				PreviousSection: () =>
-					selectItem(
-						getPreviousSection({
-							navigationIndex,
-							selectedItem,
-						}) ?? selectedItem,
-					),
+					getPreviousSection({
+						navigationIndex,
+						selectedItem,
+					}),
 			}),
 		);
+		selectItem(newItem ?? selectedItem);
+	};
 
 	const handleItemSelectionAction = (action: ItemSelectionAction, selectedItem: Item) =>
 		Match.value(action).pipe(
