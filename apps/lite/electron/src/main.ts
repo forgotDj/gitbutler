@@ -81,7 +81,7 @@ const buildNativeMenuTemplate = (
 		};
 	});
 
-function registerIpcHandlers(): void {
+const registerIpcHandlers = (): void => {
 	ipcMain.handle(
 		liteIpcChannels.absorptionPlan,
 		(_e, { projectId, target }: AbsorptionPlanParams) => absorptionPlan(projectId, target),
@@ -239,9 +239,9 @@ function registerIpcHandlers(): void {
 	ipcMain.handle(liteIpcChannels.watcherStopAll, () =>
 		WatcherManager.getInstance().stopAllWatchersForShutdown(),
 	);
-}
+};
 
-async function createMainWindow(): Promise<void> {
+const createMainWindow = async (): Promise<void> => {
 	const mainWindow = new BrowserWindow({
 		width: 1024,
 		height: 768,
@@ -262,7 +262,7 @@ async function createMainWindow(): Promise<void> {
 	}
 
 	await mainWindow.loadFile(path.join(currentDirPath, "../ui/index.html"));
-}
+};
 
 void app.whenReady().then(async () => {
 	if (!app.isPackaged) await installExtension(REACT_DEVELOPER_TOOLS);

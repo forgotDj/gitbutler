@@ -107,7 +107,7 @@ const TopBar: FC = () => {
 	);
 };
 
-function RootLayout() {
+const RootLayout: FC = () => {
 	const [shortcutsBarPortalNode, setShortcutsBarPortalNode] = useState<HTMLElement | null>(null);
 
 	return (
@@ -121,7 +121,7 @@ function RootLayout() {
 			</main>
 		</ShortcutsBarPortalContext>
 	);
-}
+};
 
 export const Route = createRootRouteWithContext<RouteContext>()({
 	component: RootLayout,
