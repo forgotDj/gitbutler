@@ -100,6 +100,12 @@ pub fn get_base_branch_data(ctx: &Context) -> Result<BaseBranch> {
     Ok(base)
 }
 
+#[instrument(skip(ctx), err(Debug))]
+pub fn get_base_branch_remote_url(ctx: &Context) -> Result<String> {
+    let target = default_target(&ctx.project_data_dir())?;
+    remote_url_of_target_to_base_branch(ctx, &target)
+}
+
 /// Restore the default target metadata if it is missing in the currently configured storage
 /// location while an existing `gitbutler/workspace` ref already proves the repository was
 /// initialized before.
@@ -395,22 +401,7 @@ pub(crate) fn target_to_base_branch(ctx: &Context, target: &Target) -> Result<Ba
         None => target.remote_url.clone(),
     };
 
-    // Fallback to the remote URL of the branch if the target remote URL is empty
-    let remote_url = if target.remote_url.is_empty() {
-        let remote = repo.find_remote(target.branch.remote()).context(format!(
-            "failed to find remote for branch {}",
-            target.branch.fullname()
-        ))?;
-        remote
-            .url(gix::remote::Direction::Fetch)
-            .map(|url| url.to_bstring().to_string())
-            .context(format!(
-                "failed to get remote url for {}",
-                target.branch.fullname()
-            ))?
-    } else {
-        target.remote_url.clone()
-    };
+    let remote_url = remote_url_of_target_to_base_branch(ctx, target)?;
 
     let branch_name = target.branch.fullname();
     let remote_name = target.branch.remote().to_string();
@@ -443,6 +434,29 @@ pub(crate) fn target_to_base_branch(ctx: &Context, target: &Target) -> Result<Ba
         short_name,
     };
     Ok(base)
+}
+
+fn remote_url_of_target_to_base_branch(ctx: &Context, target: &Target) -> Result<String> {
+    let repo = &*ctx.repo.get()?;
+
+    // Fallback to the remote URL of the branch if the target remote URL is empty
+    let remote_url = if target.remote_url.is_empty() {
+        let remote = repo.find_remote(target.branch.remote()).context(format!(
+            "failed to find remote for branch {}",
+            target.branch.fullname()
+        ))?;
+        remote
+            .url(gix::remote::Direction::Fetch)
+            .map(|url| url.to_bstring().to_string())
+            .context(format!(
+                "failed to get remote url for {}",
+                target.branch.fullname()
+            ))?
+    } else {
+        target.remote_url.clone()
+    };
+
+    Ok(remote_url)
 }
 
 fn default_target(base_path: &Path) -> Result<Target> {

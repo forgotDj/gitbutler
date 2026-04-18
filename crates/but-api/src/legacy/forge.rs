@@ -167,8 +167,8 @@ pub fn list_reviews(
     cache_config: Option<but_forge::CacheConfig>,
 ) -> Result<Vec<but_forge::ForgeReview>> {
     let (storage, forge_repo_info, preferred_forge_user) = {
-        let base_branch = gitbutler_branch_actions::base::get_base_branch_data(ctx)?;
-        let forge_repo_info = but_forge::derive_forge_repo_info(&base_branch.remote_url);
+        let remote_url = gitbutler_branch_actions::base::get_base_branch_remote_url(ctx)?;
+        let forge_repo_info = but_forge::derive_forge_repo_info(&remote_url);
 
         (
             but_forge_storage::Controller::from_path(but_path::app_data_dir()?),
