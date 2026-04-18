@@ -4116,24 +4116,24 @@ fn stacked_bottom_remote_still_points_at_now_split_top() -> anyhow::Result<()> {
     // local stack is now split so that bottom holds only B and top holds T on
     // top of bottom. To remove T from origin/bottom we'd need to force-push,
     // so bottom must report `commits_on_remote` containing T.
-    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
-    * c64d2cd (HEAD -> gitbutler/workspace) GitButler Workspace Commit
-    * 6fd3c8b (origin/bottom, top) T
-    * 0d42e6d (bottom) B
-    * 281456a (origin/main, main) init
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
+    * 5c66c47 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    * bfbff44 (origin/bottom, top) T
+    * 7fdb58d (bottom) B
+    * fafd9d0 (origin/main, main) init
     ");
 
     add_stack_with_segments(&mut meta, 0, "top", StackState::InWorkspace, &["bottom"]);
 
     let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
-    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @r"
-    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main on 281456a
-    └── ≡📙:3:top on 281456a {0}
+    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @"
+    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main on fafd9d0
+    └── ≡📙:3:top on fafd9d0 {0}
         ├── 📙:3:top
-        │   └── ❄6fd3c8b (🏘️)
+        │   └── ❄bfbff44 (🏘️)
         └── 📙:4:bottom <> origin/bottom →:5:⇣1
-            ├── 🟣6fd3c8b (🏘️)
-            └── ❄️0d42e6d (🏘️)
+            ├── 🟣bfbff44 (🏘️)
+            └── ❄️7fdb58d (🏘️)
     ");
     Ok(())
 }

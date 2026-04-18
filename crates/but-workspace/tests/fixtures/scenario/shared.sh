@@ -69,7 +69,7 @@ function create_workspace_commit_once() {
 
   git checkout -b gitbutler/workspace
   if [ $# == 1 ] || [ $# == 0 ]; then
-    git commit --allow-empty -m "$workspace_commit_subject"
+    commit "$workspace_commit_subject"
   else
     git merge --no-ff -m "$workspace_commit_subject" "${@}"
   fi
@@ -90,7 +90,7 @@ function create_workspace_commit_aggressively() {
 
   git checkout -b gitbutler/workspace main
   if [ $# == 1 ] || [ $# == 0 ]; then
-    git commit --allow-empty -m "$workspace_commit_subject"
+    commit "$workspace_commit_subject"
   else
     git merge --no-ff --strategy octopus -m "$workspace_commit_subject" "${@}"
   fi

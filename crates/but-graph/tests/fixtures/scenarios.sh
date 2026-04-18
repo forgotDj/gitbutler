@@ -1158,10 +1158,12 @@ EOF
 
   git init "stacked-bottom-remote-still-points-at-now-split-top"
   (cd "stacked-bottom-remote-still-points-at-now-split-top"
-    echo init>file && git add file && git commit -m "init"
+    commit init
     setup_target_to_match_main
-    git checkout -b bottom && echo B >>file && git commit -am "B"
-    git checkout -b top && echo T >>file && git commit -am "T"
+    git checkout -b bottom
+        commit "B"
+    git checkout -b top
+        commit "T"
     # origin/bottom previously pointed at the combined push (T), but the
     # branches were since split locally so that bottom now contains only B
     # and top contains T on top of bottom. Force-push is required to clear
