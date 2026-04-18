@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet, hash_map::Entry},
+    collections::{HashMap, hash_map::Entry},
     fs,
     path::Path,
     str::{FromStr, from_utf8},
@@ -14,7 +14,10 @@ use but_ctx::{
 use but_meta::virtual_branches_legacy_types;
 use but_oxidize::{ObjectIdExt as _, OidExt};
 use gitbutler_cherry_pick::GixRepositoryExt as _;
-use gitbutler_repo::{SignaturePurpose, commit_without_signature_gix, signature_gix};
+use gitbutler_repo::{
+    SignaturePurpose, commit_ids_excluding_reachable_from_with_graph, commit_without_signature_gix,
+    signature_gix,
+};
 #[expect(
     deprecated,
     reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
@@ -427,47 +430,6 @@ fn reset_index_to_tree(ctx: &Context, tree_id: gix::ObjectId) -> Result<()> {
     Ok(())
 }
 
-/// Return commits reachable from `from` that are not reachable from `stop_before`.
-///
-/// This matches the semantics of walking `from` with `stop_before` hidden, but avoids
-/// the up-front hidden-side graph painting done by `with_hidden(stop_before)`.
-fn commit_ids_excluding_reachable_from(
-    repo: &gix::Repository,
-    from: gix::ObjectId,
-    stop_before: gix::ObjectId,
-    graph: &mut gix::revwalk::Graph<
-        '_,
-        '_,
-        gix::revwalk::graph::Commit<gix::revision::plumbing::merge_base::Flags>,
-    >,
-) -> Result<Vec<gix::ObjectId>> {
-    let mut commit_ids = Vec::new();
-    let mut seen = HashSet::new();
-    let mut to_visit = vec![from];
-
-    while let Some(commit_id) = to_visit.pop() {
-        if !seen.insert(commit_id) {
-            continue;
-        }
-
-        let reaches_hidden_history = match repo.merge_base_with_graph(commit_id, stop_before, graph)
-        {
-            Ok(merge_base) => merge_base.detach() == commit_id,
-            Err(gix::repository::merge_base_with_graph::Error::NotFound { .. }) => false,
-            Err(err) => return Err(err.into()),
-        };
-        if reaches_hidden_history {
-            continue;
-        }
-
-        commit_ids.push(commit_id);
-        let commit = repo.find_commit(commit_id)?;
-        to_visit.extend(commit.parent_ids().map(|parent_id| parent_id.detach()));
-    }
-
-    Ok(commit_ids)
-}
-
 #[expect(
     deprecated,
     reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
@@ -515,7 +477,7 @@ pub fn prepare_snapshot(ctx: &Context, _shared_access: &RepoShared) -> Result<gi
         // If the references are out of sync, now is a good time to update them
         stack.sync_heads_with_references(&mut vb_state, &repo).ok();
 
-        for commit_id in commit_ids_excluding_reachable_from(
+        for commit_id in commit_ids_excluding_reachable_from_with_graph(
             &repo,
             stack_head,
             default_target_commit_id,
@@ -937,54 +899,4 @@ fn tree_from_applied_vbranches(
     }
 
     Ok(workdir_tree_id)
-}
-
-#[cfg(test)]
-mod tests {
-    use std::collections::HashSet;
-
-    use anyhow::Result;
-    use but_testsupport::{read_only_in_memory_scenario, visualize_commit_graph_all};
-
-    use super::commit_ids_excluding_reachable_from;
-
-    #[test]
-    fn commit_ids_excluding_reachable_from_matches_hidden_walk_for_merge_history() -> Result<()> {
-        let repo = read_only_in_memory_scenario("merge-history-prune")?;
-        insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
-        *   302203c (HEAD -> merged) merge C into merged
-        |\  
-        | *   ac3212d (C) merge D into C
-        | |\  
-        | | * f43cbb4 (D) D
-        | * | ecdf221 C
-        | |/  
-        * |   eac2241 (A) merge B into A
-        |\ \  
-        | |/  
-        |/|   
-        | * 7c77b77 (B) B
-        |/  
-        * e54fc74 A
-        * 2f0e583 (main) base
-        ");
-        let from = repo.rev_parse_single("merged")?.detach();
-        let stop_before = repo.rev_parse_single("main")?.detach();
-        let cache = repo.commit_graph_if_enabled()?;
-        let mut graph = repo.revision_graph(cache.as_ref());
-
-        let actual: HashSet<_> =
-            commit_ids_excluding_reachable_from(&repo, from, stop_before, &mut graph)?
-                .into_iter()
-                .collect();
-        let expected: HashSet<_> = [
-            "302203c", "ac3212d", "f43cbb4", "ecdf221", "eac2241", "7c77b77", "e54fc74",
-        ]
-        .into_iter()
-        .map(|spec| Ok(repo.rev_parse_single(spec)?.detach()))
-        .collect::<Result<_>>()?;
-
-        assert_eq!(actual, expected);
-        Ok(())
-    }
 }

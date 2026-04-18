@@ -33,7 +33,6 @@ toml.workspace = true
 
 [dev-dependencies]
 but-testsupport.workspace = true
-insta.workspace = true
 pretty_assertions = "1.4"
 tempfile.workspace = true
 
