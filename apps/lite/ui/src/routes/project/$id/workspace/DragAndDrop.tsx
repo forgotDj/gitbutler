@@ -16,7 +16,7 @@ import {
 	useState,
 } from "react";
 import { createRoot } from "react-dom/client";
-import sharedStyles from "../shared.module.css";
+import styles from "./DragAndDrop.module.css";
 import { type OperationSource } from "./OperationSource.ts";
 
 export type DragData = {
@@ -39,7 +39,7 @@ const parseDropTargetData = (data: unknown): DropData | null => {
 };
 
 export const DragPreview: FC<{ children: ReactNode }> = ({ children }) => (
-	<div className={sharedStyles.dragPreview}>{children}</div>
+	<div className={styles.dragPreview}>{children}</div>
 );
 
 type DraggableParams = Parameters<typeof draggable>[0];

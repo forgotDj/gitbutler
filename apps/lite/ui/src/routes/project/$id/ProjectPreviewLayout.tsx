@@ -16,7 +16,7 @@ import { ShortcutsBarPortalContext } from "#ui/routes/project/$id/ShortcutsBar.t
 import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import uiStyles from "#ui/ui.module.css";
 import { closePreviewBinding } from "./workspace/WorkspaceShortcuts.ts";
-import sharedStyles from "./shared.module.css";
+import styles from "./ProjectPreviewLayout.module.css";
 
 export const ProjectPreviewLayout: FC<{
 	projectId: string;
@@ -48,7 +48,7 @@ export const ProjectPreviewLayout: FC<{
 			}
 		>
 			<Group
-				className={sharedStyles.pageWithPreview}
+				className={styles.pageWithPreview}
 				defaultLayout={defaultLayout}
 				onLayoutChange={onLayoutChanged}
 			>
@@ -57,25 +57,25 @@ export const ProjectPreviewLayout: FC<{
 					minSize={400}
 					onPointerDown={focusPrimary}
 					className={classes(
-						sharedStyles.panel,
-						sharedStyles.primaryPanel,
-						focus === "primary" && sharedStyles.focusedPanel,
+						styles.panel,
+						styles.primaryPanel,
+						focus === "primary" && styles.focusedPanel,
 					)}
 				>
 					{children}
 				</Panel>
 				{isPreviewPanelVisible(layoutState) && (
 					<>
-						<Separator className={sharedStyles.previewResizeHandle} />
+						<Separator className={styles.previewResizeHandle} />
 						<Panel
 							id={"preview" satisfies PanelType}
 							minSize={300}
 							defaultSize="70%"
 							onPointerDown={focusPreview}
 							className={classes(
-								sharedStyles.panel,
-								sharedStyles.previewPanel,
-								focus === "preview" && sharedStyles.focusedPanel,
+								styles.panel,
+								styles.previewPanel,
+								focus === "preview" && styles.focusedPanel,
 							)}
 						>
 							{
@@ -98,8 +98,8 @@ export const ProjectPreviewLayout: FC<{
 					}}
 				>
 					<Dialog.Portal>
-						<Dialog.Popup aria-label="Preview" className={sharedStyles.previewDialogPopup}>
-							<div className={sharedStyles.previewDialogBody}>
+						<Dialog.Popup aria-label="Preview" className={styles.previewDialogPopup}>
+							<div className={styles.previewDialogBody}>
 								<ShortcutButton
 									binding={closePreviewBinding}
 									type="button"
