@@ -4109,6 +4109,36 @@ fn two_dependent_branches_rebased_with_remotes_merge_local() -> anyhow::Result<(
 }
 
 #[test]
+fn stacked_bottom_remote_still_points_at_now_split_top() -> anyhow::Result<()> {
+    let (repo, mut meta) =
+        read_only_in_memory_scenario("ws/stacked-bottom-remote-still-points-at-now-split-top")?;
+    // origin/bottom still points at T (the previously combined push), but the
+    // local stack is now split so that bottom holds only B and top holds T on
+    // top of bottom. To remove T from origin/bottom we'd need to force-push,
+    // so bottom must report `commits_on_remote` containing T.
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
+    * 5c66c47 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    * bfbff44 (origin/bottom, top) T
+    * 7fdb58d (bottom) B
+    * fafd9d0 (origin/main, main) init
+    ");
+
+    add_stack_with_segments(&mut meta, 0, "top", StackState::InWorkspace, &["bottom"]);
+
+    let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @"
+    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main on fafd9d0
+    └── ≡📙:3:top on fafd9d0 {0}
+        ├── 📙:3:top
+        │   └── ❄bfbff44 (🏘️)
+        └── 📙:4:bottom <> origin/bottom →:5:⇣1
+            ├── 🟣bfbff44 (🏘️)
+            └── ❄️7fdb58d (🏘️)
+    ");
+    Ok(())
+}
+
+#[test]
 fn two_dependent_branches_rebased_with_remotes_squash_merge_remote_ambiguous() -> anyhow::Result<()>
 {
     let (repo, mut meta) = read_only_in_memory_scenario(
