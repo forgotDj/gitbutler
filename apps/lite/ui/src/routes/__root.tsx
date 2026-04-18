@@ -17,6 +17,7 @@ import {
 } from "#ui/routes/project/$id/workspace/WorkspaceShortcuts.ts";
 import uiStyles from "#ui/ui.module.css";
 import styles from "./__root.module.css";
+import { listProjectsQueryOptions } from "#ui/api/queries.ts";
 
 export const lastOpenedProjectKey = "lastProject";
 
@@ -25,10 +26,7 @@ interface RouteContext {
 }
 
 const ProjectSelect: FC = () => {
-	const { data: projects } = useSuspenseQuery({
-		queryKey: ["projects"],
-		queryFn: () => window.lite.listProjects(),
-	});
+	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions());
 	const navigate = useNavigate();
 	const projectMatch = useMatch({
 		from: "/project/$id",
