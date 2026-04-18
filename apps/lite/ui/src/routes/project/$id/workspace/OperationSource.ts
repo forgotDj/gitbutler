@@ -99,7 +99,7 @@ export const operationSourceFromItem = (item: Item): OperationSource =>
 	Match.value(item).pipe(
 		Match.tagsExhaustive({
 			BaseCommit: () => baseCommitOperationSource,
-			Change: ({ path }) =>
+			ChangeFile: ({ path }) =>
 				fileOperationSource({
 					parent: changesSectionFileParent,
 					path,

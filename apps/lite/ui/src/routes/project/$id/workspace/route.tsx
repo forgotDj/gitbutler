@@ -97,7 +97,7 @@ import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import {
 	branchItem,
 	baseCommitItem,
-	changeItem,
+	changeFileItem,
 	changesSectionItem,
 	type BranchItem,
 	CommitFileItem,
@@ -758,7 +758,7 @@ const Preview: FC<{
 			ChangesSection: () => (
 				<ChangesPreview operationMode={operationMode} projectId={projectId} ref={ref} />
 			),
-			Change: ({ path }) => (
+			ChangeFile: ({ path }) => (
 				<ChangesPreview
 					operationMode={operationMode}
 					projectId={projectId}
@@ -1153,7 +1153,7 @@ const CommitC: FC<{
 	);
 };
 
-const ChangeRow: FC<{
+const ChangeFileRow: FC<{
 	change: TreeChange;
 	dependencyCommitIds: Array<string>;
 	isSelected: boolean;
@@ -1171,7 +1171,7 @@ const ChangeRow: FC<{
 	projectId,
 }) => {
 	const dispatch = useAppDispatch();
-	const item = changeItem({ path: change.path });
+	const item = changeFileItem({ path: change.path });
 
 	const menuItems: Array<NativeMenuItem> = [
 		{
@@ -1391,7 +1391,7 @@ const Changes: FC<{
 
 						return (
 							<li key={change.path}>
-								<ChangeRow
+								<ChangeFileRow
 									change={change}
 									dependencyCommitIds={dependencyCommitIds}
 									isSelected={selectedPath === change.path}
@@ -1899,7 +1899,7 @@ const ProjectPage: FC = () => {
 						operationMode={operationMode}
 						projectId={projectId}
 						isSelected={selectedItem?._tag === "ChangesSection"}
-						selectedPath={selectedItem?._tag === "Change" ? selectedItem.path : null}
+						selectedPath={selectedItem?._tag === "ChangeFile" ? selectedItem.path : null}
 						onAbsorbChanges={requestAbsorptionPlan}
 						navigationIndex={navigationIndex}
 					/>

@@ -10,7 +10,7 @@ import { RefObject, useEffect, useEffectEvent } from "react";
 import {
 	branchItem,
 	baseCommitItem,
-	changeItem,
+	changeFileItem,
 	commitFileItem,
 	commitItem,
 	itemEquals,
@@ -262,7 +262,7 @@ type StackDefaultModeScope = {
 type DefaultModeScope =
 	| ({ _tag: "BaseCommit" } & BaseCommitDefaultModeScope)
 	| ({ _tag: "Branch" } & BranchDefaultModeScope)
-	| ({ _tag: "Change" } & ChangeDefaultModeScope)
+	| ({ _tag: "ChangeFile" } & ChangeDefaultModeScope)
 	| ({ _tag: "ChangesSection" } & ChangesSectionDefaultModeScope)
 	| ({ _tag: "Commit" } & CommitDefaultModeScope)
 	| ({ _tag: "CommitFile" } & CommitFileDefaultModeScope)
@@ -288,7 +288,7 @@ const changeDefaultModeScope = ({
 	bindings,
 	context,
 }: ChangeDefaultModeScope): DefaultModeScope => ({
-	_tag: "Change",
+	_tag: "ChangeFile",
 	bindings,
 	context,
 });
@@ -333,7 +333,7 @@ const getDefaultModeScope = (selectedItem: Item): DefaultModeScope =>
 				baseCommitDefaultModeScope({
 					bindings: primaryPanelBindings,
 				}),
-			Change: (selectedItem) =>
+			ChangeFile: (selectedItem) =>
 				changeDefaultModeScope({
 					bindings: changesBindings,
 					context: selectedItem,
@@ -371,7 +371,7 @@ const getDefaultModeScopeLabel = (scope: DefaultModeScope): string =>
 		Match.tagsExhaustive({
 			BaseCommit: () => "Base commit",
 			Branch: () => "Branch",
-			Change: () => "Change",
+			ChangeFile: () => "Change",
 			ChangesSection: () => "Changes",
 			Commit: () => "Commit",
 			CommitFile: () => "Commit file",
@@ -868,11 +868,11 @@ export const useWorkspaceShortcuts = ({
 					event.preventDefault();
 					handleBranchScopeAction(action, scope.context);
 				},
-				Change: (scope) => {
+				ChangeFile: (scope) => {
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handleChangesScopeAction(action, changeItem(scope.context));
+					handleChangesScopeAction(action, changeFileItem(scope.context));
 				},
 				ChangesSection: (scope) => {
 					const action = getAction(scope.bindings, event);
