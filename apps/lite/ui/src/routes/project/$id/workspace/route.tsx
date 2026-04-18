@@ -1181,6 +1181,7 @@ const ChangeFileRow: FC<{
 	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	operationMode: OperationMode | null;
+	workspaceMode: WorkspaceMode;
 	projectId: string;
 }> = ({
 	change,
@@ -1188,6 +1189,7 @@ const ChangeFileRow: FC<{
 	navigationIndex,
 	onAbsorbChanges,
 	operationMode,
+	workspaceMode,
 	projectId,
 }) => {
 	const dispatch = useAppDispatch();
@@ -1228,25 +1230,29 @@ const ChangeFileRow: FC<{
 					void showNativeContextMenu(event, menuItems);
 				}}
 			/>
-			{isNonEmptyArray(dependencyCommitIds) && (
-				<DependencyIndicator
-					projectId={projectId}
-					commitIds={dependencyCommitIds}
-					className={styles.itemRowAction}
-				>
-					<DependencyIcon />
-				</DependencyIndicator>
+			{workspaceMode._tag === "Default" && (
+				<>
+					{isNonEmptyArray(dependencyCommitIds) && (
+						<DependencyIndicator
+							projectId={projectId}
+							commitIds={dependencyCommitIds}
+							className={styles.itemRowAction}
+						>
+							<DependencyIcon />
+						</DependencyIndicator>
+					)}
+					<button
+						type="button"
+						className={styles.itemRowAction}
+						aria-label="File menu"
+						onClick={(event) => {
+							void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+						}}
+					>
+						<MenuTriggerIcon />
+					</button>
+				</>
 			)}
-			<button
-				type="button"
-				className={styles.itemRowAction}
-				aria-label="File menu"
-				onClick={(event) => {
-					void showNativeMenuFromTrigger(event.currentTarget, menuItems);
-				}}
-			>
-				<MenuTriggerIcon />
-			</button>
 		</OperationSourceC>
 	);
 };
@@ -1256,7 +1262,8 @@ const ChangesSectionRow: FC<{
 	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	projectId: string;
-}> = ({ changes, navigationIndex, onAbsorbChanges, projectId }) => {
+	workspaceMode: WorkspaceMode;
+}> = ({ changes, navigationIndex, onAbsorbChanges, projectId, workspaceMode }) => {
 	const dispatch = useAppDispatch();
 	const item = changesSectionItem;
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
@@ -1292,16 +1299,18 @@ const ChangesSectionRow: FC<{
 			>
 				Changes
 			</button>
-			<button
-				type="button"
-				className={styles.itemRowAction}
-				aria-label="Changes menu"
-				onClick={(event) => {
-					void showNativeMenuFromTrigger(event.currentTarget, menuItems);
-				}}
-			>
-				<MenuTriggerIcon />
-			</button>
+			{workspaceMode._tag === "Default" && (
+				<button
+					type="button"
+					className={styles.itemRowAction}
+					aria-label="Changes menu"
+					onClick={(event) => {
+						void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+					}}
+				>
+					<MenuTriggerIcon />
+				</button>
+			)}
 		</ItemRow>
 	);
 };
@@ -1353,7 +1362,8 @@ const Changes: FC<{
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	className?: string;
 	navigationIndex: NavigationIndex;
-}> = ({ operationMode, projectId, onAbsorbChanges, className, navigationIndex }) => {
+	workspaceMode: WorkspaceMode;
+}> = ({ operationMode, projectId, onAbsorbChanges, className, navigationIndex, workspaceMode }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
@@ -1383,6 +1393,7 @@ const Changes: FC<{
 				navigationIndex={navigationIndex}
 				onAbsorbChanges={onAbsorbChanges}
 				projectId={projectId}
+				workspaceMode={workspaceMode}
 			/>
 			{worktreeChanges.changes.length === 0 ? (
 				<div className={styles.itemRowEmpty}>No changes.</div>
@@ -1402,6 +1413,7 @@ const Changes: FC<{
 									navigationIndex={navigationIndex}
 									onAbsorbChanges={onAbsorbChanges}
 									operationMode={operationMode}
+									workspaceMode={workspaceMode}
 									projectId={projectId}
 								/>
 							</li>
@@ -1656,16 +1668,18 @@ const StackRow: FC<
 			>
 				Stack
 			</button>
-			<button
-				type="button"
-				className={styles.itemRowAction}
-				aria-label="Stack menu"
-				onClick={(event) => {
-					void showNativeMenuFromTrigger(event.currentTarget, menuItems);
-				}}
-			>
-				<MenuTriggerIcon />
-			</button>
+			{workspaceMode._tag === "Default" && (
+				<button
+					type="button"
+					className={styles.itemRowAction}
+					aria-label="Stack menu"
+					onClick={(event) => {
+						void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+					}}
+				>
+					<MenuTriggerIcon />
+				</button>
+			)}
 		</ItemRow>
 	);
 };
@@ -1871,6 +1885,7 @@ const ProjectPage: FC = () => {
 						projectId={projectId}
 						onAbsorbChanges={requestAbsorptionPlan}
 						navigationIndex={navigationIndex}
+						workspaceMode={workspaceMode}
 					/>
 
 					<button type="button" className={uiStyles.button} onClick={commit}>
