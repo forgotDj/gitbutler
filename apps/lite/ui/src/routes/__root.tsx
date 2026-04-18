@@ -11,10 +11,7 @@ import {
 	selectProjectLayoutState,
 } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
-import {
-	toggleFullscreenPreviewBinding,
-	togglePreviewBinding,
-} from "#ui/routes/project/$id/workspace/WorkspaceShortcuts.ts";
+import { togglePreviewBinding } from "#ui/routes/project/$id/workspace/WorkspaceShortcuts.ts";
 import uiStyles from "#ui/ui.module.css";
 import styles from "./__root.module.css";
 import { listProjectsQueryOptions } from "#ui/api/queries.ts";
@@ -78,15 +75,6 @@ const TopBarActions: FC = () => {
 				onClick={() => dispatch(projectActions.togglePreview({ projectId }))}
 			>
 				{togglePreviewBinding.description}
-			</ShortcutButton>
-			<ShortcutButton
-				binding={toggleFullscreenPreviewBinding}
-				type="button"
-				className={uiStyles.button}
-				aria-pressed={layoutState.isFullscreenPreviewOpen}
-				onClick={() => dispatch(projectActions.toggleFullscreenPreview({ projectId }))}
-			>
-				{toggleFullscreenPreviewBinding.description}
 			</ShortcutButton>
 		</div>
 	);

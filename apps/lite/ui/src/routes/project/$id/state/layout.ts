@@ -16,32 +16,20 @@ export const splitPanelLayout = ({ focus }: SplitPanelLayout): PanelLayout => ({
 });
 
 export type ProjectLayoutState = {
-	isFullscreenPreviewOpen: boolean;
 	panelLayout: PanelLayout;
 };
 
 export const createInitialState = (): ProjectLayoutState => ({
-	isFullscreenPreviewOpen: false,
 	panelLayout: splitPanelLayout({ focus: "primary" }),
 });
 
 export const initialState: ProjectLayoutState = createInitialState();
 
-export const closeFullscreenPreview = (state: ProjectLayoutState) => {
-	state.isFullscreenPreviewOpen = false;
-};
-
 export const closePreview = (state: ProjectLayoutState) => {
-	if (state.isFullscreenPreviewOpen) {
-		state.isFullscreenPreviewOpen = false;
-		return;
-	}
-
 	state.panelLayout = primaryPanelLayout;
 };
 
 export const focusPrimary = (state: ProjectLayoutState) => {
-	state.isFullscreenPreviewOpen = false;
 	state.panelLayout =
 		state.panelLayout._tag === "Primary"
 			? state.panelLayout
@@ -49,16 +37,7 @@ export const focusPrimary = (state: ProjectLayoutState) => {
 };
 
 export const focusPreview = (state: ProjectLayoutState) => {
-	if (state.isFullscreenPreviewOpen) return;
 	state.panelLayout = splitPanelLayout({ focus: "preview" });
-};
-
-export const openFullscreenPreview = (state: ProjectLayoutState) => {
-	state.isFullscreenPreviewOpen = true;
-};
-
-export const toggleFullscreenPreview = (state: ProjectLayoutState) => {
-	state.isFullscreenPreviewOpen = !state.isFullscreenPreviewOpen;
 };
 
 export const togglePreview = (state: ProjectLayoutState) => {
@@ -68,11 +47,8 @@ export const togglePreview = (state: ProjectLayoutState) => {
 			: primaryPanelLayout;
 };
 
-const getPanelFocus = (state: ProjectLayoutState): Panel =>
-	state.panelLayout._tag === "Split" ? state.panelLayout.focus : "primary";
-
 export const getFocus = (state: ProjectLayoutState): Panel =>
-	state.isFullscreenPreviewOpen ? "preview" : getPanelFocus(state);
+	state.panelLayout._tag === "Split" ? state.panelLayout.focus : "primary";
 
 export const isPreviewPanelVisible = (state: ProjectLayoutState): boolean =>
 	state.panelLayout._tag === "Split";

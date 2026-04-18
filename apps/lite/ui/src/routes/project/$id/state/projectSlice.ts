@@ -124,15 +124,6 @@ const projectSlice = createSlice({
 		togglePreview: (state, action: PayloadAction<{ projectId: string }>) => {
 			layout.togglePreview(ensureProjectState(state, action.payload.projectId).layout);
 		},
-		openFullscreenPreview: (state, action: PayloadAction<{ projectId: string }>) => {
-			layout.openFullscreenPreview(ensureProjectState(state, action.payload.projectId).layout);
-		},
-		closeFullscreenPreview: (state, action: PayloadAction<{ projectId: string }>) => {
-			layout.closeFullscreenPreview(ensureProjectState(state, action.payload.projectId).layout);
-		},
-		toggleFullscreenPreview: (state, action: PayloadAction<{ projectId: string }>) => {
-			layout.toggleFullscreenPreview(ensureProjectState(state, action.payload.projectId).layout);
-		},
 	},
 });
 

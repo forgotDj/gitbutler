@@ -111,9 +111,8 @@ const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
 	},
 ];
 
-type GlobalPreviewAction = { _tag: "ToggleFullscreenPreview" } | { _tag: "TogglePreview" };
+type GlobalPreviewAction = { _tag: "TogglePreview" };
 
-const toggleFullscreenPreviewAction: GlobalPreviewAction = { _tag: "ToggleFullscreenPreview" };
 const togglePreviewAction: GlobalPreviewAction = { _tag: "TogglePreview" };
 
 export const togglePreviewBinding: ShortcutBinding<GlobalPreviewAction> = {
@@ -121,14 +120,6 @@ export const togglePreviewBinding: ShortcutBinding<GlobalPreviewAction> = {
 	description: "Preview",
 	keys: ["p"],
 	action: togglePreviewAction,
-	repeat: false,
-};
-
-export const toggleFullscreenPreviewBinding: ShortcutBinding<GlobalPreviewAction> = {
-	id: "primary-panel-toggle-fullscreen-preview",
-	description: "Fullscreen preview",
-	keys: ["d"],
-	action: toggleFullscreenPreviewAction,
 	repeat: false,
 };
 
@@ -166,7 +157,6 @@ const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 		action: focusPreviewAction,
 		repeat: false,
 	},
-	toggleFullscreenPreviewBinding,
 	togglePreviewBinding,
 ];
 
@@ -410,15 +400,9 @@ const previewBindings: Array<ShortcutBinding<PreviewAction>> = [
 		action: focusPrimaryAction,
 		repeat: false,
 	},
-	toggleFullscreenPreviewBinding,
 	togglePreviewBinding,
 	closePreviewBinding,
 ];
-
-const fullscreenPreviewBindings: Array<ShortcutBinding<PreviewAction>> = previewBindings
-	// The preview panel is not visible as it sits behind the fullscreen dialog, so
-	// there's no point having the toggle preview shortcut here.
-	.filter((binding) => binding.action._tag !== "TogglePreview");
 
 type OperationModeAction = PrimaryPanelAction | { _tag: "Cancel" } | { _tag: "Run" };
 
@@ -622,7 +606,6 @@ const getModeScope = ({
 
 type PreviewScope = {
 	bindings: Array<ShortcutBinding<PreviewAction>>;
-	context: { isFullscreen: boolean };
 };
 
 type Scope = ModeScope | ({ _tag: "Preview" } & PreviewScope);
@@ -639,10 +622,9 @@ const isOperationModeScope = (scope: Scope): scope is OperationModeScope =>
 		}),
 	);
 
-const previewScope = ({ bindings, context }: PreviewScope): Scope => ({
+const previewScope = ({ bindings }: PreviewScope): Scope => ({
 	_tag: "Preview",
 	bindings,
-	context,
 });
 
 export const getScope = ({
@@ -656,8 +638,7 @@ export const getScope = ({
 }): Scope | null => {
 	if (getFocus(layoutState) === "preview")
 		return previewScope({
-			bindings: layoutState.isFullscreenPreviewOpen ? fullscreenPreviewBindings : previewBindings,
-			context: { isFullscreen: layoutState.isFullscreenPreviewOpen },
+			bindings: previewBindings,
 		});
 
 	return getModeScope({ selectedItem, workspaceMode });
@@ -769,8 +750,6 @@ export const useWorkspaceShortcuts = ({
 				FocusPreview: () => dispatch(projectActions.focusPreview({ projectId })),
 				SelectUnassignedChanges: () =>
 					dispatch(projectActions.selectItem({ projectId, item: changesSectionItem })),
-				ToggleFullscreenPreview: () =>
-					dispatch(projectActions.toggleFullscreenPreview({ projectId })),
 				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
 			}),
 			Match.orElse((action) => handleItemSelectionAction(action, selectedItem)),
@@ -894,8 +873,6 @@ export const useWorkspaceShortcuts = ({
 			Match.tagsExhaustive({
 				ClosePreview: () => dispatch(projectActions.closePreview({ projectId })),
 				FocusPrimary: () => dispatch(projectActions.focusPrimary({ projectId })),
-				ToggleFullscreenPreview: () =>
-					dispatch(projectActions.toggleFullscreenPreview({ projectId })),
 				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
 			}),
 		);
