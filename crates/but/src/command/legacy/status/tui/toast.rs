@@ -48,16 +48,23 @@ impl Toasts {
 }
 
 pub(super) fn render_toasts(frame: &mut Frame, area: Rect, toasts: &Toasts) {
-    for (idx, toast) in toasts.toasts.iter().enumerate() {
-        render_toast(
+    let mut bottom_margin = 0;
+    for toast in &toasts.toasts {
+        if bottom_margin >= area.height {
+            break;
+        }
+
+        let rendered_height = render_toast(
             frame,
             area,
             ToastMargin {
-                right: 1 + idx as u16,
-                bottom: idx as u16,
+                right: 1,
+                bottom: bottom_margin,
             },
             toast,
         );
+
+        bottom_margin = bottom_margin.saturating_add(rendered_height);
     }
 }
 
@@ -66,7 +73,7 @@ struct ToastMargin {
     bottom: u16,
 }
 
-fn render_toast(frame: &mut Frame, area: Rect, margin: ToastMargin, toast: &Toast) {
+fn render_toast(frame: &mut Frame, area: Rect, margin: ToastMargin, toast: &Toast) -> u16 {
     let horizontal_padding: u16 = 1;
     let vertical_padding: u16 = 0;
     let border_width: u16 = 2;
@@ -152,4 +159,6 @@ fn render_toast(frame: &mut Frame, area: Rect, margin: ToastMargin, toast: &Toas
         .wrap(Wrap { trim: false });
 
     frame.render_widget(widget, toast_area);
+
+    height
 }
