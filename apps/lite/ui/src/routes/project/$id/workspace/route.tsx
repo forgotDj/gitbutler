@@ -1791,7 +1791,7 @@ const ProjectPage: FC = () => {
 	const commitMessageFormRef = useRef<HTMLFormElement | null>(null);
 	const previewRef = useRef<PreviewImperativeHandle | null>(null);
 
-	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions());
+	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
 
 	const project = projects.find((project) => project.id === projectId);
 

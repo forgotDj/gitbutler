@@ -26,7 +26,7 @@ interface RouteContext {
 }
 
 const ProjectSelect: FC = () => {
-	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions());
+	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
 	const navigate = useNavigate();
 	const projectMatch = useMatch({
 		from: "/project/$id",
