@@ -370,24 +370,3 @@ pub fn push_stack(
         push_opts,
     )
 }
-
-#[but_api(napi, json::PushResult)]
-#[instrument(err(Debug))]
-pub fn push_stack_legacy(
-    ctx: &mut Context,
-    stack_id: StackId,
-    with_force: bool,
-    skip_force_push_protection: bool,
-    branch: String,
-    run_hooks: bool,
-) -> Result<PushResult> {
-    push_stack(
-        ctx,
-        stack_id,
-        with_force,
-        skip_force_push_protection,
-        branch,
-        run_hooks,
-        Vec::new(),
-    )
-}
