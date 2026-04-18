@@ -228,10 +228,10 @@ impl PushStatus {
     /// - top local commit already known integrated by similarity checks:
     ///   `Integrated`
     /// - local and remote tips are identical: `NothingToPush`
-    /// - remote tip is on the local first-parent line:
-    ///   `UnpushedCommits`, unless that remote tip is already integrated into
-    ///   target, in which case updating the remote rewrites published history
-    ///   and thus requires force-push
+    /// - remote tip is on the local first-parent line: usually
+    ///   `UnpushedCommits`, unless this segment already contains an integrated
+    ///   commit below a local tip, which indicates that advancing the remote
+    ///   would rewrite a branch state that was already merged
     /// - otherwise, either the remote is ahead of us on its branch line or the
     ///   two tips diverged; both cases require force-push
     fn derive_from_graph(graph: &but_graph::Graph, segment: &crate::ref_info::Segment) -> Self {
@@ -256,30 +256,39 @@ impl PushStatus {
         else {
             return PushStatus::NothingToPush;
         };
-        let Some(remote_tip) = graph.tip_skip_empty(remote_segment_id) else {
+        let Some(remote_tip_id) = graph
+            .tip_skip_empty(remote_segment_id)
+            .map(|commit| commit.id)
+        else {
             // A missing remote tip acts like an unpushed branch: there is a
             // remote configured, but nothing reachable on that side that could
             // block a normal push.
             return PushStatus::UnpushedCommits;
         };
-        let remote_tip_id = remote_tip.id;
+
+        let first_commit_is_local = segment
+            .commits
+            .first()
+            .is_some_and(|commit| matches!(commit.relation, LocalCommitRelation::LocalOnly));
+        let has_integrated_commit_in_segment = segment
+            .commits
+            .iter()
+            .any(|commit| matches!(commit.relation, LocalCommitRelation::Integrated(_)));
 
         if local_tip_id == remote_tip_id {
             // Same tip, regardless of how the graph was segmented.
             PushStatus::NothingToPush
         } else if first_parent_contains_commit(graph, local_segment_id, remote_tip_id) {
-            if remote_tip
-                .flags
-                .contains(but_graph::CommitFlags::Integrated)
-            {
-                // The remote tip is part of our branch line, but it was already
-                // integrated into target elsewhere, typically through a merge.
-                // Updating the remote would replace that published branch state
-                // rather than fast-forward it.
+            // Local is a straightforward first-parent extension of remote.
+            // However, if this segment already contains an integrated commit
+            // below a local tip, we preserve the previous behavior and treat it
+            // as a force-push case. This covers the "remote behind after a
+            // no-ff merge into target" scenario, while avoiding false
+            // positives for integrated ancestors that live in lower segments of
+            // the stack.
+            if first_commit_is_local && has_integrated_commit_in_segment {
                 PushStatus::UnpushedCommitsRequiringForce
             } else {
-                // Local is a straightforward first-parent extension of remote,
-                // which is the normal fast-forward case.
                 PushStatus::UnpushedCommits
             }
         } else {

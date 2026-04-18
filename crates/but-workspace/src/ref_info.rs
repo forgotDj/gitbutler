@@ -254,6 +254,8 @@ pub struct Segment {
     pub remote_tracking_ref_name: Option<gix::refs::FullName>,
     /// The graph segment id of the remote-tracking branch (see `remote_tracking_ref_name`) associated
     /// with this segment, if present.
+    /// Note that this id is only meaningful within the current graph instance and is not suitable to
+    /// permanently identify the segment, so it must not be persisted.
     pub remote_tracking_branch_segment_id: Option<SegmentIndex>,
     /// The portion of commits that can be reached from the tip of the *branch* downwards, so that they are unique
     /// for that stack segment and not included in any other stack or stack segment.
