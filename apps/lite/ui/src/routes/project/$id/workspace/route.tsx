@@ -650,8 +650,7 @@ const CommitPreview: FC<{
 		selectedPath !== undefined
 			? commitDetails.changes.find((candidate) => candidate.path === selectedPath)
 			: undefined;
-	const changes =
-		selectedPath === undefined ? commitDetails.changes : selectedChange ? [selectedChange] : [];
+	const changes = selectedChange ? [selectedChange] : commitDetails.changes;
 	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
 		projectId,
 		changes,
