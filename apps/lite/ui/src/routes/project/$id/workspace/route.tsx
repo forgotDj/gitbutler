@@ -718,16 +718,16 @@ const BranchPreview: FC<{
 	branchRef: Array<number>;
 	ref?: Ref<PreviewImperativeHandle>;
 }> = ({ operationMode, projectId, branchRef, ref }) => {
-	const branch = decodeRefName(branchRef);
+	const decodedBranchRef = decodeRefName(branchRef);
 	const [{ data: branchDetails }, { data: branchDiff }] = useSuspenseQueries({
 		queries: [
 			branchDetailsQueryOptions({
 				projectId,
 				// https://linear.app/gitbutler/issue/GB-1226/unify-branch-identifiers
-				branchName: branch.replace(/^refs\/heads\//, ""),
+				branchName: decodedBranchRef.replace(/^refs\/heads\//, ""),
 				remote: null,
 			}),
-			branchDiffQueryOptions({ projectId, branch }),
+			branchDiffQueryOptions({ projectId, branch: decodedBranchRef }),
 		],
 	});
 	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
