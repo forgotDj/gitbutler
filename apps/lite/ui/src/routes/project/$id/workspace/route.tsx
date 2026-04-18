@@ -484,12 +484,12 @@ const FileDiff: FC<{
 			<div>Diff too large ({subject.sizeInBytes} bytes).</div>
 		)),
 		Match.when({ type: "Patch" }, (patch) => {
-			const visibleHunks = patch.subject.hunks;
-			if (visibleHunks.length === 0) return <div>No hunks.</div>;
+			const { hunks } = patch.subject;
+			if (hunks.length === 0) return <div>No hunks.</div>;
 
 			return (
 				<ul>
-					{visibleHunks.map((hunk) => {
+					{hunks.map((hunk) => {
 						const dependencyCommitIds = hunkDependencyDiffs
 							? dependencyCommitIdsForHunk(hunk, hunkDependencyDiffs)
 							: [];
