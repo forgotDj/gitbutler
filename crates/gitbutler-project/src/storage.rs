@@ -137,7 +137,7 @@ impl Storage {
                     })
                     .collect();
 
-                all_projects.sort_by_key(|p| p.title.to_lowercase());
+                all_projects.sort_by_cached_key(|p| p.title.to_lowercase());
                 Ok(all_projects)
             }
             None => Ok(vec![]),
