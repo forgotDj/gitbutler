@@ -217,7 +217,7 @@ export const useRunOperation = () => {
 								if (response.rejectedChanges.length > 0)
 									toastManager.add(
 										rejectedChangesToastOptions({
-											newCommit: response.newCommit ?? null,
+											newCommit: response.newCommit,
 											rejectedChanges: response.rejectedChanges,
 										}),
 									);
