@@ -4137,6 +4137,7 @@ dependencies = [
  "gitbutler-repo",
  "gitbutler-stack",
  "gix",
+ "insta",
  "itertools",
  "pretty_assertions",
  "serde",
