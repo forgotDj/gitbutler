@@ -865,8 +865,6 @@ const CommitRow: FC<
 		commitMessageFormRef: Ref<HTMLFormElement>;
 		workspaceMode: WorkspaceMode;
 		isExpanded: boolean;
-		isHighlighted: boolean;
-		isSelected: boolean;
 		projectId: string;
 		stackId: string;
 		navigationIndex: NavigationIndex;
@@ -876,19 +874,22 @@ const CommitRow: FC<
 	commitMessageFormRef,
 	workspaceMode,
 	isExpanded,
-	isHighlighted,
-	isSelected,
 	projectId,
 	stackId,
 	navigationIndex,
 	...restProps
 }) => {
+	const isHighlighted = useAppSelector((state) =>
+		selectProjectHighlightedCommitIds(state, projectId).includes(commit.id),
+	);
+
 	const dispatch = useAppDispatch();
 	const commitItemV: CommitItem = {
 		stackId,
 		commitId: commit.id,
 	};
 	const item = commitItem(commitItemV);
+	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 	const isRewording =
 		isSelected &&
 		workspaceMode._tag === "RewordCommit" &&
@@ -1128,9 +1129,6 @@ const CommitC: FC<{
 	const isExpanded = useAppSelector(
 		(state) => selectProjectExpandedCommitId(state, projectId) === commit.id,
 	);
-	const isHighlighted = useAppSelector((state) =>
-		selectProjectHighlightedCommitIds(state, projectId).includes(commit.id),
-	);
 	const commitItemV: CommitItem = { stackId, commitId: commit.id };
 	const item = commitItem(commitItemV);
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
@@ -1156,8 +1154,6 @@ const CommitC: FC<{
 				commitMessageFormRef={commitMessageFormRef}
 				workspaceMode={workspaceMode}
 				isExpanded={isExpanded}
-				isHighlighted={isHighlighted}
-				isSelected={isSelected}
 				projectId={projectId}
 				stackId={stackId}
 				navigationIndex={navigationIndex}
