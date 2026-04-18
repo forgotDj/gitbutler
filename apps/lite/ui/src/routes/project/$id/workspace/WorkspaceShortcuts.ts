@@ -776,11 +776,11 @@ export const useWorkspaceShortcuts = ({
 					dispatch(
 						projectActions.enterMoveMode({
 							projectId,
-							source: operationSourceFromItem(changesSectionItem({ stackId: null })),
+							source: operationSourceFromItem(changesSectionItem),
 						}),
 					),
 				FocusPreview: () => dispatch(projectActions.focusPreview({ projectId })),
-				SelectUnassignedChanges: () => selectItem(changesSectionItem({ stackId: null })),
+				SelectUnassignedChanges: () => selectItem(changesSectionItem),
 				ToggleFullscreenPreview: () =>
 					dispatch(projectActions.toggleFullscreenPreview({ projectId })),
 				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
@@ -878,7 +878,7 @@ export const useWorkspaceShortcuts = ({
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handleChangesScopeAction(action, changesSectionItem(scope.context));
+					handleChangesScopeAction(action, scope.context);
 				},
 				Commit: (scope) => {
 					const action = getAction(scope.bindings, event);

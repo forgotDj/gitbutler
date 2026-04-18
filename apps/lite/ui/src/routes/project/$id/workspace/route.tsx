@@ -580,7 +580,7 @@ const ChangesPreview: FC<{
 			) : (
 				<ul>
 					{changesWithDiffs.map(([change, diff]) => {
-						const parent = changesSectionFileParent({});
+						const parent = changesSectionFileParent;
 						const source = fileOperationSource({ parent, path: change.path });
 						return (
 							<li key={change.path}>
@@ -1258,7 +1258,7 @@ const ChangesSectionRow: FC<{
 
 	return (
 		<ItemRow
-			inert={!navigationIndexIncludes(navigationIndex, changesSectionItem({}))}
+			inert={!navigationIndexIncludes(navigationIndex, changesSectionItem)}
 			isSelected={isSelected}
 		>
 			<button
@@ -1268,7 +1268,7 @@ const ChangesSectionRow: FC<{
 					dispatch(
 						projectActions.selectItem({
 							projectId,
-							item: changesSectionItem({}),
+							item: changesSectionItem,
 						}),
 					);
 				}}
@@ -1355,7 +1355,7 @@ const Changes: FC<{
 		worktreeChanges.dependencies?.diffs ?? [],
 	);
 
-	const item = changesSectionItem({});
+	const item = changesSectionItem;
 
 	return (
 		<OperationSourceC
@@ -1875,7 +1875,7 @@ const ProjectPage: FC = () => {
 		dispatch(
 			projectActions.enterMoveMode({
 				projectId,
-				source: operationSourceFromItem(changesSectionItem({})),
+				source: operationSourceFromItem(changesSectionItem),
 			}),
 		);
 

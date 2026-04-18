@@ -39,7 +39,7 @@ const buildWorkspaceOutline = ({
 	expandedCommitPaths,
 }: BuildWorkspaceOutlineArgs): WorkspaceOutline => {
 	const changesSection: WorkspaceSection = {
-		section: changesSectionItem({}),
+		section: changesSectionItem,
 		children: changes.map((change) => changeItem({ path: change.path })),
 	};
 
