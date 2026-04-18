@@ -1914,10 +1914,12 @@ const ProjectPage: FC = () => {
 				</div>
 			</div>
 
-			<PositionedShortcutsBar
-				label={shortcutScope ? getScopeLabel(shortcutScope) : null}
-				items={shortcutScope ? getScopeBindings(shortcutScope) : []}
-			/>
+			{shortcutScope && (
+				<PositionedShortcutsBar
+					label={getScopeLabel(shortcutScope)}
+					items={getScopeBindings(shortcutScope)}
+				/>
+			)}
 
 			{operationMode && (
 				<div className={styles.operationModePreview}>

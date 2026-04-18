@@ -6,7 +6,7 @@ import styles from "./ShortcutsBar.module.css";
 export const ShortcutsBarPortalContext = createContext<HTMLElement | null>(null);
 
 const ShortcutsBar: FC<{
-	label: string | null;
+	label: string;
 	items: Array<ShortcutBinding<ShortcutActionBase>>;
 }> = ({ label, items }) => {
 	const visibleItems = items.filter((item) => item.showInShortcutsBar !== false);
@@ -14,7 +14,7 @@ const ShortcutsBar: FC<{
 
 	return (
 		<div className={styles.container}>
-			{label != null && <span className={styles.scope}>{label}</span>}
+			<span className={styles.scope}>{label}</span>
 			{visibleItems.map((item) => (
 				<div key={item.id} className={styles.item}>
 					<span className={styles.keys}>{formatShortcutKeys(item.keys)}</span>
@@ -26,9 +26,9 @@ const ShortcutsBar: FC<{
 };
 
 export const PositionedShortcutsBar: FC<{
-	label?: string | null;
+	label: string;
 	items: Array<ShortcutBinding<ShortcutActionBase>>;
-}> = ({ items, label = null }) => {
+}> = ({ items, label }) => {
 	const element = use(ShortcutsBarPortalContext);
 	if (!element) return null;
 
