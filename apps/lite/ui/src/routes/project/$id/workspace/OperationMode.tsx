@@ -24,7 +24,7 @@ const rubModeOperationSourceToOperation = ({
 			ChangesSection: () =>
 				getCombineOperation({
 					resolvedOperationSource,
-					target: changesSectionFileParent({}),
+					target: changesSectionFileParent,
 				}),
 			Commit: (target) =>
 				getCombineOperation({

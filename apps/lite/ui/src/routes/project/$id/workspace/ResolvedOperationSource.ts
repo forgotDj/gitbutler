@@ -125,7 +125,7 @@ const resolveOperationSource = ({
 				);
 
 				return treeChangesResolvedOperationSource({
-					parent: changesSectionFileParent({}),
+					parent: changesSectionFileParent,
 					changes,
 				});
 			},

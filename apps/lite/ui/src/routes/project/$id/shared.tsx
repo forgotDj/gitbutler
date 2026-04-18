@@ -21,12 +21,6 @@ export const isTypingTarget = (target: EventTarget | null) => {
 	);
 };
 
-export const getRelative = <T,>(items: Array<T>, index: number, offset: -1 | 1): T | null => {
-	const itemCount = items.length;
-	if (itemCount === 0) return null;
-	return items[(index + offset + itemCount) % itemCount] ?? null;
-};
-
 export const formatHunkHeader = (hunk: HunkHeader): string =>
 	`-${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines}`;
 

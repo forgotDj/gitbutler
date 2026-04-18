@@ -116,7 +116,7 @@ const dropTargetToOperation = ({
 			ChangesSection: () =>
 				getCombineOperation({
 					resolvedOperationSource,
-					target: changesSectionFileParent({}),
+					target: changesSectionFileParent,
 				}),
 			Branch: ({ branchRef }) =>
 				getBranchTargetOperation({

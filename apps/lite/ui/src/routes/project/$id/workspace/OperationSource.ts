@@ -8,7 +8,7 @@ import { Match } from "effect";
 import { type Item } from "./Item.ts";
 
 /** @public */
-export type ChangesSectionOperationSource = {};
+export type ChangesSectionOperationSource = { _tag: "ChangesSection" };
 /** @public */
 export type CommitOperationSource = { commitId: string };
 /** @public */
@@ -25,7 +25,7 @@ export type BranchOperationSource = { branchRef: Array<number> };
  */
 export type OperationSource =
 	| { _tag: "BaseCommit" }
-	| ({ _tag: "ChangesSection" } & ChangesSectionOperationSource)
+	| ChangesSectionOperationSource
 	| ({ _tag: "Commit" } & CommitOperationSource)
 	| ({ _tag: "File" } & FileOperationSource)
 	| ({ _tag: "Hunk" } & HunkOperationSource)
@@ -38,11 +38,9 @@ export const baseCommitOperationSource: OperationSource = {
 };
 
 /** @public */
-export const changesSectionOperationSource = (
-	_x: ChangesSectionOperationSource,
-): OperationSource => ({
+export const changesSectionOperationSource: ChangesSectionOperationSource = {
 	_tag: "ChangesSection",
-});
+};
 
 /** @public */
 export const commitOperationSource = ({ commitId }: CommitOperationSource): OperationSource => ({
@@ -101,12 +99,12 @@ export const operationSourceFromItem = (item: Item): OperationSource =>
 	Match.value(item).pipe(
 		Match.tagsExhaustive({
 			BaseCommit: () => baseCommitOperationSource,
-			Change: ({ path }) =>
+			ChangeFile: ({ path }) =>
 				fileOperationSource({
-					parent: changesSectionFileParent({}),
+					parent: changesSectionFileParent,
 					path,
 				}),
-			ChangesSection: () => changesSectionOperationSource({}),
+			ChangesSection: () => changesSectionOperationSource,
 			Commit: ({ commitId }) => commitOperationSource({ commitId }),
 			CommitFile: ({ commitId, path }) =>
 				fileOperationSource({

@@ -10,7 +10,7 @@ import { RefObject, useEffect, useEffectEvent } from "react";
 import {
 	branchItem,
 	baseCommitItem,
-	changeItem,
+	changeFileItem,
 	commitFileItem,
 	commitItem,
 	itemEquals,
@@ -29,8 +29,8 @@ import { operationSourceFromItem } from "./OperationSource.ts";
 import { useResolveOperationSource } from "./ResolvedOperationSource.ts";
 import { PreviewImperativeHandle } from "./route.tsx";
 import {
-	getAdjacentItem,
-	getAdjacentSection,
+	getAdjacent,
+	getNextSection,
 	getPreviousSection,
 	type NavigationIndex,
 } from "./WorkspaceModel.ts";
@@ -38,23 +38,19 @@ import { OperationMode, type WorkspaceMode } from "./WorkspaceMode.ts";
 
 type MoveItemSelectionAction = { offset: -1 | 1 };
 
-type ItemSelectionAction =
-	| { _tag: "EnterMoveMode" }
-	| { _tag: "EnterRubMode" }
+type ItemMoveSelectionAction =
 	| ({ _tag: "Move" } & MoveItemSelectionAction)
 	| { _tag: "NextSection" }
 	| { _tag: "PreviousSection" };
 
-const enterMoveModeAction: ItemSelectionAction = { _tag: "EnterMoveMode" };
-const enterRubModeAction: ItemSelectionAction = { _tag: "EnterRubMode" };
-const moveItemSelectionAction = ({ offset }: MoveItemSelectionAction): ItemSelectionAction => ({
+const moveItemSelectionAction = ({ offset }: MoveItemSelectionAction): ItemMoveSelectionAction => ({
 	_tag: "Move",
 	offset,
 });
-const nextSectionAction: ItemSelectionAction = { _tag: "NextSection" };
-const previousSectionAction: ItemSelectionAction = { _tag: "PreviousSection" };
+const nextSectionAction: ItemMoveSelectionAction = { _tag: "NextSection" };
+const previousSectionAction: ItemMoveSelectionAction = { _tag: "PreviousSection" };
 
-const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
+const itemMoveSelectionBindings: Array<ShortcutBinding<ItemMoveSelectionAction>> = [
 	{
 		id: "item-selection-move-up",
 		description: "up",
@@ -81,6 +77,18 @@ const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
 		action: nextSectionAction,
 		showInShortcutsBar: false,
 	},
+];
+
+type ItemSelectionAction =
+	| { _tag: "EnterMoveMode" }
+	| { _tag: "EnterRubMode" }
+	| ItemMoveSelectionAction;
+
+const enterMoveModeAction: ItemSelectionAction = { _tag: "EnterMoveMode" };
+const enterRubModeAction: ItemSelectionAction = { _tag: "EnterRubMode" };
+
+const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
+	...itemMoveSelectionBindings,
 	{
 		id: "item-selection-enter-rub-mode",
 		description: "Rub",
@@ -262,7 +270,7 @@ type StackDefaultModeScope = {
 type DefaultModeScope =
 	| ({ _tag: "BaseCommit" } & BaseCommitDefaultModeScope)
 	| ({ _tag: "Branch" } & BranchDefaultModeScope)
-	| ({ _tag: "Change" } & ChangeDefaultModeScope)
+	| ({ _tag: "ChangeFile" } & ChangeDefaultModeScope)
 	| ({ _tag: "ChangesSection" } & ChangesSectionDefaultModeScope)
 	| ({ _tag: "Commit" } & CommitDefaultModeScope)
 	| ({ _tag: "CommitFile" } & CommitFileDefaultModeScope)
@@ -288,7 +296,7 @@ const changeDefaultModeScope = ({
 	bindings,
 	context,
 }: ChangeDefaultModeScope): DefaultModeScope => ({
-	_tag: "Change",
+	_tag: "ChangeFile",
 	bindings,
 	context,
 });
@@ -333,7 +341,7 @@ const getDefaultModeScope = (selectedItem: Item): DefaultModeScope =>
 				baseCommitDefaultModeScope({
 					bindings: primaryPanelBindings,
 				}),
-			Change: (selectedItem) =>
+			ChangeFile: (selectedItem) =>
 				changeDefaultModeScope({
 					bindings: changesBindings,
 					context: selectedItem,
@@ -371,7 +379,7 @@ const getDefaultModeScopeLabel = (scope: DefaultModeScope): string =>
 		Match.tagsExhaustive({
 			BaseCommit: () => "Base commit",
 			Branch: () => "Branch",
-			Change: () => "Change",
+			ChangeFile: () => "Change",
 			ChangesSection: () => "Changes",
 			Commit: () => "Commit",
 			CommitFile: () => "Commit file",
@@ -715,30 +723,34 @@ export const useWorkspaceShortcuts = ({
 	const resolveOperationSource = useResolveOperationSource(projectId);
 	const runOperation = useRunOperation();
 
-	const resolvedOperationModeSource = operationMode
-		? resolveOperationSource(operationMode.source)
-		: null;
-
-	const selectItem = (item: Item | null) =>
-		dispatch(
-			projectActions.selectItem({
-				projectId,
-				item,
+	const handleItemMoveSelectionAction = (action: ItemMoveSelectionAction, selectedItem: Item) => {
+		const newItem = Match.value(action).pipe(
+			Match.tagsExhaustive({
+				Move: ({ offset }) =>
+					getAdjacent({
+						navigationIndex,
+						selectedItem,
+						offset,
+					}),
+				NextSection: () =>
+					getNextSection({
+						navigationIndex,
+						selectedItem,
+					}),
+				PreviousSection: () =>
+					getPreviousSection({
+						navigationIndex,
+						selectedItem,
+					}),
 			}),
 		);
-
-	const selectRelativeItem = (selectedItem: Item, offset: -1 | 1) =>
-		selectItem(getAdjacentItem(navigationIndex, selectedItem, offset) ?? null);
-
-	const selectPreviousSectionItem = (selectedItem: Item) =>
-		selectItem(getPreviousSection(navigationIndex, selectedItem));
-
-	const selectNextSectionItem = (selectedItem: Item) =>
-		selectItem(getAdjacentSection(navigationIndex, selectedItem, 1) ?? null);
+		if (!newItem) return;
+		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+	};
 
 	const handleItemSelectionAction = (action: ItemSelectionAction, selectedItem: Item) =>
 		Match.value(action).pipe(
-			Match.tagsExhaustive({
+			Match.tags({
 				EnterMoveMode: () =>
 					dispatch(
 						projectActions.enterMoveMode({
@@ -753,9 +765,9 @@ export const useWorkspaceShortcuts = ({
 							source: operationSourceFromItem(selectedItem),
 						}),
 					),
-				Move: ({ offset }) => selectRelativeItem(selectedItem, offset),
-				NextSection: () => selectNextSectionItem(selectedItem),
-				PreviousSection: () => selectPreviousSectionItem(selectedItem),
+			}),
+			Match.orElse((action) => {
+				handleItemMoveSelectionAction(action, selectedItem);
 			}),
 		);
 
@@ -766,11 +778,12 @@ export const useWorkspaceShortcuts = ({
 					dispatch(
 						projectActions.enterMoveMode({
 							projectId,
-							source: operationSourceFromItem(changesSectionItem({ stackId: null })),
+							source: operationSourceFromItem(changesSectionItem),
 						}),
 					),
 				FocusPreview: () => dispatch(projectActions.focusPreview({ projectId })),
-				SelectUnassignedChanges: () => selectItem(changesSectionItem({ stackId: null })),
+				SelectUnassignedChanges: () =>
+					dispatch(projectActions.selectItem({ projectId, item: changesSectionItem })),
 				ToggleFullscreenPreview: () =>
 					dispatch(projectActions.toggleFullscreenPreview({ projectId })),
 				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
@@ -858,17 +871,17 @@ export const useWorkspaceShortcuts = ({
 					event.preventDefault();
 					handleBranchScopeAction(action, scope.context);
 				},
-				Change: (scope) => {
+				ChangeFile: (scope) => {
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handleChangesScopeAction(action, changeItem(scope.context));
+					handleChangesScopeAction(action, changeFileItem(scope.context));
 				},
 				ChangesSection: (scope) => {
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handleChangesScopeAction(action, changesSectionItem(scope.context));
+					handleChangesScopeAction(action, scope.context);
 				},
 				Commit: (scope) => {
 					const action = getAction(scope.bindings, event);
@@ -905,6 +918,10 @@ export const useWorkspaceShortcuts = ({
 
 	const confirmOperationMode = (selectedItem: Item | null) => {
 		dispatch(projectActions.exitMode({ projectId }));
+
+		const resolvedOperationModeSource = operationMode
+			? resolveOperationSource(operationMode.source)
+			: null;
 
 		const operationModeOperation =
 			operationMode && selectedItem && resolvedOperationModeSource

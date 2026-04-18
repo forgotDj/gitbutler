@@ -9,16 +9,14 @@ import { type NonEmptyArray } from "effect/Array";
 import {
 	branchItem,
 	baseCommitItem,
-	changeItem,
+	changeFileItem,
 	changesSectionItem,
 	type Item,
 	commitItem,
 	commitFileItem,
-	itemEquals,
 	itemIdentityKey,
 	stackItem,
 } from "./Item.ts";
-import { getRelative } from "../shared.tsx";
 
 type WorkspaceSection = {
 	section: Item | null;
@@ -41,8 +39,8 @@ const buildWorkspaceOutline = ({
 	expandedCommitPaths,
 }: BuildWorkspaceOutlineArgs): WorkspaceOutline => {
 	const changesSection: WorkspaceSection = {
-		section: changesSectionItem({}),
-		children: changes.map((change) => changeItem({ path: change.path })),
+		section: changesSectionItem,
+		children: changes.map((change) => changeFileItem({ path: change.path })),
 	};
 
 	const segmentChildren = (stackId: string, segment: Segment): Array<Item> =>
@@ -132,26 +130,31 @@ export type NavigationIndex = {
 	indexByKey: Map<string, number>;
 };
 
+const createNavigationIndex = (): NavigationIndex => ({
+	items: [],
+	sectionStartIndexes: [],
+	sectionIndexByItemIndex: [],
+	indexByKey: new Map<string, number>(),
+});
+
 export const buildNavigationIndex = (outline: WorkspaceOutline): NavigationIndex => {
-	const index: NavigationIndex = {
-		items: [],
-		sectionStartIndexes: [],
-		sectionIndexByItemIndex: [],
-		indexByKey: new Map<string, number>(),
-	};
+	const index = createNavigationIndex();
 
-	const addItem = (item: Item, sectionIndex: number) => {
-		index.indexByKey.set(itemIdentityKey(item), index.items.length);
-		index.sectionIndexByItemIndex.push(sectionIndex);
-		index.items.push(item);
-	};
+	for (const outlineSection of outline) {
+		const itemsInSection = outlineSection.section
+			? [outlineSection.section, ...outlineSection.children]
+			: outlineSection.children;
+		if (itemsInSection.length === 0) continue;
 
-	for (const { section, children } of outline) {
 		const sectionIndex = index.sectionStartIndexes.length;
 		index.sectionStartIndexes.push(index.items.length);
-		if (section) addItem(section, sectionIndex);
 
-		for (const item of children) addItem(item, sectionIndex);
+		for (const item of itemsInSection) {
+			const itemIndex = index.items.length;
+			index.items.push(item);
+			index.sectionIndexByItemIndex.push(sectionIndex);
+			index.indexByKey.set(itemIdentityKey(item), itemIndex);
+		}
 	}
 
 	return index;
@@ -161,87 +164,86 @@ export const filterNavigationIndex = (
 	index: NavigationIndex,
 	predicate: (item: Item) => boolean,
 ): NavigationIndex => {
-	const filteredIndex: NavigationIndex = {
-		items: [],
-		sectionStartIndexes: [],
-		sectionIndexByItemIndex: [],
-		indexByKey: new Map<string, number>(),
-	};
+	const filteredIndex = createNavigationIndex();
 
-	let currentSectionIndex = -1;
-	let filteredSectionIndex = -1;
+	const sectionIndexBySourceSectionIndex = new Map<number, number>();
 
 	for (const [itemIndex, item] of index.items.entries()) {
 		if (!predicate(item)) continue;
 
-		const sectionIndex = index.sectionIndexByItemIndex[itemIndex] ?? -1;
-		if (sectionIndex !== currentSectionIndex) {
-			// Preserve the original section grouping, even when the section header
-			// itself is filtered out and the retained item is one of its children.
-			currentSectionIndex = sectionIndex;
+		const sourceSectionIndex = index.sectionIndexByItemIndex[itemIndex];
+		if (sourceSectionIndex === undefined) continue;
+		let filteredSectionIndex = sectionIndexBySourceSectionIndex.get(sourceSectionIndex);
+		if (filteredSectionIndex === undefined) {
 			filteredSectionIndex = filteredIndex.sectionStartIndexes.length;
+			sectionIndexBySourceSectionIndex.set(sourceSectionIndex, filteredSectionIndex);
 			filteredIndex.sectionStartIndexes.push(filteredIndex.items.length);
 		}
 
-		filteredIndex.indexByKey.set(itemIdentityKey(item), filteredIndex.items.length);
-		filteredIndex.sectionIndexByItemIndex.push(filteredSectionIndex);
+		const filteredItemIndex = filteredIndex.items.length;
 		filteredIndex.items.push(item);
+		filteredIndex.sectionIndexByItemIndex.push(filteredSectionIndex);
+		filteredIndex.indexByKey.set(itemIdentityKey(item), filteredItemIndex);
 	}
 
 	return filteredIndex;
 };
 
-export const getAdjacentItem = (
-	index: NavigationIndex,
-	selectedItem: Item | null,
-	offset: -1 | 1,
-): Item | null => {
-	if (!selectedItem) return null;
-	const currentIndex = index.indexByKey.get(itemIdentityKey(selectedItem));
-	if (currentIndex === undefined) return null;
-	return getRelative(index.items, currentIndex, offset);
+export const getAdjacent = ({
+	navigationIndex,
+	selectedItem,
+	offset,
+}: {
+	navigationIndex: NavigationIndex;
+	selectedItem: Item;
+	offset: -1 | 1;
+}): Item | null => {
+	const selectedItemIndex = navigationIndex.indexByKey.get(itemIdentityKey(selectedItem));
+	if (selectedItemIndex === undefined) return null;
+
+	return navigationIndex.items[selectedItemIndex + offset] ?? null;
 };
 
-const getCurrentSection = (index: NavigationIndex, selectedItem: Item | null): Item | null => {
-	if (!selectedItem) return null;
-	const currentIndex = index.indexByKey.get(itemIdentityKey(selectedItem));
-	if (currentIndex === undefined) return null;
-	const currentSectionIndex = index.sectionIndexByItemIndex[currentIndex] ?? -1;
-	if (currentSectionIndex === -1) return null;
-	const currentSectionStartIndex = index.sectionStartIndexes[currentSectionIndex];
+export const getNextSection = ({
+	navigationIndex,
+	selectedItem,
+}: {
+	navigationIndex: NavigationIndex;
+	selectedItem: Item;
+}): Item | null => {
+	const selectedItemIndex = navigationIndex.indexByKey.get(itemIdentityKey(selectedItem));
+	if (selectedItemIndex === undefined) return null;
+
+	const sectionIndex = navigationIndex.sectionIndexByItemIndex[selectedItemIndex];
+	if (sectionIndex === undefined) return null;
+	const nextSectionStartIndex = navigationIndex.sectionStartIndexes[sectionIndex + 1];
+	if (nextSectionStartIndex === undefined) return null;
+
+	return navigationIndex.items[nextSectionStartIndex] ?? null;
+};
+
+export const getPreviousSection = ({
+	navigationIndex,
+	selectedItem,
+}: {
+	navigationIndex: NavigationIndex;
+	selectedItem: Item;
+}): Item | null => {
+	const selectedItemIndex = navigationIndex.indexByKey.get(itemIdentityKey(selectedItem));
+	if (selectedItemIndex === undefined) return null;
+
+	const sectionIndex = navigationIndex.sectionIndexByItemIndex[selectedItemIndex];
+	if (sectionIndex === undefined) return null;
+	const currentSectionStartIndex = navigationIndex.sectionStartIndexes[sectionIndex];
 	if (currentSectionStartIndex === undefined) return null;
-	return index.items[currentSectionStartIndex] ?? null;
-};
 
-export const getAdjacentSection = (
-	index: NavigationIndex,
-	selectedItem: Item | null,
-	offset: -1 | 1,
-): Item | null => {
-	const currentSection = getCurrentSection(index, selectedItem);
-	if (currentSection === null) return null;
-	const currentIndex = index.indexByKey.get(itemIdentityKey(currentSection));
-	if (currentIndex === undefined) return null;
-	const currentSectionIndex = index.sectionIndexByItemIndex[currentIndex] ?? -1;
-	if (currentSectionIndex === -1) return null;
-	const adjacentSectionStartIndex = getRelative(
-		index.sectionStartIndexes,
-		currentSectionIndex,
-		offset,
-	);
-	if (adjacentSectionStartIndex === null) return null;
-	return index.items[adjacentSectionStartIndex] ?? null;
-};
+	if (selectedItemIndex !== currentSectionStartIndex)
+		return navigationIndex.items[currentSectionStartIndex] ?? null;
 
-export const getPreviousSection = (
-	index: NavigationIndex,
-	selectedItem: Item | null,
-): Item | null => {
-	const currentSection = getCurrentSection(index, selectedItem);
-	if (currentSection === null) return null;
-	return selectedItem !== null && !itemEquals(currentSection, selectedItem)
-		? currentSection
-		: getAdjacentSection(index, currentSection, -1);
+	const previousSectionStartIndex = navigationIndex.sectionStartIndexes[sectionIndex - 1];
+	if (previousSectionStartIndex === undefined) return null;
+
+	return navigationIndex.items[previousSectionStartIndex] ?? null;
 };
 
 export const navigationIndexIncludes = (navigationIndex: NavigationIndex, item: Item): boolean =>

@@ -1,9 +1,9 @@
 import { Match } from "effect";
 
 /** @public */
-export type ChangesSectionItem = {};
+export type ChangesSectionItem = { _tag: "ChangesSection" };
 /** @public */
-export type ChangeItem = ChangesSectionItem & { path: string };
+export type ChangeItem = { path: string };
 
 /** @public */
 export type StackItem = {
@@ -23,8 +23,8 @@ export type CommitFileItem = CommitItem & { path: string };
  * A selectable item in the primary panel.
  */
 export type Item =
-	| ({ _tag: "ChangesSection" } & ChangesSectionItem)
-	| ({ _tag: "Change" } & ChangeItem)
+	| ChangesSectionItem
+	| ({ _tag: "ChangeFile" } & ChangeItem)
 	| ({ _tag: "Stack" } & StackItem)
 	| ({ _tag: "Branch" } & BranchItem)
 	| ({ _tag: "Commit" } & CommitItem)
@@ -32,13 +32,13 @@ export type Item =
 	| { _tag: "BaseCommit" };
 
 /** @public */
-export const changesSectionItem = (_x: ChangesSectionItem): Item => ({
+export const changesSectionItem: ChangesSectionItem = {
 	_tag: "ChangesSection",
-});
+};
 
 /** @public */
-export const changeItem = ({ path }: ChangeItem): Item => ({
-	_tag: "Change",
+export const changeFileItem = ({ path }: ChangeItem): Item => ({
+	_tag: "ChangeFile",
 	path,
 });
 
@@ -79,7 +79,7 @@ export const itemIdentityKey = (item: Item): string =>
 	Match.value(item).pipe(
 		Match.tagsExhaustive({
 			ChangesSection: () => JSON.stringify(["ChangesSection"]),
-			Change: (item) => JSON.stringify(["Change", item.path]),
+			ChangeFile: (item) => JSON.stringify(["ChangeFile", item.path]),
 			Stack: (item) => JSON.stringify(["Stack", item.stackId]),
 			Branch: (item) => JSON.stringify(["Branch", item.stackId, item.branchRef]),
 			Commit: (item) => JSON.stringify(["Commit", item.stackId, item.commitId]),
