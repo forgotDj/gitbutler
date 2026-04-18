@@ -756,7 +756,8 @@ export const useWorkspaceShortcuts = ({
 					}),
 			}),
 		);
-		selectItem(newItem ?? selectedItem);
+		if (!newItem) return;
+		selectItem(newItem);
 	};
 
 	const handleItemSelectionAction = (action: ItemSelectionAction, selectedItem: Item) =>
