@@ -124,8 +124,9 @@ import {
 	operationSourceFromItem,
 } from "./OperationSource.ts";
 import {
+	defaultWorkspaceMode,
 	getOperationMode,
-	normalizeWorkspaceMode,
+	isValidWorkspaceMode,
 	type OperationMode,
 	type WorkspaceMode,
 } from "./WorkspaceMode.ts";
@@ -1804,10 +1805,12 @@ const ProjectPage: FC = () => {
 
 	const resolveOperationSource = useResolveOperationSource(projectId);
 
-	const workspaceMode = normalizeWorkspaceMode({
+	const workspaceMode = isValidWorkspaceMode({
 		mode: workspaceModeState,
 		navigationIndex: navigationIndexUnfiltered,
-	});
+	})
+		? workspaceModeState
+		: defaultWorkspaceMode;
 
 	const operationMode = getOperationMode(workspaceMode);
 

@@ -1,7 +1,6 @@
 import {
 	branchItem,
 	commitItem,
-	itemEquals,
 	type BranchItem,
 	type CommitItem,
 	type Item,
@@ -9,6 +8,7 @@ import {
 import { type OperationSource } from "../workspace/OperationSource.ts";
 import {
 	defaultWorkspaceMode,
+	isValidWorkspaceModeForItem,
 	moveOperationMode,
 	renameBranchWorkspaceMode,
 	rewordCommitWorkspaceMode,
@@ -42,21 +42,6 @@ export const createInitialState = (): WorkspaceState => ({
 
 export const initialState: WorkspaceState = createInitialState();
 
-const normalizeModeForSelectedItem = (mode: WorkspaceMode, item: Item | null) =>
-	(mode._tag === "RewordCommit" &&
-		(item === null || item._tag !== "Commit" || item.commitId !== mode.commitId)) ||
-	(mode._tag === "RenameBranch" &&
-		(item === null ||
-			!itemEquals(
-				item,
-				branchItem({
-					stackId: mode.stackId,
-					branchRef: mode.branchRef,
-				}),
-			)))
-		? defaultWorkspaceMode
-		: mode;
-
 export const closeCommitFiles = (state: WorkspaceState, item: CommitItem) => {
 	state.expandedCommitId = null;
 	selectItem(state, commitItem(item));
@@ -86,7 +71,9 @@ export const selectHunk = (state: WorkspaceState, hunk: string | null) => {
 export const selectItem = (state: WorkspaceState, item: Item | null) => {
 	state.selection.item = item;
 	state.selection.hunk = null;
-	state.mode = normalizeModeForSelectedItem(state.mode, item);
+	state.mode = isValidWorkspaceModeForItem({ mode: state.mode, item })
+		? state.mode
+		: defaultWorkspaceMode;
 };
 
 export const setExpandedCommitId = (state: WorkspaceState, commitId: string | null) => {

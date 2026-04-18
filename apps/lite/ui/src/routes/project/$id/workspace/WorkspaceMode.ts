@@ -1,6 +1,6 @@
 import { Match } from "effect";
 import { type OperationSource, operationSourceMatchesItem } from "./OperationSource.ts";
-import { branchItem, itemEquals } from "./Item.ts";
+import { branchItem, itemEquals, type Item } from "./Item.ts";
 import { type NavigationIndex } from "./WorkspaceModel.ts";
 
 /** @public */
@@ -59,30 +59,24 @@ export const renameBranchWorkspaceMode = ({
 export const getOperationMode = (mode: WorkspaceMode): OperationMode | null =>
 	mode._tag === "Rub" || mode._tag === "Move" ? mode : null;
 
-export const normalizeWorkspaceMode = ({
+export const isValidWorkspaceMode = ({
 	mode,
 	navigationIndex,
 }: {
 	mode: WorkspaceMode;
 	navigationIndex: NavigationIndex;
-}): WorkspaceMode =>
+}): boolean =>
 	Match.value(mode).pipe(
 		Match.tagsExhaustive({
-			Default: () => mode,
+			Default: () => true,
 			Rub: (mode) =>
-				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item))
-					? mode
-					: defaultWorkspaceMode,
+				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item)),
 			Move: (mode) =>
-				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item))
-					? mode
-					: defaultWorkspaceMode,
+				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item)),
 			RewordCommit: (mode) =>
 				navigationIndex.items.some(
 					(item) => item._tag === "Commit" && item.commitId === mode.commitId,
-				)
-					? mode
-					: defaultWorkspaceMode,
+				),
 			RenameBranch: (mode) =>
 				navigationIndex.items.some((item) =>
 					itemEquals(
@@ -92,8 +86,31 @@ export const normalizeWorkspaceMode = ({
 							branchRef: mode.branchRef,
 						}),
 					),
-				)
-					? mode
-					: defaultWorkspaceMode,
+				),
+		}),
+	);
+
+export const isValidWorkspaceModeForItem = ({
+	mode,
+	item,
+}: {
+	mode: WorkspaceMode;
+	item: Item | null;
+}): boolean =>
+	Match.value(mode).pipe(
+		Match.tagsExhaustive({
+			Default: () => true,
+			Rub: () => true,
+			Move: () => true,
+			RewordCommit: (mode) => item?._tag === "Commit" && item.commitId === mode.commitId,
+			RenameBranch: (mode) =>
+				item !== null &&
+				itemEquals(
+					item,
+					branchItem({
+						stackId: mode.stackId,
+						branchRef: mode.branchRef,
+					}),
+				),
 		}),
 	);
