@@ -1,13 +1,12 @@
 use std::{str::FromStr, time::UNIX_EPOCH};
 
 use anyhow::{Context as _, Result, anyhow};
+use but_askpass as askpass;
 use but_ctx::Context;
 use but_error::Code;
 use gitbutler_reference::{Refname, RemoteRefname};
 use gitbutler_repo::first_parent_commit_ids_until;
 use gitbutler_stack::{Stack, StackId};
-
-use crate::askpass;
 #[expect(clippy::too_many_arguments)]
 pub trait RepoActionsExt {
     fn fetch(&self, remote_name: &str, askpass: Option<String>) -> Result<()>;

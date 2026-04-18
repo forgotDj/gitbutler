@@ -21,6 +21,7 @@ embedded-frontend = ["dep:rust-embed", "dep:mime_guess"]
 
 [dependencies]
 but-api = { workspace = true, features = ["path-bytes", "legacy"] }
+but-askpass.workspace = true
 but-claude.workspace = true
 but-db.workspace = true
 but-irc = { workspace = true, optional = true }
@@ -31,7 +32,6 @@ but-secret.workspace = true
 but-ctx = { workspace = true, features = ["legacy"] }
 gitbutler-user.workspace = true
 gitbutler-watcher.workspace = true
-gitbutler-repo-actions.workspace = true
 
 sha2.workspace = true
 base64.workspace = true

@@ -52,7 +52,7 @@ async fn main() -> anyhow::Result<()> {
     // To be able to use the askpass broker when running but-server, it needs to be hooked up to
     // the websocket. As the askpass broker historically hasn't been initialized for but-server,
     // it does not seem worthwhile to hook that up right now.
-    gitbutler_repo_actions::askpass::disable();
+    but_askpass::disable();
 
     let args = Args::parse();
     let config = Config {

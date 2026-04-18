@@ -51,6 +51,7 @@ export-schema = [
 legacy = [
     "but-ctx/legacy",
     "but-workspace/legacy",
+    "dep:but-askpass",
     "dep:gitbutler-user",
     "dep:gitbutler-project",
     "dep:gitbutler-branch",
@@ -95,6 +96,7 @@ but-gitlab.workspace = true
 # 'legacy' is needed while this is only a sketch of what the oplog could be.
 # For single-branch testing, we also want the oplog and just take it as it is.
 but-oplog = { workspace = true, features = ["legacy"] }
+but-askpass = { workspace = true, optional = true }
 itertools.workspace = true
 
 # What follows is *basically* newly written crates that are built on top of legacy,

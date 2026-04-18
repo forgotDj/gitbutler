@@ -62,6 +62,7 @@ schemars = { workspace = true, optional = true }
 but-schemars = { workspace = true, optional = true }
 
 [dev-dependencies]
+but-askpass.workspace = true
 pretty_assertions = "1.4"
 but-graph.workspace = true
 but-testsupport.workspace = true
