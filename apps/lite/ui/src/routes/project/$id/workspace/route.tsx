@@ -210,8 +210,6 @@ const HunkDiff: FC<{
 const hunkKey = (hunk: HunkHeader): string =>
 	`${hunk.oldStart}:${hunk.oldLines}:${hunk.newStart}:${hunk.newLines}`;
 
-type Patch = Extract<UnifiedPatch, { type: "Patch" }>;
-
 const FileButton: FC<
 	{
 		change: TreeChange;
@@ -395,7 +393,7 @@ const dependencyCommitIdsForFile = (
 };
 
 const Hunk: FC<{
-	patch: Patch;
+	patch: Extract<UnifiedPatch, { type: "Patch" }>;
 	operationMode: OperationMode | null;
 	projectId: string;
 	fileParent?: FileParent;
