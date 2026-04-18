@@ -172,6 +172,8 @@ where
     anyhow::Error: From<<T::Backend as Backend>::Error>,
     E: EventPolling + Copy,
 {
+    render(app, terminal_guard)?;
+
     loop {
         if app
             .options
