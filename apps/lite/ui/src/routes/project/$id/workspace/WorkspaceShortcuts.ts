@@ -716,8 +716,8 @@ export const getScopeLabel = (scope: Scope): string =>
 	);
 
 export const useWorkspaceShortcuts = ({
-	branchRenameFormRef,
-	commitMessageFormRef,
+	inlineRenameBranchFormRef,
+	inlineRewordCommitFormRef,
 	projectId,
 	scope,
 	navigationIndex,
@@ -725,8 +725,8 @@ export const useWorkspaceShortcuts = ({
 	operationMode,
 	previewRef,
 }: {
-	branchRenameFormRef: RefObject<HTMLFormElement | null>;
-	commitMessageFormRef: RefObject<HTMLFormElement | null>;
+	inlineRenameBranchFormRef: RefObject<HTMLFormElement | null>;
+	inlineRewordCommitFormRef: RefObject<HTMLFormElement | null>;
 	projectId: string;
 	scope: Scope | null;
 	navigationIndex: NavigationIndex;
@@ -975,7 +975,7 @@ export const useWorkspaceShortcuts = ({
 		Match.value(action).pipe(
 			Match.tagsExhaustive({
 				Cancel: () => dispatch(projectActions.exitMode({ projectId })),
-				Save: () => commitMessageFormRef.current?.requestSubmit(),
+				Save: () => inlineRewordCommitFormRef.current?.requestSubmit(),
 			}),
 		);
 
@@ -983,7 +983,7 @@ export const useWorkspaceShortcuts = ({
 		Match.value(action).pipe(
 			Match.tagsExhaustive({
 				Cancel: () => dispatch(projectActions.exitMode({ projectId })),
-				Save: () => branchRenameFormRef.current?.requestSubmit(),
+				Save: () => inlineRenameBranchFormRef.current?.requestSubmit(),
 			}),
 		);
 

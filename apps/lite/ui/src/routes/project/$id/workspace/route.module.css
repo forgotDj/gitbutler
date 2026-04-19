@@ -245,7 +245,7 @@ we must use an overlay for the background. */
 	font-family: monospace;
 }
 
-.editCommitMessageInput {
+.rewordCommitInput {
 	field-sizing: content;
 	box-sizing: content-box;
 	min-height: calc(2lh);

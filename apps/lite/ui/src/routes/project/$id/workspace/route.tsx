@@ -828,7 +828,7 @@ const EditorHelp: FC<{
 	</div>
 );
 
-const InlineCommitMessageEditor: FC<{
+const InlineRewordCommit: FC<{
 	message: string;
 	onSubmit: (value: string) => void;
 	onExit: () => void;
@@ -852,7 +852,7 @@ const InlineCommitMessageEditor: FC<{
 				aria-label="Commit message"
 				name="message"
 				defaultValue={message.trim()}
-				className={classes(styles.editorInput, styles.editCommitMessageInput)}
+				className={classes(styles.editorInput, styles.rewordCommitInput)}
 			/>
 			<EditorHelp bindings={rewordCommitBindings} />
 		</form>
@@ -862,7 +862,7 @@ const InlineCommitMessageEditor: FC<{
 const CommitRow: FC<
 	{
 		commit: Commit;
-		commitMessageFormRef: Ref<HTMLFormElement>;
+		inlineRewordCommitFormRef: Ref<HTMLFormElement>;
 		workspaceMode: WorkspaceMode;
 		isExpanded: boolean;
 		projectId: string;
@@ -871,7 +871,7 @@ const CommitRow: FC<
 	} & ComponentProps<"div">
 > = ({
 	commit,
-	commitMessageFormRef,
+	inlineRewordCommitFormRef,
 	workspaceMode,
 	isExpanded,
 	projectId,
@@ -1004,8 +1004,8 @@ const CommitRow: FC<
 			className={classes(restProps.className, isHighlighted && styles.itemRowHighlighted)}
 		>
 			{isRewording ? (
-				<InlineCommitMessageEditor
-					formRef={commitMessageFormRef}
+				<InlineRewordCommit
+					formRef={inlineRewordCommitFormRef}
 					message={optimisticMessage}
 					onSubmit={saveNewMessage}
 					onExit={endEditing}
@@ -1111,7 +1111,7 @@ const CommitFileRow: FC<{
 
 const CommitC: FC<{
 	commit: Commit;
-	commitMessageFormRef: Ref<HTMLFormElement>;
+	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
 	operationMode: OperationMode | null;
 	workspaceMode: WorkspaceMode;
 	projectId: string;
@@ -1119,7 +1119,7 @@ const CommitC: FC<{
 	navigationIndex: NavigationIndex;
 }> = ({
 	commit,
-	commitMessageFormRef,
+	inlineRewordCommitFormRef,
 	operationMode,
 	workspaceMode,
 	projectId,
@@ -1151,7 +1151,7 @@ const CommitC: FC<{
 		>
 			<CommitRow
 				commit={commit}
-				commitMessageFormRef={commitMessageFormRef}
+				inlineRewordCommitFormRef={inlineRewordCommitFormRef}
 				workspaceMode={workspaceMode}
 				isExpanded={isExpanded}
 				projectId={projectId}
@@ -1428,7 +1428,7 @@ const Changes: FC<{
 	);
 };
 
-const InlineBranchNameEditor: FC<{
+const InlineRenameBranch: FC<{
 	branchName: string;
 	onSubmit: (value: string) => void;
 	onExit: () => void;
@@ -1460,7 +1460,7 @@ const InlineBranchNameEditor: FC<{
 
 const BranchRow: FC<
 	{
-		branchRenameFormRef: Ref<HTMLFormElement>;
+		inlineRenameBranchFormRef: Ref<HTMLFormElement>;
 		operationMode: OperationMode | null;
 		workspaceMode: WorkspaceMode;
 		projectId: string;
@@ -1470,7 +1470,7 @@ const BranchRow: FC<
 		navigationIndex: NavigationIndex;
 	} & ComponentProps<"div">
 > = ({
-	branchRenameFormRef,
+	inlineRenameBranchFormRef,
 	operationMode,
 	workspaceMode,
 	projectId,
@@ -1567,9 +1567,9 @@ const BranchRow: FC<
 							isSelected={isSelected}
 						>
 							{isRenaming ? (
-								<InlineBranchNameEditor
+								<InlineRenameBranch
 									branchName={optimisticBranchName}
-									formRef={branchRenameFormRef}
+									formRef={inlineRenameBranchFormRef}
 									onSubmit={saveBranchName}
 									onExit={endEditing}
 								/>
@@ -1688,16 +1688,16 @@ const StackRow: FC<
 };
 
 const StackC: FC<{
-	branchRenameFormRef: Ref<HTMLFormElement>;
-	commitMessageFormRef: Ref<HTMLFormElement>;
+	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
+	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
 	operationMode: OperationMode | null;
 	projectId: string;
 	stack: Stack;
 	workspaceMode: WorkspaceMode;
 	navigationIndex: NavigationIndex;
 }> = ({
-	branchRenameFormRef,
-	commitMessageFormRef,
+	inlineRenameBranchFormRef,
+	inlineRewordCommitFormRef,
 	operationMode,
 	projectId,
 	stack,
@@ -1741,7 +1741,7 @@ const StackC: FC<{
 							<div className={classes(styles.section, styles.segment)}>
 								{segment.refName && (
 									<BranchRow
-										branchRenameFormRef={branchRenameFormRef}
+										inlineRenameBranchFormRef={inlineRenameBranchFormRef}
 										operationMode={operationMode}
 										workspaceMode={workspaceMode}
 										projectId={projectId}
@@ -1760,7 +1760,7 @@ const StackC: FC<{
 											<li key={commit.id}>
 												<CommitC
 													commit={commit}
-													commitMessageFormRef={commitMessageFormRef}
+													inlineRewordCommitFormRef={inlineRewordCommitFormRef}
 													operationMode={operationMode}
 													workspaceMode={workspaceMode}
 													projectId={projectId}
@@ -1791,8 +1791,8 @@ const ProjectPage: FC = () => {
 		selectProjectWorkspaceModeState(state, projectId),
 	);
 
-	const branchRenameFormRef = useRef<HTMLFormElement | null>(null);
-	const commitMessageFormRef = useRef<HTMLFormElement | null>(null);
+	const inlineRenameBranchFormRef = useRef<HTMLFormElement | null>(null);
+	const inlineRewordCommitFormRef = useRef<HTMLFormElement | null>(null);
 	const previewRef = useRef<PreviewImperativeHandle | null>(null);
 
 	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
@@ -1844,8 +1844,8 @@ const ProjectPage: FC = () => {
 	useMonitorDraggedOperationSource({ projectId });
 
 	useWorkspaceShortcuts({
-		branchRenameFormRef,
-		commitMessageFormRef,
+		inlineRenameBranchFormRef,
+		inlineRewordCommitFormRef,
 		projectId,
 		scope: shortcutScope,
 		navigationIndex,
@@ -1901,8 +1901,8 @@ const ProjectPage: FC = () => {
 				{headInfo.stacks.map((stack) => (
 					<StackC
 						key={stack.id}
-						branchRenameFormRef={branchRenameFormRef}
-						commitMessageFormRef={commitMessageFormRef}
+						inlineRenameBranchFormRef={inlineRenameBranchFormRef}
+						inlineRewordCommitFormRef={inlineRewordCommitFormRef}
 						operationMode={operationMode}
 						projectId={project.id}
 						stack={stack}
