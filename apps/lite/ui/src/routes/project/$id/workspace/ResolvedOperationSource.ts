@@ -18,7 +18,7 @@ import {
 } from "#ui/Operation.ts";
 import { createDiffSpec } from "#ui/domain/DiffSpec.ts";
 import { changeFileParent, commitFileParent, type FileParent } from "#ui/domain/FileParent.ts";
-import { QueryClient, useQueryClient } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 import {
 	CommitDetails,
 	HunkAssignmentRequest,
@@ -224,7 +224,7 @@ const resolveOperationSourceFromData = ({
 		}),
 	);
 
-const resolveOperationSource = ({
+export const resolveOperationSource = ({
 	operationSource,
 	queryClient,
 	projectId,
@@ -241,17 +241,6 @@ const resolveOperationSource = ({
 				commitDetailsWithLineStatsQueryOptions({ projectId, commitId }).queryKey,
 			),
 	});
-
-export const useResolveOperationSource = (projectId: string) => {
-	const queryClient = useQueryClient();
-
-	return (operationSource: OperationSource) =>
-		resolveOperationSource({
-			operationSource,
-			queryClient,
-			projectId,
-		});
-};
 
 /**
  * | SOURCE ↓ / TARGET →    | Changes  | Commit |

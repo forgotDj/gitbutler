@@ -24,7 +24,7 @@ import {
 } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
 import { itemOperationSource } from "./OperationSource.ts";
-import { useResolveOperationSource } from "./ResolvedOperationSource.ts";
+import { resolveOperationSource } from "./ResolvedOperationSource.ts";
 import {
 	getAdjacent,
 	getNextSection,
@@ -32,6 +32,7 @@ import {
 	type NavigationIndex,
 } from "./WorkspaceModel.ts";
 import { OperationMode, type WorkspaceMode } from "./WorkspaceMode.ts";
+import { useQueryClient } from "@tanstack/react-query";
 
 const isTypingTarget = (target: EventTarget | null) => {
 	if (!(target instanceof HTMLElement)) return false;
@@ -686,7 +687,7 @@ export const useWorkspaceShortcuts = ({
 	operationMode: OperationMode | null;
 }) => {
 	const dispatch = useAppDispatch();
-	const resolveOperationSource = useResolveOperationSource(projectId);
+	const queryClient = useQueryClient();
 	const runOperation = useRunOperation();
 
 	const handleItemMoveSelectionAction = (action: ItemMoveSelectionAction, selectedItem: Item) => {
@@ -757,7 +758,11 @@ export const useWorkspaceShortcuts = ({
 
 	const requestAbsorptionPlanForItem = (selectedItem: Item) => {
 		const operationSource = itemOperationSource(selectedItem);
-		const resolvedOperationSource = resolveOperationSource(operationSource);
+		const resolvedOperationSource = resolveOperationSource({
+			operationSource,
+			queryClient,
+			projectId,
+		});
 
 		if (resolvedOperationSource?._tag !== "TreeChanges") return;
 		if (resolvedOperationSource.parent._tag !== "Change") return;
@@ -881,7 +886,11 @@ export const useWorkspaceShortcuts = ({
 		dispatch(projectActions.exitMode({ projectId }));
 
 		const resolvedOperationSource = operationMode
-			? resolveOperationSource(operationMode.source)
+			? resolveOperationSource({
+					operationSource: operationMode.source,
+					queryClient,
+					projectId,
+				})
 			: null;
 
 		const operation =

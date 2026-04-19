@@ -19,11 +19,12 @@ import {
 	getCombineOperation,
 	getCommitTargetMoveOperation,
 	getTearOffBranchTargetOperation,
-	useResolveOperationSource,
+	resolveOperationSource,
 	type ResolvedOperationSource,
 } from "./ResolvedOperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./route.module.css";
+import { useQueryClient } from "@tanstack/react-query";
 
 const useDragOperation = ({
 	projectId,
@@ -34,13 +35,17 @@ const useDragOperation = ({
 		args: GetDataParams[0] & { resolvedOperationSource: ResolvedOperationSource },
 	) => Operation | null;
 }) => {
-	const resolveOperationSource = useResolveOperationSource(projectId);
+	const queryClient = useQueryClient();
 
 	return useDroppable((args): DropData => {
 		const operationSource = parseDragData(args.source.data);
 		if (!operationSource) return null;
 
-		const resolvedOperationSource = resolveOperationSource(operationSource);
+		const resolvedOperationSource = resolveOperationSource({
+			operationSource,
+			queryClient,
+			projectId,
+		});
 		if (!resolvedOperationSource) return null;
 
 		return { operationSource, operation: getOperation({ ...args, resolvedOperationSource }) };
@@ -60,11 +65,15 @@ const useOperationModeTarget = ({
 }) => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
-	const resolveOperationSource = useResolveOperationSource(projectId);
+	const queryClient = useQueryClient();
 
 	const isActiveTarget = !!operationMode && isSelected;
 	const resolvedOperationSource = operationMode
-		? resolveOperationSource(operationMode.source)
+		? resolveOperationSource({
+				operationSource: operationMode.source,
+				queryClient,
+				projectId,
+			})
 		: null;
 	const operation =
 		isActiveTarget && resolvedOperationSource
