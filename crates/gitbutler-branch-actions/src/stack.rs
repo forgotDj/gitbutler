@@ -280,7 +280,7 @@ pub fn push_stack(
 
         result.branch_to_remote.push((
             branch.name().to_owned(),
-            push_details.remote_refname.to_owned().into(),
+            (&push_details.remote_refname).try_into()?,
         ));
 
         // Record the SHA update (before -> after)

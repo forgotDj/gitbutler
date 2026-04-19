@@ -104,3 +104,19 @@ impl PartialEq<FullNameRef> for Refname {
             .is_some_and(|rest| rest == b"/")
     }
 }
+
+impl TryFrom<&Refname> for gix::refs::FullName {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &Refname) -> std::result::Result<Self, Self::Error> {
+        Ok(value.to_string().try_into()?)
+    }
+}
+
+impl TryFrom<Refname> for gix::refs::FullName {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Refname) -> std::result::Result<Self, Self::Error> {
+        (&value).try_into()
+    }
+}
