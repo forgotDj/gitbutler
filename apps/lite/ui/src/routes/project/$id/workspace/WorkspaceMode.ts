@@ -111,7 +111,7 @@ export const isValidWorkspaceModeForItem = ({
 			Rub: () => true,
 			Move: () => true,
 			RewordCommit: (mode) =>
-				item !== null &&
+				!!item &&
 				itemEquals(
 					item,
 					commitItem({
@@ -120,7 +120,7 @@ export const isValidWorkspaceModeForItem = ({
 					}),
 				),
 			RenameBranch: (mode) =>
-				item !== null &&
+				!!item &&
 				itemEquals(
 					item,
 					branchItem({
