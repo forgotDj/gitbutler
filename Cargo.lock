@@ -1026,9 +1026,9 @@ name = "but-askpass"
 version = "0.0.0"
 dependencies = [
  "but-core",
- "log",
  "serde",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -4300,7 +4300,6 @@ dependencies = [
  "gitbutler-project",
  "gitbutler-watcher",
  "gix",
- "log",
  "notify-rust",
  "open",
  "opener",

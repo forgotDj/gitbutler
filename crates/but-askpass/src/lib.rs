@@ -139,7 +139,7 @@ impl AskpassBroker {
         if let Some(request) = pending_requests.remove(&id) {
             request.sender.send(response).ok();
         } else {
-            log::warn!("received response for unknown askpass request: {id}");
+            tracing::warn!("received response for unknown askpass request: {id}");
         }
     }
 }
