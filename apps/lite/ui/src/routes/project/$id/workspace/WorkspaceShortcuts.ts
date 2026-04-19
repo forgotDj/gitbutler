@@ -934,22 +934,22 @@ export const useWorkspaceShortcuts = ({
 	const confirmOperationMode = (selectedItem: Item | null) => {
 		dispatch(projectActions.exitMode({ projectId }));
 
-		const resolvedOperationModeSource = operationMode
+		const resolvedOperationSource = operationMode
 			? resolveOperationSource(operationMode.source)
 			: null;
 
-		const operationModeOperation =
-			operationMode && selectedItem && resolvedOperationModeSource
+		const operation =
+			operationMode && selectedItem && resolvedOperationSource
 				? operationModeToOperation({
 						operationMode,
-						resolvedOperationSource: resolvedOperationModeSource,
+						resolvedOperationSource,
 						target: selectedItem,
 					})
 				: null;
 
-		if (!operationModeOperation) return;
+		if (!operation) return;
 
-		runOperation(projectId, operationModeOperation);
+		runOperation(projectId, operation);
 	};
 
 	const handleOperationModeScopeAction = (action: OperationModeAction, selectedItem: Item | null) =>
