@@ -29,9 +29,8 @@ export const OperationSourceC: FC<
 		canDrag,
 	});
 
-	const operationModeSource = operationMode?.source ?? null;
 	const isActiveOperationModeSource =
-		operationModeSource && operationSourceEquals(operationModeSource, source);
+		operationMode?.source && operationSourceEquals(operationMode.source, source);
 
 	const isActive = isDragging || isActiveOperationModeSource;
 
