@@ -371,27 +371,19 @@ const getHunkDependencyDiffsByPath = (
 	return byPath;
 };
 
-const dependencyCommitIdsForHunk = (
-	hunk: DiffHunk,
-	hunkDependencyDiffs: Array<HunkDependencyDiff>,
-): Array<string> => {
+const getDependencyCommitIds = ({
+	hunk,
+	hunkDependencyDiffs,
+}: {
+	hunk?: DiffHunk;
+	hunkDependencyDiffs: Array<HunkDependencyDiff>;
+}): Array<string> => {
 	const commitIds = new Set<string>();
 
 	for (const [, dependencyHunk, locks] of hunkDependencyDiffs) {
-		if (!hunkContainsHunk(hunk, dependencyHunk)) continue;
+		if (hunk && !hunkContainsHunk(hunk, dependencyHunk)) continue;
 		for (const dependency of locks) commitIds.add(dependency.commitId);
 	}
-
-	return globalThis.Array.from(commitIds);
-};
-
-const dependencyCommitIdsForFile = (
-	hunkDependencyDiffs: Array<HunkDependencyDiff>,
-): Array<string> => {
-	const commitIds = new Set<string>();
-
-	for (const [, , locks] of hunkDependencyDiffs)
-		for (const dependency of locks) commitIds.add(dependency.commitId);
 
 	return globalThis.Array.from(commitIds);
 };
@@ -495,7 +487,7 @@ const FileDiff: FC<{
 				<ul>
 					{hunks.map((hunk) => {
 						const dependencyCommitIds = hunkDependencyDiffs
-							? dependencyCommitIdsForHunk(hunk, hunkDependencyDiffs)
+							? getDependencyCommitIds({ hunk, hunkDependencyDiffs })
 							: [];
 
 						return (
@@ -1408,7 +1400,7 @@ const Changes: FC<{
 					{worktreeChanges.changes.map((change) => {
 						const hunkDependencyDiffs = hunkDependencyDiffsByPath.get(change.path);
 						const dependencyCommitIds = hunkDependencyDiffs
-							? dependencyCommitIdsForFile(hunkDependencyDiffs)
+							? getDependencyCommitIds({ hunkDependencyDiffs })
 							: [];
 
 						return (
