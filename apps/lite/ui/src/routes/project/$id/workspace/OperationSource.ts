@@ -4,8 +4,6 @@ import { Match } from "effect";
 import { type Item } from "./Item.ts";
 
 /** @public */
-export type ChangesSectionOperationSource = { _tag: "ChangesSection" };
-/** @public */
 export type CommitOperationSource = { commitId: string };
 /** @public */
 export type FileOperationSource = { parent: FileParent; path: string };
@@ -21,7 +19,7 @@ export type BranchOperationSource = { branchRef: Array<number> };
  */
 export type OperationSource =
 	| { _tag: "BaseCommit" }
-	| ChangesSectionOperationSource
+	| { _tag: "ChangesSection" }
 	| ({ _tag: "Commit" } & CommitOperationSource)
 	| ({ _tag: "File" } & FileOperationSource)
 	| ({ _tag: "Hunk" } & HunkOperationSource)

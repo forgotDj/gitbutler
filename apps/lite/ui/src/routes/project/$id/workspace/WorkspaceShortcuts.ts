@@ -16,7 +16,6 @@ import {
 	type BranchItem,
 	type ChangeItem,
 	changesSectionItem,
-	type ChangesSectionItem,
 	type CommitFileItem,
 	type CommitItem,
 	type Item,
@@ -259,7 +258,6 @@ type ChangeDefaultModeScope = {
 };
 type ChangesSectionDefaultModeScope = {
 	bindings: Array<ShortcutBinding<ChangesAction>>;
-	context: ChangesSectionItem;
 };
 type CommitDefaultModeScope = {
 	bindings: Array<ShortcutBinding<CommitAction>>;
@@ -311,11 +309,9 @@ const changeDefaultModeScope = ({
 
 const changesSectionDefaultModeScope = ({
 	bindings,
-	context,
 }: ChangesSectionDefaultModeScope): DefaultModeScope => ({
 	_tag: "ChangesSection",
 	bindings,
-	context,
 });
 
 const commitDefaultModeScope = ({
@@ -354,10 +350,9 @@ const getDefaultModeScope = (selectedItem: Item): DefaultModeScope =>
 					bindings: changesBindings,
 					context: selectedItem,
 				}),
-			ChangesSection: (selectedItem) =>
+			ChangesSection: () =>
 				changesSectionDefaultModeScope({
 					bindings: changesBindings,
-					context: selectedItem,
 				}),
 			Commit: (selectedItem) =>
 				commitDefaultModeScope({
@@ -896,7 +891,7 @@ export const useWorkspaceShortcuts = ({
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handleChangesScopeAction(action, scope.context);
+					handleChangesScopeAction(action, changesSectionItem);
 				},
 				Commit: (scope) => {
 					const action = getAction(scope.bindings, event);
