@@ -356,7 +356,7 @@ export const getCommitTargetMoveOperation = ({
 				);
 
 				return Match.value(source.parent).pipe(
-					Match.tags({
+					Match.tagsExhaustive({
 						Change: () =>
 							commitCreateOperation({
 								relativeTo: { type: "commit", subject: commitId },
@@ -374,7 +374,6 @@ export const getCommitTargetMoveOperation = ({
 								dryRun: false,
 							}),
 					}),
-					Match.exhaustive,
 				);
 			},
 		}),
