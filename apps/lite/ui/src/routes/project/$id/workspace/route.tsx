@@ -1364,10 +1364,9 @@ const Changes: FC<{
 	operationMode: OperationMode | null;
 	projectId: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	className?: string;
 	navigationIndex: NavigationIndex;
 	workspaceMode: WorkspaceMode;
-}> = ({ operationMode, projectId, onAbsorbChanges, className, navigationIndex, workspaceMode }) => {
+}> = ({ operationMode, projectId, onAbsorbChanges, navigationIndex, workspaceMode }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
@@ -1382,7 +1381,7 @@ const Changes: FC<{
 			operationMode={operationMode}
 			projectId={projectId}
 			source={operationSourceFromItem(item)}
-			className={classes(className, styles.section)}
+			className={styles.section}
 			render={
 				<OperationTarget
 					item={item}
