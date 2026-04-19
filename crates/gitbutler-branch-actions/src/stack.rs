@@ -1,6 +1,7 @@
 use anyhow::{Context as _, Result};
 use but_core::RepositoryExt;
 use but_ctx::Context;
+use gitbutler_git::{GitContextExt as _, PushResult};
 use gitbutler_operating_modes::ensure_open_workspace_mode;
 use gitbutler_oplog::{
     OplogExt, SnapshotExt,
@@ -8,15 +9,10 @@ use gitbutler_oplog::{
 };
 use gitbutler_reference::normalize_branch_name;
 use gitbutler_repo::hooks;
-use gitbutler_repo_actions::RepoActionsExt;
 use gitbutler_stack::{PatchReferenceUpdate, StackBranch, StackId};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    VirtualBranchesExt,
-    actions::Verify,
-    r#virtual::{IsCommitIntegrated, PushResult},
-};
+use crate::{VirtualBranchesExt, actions::Verify, r#virtual::IsCommitIntegrated};
 
 /// Adds a new "series/branch" to the Stack.
 /// This is in fact just creating a new  GitButler patch reference (head) and associates it with the stack.

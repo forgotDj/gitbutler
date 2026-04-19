@@ -9,7 +9,7 @@ use but_core::{RepositoryExt, ref_metadata::StackId};
 use but_ctx::Context;
 use cli_prompts::DisplayPrompt;
 use colored::Colorize;
-use gitbutler_branch_actions::internal::PushResult;
+use gitbutler_git::PushResult;
 use serde::Serialize;
 
 use crate::{

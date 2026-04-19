@@ -7,6 +7,7 @@ use but_ctx::{
 };
 use but_workspace::legacy::{commit_engine, stack_heads_info, ui};
 use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
+use gitbutler_git::GitContextExt as _;
 use gitbutler_operating_modes::ensure_open_workspace_mode;
 use gitbutler_oplog::{
     OplogExt, SnapshotExt,
@@ -14,7 +15,6 @@ use gitbutler_oplog::{
 };
 use gitbutler_project::FetchResult;
 use gitbutler_reference::{Refname, RemoteRefname};
-use gitbutler_repo_actions::RepoActionsExt;
 use gitbutler_stack::StackId;
 use tracing::instrument;
 

@@ -5,8 +5,8 @@ use but_api_macros::but_api;
 use but_core::git_config::{
     edit_config, open_global_config_for_reading, remove_config_value, set_config_value,
 };
+use gitbutler_git::GitContextExt as _;
 use gitbutler_reference::RemoteRefname;
-use gitbutler_repo_actions::RepoActionsExt as _;
 use tracing::instrument;
 
 #[but_api]
