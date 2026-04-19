@@ -187,7 +187,7 @@ export const OperationTarget: FC<
 			sourceItem={item}
 			operation={operation}
 			render={target}
-			sourceOperation={source}
+			operationSource={source}
 		/>
 	);
 };
@@ -278,7 +278,7 @@ export const CommitTarget: FC<
 				sourceItem={item}
 				operation={targetTooltipOperation}
 				render={target}
-				sourceOperation={source}
+				operationSource={source}
 			/>
 
 			{drag && dragInsertionSide !== null && (
@@ -287,7 +287,7 @@ export const CommitTarget: FC<
 					enabled={!!drag.operation}
 					sourceItem={item}
 					operation={drag.operation}
-					sourceOperation={drag.operationSource}
+					operationSource={drag.operationSource}
 					className={classes(
 						styles.commitInsertionTarget,
 						pipe(
