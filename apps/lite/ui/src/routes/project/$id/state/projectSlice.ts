@@ -1,7 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "#ui/state/store.ts";
 import { type BranchItem, type CommitItem, type Item } from "../workspace/Item.ts";
-import type { OperationSource } from "../workspace/OperationSource.ts";
 import * as layout from "./layout.ts";
 import * as workspace from "./workspace.ts";
 
@@ -77,19 +76,13 @@ const projectSlice = createSlice({
 			layout.focusPrimary(projectState.layout);
 			workspace.toggleCommitFiles(projectState.workspace, item);
 		},
-		enterRubMode: (
-			state,
-			action: PayloadAction<{ projectId: string; source: OperationSource }>,
-		) => {
+		enterRubMode: (state, action: PayloadAction<{ projectId: string; source: Item }>) => {
 			const { projectId, source } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
 			layout.focusPrimary(projectState.layout);
 			workspace.enterRubMode(projectState.workspace, source);
 		},
-		enterMoveMode: (
-			state,
-			action: PayloadAction<{ projectId: string; source: OperationSource }>,
-		) => {
+		enterMoveMode: (state, action: PayloadAction<{ projectId: string; source: Item }>) => {
 			const { projectId, source } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
 			layout.focusPrimary(projectState.layout);

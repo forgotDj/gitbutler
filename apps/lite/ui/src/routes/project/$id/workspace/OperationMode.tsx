@@ -1,7 +1,7 @@
 import { type Operation } from "#ui/Operation.ts";
 import { changeFileParent, commitFileParent } from "#ui/domain/FileParent.ts";
 import { Match } from "effect";
-import { type Item } from "./Item.ts";
+import { itemEquals, type Item } from "./Item.ts";
 import {
 	getBranchTargetOperation,
 	getCombineOperation,
@@ -9,7 +9,6 @@ import {
 	getTearOffBranchTargetOperation,
 	type ResolvedOperationSource,
 } from "./ResolvedOperationSource.ts";
-import { operationSourceMatchesItem } from "./OperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
 
 const rubModeOperationSourceToOperation = ({
@@ -85,7 +84,7 @@ export const isOperationModeSourceOrTarget = ({
 	operationMode: OperationMode;
 	resolvedOperationSource: ResolvedOperationSource | null;
 }): boolean =>
-	operationSourceMatchesItem(operationMode.source, item) ||
+	itemEquals(operationMode.source, item) ||
 	(!!resolvedOperationSource &&
 		!!operationModeToOperation({
 			operationMode,

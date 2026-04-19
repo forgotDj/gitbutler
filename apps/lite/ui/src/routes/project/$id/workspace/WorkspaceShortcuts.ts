@@ -722,14 +722,14 @@ export const useWorkspaceShortcuts = ({
 					dispatch(
 						projectActions.enterMoveMode({
 							projectId,
-							source: itemOperationSource(selectedItem),
+							source: selectedItem,
 						}),
 					),
 				EnterRubMode: () =>
 					dispatch(
 						projectActions.enterRubMode({
 							projectId,
-							source: itemOperationSource(selectedItem),
+							source: selectedItem,
 						}),
 					),
 			}),
@@ -745,7 +745,7 @@ export const useWorkspaceShortcuts = ({
 					dispatch(
 						projectActions.enterMoveMode({
 							projectId,
-							source: itemOperationSource(changesSectionItem),
+							source: changesSectionItem,
 						}),
 					),
 				FocusPreview: () => dispatch(projectActions.focusPreview({ projectId })),
@@ -887,7 +887,7 @@ export const useWorkspaceShortcuts = ({
 
 		const resolvedOperationSource = operationMode
 			? resolveOperationSource({
-					operationSource: operationMode.source,
+					operationSource: itemOperationSource(operationMode.source),
 					queryClient,
 					projectId,
 				})

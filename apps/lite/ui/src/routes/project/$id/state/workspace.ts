@@ -5,7 +5,6 @@ import {
 	type CommitItem,
 	type Item,
 } from "../workspace/Item.ts";
-import { type OperationSource } from "../workspace/OperationSource.ts";
 import {
 	defaultWorkspaceMode,
 	isValidWorkspaceModeForItem,
@@ -45,11 +44,11 @@ export const closeCommitFiles = (state: WorkspaceState, item: CommitItem) => {
 	selectItem(state, commitItem(item));
 };
 
-export const enterMoveMode = (state: WorkspaceState, source: OperationSource) => {
+export const enterMoveMode = (state: WorkspaceState, source: Item) => {
 	state.mode = moveOperationMode({ source });
 };
 
-export const enterRubMode = (state: WorkspaceState, source: OperationSource) => {
+export const enterRubMode = (state: WorkspaceState, source: Item) => {
 	state.mode = rubOperationMode({ source });
 };
 

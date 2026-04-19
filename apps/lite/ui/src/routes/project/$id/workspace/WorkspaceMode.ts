@@ -1,12 +1,11 @@
 import { Match } from "effect";
-import { type OperationSource } from "./OperationSource.ts";
 import { branchItem, commitItem, itemEquals, type Item } from "./Item.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "./WorkspaceModel.ts";
 
 /** @public */
-export type RubOperationMode = { source: OperationSource };
+export type RubOperationMode = { source: Item };
 /** @public */
-export type MoveOperationMode = { source: OperationSource };
+export type MoveOperationMode = { source: Item };
 export type OperationMode =
 	| ({ _tag: "Rub" } & RubOperationMode)
 	| ({ _tag: "Move" } & MoveOperationMode);
@@ -71,20 +70,8 @@ export const isValidWorkspaceMode = ({
 	Match.value(mode).pipe(
 		Match.tagsExhaustive({
 			Default: () => true,
-			Rub: (mode) =>
-				Match.value(mode.source).pipe(
-					Match.tags({
-						Item: (source) => navigationIndexIncludes(navigationIndex, source.item),
-					}),
-					Match.orElse(() => false),
-				),
-			Move: (mode) =>
-				Match.value(mode.source).pipe(
-					Match.tags({
-						Item: (source) => navigationIndexIncludes(navigationIndex, source.item),
-					}),
-					Match.orElse(() => false),
-				),
+			Rub: (mode) => navigationIndexIncludes(navigationIndex, mode.source),
+			Move: (mode) => navigationIndexIncludes(navigationIndex, mode.source),
 			RewordCommit: (mode) =>
 				navigationIndexIncludes(
 					navigationIndex,

@@ -1712,7 +1712,7 @@ const ProjectPage: FC = () => {
 					item,
 					operationMode,
 					resolvedOperationSource: resolveOperationSource({
-						operationSource: operationMode.source,
+						operationSource: itemOperationSource(operationMode.source),
 						queryClient,
 						projectId,
 					}),
@@ -1755,7 +1755,7 @@ const ProjectPage: FC = () => {
 		dispatch(
 			projectActions.enterMoveMode({
 				projectId,
-				source: itemOperationSource(changesSectionItem),
+				source: changesSectionItem,
 			}),
 		);
 
@@ -1821,7 +1821,10 @@ const ProjectPage: FC = () => {
 
 			{operationMode && (
 				<div className={styles.operationModePreview}>
-					<OperationSourceLabel headInfo={headInfo} source={operationMode.source} />
+					<OperationSourceLabel
+						headInfo={headInfo}
+						source={itemOperationSource(operationMode.source)}
+					/>
 				</div>
 			)}
 

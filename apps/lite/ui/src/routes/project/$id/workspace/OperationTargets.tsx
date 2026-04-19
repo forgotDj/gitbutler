@@ -25,6 +25,7 @@ import {
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./route.module.css";
 import { useQueryClient } from "@tanstack/react-query";
+import { itemOperationSource } from "#ui/routes/project/$id/workspace/OperationSource.ts";
 
 const useDragOperation = ({
 	projectId,
@@ -70,7 +71,7 @@ const useOperationModeTarget = ({
 	const isActiveTarget = !!operationMode && isSelected;
 	const resolvedOperationSource = operationMode
 		? resolveOperationSource({
-				operationSource: operationMode.source,
+				operationSource: itemOperationSource(operationMode.source),
 				queryClient,
 				projectId,
 			})
@@ -129,7 +130,9 @@ const useOperationTarget = ({
 		drag,
 		dropRef,
 		isActiveTarget: !!drag?.operation || operationModeTarget.isActiveTarget,
-		source: drag?.operationSource ?? operationModeTarget.source,
+		source:
+			drag?.operationSource ??
+			(operationModeTarget.source ? itemOperationSource(operationModeTarget.source) : undefined),
 		operation: drag?.operation ?? operationModeTarget.operation,
 		controls: operationModeTarget.controls,
 	};
