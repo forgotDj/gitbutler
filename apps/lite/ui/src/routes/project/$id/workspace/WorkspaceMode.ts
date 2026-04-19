@@ -1,7 +1,7 @@
 import { Match } from "effect";
 import { type OperationSource, operationSourceMatchesItem } from "./OperationSource.ts";
 import { branchItem, commitItem, itemEquals, type Item } from "./Item.ts";
-import { type NavigationIndex } from "./WorkspaceModel.ts";
+import { navigationIndexIncludes, type NavigationIndex } from "./WorkspaceModel.ts";
 
 /** @public */
 export type RubOperationMode = { source: OperationSource };
@@ -76,24 +76,20 @@ export const isValidWorkspaceMode = ({
 			Move: (mode) =>
 				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item)),
 			RewordCommit: (mode) =>
-				navigationIndex.items.some((item) =>
-					itemEquals(
-						item,
-						commitItem({
-							stackId: mode.stackId,
-							commitId: mode.commitId,
-						}),
-					),
+				navigationIndexIncludes(
+					navigationIndex,
+					commitItem({
+						stackId: mode.stackId,
+						commitId: mode.commitId,
+					}),
 				),
 			RenameBranch: (mode) =>
-				navigationIndex.items.some((item) =>
-					itemEquals(
-						item,
-						branchItem({
-							stackId: mode.stackId,
-							branchRef: mode.branchRef,
-						}),
-					),
+				navigationIndexIncludes(
+					navigationIndex,
+					branchItem({
+						stackId: mode.stackId,
+						branchRef: mode.branchRef,
+					}),
 				),
 		}),
 	);
