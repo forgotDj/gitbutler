@@ -103,7 +103,7 @@ export const isValidWorkspaceModeForItem = ({
 	item,
 }: {
 	mode: WorkspaceMode;
-	item: Item | null;
+	item: Item;
 }): boolean =>
 	Match.value(mode).pipe(
 		Match.tagsExhaustive({
@@ -111,7 +111,6 @@ export const isValidWorkspaceModeForItem = ({
 			Rub: () => true,
 			Move: () => true,
 			RewordCommit: (mode) =>
-				!!item &&
 				itemEquals(
 					item,
 					commitItem({
@@ -120,7 +119,6 @@ export const isValidWorkspaceModeForItem = ({
 					}),
 				),
 			RenameBranch: (mode) =>
-				!!item &&
 				itemEquals(
 					item,
 					branchItem({

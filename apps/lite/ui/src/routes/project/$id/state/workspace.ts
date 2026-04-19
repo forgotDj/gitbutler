@@ -71,7 +71,8 @@ export const selectHunk = (state: WorkspaceState, hunk: string | null) => {
 export const selectItem = (state: WorkspaceState, item: Item | null) => {
 	state.selection.item = item;
 	state.selection.hunk = null;
-	if (!isValidWorkspaceModeForItem({ mode: state.mode, item })) state.mode = defaultWorkspaceMode;
+	if (!item || !isValidWorkspaceModeForItem({ mode: state.mode, item }))
+		state.mode = defaultWorkspaceMode;
 };
 
 export const setExpandedCommitId = (state: WorkspaceState, commitId: string | null) => {
