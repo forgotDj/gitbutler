@@ -5,26 +5,11 @@ use but_rebase::RebaseStep;
 use but_workspace::legacy::stack_ext::StackExt;
 use gitbutler_branch::BranchUpdateRequest;
 use gitbutler_commit::commit_ext::CommitExt;
-use gitbutler_reference::Refname;
 use gitbutler_repo::first_parent_commit_ids_until;
 use gitbutler_stack::{Stack, StackId, Target};
 use itertools::Itertools;
-use serde::Serialize;
 
 use crate::VirtualBranchesExt;
-
-#[derive(Debug, PartialEq, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PushResult {
-    /// The name of the remote to which the branches were pushed.
-    pub remote: String,
-    /// The list of pushed branches and their corresponding remote refnames.
-    pub branch_to_remote: Vec<(String, Refname)>,
-    /// The list of branches with their before/after commit SHAs.
-    /// Format: (branch_name, before_sha, after_sha)
-    /// SHAs are stored as hex strings for serialization
-    pub branch_sha_updates: Vec<(String, String, String)>,
-}
 
 pub fn update_stack(ctx: &Context, update: &BranchUpdateRequest) -> Result<Stack> {
     let mut vb_state = ctx.virtual_branches();

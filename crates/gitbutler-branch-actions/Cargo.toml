@@ -35,6 +35,7 @@ but-ctx = { workspace = true, features = ["legacy"] }
 chrono.workspace = true
 
 gitbutler-oplog.workspace = true
+gitbutler-git.workspace = true
 gitbutler-repo.workspace = true
 gitbutler-repo-actions.workspace = true
 gitbutler-branch.workspace = true

@@ -4,7 +4,8 @@ use anyhow::{Context as _, Result, anyhow};
 use but_api_macros::but_api;
 use but_core::{branch, sync::RepoExclusive};
 use but_ctx::Context;
-use gitbutler_branch_actions::{internal::PushResult, stack::CreateSeriesRequest};
+use gitbutler_branch_actions::stack::CreateSeriesRequest;
+use gitbutler_git::PushResult;
 use gitbutler_oplog::SnapshotExt;
 use gitbutler_stack::StackId;
 use gix::refs::Category;
@@ -318,7 +319,7 @@ pub fn update_branch_pr_number(
 pub mod json {
     use serde::Serialize;
 
-    /// JSON-friendly version of [`gitbutler_branch_actions::internal::PushResult`].
+    /// JSON-friendly version of [`gitbutler_git::PushResult`].
     #[derive(Debug, Serialize)]
     #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
     #[serde(rename_all = "camelCase")]
@@ -334,8 +335,8 @@ pub mod json {
     #[cfg(feature = "export-schema")]
     but_schemars::register_sdk_type!(PushResult);
 
-    impl From<gitbutler_branch_actions::internal::PushResult> for PushResult {
-        fn from(value: gitbutler_branch_actions::internal::PushResult) -> Self {
+    impl From<gitbutler_git::PushResult> for PushResult {
+        fn from(value: gitbutler_git::PushResult) -> Self {
             Self {
                 remote: value.remote,
                 branch_to_remote: value

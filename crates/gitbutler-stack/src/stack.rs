@@ -698,7 +698,7 @@ pub struct PatchReferenceUpdate {
     pub name: Option<String>,
 }
 
-/// Push details to be supplied to `RepoActionsExt`'s `push` method.
+/// Push details to be supplied to the git context extension trait's `push` method.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PushDetails {
     /// The commit that is being pushed.

@@ -29,7 +29,7 @@ bstr.workspace = true
 [dev-dependencies]
 but-askpass.workspace = true
 but-testsupport.workspace = true
-gitbutler-repo-actions.workspace = true
+gitbutler-git.workspace = true
 tempfile.workspace = true
 but-db.workspace = true
 filetime = "0.2"
