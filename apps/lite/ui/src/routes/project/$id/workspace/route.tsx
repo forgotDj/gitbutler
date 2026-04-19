@@ -1137,7 +1137,7 @@ const CommitC: FC<{
 					item={item}
 					projectId={projectId}
 					operationMode={operationMode}
-					isSelected={!!isSelected}
+					isSelected={isSelected}
 				/>
 			}
 		>
