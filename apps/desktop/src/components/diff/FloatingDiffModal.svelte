@@ -199,6 +199,14 @@
 						<!-- Single-file mode: show selected file with header -->
 						{#if selectedChange}
 							{@const diffQuery = diffService.getDiff(projectId, selectedChange)}
+							{@const diffResponse = diffQuery.response}
+							{@const lineChangesStat =
+								diffResponse?.type === "Patch"
+									? {
+											added: diffResponse.subject.linesAdded,
+											removed: diffResponse.subject.linesRemoved,
+										}
+									: undefined}
 							<Drawer
 								noshrink
 								stickyHeader
@@ -212,6 +220,8 @@
 										filePath={selectedChange.path}
 										fileStatus={computeChangeStatus(selectedChange)}
 										executable={isExecutableStatus(selectedChange.status)}
+										linesAdded={lineChangesStat?.added}
+										linesRemoved={lineChangesStat?.removed}
 									/>
 								{/snippet}
 
