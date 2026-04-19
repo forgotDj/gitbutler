@@ -7,9 +7,9 @@ use gitbutler_oplog::{
     OplogExt, SnapshotExt,
     entry::{OperationKind, SnapshotDetails},
 };
-use gitbutler_reference::normalize_branch_name;
+use gitbutler_reference::{RemoteRefname, normalize_branch_name};
 use gitbutler_repo::hooks;
-use gitbutler_stack::{PatchReferenceUpdate, StackBranch, StackId};
+use gitbutler_stack::{PatchReferenceUpdate, Stack, StackBranch, StackId, Target};
 use serde::{Deserialize, Serialize};
 
 use crate::{VirtualBranchesExt, actions::Verify, r#virtual::IsCommitIntegrated};
@@ -158,139 +158,37 @@ pub fn push_stack(
     ctx.verify(guard.write_permission())?;
     ensure_open_workspace_mode(ctx, guard.read_permission())
         .context("Requires an open workspace mode")?;
-    let state = ctx.virtual_branches();
-    let stack = state.get_stack(stack_id)?;
-
-    let default_target = state.get_default_target()?;
-    let gix_repo = ctx.clone_repo_for_merging_non_persisting()?;
-    let merge_base_id = gix_repo
-        .merge_base(stack.head_oid(ctx)?, default_target.sha)?
-        .detach();
+    let virtual_branches = ctx.virtual_branches();
+    let stack = virtual_branches.get_stack(stack_id)?;
+    let default_target = virtual_branches.get_default_target()?;
+    let push_env = PushStackEnv::new(ctx, &stack, default_target, skip_force_push_protection)?;
 
     // First fetch, because we dont want to push integrated series
-    ctx.fetch(
-        &default_target.push_remote_name(),
-        Some("push_stack".into()),
-    )?;
-    let cache = gix_repo.commit_graph_if_enabled()?;
-    let stack_branches = stack.branches();
+    ctx.fetch(&push_env.remote_name, Some("push_stack".into()))?;
     let mut result = PushResult {
-        remote: default_target.push_remote_name(),
+        remote: push_env.remote_name.clone(),
         branch_to_remote: vec![],
         branch_sha_updates: vec![],
     };
-    let gerrit_mode = gix_repo
-        .git_settings()?
-        .gitbutler_gerrit_mode
-        .unwrap_or(false);
+    let stop_after_branch = branch_limit;
 
-    let force_push_protection =
-        !skip_force_push_protection && ctx.legacy_project.force_push_protection;
-
-    for branch in stack_branches {
-        if branch.archived {
-            // Nothing to push for this one
-            tracing::debug!(branch = branch.name, "skipping archived branch for pushing");
+    for branch in stack.branches() {
+        let Some(prepared_branch) = prepare_branch_push(&branch, &push_env)? else {
             continue;
-        }
-        if branch.head_oid(&gix_repo)? == merge_base_id {
-            // Nothing to push for this one
-            tracing::debug!(
-                branch = branch.name,
-                "nothing to push as head_oid == merge_base"
-            );
-            continue;
-        }
-        let mut graph = gix_repo.revision_graph(cache.as_ref());
-        let mut check_commit = IsCommitIntegrated::new(&default_target, &gix_repo, &mut graph)?;
-        if branch_integrated(&mut check_commit, &branch, &gix_repo)? {
-            // Already integrated, nothing to push
-            tracing::debug!(branch = branch.name, "Skipping push for integrated branch");
-            continue;
-        }
-        drop(graph);
-        let push_details = stack.push_details(ctx, branch.name().to_owned())?;
-
-        // Capture the SHA before push (remote ref if exists, otherwise zero)
-        let before_sha = gix_repo
-            .try_find_reference(&push_details.remote_refname.to_string())?
-            .map(|mut reference| reference.peel_to_commit())
-            .transpose()?
-            .map(|commit| commit.id)
-            .unwrap_or(gix_repo.object_hash().null());
-        let local_sha = push_details.head;
-
-        if run_hooks {
-            let remote_name = default_target.push_remote_name();
-            let remote = gix_repo.find_remote(remote_name.as_str())?;
-            let url = remote
-                .url(gix::remote::Direction::Push)
-                .or_else(|| remote.url(gix::remote::Direction::Fetch))
-                .map(|url| url.to_bstring().to_string())
-                .with_context(|| format!("Remote named {remote_name} didn't have a URL"))?;
-            match hooks::pre_push(
-                &gix_repo,
-                &remote_name,
-                &url,
-                push_details.head,
-                &push_details.remote_refname,
-                ctx.legacy_project.husky_hooks_enabled,
-            )? {
-                hooks::HookResult::Success | hooks::HookResult::NotConfigured => {}
-                hooks::HookResult::Failure(error_data) => {
-                    return Err(anyhow::anyhow!(
-                        "pre-push hook failed: {}",
-                        error_data.error
-                    ));
-                }
-            }
-        }
-
-        let refspec = if gerrit_mode {
-            Some(format!(
-                "{}:refs/for/{}",
-                push_details.head,
-                default_target.branch.branch(),
-            ))
-        } else {
-            None
         };
 
-        let push_opts = if gerrit_mode {
-            push_opts.iter().map(|o| o.to_string()).collect()
-        } else {
-            vec![]
-        };
-
-        let out = ctx.push(
-            push_details.head,
-            &push_details.remote_refname,
+        let should_stop = prepared_branch.branch_name == stop_after_branch;
+        let pushed_branch = execute_branch_push(
+            ctx,
+            &stack,
+            prepared_branch,
+            &push_env,
             with_force,
-            force_push_protection,
-            refspec,
-            Some(Some(stack.id)),
-            push_opts,
+            run_hooks,
+            &push_opts,
         )?;
-
-        if gerrit_mode {
-            let push_output = but_gerrit::parse::push_output(&out)?;
-            let stacks = stack.commits(ctx)?;
-            but_gerrit::record_push_metadata(ctx, stacks, push_output)?;
-        }
-
-        result.branch_to_remote.push((
-            branch.name().to_owned(),
-            (&push_details.remote_refname).try_into()?,
-        ));
-
-        // Record the SHA update (before -> after)
-        result.branch_sha_updates.push((
-            branch.name().to_owned(),
-            before_sha.to_string(),
-            local_sha.to_string(),
-        ));
-
-        if branch.name().eq(&branch_limit) {
+        append_push_result(&mut result, pushed_branch);
+        if should_stop {
             break;
         }
     }
@@ -298,14 +196,277 @@ pub fn push_stack(
     Ok(result)
 }
 
-pub(crate) fn branch_integrated(
-    check_commit: &mut IsCommitIntegrated,
-    branch: &StackBranch,
-    gix_repo: &gix::Repository,
-) -> Result<bool> {
-    if branch.archived {
-        return Ok(true);
+struct PushStackEnv {
+    default_target: Target,
+    gix_repo: gix::Repository,
+    commit_graph_cache: Option<gix::commitgraph::Graph>,
+    merge_base_id: gix::ObjectId,
+    remote_name: String,
+    gerrit_mode: bool,
+    force_push_protection: bool,
+    run_husky_hooks: bool,
+}
+
+impl PushStackEnv {
+    fn new(
+        ctx: &Context,
+        stack: &Stack,
+        default_target: Target,
+        skip_force_push_protection: bool,
+    ) -> Result<Self> {
+        let remote_name = default_target.push_remote_name();
+        let gix_repo = ctx.clone_repo_for_merging_non_persisting()?;
+        let merge_base_id = gix_repo
+            .merge_base(stack.head_oid(ctx)?, default_target.sha)?
+            .detach();
+        let commit_graph_cache = gix_repo.commit_graph_if_enabled()?;
+        let gerrit_mode = gix_repo
+            .git_settings()?
+            .gitbutler_gerrit_mode
+            .unwrap_or(false);
+
+        Ok(Self {
+            default_target,
+            gix_repo,
+            commit_graph_cache,
+            merge_base_id,
+            remote_name,
+            gerrit_mode,
+            force_push_protection: !skip_force_push_protection
+                && ctx.legacy_project.force_push_protection,
+            run_husky_hooks: ctx.legacy_project.husky_hooks_enabled,
+        })
     }
-    let oid = branch.head_oid(gix_repo)?;
-    check_commit.is_integrated(oid)
+}
+
+struct GerritPushArgs {
+    refspec: Option<String>,
+    push_opts: Vec<String>,
+}
+
+struct PreparedBranchPush {
+    branch_name: String,
+    remote_refname: RemoteRefname,
+    local_sha: gix::ObjectId,
+    before_sha: gix::ObjectId,
+}
+
+struct PushedBranch {
+    branch_name: String,
+    remote_refname: gix::refs::FullName,
+    before_sha: gix::ObjectId,
+    after_sha: gix::ObjectId,
+}
+
+enum SkipBranchReason {
+    Archived,
+    HeadAtMergeBase,
+    Integrated,
+}
+
+fn prepare_branch_push(
+    branch: &StackBranch,
+    push_env: &PushStackEnv,
+) -> Result<Option<PreparedBranchPush>> {
+    if branch.archived {
+        log_skipped_branch(branch, SkipBranchReason::Archived);
+        return Ok(None);
+    }
+
+    let local_sha = branch.head_oid(&push_env.gix_repo)?;
+    if let Some(skip_reason) = skip_reason_for_branch(local_sha, push_env)? {
+        log_skipped_branch(branch, skip_reason);
+        return Ok(None);
+    }
+
+    let remote_refname = remote_refname_for_branch(branch, &push_env.remote_name)?;
+    let before_sha = remote_before_sha(&push_env.gix_repo, &remote_refname)?;
+
+    Ok(Some(PreparedBranchPush {
+        branch_name: branch.name().to_owned(),
+        remote_refname,
+        local_sha,
+        before_sha,
+    }))
+}
+
+fn execute_branch_push(
+    ctx: &mut Context,
+    stack: &Stack,
+    prepared_branch: PreparedBranchPush,
+    push_env: &PushStackEnv,
+    with_force: bool,
+    run_hooks: bool,
+    push_flags: &[but_gerrit::PushFlag],
+) -> Result<PushedBranch> {
+    let PreparedBranchPush {
+        branch_name,
+        remote_refname,
+        local_sha,
+        before_sha,
+    } = prepared_branch;
+
+    if run_hooks {
+        run_pre_push_hook(push_env, local_sha, &remote_refname)?;
+    }
+
+    let gerrit_push_args = gerrit_push_args(push_env, local_sha, push_flags);
+    let push_output = ctx.push(
+        local_sha,
+        &remote_refname,
+        with_force,
+        push_env.force_push_protection,
+        gerrit_push_args.refspec,
+        Some(Some(stack.id)),
+        gerrit_push_args.push_opts,
+    )?;
+
+    maybe_record_gerrit_push_metadata(ctx, stack, push_env, &push_output)?;
+
+    Ok(PushedBranch {
+        branch_name,
+        remote_refname: (&remote_refname).try_into()?,
+        before_sha,
+        after_sha: local_sha,
+    })
+}
+
+fn skip_reason_for_branch(
+    local_sha: gix::ObjectId,
+    push_env: &PushStackEnv,
+) -> Result<Option<SkipBranchReason>> {
+    if local_sha == push_env.merge_base_id {
+        return Ok(Some(SkipBranchReason::HeadAtMergeBase));
+    }
+
+    let mut graph = push_env
+        .gix_repo
+        .revision_graph(push_env.commit_graph_cache.as_ref());
+    let mut check_commit =
+        IsCommitIntegrated::new(&push_env.default_target, &push_env.gix_repo, &mut graph)?;
+    if check_commit.is_integrated(local_sha)? {
+        return Ok(Some(SkipBranchReason::Integrated));
+    }
+
+    Ok(None)
+}
+
+fn log_skipped_branch(branch: &StackBranch, skip_reason: SkipBranchReason) {
+    match skip_reason {
+        SkipBranchReason::Archived => {
+            tracing::debug!(
+                branch = branch.name(),
+                "skipping archived branch for pushing"
+            );
+        }
+        SkipBranchReason::HeadAtMergeBase => {
+            tracing::debug!(
+                branch = branch.name(),
+                "nothing to push as head_oid == merge_base"
+            );
+        }
+        SkipBranchReason::Integrated => {
+            tracing::debug!(
+                branch = branch.name(),
+                "Skipping push for integrated branch"
+            );
+        }
+    }
+}
+
+fn remote_before_sha(
+    gix_repo: &gix::Repository,
+    remote_refname: &RemoteRefname,
+) -> Result<gix::ObjectId> {
+    Ok(gix_repo
+        .try_find_reference(&remote_refname.to_string())?
+        .map(|mut reference| reference.peel_to_commit())
+        .transpose()?
+        .map(|commit| commit.id)
+        .unwrap_or(gix_repo.object_hash().null()))
+}
+
+fn remote_refname_for_branch(branch: &StackBranch, remote_name: &str) -> Result<RemoteRefname> {
+    branch
+        .remote_reference(remote_name)
+        .parse()
+        .map_err(Into::into)
+}
+
+fn run_pre_push_hook(
+    push_env: &PushStackEnv,
+    local_sha: gix::ObjectId,
+    remote_refname: &RemoteRefname,
+) -> Result<()> {
+    let remote = push_env
+        .gix_repo
+        .find_remote(push_env.remote_name.as_str())?;
+    let url = remote
+        .url(gix::remote::Direction::Push)
+        .or_else(|| remote.url(gix::remote::Direction::Fetch))
+        .map(|url| url.to_bstring().to_string())
+        .with_context(|| format!("Remote named {} didn't have a URL", push_env.remote_name))?;
+
+    match hooks::pre_push(
+        &push_env.gix_repo,
+        &push_env.remote_name,
+        &url,
+        local_sha,
+        remote_refname,
+        push_env.run_husky_hooks,
+    )? {
+        hooks::HookResult::Success | hooks::HookResult::NotConfigured => Ok(()),
+        hooks::HookResult::Failure(error_data) => Err(anyhow::anyhow!(
+            "pre-push hook failed: {}",
+            error_data.error
+        )),
+    }
+}
+
+fn gerrit_push_args(
+    push_env: &PushStackEnv,
+    head: gix::ObjectId,
+    push_flags: &[but_gerrit::PushFlag],
+) -> GerritPushArgs {
+    if push_env.gerrit_mode {
+        GerritPushArgs {
+            refspec: Some(format!(
+                "{head}:refs/for/{}",
+                push_env.default_target.branch.branch(),
+            )),
+            push_opts: push_flags.iter().map(|flag| flag.to_string()).collect(),
+        }
+    } else {
+        GerritPushArgs {
+            refspec: None,
+            push_opts: vec![],
+        }
+    }
+}
+
+fn maybe_record_gerrit_push_metadata(
+    ctx: &Context,
+    stack: &Stack,
+    push_env: &PushStackEnv,
+    push_output: &str,
+) -> Result<()> {
+    if !push_env.gerrit_mode {
+        return Ok(());
+    }
+
+    let push_output = but_gerrit::parse::push_output(push_output)?;
+    let candidate_ids = stack.commits(ctx)?;
+    but_gerrit::record_push_metadata(ctx, candidate_ids, push_output)
+}
+
+fn append_push_result(result: &mut PushResult, pushed_branch: PushedBranch) {
+    result.branch_to_remote.push((
+        pushed_branch.branch_name.clone(),
+        pushed_branch.remote_refname,
+    ));
+    result.branch_sha_updates.push((
+        pushed_branch.branch_name,
+        pushed_branch.before_sha.to_string(),
+        pushed_branch.after_sha.to_string(),
+    ));
 }
