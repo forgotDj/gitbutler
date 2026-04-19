@@ -47,6 +47,52 @@ const useDragOperation = ({
 	});
 };
 
+const useOperationModeTarget = ({
+	projectId,
+	item,
+	operationMode,
+	isSelected,
+}: {
+	projectId: string;
+	item: Item;
+	operationMode: OperationMode | null;
+	isSelected: boolean;
+}) => {
+	const dispatch = useAppDispatch();
+	const runOperation = useRunOperation();
+	const resolveOperationSource = useResolveOperationSource(projectId);
+
+	const isActiveTarget = !!operationMode && isSelected;
+	const resolvedOperationSource = operationMode
+		? resolveOperationSource(operationMode.source)
+		: null;
+	const operation =
+		isActiveTarget && resolvedOperationSource
+			? operationModeToOperation({
+					operationMode,
+					resolvedOperationSource,
+					target: item,
+				})
+			: null;
+
+	const confirm = () => {
+		dispatch(projectActions.exitMode({ projectId }));
+
+		if (!operation) return;
+
+		runOperation(projectId, operation);
+	};
+
+	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
+
+	return {
+		isActiveTarget,
+		source: operationMode?.source,
+		operation,
+		controls: isActiveTarget ? { onConfirm: confirm, onCancel: cancel } : undefined,
+	};
+};
+
 const useOperationTarget = ({
 	projectId,
 	item,
@@ -62,44 +108,21 @@ const useOperationTarget = ({
 		args: GetDataParams[0] & { resolvedOperationSource: ResolvedOperationSource },
 	) => Operation | null;
 }) => {
-	const dispatch = useAppDispatch();
-	const runOperation = useRunOperation();
-
 	const [drag, dropRef] = useDragOperation({ projectId, getOperation });
-
-	const resolveOperationSource = useResolveOperationSource(projectId);
-	const resolvedOperationModeSource = operationMode
-		? resolveOperationSource(operationMode.source)
-		: null;
-	const isActiveOperationModeTarget = !!operationMode && isSelected;
-	const operationModeOperation =
-		isActiveOperationModeTarget && resolvedOperationModeSource
-			? operationModeToOperation({
-					operationMode,
-					resolvedOperationSource: resolvedOperationModeSource,
-					target: item,
-				})
-			: null;
-
-	const confirmMode = () => {
-		dispatch(projectActions.exitMode({ projectId }));
-
-		if (!operationModeOperation) return;
-
-		runOperation(projectId, operationModeOperation);
-	};
-
-	const cancelMode = () => dispatch(projectActions.exitMode({ projectId }));
+	const operationModeTarget = useOperationModeTarget({
+		projectId,
+		item,
+		operationMode,
+		isSelected,
+	});
 
 	return {
 		drag,
 		dropRef,
-		isActiveTarget: !!drag?.operation || isActiveOperationModeTarget,
-		source: drag?.operationSource ?? operationMode?.source,
-		operation: drag?.operation ?? operationModeOperation,
-		controls: isActiveOperationModeTarget
-			? { onConfirm: confirmMode, onCancel: cancelMode }
-			: undefined,
+		isActiveTarget: !!drag?.operation || operationModeTarget.isActiveTarget,
+		source: drag?.operationSource ?? operationModeTarget.source,
+		operation: drag?.operation ?? operationModeTarget.operation,
+		controls: operationModeTarget.controls,
 	};
 };
 
