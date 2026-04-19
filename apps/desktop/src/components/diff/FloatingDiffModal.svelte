@@ -380,6 +380,7 @@
 		flex-direction: column;
 		width: 15rem;
 		overflow: hidden;
+		border-right: 1px solid var(--border-2);
 	}
 
 	.left-header {
