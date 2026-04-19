@@ -19,11 +19,7 @@ use gix::{
     prelude::ObjectIdExt,
 };
 
-use crate::{
-    RefInfo,
-    ref_info::{LocalCommit, LocalCommitRelation},
-    ui::PushStatus,
-};
+use crate::{RefInfo, ref_info::LocalCommitRelation, ui::PushStatus};
 
 /// The ID of a changeset, calculated as Git hash for convenience.
 type ChangesetID = gix::ObjectId;
@@ -66,7 +62,7 @@ impl RefInfo {
         let mut upstream_commits = Vec::new();
         let Some(target_tip) = topmost_target_sidx else {
             // Without any notion of 'target' we can't do anything here.
-            self.compute_pushstatus();
+            self.compute_pushstatus(graph);
             return Ok(());
         };
         let lower_bound_generation = self.lower_bound.map(|sidx| graph[sidx].generation);
@@ -197,68 +193,145 @@ impl RefInfo {
                 break;
             }
         }
-        self.compute_pushstatus();
+        self.compute_pushstatus(graph);
         Ok(())
     }
 
     /// Recalculate everything that depends on these values and the exact set of remote commits.
-    fn compute_pushstatus(&mut self) {
+    fn compute_pushstatus(&mut self, graph: &but_graph::Graph) {
         for segment in self
             .stacks
             .iter_mut()
             .flat_map(|stack| stack.segments.iter_mut())
         {
-            segment.push_status = PushStatus::derive_from_commits(
-                segment.remote_tracking_ref_name.is_some(),
-                &segment.commits,
-                !segment.commits_on_remote.is_empty(),
-            );
+            segment.push_status = PushStatus::derive_from_graph(graph, segment);
         }
     }
 }
 
 impl PushStatus {
-    /// Derive the push-status by looking at commits in the local and remote tracking branches.
-    /// TODO: tests
-    ///       * generally this doesn't currently handle advanced (and possibly fast-forwardable)
-    ///         remotes very well. It doesn't feel like it can be expressed.
-    ///       * It doesn't deal with diverged local/remote branches.
-    ///       * Special cases of remote is merged, and remote tracking branch is deleted after fetch
-    ///         if it was deleted on the remote?
-    fn derive_from_commits(
-        has_remote_tracking_ref: bool,
-        commits: &[LocalCommit],
-        remote_has_commits: bool,
-    ) -> Self {
-        if !has_remote_tracking_ref {
+    /// Derive the push-status from the first-parent relationship between a local
+    /// segment and its remote-tracking branch segment.
+    ///
+    /// We intentionally reason in terms of the branch line, not arbitrary
+    /// all-parents reachability:
+    ///
+    /// - stack segments are themselves built from a first-parent walk
+    /// - fast-forward vs force-push depends on whether one tip is contained in
+    ///   the other's branch line
+    /// - merge-side ancestry is too permissive here, as it would make a remote
+    ///   tip merged into target look "behind" instead of "rewritten"
+    ///
+    /// The cases handled below are:
+    ///
+    /// - no remote configured: `CompletelyUnpushed`
+    /// - top local commit already known integrated by similarity checks:
+    ///   `Integrated`
+    /// - local and remote tips are identical: `NothingToPush`
+    /// - remote tip is on the local first-parent line: usually
+    ///   `UnpushedCommits`, unless this segment already contains an integrated
+    ///   commit below a local tip, which indicates that advancing the remote
+    ///   would rewrite a branch state that was already merged
+    /// - otherwise, either the remote is ahead of us on its branch line or the
+    ///   two tips diverged; both cases require force-push
+    fn derive_from_graph(graph: &but_graph::Graph, segment: &crate::ref_info::Segment) -> Self {
+        let Some(remote_segment_id) = segment.remote_tracking_branch_segment_id else {
             // Generally, don't do anything if no remote relationship is set up (anymore).
             // There may be better ways to deal with this.
             return PushStatus::CompletelyUnpushed;
+        };
+
+        if segment
+            .commits
+            .first()
+            .is_some_and(|commit| matches!(commit.relation, LocalCommitRelation::Integrated(_)))
+        {
+            return PushStatus::Integrated;
         }
 
-        let first_commit = commits.first();
-        let everything_integrated_locally =
-            first_commit.is_some_and(|c| matches!(c.relation, LocalCommitRelation::Integrated(_)));
-        let first_commit_is_local =
-            first_commit.is_some_and(|c| matches!(c.relation, LocalCommitRelation::LocalOnly));
-        if everything_integrated_locally {
-            PushStatus::Integrated
-        } else if commits.iter().any(|c| {
-            matches!(c.relation, LocalCommitRelation::LocalAndRemote(id) if c.id != id)
-                || (first_commit_is_local
-                    && matches!(c.relation, LocalCommitRelation::Integrated(_)))
-        }) {
-            PushStatus::UnpushedCommitsRequiringForce
-        } else if remote_has_commits {
-            // If there are remote commits, pushing would require a force push, as the remote-only
-            // commits would be overwritten.
-            PushStatus::UnpushedCommitsRequiringForce
-        } else if first_commit_is_local {
-            PushStatus::UnpushedCommits
-        } else {
+        let local_segment_id = segment.id;
+        let Some(local_tip_id) = graph
+            .tip_skip_empty(local_segment_id)
+            .map(|commit| commit.id)
+        else {
+            return PushStatus::NothingToPush;
+        };
+        let Some(remote_tip_id) = graph
+            .tip_skip_empty(remote_segment_id)
+            .map(|commit| commit.id)
+        else {
+            // A missing remote tip acts like an unpushed branch: there is a
+            // remote configured, but nothing reachable on that side that could
+            // block a normal push.
+            return PushStatus::UnpushedCommits;
+        };
+
+        let first_commit_is_local = segment
+            .commits
+            .first()
+            .is_some_and(|commit| matches!(commit.relation, LocalCommitRelation::LocalOnly));
+        let has_integrated_commit_in_segment = segment
+            .commits
+            .iter()
+            .any(|commit| matches!(commit.relation, LocalCommitRelation::Integrated(_)));
+
+        if local_tip_id == remote_tip_id {
+            // Same tip, regardless of how the graph was segmented.
             PushStatus::NothingToPush
+        } else if first_parent_contains_commit(graph, local_segment_id, remote_tip_id) {
+            // Local is a straightforward first-parent extension of remote.
+            // However, if this segment already contains an integrated commit
+            // below a local tip, we preserve the previous behavior and treat it
+            // as a force-push case. This covers the "remote behind after a
+            // no-ff merge into target" scenario, while avoiding false
+            // positives for integrated ancestors that live in lower segments of
+            // the stack.
+            if first_commit_is_local && has_integrated_commit_in_segment {
+                PushStatus::UnpushedCommitsRequiringForce
+            } else {
+                PushStatus::UnpushedCommits
+            }
+        } else {
+            // If the remote tip isn't on our first-parent line, then a normal
+            // push cannot advance it. That covers both "remote is ahead" and
+            // "local/remote diverged", and both require force-push.
+            PushStatus::UnpushedCommitsRequiringForce
         }
     }
+}
+
+/// Return `true` if `sought_commit_id` occurs on the first-parent branch line
+/// of `start_segment_id`.
+///
+/// This is stricter than an all-parents reachability test on purpose:
+///
+/// - a merge can make a commit reachable without making it part of the branch's
+///   own line
+/// - pushability is about whether one branch tip can advance another branch tip
+///   without rewriting that line
+/// - therefore "reachable somewhere in history" is not the right predicate for
+///   `ahead/behind` here
+fn first_parent_contains_commit(
+    graph: &but_graph::Graph,
+    start_segment_id: but_graph::SegmentIndex,
+    sought_commit_id: gix::ObjectId,
+) -> bool {
+    let mut found = false;
+    if graph[start_segment_id]
+        .commits
+        .iter()
+        .any(|commit| commit.id == sought_commit_id)
+    {
+        return true;
+    }
+    graph.visit_segments_downward_along_first_parent_exclude_start(start_segment_id, |segment| {
+        found = segment
+            .commits
+            .iter()
+            .any(|commit| commit.id == sought_commit_id);
+        found
+    });
+    found
 }
 
 fn changeset_identifier(
