@@ -184,7 +184,7 @@ export const OperationTarget: FC<
 		<OperationTooltip
 			controls={controls}
 			enabled={isActiveTarget}
-			sourceItem={item}
+			item={item}
 			operation={operation}
 			render={target}
 			operationSource={source}
@@ -275,7 +275,7 @@ export const CommitTarget: FC<
 			<OperationTooltip
 				controls={controls}
 				enabled={isActiveTarget}
-				sourceItem={item}
+				item={item}
 				operation={targetTooltipOperation}
 				render={target}
 				operationSource={source}
@@ -285,7 +285,7 @@ export const CommitTarget: FC<
 				<OperationTooltip
 					controls={controls}
 					enabled={!!drag.operation}
-					sourceItem={item}
+					item={item}
 					operation={drag.operation}
 					operationSource={drag.operationSource}
 					className={classes(
