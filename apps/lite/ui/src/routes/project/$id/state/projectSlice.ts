@@ -111,6 +111,12 @@ const projectSlice = createSlice({
 		focusPreview: (state, action: PayloadAction<{ projectId: string }>) => {
 			layout.focusPreview(ensureProjectState(state, action.payload.projectId).layout);
 		},
+		focusPreviousPanel: (state, action: PayloadAction<{ projectId: string }>) => {
+			layout.focusPreviousPanel(ensureProjectState(state, action.payload.projectId).layout);
+		},
+		focusNextPanel: (state, action: PayloadAction<{ projectId: string }>) => {
+			layout.focusNextPanel(ensureProjectState(state, action.payload.projectId).layout);
+		},
 		closePreview: (state, action: PayloadAction<{ projectId: string }>) => {
 			layout.closePreview(ensureProjectState(state, action.payload.projectId).layout);
 		},

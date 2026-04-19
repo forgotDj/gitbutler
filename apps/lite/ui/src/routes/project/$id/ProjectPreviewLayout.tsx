@@ -3,6 +3,7 @@ import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panel
 import { classes } from "#ui/classes.ts";
 import {
 	getFocus,
+	getVisiblePanels,
 	isPreviewPanelVisible,
 	Panel as PanelType,
 } from "#ui/routes/project/$id/state/layout.ts";
@@ -20,9 +21,7 @@ export const ProjectPreviewLayout: FC<{
 }> = ({ children, projectId, preview }) => {
 	const dispatch = useAppDispatch();
 	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
-	const panelIds: Array<PanelType> = isPreviewPanelVisible(layoutState)
-		? ["primary", "preview"]
-		: ["primary"];
+	const panelIds = getVisiblePanels(layoutState);
 	const focus = getFocus(layoutState);
 	const focusPrimary = () => dispatch(projectActions.focusPrimary({ projectId }));
 	const focusPreview = () => dispatch(projectActions.focusPreview({ projectId }));

@@ -112,11 +112,21 @@ const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
 	},
 ];
 
-type GlobalPreviewAction = { _tag: "TogglePreview" };
+type PanelNavigationAction =
+	| { _tag: "FocusPreviousPanel" }
+	| { _tag: "FocusNextPanel" }
+	| { _tag: "TogglePreview" };
 
-const togglePreviewAction: GlobalPreviewAction = { _tag: "TogglePreview" };
+const isPanelNavigationAction = (action: { _tag: string }): action is PanelNavigationAction =>
+	action._tag === "FocusPreviousPanel" ||
+	action._tag === "FocusNextPanel" ||
+	action._tag === "TogglePreview";
 
-export const togglePreviewBinding: ShortcutBinding<GlobalPreviewAction> = {
+const focusPreviousPanelAction: PanelNavigationAction = { _tag: "FocusPreviousPanel" };
+const focusNextPanelAction: PanelNavigationAction = { _tag: "FocusNextPanel" };
+const togglePreviewAction: PanelNavigationAction = { _tag: "TogglePreview" };
+
+export const togglePreviewBinding: ShortcutBinding<PanelNavigationAction> = {
 	id: "primary-panel-toggle-preview",
 	description: "Preview",
 	keys: ["p"],
@@ -124,15 +134,31 @@ export const togglePreviewBinding: ShortcutBinding<GlobalPreviewAction> = {
 	repeat: false,
 };
 
+const panelNavigationBindings: Array<ShortcutBinding<PanelNavigationAction>> = [
+	{
+		id: "panel-focus-left",
+		description: "Focus previous panel",
+		keys: ["h"],
+		action: focusPreviousPanelAction,
+		repeat: false,
+	},
+	{
+		id: "panel-focus-right",
+		description: "Focus next panel",
+		keys: ["l"],
+		action: focusNextPanelAction,
+		repeat: false,
+	},
+	togglePreviewBinding,
+];
+
 type PrimaryPanelAction =
 	| ItemSelectionAction
 	| { _tag: "Commit" }
-	| { _tag: "FocusPreview" }
 	| { _tag: "SelectUnassignedChanges" }
-	| GlobalPreviewAction;
+	| PanelNavigationAction;
 
 const commitAction: PrimaryPanelAction = { _tag: "Commit" };
-const focusPreviewAction: PrimaryPanelAction = { _tag: "FocusPreview" };
 const selectUnassignedChangesAction: PrimaryPanelAction = { _tag: "SelectUnassignedChanges" };
 
 const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
@@ -151,14 +177,7 @@ const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 		action: selectUnassignedChangesAction,
 		repeat: false,
 	},
-	{
-		id: "primary-panel-focus-preview",
-		description: "Focus preview",
-		keys: ["l"],
-		action: focusPreviewAction,
-		repeat: false,
-	},
-	togglePreviewBinding,
+	...panelNavigationBindings,
 ];
 
 type ChangesAction = PrimaryPanelAction | { _tag: "Absorb" };
@@ -380,10 +399,9 @@ const getDefaultModeScopeLabel = (scope: DefaultModeScope): string =>
 		}),
 	);
 
-type PreviewAction = { _tag: "ClosePreview" } | { _tag: "FocusPrimary" } | GlobalPreviewAction;
+type PreviewAction = { _tag: "ClosePreview" } | PanelNavigationAction;
 
 const closePreviewAction: PreviewAction = { _tag: "ClosePreview" };
-const focusPrimaryAction: PreviewAction = { _tag: "FocusPrimary" };
 
 export const closePreviewBinding: ShortcutBinding<PreviewAction> = {
 	id: "preview-close",
@@ -394,15 +412,8 @@ export const closePreviewBinding: ShortcutBinding<PreviewAction> = {
 };
 
 const previewBindings: Array<ShortcutBinding<PreviewAction>> = [
-	{
-		id: "preview-focus-primary",
-		description: "Focus primary",
-		keys: ["h"],
-		action: focusPrimaryAction,
-		repeat: false,
-	},
-	togglePreviewBinding,
 	closePreviewBinding,
+	...panelNavigationBindings,
 ];
 
 type OperationModeAction = PrimaryPanelAction | { _tag: "Cancel" } | { _tag: "Run" };
@@ -738,6 +749,15 @@ export const useWorkspaceShortcuts = ({
 			}),
 		);
 
+	const handlePanelNavigationAction = (action: PanelNavigationAction) =>
+		Match.value(action).pipe(
+			Match.tagsExhaustive({
+				FocusNextPanel: () => dispatch(projectActions.focusNextPanel({ projectId })),
+				FocusPreviousPanel: () => dispatch(projectActions.focusPreviousPanel({ projectId })),
+				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
+			}),
+		);
+
 	const handlePrimaryPanelAction = (action: PrimaryPanelAction, selectedItem: Item) =>
 		Match.value(action).pipe(
 			Match.tags({
@@ -748,12 +768,17 @@ export const useWorkspaceShortcuts = ({
 							source: changesSectionItem,
 						}),
 					),
-				FocusPreview: () => dispatch(projectActions.focusPreview({ projectId })),
 				SelectUnassignedChanges: () =>
 					dispatch(projectActions.selectItem({ projectId, item: changesSectionItem })),
-				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
 			}),
-			Match.orElse((action) => handleItemSelectionAction(action, selectedItem)),
+			Match.orElse((action) => {
+				if (isPanelNavigationAction(action)) {
+					handlePanelNavigationAction(action);
+					return;
+				}
+
+				handleItemSelectionAction(action, selectedItem);
+			}),
 		);
 
 	const requestAbsorptionPlanForItem = (selectedItem: Item) => {
@@ -875,11 +900,10 @@ export const useWorkspaceShortcuts = ({
 
 	const handlePreviewScopeAction = (action: PreviewAction) =>
 		Match.value(action).pipe(
-			Match.tagsExhaustive({
+			Match.tags({
 				ClosePreview: () => dispatch(projectActions.closePreview({ projectId })),
-				FocusPrimary: () => dispatch(projectActions.focusPrimary({ projectId })),
-				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
 			}),
+			Match.orElse((action) => handlePanelNavigationAction(action)),
 		);
 
 	const confirmOperationMode = (selectedItem: Item | null) => {
