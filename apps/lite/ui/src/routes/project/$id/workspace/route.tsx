@@ -323,6 +323,7 @@ const DependencyIndicatorButton: FC<{
 			disableHoverablePopup
 		>
 			<Tooltip.Trigger
+				type="button"
 				className={className}
 				onMouseEnter={() => {
 					dispatch(
