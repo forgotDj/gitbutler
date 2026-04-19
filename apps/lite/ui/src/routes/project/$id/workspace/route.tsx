@@ -299,7 +299,7 @@ const ItemRow: FC<
 	);
 };
 
-const DependencyIndicator: FC<{
+const DependencyIndicatorButton: FC<{
 	projectId: string;
 	commitIds: NonEmptyArray<string>;
 	className?: string;
@@ -418,9 +418,9 @@ const Hunk: FC<{
 	const headerRow = (
 		<div className={styles.hunkHeaderRow}>
 			{dependencyCommitIds && (
-				<DependencyIndicator projectId={projectId} commitIds={dependencyCommitIds}>
+				<DependencyIndicatorButton projectId={projectId} commitIds={dependencyCommitIds}>
 					<DependencyIcon />
-				</DependencyIndicator>
+				</DependencyIndicatorButton>
 			)}
 			<div className={styles.hunkHeader}>{formatHunkHeader(hunk)}</div>
 		</div>
@@ -1229,13 +1229,13 @@ const ChangeFileRow: FC<{
 			{workspaceMode._tag === "Default" && (
 				<>
 					{dependencyCommitIds && (
-						<DependencyIndicator
+						<DependencyIndicatorButton
 							projectId={projectId}
 							commitIds={dependencyCommitIds}
 							className={styles.itemRowAction}
 						>
 							<DependencyIcon />
-						</DependencyIndicator>
+						</DependencyIndicatorButton>
 					)}
 					<button
 						type="button"
