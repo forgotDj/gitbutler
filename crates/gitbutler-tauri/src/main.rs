@@ -129,9 +129,9 @@ fn main() -> anyhow::Result<()> {
                 file_name: Some("ui-logs".to_string()),
             }))
             .level(if tauri_debug_logging {
-                log::LevelFilter::Debug
+                tauri_plugin_log::log::LevelFilter::Debug
             } else {
-                log::LevelFilter::Error
+                tauri_plugin_log::log::LevelFilter::Error
             });
 
         let builder = tauri::Builder::default()

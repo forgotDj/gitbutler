@@ -14,7 +14,7 @@ but-core.workspace = true
 
 serde.workspace = true
 tokio = { workspace = true, features = ["sync"] }
-log = "^0.4"
+tracing.workspace = true
 
 [lints]
 workspace = true
