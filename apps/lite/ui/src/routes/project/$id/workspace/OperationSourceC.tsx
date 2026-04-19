@@ -1,10 +1,9 @@
 import { headInfoQueryOptions } from "#ui/api/queries.ts";
 import { classes } from "#ui/classes.ts";
-import { useDraggable } from "#ui/hooks/useDraggable.tsx";
 import { mergeProps, useRender } from "@base-ui/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { FC } from "react";
-import { DragData, DragPreview } from "./DragAndDrop.tsx";
+import { DragData, DragPreview, useDraggable } from "./DragAndDrop.tsx";
 import { OperationSourceLabel } from "./OperationSourceLabel.tsx";
 import { operationSourceEquals, type OperationSource } from "./OperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";

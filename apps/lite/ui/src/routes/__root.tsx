@@ -17,6 +17,7 @@ import {
 } from "#ui/routes/project/$id/workspace/WorkspaceShortcuts.ts";
 import uiStyles from "#ui/ui.module.css";
 import styles from "./__root.module.css";
+import { listProjectsQueryOptions } from "#ui/api/queries.ts";
 
 export const lastOpenedProjectKey = "lastProject";
 
@@ -25,10 +26,7 @@ interface RouteContext {
 }
 
 const ProjectSelect: FC = () => {
-	const { data: projects } = useSuspenseQuery({
-		queryKey: ["projects"],
-		queryFn: () => window.lite.listProjects(),
-	});
+	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
 	const navigate = useNavigate();
 	const projectMatch = useMatch({
 		from: "/project/$id",
@@ -49,6 +47,7 @@ const ProjectSelect: FC = () => {
 				});
 				window.localStorage.setItem(lastOpenedProjectKey, nextProjectId);
 			}}
+			className={uiStyles.button}
 		>
 			<option value="" disabled>
 				Select a project
@@ -107,7 +106,7 @@ const TopBar: FC = () => {
 	);
 };
 
-function RootLayout() {
+const RootLayout: FC = () => {
 	const [shortcutsBarPortalNode, setShortcutsBarPortalNode] = useState<HTMLElement | null>(null);
 
 	return (
@@ -121,7 +120,7 @@ function RootLayout() {
 			</main>
 		</ShortcutsBarPortalContext>
 	);
-}
+};
 
 export const Route = createRootRouteWithContext<RouteContext>()({
 	component: RootLayout,

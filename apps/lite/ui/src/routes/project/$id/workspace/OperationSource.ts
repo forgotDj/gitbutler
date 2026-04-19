@@ -1,8 +1,4 @@
-import {
-	changesSectionFileParent,
-	commitFileParent,
-	type FileParent,
-} from "#ui/domain/FileParent.ts";
+import { changeFileParent, commitFileParent, type FileParent } from "#ui/domain/FileParent.ts";
 import { type HunkHeader } from "@gitbutler/but-sdk";
 import { Match } from "effect";
 import { type Item } from "./Item.ts";
@@ -38,7 +34,7 @@ export const baseCommitOperationSource: OperationSource = {
 };
 
 /** @public */
-export const changesSectionOperationSource: ChangesSectionOperationSource = {
+export const changesSectionOperationSource: OperationSource = {
 	_tag: "ChangesSection",
 };
 
@@ -101,7 +97,7 @@ export const operationSourceFromItem = (item: Item): OperationSource =>
 			BaseCommit: () => baseCommitOperationSource,
 			ChangeFile: ({ path }) =>
 				fileOperationSource({
-					parent: changesSectionFileParent,
+					parent: changeFileParent,
 					path,
 				}),
 			ChangesSection: () => changesSectionOperationSource,

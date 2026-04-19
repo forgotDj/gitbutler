@@ -2,7 +2,11 @@ import { changesInWorktreeQueryOptions, QueryKey } from "#ui/api/queries.ts";
 import { WatcherEvent } from "@gitbutler/but-sdk";
 import { QueryClient } from "@tanstack/react-query";
 
-export function handleWatcher(event: WatcherEvent, projectId: string, client: QueryClient): void {
+export const handleWatcher = (
+	event: WatcherEvent,
+	projectId: string,
+	client: QueryClient,
+): void => {
 	switch (event.payload.type) {
 		case "gitFetch":
 		case "gitHead":
@@ -17,4 +21,4 @@ export function handleWatcher(event: WatcherEvent, projectId: string, client: Qu
 			void client.invalidateQueries({ queryKey: [QueryKey.TreeChangeDiffs, projectId] });
 			break;
 	}
-}
+};

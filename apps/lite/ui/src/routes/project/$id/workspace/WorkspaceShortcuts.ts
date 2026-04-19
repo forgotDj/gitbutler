@@ -1,6 +1,5 @@
 import { getAction, type ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import { useRunOperation } from "#ui/Operation.ts";
-import { isTypingTarget } from "#ui/routes/project/$id/shared.tsx";
 import { getFocus, type ProjectLayoutState } from "#ui/routes/project/$id/state/layout.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { useAppDispatch } from "#ui/state/hooks.ts";
@@ -35,6 +34,15 @@ import {
 	type NavigationIndex,
 } from "./WorkspaceModel.ts";
 import { OperationMode, type WorkspaceMode } from "./WorkspaceMode.ts";
+
+const isTypingTarget = (target: EventTarget | null) => {
+	if (!(target instanceof HTMLElement)) return false;
+	return (
+		target.isContentEditable ||
+		target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement
+	);
+};
 
 type MoveItemSelectionAction = { offset: -1 | 1 };
 
@@ -619,7 +627,14 @@ const getModeScope = ({
 						})
 					: null,
 			RewordCommit: (workspaceMode) =>
-				selectedItem?._tag === "Commit" && workspaceMode.commitId === selectedItem.commitId
+				selectedItem?._tag === "Commit" &&
+				itemEquals(
+					selectedItem,
+					commitItem({
+						stackId: workspaceMode.stackId,
+						commitId: workspaceMode.commitId,
+					}),
+				)
 					? rewordCommitModeScope({
 							bindings: rewordCommitBindings,
 							context: selectedItem,
@@ -701,8 +716,8 @@ export const getScopeLabel = (scope: Scope): string =>
 	);
 
 export const useWorkspaceShortcuts = ({
-	branchRenameFormRef,
-	commitMessageFormRef,
+	inlineRenameBranchFormRef,
+	inlineRewordCommitFormRef,
 	projectId,
 	scope,
 	navigationIndex,
@@ -710,8 +725,8 @@ export const useWorkspaceShortcuts = ({
 	operationMode,
 	previewRef,
 }: {
-	branchRenameFormRef: RefObject<HTMLFormElement | null>;
-	commitMessageFormRef: RefObject<HTMLFormElement | null>;
+	inlineRenameBranchFormRef: RefObject<HTMLFormElement | null>;
+	inlineRewordCommitFormRef: RefObject<HTMLFormElement | null>;
 	projectId: string;
 	scope: Scope | null;
 	navigationIndex: NavigationIndex;
@@ -796,7 +811,7 @@ export const useWorkspaceShortcuts = ({
 		const resolvedOperationSource = resolveOperationSource(operationSource);
 
 		if (resolvedOperationSource?._tag !== "TreeChanges") return;
-		if (resolvedOperationSource.parent._tag !== "ChangesSection") return;
+		if (resolvedOperationSource.parent._tag !== "Change") return;
 
 		requestAbsorptionPlan({
 			type: "treeChanges",
@@ -960,7 +975,7 @@ export const useWorkspaceShortcuts = ({
 		Match.value(action).pipe(
 			Match.tagsExhaustive({
 				Cancel: () => dispatch(projectActions.exitMode({ projectId })),
-				Save: () => commitMessageFormRef.current?.requestSubmit(),
+				Save: () => inlineRewordCommitFormRef.current?.requestSubmit(),
 			}),
 		);
 
@@ -968,7 +983,7 @@ export const useWorkspaceShortcuts = ({
 		Match.value(action).pipe(
 			Match.tagsExhaustive({
 				Cancel: () => dispatch(projectActions.exitMode({ projectId })),
-				Save: () => branchRenameFormRef.current?.requestSubmit(),
+				Save: () => inlineRenameBranchFormRef.current?.requestSubmit(),
 			}),
 		);
 

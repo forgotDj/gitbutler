@@ -19,11 +19,11 @@
 }
 
 .panel {
-	border-bottom: 2px solid transparent;
+	border-top: 2px solid transparent;
 }
 
 .focusedPanel {
-	border-bottom-color: var(--color-black);
+	border-top-color: var(--color-black);
 }
 
 .previewDialogPopup {
@@ -44,12 +44,4 @@
 .previewResizeHandle {
 	width: 1px;
 	background-color: var(--color-separator);
-}
-
-.dragPreview {
-	padding: 8px;
-	border: 1px solid light-dark(rgb(0 0 0 / 0.2), rgb(255 255 255 / 0.16));
-	border-radius: 8px;
-	background-color: var(--color-bg);
-	box-shadow: 0 12px 16px -8px light-dark(rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.4));
 }

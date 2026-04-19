@@ -54,11 +54,10 @@ export const listBranchesQueryOptions = (projectId: string) =>
 		queryFn: () => window.lite.listBranches(projectId, null),
 	});
 
-export const listProjectsQueryOptions = () =>
-	queryOptions({
-		queryKey: [QueryKey.Projects],
-		queryFn: () => window.lite.listProjects(),
-	});
+export const listProjectsQueryOptions = queryOptions({
+	queryKey: [QueryKey.Projects],
+	queryFn: () => window.lite.listProjects(),
+});
 
 export const treeChangeDiffsQueryOptions = (params: TreeChangeDiffParams) => {
 	const { projectId, change } = params;
