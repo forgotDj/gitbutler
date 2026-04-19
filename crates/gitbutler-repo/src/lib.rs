@@ -1,51 +1,12 @@
 pub mod rebase;
 
 mod commands;
-mod traversal {
-    use anyhow::Result;
+mod traversal;
 
-    /// Return commits on `from`'s first-parent chain, stopping before the first
-    /// commit that is reachable from `stop_before`.
-    ///
-    /// The returned commits are ordered from `from` backwards along the first-parent chain, excluding
-    /// the first commit that is reachable from `stop_before` by ancestry.
-    ///
-    /// This matches the semantics of a first-parent walk with `stop_before` hidden, but avoids the
-    /// up-front hidden-side graph painting that makes `with_hidden(stop_before)` expensive in large
-    /// repositories.
-    pub fn first_parent_commit_ids_until(
-        repo: &gix::Repository,
-        from: gix::ObjectId,
-        stop_before: gix::ObjectId,
-    ) -> Result<Vec<gix::ObjectId>> {
-        let cache = repo.commit_graph_if_enabled()?;
-        let mut graph = repo.revision_graph(cache.as_ref());
-        let mut commit_ids = Vec::new();
-        let mut current = Some(from);
-
-        while let Some(commit_id) = current {
-            let reaches_hidden_history =
-                match repo.merge_base_with_graph(commit_id, stop_before, &mut graph) {
-                    Ok(merge_base) => merge_base.detach() == commit_id,
-                    Err(gix::repository::merge_base_with_graph::Error::NotFound { .. }) => false,
-                    Err(err) => return Err(err.into()),
-                };
-            if reaches_hidden_history {
-                break;
-            }
-
-            commit_ids.push(commit_id);
-            current = repo
-                .find_commit(commit_id)?
-                .parent_ids()
-                .next()
-                .map(|parent_id| parent_id.detach());
-        }
-
-        Ok(commit_ids)
-    }
-}
-pub use traversal::first_parent_commit_ids_until;
+pub use traversal::{
+    commit_ids_excluding_reachable_from_with_graph, first_parent_commit_ids_until,
+    first_parent_commit_ids_until_with_graph,
+};
 
 pub use commands::{FileInfo, RepoCommands};
 pub use remote::GitRemote;

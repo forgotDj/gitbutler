@@ -14,7 +14,10 @@ use but_ctx::{
 use but_meta::virtual_branches_legacy_types;
 use but_oxidize::{ObjectIdExt as _, OidExt};
 use gitbutler_cherry_pick::GixRepositoryExt as _;
-use gitbutler_repo::{SignaturePurpose, commit_without_signature_gix, signature_gix};
+use gitbutler_repo::{
+    SignaturePurpose, commit_ids_excluding_reachable_from_with_graph, commit_without_signature_gix,
+    signature_gix,
+};
 #[expect(
     deprecated,
     reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
@@ -447,6 +450,9 @@ pub fn prepare_snapshot(ctx: &Context, _shared_access: &RepoShared) -> Result<gi
     // Create a tree out of the conflicts state if present
     let conflicts_tree_id = write_conflicts_tree(&repo)?;
 
+    let commit_graph_cache = repo.commit_graph_if_enabled()?;
+    let mut graph = repo.revision_graph(commit_graph_cache.as_ref());
+
     // write out the index as a tree to store
     let index_tree_id = write_index_tree(ctx)?;
 
@@ -471,13 +477,12 @@ pub fn prepare_snapshot(ctx: &Context, _shared_access: &RepoShared) -> Result<gi
         // If the references are out of sync, now is a good time to update them
         stack.sync_heads_with_references(&mut vb_state, &repo).ok();
 
-        for commit_info in stack_head
-            .attach(&repo)
-            .ancestors()
-            .with_hidden(Some(default_target_commit_id))
-            .all()?
-        {
-            let commit_id = commit_info?.id;
+        for commit_id in commit_ids_excluding_reachable_from_with_graph(
+            &repo,
+            stack_head,
+            default_target_commit_id,
+            &mut graph,
+        )? {
             let commit = repo.find_commit(commit_id)?;
             let commit_tree_id = commit.tree_id()?.detach();
             let commit_data_blob_id = repo.write_blob(&commit.data)?;
