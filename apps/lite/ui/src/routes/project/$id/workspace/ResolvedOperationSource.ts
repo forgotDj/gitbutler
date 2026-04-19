@@ -261,35 +261,35 @@ export const getCombineOperation = ({
 			Stack: () => null,
 			Branch: () => null,
 			BaseCommit: () => null,
-			Commit: ({ commitId: sourceCommitId }) =>
+			Commit: (source) =>
 				Match.value(target).pipe(
 					Match.tagsExhaustive({
 						Change: () =>
 							commitUncommitOperation({
-								commitId: sourceCommitId,
+								commitId: source.commitId,
 								assignTo: null,
 							}),
-						Commit: ({ commitId: destinationCommitId }) =>
+						Commit: (target) =>
 							commitSquashOperation({
-								sourceCommitId,
-								destinationCommitId,
+								sourceCommitId: source.commitId,
+								destinationCommitId: target.commitId,
 								dryRun: false,
 							}),
 					}),
 				),
-			TreeChanges: ({ parent, changes: sourceChanges }) => {
-				const changes = sourceChanges.map(({ change, hunkHeaders }) =>
+			TreeChanges: (source) => {
+				const changes = source.changes.map(({ change, hunkHeaders }) =>
 					createDiffSpec(change, hunkHeaders),
 				);
 
-				return Match.value(parent).pipe(
+				return Match.value(source.parent).pipe(
 					Match.tagsExhaustive({
 						Change: () =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
 									Change: () =>
 										assignHunkOperation({
-											assignments: sourceChanges.flatMap(({ change, hunkHeaders }) =>
+											assignments: source.changes.flatMap(({ change, hunkHeaders }) =>
 												hunkHeaders.map(
 													(hunkHeader): HunkAssignmentRequest => ({
 														pathBytes: change.pathBytes,
@@ -307,20 +307,20 @@ export const getCombineOperation = ({
 										}),
 								}),
 							),
-						Commit: ({ commitId: sourceCommitId }) =>
+						Commit: (source) =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
 									Change: () =>
 										commitUncommitChangesOperation({
-											commitId: sourceCommitId,
+											commitId: source.commitId,
 											assignTo: null,
 											changes,
 											dryRun: false,
 										}),
-									Commit: ({ commitId: destinationCommitId }) =>
+									Commit: (target) =>
 										commitMoveChangesBetweenOperation({
-											sourceCommitId,
-											destinationCommitId,
+											sourceCommitId: source.commitId,
+											destinationCommitId: target.commitId,
 											changes,
 											dryRun: false,
 										}),
@@ -343,19 +343,19 @@ export const getCommitTargetMoveOperation = ({
 }) =>
 	Match.value(resolvedOperationSource).pipe(
 		Match.tags({
-			Commit: ({ commitId: subjectCommitId }) =>
+			Commit: (source) =>
 				commitMoveOperation({
-					subjectCommitId,
+					subjectCommitId: source.commitId,
 					relativeTo: { type: "commit", subject: commitId },
 					side,
 					dryRun: false,
 				}),
-			TreeChanges: ({ parent, changes: sourceChanges }) => {
-				const changes = sourceChanges.map(({ change, hunkHeaders }) =>
+			TreeChanges: (source) => {
+				const changes = source.changes.map(({ change, hunkHeaders }) =>
 					createDiffSpec(change, hunkHeaders),
 				);
 
-				return Match.value(parent).pipe(
+				return Match.value(source.parent).pipe(
 					Match.tags({
 						Change: () =>
 							commitCreateOperation({
@@ -365,9 +365,9 @@ export const getCommitTargetMoveOperation = ({
 								message: "",
 								dryRun: false,
 							}),
-						Commit: ({ commitId: sourceCommitId }) =>
+						Commit: (source) =>
 							commitCreateFromCommittedChangesOperation({
-								sourceCommitId,
+								sourceCommitId: source.commitId,
 								relativeTo: { type: "commit", subject: commitId },
 								side,
 								changes,
@@ -421,9 +421,9 @@ export const getBranchTargetOperation = ({
 								message: "",
 								dryRun: false,
 							}),
-						Commit: ({ commitId: sourceCommitId }) =>
+						Commit: (source) =>
 							commitCreateFromCommittedChangesOperation({
-								sourceCommitId,
+								sourceCommitId: source.commitId,
 								relativeTo: { type: "referenceBytes", subject: branchRef },
 								side: "below",
 								changes,
