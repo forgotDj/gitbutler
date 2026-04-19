@@ -16,17 +16,24 @@ export const OperationSourceLabel: FC<{
 }> = ({ source, headInfo }) =>
 	Match.value(source).pipe(
 		Match.tagsExhaustive({
-			Stack: () => "Stack",
-			Branch: ({ branchRef }) => {
-				const segment = findSegmentByBranchRef({ headInfo, branchRef });
-				return assert(segment?.refName).displayName;
-			},
-			BaseCommit: () => "Base commit",
-			Commit: ({ commitId }) => {
-				const commit = findCommit({ headInfo, commitId });
-				return commit ? <CommitLabel commit={commit} /> : shortCommitId(commitId);
-			},
-			ChangesSection: () => "Changes",
+			Item: (source) =>
+				Match.value(source.item).pipe(
+					Match.tagsExhaustive({
+						BaseCommit: () => "Base commit",
+						Branch: ({ branchRef }) => {
+							const segment = findSegmentByBranchRef({ headInfo, branchRef });
+							return assert(segment?.refName).displayName;
+						},
+						ChangeFile: ({ path }) => path,
+						ChangesSection: () => "Changes",
+						Commit: ({ commitId }) => {
+							const commit = findCommit({ headInfo, commitId });
+							return commit ? <CommitLabel commit={commit} /> : shortCommitId(commitId);
+						},
+						CommitFile: ({ path }) => path,
+						Stack: () => "Stack",
+					}),
+				),
 			File: ({ path }) => path,
 			Hunk: ({ hunkHeader }) => `Hunk ${formatHunkHeader(hunkHeader)}`,
 		}),

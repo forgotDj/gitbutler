@@ -1,5 +1,5 @@
 import { Match } from "effect";
-import { type OperationSource, operationSourceMatchesItem } from "./OperationSource.ts";
+import { type OperationSource } from "./OperationSource.ts";
 import { branchItem, commitItem, itemEquals, type Item } from "./Item.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "./WorkspaceModel.ts";
 
@@ -72,9 +72,19 @@ export const isValidWorkspaceMode = ({
 		Match.tagsExhaustive({
 			Default: () => true,
 			Rub: (mode) =>
-				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item)),
+				Match.value(mode.source).pipe(
+					Match.tags({
+						Item: (source) => navigationIndexIncludes(navigationIndex, source.item),
+					}),
+					Match.orElse(() => false),
+				),
 			Move: (mode) =>
-				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item)),
+				Match.value(mode.source).pipe(
+					Match.tags({
+						Item: (source) => navigationIndexIncludes(navigationIndex, source.item),
+					}),
+					Match.orElse(() => false),
+				),
 			RewordCommit: (mode) =>
 				navigationIndexIncludes(
 					navigationIndex,

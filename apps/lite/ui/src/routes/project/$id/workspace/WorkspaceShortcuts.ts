@@ -23,7 +23,7 @@ import {
 	stackItem,
 } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
-import { operationSourceFromItem } from "./OperationSource.ts";
+import { itemOperationSource } from "./OperationSource.ts";
 import { useResolveOperationSource } from "./ResolvedOperationSource.ts";
 import {
 	getAdjacent,
@@ -721,14 +721,14 @@ export const useWorkspaceShortcuts = ({
 					dispatch(
 						projectActions.enterMoveMode({
 							projectId,
-							source: operationSourceFromItem(selectedItem),
+							source: itemOperationSource(selectedItem),
 						}),
 					),
 				EnterRubMode: () =>
 					dispatch(
 						projectActions.enterRubMode({
 							projectId,
-							source: operationSourceFromItem(selectedItem),
+							source: itemOperationSource(selectedItem),
 						}),
 					),
 			}),
@@ -744,7 +744,7 @@ export const useWorkspaceShortcuts = ({
 					dispatch(
 						projectActions.enterMoveMode({
 							projectId,
-							source: operationSourceFromItem(changesSectionItem),
+							source: itemOperationSource(changesSectionItem),
 						}),
 					),
 				FocusPreview: () => dispatch(projectActions.focusPreview({ projectId })),
@@ -756,7 +756,7 @@ export const useWorkspaceShortcuts = ({
 		);
 
 	const requestAbsorptionPlanForItem = (selectedItem: Item) => {
-		const operationSource = operationSourceFromItem(selectedItem);
+		const operationSource = itemOperationSource(selectedItem);
 		const resolvedOperationSource = resolveOperationSource(operationSource);
 
 		if (resolvedOperationSource?._tag !== "TreeChanges") return;

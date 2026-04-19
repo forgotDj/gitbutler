@@ -118,7 +118,7 @@ import styles from "./route.module.css";
 import {
 	fileOperationSource,
 	hunkOperationSource,
-	operationSourceFromItem,
+	itemOperationSource,
 } from "./OperationSource.ts";
 import {
 	defaultWorkspaceMode,
@@ -975,7 +975,7 @@ const CommitFileRow: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={operationSourceFromItem(item)}
+			source={itemOperationSource(item)}
 			render={
 				<ItemRow
 					inert={!navigationIndexIncludes(navigationIndex, item)}
@@ -1022,7 +1022,7 @@ const CommitC: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={operationSourceFromItem(item)}
+			source={itemOperationSource(item)}
 			canDrag={() => !isSelected || workspaceMode._tag !== "RewordCommit"}
 			render={
 				<CommitTarget
@@ -1105,7 +1105,7 @@ const ChangeFileRow: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={operationSourceFromItem(item)}
+			source={itemOperationSource(item)}
 			render={
 				<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected} />
 			}
@@ -1265,7 +1265,7 @@ const Changes: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={operationSourceFromItem(item)}
+			source={itemOperationSource(item)}
 			className={styles.section}
 			render={
 				<OperationTarget
@@ -1445,7 +1445,7 @@ const BranchRow: FC<
 				<OperationSourceC
 					operationMode={operationMode}
 					projectId={projectId}
-					source={operationSourceFromItem(item)}
+					source={itemOperationSource(item)}
 					render={
 						<ItemRow
 							inert={!navigationIndexIncludes(navigationIndex, item)}
@@ -1746,7 +1746,7 @@ const ProjectPage: FC = () => {
 		dispatch(
 			projectActions.enterMoveMode({
 				projectId,
-				source: operationSourceFromItem(changesSectionItem),
+				source: itemOperationSource(changesSectionItem),
 			}),
 		);
 
