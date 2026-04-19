@@ -55,7 +55,7 @@ fn main() -> anyhow::Result<()> {
     #[cfg(feature = "builtin-but")]
     {
         if but::is_executed_as_but()? {
-            gitbutler_repo_actions::askpass::disable();
+            but_askpass::disable();
             return runtime.block_on(but::handle_args(std::env::args_os()));
         }
     }
@@ -167,7 +167,7 @@ fn main() -> anyhow::Result<()> {
                     tracing::info!("SHELL env: {var:?}", var = std::env::var_os("SHELL"));
                 }
 
-                gitbutler_repo_actions::askpass::init({
+                but_askpass::init({
                     let handle = app_handle.clone();
                     move |event| {
                         handle

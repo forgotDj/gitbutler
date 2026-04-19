@@ -27,6 +27,7 @@ toml.workspace = true
 bstr.workspace = true
 
 [dev-dependencies]
+but-askpass.workspace = true
 but-testsupport.workspace = true
 gitbutler-repo-actions.workspace = true
 tempfile.workspace = true

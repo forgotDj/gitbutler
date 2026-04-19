@@ -32,6 +32,7 @@ but-secret.workspace = true
 but-db.workspace = true
 but-settings.workspace = true
 but-core.workspace = true
+but-askpass.workspace = true
 but-action.workspace = true
 but-bot.workspace = true
 but-api = { workspace = true, features = ["tauri", "path-bytes", "legacy"] }
@@ -43,7 +44,6 @@ but-hunk-assignment.workspace = true
 but-irc = { workspace = true, optional = true }
 notify-rust.workspace = true
 
-gitbutler-repo-actions.workspace = true
 gitbutler-watcher.workspace = true
 gitbutler-project.workspace = true
 gitbutler-oplog.workspace = true

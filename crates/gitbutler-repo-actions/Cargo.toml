@@ -11,7 +11,7 @@ doctest = false
 
 [dependencies]
 but-error.workspace = true
-but-core.workspace = true
+but-askpass.workspace = true
 but-ctx.workspace = true
 
 gitbutler-stack.workspace = true
@@ -20,14 +20,12 @@ gitbutler-reference.workspace = true
 gitbutler-repo.workspace = true
 
 gix.workspace = true
-serde.workspace = true
 tokio = { workspace = true, features = [
     "rt-multi-thread",
     "rt",
     "macros",
     "sync",
 ] }
-log = "^0.4"
 anyhow.workspace = true
 tracing.workspace = true
 
