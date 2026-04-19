@@ -18,7 +18,7 @@ import {
 } from "#ui/Operation.ts";
 import { createDiffSpec } from "#ui/domain/DiffSpec.ts";
 import { changeFileParent, commitFileParent, type FileParent } from "#ui/domain/FileParent.ts";
-import { useQueryClient } from "@tanstack/react-query";
+import { QueryClient, useQueryClient } from "@tanstack/react-query";
 import {
 	CommitDetails,
 	HunkAssignmentRequest,
@@ -156,7 +156,7 @@ const resolvedOperationSourceFromItem = ({
 		}),
 	);
 
-const resolveOperationSource = ({
+const resolveOperationSourceFromData = ({
 	operationSource,
 	worktreeChanges,
 	getCommitDetails,
@@ -224,17 +224,32 @@ const resolveOperationSource = ({
 		}),
 	);
 
+const resolveOperationSource = ({
+	operationSource,
+	queryClient,
+	projectId,
+}: {
+	operationSource: OperationSource;
+	queryClient: QueryClient;
+	projectId: string;
+}) =>
+	resolveOperationSourceFromData({
+		operationSource,
+		worktreeChanges: queryClient.getQueryData(changesInWorktreeQueryOptions(projectId).queryKey),
+		getCommitDetails: (commitId) =>
+			queryClient.getQueryData(
+				commitDetailsWithLineStatsQueryOptions({ projectId, commitId }).queryKey,
+			),
+	});
+
 export const useResolveOperationSource = (projectId: string) => {
 	const queryClient = useQueryClient();
 
 	return (operationSource: OperationSource) =>
 		resolveOperationSource({
 			operationSource,
-			worktreeChanges: queryClient.getQueryData(changesInWorktreeQueryOptions(projectId).queryKey),
-			getCommitDetails: (commitId) =>
-				queryClient.getQueryData(
-					commitDetailsWithLineStatsQueryOptions({ projectId, commitId }).queryKey,
-				),
+			queryClient,
+			projectId,
 		});
 };
 
