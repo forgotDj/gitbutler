@@ -377,7 +377,7 @@ const getDependencyCommitIds = ({
 }: {
 	hunk?: DiffHunk;
 	hunkDependencyDiffs: Array<HunkDependencyDiff>;
-}): Array<string> => {
+}): NonEmptyArray<string> | undefined => {
 	const commitIds = new Set<string>();
 
 	for (const [, dependencyHunk, locks] of hunkDependencyDiffs) {
@@ -385,7 +385,8 @@ const getDependencyCommitIds = ({
 		for (const dependency of locks) commitIds.add(dependency.commitId);
 	}
 
-	return globalThis.Array.from(commitIds);
+	const dependencyCommitIds = globalThis.Array.from(commitIds);
+	return isNonEmptyArray(dependencyCommitIds) ? dependencyCommitIds : undefined;
 };
 
 const Hunk: FC<{
@@ -396,7 +397,7 @@ const Hunk: FC<{
 	change: TreeChange;
 	hunk: DiffHunk;
 	editable: boolean;
-	headerStart?: ReactNode;
+	hunkDependencyDiffs?: Array<HunkDependencyDiff>;
 	isSelected?: boolean;
 }> = ({
 	patch,
@@ -406,13 +407,21 @@ const Hunk: FC<{
 	change,
 	hunk,
 	editable,
-	headerStart,
 	isSelected,
+	hunkDependencyDiffs,
 }) => {
 	const dispatch = useAppDispatch();
+	const dependencyCommitIds =
+		fileParent?._tag === "Change" && hunkDependencyDiffs
+			? getDependencyCommitIds({ hunk, hunkDependencyDiffs })
+			: undefined;
 	const headerRow = (
 		<div className={styles.hunkHeaderRow}>
-			{headerStart}
+			{dependencyCommitIds && (
+				<DependencyIndicator projectId={projectId} commitIds={dependencyCommitIds}>
+					<DependencyIcon />
+				</DependencyIndicator>
+			)}
 			<div className={styles.hunkHeader}>{formatHunkHeader(hunk)}</div>
 		</div>
 	);
@@ -485,33 +494,21 @@ const FileDiff: FC<{
 
 			return (
 				<ul>
-					{hunks.map((hunk) => {
-						const dependencyCommitIds = hunkDependencyDiffs
-							? getDependencyCommitIds({ hunk, hunkDependencyDiffs })
-							: [];
-
-						return (
-							<li key={hunkKey(hunk)}>
-								<Hunk
-									patch={patch}
-									operationMode={operationMode}
-									projectId={projectId}
-									fileParent={fileParent}
-									change={change}
-									hunk={hunk}
-									editable={editable}
-									isSelected={selectedHunk === fileHunkKey(change.path, hunk)}
-									headerStart={
-										fileParent?._tag === "Change" && isNonEmptyArray(dependencyCommitIds) ? (
-											<DependencyIndicator projectId={projectId} commitIds={dependencyCommitIds}>
-												<DependencyIcon />
-											</DependencyIndicator>
-										) : undefined
-									}
-								/>
-							</li>
-						);
-					})}
+					{hunks.map((hunk) => (
+						<li key={hunkKey(hunk)}>
+							<Hunk
+								patch={patch}
+								operationMode={operationMode}
+								projectId={projectId}
+								fileParent={fileParent}
+								change={change}
+								hunk={hunk}
+								editable={editable}
+								isSelected={selectedHunk === fileHunkKey(change.path, hunk)}
+								hunkDependencyDiffs={hunkDependencyDiffs}
+							/>
+						</li>
+					))}
 				</ul>
 			);
 		}),
@@ -1176,7 +1173,7 @@ const CommitC: FC<{
 
 const ChangeFileRow: FC<{
 	change: TreeChange;
-	dependencyCommitIds: Array<string>;
+	dependencyCommitIds: NonEmptyArray<string> | undefined;
 	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	operationMode: OperationMode | null;
@@ -1231,7 +1228,7 @@ const ChangeFileRow: FC<{
 			/>
 			{workspaceMode._tag === "Default" && (
 				<>
-					{isNonEmptyArray(dependencyCommitIds) && (
+					{dependencyCommitIds && (
 						<DependencyIndicator
 							projectId={projectId}
 							commitIds={dependencyCommitIds}
@@ -1401,7 +1398,7 @@ const Changes: FC<{
 						const hunkDependencyDiffs = hunkDependencyDiffsByPath.get(change.path);
 						const dependencyCommitIds = hunkDependencyDiffs
 							? getDependencyCommitIds({ hunkDependencyDiffs })
-							: [];
+							: undefined;
 
 						return (
 							<li key={change.path}>
