@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use anyhow::Result;
 use gix::{
+    prelude::ObjectIdExt,
     revision::plumbing::{graph, merge_base::Flags},
     revwalk::Graph,
 };
@@ -11,21 +12,23 @@ use gix::{
 ///
 /// The returned commits are ordered from `from` backwards along the first-parent chain, excluding
 /// the first commit that is reachable from `stop_before` by ancestry.
-///
-/// This matches the semantics of a first-parent walk with `stop_before` hidden, but avoids the
-/// up-front hidden-side graph painting that makes `with_hidden(stop_before)` expensive in large
-/// repositories.
 pub fn first_parent_commit_ids_until(
     repo: &gix::Repository,
     from: gix::ObjectId,
     stop_before: gix::ObjectId,
 ) -> Result<Vec<gix::ObjectId>> {
-    let cache = repo.commit_graph_if_enabled()?;
-    let mut graph = repo.revision_graph(cache.as_ref());
-    first_parent_commit_ids_until_with_graph(repo, from, stop_before, &mut graph)
+    from.attach(repo)
+        .ancestors()
+        .first_parent_only()
+        .with_hidden(Some(stop_before))
+        .all()?
+        .map(|info| Ok(info?.id))
+        .collect()
 }
 
 /// Like [`first_parent_commit_ids_until()`], but reuses `graph` across repeated ancestry queries.
+///
+/// The implementation is `merge_base` based.
 pub fn first_parent_commit_ids_until_with_graph(
     repo: &gix::Repository,
     from: gix::ObjectId,
@@ -59,8 +62,7 @@ pub fn first_parent_commit_ids_until_with_graph(
 
 /// Return commits reachable from `from` that are not reachable from `stop_before`.
 ///
-/// This matches the semantics of walking `from` with `stop_before` hidden, but avoids
-/// the up-front hidden-side graph painting done by `with_hidden(stop_before)`.
+/// This matches the semantics of walking `from` with `stop_before` hidden.
 ///
 /// Reuse `graph` across repeated ancestry queries for better performance.
 pub fn commit_ids_excluding_reachable_from_with_graph(
