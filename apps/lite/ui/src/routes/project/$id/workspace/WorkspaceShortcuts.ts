@@ -909,6 +909,8 @@ export const useWorkspaceShortcuts = ({
 	const confirmOperationMode = (selectedItem: Item | null) => {
 		dispatch(projectActions.exitMode({ projectId }));
 
+		if (!selectedItem) return;
+
 		const resolvedOperationSource = operationMode
 			? resolveOperationSource({
 					operationSource: itemOperationSource(operationMode.source),
@@ -918,7 +920,7 @@ export const useWorkspaceShortcuts = ({
 			: null;
 
 		const operation =
-			operationMode && selectedItem && resolvedOperationSource
+			operationMode && resolvedOperationSource
 				? operationModeToOperation({
 						operationMode,
 						resolvedOperationSource,

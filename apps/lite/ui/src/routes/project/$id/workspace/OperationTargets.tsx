@@ -69,6 +69,7 @@ const useOperationModeTarget = ({
 	const queryClient = useQueryClient();
 
 	const isActiveTarget = !!operationMode && isSelected;
+
 	const resolvedOperationSource = operationMode
 		? resolveOperationSource({
 				operationSource: itemOperationSource(operationMode.source),
@@ -76,6 +77,7 @@ const useOperationModeTarget = ({
 				projectId,
 			})
 		: null;
+
 	const operation =
 		isActiveTarget && resolvedOperationSource
 			? operationModeToOperation({
