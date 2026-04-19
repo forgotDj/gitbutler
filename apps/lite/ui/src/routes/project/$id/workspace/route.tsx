@@ -54,7 +54,7 @@ import {
 	showNativeMenuFromTrigger,
 } from "#ui/native-menu.ts";
 import uiStyles from "#ui/ui.module.css";
-import { mergeProps, Tooltip, useRender } from "@base-ui/react";
+import { Tooltip } from "@base-ui/react";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import {
 	AbsorptionTarget,
@@ -299,12 +299,12 @@ const ItemRow: FC<
 	);
 };
 
-const DependencyIndicator: FC<
-	{
-		projectId: string;
-		commitIds: NonEmptyArray<string>;
-	} & useRender.ComponentProps<"button">
-> = ({ projectId, commitIds, render, ...props }) => {
+const DependencyIndicator: FC<{
+	projectId: string;
+	commitIds: NonEmptyArray<string>;
+	className?: string;
+	children: ReactNode;
+}> = ({ projectId, commitIds, className, children }) => {
 	const dispatch = useAppDispatch();
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	// TODO: expensive
@@ -316,26 +316,29 @@ const DependencyIndicator: FC<
 	);
 	const tooltip =
 		branchNames.length > 0 ? `Depends on ${branchNames.join(", ")}` : "Unknown dependencies";
-	const trigger = useRender({
-		render,
-		defaultTagName: "button",
-		props: mergeProps<"button">(props, {
-			onMouseEnter: () => {
-				dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds }));
-			},
-			onMouseLeave: () => {
-				dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds: null }));
-			},
-			"aria-label": tooltip,
-		}),
-	});
 
 	return (
 		<Tooltip.Root
 			// [ref:tooltip-disable-hoverable-popup]
 			disableHoverablePopup
 		>
-			<Tooltip.Trigger render={trigger} />
+			<Tooltip.Trigger
+				className={className}
+				onMouseEnter={() => {
+					dispatch(
+						projectActions.setHighlightedCommitIds({
+							projectId,
+							commitIds,
+						}),
+					);
+				}}
+				onMouseLeave={() => {
+					dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds: null }));
+				}}
+				aria-label={tooltip}
+			>
+				{children}
+			</Tooltip.Trigger>
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
