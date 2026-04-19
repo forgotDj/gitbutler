@@ -74,6 +74,7 @@ commands.allow = [
   "fetch_from_remotes",
   "find_files",
   "forge_branch_chat",
+  "forge_provider",
   "forget_github_account",
   "forget_gitlab_account",
   "get_anonymous_graph_path",
