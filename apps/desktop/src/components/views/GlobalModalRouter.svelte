@@ -107,10 +107,6 @@
 		}
 	});
 
-	function closeModal() {
-		modal?.close();
-	}
-
 	function handleModalClose() {
 		// If the login confirmation modal is closed without explicit user action (e.g., via ESC),
 		// we should reject the incoming user to maintain state consistency.
@@ -132,17 +128,17 @@
 		onSubmit={(close) => close()}
 	>
 		{#if modalProps.state.type === "commit-failed"}
-			<CommitFailedModalContent data={modalProps.state} oncloseclick={() => modal?.close()} />
+			<CommitFailedModalContent data={modalProps.state} oncloseclick={handleModalClose} />
 		{:else if modalProps.state.type === "author-missing"}
-			<AuthorMissingModalContent data={modalProps.state} close={closeModal} />
+			<AuthorMissingModalContent data={modalProps.state} close={handleModalClose} />
 		{:else if modalProps.state.type === "general-settings"}
 			<GeneralSettingsModalContent data={modalProps.state} />
 		{:else if modalProps.state.type === "project-settings"}
 			<ProjectSettingsModalContent data={modalProps.state} />
 		{:else if modalProps.state.type === "login-confirmation"}
-			<LoginConfirmationModalContent data={modalProps.state} close={closeModal} />
+			<LoginConfirmationModalContent data={modalProps.state} close={handleModalClose} />
 		{:else if modalProps.state.type === "auto-commit"}
-			<AutoCommitModalContent data={modalProps.state} close={closeModal} />
+			<AutoCommitModalContent data={modalProps.state} close={handleModalClose} />
 		{/if}
 	</Modal>
 {/if}
