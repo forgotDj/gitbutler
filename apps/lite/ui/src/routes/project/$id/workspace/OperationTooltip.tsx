@@ -51,10 +51,11 @@ export const OperationTooltip: FC<
 	const isSource = !!source && operationSourceMatchesItem(source, item);
 
 	const tooltip = enabled ? (
-		<>
-			{isSource ? <>Select a target</> : operation ? operationLabel(operation) : null}
-			{isOperationMode && <OperationModeControls projectId={projectId} operation={operation} />}
-		</>
+		isSource ? (
+			<>Select a target</>
+		) : operation ? (
+			<>{operationLabel(operation)}</>
+		) : null
 	) : null;
 
 	const trigger = useRender({ render, props });
@@ -74,6 +75,9 @@ export const OperationTooltip: FC<
 						className={classes(uiStyles.popup, uiStyles.tooltip, styles.operationTooltipPopup)}
 					>
 						{tooltip}
+						{isOperationMode && (
+							<OperationModeControls projectId={projectId} operation={operation} />
+						)}
 					</Tooltip.Popup>
 				</Tooltip.Positioner>
 			</Tooltip.Portal>
