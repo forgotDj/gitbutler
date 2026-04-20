@@ -33,10 +33,7 @@ import { useMonitorDraggedOperationSource } from "#ui/routes/project/$id/workspa
 import { isOperationModeSourceOrTarget } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { resolveOperationSource } from "#ui/routes/project/$id/workspace/ResolvedOperationSource.ts";
-import {
-	CommitTarget,
-	OperationTarget,
-} from "#ui/routes/project/$id/workspace/OperationTargets.tsx";
+import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTargets.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import {
 	formatHunkHeader,
@@ -1031,7 +1028,7 @@ const CommitC: FC<{
 			source={itemOperationSource(item)}
 			canDrag={() => !isSelected || workspaceMode._tag !== "RewordCommit"}
 			render={
-				<CommitTarget
+				<OperationTarget
 					item={item}
 					projectId={projectId}
 					operationMode={operationMode}

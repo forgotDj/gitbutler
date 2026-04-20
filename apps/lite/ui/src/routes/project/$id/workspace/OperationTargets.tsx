@@ -118,47 +118,6 @@ const getTargetData = (
 	return null;
 };
 
-export const OperationTarget: FC<
-	{
-		projectId: string;
-		item: Item;
-		operationMode: OperationMode | null;
-		isSelected: boolean;
-	} & useRender.ComponentProps<"div">
-> = ({ projectId, item, operationMode, isSelected, render, ...props }) => {
-	const [dropData, dropRef] = useDropTarget({
-		projectId,
-		getOperation: dropTargetToOperation(item),
-	});
-	const operationModeTarget = useOperationModeTarget({
-		projectId,
-		item,
-		operationMode,
-		isSelected,
-	});
-
-	const targetData = getTargetData(dropData, operationModeTarget);
-
-	const target = useRender({
-		render,
-		ref: dropRef,
-		props: mergeProps<"div">(props, {
-			className: classes(targetData && styles.activeTarget),
-		}),
-	});
-
-	return (
-		<OperationTooltip
-			projectId={projectId}
-			isOperationMode={!!operationMode}
-			item={item}
-			operation={targetData?.operation ?? null}
-			source={targetData?.source}
-			render={target}
-		/>
-	);
-};
-
 const dropTargetToOperation =
 	(item: Item): GetOperation =>
 	({ input, element, resolvedOperationSource }) => {
@@ -202,7 +161,7 @@ const dropTargetToOperation =
 		);
 	};
 
-export const CommitTarget: FC<
+export const OperationTarget: FC<
 	{
 		item: Item;
 		projectId: string;
@@ -236,7 +195,7 @@ export const CommitTarget: FC<
 	});
 
 	return (
-		<div className={styles.commit}>
+		<div className={styles.target}>
 			<OperationTooltip
 				projectId={projectId}
 				isOperationMode={!!operationMode}
@@ -254,12 +213,12 @@ export const CommitTarget: FC<
 					operation={dropData.operation}
 					source={dropData.source}
 					className={classes(
-						styles.commitInsertionTarget,
+						styles.insertionTarget,
 						pipe(
 							dropInsertionSide,
 							Match.value,
-							Match.when("above", () => styles.commitInsertionTargetAbove),
-							Match.when("below", () => styles.commitInsertionTargetBelow),
+							Match.when("above", () => styles.insertionTargetAbove),
+							Match.when("below", () => styles.insertionTargetBelow),
 							Match.exhaustive,
 						),
 					)}
