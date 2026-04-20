@@ -1706,16 +1706,20 @@ const ProjectPage: FC = () => {
 
 	const operationMode = getOperationMode(workspaceMode);
 
+	const resolvedOperationSource = operationMode
+		? resolveOperationSource({
+				operationSource: itemOperationSource(operationMode.source),
+				queryClient,
+				projectId,
+			})
+		: null;
+
 	const navigationIndex = operationMode
 		? filterNavigationIndex(navigationIndexUnfiltered, (item) =>
 				isOperationModeSourceOrTarget({
 					item,
 					operationMode,
-					resolvedOperationSource: resolveOperationSource({
-						operationSource: itemOperationSource(operationMode.source),
-						queryClient,
-						projectId,
-					}),
+					resolvedOperationSource,
 				}),
 			)
 		: navigationIndexUnfiltered;
