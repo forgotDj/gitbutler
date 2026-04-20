@@ -30,11 +30,18 @@ export function isSameGitLabAccountIdentifier(
 
 export type GitLabAccountIdentifierType = GitlabAccountIdentifier["type"];
 
+type ExhaustiveGitLabMap = Record<GitLabAccountIdentifierType, true>;
+
+const exhaustiveGitLabMap: ExhaustiveGitLabMap = {
+	patUsername: true,
+	selfHosted: true,
+};
+
 function isGitLabAccountIdentifierType(text: unknown): text is GitLabAccountIdentifierType {
 	if (typeof text !== "string") {
 		return false;
 	}
-	return text === "patUsername" || text === "enterprise";
+	return exhaustiveGitLabMap[text as GitLabAccountIdentifierType] ?? false;
 }
 
 // ASCII Unit Separator, used to separate data units within a record or field.
