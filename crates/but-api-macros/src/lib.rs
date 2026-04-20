@@ -48,6 +48,9 @@ use syn::{FnArg, ItemFn, Pat, parse_macro_input};
 ///           which will be translated to `project_id`:
 ///           - `but_ctx::ProjectHandleOrLegacyProjectId`
 ///         - `gix::ObjectId` will be translated into `json::HexHash`.
+///         - `Option<gix::ObjectId>` will be translated into `Option<json::HexHash>`.
+///         - `Vec<gix::ObjectId>` will be translated into `Vec<json::HexHash>`.
+///         - `&gix::refs::FullNameRef` will be translated into owned `gix::refs::FullName`.
 ///         - `&mut RepoExclusive` and `&RepoShared` stay internal and are derived from the context
 ///           parameter by acquiring the matching lock in the generated wrapper.
 /// * `func_cmd` for calls from the `but-server`, taking `(params: Params) ` and returning `Result<serde_json::Value, json::Error>`.
@@ -57,7 +60,9 @@ use syn::{FnArg, ItemFn, Pat, parse_macro_input};
 ///     - Gated behind `#[cfg(feature = "napi")]`.
 ///     - **Parameter Transformation**
 ///         - `Context`/`&Context`/`&mut Context`/`ThreadSafeContext` → `String` named `project_id`
-///         - `gix::ObjectId` / `HexHash` → `String` (hex-encoded)
+///         - Owned `gix::ObjectId` and `crate::json::HexHash` → `String` (hex-encoded)
+///         - Owned `Vec<gix::ObjectId>` → `Vec<String>` (hex-encoded)
+///         - `&gix::refs::FullNameRef` → `String`
 ///         - `BString` → `String`
 ///         - `&mut RepoExclusive` and `&RepoShared` stay internal and are derived from the context
 ///           parameter by acquiring the matching lock in the generated wrapper
@@ -129,6 +134,7 @@ pub fn but_api(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // Build napi-specific parameter list and conversions.
     // For napi, Context → String (project_id), ObjectId/HexHash → String,
+    // Vec<ObjectId> → Vec<String>, FullNameRef → String,
     // BString → String, other serde types → serde_json::Value.
     let napi_info = if opts.napi {
         let json_ty_by_name = match build_json_type_mapping(input.iter()) {
@@ -1175,8 +1181,10 @@ struct NapiParamsInfo {
 ///
 /// For napi, we need to map Rust types to types that napi-rs can handle:
 /// - `Context`/`&Context`/`&mut Context`/`ThreadSafeContext` → `String` (project_id)
-/// - `gix::ObjectId` → `String` (hex-encoded)
+/// - Owned `gix::ObjectId` → `String` (hex-encoded)
+/// - Owned `Vec<gix::ObjectId>` → `Vec<String>` (hex-encoded)
 /// - `json::HexHash` → `String` (hex-encoded)
+/// - `&gix::refs::FullNameRef` → `String`
 /// - `BString` → `String`
 /// - Other types that implement Serialize/Deserialize → `serde_json::Value`
 fn build_napi_params<'a>(
