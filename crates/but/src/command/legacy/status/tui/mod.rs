@@ -54,9 +54,9 @@ use crate::{
                 },
                 message_on_drop::MessageOnDrop,
                 mode::{
-                    CommandMode, CommandModeKind, CommitMode, CommitSource, InlineRewordMode, Mode,
-                    MoveMode, MoveSource, RubMode, RubSource, StackCommitSource,
-                    UnassignedCommitSource,
+                    CommandMode, CommandModeKind, CommitMessageComposer, CommitMode, CommitSource,
+                    InlineRewordMode, Mode, MoveMode, MoveSource, RubMode, RubSource,
+                    StackCommitSource, UnassignedCommitSource,
                 },
                 operations::stack_has_assigned_changes,
                 toast::{ToastKind, Toasts},
@@ -675,8 +675,8 @@ impl App {
                 CommitMessage::CreateEmpty => self.handle_commit_create_empty(ctx, messages)?,
                 CommitMessage::Start => self.handle_commit_start(ctx)?,
                 CommitMessage::Confirm => self.handle_commit_confirm(ctx, messages)?,
-                CommitMessage::ToggleEmptyMessage => {
-                    self.handle_commit_toggle_empty_message();
+                CommitMessage::ToggleMessageComposer(composer) => {
+                    self.handle_commit_toggle_message_composer(composer);
                 }
             },
             Message::Reword(reword_message) => match reword_message {
@@ -1387,7 +1387,7 @@ impl App {
                 CommitMode {
                     source: Arc::new(source),
                     scope_to_stack: None,
-                    empty_message: false,
+                    message_composer: CommitMessageComposer::default(),
                 }
             }
             StatusOutputLineData::UnassignedFile { cli_id }
@@ -1400,7 +1400,7 @@ impl App {
                 CommitMode {
                     source: Arc::new(source),
                     scope_to_stack: cli_id.stack_id(),
-                    empty_message: false,
+                    message_composer: CommitMessageComposer::default(),
                 }
             }
             StatusOutputLineData::Commit { stack_id, .. } => {
@@ -1421,7 +1421,7 @@ impl App {
                 };
                 CommitMode {
                     scope_to_stack,
-                    empty_message: false,
+                    message_composer: CommitMessageComposer::default(),
                     source: Arc::new(source),
                 }
             }
@@ -1447,7 +1447,7 @@ impl App {
                 CommitMode {
                     source: Arc::new(source),
                     scope_to_stack,
-                    empty_message: false,
+                    message_composer: CommitMessageComposer::default(),
                 }
             }
             StatusOutputLineData::UpdateNotice
@@ -1475,7 +1475,7 @@ impl App {
         let Mode::Commit(CommitMode {
             source,
             scope_to_stack,
-            empty_message,
+            message_composer,
         }) = &self.mode
         else {
             return Ok(());
@@ -1581,10 +1581,19 @@ impl App {
             // TODO(david): don't use a separate reword step, instead get message before creating
             // commit. However that requires computing the diff which I haven't yet figured out how
             // to do
-            .chain(
-                (!empty_message && commit_create_result.new_commit.is_some())
-                    .then_some(Message::Reword(RewordMessage::WithEditor)),
-            )
+            .chain(if commit_create_result.new_commit.is_some() {
+                match message_composer {
+                    CommitMessageComposer::Editor => {
+                        Some(Message::Reword(RewordMessage::WithEditor))
+                    }
+                    CommitMessageComposer::Inline => {
+                        Some(Message::Reword(RewordMessage::InlineStart))
+                    }
+                    CommitMessageComposer::Empty => None,
+                }
+            } else {
+                None
+            })
             .chain(rejected_specs_error_msg.map(|text| Message::ShowToast {
                 kind: ToastKind::Error,
                 text,
@@ -1594,9 +1603,29 @@ impl App {
         Ok(())
     }
 
-    fn handle_commit_toggle_empty_message(&mut self) {
+    fn handle_commit_toggle_message_composer(&mut self, composer: CommitMessageComposer) {
         if let Mode::Commit(mode) = &mut self.mode {
-            mode.empty_message = !mode.empty_message;
+            match composer {
+                CommitMessageComposer::Editor => {
+                    // you can't toggle the editor composer, that is always the default
+                }
+                CommitMessageComposer::Empty => {
+                    mode.message_composer = match mode.message_composer {
+                        CommitMessageComposer::Editor | CommitMessageComposer::Inline => {
+                            CommitMessageComposer::Empty
+                        }
+                        CommitMessageComposer::Empty => CommitMessageComposer::Editor,
+                    };
+                }
+                CommitMessageComposer::Inline => {
+                    mode.message_composer = match mode.message_composer {
+                        CommitMessageComposer::Editor | CommitMessageComposer::Empty => {
+                            CommitMessageComposer::Inline
+                        }
+                        CommitMessageComposer::Inline => CommitMessageComposer::Editor,
+                    };
+                }
+            }
         }
     }
 
@@ -2589,10 +2618,15 @@ impl App {
                     Span::raw(NOOP).mode_colors(&self.mode),
                 ]
                 .into_iter()
-                .chain(
-                    mode.empty_message
-                        .then(|| Span::raw(" (empty message)").mode_colors(&self.mode)),
-                )
+                .chain(match mode.message_composer {
+                    CommitMessageComposer::Editor => None,
+                    CommitMessageComposer::Empty => {
+                        Some(Span::raw(" (empty message)").mode_colors(&self.mode))
+                    }
+                    CommitMessageComposer::Inline => {
+                        Some(Span::raw(" (reword inline)").mode_colors(&self.mode))
+                    }
+                })
                 .chain([Span::raw(" >>").mode_colors(&self.mode), Span::raw(" ")]),
             );
         } else if let Some(display) = commit_operation_display(data, mode) {
@@ -2602,10 +2636,15 @@ impl App {
                     Span::raw(display).mode_colors(&self.mode),
                 ]
                 .into_iter()
-                .chain(
-                    mode.empty_message
-                        .then(|| Span::raw(" (empty message)").mode_colors(&self.mode)),
-                )
+                .chain(match mode.message_composer {
+                    CommitMessageComposer::Editor => None,
+                    CommitMessageComposer::Empty => {
+                        Some(Span::raw(" (empty message)").mode_colors(&self.mode))
+                    }
+                    CommitMessageComposer::Inline => {
+                        Some(Span::raw(" (reword inline)").mode_colors(&self.mode))
+                    }
+                })
                 .chain([Span::raw(" >>").mode_colors(&self.mode), Span::raw(" ")]),
             );
         }
@@ -3068,7 +3107,7 @@ enum CommandMessage {
 enum CommitMessage {
     CreateEmpty,
     Start,
-    ToggleEmptyMessage,
+    ToggleMessageComposer(CommitMessageComposer),
     Confirm,
 }
 

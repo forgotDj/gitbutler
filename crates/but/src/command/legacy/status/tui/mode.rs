@@ -131,10 +131,8 @@ pub(super) struct CommitMode {
     ///
     /// Used when committing changes staged to a specific stack
     pub(super) scope_to_stack: Option<StackId>,
-    /// Create the commit with an empty message.
-    ///
-    /// By default an editor is opened for the user to write a commit message.
-    pub(super) empty_message: bool,
+    /// How to compose the commit message.
+    pub(super) message_composer: CommitMessageComposer,
 }
 
 /// A subset of [`CliId`] that supports being committed
@@ -143,6 +141,17 @@ pub(super) enum CommitSource {
     Unassigned(UnassignedCommitSource),
     Uncommitted(Box<UncommittedCliId>),
     Stack(StackCommitSource),
+}
+
+#[derive(Debug, Copy, Clone, Default)]
+pub(super) enum CommitMessageComposer {
+    /// Open an editor to compose the commit message.
+    #[default]
+    Editor,
+    /// Use an inline editor to compose the commit message.
+    Inline,
+    /// Create the commit with an empty message.
+    Empty,
 }
 
 #[derive(Debug)]

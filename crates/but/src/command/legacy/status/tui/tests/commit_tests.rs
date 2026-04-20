@@ -361,3 +361,43 @@ fn commit_mode_from_staged_changes_stays_within_current_stack() {
             "snapshots/commit_mode_from_staged_changes_stays_within_current_stack_final.svg"
         ]);
 }
+
+#[test]
+fn commit_with_inline_reword() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.env().file("test.txt", "content");
+
+    tui.input_then_render(None)
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes]"]);
+
+    tui.input_then_render('c')
+        .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unassigned changes]"]);
+
+    tui.input_then_render(KeyCode::Down)
+        .assert_current_line_eq(str!["┊│ << insert commit >>"]);
+
+    tui.input_then_render('e')
+        .assert_current_line_eq(str!["┊│ << insert commit (empty message) >>"]);
+
+    tui.input_then_render('i')
+        .assert_current_line_eq(str!["┊│ << insert commit (reword inline) >>"]);
+
+    tui.input_then_render('i')
+        .assert_current_line_eq(str!["┊│ << insert commit >>"]);
+
+    tui.input_then_render('i')
+        .assert_current_line_eq(str!["┊│ << insert commit (reword inline) >>"]);
+
+    tui.input_then_render(KeyCode::Enter)
+        .assert_current_line_eq(str!["┊●   [..]"]);
+
+    tui.input_then_render("commit message here")
+        .assert_current_line_eq(str!["┊●   [..] commit message here"]);
+
+    tui.input_then_render(KeyCode::Enter)
+        .assert_current_line_eq(str!["┊●   [..] commit message here"]);
+}

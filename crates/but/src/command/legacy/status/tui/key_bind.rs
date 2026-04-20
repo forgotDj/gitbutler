@@ -4,8 +4,8 @@ use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use strum::IntoEnumIterator;
 
 use crate::command::legacy::status::tui::{
-    BranchPickerMessage, CommandMessage, ConfirmMessage, Message, Mode, RewordMessage, RubMessage,
-    mode::ModeDiscriminant,
+    BranchPickerMessage, CommandMessage, CommitMessageComposer, ConfirmMessage, Message, Mode,
+    RewordMessage, RubMessage, mode::ModeDiscriminant,
 };
 
 use super::{CommandModeKind, CommitMessage, DetailsMessage, FilesMessage, MoveMessage};
@@ -595,7 +595,19 @@ fn register_commit_mode_key_binds(key_binds: &mut KeyBinds) {
         short_description: "empty message",
         key_matcher: press().code(KeyCode::Char('e')),
         modes: Vec::from([ModeDiscriminant::Commit]),
-        message: Message::Commit(CommitMessage::ToggleEmptyMessage),
+        message: Message::Commit(CommitMessage::ToggleMessageComposer(
+            CommitMessageComposer::Empty,
+        )),
+        hide_from_hotbar: false,
+    });
+
+    key_binds.register(KeyBindDef {
+        short_description: "reword inline",
+        key_matcher: press().code(KeyCode::Char('i')),
+        modes: Vec::from([ModeDiscriminant::Commit]),
+        message: Message::Commit(CommitMessage::ToggleMessageComposer(
+            CommitMessageComposer::Inline,
+        )),
         hide_from_hotbar: false,
     });
 

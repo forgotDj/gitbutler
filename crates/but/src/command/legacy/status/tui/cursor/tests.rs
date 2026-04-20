@@ -10,8 +10,8 @@ use crate::{
         CommitClassification, FilesStatusFlag,
         output::{StatusOutputContent, StatusOutputLine, StatusOutputLineData},
         tui::{
-            CommitMode, CommitSource, InlineRewordMode, Mode, RubMode, RubSource,
-            SelectAfterReload, mode::UnassignedCommitSource,
+            CommitMessageComposer, CommitMode, CommitSource, InlineRewordMode, Mode, RubMode,
+            RubSource, SelectAfterReload, mode::UnassignedCommitSource,
         },
     },
 };
@@ -1527,7 +1527,7 @@ fn is_selectable_in_commit_mode_scopes_commit_targets_to_stack() {
             id: "zz".into(),
         })),
         scope_to_stack: Some(scoped_stack_id),
-        empty_message: false,
+        message_composer: CommitMessageComposer::default(),
     });
 
     let same_stack_commit_line = line(StatusOutputLineData::Commit {
