@@ -31,7 +31,7 @@ type GetOperation = (
 	args: GetDataParams[0] & { resolvedOperationSource: ResolvedOperationSource },
 ) => Operation | null;
 
-const useDragOperation = ({
+const useDropTarget = ({
 	projectId,
 	getOperation,
 }: {
@@ -164,7 +164,7 @@ export const OperationTarget: FC<
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ projectId, item, operationMode, isSelected, render, ...props }) => {
-	const [drag, dropRef] = useDragOperation({
+	const [drag, dropRef] = useDropTarget({
 		projectId,
 		getOperation: ({ resolvedOperationSource }) =>
 			dropTargetToOperation({ target: item, resolvedOperationSource }),
@@ -250,7 +250,7 @@ export const CommitTarget: FC<
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ commitId, item, projectId, operationMode, isSelected, render, ...props }) => {
-	const [drag, dropRef] = useDragOperation({
+	const [drag, dropRef] = useDropTarget({
 		projectId,
 		getOperation: commitDropTargetToOperation(commitId),
 	});
