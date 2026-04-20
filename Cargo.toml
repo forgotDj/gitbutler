@@ -340,7 +340,6 @@ incremental = false
 [profile.dev.package]
 foldhash = { opt-level = 3 }
 gix-imara-diff = { opt-level = 3 }
-gix-imara-diff-01 = { opt-level = 3 }
 but-graph = { opt-level = 3 }
 gix = { opt-level = 3 }
 gix-diff = { opt-level = 3 }
