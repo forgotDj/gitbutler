@@ -49,7 +49,7 @@ export const OperationTooltip: FC<
 > = ({ projectId, operation, source, item, isOperationMode, render, ...props }) => {
 	const isSource = !!source && operationSourceMatchesItem(source, item);
 
-	const tooltip = isSource ? (
+	const tooltipLabel = isSource ? (
 		<>Select a target</>
 	) : operation ? (
 		<>{operationLabel(operation)}</>
@@ -59,7 +59,7 @@ export const OperationTooltip: FC<
 
 	return (
 		<Tooltip.Root
-			open={!!tooltip}
+			open={!!tooltipLabel}
 			disableHoverablePopup={!isOperationMode}
 			onOpenChange={(_open, eventDetails) => {
 				eventDetails.allowPropagation();
@@ -71,7 +71,7 @@ export const OperationTooltip: FC<
 					<Tooltip.Popup
 						className={classes(uiStyles.popup, uiStyles.tooltip, styles.operationTooltipPopup)}
 					>
-						{tooltip}
+						{tooltipLabel}
 						{isOperationMode && (
 							<OperationModeControls projectId={projectId} operation={operation} />
 						)}
