@@ -151,7 +151,7 @@ export const useMonitorDraggedOperationSource = ({ projectId }: { projectId: str
 				onDrop: ({ location }) => {
 					const dropData = location.current.dropTargets
 						.map((dropTarget) => parseDropData(dropTarget.data))
-						.find((target) => target);
+						.find((dropData) => dropData);
 
 					if (!dropData?.operation) return;
 
