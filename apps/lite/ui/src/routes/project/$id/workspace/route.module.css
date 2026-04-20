@@ -168,21 +168,6 @@
 	outline-offset: 1px;
 }
 
-/* This might be applied to an element that already has its own background, so
-we must use an overlay for the background. */
-.activeSource {
-	position: relative;
-	&:after {
-		position: absolute;
-		inset: 0;
-		border-radius: 8px;
-		background-color: var(--color-gray-200);
-		content: "";
-		opacity: 0.5;
-		pointer-events: none;
-	}
-}
-
 .stack {
 	display: flex;
 	flex-direction: column;

@@ -5,3 +5,18 @@
 	background-color: var(--color-bg);
 	box-shadow: 0 12px 16px -8px light-dark(rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.4));
 }
+
+/* This might be applied to an element that already has its own background, so
+we must use an overlay for the background. */
+.activeSource {
+	position: relative;
+	&:after {
+		position: absolute;
+		inset: 0;
+		border-radius: 8px;
+		background-color: var(--color-gray-200);
+		content: "";
+		opacity: 0.5;
+		pointer-events: none;
+	}
+}
