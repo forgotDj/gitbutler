@@ -1,7 +1,7 @@
 #![deny(missing_docs)]
 //! Testing utilities
 
-use std::collections::HashSet;
+use std::{cmp::Ordering, collections::HashSet};
 
 use but_core::RefMetadata;
 use petgraph::{
@@ -515,7 +515,18 @@ pub(crate) fn render_ascii_graph<F>(graph: &StepGraph, get_title: F) -> String
 where
     F: FnMut(gix::ObjectId) -> Option<String>,
 {
-    let heads = find_heads(graph);
+    let mut heads = find_heads(graph);
+    heads.sort_by(|a, b| match (&graph[*a], &graph[*b]) {
+        (Step::Reference { refname, .. }, Step::Reference { refname: refname_b }) => {
+            refname.cmp(refname_b)
+        }
+        (Step::Pick(Pick { id, .. }), Step::Pick(Pick { id: id_b, .. })) => id.cmp(id_b),
+        (Step::Reference { .. }, Step::Pick(_)) => Ordering::Greater,
+        (Step::Pick(_), Step::Reference { .. }) => Ordering::Less,
+        (Step::None, Step::None) => Ordering::Equal,
+        (_, Step::None) => Ordering::Greater,
+        (Step::None, _) => Ordering::Less,
+    });
     let order = topological_order(graph, &heads);
 
     if order.is_empty() {
