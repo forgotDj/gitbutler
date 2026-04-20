@@ -206,54 +206,54 @@ export const OperationTarget: FC<
 	);
 };
 
-const commitDropTargetToOperation = ({
-	input,
-	element,
-	resolvedOperationSource,
-	commitId,
-}: GetDataParams[0] & {
-	resolvedOperationSource: ResolvedOperationSource;
-	commitId: string;
-}) => {
-	const combine = getCombineOperation({
+const commitDropTargetToOperation =
+	(commitId: string) =>
+	({
+		input,
+		element,
 		resolvedOperationSource,
-		target: commitFileParent({ commitId }),
-	});
-	const insertAbove = getCommitTargetMoveOperation({
-		resolvedOperationSource,
-		commitId,
-		side: "above",
-	});
-	const insertBelow = getCommitTargetMoveOperation({
-		resolvedOperationSource,
-		commitId,
-		side: "below",
-	});
+	}: GetDataParams[0] & {
+		resolvedOperationSource: ResolvedOperationSource;
+	}) => {
+		const combine = getCombineOperation({
+			resolvedOperationSource,
+			target: commitFileParent({ commitId }),
+		});
+		const insertAbove = getCommitTargetMoveOperation({
+			resolvedOperationSource,
+			commitId,
+			side: "above",
+		});
+		const insertBelow = getCommitTargetMoveOperation({
+			resolvedOperationSource,
+			commitId,
+			side: "below",
+		});
 
-	const instruction = extractInstruction(
-		attachInstruction(
-			{ resolvedOperationSource },
-			{
-				input,
-				element,
-				operations: {
-					"reorder-before": insertAbove ? "available" : "not-available",
-					"reorder-after": insertBelow ? "available" : "not-available",
-					combine: combine ? "available" : "not-available",
+		const instruction = extractInstruction(
+			attachInstruction(
+				{ resolvedOperationSource },
+				{
+					input,
+					element,
+					operations: {
+						"reorder-before": insertAbove ? "available" : "not-available",
+						"reorder-after": insertBelow ? "available" : "not-available",
+						combine: combine ? "available" : "not-available",
+					},
 				},
-			},
-		),
-	);
+			),
+		);
 
-	if (!instruction) return null;
+		if (!instruction) return null;
 
-	return Match.value(instruction.operation).pipe(
-		Match.when("combine", () => combine),
-		Match.when("reorder-before", () => insertAbove),
-		Match.when("reorder-after", () => insertBelow),
-		Match.exhaustive,
-	);
-};
+		return Match.value(instruction.operation).pipe(
+			Match.when("combine", () => combine),
+			Match.when("reorder-before", () => insertAbove),
+			Match.when("reorder-after", () => insertBelow),
+			Match.exhaustive,
+		);
+	};
 
 export const CommitTarget: FC<
 	{
@@ -269,7 +269,7 @@ export const CommitTarget: FC<
 		item,
 		operationMode,
 		isSelected,
-		getOperation: (args) => commitDropTargetToOperation({ ...args, commitId }),
+		getOperation: commitDropTargetToOperation(commitId),
 	});
 
 	const dragInsertionSide = drag?.operation ? getInsertionSide(drag.operation) : null;
