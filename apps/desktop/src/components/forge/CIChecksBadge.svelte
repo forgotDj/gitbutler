@@ -15,6 +15,7 @@
 		hasChecks?: boolean;
 		isFork?: boolean;
 		isMerged?: boolean;
+		onrefetch?: () => void;
 	};
 
 	type StatusInfo = {
@@ -34,6 +35,7 @@
 		isFork,
 		isMerged,
 		hasChecks = $bindable(),
+		onrefetch,
 	}: Props = $props();
 
 	const forge = inject(DEFAULT_FORGE_FACTORY);
@@ -232,6 +234,7 @@
 			elapsedMs = 0;
 		}
 		checksQuery?.result.refetch();
+		onrefetch?.();
 	}}
 >
 	<span data-pr-text={checksTagInfo.reducedText} class="truncate">
