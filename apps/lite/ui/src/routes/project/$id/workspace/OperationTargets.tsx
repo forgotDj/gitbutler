@@ -55,6 +55,18 @@ const useDragOperation = ({
 	});
 };
 
+type OperationModeTarget = {
+	isActiveTarget: boolean;
+	source: Item | undefined;
+	operation: Operation | null;
+	controls:
+		| {
+				onConfirm: () => void;
+				onCancel: () => void;
+		  }
+		| undefined;
+};
+
 const useOperationModeTarget = ({
 	projectId,
 	item,
@@ -65,7 +77,7 @@ const useOperationModeTarget = ({
 	item: Item;
 	operationMode: OperationMode | null;
 	isSelected: boolean;
-}) => {
+}): OperationModeTarget => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
 	const queryClient = useQueryClient();
