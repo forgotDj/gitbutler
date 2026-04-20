@@ -197,14 +197,22 @@ where
     D: Deserializer<'de>,
     T: DeserializeOwned,
 {
-    let raw: Vec<serde_json::Value> = Vec::deserialize(deserializer)?;
-    Ok(raw
+    let raw = serde_json::Value::deserialize(deserializer)?;
+    let items = match raw {
+        serde_json::Value::Null => return Ok(Vec::new()),
+        serde_json::Value::Array(items) => items,
+        other => {
+            tracing::warn!("expected account list to be an array, discarding: {other}");
+            return Ok(Vec::new());
+        }
+    };
+    Ok(items
         .into_iter()
         .filter_map(|v| match serde_json::from_value::<T>(v.clone()) {
             Ok(account) => Some(account),
             Err(_) if v.is_string() => None, // known legacy bare-string format
             Err(err) => {
-                eprintln!("warning: discarding unrecognised account entry: {err}");
+                tracing::warn!("discarding unrecognised account entry: {err}");
                 None
             }
         })
@@ -263,5 +271,16 @@ mod tests {
         let roundtripped: ForgeSettings = serde_json::from_str(&json).unwrap();
         assert_eq!(roundtripped.github.known_accounts.len(), 1);
         assert_eq!(roundtripped.gitlab.known_accounts.len(), 1);
+    }
+
+    #[test]
+    fn null_known_accounts_treated_as_empty() {
+        let json = r#"{
+            "github": { "knownAccounts": null },
+            "gitlab": { "knownAccounts": null }
+        }"#;
+        let settings: ForgeSettings = serde_json::from_str(json).unwrap();
+        assert!(settings.github.known_accounts.is_empty());
+        assert!(settings.gitlab.known_accounts.is_empty());
     }
 }
