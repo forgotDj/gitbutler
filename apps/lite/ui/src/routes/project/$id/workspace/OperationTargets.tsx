@@ -119,38 +119,13 @@ const useOperationModeTarget = ({
 	};
 };
 
-const useOperationTarget = ({
-	projectId,
-	item,
-	operationMode,
-	isSelected,
-	getOperation,
-}: {
-	projectId: string;
-	item: Item;
-	operationMode: OperationMode | null;
-	isSelected: boolean;
-	getOperation: GetOperation;
-}) => {
-	const [drag, dropRef] = useDragOperation({ projectId, getOperation });
-	const operationModeTarget = useOperationModeTarget({
-		projectId,
-		item,
-		operationMode,
-		isSelected,
-	});
-
-	return {
-		drag,
-		dropRef,
-		isActiveTarget: !!drag?.operation || operationModeTarget.isActiveTarget,
-		source:
-			drag?.operationSource ??
-			(operationModeTarget.source ? itemOperationSource(operationModeTarget.source) : undefined),
-		operation: drag?.operation ?? operationModeTarget.operation,
-		controls: operationModeTarget.controls,
-	};
-};
+const merge = (drag: DropData, operationModeTarget: OperationModeTarget) => ({
+	isActiveTarget: !!drag?.operation || operationModeTarget.isActiveTarget,
+	source:
+		drag?.operationSource ??
+		(operationModeTarget.source ? itemOperationSource(operationModeTarget.source) : undefined),
+	operation: drag?.operation ?? operationModeTarget.operation,
+});
 
 const dropTargetToOperation = ({
 	target,
@@ -189,14 +164,19 @@ export const OperationTarget: FC<
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ projectId, item, operationMode, isSelected, render, ...props }) => {
-	const { dropRef, isActiveTarget, source, operation, controls } = useOperationTarget({
+	const [drag, dropRef] = useDragOperation({
+		projectId,
+		getOperation: ({ resolvedOperationSource }) =>
+			dropTargetToOperation({ target: item, resolvedOperationSource }),
+	});
+	const operationModeTarget = useOperationModeTarget({
 		projectId,
 		item,
 		operationMode,
 		isSelected,
-		getOperation: ({ resolvedOperationSource }) =>
-			dropTargetToOperation({ target: item, resolvedOperationSource }),
 	});
+
+	const { isActiveTarget, source, operation } = merge(drag, operationModeTarget);
 
 	const target = useRender({
 		render,
@@ -208,7 +188,7 @@ export const OperationTarget: FC<
 
 	return (
 		<OperationTooltip
-			controls={controls}
+			controls={operationModeTarget.controls}
 			enabled={isActiveTarget}
 			item={item}
 			operation={operation}
@@ -270,13 +250,18 @@ export const CommitTarget: FC<
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ commitId, item, projectId, operationMode, isSelected, render, ...props }) => {
-	const { drag, dropRef, isActiveTarget, source, operation, controls } = useOperationTarget({
+	const [drag, dropRef] = useDragOperation({
+		projectId,
+		getOperation: commitDropTargetToOperation(commitId),
+	});
+	const operationModeTarget = useOperationModeTarget({
 		projectId,
 		item,
 		operationMode,
 		isSelected,
-		getOperation: commitDropTargetToOperation(commitId),
 	});
+
+	const { isActiveTarget, source, operation } = merge(drag, operationModeTarget);
 
 	const dragInsertionSide = drag?.operation ? getInsertionSide(drag.operation) : null;
 
@@ -293,7 +278,7 @@ export const CommitTarget: FC<
 	return (
 		<div className={styles.commit}>
 			<OperationTooltip
-				controls={controls}
+				controls={operationModeTarget.controls}
 				enabled={isActiveTarget}
 				item={item}
 				operation={targetTooltipOperation}
@@ -303,7 +288,7 @@ export const CommitTarget: FC<
 
 			{drag && dragInsertionSide !== null && (
 				<OperationTooltip
-					controls={controls}
+					controls={operationModeTarget.controls}
 					enabled={!!drag.operation}
 					item={item}
 					operation={drag.operation}
