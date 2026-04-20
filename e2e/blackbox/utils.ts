@@ -11,9 +11,8 @@ export async function spawnAndLog(command: string, args: string[]) {
 }
 
 export async function findAndClick(selector: string) {
-	const element = await $(selector).getElement();
-	await element.waitForDisplayed({ timeout: 5000 });
-	await element.waitForEnabled({ timeout: 5000 });
+	const element = $(selector);
+	await element.waitForClickable({ timeout: 15000 });
 	await element.click();
 }
 
