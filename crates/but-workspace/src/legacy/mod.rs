@@ -80,8 +80,16 @@ pub fn log_target_first_parent(
         if commits.len() == limit {
             break;
         }
-        let commit = commit_info?.id().object()?.into_commit();
-
+        // In shallow repositories, the traversal may hit a commit whose parent
+        // objects are not present locally. Stop rather than propagating the error.
+        let info = match commit_info {
+            Ok(info) => info,
+            Err(_) => break,
+        };
+        let commit = match info.id().object() {
+            Ok(obj) => obj.into_commit(),
+            Err(_) => break,
+        };
         commits.push(commit.try_into()?);
     }
     Ok(commits)
