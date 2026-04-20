@@ -5,7 +5,7 @@ use but_settings::AppSettings;
 use but_update::{AppName, CheckUpdateStatus, check_status};
 use colored::Colorize;
 
-use crate::{args::update, utils::OutputChannel};
+use crate::{args::update, theme, utils::OutputChannel};
 
 pub fn handle(
     cmd: update::Subcommands,
@@ -46,11 +46,12 @@ fn check_for_updates(out: &mut OutputChannel, app_settings: &AppSettings) -> Res
 }
 
 fn print_human_output(writer: &mut dyn std::fmt::Write, status: &CheckUpdateStatus) -> Result<()> {
+    let t = theme::get();
     if status.up_to_date {
         writeln!(
             writer,
             "{} You're running the latest version ({})",
-            "✓".green().bold(),
+            t.sym().success,
             status.latest_version.bold()
         )?;
     } else {
@@ -100,6 +101,7 @@ fn suppress_updates(out: &mut OutputChannel, days: u32) -> Result<()> {
     // Convert days to hours (the API uses hours)
     // Note: days is already validated to be 1-30 by clap, so no overflow possible
     let hours = days * 24;
+    let t = theme::get();
 
     // Call the suppress_update function
     let mut cache = but_ctx::Context::app_cache();
@@ -109,7 +111,7 @@ fn suppress_updates(out: &mut OutputChannel, days: u32) -> Result<()> {
         writeln!(
             writer,
             "{} Update notifications suppressed for {} {}",
-            "✓".green().bold(),
+            t.sym().success,
             days,
             if days == 1 { "day" } else { "days" }
         )?;
