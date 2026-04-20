@@ -498,6 +498,9 @@ pub fn graph_to_ref_info(
             // TODO: validate that this is still correct to do here if the workspace
             //       was generated from 'virtual' stacks only, i.e. stacks not from real
             //       merges.
+            // If we change the order of iteration,
+            // stacks_info_without_short_ids() in
+            // crates/but/src/id/stacks_info.rs should be changed too.
             .rev()
             .map(|stack| branch::Stack::try_from_graph_stack(stack, repo))
             .collect::<anyhow::Result<_>>()?,

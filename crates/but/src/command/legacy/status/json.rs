@@ -9,6 +9,11 @@
 //! Non-goals:
 //! - Completeness: The output structures do not include all the data that the internal but-api has.
 
+use std::collections::HashMap;
+
+use anyhow::Context as _;
+use but_graph::SegmentIndex;
+use but_workspace::ref_info::{LocalCommit, Segment};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
@@ -292,10 +297,14 @@ impl From<Vec<but_forge::CiCheck>> for Ci {
 }
 
 impl Branch {
+    #[allow(clippy::too_many_arguments)]
     pub fn from_branch_details(
         repo: &gix::Repository,
         cli_id: String,
         segment: SegmentWithId,
+        segments_by_id: &HashMap<SegmentIndex, Segment>,
+        local_commits_by_id: &HashMap<gix::ObjectId, LocalCommit>,
+        remote_commits_by_id: &HashMap<gix::ObjectId, but_workspace::ref_info::Commit>,
         review_id: Option<String>,
         show_files: FilesStatusFlag,
         ci: Option<Vec<but_forge::CiCheck>>,
@@ -304,21 +313,41 @@ impl Branch {
         let commits = segment
             .workspace_commits
             .iter()
-            .map(|c| Commit::from_local_commit(repo, c.short_id.clone(), c.clone(), show_files))
+            .map(|c| {
+                Commit::from_local_commit(
+                    repo,
+                    c.short_id.clone(),
+                    c.clone(),
+                    local_commits_by_id,
+                    show_files,
+                )
+            })
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         let upstream_commits = segment
             .remote_commits
             .iter()
-            .map(|c| Commit::from_remote_commit(c.short_id.clone(), c.clone(), None))
-            .collect();
+            .filter_map(|c| {
+                Commit::from_remote_commit(
+                    c.short_id.clone(),
+                    c.clone(),
+                    remote_commits_by_id,
+                    None,
+                )
+                .transpose()
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
 
+        let push_status = segments_by_id
+            .get(&segment.inner.id)
+            .context("BUG: head_info does not have segment that graph has")?
+            .push_status;
         Ok(Branch {
             cli_id,
             name: segment.branch_name().unwrap_or_default().to_string(),
             commits,
             upstream_commits,
-            branch_status: segment.inner.push_status.into(),
+            branch_status: push_status.into(),
             review_id,
             ci: ci.map(Ci::from),
             merge_status,
@@ -341,6 +370,7 @@ impl Commit {
         repo: &gix::Repository,
         cli_id: String,
         commit: WorkspaceCommitWithId,
+        local_commits_by_id: &HashMap<gix::ObjectId, LocalCommit>,
         show_files: FilesStatusFlag,
     ) -> anyhow::Result<Self> {
         let changes = if show_files.show_files_for(commit.inner.id) {
@@ -357,7 +387,10 @@ impl Commit {
             None
         };
 
-        let commit = &commit.inner.inner;
+        let commit = &local_commits_by_id
+            .get(&commit.commit_id())
+            .context("BUG: head_info does not have local commit that graph has")?
+            .inner;
         Ok(Commit {
             cli_id,
             commit_id: commit.id.to_string(),
@@ -375,10 +408,15 @@ impl Commit {
     pub fn from_remote_commit(
         cli_id: String,
         commit: RemoteCommitWithId,
+        remote_commits_by_id: &HashMap<gix::ObjectId, but_workspace::ref_info::Commit>,
         changes: Option<Vec<FileChange>>,
-    ) -> Self {
-        let commit = &commit.inner;
-        Commit {
+    ) -> anyhow::Result<Option<Self>> {
+        let Some(commit) = remote_commits_by_id.get(&commit.commit_id()) else {
+            // This was filtered out because there is a corresponding local
+            // commit, so don't show it.
+            return Ok(None);
+        };
+        Ok(Some(Commit {
             cli_id,
             commit_id: commit.id.to_string(),
             created_at: gix_time_to_rfc3339(&commit.author.time),
@@ -388,7 +426,7 @@ impl Commit {
             conflicted: None,
             review_id: None,
             changes,
-        }
+        }))
     }
     /// A commit not obtained from a stack. `IdMap` does not know
     /// about this commit, so it will not have a CLI ID.
@@ -516,6 +554,9 @@ fn convert_branch_to_json(
         repo,
         cli_id,
         segment.clone(),
+        &status_ctx.segments_by_id,
+        &status_ctx.local_commits_by_id,
+        &status_ctx.remote_commits_by_id,
         review_id,
         status_ctx.flags.show_files,
         ci,

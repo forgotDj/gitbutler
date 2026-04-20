@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use bstr::BString;
-use but_workspace::branch::Stack;
+use but_graph::projection::Stack;
 
 use crate::id::{
     RemoteCommitWithId, SegmentWithId, ShortId, StackWithId, UNASSIGNED, WorkspaceCommitWithId,
@@ -14,7 +14,9 @@ fn stacks_info_without_short_ids(stacks: Vec<Stack>) -> StacksInfo {
         id_usage: IdUsage::default(),
         short_ids_to_count: HashMap::new(),
     };
-    for stack in stacks {
+    // Reverse the stacks to match graph_to_ref_info() in
+    // crates/but-workspace/src/ref_info.rs.
+    for stack in stacks.into_iter().rev() {
         let mut stack_with_id = StackWithId {
             id: stack.id,
             segments: Vec::with_capacity(stack.segments.len()),
