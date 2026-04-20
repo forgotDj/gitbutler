@@ -416,9 +416,9 @@ const previewBindings: Array<ShortcutBinding<PreviewAction>> = [
 	...panelNavigationBindings,
 ];
 
-type OperationModeAction = PrimaryPanelAction | { _tag: "Cancel" } | { _tag: "Run" };
+type OperationModeAction = PrimaryPanelAction | { _tag: "Cancel" } | { _tag: "Confirm" };
 
-const runOperationModeAction: OperationModeAction = { _tag: "Run" };
+const confirmOperationModeAction: OperationModeAction = { _tag: "Confirm" };
 const cancelOperationModeAction: OperationModeAction = { _tag: "Cancel" };
 
 const operationModeBindings: Array<ShortcutBinding<OperationModeAction>> = [
@@ -430,9 +430,9 @@ const operationModeBindings: Array<ShortcutBinding<OperationModeAction>> = [
 	),
 	{
 		id: "operation-mode-confirm",
-		description: "Run",
+		description: "Confirm",
 		keys: ["Enter"],
-		action: runOperationModeAction,
+		action: confirmOperationModeAction,
 		repeat: false,
 	},
 	{
@@ -937,7 +937,7 @@ export const useWorkspaceShortcuts = ({
 		Match.value(action).pipe(
 			Match.tags({
 				Cancel: () => dispatch(projectActions.exitMode({ projectId })),
-				Run: () => confirmOperationMode(selectedItem),
+				Confirm: () => confirmOperationMode(selectedItem),
 			}),
 			Match.orElse((action) => {
 				if (!selectedItem) return;
