@@ -20,11 +20,11 @@ import styles from "./DragAndDrop.module.css";
 import { type OperationSource } from "./OperationSource.ts";
 
 export type DragData = {
-	operationSource: OperationSource;
+	source: OperationSource;
 };
 
 export const parseDragData = (data: unknown): DragData | null => {
-	if (typeof data !== "object" || data === null || !("operationSource" in data)) return null;
+	if (typeof data !== "object" || data === null || !("source" in data)) return null;
 	return data as DragData;
 };
 

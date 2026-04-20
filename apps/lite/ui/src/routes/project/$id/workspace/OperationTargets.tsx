@@ -45,17 +45,17 @@ const useDropTarget = ({
 		const dragData = parseDragData(args.source.data);
 		if (!dragData) return null;
 
-		const { operationSource } = dragData;
+		const { source } = dragData;
 
 		const resolvedOperationSource = resolveOperationSource({
-			operationSource,
+			operationSource: source,
 			queryClient,
 			projectId,
 		});
 		if (!resolvedOperationSource) return null;
 
 		return {
-			source: operationSource,
+			source,
 			operation: getOperation({ ...args, resolvedOperationSource }),
 		};
 	});

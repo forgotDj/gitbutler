@@ -24,7 +24,7 @@ export const OperationSourceC: FC<
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 
 	const [isDragging, dragRef] = useDraggable({
-		getInitialData: (): DragData => ({ operationSource: source }),
+		getInitialData: (): DragData => ({ source }),
 		preview: (
 			<DragPreview>
 				<OperationSourceLabel source={source} headInfo={headInfo} />
