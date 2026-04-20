@@ -122,14 +122,13 @@ const useOperationModeTarget = ({
 	};
 };
 
-const merge = (
-	dropData: DropData,
-	operationModeTarget: OperationModeTarget | null,
-): {
+type TargetData = {
 	isActiveTarget: boolean;
 	source: OperationSource | undefined;
 	operation: Operation | null;
-} => {
+};
+
+const merge = (dropData: DropData, operationModeTarget: OperationModeTarget | null): TargetData => {
 	if (dropData?.operation)
 		return { isActiveTarget: true, operation: dropData.operation, source: dropData.source };
 	if (operationModeTarget)
@@ -190,24 +189,24 @@ export const OperationTarget: FC<
 		isSelected,
 	});
 
-	const { isActiveTarget, source, operation } = merge(dropData, operationModeTarget);
+	const targetData = merge(dropData, operationModeTarget);
 
 	const target = useRender({
 		render,
 		ref: dropRef,
 		props: mergeProps<"div">(props, {
-			className: classes(isActiveTarget && styles.activeTarget),
+			className: classes(targetData.isActiveTarget && styles.activeTarget),
 		}),
 	});
 
 	return (
 		<OperationTooltip
 			controls={operationModeTarget?.controls}
-			enabled={isActiveTarget}
+			enabled={targetData.isActiveTarget}
 			item={item}
-			operation={operation}
+			operation={targetData.operation}
 			render={target}
-			source={source}
+			source={targetData.source}
 		/>
 	);
 };
@@ -275,11 +274,11 @@ export const CommitTarget: FC<
 		isSelected,
 	});
 
-	const { isActiveTarget, source, operation } = merge(dropData, operationModeTarget);
+	const targetData = merge(dropData, operationModeTarget);
 
 	const dragInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
 
-	const targetTooltipOperation = dragInsertionSide === null ? operation : null;
+	const targetTooltipOperation = dragInsertionSide === null ? targetData.operation : null;
 
 	const target = useRender({
 		render,
@@ -293,11 +292,11 @@ export const CommitTarget: FC<
 		<div className={styles.commit}>
 			<OperationTooltip
 				controls={operationModeTarget?.controls}
-				enabled={isActiveTarget}
+				enabled={targetData.isActiveTarget}
 				item={item}
 				operation={targetTooltipOperation}
 				render={target}
-				source={source}
+				source={targetData.source}
 			/>
 
 			{dropData && dragInsertionSide !== null && (
