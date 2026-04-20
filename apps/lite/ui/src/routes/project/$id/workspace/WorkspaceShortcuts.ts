@@ -907,26 +907,25 @@ export const useWorkspaceShortcuts = ({
 		);
 
 	const confirmOperationMode = (selectedItem: Item | null) => {
+		if (!operationMode) return;
+
 		dispatch(projectActions.exitMode({ projectId }));
 
 		if (!selectedItem) return;
 
-		const resolvedOperationSource = operationMode
-			? resolveOperationSource({
-					operationSource: itemOperationSource(operationMode.source),
-					queryClient,
-					projectId,
+		const resolvedOperationSource = resolveOperationSource({
+			operationSource: itemOperationSource(operationMode.source),
+			queryClient,
+			projectId,
+		});
+
+		const operation = resolvedOperationSource
+			? operationModeToOperation({
+					operationMode,
+					resolvedOperationSource,
+					target: selectedItem,
 				})
 			: null;
-
-		const operation =
-			operationMode && resolvedOperationSource
-				? operationModeToOperation({
-						operationMode,
-						resolvedOperationSource,
-						target: selectedItem,
-					})
-				: null;
 
 		if (!operation) return;
 
