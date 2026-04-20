@@ -1,8 +1,3 @@
-#![expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-
 use super::super::FileChange;
 use bstr::ByteSlice;
 use but_ctx::Context;
@@ -10,7 +5,10 @@ use but_llm::ChatMessage;
 use colored::Colorize;
 use tracing::instrument;
 
-use crate::utils::{OutputChannel, shorten_object_id};
+use crate::{
+    command::legacy::workspace_target,
+    utils::{OutputChannel, shorten_object_id},
+};
 
 pub fn show(
     ctx: &mut Context,
@@ -114,24 +112,6 @@ struct CommitRef {
 fn check_merge_conflicts(ctx: &Context, branch_name: &str) -> Result<MergeCheck, anyhow::Error> {
     use but_core::RepositoryExt;
 
-    let repo = ctx.repo.get()?;
-    let merge_repo = ctx.clone_repo_for_merging_non_persisting()?;
-
-    // Get the target (remote tracking branch like origin/master)
-    let stack = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
-    let target = stack.get_default_target()?;
-
-    // Try to find the remote tracking branch (e.g., refs/remotes/origin/master)
-    let target_ref_name = format!(
-        "refs/remotes/{}/{}",
-        target.branch.remote(),
-        target.branch.branch()
-    );
-    let target_commit_id = match merge_repo.find_reference(&target_ref_name) {
-        Ok(mut reference) => reference.peel_to_commit()?.id,
-        Err(_) => target.sha,
-    };
-
     // Find the branch by name
     let branches = but_api::legacy::virtual_branches::list_branches(ctx, None)?;
     let branch = branches
@@ -140,7 +120,14 @@ fn check_merge_conflicts(ctx: &Context, branch_name: &str) -> Result<MergeCheck,
         .ok_or_else(|| anyhow::anyhow!("Branch '{branch_name}' not found"))?;
 
     // Find merge base
-    let merge_base = repo.merge_base(branch.head, target_commit_id)?.detach();
+    let guard = ctx.shared_worktree_access();
+    let (merge_base, target_commit_id) = workspace_target::merge_base_with_target_with_perm(
+        ctx,
+        guard.read_permission(),
+        branch.head,
+    )?;
+    let repo = ctx.repo.get()?;
+    let merge_repo = ctx.clone_repo_for_merging_non_persisting()?;
     let merge_base_tree_id = repo.find_commit(merge_base)?.tree_id()?.detach();
     let target_tree_id = repo.find_commit(target_commit_id)?.tree_id()?.detach();
     let branch_tree_id = repo.find_commit(branch.head)?.tree_id()?.detach();
@@ -267,23 +254,6 @@ fn get_commits_ahead(
 ) -> Result<Vec<CommitInfo>, anyhow::Error> {
     use gix::prelude::ObjectIdExt as _;
 
-    let repo = ctx.repo.get()?;
-
-    // Get the target (remote tracking branch like origin/master)
-    let stack = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
-    let target = stack.get_default_target()?;
-
-    // Try to find the remote tracking branch (e.g., refs/remotes/origin/master)
-    let target_ref_name = format!(
-        "refs/remotes/{}/{}",
-        target.branch.remote(),
-        target.branch.branch()
-    );
-    let target_oid_gix = match repo.find_reference(&target_ref_name) {
-        Ok(mut reference) => reference.peel_to_commit()?.id,
-        Err(_) => target.sha,
-    };
-
     // Find the branch by name
     let branches = but_api::legacy::virtual_branches::list_branches(ctx, None)?;
     let branch = branches
@@ -294,7 +264,13 @@ fn get_commits_ahead(
     let branch_oid_gix = branch.head;
 
     // Find merge base
-    let merge_base = repo.merge_base(branch_oid_gix, target_oid_gix)?;
+    let guard = ctx.shared_worktree_access();
+    let (merge_base, _) = workspace_target::merge_base_with_target_with_perm(
+        ctx,
+        guard.read_permission(),
+        branch_oid_gix,
+    )?;
+    let repo = ctx.repo.get()?;
 
     // Walk from branch head to merge base, collecting commits
     let traversal = branch_oid_gix

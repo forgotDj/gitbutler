@@ -31,6 +31,7 @@ pub mod show;
 pub mod status;
 pub mod teardown;
 pub mod unapply;
+pub(crate) mod workspace_target;
 pub mod worktree;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
