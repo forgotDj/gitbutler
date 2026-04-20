@@ -41,21 +41,18 @@ const OperationModeControls: FC<{
 export const OperationTooltip: FC<
 	{
 		projectId: string;
-		enabled: boolean;
 		operation: Operation | null;
 		source?: OperationSource;
 		item: Item;
 		isOperationMode?: boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ projectId, enabled, operation, source, item, isOperationMode, render, ...props }) => {
+> = ({ projectId, operation, source, item, isOperationMode, render, ...props }) => {
 	const isSource = !!source && operationSourceMatchesItem(source, item);
 
-	const tooltip = enabled ? (
-		isSource ? (
-			<>Select a target</>
-		) : operation ? (
-			<>{operationLabel(operation)}</>
-		) : null
+	const tooltip = isSource ? (
+		<>Select a target</>
+	) : operation ? (
+		<>{operationLabel(operation)}</>
 	) : null;
 
 	const trigger = useRender({ render, props });

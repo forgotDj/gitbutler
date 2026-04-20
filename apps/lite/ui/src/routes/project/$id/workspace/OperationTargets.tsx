@@ -184,7 +184,6 @@ export const OperationTarget: FC<
 		<OperationTooltip
 			projectId={projectId}
 			isOperationMode={!!operationMode}
-			enabled={!!targetData}
 			item={item}
 			operation={targetData?.operation ?? null}
 			render={target}
@@ -276,18 +275,16 @@ export const CommitTarget: FC<
 			<OperationTooltip
 				projectId={projectId}
 				isOperationMode={!!operationMode}
-				enabled={!!targetTooltipOperation}
 				item={item}
 				operation={targetTooltipOperation}
 				render={target}
-				source={targetData?.source}
+				source={targetTooltipOperation ? targetData?.source : undefined}
 			/>
 
 			{dropData && dragInsertionSide !== null && (
 				<OperationTooltip
 					projectId={projectId}
 					isOperationMode={false}
-					enabled={!!dropData.operation}
 					item={item}
 					operation={dropData.operation}
 					source={dropData.source}
