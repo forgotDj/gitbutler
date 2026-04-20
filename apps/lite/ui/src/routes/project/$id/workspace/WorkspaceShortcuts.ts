@@ -782,9 +782,8 @@ export const useWorkspaceShortcuts = ({
 		);
 
 	const requestAbsorptionPlanForItem = (selectedItem: Item) => {
-		const operationSource = itemOperationSource(selectedItem);
 		const resolvedOperationSource = resolveOperationSource({
-			operationSource,
+			operationSource: itemOperationSource(selectedItem),
 			queryClient,
 			projectId,
 		});
