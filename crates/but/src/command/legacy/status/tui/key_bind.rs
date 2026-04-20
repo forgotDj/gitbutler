@@ -157,6 +157,14 @@ pub(super) fn branch_picker_key_binds() -> KeyBinds {
         hide_from_hotbar: false,
     });
 
+    key_binds.register(KeyBindDef {
+        short_description: "back",
+        key_matcher: press().control().code(KeyCode::Char('[')),
+        modes: all_modes.clone(),
+        message: Message::BranchPicker(BranchPickerMessage::Close),
+        hide_from_hotbar: true,
+    });
+
     key_binds
 }
 
