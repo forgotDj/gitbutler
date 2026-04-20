@@ -1,6 +1,8 @@
 use anyhow::{Result, bail};
 use but_core::commit::SignCommit;
-use but_rebase::graph_rebase::cherry_pick::{CherryPickOutcome, PickMode, cherry_pick};
+use but_rebase::graph_rebase::cherry_pick::{
+    CherryPickOutcome, PickMode, TreeMergeMode, cherry_pick,
+};
 use but_testsupport::{visualize_commit_graph_all, visualize_tree};
 use gix::prelude::ObjectIdExt;
 
@@ -27,6 +29,7 @@ fn basic_cherry_pick_clean() -> Result<()> {
         target,
         &[onto],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -64,6 +67,7 @@ fn basic_cherry_pick_cp_conflicts() -> Result<()> {
         target,
         &[onto],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -113,6 +117,7 @@ fn basic_cherry_pick_identity() -> Result<()> {
         target.detach(),
         &parents,
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -138,6 +143,7 @@ fn single_parent_to_multiple_parents_clean() -> Result<()> {
         target,
         &[onto, onto2],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -178,6 +184,7 @@ fn single_parent_to_multiple_parents_cp_conflicts() -> Result<()> {
         target,
         &[onto, onto2],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -233,6 +240,7 @@ fn single_parent_to_multiple_parents_parents_conflict() -> Result<()> {
         target,
         &[onto, onto2],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -266,6 +274,7 @@ fn multiple_parents_to_single_parent_clean() -> Result<()> {
         target,
         &[onto],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -304,6 +313,7 @@ fn multiple_parents_to_single_parent_cp_conflicts() -> Result<()> {
         target,
         &[onto],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -359,6 +369,7 @@ fn multiple_parents_to_single_parent_parents_conflict() -> Result<()> {
         target,
         &[onto],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -393,6 +404,7 @@ fn multiple_parents_to_multiple_parents_clean() -> Result<()> {
         target,
         &[onto, onto2],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -433,6 +445,7 @@ fn multiple_parents_to_multiple_parents_cp_conflicts() -> Result<()> {
         target,
         &[onto, onto2],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -492,6 +505,7 @@ fn multiple_parents_to_multiple_parents_base_parents_conflict() -> Result<()> {
         target,
         &[onto, onto2],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -525,6 +539,7 @@ fn multiple_parents_to_multiple_parents_target_parents_conflict() -> Result<()> 
         target,
         &[onto, onto2],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -558,6 +573,7 @@ fn multiple_parents_to_multiple_parents_identity() -> Result<()> {
         target.detach(),
         &parents,
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -582,6 +598,7 @@ fn no_parents_identity() -> Result<()> {
         target.detach(),
         &[],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -606,6 +623,7 @@ fn single_parent_to_no_parents_clean() -> Result<()> {
         target,
         &[],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -642,6 +660,7 @@ fn no_parents_to_single_parent_clean() -> Result<()> {
         target,
         &[onto],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -679,6 +698,7 @@ fn no_parents_to_single_parent_cp_conflicts() -> Result<()> {
         target,
         &[onto],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -728,6 +748,7 @@ fn cherry_pick_back_to_original_parents_unconflicts() -> Result<()> {
         target.detach(),
         &[onto, onto2],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -748,6 +769,7 @@ fn cherry_pick_back_to_original_parents_unconflicts() -> Result<()> {
         id,
         &parents,
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -799,6 +821,7 @@ fn cherry_pick_recursive_merge() -> Result<()> {
         target.detach(),
         &[onto, onto2, onto3],
         PickMode::IfChanged,
+        TreeMergeMode::WithRenames,
         SignCommit::IfSignCommitsEnabled,
     )?;
 
@@ -819,6 +842,64 @@ fn cherry_pick_recursive_merge() -> Result<()> {
     ├── base-f:100644:718e7e9 "a\nx\nc\nd\n"
     └── foo-f:100644:2d07937 "1\nx\n2\n"
     "#);
+
+    Ok(())
+}
+
+/// Workspace merges surface delete-vs-modify conflicts instead of hiding
+/// them behind false-positive renames.
+///
+/// Scenario: two stacks share a common base with file-a.txt and file-b.txt.
+/// - Stack 1 modifies file-b.txt
+/// - Stack 2 deletes both files and adds file-combined.txt (similar content to file-b.txt)
+///
+/// With rename detection enabled, gix would match file-b.txt to
+/// file-combined.txt as a rename, hiding the real delete-vs-modify conflict
+/// and silently dropping file-a.txt's deletion. With `TreeMergeMode::WithoutRenames`
+/// (which disables rename detection), the conflict is correctly surfaced.
+#[test]
+fn workspace_merge_surfaces_delete_vs_modify_conflict() -> Result<()> {
+    let (repo, _tmpdir, _meta) = fixture_writable("cherry-pick-rename-detection")?;
+
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
+    * 8ef051f (stack-2-after) stack-2-after: combine files
+    | *   978e614 (HEAD -> workspace-before) GitButler Workspace Commit
+    | |\  
+    | | * b8f64ac (stack-2-before) stack-2-before: unrelated change
+    | |/  
+    |/|   
+    | * f02613a (stack-1) stack-1: modify file-b
+    |/  
+    * 57993f6 (main, base) base
+    ");
+
+    let workspace = repo.rev_parse_single("workspace-before")?.detach();
+    let stack1 = repo.rev_parse_single("stack-1")?.detach();
+    let stack2_after = repo.rev_parse_single("stack-2-after")?.detach();
+
+    // The workspace commit currently has parents [stack-1, stack-2-before].
+    // We want to rebase it onto [stack-1, stack-2-after] where stack-2-after
+    // deletes file-a.txt and file-b.txt, replacing them with file-combined.txt.
+    //
+    // Stack-1 modifies file-b.txt while stack-2-after deletes it — this is a
+    // genuine cross-stack conflict. Previously, rename detection hid this conflict
+    // by treating file-b → file-combined as a rename, producing a wrong tree
+    // where file-a.txt's deletion was silently dropped.
+    //
+    // With rename detection disabled, this correctly reports a conflict.
+    let result = cherry_pick(
+        &repo,
+        workspace,
+        &[stack1, stack2_after],
+        PickMode::Force,
+        TreeMergeMode::WithoutRenames,
+        SignCommit::IfSignCommitsEnabled,
+    )?;
+
+    assert!(
+        matches!(result, CherryPickOutcome::FailedToMergeBases { .. }),
+        "Expected a conflict due to delete-vs-modify on file-b.txt, got: {result:?}"
+    );
 
     Ok(())
 }
