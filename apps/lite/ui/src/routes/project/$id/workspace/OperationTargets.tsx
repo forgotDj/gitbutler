@@ -59,8 +59,7 @@ const useDropTarget = ({
 };
 
 type OperationModeTarget = {
-	isActiveTarget: boolean;
-	source: Item | undefined;
+	source: Item;
 	operation: Operation | null;
 	controls:
 		| {
@@ -80,20 +79,14 @@ const useOperationModeTarget = ({
 	item: Item;
 	operationMode: OperationMode | null;
 	isSelected: boolean;
-}): OperationModeTarget => {
+}): OperationModeTarget | null => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
 	const queryClient = useQueryClient();
 
 	const isActiveTarget = !!operationMode && isSelected;
 
-	if (!isActiveTarget)
-		return {
-			isActiveTarget: false,
-			source: undefined,
-			operation: null,
-			controls: undefined,
-		};
+	if (!isActiveTarget) return null;
 
 	const resolvedOperationSource = resolveOperationSource({
 		operationSource: itemOperationSource(operationMode.source),
@@ -120,19 +113,18 @@ const useOperationModeTarget = ({
 	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
 
 	return {
-		isActiveTarget,
 		source: operationMode.source,
 		operation,
 		controls: { onConfirm: confirm, onCancel: cancel },
 	};
 };
 
-const merge = (dropData: DropData, operationModeTarget: OperationModeTarget) => ({
-	isActiveTarget: !!dropData?.operation || operationModeTarget.isActiveTarget,
+const merge = (dropData: DropData, operationModeTarget: OperationModeTarget | null) => ({
+	isActiveTarget: !!dropData?.operation || !!operationModeTarget,
 	source:
 		dropData?.source ??
-		(operationModeTarget.source ? itemOperationSource(operationModeTarget.source) : undefined),
-	operation: dropData?.operation ?? operationModeTarget.operation,
+		(operationModeTarget?.source ? itemOperationSource(operationModeTarget.source) : undefined),
+	operation: dropData?.operation ?? operationModeTarget?.operation ?? null,
 });
 
 const dropTargetToOperation = ({
@@ -196,7 +188,7 @@ export const OperationTarget: FC<
 
 	return (
 		<OperationTooltip
-			controls={operationModeTarget.controls}
+			controls={operationModeTarget?.controls}
 			enabled={isActiveTarget}
 			item={item}
 			operation={operation}
@@ -286,7 +278,7 @@ export const CommitTarget: FC<
 	return (
 		<div className={styles.commit}>
 			<OperationTooltip
-				controls={operationModeTarget.controls}
+				controls={operationModeTarget?.controls}
 				enabled={isActiveTarget}
 				item={item}
 				operation={targetTooltipOperation}
@@ -296,7 +288,7 @@ export const CommitTarget: FC<
 
 			{dropData && dragInsertionSide !== null && (
 				<OperationTooltip
-					controls={operationModeTarget.controls}
+					controls={operationModeTarget?.controls}
 					enabled={!!dropData.operation}
 					item={item}
 					operation={dropData.operation}
