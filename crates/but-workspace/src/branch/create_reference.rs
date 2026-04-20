@@ -334,10 +334,12 @@ pub(super) mod function {
                     ref_name.shorten()
                 )
             }
-            // TODO: this should probably be easier to understand for the UI, with error codes maybe?
             bail!(
-                "Reference '{}' cannot be created as segment at {ref_target_id}",
-                ref_name.shorten()
+                "Branch '{}' cannot be created: the target commit ({}) already \
+                 belongs to another branch in the workspace. Each commit can only \
+                 belong to one branch at a time.",
+                ref_name.shorten(),
+                ref_target_id,
             )
         }
 

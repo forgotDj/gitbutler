@@ -1130,7 +1130,7 @@ mod with_workspace {
 
             assert_eq!(
                 err.to_string(),
-                "Reference 'gitbutler/workspace' cannot be created as segment at 49d4b34f36239228b64ee758be8f58849bac02d5",
+                "Branch 'gitbutler/workspace' cannot be created: the target commit (49d4b34f36239228b64ee758be8f58849bac02d5) already belongs to another branch in the workspace. Each commit can only belong to one branch at a time.",
                 "It realizes that the workspace reference isn't ever a segment"
             );
             assert_eq!(
@@ -1163,7 +1163,7 @@ mod with_workspace {
 
             assert_eq!(
                 err.to_string(),
-                "Reference 'gitbutler/workspace' cannot be created as segment at c2878fb5dda8243a099a0353452d497d906bc6b5",
+                "Branch 'gitbutler/workspace' cannot be created: the target commit (c2878fb5dda8243a099a0353452d497d906bc6b5) already belongs to another branch in the workspace. Each commit can only belong to one branch at a time.",
                 "it detects this issue by simulating the workspace before applying changes"
             );
             assert_eq!(
@@ -1573,7 +1573,7 @@ fn journey_with_commits() -> anyhow::Result<()> {
     .unwrap_err();
     assert_eq!(
         err.to_string(),
-        "Reference 'another-below-main' cannot be created as segment at 12995d783f3ac841a1774e9433ee8e4c1edac576"
+        "Branch 'another-below-main' cannot be created: the target commit (12995d783f3ac841a1774e9433ee8e4c1edac576) already belongs to another branch in the workspace. Each commit can only belong to one branch at a time."
     );
 
     // branch already exists in the workspace, all good.
