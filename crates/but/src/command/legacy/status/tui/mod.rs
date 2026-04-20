@@ -64,6 +64,7 @@ use crate::{
         },
     },
     id::UNASSIGNED,
+    theme::Theme,
     tui::{CrosstermTerminalGuard, HeadlessTerminalGuard, TerminalGuard},
     utils::{DebugAsType, OutputChannel, binary_path::current_exe_for_but_exec},
 };
@@ -376,6 +377,7 @@ struct App {
     to_be_discarded: Option<Arc<CliId>>,
     status_width_percentage: u16,
     branch_picker: Option<BranchPicker>,
+    theme: &'static Theme,
 }
 
 impl App {
@@ -396,6 +398,8 @@ impl App {
         } else {
             Details::new_hidden()
         };
+
+        let theme = crate::theme::get();
 
         Self {
             status_lines,
@@ -421,6 +425,7 @@ impl App {
             details,
             options,
             status_width_percentage: 50,
+            theme,
         }
     }
 
@@ -2884,10 +2889,21 @@ impl App {
             .collect::<Vec<_>>();
 
         if let Some(branch_names) = NonEmpty::from_vec(branch_names) {
-            self.branch_picker = Some(BranchPicker::new(branch_names, |branch_name, messages| {
-                messages.push(Message::SelectBranch(branch_name));
-                Ok(())
-            }));
+            self.branch_picker = Some(BranchPicker::new(
+                branch_names,
+                self.theme,
+                |item, messages| {
+                    match item {
+                        branch_picker::Item::Branch(branch_name) => {
+                            messages.push(Message::SelectBranch(branch_name));
+                        }
+                        branch_picker::Item::Unassigned => {
+                            messages.push(Message::SelectUnassigned);
+                        }
+                    }
+                    Ok(())
+                },
+            ));
         }
 
         Ok(())

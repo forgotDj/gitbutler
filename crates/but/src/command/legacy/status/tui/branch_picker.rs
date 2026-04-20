@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::{borrow::Cow, cell::Cell};
 
 use bstr::ByteSlice;
 use crossterm::event::Event;
@@ -15,18 +15,40 @@ use ratatui::{
 use ratatui_textarea::TextArea;
 use unicode_width::UnicodeWidthStr;
 
-use crate::{command::legacy::status::tui::Message, utils::DebugAsType};
+use crate::{command::legacy::status::tui::Message, theme::Theme, utils::DebugAsType};
 
 #[derive(Debug)]
 pub(super) struct BranchPicker {
-    branch_names: NonEmpty<FullName>,
+    items: NonEmpty<Item>,
     branches_to_show: Vec<BranchToShow>,
     textarea: TextArea<'static>,
     cursor: usize,
     scroll_top: Cell<usize>,
     matcher: DebugAsType<SkimMatcherV2>,
-    on_branch_selected:
-        DebugAsType<Box<dyn FnOnce(FullName, &mut Vec<Message>) -> anyhow::Result<()>>>,
+    on_branch_selected: DebugAsType<Box<dyn FnOnce(Item, &mut Vec<Message>) -> anyhow::Result<()>>>,
+    theme: &'static Theme,
+}
+
+#[derive(Debug, Clone)]
+pub(super) enum Item {
+    Branch(FullName),
+    Unassigned,
+}
+
+impl Item {
+    fn name(&self) -> Cow<'_, str> {
+        match self {
+            Item::Branch(full_name) => full_name.shorten().to_str_lossy(),
+            Item::Unassigned => Cow::Borrowed("unassigned changes"),
+        }
+    }
+
+    fn style(&self, theme: &'static Theme) -> Style {
+        match self {
+            Item::Branch(..) => theme.local_branch,
+            Item::Unassigned => theme.info,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -41,21 +63,29 @@ enum BranchToShow {
 }
 
 impl BranchPicker {
-    pub(super) fn new<F>(branch_names: NonEmpty<FullName>, on_branch_selected: F) -> Self
+    pub(super) fn new<F>(
+        branch_names: NonEmpty<FullName>,
+        theme: &'static Theme,
+        on_branch_selected: F,
+    ) -> Self
     where
-        F: FnOnce(FullName, &mut Vec<Message>) -> anyhow::Result<()> + 'static,
+        F: FnOnce(Item, &mut Vec<Message>) -> anyhow::Result<()> + 'static,
     {
         let mut textarea = TextArea::default();
         textarea.set_cursor_line_style(Style::default());
 
+        let mut items = NonEmpty::new(Item::Unassigned);
+        items.extend(branch_names.map(Item::Branch));
+
         let mut this = Self {
-            branch_names,
+            items,
             branches_to_show: Default::default(),
             textarea,
             cursor: 0,
             scroll_top: Cell::new(0),
             on_branch_selected: DebugAsType(Box::new(on_branch_selected)),
             matcher: DebugAsType(SkimMatcherV2::default()),
+            theme,
         };
 
         this.filter_branches();
@@ -76,9 +106,9 @@ impl BranchPicker {
         let input_height: u16 = 1;
 
         let longest_branch_name_width = self
-            .branch_names
+            .items
             .iter()
-            .map(|branch_name| branch_name.shorten().to_str_lossy().width())
+            .map(|item| item.name().width())
             .max()
             .unwrap();
 
@@ -141,18 +171,16 @@ impl BranchPicker {
             .take(visible_rows)
             .map(|(idx, branches_to_show_idx)| {
                 let item = match branches_to_show_idx {
-                    BranchToShow::Plain { branch_names_idx } => ListItem::new(
-                        self.branch_names[*branch_names_idx]
-                            .shorten()
-                            .to_str_lossy(),
-                    ),
+                    BranchToShow::Plain { branch_names_idx } => {
+                        let item = &self.items[*branch_names_idx];
+                        ListItem::new(item.name()).style(item.style(self.theme))
+                    }
                     BranchToShow::FuzzyMatch {
                         branch_names_idx,
                         char_indices,
                     } => {
-                        let branch_name = self.branch_names[*branch_names_idx]
-                            .shorten()
-                            .to_str_lossy();
+                        let item = &self.items[*branch_names_idx];
+                        let branch_name = item.name();
                         let spans = branch_name.chars().enumerate().map(|(idx, c)| {
                             let span = Span::raw(c.to_string());
                             if char_indices.contains(&idx) {
@@ -161,13 +189,13 @@ impl BranchPicker {
                                 span
                             }
                         });
-                        ListItem::new(Line::from_iter(spans))
+                        ListItem::new(Line::from_iter(spans)).style(item.style(self.theme))
                     }
                 };
                 if idx == self.cursor {
-                    item.green().bg(*super::CURSOR_BG)
+                    item.bg(*super::CURSOR_BG)
                 } else {
-                    item.green()
+                    item
                 }
             });
 
@@ -188,18 +216,18 @@ impl BranchPicker {
 
         if query.is_empty() {
             self.branches_to_show.extend(
-                self.branch_names
+                self.items
                     .iter()
                     .enumerate()
                     .map(|(branch_names_idx, _)| BranchToShow::Plain { branch_names_idx }),
             );
         } else {
             let mut fuzzy_matches = self
-                .branch_names
+                .items
                 .iter()
                 .enumerate()
-                .filter_map(|(branch_names_idx, branch_name)| {
-                    let branch_name = branch_name.shorten().to_str_lossy();
+                .filter_map(|(branch_names_idx, item)| {
+                    let branch_name = item.name();
                     let (score, indices) = self.matcher.fuzzy_indices(&branch_name, query)?;
                     Some((branch_names_idx, branch_name, score, indices))
                 })
@@ -248,7 +276,7 @@ impl BranchPicker {
                             branch_names_idx, ..
                         } => *branch_names_idx,
                     })
-                    .map(|branch_names_idx| &self.branch_names[branch_names_idx])
+                    .map(|branch_names_idx| &self.items[branch_names_idx])
                     .cloned()
                 else {
                     return Ok(Some(self));
