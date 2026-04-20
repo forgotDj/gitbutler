@@ -18,7 +18,7 @@ export const OperationTooltip: FC<
 		operation: Operation | null;
 		source?: OperationSource;
 		item: Item;
-		controls: OperationTooltipControls | undefined;
+		controls?: OperationTooltipControls | undefined;
 	} & useRender.ComponentProps<"div">
 > = ({ enabled, operation, source, item, controls, render, ...props }) => {
 	const isSource = source && operationSourceMatchesItem(source, item);

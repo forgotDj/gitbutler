@@ -305,7 +305,6 @@ export const CommitTarget: FC<
 
 			{dropData && dragInsertionSide !== null && (
 				<OperationTooltip
-					controls={modeControls}
 					enabled={!!dropData.operation}
 					item={item}
 					operation={dropData.operation}
