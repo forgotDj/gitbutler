@@ -27,10 +27,13 @@
 //! Missing fields in a user-supplied file fall back to the built-in defaults thanks to
 //! `#[serde(default)]`.
 
-use std::{path::Path, sync::OnceLock};
+use std::{fmt::Display, path::Path, sync::OnceLock};
 
 use colored::{ColoredString, Colorize as _};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::{
+    style::{Color, Modifier, Style},
+    text::Span,
+};
 use serde::{Deserialize, Serialize};
 
 /// Global theme instance, initialized once at startup.
@@ -241,6 +244,15 @@ pub struct Theme {
     pub important: Style,
     /// Suggested command the user can run (e.g. `but config target …`).
     pub command_suggestion: Style,
+
+    #[serde(skip_serializing, skip_deserializing)]
+    // This is a bit weird. We need the theme itself to initialize these nested symbols, so we
+    // initialize them after all of the colors have been initialized and make the type an Option.
+    // But in practice, these symbols _must_ be here after initialization.
+    //
+    // This weirdness can be fixed by splitting the theme into two substructs: symbols and
+    // styles.
+    symbols: Option<ThemeSymbols>,
 }
 
 /// Helper — builds a [`Style`] with the given foreground color.
@@ -256,7 +268,7 @@ const fn style_fg_bold(fg: Color) -> Style {
 impl Default for Theme {
     /// Produces the canonical color palette.
     fn default() -> Self {
-        Self {
+        let mut t = Self {
             // Concrete "things"
             local_branch: style_fg(Color::Green),
             remote_branch: style_fg(Color::Magenta),
@@ -285,7 +297,68 @@ impl Default for Theme {
             hint: Style::new().add_modifier(Modifier::DIM),
             important: Style::new().add_modifier(Modifier::BOLD),
             command_suggestion: Style::new().fg(Color::Blue).add_modifier(Modifier::DIM),
+
+            // Symbols initialized below
+            symbols: None,
+        };
+        t.symbols = Some(ThemeSymbols::new(&t));
+        t
+    }
+}
+
+impl Theme {
+    /// Get the symbols for this theme.
+    pub fn sym(&self) -> &ThemeSymbols {
+        self.symbols
+            .as_ref()
+            .expect("symbols must always be initialized")
+    }
+}
+
+/// Symbols styled with a [`Theme`].
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct ThemeSymbols {
+    /// Successful state.
+    pub success: StyledSymbol,
+    /// Error state.
+    pub error: StyledSymbol,
+}
+
+impl ThemeSymbols {
+    fn new(t: &Theme) -> Self {
+        Self {
+            success: StyledSymbol::new("✓", t.success.add_modifier(Modifier::BOLD)),
+            error: StyledSymbol::new("✗", t.error.add_modifier(Modifier::BOLD)),
         }
+    }
+}
+
+/// An abstract symbol that can be turned into either a raw ANSI-escaped [`String`] or a styled
+/// Ratatui [`Span`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StyledSymbol {
+    content: String,
+    style: Style,
+}
+
+impl StyledSymbol {
+    /// Create a new [`StyledSymbol`].
+    pub fn new<S: AsRef<str>>(content: S, style: Style) -> Self {
+        StyledSymbol {
+            content: content.as_ref().to_string(),
+            style,
+        }
+    }
+
+    /// Convert the [`StyledSymbol`] into a styled [`Span`].
+    pub fn span(&self) -> Span<'_> {
+        Span::styled(&self.content, self.style)
+    }
+}
+
+impl Display for StyledSymbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.style.paint(&self.content))
     }
 }
 
