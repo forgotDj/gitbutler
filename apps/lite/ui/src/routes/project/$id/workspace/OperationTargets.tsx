@@ -140,11 +140,6 @@ const dropTargetToOperation = ({
 					resolvedOperationSource,
 					branchRef,
 				}),
-			Commit: ({ commitId }) =>
-				getCombineOperation({
-					resolvedOperationSource,
-					target: commitFileParent({ commitId }),
-				}),
 			BaseCommit: () => getTearOffBranchTargetOperation(resolvedOperationSource),
 		}),
 		Match.orElse(() => null),
