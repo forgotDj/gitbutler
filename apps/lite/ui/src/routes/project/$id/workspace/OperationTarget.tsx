@@ -25,11 +25,9 @@ import {
 	OperationSource,
 } from "#ui/routes/project/$id/workspace/OperationSource.ts";
 
-type GetOperation = (args: GetDataParams[0]) => Operation | null;
-
 const dropTargetToOperation =
-	(item: Item, resolvedOperationSource: ResolvedOperationSource): GetOperation =>
-	({ input, element }) => {
+	(item: Item, resolvedOperationSource: ResolvedOperationSource) =>
+	({ input, element }: GetDataParams[0]): Operation | null => {
 		const combine = rubOperationSourceToOperation({
 			resolvedOperationSource,
 			target: item,
