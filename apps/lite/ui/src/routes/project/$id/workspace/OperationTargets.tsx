@@ -259,14 +259,13 @@ export const CommitTarget: FC<
 
 	const dropInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
 
-	const targetTooltipOperation =
-		dropInsertionSide === null ? (targetData?.operation ?? null) : null;
+	const combineOperation = dropInsertionSide === null ? (targetData?.operation ?? null) : null;
 
 	const target = useRender({
 		render,
 		ref: dropRef,
 		props: mergeProps<"div">(props, {
-			className: classes(targetTooltipOperation && styles.activeTarget),
+			className: classes(combineOperation && styles.activeTarget),
 		}),
 	});
 
@@ -276,8 +275,8 @@ export const CommitTarget: FC<
 				projectId={projectId}
 				isOperationMode={!!operationMode}
 				item={item}
-				operation={targetTooltipOperation}
-				source={targetTooltipOperation ? targetData?.source : undefined}
+				operation={combineOperation}
+				source={combineOperation ? targetData?.source : undefined}
 				render={target}
 			/>
 
