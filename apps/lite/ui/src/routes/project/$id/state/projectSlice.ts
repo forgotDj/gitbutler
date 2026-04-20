@@ -1,7 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "#ui/state/store.ts";
 import { type BranchItem, type CommitItem, type Item } from "../workspace/Item.ts";
-import type { OperationSource } from "../workspace/OperationSource.ts";
 import * as layout from "./layout.ts";
 import * as workspace from "./workspace.ts";
 
@@ -47,12 +46,6 @@ const projectSlice = createSlice({
 			layout.focusPrimary(projectState.layout);
 			workspace.selectItem(projectState.workspace, item);
 		},
-		selectHunk: (state, action: PayloadAction<{ projectId: string; hunk: string | null }>) => {
-			const { projectId, hunk } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			layout.focusPreview(projectState.layout);
-			workspace.selectHunk(projectState.workspace, hunk);
-		},
 		startRewordCommit: (state, action: PayloadAction<{ projectId: string; item: CommitItem }>) => {
 			const { projectId, item } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
@@ -83,19 +76,13 @@ const projectSlice = createSlice({
 			layout.focusPrimary(projectState.layout);
 			workspace.toggleCommitFiles(projectState.workspace, item);
 		},
-		enterRubMode: (
-			state,
-			action: PayloadAction<{ projectId: string; source: OperationSource }>,
-		) => {
+		enterRubMode: (state, action: PayloadAction<{ projectId: string; source: Item }>) => {
 			const { projectId, source } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
 			layout.focusPrimary(projectState.layout);
 			workspace.enterRubMode(projectState.workspace, source);
 		},
-		enterMoveMode: (
-			state,
-			action: PayloadAction<{ projectId: string; source: OperationSource }>,
-		) => {
+		enterMoveMode: (state, action: PayloadAction<{ projectId: string; source: Item }>) => {
 			const { projectId, source } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
 			layout.focusPrimary(projectState.layout);
@@ -124,20 +111,17 @@ const projectSlice = createSlice({
 		focusPreview: (state, action: PayloadAction<{ projectId: string }>) => {
 			layout.focusPreview(ensureProjectState(state, action.payload.projectId).layout);
 		},
+		focusPreviousPanel: (state, action: PayloadAction<{ projectId: string }>) => {
+			layout.focusPreviousPanel(ensureProjectState(state, action.payload.projectId).layout);
+		},
+		focusNextPanel: (state, action: PayloadAction<{ projectId: string }>) => {
+			layout.focusNextPanel(ensureProjectState(state, action.payload.projectId).layout);
+		},
 		closePreview: (state, action: PayloadAction<{ projectId: string }>) => {
 			layout.closePreview(ensureProjectState(state, action.payload.projectId).layout);
 		},
 		togglePreview: (state, action: PayloadAction<{ projectId: string }>) => {
 			layout.togglePreview(ensureProjectState(state, action.payload.projectId).layout);
-		},
-		openFullscreenPreview: (state, action: PayloadAction<{ projectId: string }>) => {
-			layout.openFullscreenPreview(ensureProjectState(state, action.payload.projectId).layout);
-		},
-		closeFullscreenPreview: (state, action: PayloadAction<{ projectId: string }>) => {
-			layout.closeFullscreenPreview(ensureProjectState(state, action.payload.projectId).layout);
-		},
-		toggleFullscreenPreview: (state, action: PayloadAction<{ projectId: string }>) => {
-			layout.toggleFullscreenPreview(ensureProjectState(state, action.payload.projectId).layout);
 		},
 	},
 });
@@ -156,9 +140,6 @@ const selectProjectWorkspaceState = (state: RootState, projectId: string) =>
 
 export const selectProjectSelectedItem = (state: RootState, projectId: string) =>
 	workspace.selectSelectedItem(selectProjectWorkspaceState(state, projectId));
-
-export const selectProjectSelectedHunk = (state: RootState, projectId: string) =>
-	workspace.selectSelectedHunk(selectProjectWorkspaceState(state, projectId));
 
 export const selectProjectWorkspaceModeState = (state: RootState, projectId: string) =>
 	workspace.selectMode(selectProjectWorkspaceState(state, projectId));

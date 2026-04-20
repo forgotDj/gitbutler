@@ -26,21 +26,6 @@
 	border-top-color: var(--color-black);
 }
 
-.previewDialogPopup {
-	display: flex;
-	position: fixed;
-	flex-direction: column;
-	inset: 0;
-	overflow: hidden;
-	background-color: var(--color-bg);
-}
-
-.previewDialogBody {
-	flex: 1;
-	padding: var(--panel-padding);
-	overflow: auto;
-}
-
 .previewResizeHandle {
 	width: 1px;
 	background-color: var(--color-separator);

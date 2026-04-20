@@ -5,7 +5,11 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { FC } from "react";
 import { DragData, DragPreview, useDraggable } from "./DragAndDrop.tsx";
 import { OperationSourceLabel } from "./OperationSourceLabel.tsx";
-import { operationSourceEquals, type OperationSource } from "./OperationSource.ts";
+import {
+	itemOperationSource,
+	operationSourceEquals,
+	type OperationSource,
+} from "./OperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./route.module.css";
 
@@ -29,9 +33,9 @@ export const OperationSourceC: FC<
 		canDrag,
 	});
 
-	const operationModeSource = operationMode?.source ?? null;
 	const isActiveOperationModeSource =
-		operationModeSource && operationSourceEquals(operationModeSource, source);
+		operationMode?.source &&
+		operationSourceEquals(itemOperationSource(operationMode.source), source);
 
 	const isActive = isDragging || isActiveOperationModeSource;
 

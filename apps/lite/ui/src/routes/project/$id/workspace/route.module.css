@@ -119,20 +119,6 @@
 	font-family: monospace;
 }
 
-.previewHunk {
-	padding: 4px 6px;
-	border: 2px solid transparent;
-	border-radius: 8px;
-
-	&:where(:hover) {
-		border-color: var(--color-separator);
-	}
-}
-
-.previewHunkSelected {
-	border-color: light-dark(black, white);
-}
-
 .segments {
 	display: flex;
 	row-gap: 24px;

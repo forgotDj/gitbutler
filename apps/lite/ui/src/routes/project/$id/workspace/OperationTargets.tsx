@@ -19,11 +19,13 @@ import {
 	getCombineOperation,
 	getCommitTargetMoveOperation,
 	getTearOffBranchTargetOperation,
-	useResolveOperationSource,
+	resolveOperationSource,
 	type ResolvedOperationSource,
 } from "./ResolvedOperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./route.module.css";
+import { useQueryClient } from "@tanstack/react-query";
+import { itemOperationSource } from "#ui/routes/project/$id/workspace/OperationSource.ts";
 
 const useDragOperation = ({
 	projectId,
@@ -34,17 +36,73 @@ const useDragOperation = ({
 		args: GetDataParams[0] & { resolvedOperationSource: ResolvedOperationSource },
 	) => Operation | null;
 }) => {
-	const resolveOperationSource = useResolveOperationSource(projectId);
+	const queryClient = useQueryClient();
 
 	return useDroppable((args): DropData => {
 		const operationSource = parseDragData(args.source.data);
 		if (!operationSource) return null;
 
-		const resolvedOperationSource = resolveOperationSource(operationSource);
+		const resolvedOperationSource = resolveOperationSource({
+			operationSource,
+			queryClient,
+			projectId,
+		});
 		if (!resolvedOperationSource) return null;
 
 		return { operationSource, operation: getOperation({ ...args, resolvedOperationSource }) };
 	});
+};
+
+const useOperationModeTarget = ({
+	projectId,
+	item,
+	operationMode,
+	isSelected,
+}: {
+	projectId: string;
+	item: Item;
+	operationMode: OperationMode | null;
+	isSelected: boolean;
+}) => {
+	const dispatch = useAppDispatch();
+	const runOperation = useRunOperation();
+	const queryClient = useQueryClient();
+
+	const isActiveTarget = !!operationMode && isSelected;
+
+	const resolvedOperationSource = operationMode
+		? resolveOperationSource({
+				operationSource: itemOperationSource(operationMode.source),
+				queryClient,
+				projectId,
+			})
+		: null;
+
+	const operation =
+		isActiveTarget && resolvedOperationSource
+			? operationModeToOperation({
+					operationMode,
+					resolvedOperationSource,
+					target: item,
+				})
+			: null;
+
+	const confirm = () => {
+		dispatch(projectActions.exitMode({ projectId }));
+
+		if (!operation) return;
+
+		runOperation(projectId, operation);
+	};
+
+	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
+
+	return {
+		isActiveTarget,
+		source: operationMode?.source,
+		operation,
+		controls: isActiveTarget ? { onConfirm: confirm, onCancel: cancel } : undefined,
+	};
 };
 
 const useOperationTarget = ({
@@ -62,44 +120,23 @@ const useOperationTarget = ({
 		args: GetDataParams[0] & { resolvedOperationSource: ResolvedOperationSource },
 	) => Operation | null;
 }) => {
-	const dispatch = useAppDispatch();
-	const runOperation = useRunOperation();
-
 	const [drag, dropRef] = useDragOperation({ projectId, getOperation });
-
-	const resolveOperationSource = useResolveOperationSource(projectId);
-	const resolvedOperationModeSource = operationMode
-		? resolveOperationSource(operationMode.source)
-		: null;
-	const isActiveOperationModeTarget = !!operationMode && isSelected;
-	const operationModeOperation =
-		isActiveOperationModeTarget && resolvedOperationModeSource
-			? operationModeToOperation({
-					operationMode,
-					resolvedOperationSource: resolvedOperationModeSource,
-					target: item,
-				})
-			: null;
-
-	const confirmMode = () => {
-		dispatch(projectActions.exitMode({ projectId }));
-
-		if (!operationModeOperation) return;
-
-		runOperation(projectId, operationModeOperation);
-	};
-
-	const cancelMode = () => dispatch(projectActions.exitMode({ projectId }));
+	const operationModeTarget = useOperationModeTarget({
+		projectId,
+		item,
+		operationMode,
+		isSelected,
+	});
 
 	return {
 		drag,
 		dropRef,
-		isActiveTarget: !!drag?.operation || isActiveOperationModeTarget,
-		source: drag?.operationSource ?? operationMode?.source,
-		operation: drag?.operation ?? operationModeOperation,
-		controls: isActiveOperationModeTarget
-			? { onConfirm: confirmMode, onCancel: cancelMode }
-			: undefined,
+		isActiveTarget: !!drag?.operation || operationModeTarget.isActiveTarget,
+		source:
+			drag?.operationSource ??
+			(operationModeTarget.source ? itemOperationSource(operationModeTarget.source) : undefined),
+		operation: drag?.operation ?? operationModeTarget.operation,
+		controls: operationModeTarget.controls,
 	};
 };
 
@@ -161,10 +198,10 @@ export const OperationTarget: FC<
 		<OperationTooltip
 			controls={controls}
 			enabled={isActiveTarget}
-			sourceItem={item}
+			item={item}
 			operation={operation}
 			render={target}
-			sourceOperation={source}
+			operationSource={source}
 		/>
 	);
 };
@@ -252,19 +289,19 @@ export const CommitTarget: FC<
 			<OperationTooltip
 				controls={controls}
 				enabled={isActiveTarget}
-				sourceItem={item}
+				item={item}
 				operation={targetTooltipOperation}
 				render={target}
-				sourceOperation={source}
+				operationSource={source}
 			/>
 
 			{drag && dragInsertionSide !== null && (
 				<OperationTooltip
 					controls={controls}
 					enabled={!!drag.operation}
-					sourceItem={item}
+					item={item}
 					operation={drag.operation}
-					sourceOperation={drag.operationSource}
+					operationSource={drag.operationSource}
 					className={classes(
 						styles.commitInsertionTarget,
 						pipe(

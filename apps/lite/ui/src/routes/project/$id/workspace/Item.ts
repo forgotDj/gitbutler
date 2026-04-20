@@ -1,8 +1,6 @@
 import { Match } from "effect";
 
 /** @public */
-export type ChangesSectionItem = { _tag: "ChangesSection" };
-/** @public */
 export type ChangeItem = { path: string };
 
 /** @public */
@@ -23,7 +21,7 @@ export type CommitFileItem = CommitItem & { path: string };
  * A selectable item in the primary panel.
  */
 export type Item =
-	| ChangesSectionItem
+	| { _tag: "ChangesSection" }
 	| ({ _tag: "ChangeFile" } & ChangeItem)
 	| ({ _tag: "Stack" } & StackItem)
 	| ({ _tag: "Branch" } & BranchItem)
@@ -32,7 +30,7 @@ export type Item =
 	| { _tag: "BaseCommit" };
 
 /** @public */
-export const changesSectionItem: ChangesSectionItem = {
+export const changesSectionItem: Item = {
 	_tag: "ChangesSection",
 };
 

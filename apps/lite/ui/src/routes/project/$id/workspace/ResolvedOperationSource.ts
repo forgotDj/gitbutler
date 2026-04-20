@@ -17,8 +17,8 @@ import {
 	type Operation,
 } from "#ui/Operation.ts";
 import { createDiffSpec } from "#ui/domain/DiffSpec.ts";
-import { changeFileParent, type FileParent } from "#ui/domain/FileParent.ts";
-import { useQueryClient } from "@tanstack/react-query";
+import { changeFileParent, commitFileParent, type FileParent } from "#ui/domain/FileParent.ts";
+import { QueryClient } from "@tanstack/react-query";
 import {
 	CommitDetails,
 	HunkAssignmentRequest,
@@ -30,6 +30,7 @@ import {
 import { Match } from "effect";
 import { decodeRefName } from "../shared";
 import { type OperationSource } from "./OperationSource.ts";
+import { Item } from "#ui/routes/project/$id/workspace/Item.ts";
 
 type TreeChangeWithHunkHeaders = {
 	change: TreeChange;
@@ -97,21 +98,30 @@ export const treeChangesResolvedOperationSource = ({
 	changes,
 });
 
-const resolveOperationSource = ({
-	operationSource,
+const resolvedOperationSourceFromItem = ({
+	item,
 	worktreeChanges,
 	getCommitDetails,
 }: {
-	operationSource: OperationSource;
+	item: Item;
 	worktreeChanges: WorktreeChanges | undefined;
 	getCommitDetails: (commitId: string) => CommitDetails | undefined;
 }) =>
-	Match.value(operationSource).pipe(
+	Match.value(item).pipe(
 		Match.tagsExhaustive({
-			Stack: ({ stackId }) => stackResolvedOperationSource({ stackId }),
-			Branch: ({ branchRef }) => branchResolvedOperationSource({ branchRef }),
 			BaseCommit: () => baseCommitResolvedOperationSource,
-			Commit: ({ commitId }) => commitResolvedOperationSource({ commitId }),
+			Branch: ({ branchRef }) => branchResolvedOperationSource({ branchRef }),
+			ChangeFile: ({ path }) => {
+				if (!worktreeChanges) return null;
+
+				const change = worktreeChanges.changes.find((candidate) => candidate.path === path);
+				if (!change) return null;
+
+				return treeChangesResolvedOperationSource({
+					parent: changeFileParent,
+					changes: [{ change, hunkHeaders: [] }],
+				});
+			},
 			ChangesSection: () => {
 				if (!worktreeChanges) return null;
 
@@ -129,6 +139,40 @@ const resolveOperationSource = ({
 					changes,
 				});
 			},
+			Commit: ({ commitId }) => commitResolvedOperationSource({ commitId }),
+			CommitFile: ({ commitId, path }) => {
+				const commitDetails = getCommitDetails(commitId);
+				if (!commitDetails) return null;
+
+				const change = commitDetails.changes.find((candidate) => candidate.path === path);
+				if (!change) return null;
+
+				return treeChangesResolvedOperationSource({
+					parent: commitFileParent({ commitId }),
+					changes: [{ change, hunkHeaders: [] }],
+				});
+			},
+			Stack: ({ stackId }) => stackResolvedOperationSource({ stackId }),
+		}),
+	);
+
+const resolveOperationSourceFromData = ({
+	operationSource,
+	worktreeChanges,
+	getCommitDetails,
+}: {
+	operationSource: OperationSource;
+	worktreeChanges: WorktreeChanges | undefined;
+	getCommitDetails: (commitId: string) => CommitDetails | undefined;
+}) =>
+	Match.value(operationSource).pipe(
+		Match.tagsExhaustive({
+			Item: (source) =>
+				resolvedOperationSourceFromItem({
+					item: source.item,
+					worktreeChanges,
+					getCommitDetails,
+				}),
 			File: ({ parent, path }) => {
 				const change = Match.value(parent).pipe(
 					Match.tagsExhaustive({
@@ -180,19 +224,23 @@ const resolveOperationSource = ({
 		}),
 	);
 
-export const useResolveOperationSource = (projectId: string) => {
-	const queryClient = useQueryClient();
-
-	return (operationSource: OperationSource) =>
-		resolveOperationSource({
-			operationSource,
-			worktreeChanges: queryClient.getQueryData(changesInWorktreeQueryOptions(projectId).queryKey),
-			getCommitDetails: (commitId) =>
-				queryClient.getQueryData(
-					commitDetailsWithLineStatsQueryOptions({ projectId, commitId }).queryKey,
-				),
-		});
-};
+export const resolveOperationSource = ({
+	operationSource,
+	queryClient,
+	projectId,
+}: {
+	operationSource: OperationSource;
+	queryClient: QueryClient;
+	projectId: string;
+}) =>
+	resolveOperationSourceFromData({
+		operationSource,
+		worktreeChanges: queryClient.getQueryData(changesInWorktreeQueryOptions(projectId).queryKey),
+		getCommitDetails: (commitId) =>
+			queryClient.getQueryData(
+				commitDetailsWithLineStatsQueryOptions({ projectId, commitId }).queryKey,
+			),
+	});
 
 /**
  * | SOURCE ↓ / TARGET →    | Changes  | Commit |
@@ -217,35 +265,35 @@ export const getCombineOperation = ({
 			Stack: () => null,
 			Branch: () => null,
 			BaseCommit: () => null,
-			Commit: ({ commitId: sourceCommitId }) =>
+			Commit: (source) =>
 				Match.value(target).pipe(
 					Match.tagsExhaustive({
 						Change: () =>
 							commitUncommitOperation({
-								commitId: sourceCommitId,
+								commitId: source.commitId,
 								assignTo: null,
 							}),
-						Commit: ({ commitId: destinationCommitId }) =>
+						Commit: (target) =>
 							commitSquashOperation({
-								sourceCommitId,
-								destinationCommitId,
+								sourceCommitId: source.commitId,
+								destinationCommitId: target.commitId,
 								dryRun: false,
 							}),
 					}),
 				),
-			TreeChanges: ({ parent, changes: sourceChanges }) => {
-				const changes = sourceChanges.map(({ change, hunkHeaders }) =>
+			TreeChanges: (source) => {
+				const changes = source.changes.map(({ change, hunkHeaders }) =>
 					createDiffSpec(change, hunkHeaders),
 				);
 
-				return Match.value(parent).pipe(
+				return Match.value(source.parent).pipe(
 					Match.tagsExhaustive({
 						Change: () =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
 									Change: () =>
 										assignHunkOperation({
-											assignments: sourceChanges.flatMap(({ change, hunkHeaders }) =>
+											assignments: source.changes.flatMap(({ change, hunkHeaders }) =>
 												hunkHeaders.map(
 													(hunkHeader): HunkAssignmentRequest => ({
 														pathBytes: change.pathBytes,
@@ -263,20 +311,20 @@ export const getCombineOperation = ({
 										}),
 								}),
 							),
-						Commit: ({ commitId: sourceCommitId }) =>
+						Commit: (source) =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
 									Change: () =>
 										commitUncommitChangesOperation({
-											commitId: sourceCommitId,
+											commitId: source.commitId,
 											assignTo: null,
 											changes,
 											dryRun: false,
 										}),
-									Commit: ({ commitId: destinationCommitId }) =>
+									Commit: (target) =>
 										commitMoveChangesBetweenOperation({
-											sourceCommitId,
-											destinationCommitId,
+											sourceCommitId: source.commitId,
+											destinationCommitId: target.commitId,
 											changes,
 											dryRun: false,
 										}),
@@ -299,20 +347,20 @@ export const getCommitTargetMoveOperation = ({
 }) =>
 	Match.value(resolvedOperationSource).pipe(
 		Match.tags({
-			Commit: ({ commitId: subjectCommitId }) =>
+			Commit: (source) =>
 				commitMoveOperation({
-					subjectCommitId,
+					subjectCommitId: source.commitId,
 					relativeTo: { type: "commit", subject: commitId },
 					side,
 					dryRun: false,
 				}),
-			TreeChanges: ({ parent, changes: sourceChanges }) => {
-				const changes = sourceChanges.map(({ change, hunkHeaders }) =>
+			TreeChanges: (source) => {
+				const changes = source.changes.map(({ change, hunkHeaders }) =>
 					createDiffSpec(change, hunkHeaders),
 				);
 
-				return Match.value(parent).pipe(
-					Match.tags({
+				return Match.value(source.parent).pipe(
+					Match.tagsExhaustive({
 						Change: () =>
 							commitCreateOperation({
 								relativeTo: { type: "commit", subject: commitId },
@@ -321,16 +369,15 @@ export const getCommitTargetMoveOperation = ({
 								message: "",
 								dryRun: false,
 							}),
-						Commit: ({ commitId: sourceCommitId }) =>
+						Commit: (source) =>
 							commitCreateFromCommittedChangesOperation({
-								sourceCommitId,
+								sourceCommitId: source.commitId,
 								relativeTo: { type: "commit", subject: commitId },
 								side,
 								changes,
 								dryRun: false,
 							}),
 					}),
-					Match.exhaustive,
 				);
 			},
 		}),
@@ -377,9 +424,9 @@ export const getBranchTargetOperation = ({
 								message: "",
 								dryRun: false,
 							}),
-						Commit: ({ commitId: sourceCommitId }) =>
+						Commit: (source) =>
 							commitCreateFromCommittedChangesOperation({
-								sourceCommitId,
+								sourceCommitId: source.commitId,
 								relativeTo: { type: "referenceBytes", subject: branchRef },
 								side: "below",
 								changes,

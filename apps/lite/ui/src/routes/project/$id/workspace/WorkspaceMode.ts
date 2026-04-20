@@ -1,12 +1,11 @@
 import { Match } from "effect";
-import { type OperationSource, operationSourceMatchesItem } from "./OperationSource.ts";
 import { branchItem, commitItem, itemEquals, type Item } from "./Item.ts";
-import { type NavigationIndex } from "./WorkspaceModel.ts";
+import { navigationIndexIncludes, type NavigationIndex } from "./WorkspaceModel.ts";
 
 /** @public */
-export type RubOperationMode = { source: OperationSource };
+export type RubOperationMode = { source: Item };
 /** @public */
-export type MoveOperationMode = { source: OperationSource };
+export type MoveOperationMode = { source: Item };
 export type OperationMode =
 	| ({ _tag: "Rub" } & RubOperationMode)
 	| ({ _tag: "Move" } & MoveOperationMode);
@@ -71,29 +70,23 @@ export const isValidWorkspaceMode = ({
 	Match.value(mode).pipe(
 		Match.tagsExhaustive({
 			Default: () => true,
-			Rub: (mode) =>
-				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item)),
-			Move: (mode) =>
-				navigationIndex.items.some((item) => operationSourceMatchesItem(mode.source, item)),
+			Rub: (mode) => navigationIndexIncludes(navigationIndex, mode.source),
+			Move: (mode) => navigationIndexIncludes(navigationIndex, mode.source),
 			RewordCommit: (mode) =>
-				navigationIndex.items.some((item) =>
-					itemEquals(
-						item,
-						commitItem({
-							stackId: mode.stackId,
-							commitId: mode.commitId,
-						}),
-					),
+				navigationIndexIncludes(
+					navigationIndex,
+					commitItem({
+						stackId: mode.stackId,
+						commitId: mode.commitId,
+					}),
 				),
 			RenameBranch: (mode) =>
-				navigationIndex.items.some((item) =>
-					itemEquals(
-						item,
-						branchItem({
-							stackId: mode.stackId,
-							branchRef: mode.branchRef,
-						}),
-					),
+				navigationIndexIncludes(
+					navigationIndex,
+					branchItem({
+						stackId: mode.stackId,
+						branchRef: mode.branchRef,
+					}),
 				),
 		}),
 	);
@@ -103,7 +96,7 @@ export const isValidWorkspaceModeForItem = ({
 	item,
 }: {
 	mode: WorkspaceMode;
-	item: Item | null;
+	item: Item;
 }): boolean =>
 	Match.value(mode).pipe(
 		Match.tagsExhaustive({
@@ -111,7 +104,6 @@ export const isValidWorkspaceModeForItem = ({
 			Rub: () => true,
 			Move: () => true,
 			RewordCommit: (mode) =>
-				item !== null &&
 				itemEquals(
 					item,
 					commitItem({
@@ -120,7 +112,6 @@ export const isValidWorkspaceModeForItem = ({
 					}),
 				),
 			RenameBranch: (mode) =>
-				item !== null &&
 				itemEquals(
 					item,
 					branchItem({

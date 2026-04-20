@@ -16,7 +16,6 @@ import {
 	type BranchItem,
 	type ChangeItem,
 	changesSectionItem,
-	type ChangesSectionItem,
 	type CommitFileItem,
 	type CommitItem,
 	type Item,
@@ -24,9 +23,8 @@ import {
 	stackItem,
 } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
-import { operationSourceFromItem } from "./OperationSource.ts";
-import { useResolveOperationSource } from "./ResolvedOperationSource.ts";
-import { PreviewImperativeHandle } from "./route.tsx";
+import { itemOperationSource } from "./OperationSource.ts";
+import { resolveOperationSource } from "./ResolvedOperationSource.ts";
 import {
 	getAdjacent,
 	getNextSection,
@@ -34,6 +32,7 @@ import {
 	type NavigationIndex,
 } from "./WorkspaceModel.ts";
 import { OperationMode, type WorkspaceMode } from "./WorkspaceMode.ts";
+import { useQueryClient } from "@tanstack/react-query";
 
 const isTypingTarget = (target: EventTarget | null) => {
 	if (!(target instanceof HTMLElement)) return false;
@@ -113,12 +112,21 @@ const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
 	},
 ];
 
-type GlobalPreviewAction = { _tag: "ToggleFullscreenPreview" } | { _tag: "TogglePreview" };
+type PanelNavigationAction =
+	| { _tag: "FocusPreviousPanel" }
+	| { _tag: "FocusNextPanel" }
+	| { _tag: "TogglePreview" };
 
-const toggleFullscreenPreviewAction: GlobalPreviewAction = { _tag: "ToggleFullscreenPreview" };
-const togglePreviewAction: GlobalPreviewAction = { _tag: "TogglePreview" };
+const isPanelNavigationAction = (action: { _tag: string }): action is PanelNavigationAction =>
+	action._tag === "FocusPreviousPanel" ||
+	action._tag === "FocusNextPanel" ||
+	action._tag === "TogglePreview";
 
-export const togglePreviewBinding: ShortcutBinding<GlobalPreviewAction> = {
+const focusPreviousPanelAction: PanelNavigationAction = { _tag: "FocusPreviousPanel" };
+const focusNextPanelAction: PanelNavigationAction = { _tag: "FocusNextPanel" };
+const togglePreviewAction: PanelNavigationAction = { _tag: "TogglePreview" };
+
+export const togglePreviewBinding: ShortcutBinding<PanelNavigationAction> = {
 	id: "primary-panel-toggle-preview",
 	description: "Preview",
 	keys: ["p"],
@@ -126,23 +134,31 @@ export const togglePreviewBinding: ShortcutBinding<GlobalPreviewAction> = {
 	repeat: false,
 };
 
-export const toggleFullscreenPreviewBinding: ShortcutBinding<GlobalPreviewAction> = {
-	id: "primary-panel-toggle-fullscreen-preview",
-	description: "Fullscreen preview",
-	keys: ["d"],
-	action: toggleFullscreenPreviewAction,
-	repeat: false,
-};
+const panelNavigationBindings: Array<ShortcutBinding<PanelNavigationAction>> = [
+	{
+		id: "panel-focus-left",
+		description: "Focus previous panel",
+		keys: ["h"],
+		action: focusPreviousPanelAction,
+		repeat: false,
+	},
+	{
+		id: "panel-focus-right",
+		description: "Focus next panel",
+		keys: ["l"],
+		action: focusNextPanelAction,
+		repeat: false,
+	},
+	togglePreviewBinding,
+];
 
 type PrimaryPanelAction =
 	| ItemSelectionAction
 	| { _tag: "Commit" }
-	| { _tag: "FocusPreview" }
 	| { _tag: "SelectUnassignedChanges" }
-	| GlobalPreviewAction;
+	| PanelNavigationAction;
 
 const commitAction: PrimaryPanelAction = { _tag: "Commit" };
-const focusPreviewAction: PrimaryPanelAction = { _tag: "FocusPreview" };
 const selectUnassignedChangesAction: PrimaryPanelAction = { _tag: "SelectUnassignedChanges" };
 
 const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
@@ -161,15 +177,7 @@ const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 		action: selectUnassignedChangesAction,
 		repeat: false,
 	},
-	{
-		id: "primary-panel-focus-preview",
-		description: "Focus preview",
-		keys: ["l"],
-		action: focusPreviewAction,
-		repeat: false,
-	},
-	toggleFullscreenPreviewBinding,
-	togglePreviewBinding,
+	...panelNavigationBindings,
 ];
 
 type ChangesAction = PrimaryPanelAction | { _tag: "Absorb" };
@@ -259,7 +267,6 @@ type ChangeDefaultModeScope = {
 };
 type ChangesSectionDefaultModeScope = {
 	bindings: Array<ShortcutBinding<ChangesAction>>;
-	context: ChangesSectionItem;
 };
 type CommitDefaultModeScope = {
 	bindings: Array<ShortcutBinding<CommitAction>>;
@@ -311,11 +318,9 @@ const changeDefaultModeScope = ({
 
 const changesSectionDefaultModeScope = ({
 	bindings,
-	context,
 }: ChangesSectionDefaultModeScope): DefaultModeScope => ({
 	_tag: "ChangesSection",
 	bindings,
-	context,
 });
 
 const commitDefaultModeScope = ({
@@ -354,10 +359,9 @@ const getDefaultModeScope = (selectedItem: Item): DefaultModeScope =>
 					bindings: changesBindings,
 					context: selectedItem,
 				}),
-			ChangesSection: (selectedItem) =>
+			ChangesSection: () =>
 				changesSectionDefaultModeScope({
 					bindings: changesBindings,
-					context: selectedItem,
 				}),
 			Commit: (selectedItem) =>
 				commitDefaultModeScope({
@@ -395,22 +399,11 @@ const getDefaultModeScopeLabel = (scope: DefaultModeScope): string =>
 		}),
 	);
 
-type HunkSelectionAction = { offset: -1 | 1 };
-
-type PreviewAction =
-	| { _tag: "ClosePreview" }
-	| { _tag: "FocusPrimary" }
-	| ({ _tag: "Move" } & HunkSelectionAction)
-	| GlobalPreviewAction;
+type PreviewAction = { _tag: "ClosePreview" } | PanelNavigationAction;
 
 const closePreviewAction: PreviewAction = { _tag: "ClosePreview" };
-const focusPrimaryAction: PreviewAction = { _tag: "FocusPrimary" };
-const moveHunkSelectionAction = ({ offset }: HunkSelectionAction): PreviewAction => ({
-	_tag: "Move",
-	offset,
-});
 
-export const closePreviewBinding: ShortcutBinding<PreviewAction> = {
+const closePreviewBinding: ShortcutBinding<PreviewAction> = {
 	id: "preview-close",
 	description: "Close",
 	keys: ["Escape"],
@@ -419,34 +412,9 @@ export const closePreviewBinding: ShortcutBinding<PreviewAction> = {
 };
 
 const previewBindings: Array<ShortcutBinding<PreviewAction>> = [
-	{
-		id: "preview-move-up",
-		description: "up",
-		keys: ["ArrowUp", "k"],
-		action: moveHunkSelectionAction({ offset: -1 }),
-	},
-	{
-		id: "preview-move-down",
-		description: "down",
-		keys: ["ArrowDown", "j"],
-		action: moveHunkSelectionAction({ offset: 1 }),
-	},
-	{
-		id: "preview-focus-primary",
-		description: "Focus primary",
-		keys: ["h"],
-		action: focusPrimaryAction,
-		repeat: false,
-	},
-	toggleFullscreenPreviewBinding,
-	togglePreviewBinding,
 	closePreviewBinding,
+	...panelNavigationBindings,
 ];
-
-const fullscreenPreviewBindings: Array<ShortcutBinding<PreviewAction>> = previewBindings
-	// The preview panel is not visible as it sits behind the fullscreen dialog, so
-	// there's no point having the toggle preview shortcut here.
-	.filter((binding) => binding.action._tag !== "TogglePreview");
 
 type OperationModeAction = PrimaryPanelAction | { _tag: "Cancel" } | { _tag: "Run" };
 
@@ -650,7 +618,6 @@ const getModeScope = ({
 
 type PreviewScope = {
 	bindings: Array<ShortcutBinding<PreviewAction>>;
-	context: { isFullscreen: boolean };
 };
 
 type Scope = ModeScope | ({ _tag: "Preview" } & PreviewScope);
@@ -667,10 +634,9 @@ const isOperationModeScope = (scope: Scope): scope is OperationModeScope =>
 		}),
 	);
 
-const previewScope = ({ bindings, context }: PreviewScope): Scope => ({
+const previewScope = ({ bindings }: PreviewScope): Scope => ({
 	_tag: "Preview",
 	bindings,
-	context,
 });
 
 export const getScope = ({
@@ -684,8 +650,7 @@ export const getScope = ({
 }): Scope | null => {
 	if (getFocus(layoutState) === "preview")
 		return previewScope({
-			bindings: layoutState.isFullscreenPreviewOpen ? fullscreenPreviewBindings : previewBindings,
-			context: { isFullscreen: layoutState.isFullscreenPreviewOpen },
+			bindings: previewBindings,
 		});
 
 	return getModeScope({ selectedItem, workspaceMode });
@@ -723,7 +688,6 @@ export const useWorkspaceShortcuts = ({
 	navigationIndex,
 	requestAbsorptionPlan,
 	operationMode,
-	previewRef,
 }: {
 	inlineRenameBranchFormRef: RefObject<HTMLFormElement | null>;
 	inlineRewordCommitFormRef: RefObject<HTMLFormElement | null>;
@@ -732,10 +696,9 @@ export const useWorkspaceShortcuts = ({
 	navigationIndex: NavigationIndex;
 	requestAbsorptionPlan: (target: AbsorptionTarget) => void;
 	operationMode: OperationMode | null;
-	previewRef: RefObject<PreviewImperativeHandle | null>;
 }) => {
 	const dispatch = useAppDispatch();
-	const resolveOperationSource = useResolveOperationSource(projectId);
+	const queryClient = useQueryClient();
 	const runOperation = useRunOperation();
 
 	const handleItemMoveSelectionAction = (action: ItemMoveSelectionAction, selectedItem: Item) => {
@@ -770,19 +733,28 @@ export const useWorkspaceShortcuts = ({
 					dispatch(
 						projectActions.enterMoveMode({
 							projectId,
-							source: operationSourceFromItem(selectedItem),
+							source: selectedItem,
 						}),
 					),
 				EnterRubMode: () =>
 					dispatch(
 						projectActions.enterRubMode({
 							projectId,
-							source: operationSourceFromItem(selectedItem),
+							source: selectedItem,
 						}),
 					),
 			}),
 			Match.orElse((action) => {
 				handleItemMoveSelectionAction(action, selectedItem);
+			}),
+		);
+
+	const handlePanelNavigationAction = (action: PanelNavigationAction) =>
+		Match.value(action).pipe(
+			Match.tagsExhaustive({
+				FocusNextPanel: () => dispatch(projectActions.focusNextPanel({ projectId })),
+				FocusPreviousPanel: () => dispatch(projectActions.focusPreviousPanel({ projectId })),
+				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
 			}),
 		);
 
@@ -793,22 +765,29 @@ export const useWorkspaceShortcuts = ({
 					dispatch(
 						projectActions.enterMoveMode({
 							projectId,
-							source: operationSourceFromItem(changesSectionItem),
+							source: changesSectionItem,
 						}),
 					),
-				FocusPreview: () => dispatch(projectActions.focusPreview({ projectId })),
 				SelectUnassignedChanges: () =>
 					dispatch(projectActions.selectItem({ projectId, item: changesSectionItem })),
-				ToggleFullscreenPreview: () =>
-					dispatch(projectActions.toggleFullscreenPreview({ projectId })),
-				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
 			}),
-			Match.orElse((action) => handleItemSelectionAction(action, selectedItem)),
+			Match.orElse((action) => {
+				if (isPanelNavigationAction(action)) {
+					handlePanelNavigationAction(action);
+					return;
+				}
+
+				handleItemSelectionAction(action, selectedItem);
+			}),
 		);
 
 	const requestAbsorptionPlanForItem = (selectedItem: Item) => {
-		const operationSource = operationSourceFromItem(selectedItem);
-		const resolvedOperationSource = resolveOperationSource(operationSource);
+		const operationSource = itemOperationSource(selectedItem);
+		const resolvedOperationSource = resolveOperationSource({
+			operationSource,
+			queryClient,
+			projectId,
+		});
 
 		if (resolvedOperationSource?._tag !== "TreeChanges") return;
 		if (resolvedOperationSource.parent._tag !== "Change") return;
@@ -896,7 +875,7 @@ export const useWorkspaceShortcuts = ({
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handleChangesScopeAction(action, scope.context);
+					handleChangesScopeAction(action, changesSectionItem);
 				},
 				Commit: (scope) => {
 					const action = getAction(scope.bindings, event);
@@ -921,35 +900,37 @@ export const useWorkspaceShortcuts = ({
 
 	const handlePreviewScopeAction = (action: PreviewAction) =>
 		Match.value(action).pipe(
-			Match.tagsExhaustive({
+			Match.tags({
 				ClosePreview: () => dispatch(projectActions.closePreview({ projectId })),
-				FocusPrimary: () => dispatch(projectActions.focusPrimary({ projectId })),
-				Move: ({ offset }) => previewRef.current?.moveSelection(offset),
-				ToggleFullscreenPreview: () =>
-					dispatch(projectActions.toggleFullscreenPreview({ projectId })),
-				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
 			}),
+			Match.orElse((action) => handlePanelNavigationAction(action)),
 		);
 
 	const confirmOperationMode = (selectedItem: Item | null) => {
 		dispatch(projectActions.exitMode({ projectId }));
 
-		const resolvedOperationModeSource = operationMode
-			? resolveOperationSource(operationMode.source)
+		if (!selectedItem) return;
+
+		const resolvedOperationSource = operationMode
+			? resolveOperationSource({
+					operationSource: itemOperationSource(operationMode.source),
+					queryClient,
+					projectId,
+				})
 			: null;
 
-		const operationModeOperation =
-			operationMode && selectedItem && resolvedOperationModeSource
+		const operation =
+			operationMode && resolvedOperationSource
 				? operationModeToOperation({
 						operationMode,
-						resolvedOperationSource: resolvedOperationModeSource,
+						resolvedOperationSource,
 						target: selectedItem,
 					})
 				: null;
 
-		if (!operationModeOperation) return;
+		if (!operation) return;
 
-		runOperation(projectId, operationModeOperation);
+		runOperation(projectId, operation);
 	};
 
 	const handleOperationModeScopeAction = (action: OperationModeAction, selectedItem: Item | null) =>

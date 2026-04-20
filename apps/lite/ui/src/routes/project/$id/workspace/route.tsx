@@ -25,16 +25,14 @@ import {
 	selectProjectExpandedCommitId,
 	selectProjectHighlightedCommitIds,
 	selectProjectLayoutState,
-	selectProjectSelectedHunk,
 	selectProjectSelectedItem,
 	selectProjectWorkspaceModeState,
 } from "#ui/routes/project/$id/state/projectSlice.ts";
-import { normalizeSelectedHunk } from "#ui/routes/project/$id/state/workspace.ts";
 import { AbsorptionDialog, useAbsorption } from "#ui/routes/project/$id/workspace/Absorption.tsx";
 import { useMonitorDraggedOperationSource } from "#ui/routes/project/$id/workspace/DragAndDrop.tsx";
 import { isOperationModeSourceOrTarget } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
-import { useResolveOperationSource } from "#ui/routes/project/$id/workspace/ResolvedOperationSource.ts";
+import { resolveOperationSource } from "#ui/routes/project/$id/workspace/ResolvedOperationSource.ts";
 import {
 	CommitTarget,
 	OperationTarget,
@@ -66,7 +64,12 @@ import {
 	TreeChange,
 	UnifiedPatch,
 } from "@gitbutler/but-sdk";
-import { useMutation, useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query";
+import {
+	useMutation,
+	useQueryClient,
+	useSuspenseQueries,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
 import { createRoute } from "@tanstack/react-router";
 import { Array, Match, pipe } from "effect";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
@@ -77,7 +80,6 @@ import {
 	ReactNode,
 	Ref,
 	Suspense,
-	useImperativeHandle,
 	useLayoutEffect,
 	useOptimistic,
 	useRef,
@@ -121,7 +123,7 @@ import styles from "./route.module.css";
 import {
 	fileOperationSource,
 	hunkOperationSource,
-	operationSourceFromItem,
+	itemOperationSource,
 } from "./OperationSource.ts";
 import {
 	defaultWorkspaceMode,
@@ -132,7 +134,6 @@ import {
 } from "./WorkspaceMode.ts";
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
-const fileHunkKey = (path: string, hunk: HunkHeader): string => `${path}:${hunkKey(hunk)}`;
 
 const selectNormalizedSelectedItem = (
 	state: RootState,
@@ -299,7 +300,7 @@ const ItemRow: FC<
 	);
 };
 
-const DependencyIndicator: FC<{
+const DependencyIndicatorButton: FC<{
 	projectId: string;
 	commitIds: NonEmptyArray<string>;
 	className?: string;
@@ -323,6 +324,7 @@ const DependencyIndicator: FC<{
 			disableHoverablePopup
 		>
 			<Tooltip.Trigger
+				type="button"
 				className={className}
 				onMouseEnter={() => {
 					dispatch(
@@ -398,7 +400,6 @@ const Hunk: FC<{
 	hunk: DiffHunk;
 	editable: boolean;
 	hunkDependencyDiffs?: Array<HunkDependencyDiff>;
-	isSelected?: boolean;
 }> = ({
 	patch,
 	operationMode,
@@ -407,10 +408,8 @@ const Hunk: FC<{
 	change,
 	hunk,
 	editable,
-	isSelected,
 	hunkDependencyDiffs,
 }) => {
-	const dispatch = useAppDispatch();
 	const dependencyCommitIds =
 		fileParent?._tag === "Change" && hunkDependencyDiffs
 			? getDependencyCommitIds({ hunk, hunkDependencyDiffs })
@@ -418,27 +417,16 @@ const Hunk: FC<{
 	const headerRow = (
 		<div className={styles.hunkHeaderRow}>
 			{dependencyCommitIds && (
-				<DependencyIndicator projectId={projectId} commitIds={dependencyCommitIds}>
+				<DependencyIndicatorButton projectId={projectId} commitIds={dependencyCommitIds}>
 					<DependencyIcon />
-				</DependencyIndicator>
+				</DependencyIndicatorButton>
 			)}
 			<div className={styles.hunkHeader}>{formatHunkHeader(hunk)}</div>
 		</div>
 	);
 
 	return (
-		// oxlint-disable-next-line jsx_a11y/click-events-have-key-events, jsx_a11y/no-static-element-interactions -- TODO
-		<div
-			onClick={() =>
-				dispatch(
-					projectActions.selectHunk({
-						projectId,
-						hunk: fileHunkKey(change.path, hunk),
-					}),
-				)
-			}
-			className={classes(styles.previewHunk, isSelected && styles.previewHunkSelected)}
-		>
+		<div>
 			{fileParent && editable
 				? (() => {
 						const source = hunkOperationSource({
@@ -471,17 +459,7 @@ const FileDiff: FC<{
 	editable: boolean;
 	hunkDependencyDiffs?: Array<HunkDependencyDiff>;
 	diff: UnifiedPatch | null;
-	selectedHunk: string | undefined;
-}> = ({
-	operationMode,
-	projectId,
-	change,
-	fileParent,
-	editable,
-	hunkDependencyDiffs,
-	diff,
-	selectedHunk,
-}) =>
+}> = ({ operationMode, projectId, change, fileParent, editable, hunkDependencyDiffs, diff }) =>
 	Match.value(diff).pipe(
 		Match.when(null, () => <div>No diff available for this file.</div>),
 		Match.when({ type: "Binary" }, () => <div>Binary file (diff not available).</div>),
@@ -504,7 +482,6 @@ const FileDiff: FC<{
 								change={change}
 								hunk={hunk}
 								editable={editable}
-								isSelected={selectedHunk === fileHunkKey(change.path, hunk)}
 								hunkDependencyDiffs={hunkDependencyDiffs}
 							/>
 						</li>
@@ -515,67 +492,11 @@ const FileDiff: FC<{
 		Match.exhaustive,
 	);
 
-const hunkKeysFromChangeWithDiff = ([change, diff]: [
-	TreeChange,
-	UnifiedPatch | null,
-]): Array<string> =>
-	diff?.type === "Patch" ? diff.subject.hunks.map((hunk) => fileHunkKey(change.path, hunk)) : [];
-
-export type PreviewImperativeHandle = {
-	moveSelection: (offset: -1 | 1) => void;
-};
-
-const usePreviewDiffState = ({
-	projectId,
-	changes,
-	ref,
-}: {
-	projectId: string;
-	changes: Array<TreeChange>;
-	ref?: Ref<PreviewImperativeHandle>;
-}) => {
-	const dispatch = useAppDispatch();
-	const selectedHunk = useAppSelector((state) => selectProjectSelectedHunk(state, projectId));
-	const treeChangeDiffs = useSuspenseQueries({
-		queries: changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
-	}).map((result) => result.data);
-	const changesWithDiffs = pipe(changes, Array.zip(treeChangeDiffs));
-	const hunkKeys = changesWithDiffs.flatMap(([change, diff]) =>
-		hunkKeysFromChangeWithDiff([change, diff]),
-	);
-	const normalizedSelectedHunk = normalizeSelectedHunk({ hunkKeys, selectedHunk });
-
-	useImperativeHandle(
-		ref,
-		(): PreviewImperativeHandle => ({
-			moveSelection: (offset) => {
-				if (hunkKeys.length === 0) return;
-
-				if (normalizedSelectedHunk === undefined) return;
-
-				// We assume a valid key was provided.
-				const currentIndex = hunkKeys.indexOf(normalizedSelectedHunk);
-
-				dispatch(
-					projectActions.selectHunk({
-						projectId,
-						hunk: hunkKeys[currentIndex + offset] ?? normalizedSelectedHunk,
-					}),
-				);
-			},
-		}),
-		[dispatch, normalizedSelectedHunk, hunkKeys, projectId],
-	);
-
-	return { changesWithDiffs, normalizedSelectedHunk };
-};
-
 const ChangesPreview: FC<{
 	operationMode: OperationMode | null;
 	projectId: string;
 	selectedPath?: string;
-	ref?: Ref<PreviewImperativeHandle>;
-}> = ({ operationMode, projectId, selectedPath, ref }) => {
+}> = ({ operationMode, projectId, selectedPath }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
 		worktreeChanges.dependencies?.diffs ?? [],
@@ -585,11 +506,10 @@ const ChangesPreview: FC<{
 			? worktreeChanges.changes.find((candidate) => candidate.path === selectedPath)
 			: undefined;
 	const changes = selectedChange ? [selectedChange] : worktreeChanges.changes;
-	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
-		projectId,
-		changes,
-		ref,
-	});
+	const treeChangeDiffs = useSuspenseQueries({
+		queries: changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
+	}).map((result) => result.data);
+	const changesWithDiffs = pipe(changes, Array.zip(treeChangeDiffs));
 
 	return (
 		<div>
@@ -617,7 +537,6 @@ const ChangesPreview: FC<{
 									editable
 									hunkDependencyDiffs={hunkDependencyDiffsByPath.get(change.path)}
 									diff={diff}
-									selectedHunk={normalizedSelectedHunk}
 								/>
 							</li>
 						);
@@ -634,8 +553,7 @@ const CommitPreview: FC<{
 	commitId: string;
 	selectedPath?: string | null;
 	editable: boolean;
-	ref?: Ref<PreviewImperativeHandle>;
-}> = ({ operationMode, projectId, commitId, selectedPath, editable, ref }) => {
+}> = ({ operationMode, projectId, commitId, selectedPath, editable }) => {
 	const { data: commitDetails } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
@@ -644,11 +562,10 @@ const CommitPreview: FC<{
 			? commitDetails.changes.find((candidate) => candidate.path === selectedPath)
 			: undefined;
 	const changes = selectedChange ? [selectedChange] : commitDetails.changes;
-	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
-		projectId,
-		changes,
-		ref,
-	});
+	const treeChangeDiffs = useSuspenseQueries({
+		queries: changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
+	}).map((result) => result.data);
+	const changesWithDiffs = pipe(changes, Array.zip(treeChangeDiffs));
 
 	return (
 		<div>
@@ -693,7 +610,6 @@ const CommitPreview: FC<{
 									fileParent={parent}
 									editable={editable}
 									diff={diff}
-									selectedHunk={normalizedSelectedHunk}
 								/>
 							</li>
 						);
@@ -708,8 +624,7 @@ const BranchPreview: FC<{
 	operationMode: OperationMode | null;
 	projectId: string;
 	branchRef: Array<number>;
-	ref?: Ref<PreviewImperativeHandle>;
-}> = ({ operationMode, projectId, branchRef, ref }) => {
+}> = ({ operationMode, projectId, branchRef }) => {
 	const decodedBranchRef = decodeRefName(branchRef);
 	const [{ data: branchDetails }, { data: branchDiff }] = useSuspenseQueries({
 		queries: [
@@ -722,11 +637,10 @@ const BranchPreview: FC<{
 			branchDiffQueryOptions({ projectId, branch: decodedBranchRef }),
 		],
 	});
-	const { changesWithDiffs, normalizedSelectedHunk } = usePreviewDiffState({
-		projectId,
-		changes: branchDiff.changes,
-		ref,
-	});
+	const treeChangeDiffs = useSuspenseQueries({
+		queries: branchDiff.changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
+	}).map((result) => result.data);
+	const changesWithDiffs = pipe(branchDiff.changes, Array.zip(treeChangeDiffs));
 
 	return (
 		<div>
@@ -745,7 +659,6 @@ const BranchPreview: FC<{
 								change={change}
 								editable={false}
 								diff={diff}
-								selectedHunk={normalizedSelectedHunk}
 							/>
 						</li>
 					))}
@@ -759,29 +672,16 @@ const Preview: FC<{
 	operationMode: OperationMode | null;
 	projectId: string;
 	selectedItem: Item;
-	ref?: Ref<PreviewImperativeHandle>;
-}> = ({ operationMode, projectId, selectedItem, ref }) =>
+}> = ({ operationMode, projectId, selectedItem }) =>
 	Match.value(selectedItem).pipe(
 		Match.tagsExhaustive({
 			Stack: () => null,
 			Branch: ({ branchRef }) => (
-				<BranchPreview
-					operationMode={operationMode}
-					projectId={projectId}
-					branchRef={branchRef}
-					ref={ref}
-				/>
+				<BranchPreview operationMode={operationMode} projectId={projectId} branchRef={branchRef} />
 			),
-			ChangesSection: () => (
-				<ChangesPreview operationMode={operationMode} projectId={projectId} ref={ref} />
-			),
+			ChangesSection: () => <ChangesPreview operationMode={operationMode} projectId={projectId} />,
 			ChangeFile: ({ path }) => (
-				<ChangesPreview
-					operationMode={operationMode}
-					projectId={projectId}
-					selectedPath={path}
-					ref={ref}
-				/>
+				<ChangesPreview operationMode={operationMode} projectId={projectId} selectedPath={path} />
 			),
 			Commit: (selectedItem) => (
 				<CommitPreview
@@ -789,7 +689,6 @@ const Preview: FC<{
 					projectId={projectId}
 					commitId={selectedItem.commitId}
 					editable
-					ref={ref}
 				/>
 			),
 			CommitFile: ({ commitId, path }) => (
@@ -799,7 +698,6 @@ const Preview: FC<{
 					commitId={commitId}
 					selectedPath={path}
 					editable
-					ref={ref}
 				/>
 			),
 			BaseCommit: () => null,
@@ -1082,7 +980,7 @@ const CommitFileRow: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={operationSourceFromItem(item)}
+			source={itemOperationSource(item)}
 			render={
 				<ItemRow
 					inert={!navigationIndexIncludes(navigationIndex, item)}
@@ -1129,7 +1027,7 @@ const CommitC: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={operationSourceFromItem(item)}
+			source={itemOperationSource(item)}
 			canDrag={() => !isSelected || workspaceMode._tag !== "RewordCommit"}
 			render={
 				<CommitTarget
@@ -1212,7 +1110,7 @@ const ChangeFileRow: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={operationSourceFromItem(item)}
+			source={itemOperationSource(item)}
 			render={
 				<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected} />
 			}
@@ -1229,13 +1127,13 @@ const ChangeFileRow: FC<{
 			{workspaceMode._tag === "Default" && (
 				<>
 					{dependencyCommitIds && (
-						<DependencyIndicator
+						<DependencyIndicatorButton
 							projectId={projectId}
 							commitIds={dependencyCommitIds}
 							className={styles.itemRowAction}
 						>
 							<DependencyIcon />
-						</DependencyIndicator>
+						</DependencyIndicatorButton>
 					)}
 					<button
 						type="button"
@@ -1372,7 +1270,7 @@ const Changes: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={operationSourceFromItem(item)}
+			source={itemOperationSource(item)}
 			className={styles.section}
 			render={
 				<OperationTarget
@@ -1552,7 +1450,7 @@ const BranchRow: FC<
 				<OperationSourceC
 					operationMode={operationMode}
 					projectId={projectId}
-					source={operationSourceFromItem(item)}
+					source={itemOperationSource(item)}
 					render={
 						<ItemRow
 							inert={!navigationIndexIncludes(navigationIndex, item)}
@@ -1785,7 +1683,6 @@ const ProjectPage: FC = () => {
 
 	const inlineRenameBranchFormRef = useRef<HTMLFormElement | null>(null);
 	const inlineRewordCommitFormRef = useRef<HTMLFormElement | null>(null);
-	const previewRef = useRef<PreviewImperativeHandle | null>(null);
 
 	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
 
@@ -1798,7 +1695,7 @@ const ProjectPage: FC = () => {
 
 	const navigationIndexUnfiltered = buildNavigationIndex(workspaceOutline);
 
-	const resolveOperationSource = useResolveOperationSource(projectId);
+	const queryClient = useQueryClient();
 
 	const workspaceMode = isValidWorkspaceMode({
 		mode: workspaceModeState,
@@ -1814,7 +1711,11 @@ const ProjectPage: FC = () => {
 				isOperationModeSourceOrTarget({
 					item,
 					operationMode,
-					resolvedOperationSource: resolveOperationSource(operationMode.source),
+					resolvedOperationSource: resolveOperationSource({
+						operationSource: itemOperationSource(operationMode.source),
+						queryClient,
+						projectId,
+					}),
 				}),
 			)
 		: navigationIndexUnfiltered;
@@ -1843,7 +1744,6 @@ const ProjectPage: FC = () => {
 		navigationIndex,
 		requestAbsorptionPlan,
 		operationMode,
-		previewRef,
 	});
 
 	const dispatch = useAppDispatch();
@@ -1855,7 +1755,7 @@ const ProjectPage: FC = () => {
 		dispatch(
 			projectActions.enterMoveMode({
 				projectId,
-				source: operationSourceFromItem(changesSectionItem),
+				source: changesSectionItem,
 			}),
 		);
 
@@ -1869,7 +1769,6 @@ const ProjectPage: FC = () => {
 							operationMode={operationMode}
 							projectId={projectId}
 							selectedItem={selectedItem}
-							ref={previewRef}
 						/>
 					</Suspense>
 				)
@@ -1922,7 +1821,10 @@ const ProjectPage: FC = () => {
 
 			{operationMode && (
 				<div className={styles.operationModePreview}>
-					<OperationSourceLabel headInfo={headInfo} source={operationMode.source} />
+					<OperationSourceLabel
+						headInfo={headInfo}
+						source={itemOperationSource(operationMode.source)}
+					/>
 				</div>
 			)}
 
