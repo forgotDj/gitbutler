@@ -145,7 +145,7 @@ const getTargetData = (
 	dropData: DropData | null,
 	operationModeTarget: OperationModeTarget | null,
 ): TargetData | null => {
-	if (dropData?.operation) return { operation: dropData.operation, source: dropData.source };
+	if (dropData) return { operation: dropData.operation, source: dropData.source };
 	if (operationModeTarget)
 		return {
 			operation: operationModeTarget.operation,
