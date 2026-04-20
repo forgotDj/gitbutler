@@ -1032,7 +1032,6 @@ const CommitC: FC<{
 			canDrag={() => !isSelected || workspaceMode._tag !== "RewordCommit"}
 			render={
 				<CommitTarget
-					commitId={commit.id}
 					item={item}
 					projectId={projectId}
 					operationMode={operationMode}

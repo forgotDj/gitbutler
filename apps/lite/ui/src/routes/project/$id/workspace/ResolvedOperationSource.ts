@@ -251,7 +251,7 @@ export const resolveOperationSource = ({
  * which also includes move operations.
  * https://linear.app/gitbutler/issue/GB-1160/what-should-rubbing-a-branch-into-another-branch-do#comment-db2abdb7
  */
-export const getCombineOperation = ({
+const getCombineOperation = ({
 	resolvedOperationSource,
 	target,
 }: {
@@ -323,7 +323,7 @@ export const getCombineOperation = ({
 		}),
 	);
 
-export const getCommitTargetMoveOperation = ({
+const getCommitTargetMoveOperation = ({
 	resolvedOperationSource,
 	commitId,
 	side,
@@ -371,7 +371,7 @@ export const getCommitTargetMoveOperation = ({
 		Match.orElse(() => null),
 	);
 
-export const getBranchTargetOperation = ({
+const getBranchTargetOperation = ({
 	resolvedOperationSource,
 	branchRef,
 }: {
@@ -426,7 +426,7 @@ export const getBranchTargetOperation = ({
 		Match.orElse(() => null),
 	);
 
-export const getTearOffBranchTargetOperation = (
+const getTearOffBranchTargetOperation = (
 	resolvedOperationSource: ResolvedOperationSource,
 ): Operation | null => {
 	if (resolvedOperationSource._tag !== "Branch") return null;
@@ -436,3 +436,53 @@ export const getTearOffBranchTargetOperation = (
 		dryRun: false,
 	});
 };
+
+export const rubOperationSourceToOperation = ({
+	resolvedOperationSource,
+	target,
+}: {
+	resolvedOperationSource: ResolvedOperationSource;
+	target: Item;
+}) =>
+	Match.value(target).pipe(
+		Match.tags({
+			ChangesSection: () =>
+				getCombineOperation({
+					resolvedOperationSource,
+					target: changeFileParent,
+				}),
+			Commit: (target) =>
+				getCombineOperation({
+					resolvedOperationSource,
+					target: commitFileParent({ commitId: target.commitId }),
+				}),
+		}),
+		Match.orElse(() => null),
+	);
+
+export const moveOperationSourceToOperation = ({
+	resolvedOperationSource,
+	target,
+	side,
+}: {
+	resolvedOperationSource: ResolvedOperationSource;
+	target: Item;
+	side: InsertSide;
+}) =>
+	Match.value(target).pipe(
+		Match.tags({
+			Branch: ({ branchRef }) =>
+				getBranchTargetOperation({
+					resolvedOperationSource,
+					branchRef,
+				}),
+			Commit: (target) =>
+				getCommitTargetMoveOperation({
+					resolvedOperationSource,
+					commitId: target.commitId,
+					side,
+				}),
+			BaseCommit: () => getTearOffBranchTargetOperation(resolvedOperationSource),
+		}),
+		Match.orElse(() => null),
+	);

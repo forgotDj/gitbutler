@@ -3,7 +3,6 @@ import {
 	extractInstruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
 import { classes } from "#ui/classes.ts";
-import { changeFileParent, commitFileParent } from "#ui/domain/FileParent.ts";
 import { getInsertionSide, type Operation } from "#ui/Operation.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
@@ -13,11 +12,9 @@ import { type Item } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
 import { OperationTooltip } from "./OperationTooltip.tsx";
 import {
-	getBranchTargetOperation,
-	getCombineOperation,
-	getCommitTargetMoveOperation,
-	getTearOffBranchTargetOperation,
+	moveOperationSourceToOperation,
 	resolveOperationSource,
+	rubOperationSourceToOperation,
 	type ResolvedOperationSource,
 } from "./ResolvedOperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
@@ -121,30 +118,6 @@ const getTargetData = (
 	return null;
 };
 
-const dropTargetToOperation = ({
-	target,
-	resolvedOperationSource,
-}: {
-	target: Item;
-	resolvedOperationSource: ResolvedOperationSource;
-}) =>
-	Match.value(target).pipe(
-		Match.tags({
-			ChangesSection: () =>
-				getCombineOperation({
-					resolvedOperationSource,
-					target: changeFileParent,
-				}),
-			Branch: ({ branchRef }) =>
-				getBranchTargetOperation({
-					resolvedOperationSource,
-					branchRef,
-				}),
-			BaseCommit: () => getTearOffBranchTargetOperation(resolvedOperationSource),
-		}),
-		Match.orElse(() => null),
-	);
-
 export const OperationTarget: FC<
 	{
 		projectId: string;
@@ -155,8 +128,7 @@ export const OperationTarget: FC<
 > = ({ projectId, item, operationMode, isSelected, render, ...props }) => {
 	const [dropData, dropRef] = useDropTarget({
 		projectId,
-		getOperation: ({ resolvedOperationSource }) =>
-			dropTargetToOperation({ target: item, resolvedOperationSource }),
+		getOperation: dropTargetToOperation(item),
 	});
 	const operationModeTarget = useOperationModeTarget({
 		projectId,
@@ -187,21 +159,21 @@ export const OperationTarget: FC<
 	);
 };
 
-const commitDropTargetToOperation =
-	(commitId: string): GetOperation =>
+const dropTargetToOperation =
+	(item: Item): GetOperation =>
 	({ input, element, resolvedOperationSource }) => {
-		const combine = getCombineOperation({
+		const combine = rubOperationSourceToOperation({
 			resolvedOperationSource,
-			target: commitFileParent({ commitId }),
+			target: item,
 		});
-		const insertAbove = getCommitTargetMoveOperation({
+		const insertAbove = moveOperationSourceToOperation({
 			resolvedOperationSource,
-			commitId,
+			target: item,
 			side: "above",
 		});
-		const insertBelow = getCommitTargetMoveOperation({
+		const insertBelow = moveOperationSourceToOperation({
 			resolvedOperationSource,
-			commitId,
+			target: item,
 			side: "below",
 		});
 
@@ -232,16 +204,15 @@ const commitDropTargetToOperation =
 
 export const CommitTarget: FC<
 	{
-		commitId: string;
 		item: Item;
 		projectId: string;
 		operationMode: OperationMode | null;
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ commitId, item, projectId, operationMode, isSelected, render, ...props }) => {
+> = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
 	const [dropData, dropRef] = useDropTarget({
 		projectId,
-		getOperation: commitDropTargetToOperation(commitId),
+		getOperation: dropTargetToOperation(item),
 	});
 	const operationModeTarget = useOperationModeTarget({
 		projectId,
