@@ -15,6 +15,9 @@ pub enum Change {
         project_id: ProjectHandleOrLegacyProjectId,
         head_sha: String,
     },
+    GitRemoteActivity {
+        project_id: ProjectHandleOrLegacyProjectId,
+    },
     WorktreeChanges {
         project_id: ProjectHandleOrLegacyProjectId,
         changes: but_hunk_assignment::WorktreeChanges,

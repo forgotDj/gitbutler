@@ -119,6 +119,14 @@ fn emit_git_dir_watches(
     if refs_heads_dir.is_dir() && visit_dir(&refs_heads_dir, RecursiveMode::Recursive)?.is_break() {
         return Ok(ControlFlow::Break(()));
     }
+    let refs_remotes_dir = git_dir.join("refs").join("remotes");
+    // Watch remote tracking refs so that pushes (which update `refs/remotes/<remote>/<branch>`)
+    // are detected and can trigger a UI refresh.
+    if refs_remotes_dir.is_dir()
+        && visit_dir(&refs_remotes_dir, RecursiveMode::Recursive)?.is_break()
+    {
+        return Ok(ControlFlow::Break(()));
+    }
     Ok(ControlFlow::Continue(()))
 }
 

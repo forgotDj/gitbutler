@@ -590,6 +590,7 @@ fn backoff_err_to_anyhow(
 }
 
 pub const LOCAL_REFS_DIR: &str = "refs/heads/";
+pub const REMOTE_REFS_DIR: &str = "refs/remotes/";
 pub const FETCH_HEAD: &str = "FETCH_HEAD";
 pub const HEAD: &str = "HEAD";
 pub const HEAD_ACTIVITY: &str = "logs/HEAD";
@@ -617,6 +618,7 @@ fn classify_file(git_dir: &Path, file_path: &Path) -> FileKind {
             || check_file_path == Path::new(GB_FLUSH)
             || check_file_path == Path::new(INDEX)
             || check_file_path.starts_with(LOCAL_REFS_DIR)
+            || check_file_path.starts_with(REMOTE_REFS_DIR)
         {
             FileKind::Git
         } else {
@@ -624,5 +626,66 @@ fn classify_file(git_dir: &Path, file_path: &Path) -> FileKind {
         }
     } else {
         FileKind::Project
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    fn git_dir() -> &'static Path {
+        Path::new("/repo/.git")
+    }
+
+    #[test]
+    fn classify_local_ref() {
+        assert_eq!(
+            classify_file(git_dir(), Path::new("/repo/.git/refs/heads/main")),
+            FileKind::Git
+        );
+    }
+
+    #[test]
+    fn classify_remote_ref() {
+        assert_eq!(
+            classify_file(git_dir(), Path::new("/repo/.git/refs/remotes/origin/main")),
+            FileKind::Git
+        );
+    }
+
+    #[test]
+    fn classify_nested_remote_ref() {
+        assert_eq!(
+            classify_file(
+                git_dir(),
+                Path::new("/repo/.git/refs/remotes/origin/feature/branch")
+            ),
+            FileKind::Git
+        );
+    }
+
+    #[test]
+    fn classify_head() {
+        assert_eq!(
+            classify_file(git_dir(), Path::new("/repo/.git/HEAD")),
+            FileKind::Git
+        );
+    }
+
+    #[test]
+    fn classify_objects_as_uninteresting() {
+        assert_eq!(
+            classify_file(git_dir(), Path::new("/repo/.git/objects/ab/cdef1234567890")),
+            FileKind::GitUninteresting
+        );
+    }
+
+    #[test]
+    fn classify_worktree_file() {
+        assert_eq!(
+            classify_file(git_dir(), Path::new("/repo/src/main.rs")),
+            FileKind::Project
+        );
     }
 }
