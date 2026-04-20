@@ -131,7 +131,7 @@ type TargetData = {
 	operation: Operation | null;
 };
 
-const merge = (
+const getTargetData = (
 	dropData: DropData,
 	operationModeTarget: OperationModeTarget | null,
 ): TargetData | null => {
@@ -193,7 +193,7 @@ export const OperationTarget: FC<
 		isSelected,
 	});
 
-	const targetData = merge(dropData, operationModeTarget);
+	const targetData = getTargetData(dropData, operationModeTarget);
 	const controls = useModeControls(projectId, operationModeTarget?.operation ?? null);
 
 	const target = useRender({
@@ -279,7 +279,7 @@ export const CommitTarget: FC<
 		isSelected,
 	});
 
-	const targetData = merge(dropData, operationModeTarget);
+	const targetData = getTargetData(dropData, operationModeTarget);
 	const controls = useModeControls(projectId, operationModeTarget?.operation ?? null);
 
 	const dragInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
