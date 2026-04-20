@@ -2,8 +2,9 @@ import { headInfoQueryOptions } from "#ui/api/queries.ts";
 import { classes } from "#ui/classes.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { FC } from "react";
-import { DragData, DragPreview, useDraggable } from "./DragAndDrop.tsx";
+import { FC, type ReactNode } from "react";
+import { useDraggable } from "./DragAndDrop.tsx";
+import { type DragData } from "./OperationDragAndDrop.tsx";
 import { OperationSourceLabel } from "./OperationSourceLabel.tsx";
 import {
 	itemOperationSource,
@@ -11,7 +12,12 @@ import {
 	type OperationSource,
 } from "./OperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
+import dragAndDropStyles from "./OperationDragAndDrop.module.css";
 import styles from "./route.module.css";
+
+const DragPreview = ({ children }: { children: ReactNode }) => (
+	<div className={dragAndDropStyles.dragPreview}>{children}</div>
+);
 
 export const OperationSourceC: FC<
 	{
