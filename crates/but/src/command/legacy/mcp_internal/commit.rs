@@ -1,11 +1,7 @@
-#![expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-
 use std::path::Path;
 
 use bstr::BString;
+use but_core::{ref_metadata::StackId, sync::RepoShared};
 use but_ctx::Context;
 use but_workspace::commit_engine::StackSegmentId;
 use rmcp::schemars;
@@ -30,15 +26,13 @@ pub fn commit(
         .map(|id| resolve_parent_id(&repo, &id))
         .transpose()?;
 
-    let stack_segment = gitbutler_stack::VirtualBranchesHandle::new(&project_data_dir)
-        .list_stacks_in_workspace()?
-        .iter()
-        .find(|s| s.heads(false).contains(&branch_name))
-        .map(|s| s.id)
-        .map(|id| StackSegmentId {
+    let stack_segment = {
+        let stack_id = stack_id_for_branch_with_perm(&ctx, guard.read_permission(), &branch_name)?;
+        stack_id.map(|stack_id| StackSegmentId {
             segment_ref: branch_full_name,
-            stack_id: id,
-        });
+            stack_id,
+        })
+    };
 
     let parent_commit_id = match parent_commit_id {
         Some(id) => Some(id),
@@ -87,11 +81,7 @@ pub fn amend(
     let repo = ctx.repo.get()?;
     let commit_id = resolve_parent_id(&repo, &commit_id)?;
 
-    let stack_id = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir())
-        .list_stacks_in_workspace()?
-        .iter()
-        .find(|s| s.heads(false).contains(&branch_name))
-        .map(|s| s.id);
+    let stack_id = stack_id_for_branch_with_perm(&ctx, guard.read_permission(), &branch_name)?;
 
     let destination = but_workspace::commit_engine::Destination::AmendCommit {
         commit_id,
@@ -109,6 +99,19 @@ pub fn amend(
     )?;
 
     Ok(outcome.into())
+}
+
+/// Find the in-workspace stack id associated with `branch_name`, if any.
+fn stack_id_for_branch_with_perm(
+    ctx: &Context,
+    perm: &RepoShared,
+    branch_name: &str,
+) -> anyhow::Result<Option<StackId>> {
+    let branch_full_name = normalize_stack_segment_ref(branch_name)?;
+    let (_, workspace, _) = ctx.workspace_and_db_with_perm(perm)?;
+    Ok(workspace
+        .find_segment_and_stack_by_refname(branch_full_name.as_ref())
+        .and_then(|(stack, _segment)| stack.id))
 }
 
 /// Determines the parent commit ID based on the provided `parent_revspec`.
@@ -149,5 +152,43 @@ impl From<DiffSpec> for but_core::DiffSpec {
             path: BString::from(spec.path),
             hunk_headers: vec![],
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Context as _;
+    use but_testsupport::Sandbox;
+
+    use super::stack_id_for_branch_with_perm;
+
+    #[test]
+    fn stack_id_lookup_finds_non_checked_out_branch() -> anyhow::Result<()> {
+        let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
+        env.setup_metadata(&["A", "B"])?;
+
+        let ctx = env.context()?;
+        let guard = ctx.shared_worktree_access();
+        let (expected_stack_id, branch_name) = {
+            let (_repo, workspace, _db) =
+                ctx.workspace_and_db_with_perm(guard.read_permission())?;
+            let branch_ref = workspace
+                .stacks
+                .iter()
+                .flat_map(|stack| stack.segments.iter())
+                .find(|segment| !segment.is_entrypoint)
+                .and_then(|segment| segment.ref_name().map(ToOwned::to_owned))
+                .context("expected a non-entrypoint branch in the workspace")?;
+            let stack_id = workspace
+                .find_segment_and_stack_by_refname(branch_ref.as_ref())
+                .and_then(|(stack, _segment)| stack.id)
+                .context("expected non-entrypoint branch to have a stack id")?;
+            (stack_id, branch_ref.shorten().to_string())
+        };
+
+        let stack_id = stack_id_for_branch_with_perm(&ctx, guard.read_permission(), &branch_name)?;
+        assert_eq!(stack_id, Some(expected_stack_id));
+
+        Ok(())
     }
 }
