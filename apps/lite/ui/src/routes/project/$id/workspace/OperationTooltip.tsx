@@ -9,15 +9,10 @@ import { Item } from "./Item";
 import { useAppDispatch } from "#ui/state/hooks.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 
-type OperationTooltipControls = {
-	onConfirm: () => void;
-	onCancel: () => void;
-};
-
-const useModeControls = (
-	projectId: string,
-	operation: Operation | null,
-): OperationTooltipControls => {
+const OperationModeControls: FC<{
+	projectId: string;
+	operation: Operation | null;
+}> = ({ projectId, operation }) => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
 
@@ -31,7 +26,16 @@ const useModeControls = (
 
 	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
 
-	return { onConfirm: confirm, onCancel: cancel };
+	return (
+		<>
+			<button type="button" className={uiStyles.button} onClick={confirm}>
+				Confirm
+			</button>
+			<button type="button" className={uiStyles.button} aria-label="Cancel" onClick={cancel}>
+				Cancel
+			</button>
+		</>
+	);
 };
 
 export const OperationTooltip: FC<
@@ -46,26 +50,10 @@ export const OperationTooltip: FC<
 > = ({ projectId, enabled, operation, source, item, isOperationMode, render, ...props }) => {
 	const isSource = source && operationSourceMatchesItem(source, item);
 
-	const controls = useModeControls(projectId, operation);
-
 	const tooltip = enabled ? (
 		<>
 			{isSource ? <>Select a target</> : operation ? operationLabel(operation) : null}
-			{isOperationMode && (
-				<>
-					<button type="button" className={uiStyles.button} onClick={controls.onConfirm}>
-						Confirm
-					</button>
-					<button
-						type="button"
-						className={uiStyles.button}
-						aria-label="Cancel"
-						onClick={controls.onCancel}
-					>
-						Cancel
-					</button>
-				</>
-			)}
+			{isOperationMode && <OperationModeControls projectId={projectId} operation={operation} />}
 		</>
 	) : null;
 
