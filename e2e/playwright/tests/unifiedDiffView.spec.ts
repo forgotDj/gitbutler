@@ -1,8 +1,9 @@
 import { discardFile } from "../src/file.ts";
 import { getHunkHeaderSelector, getHunkLineSelector } from "../src/hunk.ts";
 import { getBaseURL, startGitButler, type GitButler } from "../src/setup.ts";
+import { test } from "../src/test.ts";
 import { clickByTestId, fillByTestId, getByTestId, waitForTestId } from "../src/util.ts";
-import { expect, Locator, test } from "@playwright/test";
+import { expect, type Locator } from "@playwright/test";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join, resolve } from "path";
 
