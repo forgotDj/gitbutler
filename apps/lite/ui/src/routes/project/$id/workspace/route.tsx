@@ -33,7 +33,7 @@ import { useMonitorDraggedOperationSource } from "#ui/routes/project/$id/workspa
 import { isOperationModeSourceOrTarget } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { resolveOperationSource } from "#ui/routes/project/$id/workspace/ResolvedOperationSource.ts";
-import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTargets.tsx";
+import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import {
 	formatHunkHeader,
