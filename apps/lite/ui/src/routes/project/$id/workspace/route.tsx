@@ -692,7 +692,7 @@ const InlineRewordCommit: FC<{
 		onSubmit(formData.get("message") as string);
 	};
 	return (
-		<form ref={formRef} className={styles.editorForm} onSubmit={submit} onBlur={submit}>
+		<form ref={formRef} className={styles.editorForm} onSubmit={submit}>
 			<textarea
 				ref={(el) => {
 					if (!el) return;
@@ -1285,7 +1285,7 @@ const InlineRenameBranch: FC<{
 		onSubmit(formData.get("branchName") as string);
 	};
 	return (
-		<form ref={formRef} className={styles.editorForm} onSubmit={submit} onBlur={submit}>
+		<form ref={formRef} className={styles.editorForm} onSubmit={submit}>
 			<input
 				aria-label="Branch name"
 				ref={(el) => {
