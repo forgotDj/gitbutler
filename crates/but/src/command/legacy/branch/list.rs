@@ -1,15 +1,10 @@
-#![expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-
 use std::collections::HashMap;
 
 use but_ctx::Context;
 use colored::Colorize;
 use gitbutler_branch_actions::BranchListingFilter;
 
-use crate::utils::OutputChannel;
+use crate::{command::legacy::workspace_target, utils::OutputChannel};
 
 #[expect(clippy::too_many_arguments)]
 pub fn list(
@@ -47,12 +42,17 @@ pub fn list(
         Some(but_workspace::legacy::StacksFilter::InWorkspace),
     )?;
 
-    // Filter out empty branches unless --empty is requested
-    let target_oid_for_filter: Option<gix::ObjectId> = if !show_empty {
-        get_target_oid(ctx).ok()
+    // Resolve the target once for all target-based filtering and calculations we may perform.
+    let target_oid: Option<gix::ObjectId> = if !show_empty || ahead || check_merge {
+        let guard = ctx.shared_worktree_access();
+        Some(workspace_target::target_oid_with_perm(
+            ctx,
+            guard.read_permission(),
+        )?)
     } else {
         None
     };
+    let target_oid_for_filter = (!show_empty).then_some(target_oid).flatten();
 
     if let Some(target_oid) = target_oid_for_filter {
         // For applied stacks: remove heads that have no commits on them.
@@ -174,7 +174,11 @@ pub fn list(
 
     // Calculate commits ahead if requested
     let commits_ahead_map: Option<HashMap<String, usize>> = if ahead {
-        Some(calculate_commits_ahead(ctx, &branches_to_show)?)
+        Some(calculate_commits_ahead(
+            ctx,
+            target_oid.expect("target OID must exist when ahead calculation is enabled"),
+            &branches_to_show,
+        )?)
     } else {
         None
     };
@@ -183,6 +187,7 @@ pub fn list(
     let merge_status_map: Option<HashMap<String, bool>> = if check_merge {
         Some(check_branches_merge_cleanly(
             ctx,
+            target_oid.expect("target OID must exist when merge check is enabled"),
             &applied_stacks,
             &branches_to_show,
         )?)
@@ -373,29 +378,13 @@ fn get_reviews_json(
 //             the graph.
 fn check_branches_merge_cleanly(
     ctx: &Context,
+    target_commit_id: gix::ObjectId,
     applied_stacks: &[but_workspace::legacy::ui::StackEntry],
     branches: &[gitbutler_branch_actions::BranchListing],
 ) -> Result<HashMap<String, bool>, anyhow::Error> {
     use but_core::RepositoryExt;
 
     let repo = ctx.clone_repo_for_merging_non_persisting()?;
-
-    let stack = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
-    let target = stack.get_default_target()?;
-
-    // Try to find the remote tracking branch (e.g., refs/remotes/origin/master)
-    let target_ref_name = format!(
-        "refs/remotes/{}/{}",
-        target.branch.remote(),
-        target.branch.branch()
-    );
-    let target_commit_id = match repo.find_reference(&target_ref_name) {
-        Ok(reference) => reference.id().detach(),
-        Err(_) => {
-            // Fallback to the stored SHA if remote branch doesn't exist
-            target.sha
-        }
-    };
     let target_tree_id = repo.find_commit(target_commit_id)?.tree_id()?.detach();
     let cache = repo.commit_graph_if_enabled()?;
     let mut graph = repo.revision_graph(cache.as_ref());
@@ -477,27 +466,12 @@ fn check_branches_merge_cleanly(
 
 fn calculate_commits_ahead(
     ctx: &Context,
+    target_oid: gix::ObjectId,
     branches: &[gitbutler_branch_actions::BranchListing],
 ) -> Result<HashMap<String, usize>, anyhow::Error> {
     use gix::prelude::ObjectIdExt as _;
 
     let repo = ctx.repo.get()?;
-    let stack = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
-    let target = stack.get_default_target()?;
-
-    // Try to find the remote tracking branch (e.g., refs/remotes/origin/master)
-    let target_ref_name = format!(
-        "refs/remotes/{}/{}",
-        target.branch.remote(),
-        target.branch.branch()
-    );
-    let target_oid = match repo.find_reference(&target_ref_name) {
-        Ok(mut reference) => reference.peel_to_commit()?.id,
-        Err(_) => {
-            // Fallback to the stored SHA if remote branch doesn't exist
-            target.sha
-        }
-    };
 
     let mut result = HashMap::new();
     let cache = repo.commit_graph_if_enabled()?;
@@ -760,19 +734,4 @@ fn print_branches_table(
 
     table.render(out)?;
     Ok(())
-}
-
-fn get_target_oid(ctx: &Context) -> anyhow::Result<gix::ObjectId> {
-    let handle = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
-    let target = handle.get_default_target()?;
-    let repo = ctx.repo.get()?;
-    let target_ref = format!(
-        "refs/remotes/{}/{}",
-        target.branch.remote(),
-        target.branch.branch()
-    );
-    match repo.find_reference(&target_ref) {
-        Ok(mut reference) => Ok(reference.peel_to_commit()?.id),
-        Err(_) => Ok(target.sha),
-    }
 }
