@@ -116,6 +116,8 @@ const useOperationModeTarget = ({
 
 	if (!isActiveTarget) return null;
 
+	const { source } = operationMode;
+
 	const resolvedOperationSource = resolveOperationSource({
 		operationSource: itemOperationSource(operationMode.source),
 		queryClient,
@@ -131,7 +133,7 @@ const useOperationModeTarget = ({
 		: null;
 
 	return {
-		source: operationMode.source,
+		source,
 		operation,
 	};
 };
