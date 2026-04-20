@@ -443,22 +443,21 @@ export const rubOperationSourceToOperation = ({
 }: {
 	resolvedOperationSource: ResolvedOperationSource;
 	target: Item;
-}) =>
-	Match.value(target).pipe(
+}) => {
+	const fileParent = Match.value(target).pipe(
 		Match.tags({
-			ChangesSection: () =>
-				getCombineOperation({
-					resolvedOperationSource,
-					target: changeFileParent,
-				}),
-			Commit: (target) =>
-				getCombineOperation({
-					resolvedOperationSource,
-					target: commitFileParent({ commitId: target.commitId }),
-				}),
+			ChangesSection: () => changeFileParent,
+			Commit: (target) => commitFileParent({ commitId: target.commitId }),
 		}),
 		Match.orElse(() => null),
 	);
+	if (!fileParent) return null;
+
+	return getCombineOperation({
+		resolvedOperationSource,
+		target: fileParent,
+	});
+};
 
 export const moveOperationSourceToOperation = ({
 	resolvedOperationSource,
