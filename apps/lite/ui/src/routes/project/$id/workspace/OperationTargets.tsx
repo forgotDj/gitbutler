@@ -257,10 +257,10 @@ export const CommitTarget: FC<
 
 	const targetData = getTargetData(dropData, operationModeTarget);
 
-	const dragInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
+	const dropInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
 
 	const targetTooltipOperation =
-		dragInsertionSide === null ? (targetData?.operation ?? null) : null;
+		dropInsertionSide === null ? (targetData?.operation ?? null) : null;
 
 	const target = useRender({
 		render,
@@ -281,7 +281,7 @@ export const CommitTarget: FC<
 				render={target}
 			/>
 
-			{dropData && dragInsertionSide !== null && (
+			{dropData && dropInsertionSide !== null && (
 				<OperationTooltip
 					projectId={projectId}
 					isOperationMode={false}
@@ -291,7 +291,7 @@ export const CommitTarget: FC<
 					className={classes(
 						styles.commitInsertionTarget,
 						pipe(
-							dragInsertionSide,
+							dropInsertionSide,
 							Match.value,
 							Match.when("above", () => styles.commitInsertionTargetAbove),
 							Match.when("below", () => styles.commitInsertionTargetBelow),
