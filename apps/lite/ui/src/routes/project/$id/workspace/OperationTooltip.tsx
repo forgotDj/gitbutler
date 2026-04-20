@@ -31,7 +31,7 @@ const OperationModeControls: FC<{
 			<button type="button" className={uiStyles.button} onClick={confirm}>
 				Confirm
 			</button>
-			<button type="button" className={uiStyles.button} aria-label="Cancel" onClick={cancel}>
+			<button type="button" className={uiStyles.button} onClick={cancel}>
 				Cancel
 			</button>
 		</>
