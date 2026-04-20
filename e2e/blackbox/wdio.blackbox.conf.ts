@@ -39,7 +39,7 @@ export const config = {
 	connectionRetryCount: 3,
 
 	beforeTest: async function (test: Frameworks.Test) {
-		const videoPath = path.join(import.meta.dirname, "/e2e/videos");
+		const videoPath = path.join(import.meta.dirname, "videos");
 		videoRecorder.start(test, videoPath);
 	},
 
