@@ -87,22 +87,27 @@ const useOperationModeTarget = ({
 
 	const isActiveTarget = !!operationMode && isSelected;
 
-	const resolvedOperationSource = operationMode
-		? resolveOperationSource({
-				operationSource: itemOperationSource(operationMode.source),
-				queryClient,
-				projectId,
+	if (!isActiveTarget)
+		return {
+			isActiveTarget: false,
+			source: undefined,
+			operation: null,
+			controls: undefined,
+		};
+
+	const resolvedOperationSource = resolveOperationSource({
+		operationSource: itemOperationSource(operationMode.source),
+		queryClient,
+		projectId,
+	});
+
+	const operation = resolvedOperationSource
+		? operationModeToOperation({
+				operationMode,
+				resolvedOperationSource,
+				target: item,
 			})
 		: null;
-
-	const operation =
-		isActiveTarget && resolvedOperationSource
-			? operationModeToOperation({
-					operationMode,
-					resolvedOperationSource,
-					target: item,
-				})
-			: null;
 
 	const confirm = () => {
 		dispatch(projectActions.exitMode({ projectId }));
@@ -116,9 +121,9 @@ const useOperationModeTarget = ({
 
 	return {
 		isActiveTarget,
-		source: operationMode?.source,
+		source: operationMode.source,
 		operation,
-		controls: isActiveTarget ? { onConfirm: confirm, onCancel: cancel } : undefined,
+		controls: { onConfirm: confirm, onCancel: cancel },
 	};
 };
 
