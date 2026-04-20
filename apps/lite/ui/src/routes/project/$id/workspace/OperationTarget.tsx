@@ -177,13 +177,13 @@ export const OperationTarget: FC<
 
 	const dropInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
 
-	const mainOperation = dropInsertionSide === null ? (targetData?.operation ?? null) : null;
+	const mainTargetData = dropInsertionSide === null ? targetData : null;
 
 	const target = useRender({
 		render,
 		ref: dropRef,
 		props: mergeProps<"div">(props, {
-			className: classes(mainOperation && styles.activeTarget),
+			className: classes(mainTargetData && styles.activeTarget),
 		}),
 	});
 
@@ -193,8 +193,8 @@ export const OperationTarget: FC<
 				projectId={projectId}
 				isOperationMode={!!operationMode}
 				item={item}
-				operation={mainOperation}
-				source={mainOperation ? targetData?.source : undefined}
+				operation={mainTargetData?.operation ?? null}
+				source={mainTargetData?.source}
 				render={target}
 			/>
 
