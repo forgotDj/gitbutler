@@ -359,8 +359,7 @@ e2e/
 
 E2E tests run in CI via GitHub Actions:
 
-- `.github/workflows/test-e2e-playwright.yml`: Playwright tests
-- `.github/workflows/test-e2e-blackbox.yml`: Blackbox tests
+- `.github/workflows/test-e2e.yml`: E2E tests (Playwright and blackbox)
 
 Tests run on push and pull requests with:
 
