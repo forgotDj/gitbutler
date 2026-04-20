@@ -3,7 +3,6 @@ import {
 	commitDetailsWithLineStatsQueryOptions,
 } from "#ui/api/queries.ts";
 import {
-	assignHunkOperation,
 	commitAmendOperation,
 	commitCreateFromCommittedChangesOperation,
 	commitCreateOperation,
@@ -21,7 +20,6 @@ import { changeFileParent, commitFileParent, type FileParent } from "#ui/domain/
 import { QueryClient } from "@tanstack/react-query";
 import {
 	CommitDetails,
-	HunkAssignmentRequest,
 	InsertSide,
 	WorktreeChanges,
 	type HunkHeader,
@@ -245,7 +243,7 @@ export const resolveOperationSource = ({
 /**
  * | SOURCE ↓ / TARGET →    | Changes  | Commit |
  * | ---------------------- | -------- | ------ |
- * | File/hunk from changes | Assign   | Amend  |
+ * | File/hunk from changes | No-op    | Amend  |
  * | File/hunk from commit  | Uncommit | Amend  |
  * | Commit                 | Uncommit | Squash |
  *
@@ -253,7 +251,7 @@ export const resolveOperationSource = ({
  * which also includes move operations.
  * https://linear.app/gitbutler/issue/GB-1160/what-should-rubbing-a-branch-into-another-branch-do#comment-db2abdb7
  */
-export const getCombineOperation = ({
+const getCombineOperation = ({
 	resolvedOperationSource,
 	target,
 }: {
@@ -291,18 +289,7 @@ export const getCombineOperation = ({
 						Change: () =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
-									Change: () =>
-										assignHunkOperation({
-											assignments: source.changes.flatMap(({ change, hunkHeaders }) =>
-												hunkHeaders.map(
-													(hunkHeader): HunkAssignmentRequest => ({
-														pathBytes: change.pathBytes,
-														hunkHeader,
-														target: null,
-													}),
-												),
-											),
-										}),
+									Change: () => null,
 									Commit: ({ commitId }) =>
 										commitAmendOperation({
 											commitId,
@@ -336,7 +323,7 @@ export const getCombineOperation = ({
 		}),
 	);
 
-export const getCommitTargetMoveOperation = ({
+const getCommitTargetMoveOperation = ({
 	resolvedOperationSource,
 	commitId,
 	side,
@@ -384,7 +371,7 @@ export const getCommitTargetMoveOperation = ({
 		Match.orElse(() => null),
 	);
 
-export const getBranchTargetOperation = ({
+const getBranchTargetOperation = ({
 	resolvedOperationSource,
 	branchRef,
 }: {
@@ -439,7 +426,7 @@ export const getBranchTargetOperation = ({
 		Match.orElse(() => null),
 	);
 
-export const getTearOffBranchTargetOperation = (
+const getTearOffBranchTargetOperation = (
 	resolvedOperationSource: ResolvedOperationSource,
 ): Operation | null => {
 	if (resolvedOperationSource._tag !== "Branch") return null;
@@ -449,3 +436,52 @@ export const getTearOffBranchTargetOperation = (
 		dryRun: false,
 	});
 };
+
+export const rubOperationSourceToOperation = ({
+	resolvedOperationSource,
+	target,
+}: {
+	resolvedOperationSource: ResolvedOperationSource;
+	target: Item;
+}) => {
+	const fileParent = Match.value(target).pipe(
+		Match.tags({
+			ChangesSection: () => changeFileParent,
+			Commit: (target) => commitFileParent({ commitId: target.commitId }),
+		}),
+		Match.orElse(() => null),
+	);
+	if (!fileParent) return null;
+
+	return getCombineOperation({
+		resolvedOperationSource,
+		target: fileParent,
+	});
+};
+
+export const moveOperationSourceToOperation = ({
+	resolvedOperationSource,
+	target,
+	side,
+}: {
+	resolvedOperationSource: ResolvedOperationSource;
+	target: Item;
+	side: InsertSide;
+}) =>
+	Match.value(target).pipe(
+		Match.tags({
+			Branch: ({ branchRef }) =>
+				getBranchTargetOperation({
+					resolvedOperationSource,
+					branchRef,
+				}),
+			Commit: (target) =>
+				getCommitTargetMoveOperation({
+					resolvedOperationSource,
+					commitId: target.commitId,
+					side,
+				}),
+			BaseCommit: () => getTearOffBranchTargetOperation(resolvedOperationSource),
+		}),
+		Match.orElse(() => null),
+	);

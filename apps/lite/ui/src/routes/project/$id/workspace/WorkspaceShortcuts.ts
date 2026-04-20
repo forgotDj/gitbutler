@@ -416,9 +416,9 @@ const previewBindings: Array<ShortcutBinding<PreviewAction>> = [
 	...panelNavigationBindings,
 ];
 
-type OperationModeAction = PrimaryPanelAction | { _tag: "Cancel" } | { _tag: "Run" };
+type OperationModeAction = PrimaryPanelAction | { _tag: "Cancel" } | { _tag: "Confirm" };
 
-const runOperationModeAction: OperationModeAction = { _tag: "Run" };
+const confirmOperationModeAction: OperationModeAction = { _tag: "Confirm" };
 const cancelOperationModeAction: OperationModeAction = { _tag: "Cancel" };
 
 const operationModeBindings: Array<ShortcutBinding<OperationModeAction>> = [
@@ -430,9 +430,9 @@ const operationModeBindings: Array<ShortcutBinding<OperationModeAction>> = [
 	),
 	{
 		id: "operation-mode-confirm",
-		description: "Run",
+		description: "Confirm",
 		keys: ["Enter"],
-		action: runOperationModeAction,
+		action: confirmOperationModeAction,
 		repeat: false,
 	},
 	{
@@ -782,9 +782,8 @@ export const useWorkspaceShortcuts = ({
 		);
 
 	const requestAbsorptionPlanForItem = (selectedItem: Item) => {
-		const operationSource = itemOperationSource(selectedItem);
 		const resolvedOperationSource = resolveOperationSource({
-			operationSource,
+			operationSource: itemOperationSource(selectedItem),
 			queryClient,
 			projectId,
 		});
@@ -907,26 +906,25 @@ export const useWorkspaceShortcuts = ({
 		);
 
 	const confirmOperationMode = (selectedItem: Item | null) => {
+		if (!operationMode) return;
+
 		dispatch(projectActions.exitMode({ projectId }));
 
 		if (!selectedItem) return;
 
-		const resolvedOperationSource = operationMode
-			? resolveOperationSource({
-					operationSource: itemOperationSource(operationMode.source),
-					queryClient,
-					projectId,
+		const resolvedOperationSource = resolveOperationSource({
+			operationSource: itemOperationSource(operationMode.source),
+			queryClient,
+			projectId,
+		});
+
+		const operation = resolvedOperationSource
+			? operationModeToOperation({
+					operationMode,
+					resolvedOperationSource,
+					target: selectedItem,
 				})
 			: null;
-
-		const operation =
-			operationMode && resolvedOperationSource
-				? operationModeToOperation({
-						operationMode,
-						resolvedOperationSource,
-						target: selectedItem,
-					})
-				: null;
 
 		if (!operation) return;
 
@@ -937,7 +935,7 @@ export const useWorkspaceShortcuts = ({
 		Match.value(action).pipe(
 			Match.tags({
 				Cancel: () => dispatch(projectActions.exitMode({ projectId })),
-				Run: () => confirmOperationMode(selectedItem),
+				Confirm: () => confirmOperationMode(selectedItem),
 			}),
 			Match.orElse((action) => {
 				if (!selectedItem) return;

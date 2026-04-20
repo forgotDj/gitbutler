@@ -2,8 +2,9 @@ import { headInfoQueryOptions } from "#ui/api/queries.ts";
 import { classes } from "#ui/classes.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { FC } from "react";
-import { DragData, DragPreview, useDraggable } from "./DragAndDrop.tsx";
+import { FC, type ReactNode } from "react";
+import { useDraggable } from "./DragAndDrop.tsx";
+import { type DragData } from "./OperationDragAndDrop.tsx";
 import { OperationSourceLabel } from "./OperationSourceLabel.tsx";
 import {
 	itemOperationSource,
@@ -11,7 +12,11 @@ import {
 	type OperationSource,
 } from "./OperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
-import styles from "./route.module.css";
+import dragAndDropStyles from "./OperationDragAndDrop.module.css";
+
+const DragPreview = ({ children }: { children: ReactNode }) => (
+	<div className={dragAndDropStyles.dragPreview}>{children}</div>
+);
 
 export const OperationSourceC: FC<
 	{
@@ -24,7 +29,7 @@ export const OperationSourceC: FC<
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 
 	const [isDragging, dragRef] = useDraggable({
-		getInitialData: (): DragData => ({ operationSource: source }),
+		getInitialData: (): DragData => ({ source }),
 		preview: (
 			<DragPreview>
 				<OperationSourceLabel source={source} headInfo={headInfo} />
@@ -43,7 +48,7 @@ export const OperationSourceC: FC<
 		render,
 		ref: dragRef,
 		props: mergeProps<"div">(props, {
-			className: classes(isActive && styles.activeSource),
+			className: classes(isActive && dragAndDropStyles.activeSource),
 		}),
 	});
 };

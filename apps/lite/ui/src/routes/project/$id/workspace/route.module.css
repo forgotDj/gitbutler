@@ -134,13 +134,13 @@
 	font-weight: bold;
 }
 
-.commit {
+.target {
 	display: flex;
 	position: relative;
 	flex-direction: column;
 }
 
-.commitInsertionTarget {
+.insertionTarget {
 	--indicator-height: 3px;
 
 	position: absolute;
@@ -150,12 +150,12 @@
 	pointer-events: none;
 }
 
-.commitInsertionTargetAbove {
+.insertionTargetAbove {
 	top: 0;
 	transform: translateY(calc(var(--indicator-height) / -2));
 }
 
-.commitInsertionTargetBelow {
+.insertionTargetBelow {
 	bottom: 0;
 	transform: translateY(calc(var(--indicator-height) / 2));
 }
@@ -166,21 +166,6 @@
 	border-radius: 8px;
 	outline: 2px dashed var(--color-active-operation-target-outline);
 	outline-offset: 1px;
-}
-
-/* This might be applied to an element that already has its own background, so
-we must use an overlay for the background. */
-.activeSource {
-	position: relative;
-	&:after {
-		position: absolute;
-		inset: 0;
-		border-radius: 8px;
-		background-color: var(--color-gray-200);
-		content: "";
-		opacity: 0.5;
-		pointer-events: none;
-	}
 }
 
 .stack {

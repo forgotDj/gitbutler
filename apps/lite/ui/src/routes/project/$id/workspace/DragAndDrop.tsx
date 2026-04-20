@@ -1,13 +1,10 @@
-import { type Operation, useRunOperation } from "#ui/Operation.ts";
 import {
 	draggable,
 	dropTargetForElements,
-	monitorForElements,
 } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { centerUnderPointer } from "@atlaskit/pragmatic-drag-and-drop/element/center-under-pointer";
 import { setCustomNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview";
 import {
-	FC,
 	type ReactNode,
 	type RefCallback,
 	useEffect,
@@ -16,31 +13,6 @@ import {
 	useState,
 } from "react";
 import { createRoot } from "react-dom/client";
-import styles from "./DragAndDrop.module.css";
-import { type OperationSource } from "./OperationSource.ts";
-
-export type DragData = {
-	operationSource: OperationSource;
-};
-
-export const parseDragData = (data: unknown): OperationSource | null => {
-	if (typeof data !== "object" || data === null || !("operationSource" in data)) return null;
-	return (data as DragData).operationSource;
-};
-
-export type DropData = {
-	operation: Operation | null;
-	operationSource: OperationSource;
-} | null;
-
-const parseDropTargetData = (data: unknown): DropData | null => {
-	if (typeof data !== "object" || data === null || !("operation" in data)) return null;
-	return data as DropData;
-};
-
-export const DragPreview: FC<{ children: ReactNode }> = ({ children }) => (
-	<div className={styles.dragPreview}>{children}</div>
-);
 
 type DraggableParams = Parameters<typeof draggable>[0];
 
@@ -139,25 +111,4 @@ export const useDroppable = <TData extends Record<string | symbol, unknown>>(
 			ref.current = element;
 		},
 	];
-};
-
-export const useMonitorDraggedOperationSource = ({ projectId }: { projectId: string }) => {
-	const runOperation = useRunOperation();
-
-	useEffect(
-		() =>
-			monitorForElements({
-				canMonitor: ({ source }) => parseDragData(source.data) !== null,
-				onDrop: ({ location }) => {
-					const dropData = location.current.dropTargets
-						.map((dropTarget) => parseDropTargetData(dropTarget.data))
-						.find((target) => target);
-
-					if (!dropData?.operation) return;
-
-					runOperation(projectId, dropData.operation);
-				},
-			}),
-		[runOperation, projectId],
-	);
 };

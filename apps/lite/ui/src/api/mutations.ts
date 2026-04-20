@@ -26,13 +26,6 @@ export const absorbMutationOptions = mutationOptions({
 	},
 });
 
-export const assignHunkMutationOptions = mutationOptions({
-	mutationFn: window.lite.assignHunk,
-	onSuccess: async (_data, _input, _ctx, { client }) => {
-		await client.invalidateQueries();
-	},
-});
-
 export const commitAmendMutationOptions = mutationOptions({
 	mutationFn: window.lite.commitAmend,
 	onSuccess: async (_data, _input, _ctx, { client }) => {

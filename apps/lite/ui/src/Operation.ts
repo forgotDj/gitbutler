@@ -2,7 +2,6 @@ import { Toast } from "@base-ui/react";
 import { useMutation } from "@tanstack/react-query";
 import { Match } from "effect";
 import {
-	type AssignHunkParams,
 	type CommitAmendParams,
 	type CommitCreateParams,
 	type CommitInsertBlankParams,
@@ -15,7 +14,6 @@ import {
 } from "#electron/ipc.ts";
 import { rejectedChangesToastOptions } from "#ui/RejectedChanges.tsx";
 import {
-	assignHunkMutationOptions,
 	commitAmendMutationOptions,
 	commitCreateMutationOptions,
 	commitInsertBlankMutationOptions,
@@ -30,8 +28,6 @@ import {
 } from "#ui/api/mutations.ts";
 import { InsertSide } from "@gitbutler/but-sdk";
 
-/** @public */
-export type AssignHunkOperation = Omit<AssignHunkParams, "projectId">;
 /** @public */
 export type CommitAmendOperation = Omit<CommitAmendParams, "projectId">;
 /** @public */
@@ -55,7 +51,6 @@ export type MoveBranchOperation = Omit<MoveBranchParams, "projectId">;
 export type TearOffBranchOperation = Omit<TearOffBranchParams, "projectId">;
 
 export type Operation =
-	| ({ _tag: "AssignHunk" } & AssignHunkOperation)
 	| ({ _tag: "CommitAmend" } & CommitAmendOperation)
 	| ({ _tag: "CommitCreate" } & CommitCreateOperation)
 	| ({ _tag: "CommitCreateFromCommittedChanges" } & CommitCreateFromCommittedChangesOperation)
@@ -66,12 +61,6 @@ export type Operation =
 	| ({ _tag: "CommitUncommitChanges" } & CommitUncommitChangesOperation)
 	| ({ _tag: "MoveBranch" } & MoveBranchOperation)
 	| ({ _tag: "TearOffBranch" } & TearOffBranchOperation);
-
-/** @public */
-export const assignHunkOperation = (operation: AssignHunkOperation): Operation => ({
-	_tag: "AssignHunk",
-	...operation,
-});
 
 /** @public */
 export const commitAmendOperation = (operation: CommitAmendOperation): Operation => ({
@@ -152,7 +141,6 @@ export const getInsertionSide = (operation: Operation): InsertSide | null =>
 export const operationLabel = (operation: Operation): string =>
 	Match.value(operation).pipe(
 		Match.tagsExhaustive({
-			AssignHunk: (operation) => (operation.assignments[0]?.target == null ? "Unassign" : "Assign"),
 			CommitAmend: () => "Amend",
 			CommitCreate: ({ side }) =>
 				Match.value(side).pipe(
@@ -183,7 +171,6 @@ export const operationLabel = (operation: Operation): string =>
 
 export const useRunOperation = () => {
 	const toastManager = Toast.useToastManager();
-	const assignHunk = useMutation(assignHunkMutationOptions);
 	const commitAmend = useMutation(commitAmendMutationOptions);
 	const commitCreate = useMutation(commitCreateMutationOptions);
 	const commitInsertBlank = useMutation(commitInsertBlankMutationOptions);
@@ -198,12 +185,6 @@ export const useRunOperation = () => {
 	return (projectId: string, operation: Operation): void => {
 		Match.value(operation).pipe(
 			Match.tagsExhaustive({
-				AssignHunk: (operation) => {
-					assignHunk.mutate({
-						projectId,
-						assignments: operation.assignments,
-					});
-				},
 				CommitAmend: (operation) => {
 					commitAmend.mutate(
 						{

@@ -29,14 +29,11 @@ import {
 	selectProjectWorkspaceModeState,
 } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { AbsorptionDialog, useAbsorption } from "#ui/routes/project/$id/workspace/Absorption.tsx";
-import { useMonitorDraggedOperationSource } from "#ui/routes/project/$id/workspace/DragAndDrop.tsx";
+import { useMonitorDraggedOperationSource } from "#ui/routes/project/$id/workspace/OperationDragAndDrop.tsx";
 import { isOperationModeSourceOrTarget } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { resolveOperationSource } from "#ui/routes/project/$id/workspace/ResolvedOperationSource.ts";
-import {
-	CommitTarget,
-	OperationTarget,
-} from "#ui/routes/project/$id/workspace/OperationTargets.tsx";
+import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import {
 	formatHunkHeader,
@@ -60,6 +57,7 @@ import {
 	DiffHunk,
 	HunkDependencies,
 	HunkHeader,
+	Segment,
 	Stack,
 	TreeChange,
 	UnifiedPatch,
@@ -1030,8 +1028,7 @@ const CommitC: FC<{
 			source={itemOperationSource(item)}
 			canDrag={() => !isSelected || workspaceMode._tag !== "RewordCommit"}
 			render={
-				<CommitTarget
-					commitId={commit.id}
+				<OperationTarget
 					item={item}
 					projectId={projectId}
 					operationMode={operationMode}
@@ -1577,6 +1574,61 @@ const StackRow: FC<
 	);
 };
 
+const SegmentC: FC<{
+	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
+	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
+	navigationIndex: NavigationIndex;
+	operationMode: OperationMode | null;
+	projectId: string;
+	segment: Segment;
+	stackId: string;
+	workspaceMode: WorkspaceMode;
+}> = ({
+	inlineRenameBranchFormRef,
+	inlineRewordCommitFormRef,
+	navigationIndex,
+	operationMode,
+	projectId,
+	segment,
+	stackId,
+	workspaceMode,
+}) => (
+	<div className={classes(styles.section, styles.segment)}>
+		{segment.refName && (
+			<BranchRow
+				inlineRenameBranchFormRef={inlineRenameBranchFormRef}
+				operationMode={operationMode}
+				workspaceMode={workspaceMode}
+				projectId={projectId}
+				branchName={segment.refName.displayName}
+				branchRef={segment.refName.fullNameBytes}
+				stackId={stackId}
+				navigationIndex={navigationIndex}
+			/>
+		)}
+
+		{segment.commits.length === 0 ? (
+			<div className={styles.itemRowEmpty}>No commits.</div>
+		) : (
+			<ul>
+				{segment.commits.map((commit) => (
+					<li key={commit.id}>
+						<CommitC
+							commit={commit}
+							inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+							operationMode={operationMode}
+							workspaceMode={workspaceMode}
+							projectId={projectId}
+							stackId={stackId}
+							navigationIndex={navigationIndex}
+						/>
+					</li>
+				))}
+			</ul>
+		)}
+	</div>
+);
+
 const StackC: FC<{
 	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
 	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
@@ -1628,40 +1680,16 @@ const StackC: FC<{
 
 					return (
 						<li key={segmentKey}>
-							<div className={classes(styles.section, styles.segment)}>
-								{segment.refName && (
-									<BranchRow
-										inlineRenameBranchFormRef={inlineRenameBranchFormRef}
-										operationMode={operationMode}
-										workspaceMode={workspaceMode}
-										projectId={projectId}
-										branchName={segment.refName.displayName}
-										branchRef={segment.refName.fullNameBytes}
-										stackId={stackId}
-										navigationIndex={navigationIndex}
-									/>
-								)}
-
-								{segment.commits.length === 0 ? (
-									<div className={styles.itemRowEmpty}>No commits.</div>
-								) : (
-									<ul>
-										{segment.commits.map((commit) => (
-											<li key={commit.id}>
-												<CommitC
-													commit={commit}
-													inlineRewordCommitFormRef={inlineRewordCommitFormRef}
-													operationMode={operationMode}
-													workspaceMode={workspaceMode}
-													projectId={projectId}
-													stackId={stackId}
-													navigationIndex={navigationIndex}
-												/>
-											</li>
-										))}
-									</ul>
-								)}
-							</div>
+							<SegmentC
+								inlineRenameBranchFormRef={inlineRenameBranchFormRef}
+								inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+								navigationIndex={navigationIndex}
+								operationMode={operationMode}
+								projectId={projectId}
+								segment={segment}
+								stackId={stackId}
+								workspaceMode={workspaceMode}
+							/>
 						</li>
 					);
 				})}
@@ -1706,16 +1734,20 @@ const ProjectPage: FC = () => {
 
 	const operationMode = getOperationMode(workspaceMode);
 
+	const resolvedOperationSource = operationMode
+		? resolveOperationSource({
+				operationSource: itemOperationSource(operationMode.source),
+				queryClient,
+				projectId,
+			})
+		: null;
+
 	const navigationIndex = operationMode
 		? filterNavigationIndex(navigationIndexUnfiltered, (item) =>
 				isOperationModeSourceOrTarget({
 					item,
 					operationMode,
-					resolvedOperationSource: resolveOperationSource({
-						operationSource: itemOperationSource(operationMode.source),
-						queryClient,
-						projectId,
-					}),
+					resolvedOperationSource,
 				}),
 			)
 		: navigationIndexUnfiltered;
