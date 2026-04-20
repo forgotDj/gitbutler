@@ -286,12 +286,21 @@ where
         });
 
     // handle messages
+    let mut did_reload = false;
     messages.append(&mut app.delayed_messages);
     loop {
         if messages.is_empty() {
             break;
         }
         for msg in messages.drain(..) {
+            if matches!(msg, Message::Reload(_)) {
+                if did_reload && cfg!(feature = "tui-profiling") && !cfg!(test) {
+                    app.toasts
+                        .insert(ToastKind::Error, "Double reload".to_owned());
+                } else {
+                    did_reload = true;
+                }
+            }
             app.handle_message(ctx, out, mode, terminal_guard, other_messages, msg)
                 .await;
         }
