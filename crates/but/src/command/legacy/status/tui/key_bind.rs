@@ -126,6 +126,22 @@ pub(super) fn branch_picker_key_binds() -> KeyBinds {
     });
 
     key_binds.register(KeyBindDef {
+        short_description: "down",
+        key_matcher: press().control().code(KeyCode::Char('n')),
+        modes: all_modes.clone(),
+        message: Message::BranchPicker(BranchPickerMessage::MoveCursorDown),
+        hide_from_hotbar: true,
+    });
+
+    key_binds.register(KeyBindDef {
+        short_description: "up",
+        key_matcher: press().control().code(KeyCode::Char('p')),
+        modes: all_modes.clone(),
+        message: Message::BranchPicker(BranchPickerMessage::MoveCursorUp),
+        hide_from_hotbar: true,
+    });
+
+    key_binds.register(KeyBindDef {
         short_description: "confirm",
         key_matcher: press().code(KeyCode::Enter),
         modes: all_modes.clone(),
@@ -139,6 +155,14 @@ pub(super) fn branch_picker_key_binds() -> KeyBinds {
         modes: all_modes.clone(),
         message: Message::BranchPicker(BranchPickerMessage::Close),
         hide_from_hotbar: false,
+    });
+
+    key_binds.register(KeyBindDef {
+        short_description: "back",
+        key_matcher: press().control().code(KeyCode::Char('[')),
+        modes: all_modes.clone(),
+        message: Message::BranchPicker(BranchPickerMessage::Close),
+        hide_from_hotbar: true,
     });
 
     key_binds
