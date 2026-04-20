@@ -51,7 +51,10 @@ const useDropTarget = ({
 		});
 		if (!resolvedOperationSource) return null;
 
-		return { operationSource, operation: getOperation({ ...args, resolvedOperationSource }) };
+		return {
+			source: operationSource,
+			operation: getOperation({ ...args, resolvedOperationSource }),
+		};
 	});
 };
 
@@ -122,7 +125,7 @@ const useOperationModeTarget = ({
 const merge = (dropData: DropData, operationModeTarget: OperationModeTarget) => ({
 	isActiveTarget: !!dropData?.operation || operationModeTarget.isActiveTarget,
 	source:
-		dropData?.operationSource ??
+		dropData?.source ??
 		(operationModeTarget.source ? itemOperationSource(operationModeTarget.source) : undefined),
 	operation: dropData?.operation ?? operationModeTarget.operation,
 });
@@ -193,7 +196,7 @@ export const OperationTarget: FC<
 			item={item}
 			operation={operation}
 			render={target}
-			operationSource={source}
+			source={source}
 		/>
 	);
 };
@@ -283,7 +286,7 @@ export const CommitTarget: FC<
 				item={item}
 				operation={targetTooltipOperation}
 				render={target}
-				operationSource={source}
+				source={source}
 			/>
 
 			{dropData && dragInsertionSide !== null && (
@@ -292,7 +295,7 @@ export const CommitTarget: FC<
 					enabled={!!dropData.operation}
 					item={item}
 					operation={dropData.operation}
-					operationSource={dropData.operationSource}
+					source={dropData.source}
 					className={classes(
 						styles.commitInsertionTarget,
 						pipe(

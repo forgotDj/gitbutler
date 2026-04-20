@@ -16,12 +16,12 @@ export const OperationTooltip: FC<
 	{
 		enabled: boolean;
 		operation: Operation | null;
-		operationSource?: OperationSource;
+		source?: OperationSource;
 		item: Item;
 		controls: OperationTooltipControls | undefined;
 	} & useRender.ComponentProps<"div">
-> = ({ enabled, operation, operationSource, item, controls, render, ...props }) => {
-	const isSource = operationSource && operationSourceMatchesItem(operationSource, item);
+> = ({ enabled, operation, source, item, controls, render, ...props }) => {
+	const isSource = source && operationSourceMatchesItem(source, item);
 
 	const tooltip = enabled ? (
 		<>

@@ -30,7 +30,7 @@ export const parseDragData = (data: unknown): OperationSource | null => {
 
 export type DropData = {
 	operation: Operation | null;
-	operationSource: OperationSource;
+	source: OperationSource;
 } | null;
 
 const parseDropTargetData = (data: unknown): DropData | null => {
