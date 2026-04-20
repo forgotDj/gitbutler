@@ -3,7 +3,6 @@ import {
 	commitDetailsWithLineStatsQueryOptions,
 } from "#ui/api/queries.ts";
 import {
-	assignHunkOperation,
 	commitAmendOperation,
 	commitCreateFromCommittedChangesOperation,
 	commitCreateOperation,
@@ -21,7 +20,6 @@ import { changeFileParent, commitFileParent, type FileParent } from "#ui/domain/
 import { QueryClient } from "@tanstack/react-query";
 import {
 	CommitDetails,
-	HunkAssignmentRequest,
 	InsertSide,
 	WorktreeChanges,
 	type HunkHeader,
@@ -245,7 +243,7 @@ export const resolveOperationSource = ({
 /**
  * | SOURCE ↓ / TARGET →    | Changes  | Commit |
  * | ---------------------- | -------- | ------ |
- * | File/hunk from changes | Assign   | Amend  |
+ * | File/hunk from changes | No-op    | Amend  |
  * | File/hunk from commit  | Uncommit | Amend  |
  * | Commit                 | Uncommit | Squash |
  *
@@ -291,18 +289,7 @@ export const getCombineOperation = ({
 						Change: () =>
 							Match.value(target).pipe(
 								Match.tagsExhaustive({
-									Change: () =>
-										assignHunkOperation({
-											assignments: source.changes.flatMap(({ change, hunkHeaders }) =>
-												hunkHeaders.map(
-													(hunkHeader): HunkAssignmentRequest => ({
-														pathBytes: change.pathBytes,
-														hunkHeader,
-														target: null,
-													}),
-												),
-											),
-										}),
+									Change: () => null,
 									Commit: ({ commitId }) =>
 										commitAmendOperation({
 											commitId,
