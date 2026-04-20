@@ -403,7 +403,7 @@ type PreviewAction = { _tag: "ClosePreview" } | PanelNavigationAction;
 
 const closePreviewAction: PreviewAction = { _tag: "ClosePreview" };
 
-export const closePreviewBinding: ShortcutBinding<PreviewAction> = {
+const closePreviewBinding: ShortcutBinding<PreviewAction> = {
 	id: "preview-close",
 	description: "Close",
 	keys: ["Escape"],

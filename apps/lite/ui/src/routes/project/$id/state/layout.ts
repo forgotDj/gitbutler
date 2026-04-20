@@ -1,5 +1,5 @@
 export type Panel = "primary" | "preview";
-export const orderedPanels: Array<Panel> = ["primary", "preview"];
+const orderedPanels: Array<Panel> = ["primary", "preview"];
 
 export type ProjectLayoutState = {
 	visiblePanels: Array<Panel>;
