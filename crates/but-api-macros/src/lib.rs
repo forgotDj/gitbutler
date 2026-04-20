@@ -841,6 +841,28 @@ fn is_object_id_type(ty: &syn::Type) -> bool {
     matches!(ty, syn::Type::Path(type_path) if is_object_id_path(&type_path.path))
 }
 
+fn is_hex_hash_path(path: &syn::Path) -> bool {
+    path.segments
+        .last()
+        .is_some_and(|last| last.ident == "HexHash")
+        && (path.segments.len() == 1
+            || path.segments[0].ident == "json"
+            || (path.segments.len() >= 2
+                && path.segments[0].ident == "crate"
+                && path.segments[1].ident == "json"))
+}
+
+fn is_hex_hash_container_path(path: &syn::Path, expected_container: &str) -> bool {
+    let Some(inner_ty) = single_generic_type_arg(path, expected_container) else {
+        return false;
+    };
+    let syn::Type::Path(type_path) = inner_ty else {
+        return false;
+    };
+
+    is_hex_hash_path(&type_path.path)
+}
+
 fn is_full_name_ref_path(path: &syn::Path) -> bool {
     path.segments
         .last()
@@ -938,6 +960,16 @@ fn build_json_type_mapping<'a>(
                 pat_ident.ident.to_string(),
                 JsonParameterMapping {
                     json_ty: syn::parse_str("crate::json::HexHash")?,
+                    json_ident: None,
+                },
+            )
+        } else if let Some(inner_ty) = single_generic_type_arg(path, "Vec")
+            && is_object_id_type(inner_ty)
+        {
+            (
+                pat_ident.ident.to_string(),
+                JsonParameterMapping {
+                    json_ty: syn::parse_str("Vec<crate::json::HexHash>")?,
                     json_ident: None,
                 },
             )
@@ -1264,6 +1296,31 @@ fn build_napi_params<'a>(
                     _ => quote! { #ident },
                 };
                 call_arg_idents.push(call_ident);
+            } else if *last_ident == "Vec" && is_hex_hash_container_path(&mapping.json_ty, "Vec") {
+                // Vec<ObjectId> via Vec<HexHash> → Vec<String>, then parse each entry
+                params.push(quote! { #param_name: Vec<String> });
+                conversions.push(quote! {
+                    let #ident: Vec<gix::ObjectId> = #param_name
+                        .into_iter()
+                        .enumerate()
+                        .map(|(index, value)| {
+                            ::std::str::FromStr::from_str(&value).map_err(|e: gix::hash::decode::Error| {
+                                napi::Error::new(
+                                    napi::Status::InvalidArg,
+                                    format!("invalid '{}' at index {index}: {e}", stringify!(#param_name)),
+                                )
+                            })
+                        })
+                        .collect::<Result<Vec<_>, napi::Error>>()?;
+                });
+                let call_ident = match &*pat_ty.ty {
+                    syn::Type::Reference(r) => {
+                        let mutability = &r.mutability;
+                        quote! { &#mutability #ident }
+                    }
+                    _ => quote! { #ident },
+                };
+                call_arg_idents.push(call_ident);
             } else {
                 // Fallback: use serde_json::Value with ts_arg_type for proper TS typing
                 let ts_type_str = type_to_ts_name(&pat_ty.ty);
@@ -1546,8 +1603,8 @@ mod tests {
 
     use super::{
         ContextParamKind, PermissionParamKind, WrapperCallArgKind, WrapperConversionKind,
-        build_wrapper_parameter_mapping, build_wrapper_params, context_param_kind, doc_attributes,
-        permission_param_kind,
+        build_json_type_mapping, build_napi_params, build_wrapper_parameter_mapping,
+        build_wrapper_params, context_param_kind, doc_attributes, permission_param_kind,
     };
 
     #[test]
@@ -1623,6 +1680,58 @@ mod tests {
             vec_mapping.conversion_kind,
             WrapperConversionKind::VecFrom
         ),);
+    }
+
+    #[test]
+    fn maps_vec_object_id_to_vec_hex_hash_in_json_mapping() {
+        let arg: FnArg = parse_quote!(commit_ids: Vec<gix::ObjectId>);
+        let mapping = build_json_type_mapping([&arg]).unwrap();
+        let vec_mapping = mapping
+            .get("commit_ids")
+            .expect("Vec<ObjectId> should be present in json mapping");
+        let json_ty = &vec_mapping.json_ty;
+
+        assert_eq!(
+            quote!(#json_ty).to_string(),
+            quote!(Vec<crate::json::HexHash>).to_string()
+        );
+    }
+
+    #[test]
+    fn maps_vec_object_id_to_vec_string_napi_param_and_parser() {
+        let arg: FnArg = parse_quote!(commit_ids: Vec<gix::ObjectId>);
+        let json_mapping = build_json_type_mapping([&arg]).unwrap();
+        let napi_info = build_napi_params([&arg], &json_mapping).unwrap();
+        let params = &napi_info.params;
+        let call_arg_idents = &napi_info.call_arg_idents;
+        let conversions = &napi_info.conversions;
+
+        assert_eq!(
+            quote!(#(#params),*).to_string(),
+            quote!(commit_ids: Vec<String>).to_string()
+        );
+        assert_eq!(
+            quote!(#(#call_arg_idents),*).to_string(),
+            quote!(commit_ids).to_string()
+        );
+        assert_eq!(
+            quote!(#(#conversions)*).to_string(),
+            quote! {
+                let commit_ids: Vec<gix::ObjectId> = commit_ids
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, value)| {
+                        ::std::str::FromStr::from_str(&value).map_err(|e: gix::hash::decode::Error| {
+                            napi::Error::new(
+                                napi::Status::InvalidArg,
+                                format!("invalid '{}' at index {index}: {e}", stringify!(commit_ids)),
+                            )
+                        })
+                    })
+                    .collect::<Result<Vec<_>, napi::Error>>()?;
+            }
+            .to_string()
+        );
     }
 
     #[test]
