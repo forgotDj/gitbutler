@@ -13,7 +13,7 @@ import { FC } from "react";
 import { type GetDataParams, DropData, parseDragData, useDroppable } from "./DragAndDrop.tsx";
 import { type Item } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
-import { OperationTooltip } from "./OperationTooltip.tsx";
+import { OperationTooltip, OperationTooltipControls } from "./OperationTooltip.tsx";
 import {
 	getBranchTargetOperation,
 	getCombineOperation,
@@ -69,10 +69,7 @@ type OperationModeTarget = {
 const useModeControls = (
 	projectId: string,
 	operation: Operation | null,
-): {
-	onConfirm: () => void;
-	onCancel: () => void;
-} => {
+): OperationTooltipControls => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
 

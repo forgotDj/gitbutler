@@ -7,7 +7,7 @@ import styles from "./route.module.css";
 import { OperationSource, operationSourceMatchesItem } from "./OperationSource";
 import { Item } from "./Item";
 
-type OperationTooltipControls = {
+export type OperationTooltipControls = {
 	onConfirm: () => void;
 	onCancel: () => void;
 };
