@@ -1,32 +1,57 @@
 import { classes } from "#ui/classes.ts";
-import { operationLabel, type Operation } from "#ui/Operation.ts";
+import { operationLabel, useRunOperation, type Operation } from "#ui/Operation.ts";
 import uiStyles from "#ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
 import { FC } from "react";
 import styles from "./route.module.css";
 import { OperationSource, operationSourceMatchesItem } from "./OperationSource";
 import { Item } from "./Item";
+import { useAppDispatch } from "#ui/state/hooks.ts";
+import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 
-export type OperationTooltipControls = {
+type OperationTooltipControls = {
 	onConfirm: () => void;
 	onCancel: () => void;
 };
 
+const useModeControls = (
+	projectId: string,
+	operation: Operation | null,
+): OperationTooltipControls => {
+	const dispatch = useAppDispatch();
+	const runOperation = useRunOperation();
+
+	const confirm = () => {
+		dispatch(projectActions.exitMode({ projectId }));
+
+		if (!operation) return;
+
+		runOperation(projectId, operation);
+	};
+
+	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
+
+	return { onConfirm: confirm, onCancel: cancel };
+};
+
 export const OperationTooltip: FC<
 	{
+		projectId: string;
 		enabled: boolean;
 		operation: Operation | null;
 		source?: OperationSource;
 		item: Item;
-		controls?: OperationTooltipControls | undefined;
+		isOperationMode?: boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ enabled, operation, source, item, controls, render, ...props }) => {
+> = ({ projectId, enabled, operation, source, item, isOperationMode, render, ...props }) => {
 	const isSource = source && operationSourceMatchesItem(source, item);
+
+	const controls = useModeControls(projectId, operation);
 
 	const tooltip = enabled ? (
 		<>
 			{isSource ? <>Select a target</> : operation ? operationLabel(operation) : null}
-			{controls && (
+			{isOperationMode && (
 				<>
 					<button type="button" className={uiStyles.button} onClick={controls.onConfirm}>
 						Confirm
@@ -49,7 +74,7 @@ export const OperationTooltip: FC<
 	return (
 		<Tooltip.Root
 			open={!!tooltip}
-			disableHoverablePopup={!controls}
+			disableHoverablePopup={!isOperationMode}
 			onOpenChange={(_open, eventDetails) => {
 				eventDetails.allowPropagation();
 			}}

@@ -4,16 +4,14 @@ import {
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
 import { classes } from "#ui/classes.ts";
 import { changeFileParent, commitFileParent } from "#ui/domain/FileParent.ts";
-import { getInsertionSide, useRunOperation, type Operation } from "#ui/Operation.ts";
-import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
-import { useAppDispatch } from "#ui/state/hooks.ts";
+import { getInsertionSide, type Operation } from "#ui/Operation.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
 import { FC } from "react";
 import { type GetDataParams, DropData, parseDragData, useDroppable } from "./DragAndDrop.tsx";
 import { type Item } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
-import { OperationTooltip, OperationTooltipControls } from "./OperationTooltip.tsx";
+import { OperationTooltip } from "./OperationTooltip.tsx";
 import {
 	getBranchTargetOperation,
 	getCombineOperation,
@@ -64,26 +62,6 @@ const useDropTarget = ({
 type OperationModeTarget = {
 	source: Item;
 	operation: Operation | null;
-};
-
-const useModeControls = (
-	projectId: string,
-	operation: Operation | null,
-): OperationTooltipControls => {
-	const dispatch = useAppDispatch();
-	const runOperation = useRunOperation();
-
-	const confirm = () => {
-		dispatch(projectActions.exitMode({ projectId }));
-
-		if (!operation) return;
-
-		runOperation(projectId, operation);
-	};
-
-	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
-
-	return { onConfirm: confirm, onCancel: cancel };
 };
 
 const useOperationModeTarget = ({
@@ -191,7 +169,6 @@ export const OperationTarget: FC<
 	});
 
 	const targetData = getTargetData(dropData, operationModeTarget);
-	const modeControls = useModeControls(projectId, operationModeTarget?.operation ?? null);
 
 	const target = useRender({
 		render,
@@ -203,7 +180,8 @@ export const OperationTarget: FC<
 
 	return (
 		<OperationTooltip
-			controls={modeControls}
+			projectId={projectId}
+			isOperationMode={!!operationMode}
 			enabled={!!targetData}
 			item={item}
 			operation={targetData?.operation ?? null}
@@ -277,7 +255,6 @@ export const CommitTarget: FC<
 	});
 
 	const targetData = getTargetData(dropData, operationModeTarget);
-	const modeControls = useModeControls(projectId, operationModeTarget?.operation ?? null);
 
 	const dragInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
 
@@ -295,7 +272,8 @@ export const CommitTarget: FC<
 	return (
 		<div className={styles.commit}>
 			<OperationTooltip
-				controls={modeControls}
+				projectId={projectId}
+				isOperationMode={!!operationMode}
 				enabled={!!targetData}
 				item={item}
 				operation={targetTooltipOperation}
@@ -305,6 +283,8 @@ export const CommitTarget: FC<
 
 			{dropData && dragInsertionSide !== null && (
 				<OperationTooltip
+					projectId={projectId}
+					isOperationMode={false}
 					enabled={!!dropData.operation}
 					item={item}
 					operation={dropData.operation}
