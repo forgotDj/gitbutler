@@ -27,14 +27,16 @@ import styles from "./route.module.css";
 import { useQueryClient } from "@tanstack/react-query";
 import { itemOperationSource } from "#ui/routes/project/$id/workspace/OperationSource.ts";
 
+type GetOperation = (
+	args: GetDataParams[0] & { resolvedOperationSource: ResolvedOperationSource },
+) => Operation | null;
+
 const useDragOperation = ({
 	projectId,
 	getOperation,
 }: {
 	projectId: string;
-	getOperation: (
-		args: GetDataParams[0] & { resolvedOperationSource: ResolvedOperationSource },
-	) => Operation | null;
+	getOperation: GetOperation;
 }) => {
 	const queryClient = useQueryClient();
 
@@ -116,9 +118,7 @@ const useOperationTarget = ({
 	item: Item;
 	operationMode: OperationMode | null;
 	isSelected: boolean;
-	getOperation: (
-		args: GetDataParams[0] & { resolvedOperationSource: ResolvedOperationSource },
-	) => Operation | null;
+	getOperation: GetOperation;
 }) => {
 	const [drag, dropRef] = useDragOperation({ projectId, getOperation });
 	const operationModeTarget = useOperationModeTarget({
@@ -207,14 +207,8 @@ export const OperationTarget: FC<
 };
 
 const commitDropTargetToOperation =
-	(commitId: string) =>
-	({
-		input,
-		element,
-		resolvedOperationSource,
-	}: GetDataParams[0] & {
-		resolvedOperationSource: ResolvedOperationSource;
-	}) => {
+	(commitId: string): GetOperation =>
+	({ input, element, resolvedOperationSource }) => {
 		const combine = getCombineOperation({
 			resolvedOperationSource,
 			target: commitFileParent({ commitId }),
