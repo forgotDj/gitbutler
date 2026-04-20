@@ -29,13 +29,7 @@ type GetOperation = (
 	args: GetDataParams[0] & { resolvedOperationSource: ResolvedOperationSource },
 ) => Operation | null;
 
-const useDropTarget = ({
-	projectId,
-	getOperation,
-}: {
-	projectId: string;
-	getOperation: GetOperation;
-}) => {
+const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) => {
 	const queryClient = useQueryClient();
 
 	return useDroppable((args): DropData | null => {
@@ -51,7 +45,7 @@ const useDropTarget = ({
 		});
 
 		const operation = resolvedOperationSource
-			? getOperation({ ...args, resolvedOperationSource })
+			? dropTargetToOperation(item)({ ...args, resolvedOperationSource })
 			: null;
 
 		return {
@@ -172,10 +166,7 @@ export const OperationTarget: FC<
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
-	const [dropData, dropRef] = useDropTarget({
-		projectId,
-		getOperation: dropTargetToOperation(item),
-	});
+	const [dropData, dropRef] = useDropTarget({ projectId, item });
 	const operationModeTarget = useOperationModeTarget({
 		projectId,
 		item,
