@@ -60,6 +60,7 @@ import {
 	DiffHunk,
 	HunkDependencies,
 	HunkHeader,
+	Segment,
 	Stack,
 	TreeChange,
 	UnifiedPatch,
@@ -1577,6 +1578,61 @@ const StackRow: FC<
 	);
 };
 
+const SegmentC: FC<{
+	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
+	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
+	navigationIndex: NavigationIndex;
+	operationMode: OperationMode | null;
+	projectId: string;
+	segment: Segment;
+	stackId: string;
+	workspaceMode: WorkspaceMode;
+}> = ({
+	inlineRenameBranchFormRef,
+	inlineRewordCommitFormRef,
+	navigationIndex,
+	operationMode,
+	projectId,
+	segment,
+	stackId,
+	workspaceMode,
+}) => (
+	<div className={classes(styles.section, styles.segment)}>
+		{segment.refName && (
+			<BranchRow
+				inlineRenameBranchFormRef={inlineRenameBranchFormRef}
+				operationMode={operationMode}
+				workspaceMode={workspaceMode}
+				projectId={projectId}
+				branchName={segment.refName.displayName}
+				branchRef={segment.refName.fullNameBytes}
+				stackId={stackId}
+				navigationIndex={navigationIndex}
+			/>
+		)}
+
+		{segment.commits.length === 0 ? (
+			<div className={styles.itemRowEmpty}>No commits.</div>
+		) : (
+			<ul>
+				{segment.commits.map((commit) => (
+					<li key={commit.id}>
+						<CommitC
+							commit={commit}
+							inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+							operationMode={operationMode}
+							workspaceMode={workspaceMode}
+							projectId={projectId}
+							stackId={stackId}
+							navigationIndex={navigationIndex}
+						/>
+					</li>
+				))}
+			</ul>
+		)}
+	</div>
+);
+
 const StackC: FC<{
 	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
 	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
@@ -1628,40 +1684,16 @@ const StackC: FC<{
 
 					return (
 						<li key={segmentKey}>
-							<div className={classes(styles.section, styles.segment)}>
-								{segment.refName && (
-									<BranchRow
-										inlineRenameBranchFormRef={inlineRenameBranchFormRef}
-										operationMode={operationMode}
-										workspaceMode={workspaceMode}
-										projectId={projectId}
-										branchName={segment.refName.displayName}
-										branchRef={segment.refName.fullNameBytes}
-										stackId={stackId}
-										navigationIndex={navigationIndex}
-									/>
-								)}
-
-								{segment.commits.length === 0 ? (
-									<div className={styles.itemRowEmpty}>No commits.</div>
-								) : (
-									<ul>
-										{segment.commits.map((commit) => (
-											<li key={commit.id}>
-												<CommitC
-													commit={commit}
-													inlineRewordCommitFormRef={inlineRewordCommitFormRef}
-													operationMode={operationMode}
-													workspaceMode={workspaceMode}
-													projectId={projectId}
-													stackId={stackId}
-													navigationIndex={navigationIndex}
-												/>
-											</li>
-										))}
-									</ul>
-								)}
-							</div>
+							<SegmentC
+								inlineRenameBranchFormRef={inlineRenameBranchFormRef}
+								inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+								navigationIndex={navigationIndex}
+								operationMode={operationMode}
+								projectId={projectId}
+								segment={segment}
+								stackId={stackId}
+								workspaceMode={workspaceMode}
+							/>
 						</li>
 					);
 				})}
