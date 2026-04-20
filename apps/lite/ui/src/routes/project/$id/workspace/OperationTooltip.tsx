@@ -48,7 +48,7 @@ export const OperationTooltip: FC<
 		isOperationMode?: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ projectId, enabled, operation, source, item, isOperationMode, render, ...props }) => {
-	const isSource = source && operationSourceMatchesItem(source, item);
+	const isSource = !!source && operationSourceMatchesItem(source, item);
 
 	const tooltip = enabled ? (
 		<>
