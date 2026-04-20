@@ -32,7 +32,7 @@ export const useMonitorDraggedOperationSource = ({ projectId }: { projectId: str
 				onDrop: ({ location }) => {
 					const dropData = location.current.dropTargets
 						.map((dropTarget) => parseDropData(dropTarget.data))
-						.find((dropData) => dropData);
+						.find((dropData) => dropData?.operation);
 
 					if (!dropData?.operation) return;
 
