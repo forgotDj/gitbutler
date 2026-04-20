@@ -42,8 +42,10 @@ const useDropTarget = ({
 	const queryClient = useQueryClient();
 
 	return useDroppable((args): DropData => {
-		const operationSource = parseDragData(args.source.data);
-		if (!operationSource) return null;
+		const dragData = parseDragData(args.source.data);
+		if (!dragData) return null;
+
+		const { operationSource } = dragData;
 
 		const resolvedOperationSource = resolveOperationSource({
 			operationSource,
