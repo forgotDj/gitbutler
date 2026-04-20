@@ -276,7 +276,7 @@ export const CommitTarget: FC<
 			<OperationTooltip
 				projectId={projectId}
 				isOperationMode={!!operationMode}
-				enabled={!!targetData}
+				enabled={!!targetTooltipOperation}
 				item={item}
 				operation={targetTooltipOperation}
 				render={target}
