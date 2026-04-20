@@ -33,7 +33,7 @@ export type DropData = {
 	source: OperationSource;
 } | null;
 
-const parseDropTargetData = (data: unknown): DropData | null => {
+const parseDropData = (data: unknown): DropData | null => {
 	if (typeof data !== "object" || data === null || !("operation" in data)) return null;
 	return data as DropData;
 };
@@ -150,7 +150,7 @@ export const useMonitorDraggedOperationSource = ({ projectId }: { projectId: str
 				canMonitor: ({ source }) => parseDragData(source.data) !== null,
 				onDrop: ({ location }) => {
 					const dropData = location.current.dropTargets
-						.map((dropTarget) => parseDropTargetData(dropTarget.data))
+						.map((dropTarget) => parseDropData(dropTarget.data))
 						.find((target) => target);
 
 					if (!dropData?.operation) return;
