@@ -273,6 +273,9 @@
 										mergeableState={pr.mergeableState}
 										isFork={pr.fork}
 										isMerged={pr.merged}
+										onrefetch={() => {
+											if (args.prNumber) prService?.fetch(args.prNumber, { forceRefetch: true });
+										}}
 									/>
 								{/if}
 							{/if}
