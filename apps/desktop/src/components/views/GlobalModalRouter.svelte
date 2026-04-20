@@ -118,6 +118,20 @@
 		}
 		uiState.global.modal.set(undefined);
 	}
+
+	/**
+	 * Close the modal via the Modal component's own close() method so that
+	 * the portalled DOM is properly cleaned up with its closing animation.
+	 * Falls back to clearing state directly if the Modal ref is unavailable
+	 * (e.g. due to an unmount race condition).
+	 */
+	function closeModal() {
+		if (modal) {
+			modal.close();
+		} else {
+			handleModalClose();
+		}
+	}
 </script>
 
 {#if modalProps}
@@ -128,17 +142,17 @@
 		onSubmit={(close) => close()}
 	>
 		{#if modalProps.state.type === "commit-failed"}
-			<CommitFailedModalContent data={modalProps.state} oncloseclick={handleModalClose} />
+			<CommitFailedModalContent data={modalProps.state} oncloseclick={closeModal} />
 		{:else if modalProps.state.type === "author-missing"}
-			<AuthorMissingModalContent data={modalProps.state} close={handleModalClose} />
+			<AuthorMissingModalContent data={modalProps.state} close={closeModal} />
 		{:else if modalProps.state.type === "general-settings"}
 			<GeneralSettingsModalContent data={modalProps.state} />
 		{:else if modalProps.state.type === "project-settings"}
 			<ProjectSettingsModalContent data={modalProps.state} />
 		{:else if modalProps.state.type === "login-confirmation"}
-			<LoginConfirmationModalContent data={modalProps.state} close={handleModalClose} />
+			<LoginConfirmationModalContent data={modalProps.state} close={closeModal} />
 		{:else if modalProps.state.type === "auto-commit"}
-			<AutoCommitModalContent data={modalProps.state} close={handleModalClose} />
+			<AutoCommitModalContent data={modalProps.state} close={closeModal} />
 		{/if}
 	</Modal>
 {/if}
