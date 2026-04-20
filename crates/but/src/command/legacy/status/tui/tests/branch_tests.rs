@@ -5,7 +5,7 @@ use snapbox::str;
 use crate::command::legacy::status::tui::tests::utils::test_tui;
 
 #[test]
-fn branch_key_from_unassigned_is_noop() {
+fn branch_key_from_unassigned_creates_new_branch() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
     env.setup_metadata(&["A"]).unwrap();
 
@@ -15,7 +15,7 @@ fn branch_key_from_unassigned_is_noop() {
         .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
 
     tui.input_then_render('b')
-        .assert_current_line_eq(str!["╭┄zz [unassigned changes] (no changes)"]);
+        .assert_current_line_eq(str!["┊╭┄br [c-branch-1] (no commits)"]);
 }
 
 #[test]

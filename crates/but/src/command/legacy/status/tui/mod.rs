@@ -1761,12 +1761,13 @@ impl App {
                 };
                 operations::create_branch_anchored_legacy(ctx, name.to_owned())?
             }
-            StatusOutputLineData::MergeBase => operations::create_branch_legacy(ctx)?,
+            StatusOutputLineData::UnassignedChanges { .. } | StatusOutputLineData::MergeBase => {
+                operations::create_branch_legacy(ctx)?
+            }
             StatusOutputLineData::UpdateNotice
             | StatusOutputLineData::Connector
             | StatusOutputLineData::StagedChanges { .. }
             | StatusOutputLineData::StagedFile { .. }
-            | StatusOutputLineData::UnassignedChanges { .. }
             | StatusOutputLineData::UnassignedFile { .. }
             | StatusOutputLineData::Commit { .. }
             | StatusOutputLineData::CommitMessage
