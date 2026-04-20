@@ -191,7 +191,7 @@ export const OperationTarget: FC<
 	});
 
 	const targetData = getTargetData(dropData, operationModeTarget);
-	const controls = useModeControls(projectId, operationModeTarget?.operation ?? null);
+	const modeControls = useModeControls(projectId, operationModeTarget?.operation ?? null);
 
 	const target = useRender({
 		render,
@@ -203,7 +203,7 @@ export const OperationTarget: FC<
 
 	return (
 		<OperationTooltip
-			controls={controls}
+			controls={modeControls}
 			enabled={!!targetData}
 			item={item}
 			operation={targetData?.operation ?? null}
@@ -277,7 +277,7 @@ export const CommitTarget: FC<
 	});
 
 	const targetData = getTargetData(dropData, operationModeTarget);
-	const controls = useModeControls(projectId, operationModeTarget?.operation ?? null);
+	const modeControls = useModeControls(projectId, operationModeTarget?.operation ?? null);
 
 	const dragInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
 
@@ -295,7 +295,7 @@ export const CommitTarget: FC<
 	return (
 		<div className={styles.commit}>
 			<OperationTooltip
-				controls={controls}
+				controls={modeControls}
 				enabled={!!targetData}
 				item={item}
 				operation={targetTooltipOperation}
@@ -305,7 +305,7 @@ export const CommitTarget: FC<
 
 			{dropData && dragInsertionSide !== null && (
 				<OperationTooltip
-					controls={controls}
+					controls={modeControls}
 					enabled={!!dropData.operation}
 					item={item}
 					operation={dropData.operation}
