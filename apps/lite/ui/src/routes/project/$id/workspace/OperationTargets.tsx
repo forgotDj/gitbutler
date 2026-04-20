@@ -64,12 +64,29 @@ const useDropTarget = ({
 type OperationModeTarget = {
 	source: Item;
 	operation: Operation | null;
-	controls:
-		| {
-				onConfirm: () => void;
-				onCancel: () => void;
-		  }
-		| undefined;
+};
+
+const useModeControls = (
+	projectId: string,
+	operation: Operation | null,
+): {
+	onConfirm: () => void;
+	onCancel: () => void;
+} => {
+	const dispatch = useAppDispatch();
+	const runOperation = useRunOperation();
+
+	const confirm = () => {
+		dispatch(projectActions.exitMode({ projectId }));
+
+		if (!operation) return;
+
+		runOperation(projectId, operation);
+	};
+
+	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
+
+	return { onConfirm: confirm, onCancel: cancel };
 };
 
 const useOperationModeTarget = ({
@@ -83,8 +100,6 @@ const useOperationModeTarget = ({
 	operationMode: OperationMode | null;
 	isSelected: boolean;
 }): OperationModeTarget | null => {
-	const dispatch = useAppDispatch();
-	const runOperation = useRunOperation();
 	const queryClient = useQueryClient();
 
 	const isActiveTarget = !!operationMode && isSelected;
@@ -105,20 +120,9 @@ const useOperationModeTarget = ({
 			})
 		: null;
 
-	const confirm = () => {
-		dispatch(projectActions.exitMode({ projectId }));
-
-		if (!operation) return;
-
-		runOperation(projectId, operation);
-	};
-
-	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
-
 	return {
 		source: operationMode.source,
 		operation,
-		controls: { onConfirm: confirm, onCancel: cancel },
 	};
 };
 
@@ -190,6 +194,7 @@ export const OperationTarget: FC<
 	});
 
 	const targetData = merge(dropData, operationModeTarget);
+	const controls = useModeControls(projectId, operationModeTarget?.operation ?? null);
 
 	const target = useRender({
 		render,
@@ -201,7 +206,7 @@ export const OperationTarget: FC<
 
 	return (
 		<OperationTooltip
-			controls={operationModeTarget?.controls}
+			controls={controls}
 			enabled={!!targetData}
 			item={item}
 			operation={targetData?.operation ?? null}
@@ -275,6 +280,7 @@ export const CommitTarget: FC<
 	});
 
 	const targetData = merge(dropData, operationModeTarget);
+	const controls = useModeControls(projectId, operationModeTarget?.operation ?? null);
 
 	const dragInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
 
@@ -292,7 +298,7 @@ export const CommitTarget: FC<
 	return (
 		<div className={styles.commit}>
 			<OperationTooltip
-				controls={operationModeTarget?.controls}
+				controls={controls}
 				enabled={!!targetData}
 				item={item}
 				operation={targetTooltipOperation}
@@ -302,7 +308,7 @@ export const CommitTarget: FC<
 
 			{dropData && dragInsertionSide !== null && (
 				<OperationTooltip
-					controls={operationModeTarget?.controls}
+					controls={controls}
 					enabled={!!dropData.operation}
 					item={item}
 					operation={dropData.operation}
