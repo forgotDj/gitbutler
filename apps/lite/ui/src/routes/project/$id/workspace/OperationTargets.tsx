@@ -41,7 +41,7 @@ const useDropTarget = ({
 }) => {
 	const queryClient = useQueryClient();
 
-	return useDroppable((args): DropData => {
+	return useDroppable((args): DropData | null => {
 		const dragData = parseDragData(args.source.data);
 		if (!dragData) return null;
 
@@ -109,7 +109,7 @@ type TargetData = {
 };
 
 const getTargetData = (
-	dropData: DropData,
+	dropData: DropData | null,
 	operationModeTarget: OperationModeTarget | null,
 ): TargetData | null => {
 	if (dropData?.operation) return { operation: dropData.operation, source: dropData.source };

@@ -31,7 +31,7 @@ export const parseDragData = (data: unknown): DragData | null => {
 export type DropData = {
 	operation: Operation | null;
 	source: OperationSource;
-} | null;
+};
 
 const parseDropData = (data: unknown): DropData | null => {
 	if (typeof data !== "object" || data === null || !("operation" in data)) return null;
