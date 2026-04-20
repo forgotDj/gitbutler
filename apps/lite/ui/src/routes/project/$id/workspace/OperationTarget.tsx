@@ -49,11 +49,14 @@ const useDropTarget = ({
 			queryClient,
 			projectId,
 		});
-		if (!resolvedOperationSource) return null;
+
+		const operation = resolvedOperationSource
+			? getOperation({ ...args, resolvedOperationSource })
+			: null;
 
 		return {
 			source,
-			operation: getOperation({ ...args, resolvedOperationSource }),
+			operation,
 		};
 	});
 };
