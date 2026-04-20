@@ -29,6 +29,49 @@ type GetOperation = (
 	args: GetDataParams[0] & { resolvedOperationSource: ResolvedOperationSource },
 ) => Operation | null;
 
+const dropTargetToOperation =
+	(item: Item): GetOperation =>
+	({ input, element, resolvedOperationSource }) => {
+		const combine = rubOperationSourceToOperation({
+			resolvedOperationSource,
+			target: item,
+		});
+		const insertAbove = moveOperationSourceToOperation({
+			resolvedOperationSource,
+			target: item,
+			side: "above",
+		});
+		const insertBelow = moveOperationSourceToOperation({
+			resolvedOperationSource,
+			target: item,
+			side: "below",
+		});
+
+		const instruction = extractInstruction(
+			attachInstruction(
+				{ resolvedOperationSource },
+				{
+					input,
+					element,
+					operations: {
+						"reorder-before": insertAbove ? "available" : "not-available",
+						"reorder-after": insertBelow ? "available" : "not-available",
+						combine: combine ? "available" : "not-available",
+					},
+				},
+			),
+		);
+
+		if (!instruction) return null;
+
+		return Match.value(instruction.operation).pipe(
+			Match.when("combine", () => combine),
+			Match.when("reorder-before", () => insertAbove),
+			Match.when("reorder-after", () => insertBelow),
+			Match.exhaustive,
+		);
+	};
+
 const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) => {
 	const queryClient = useQueryClient();
 
@@ -114,49 +157,6 @@ const getTargetData = (
 		};
 	return null;
 };
-
-const dropTargetToOperation =
-	(item: Item): GetOperation =>
-	({ input, element, resolvedOperationSource }) => {
-		const combine = rubOperationSourceToOperation({
-			resolvedOperationSource,
-			target: item,
-		});
-		const insertAbove = moveOperationSourceToOperation({
-			resolvedOperationSource,
-			target: item,
-			side: "above",
-		});
-		const insertBelow = moveOperationSourceToOperation({
-			resolvedOperationSource,
-			target: item,
-			side: "below",
-		});
-
-		const instruction = extractInstruction(
-			attachInstruction(
-				{ resolvedOperationSource },
-				{
-					input,
-					element,
-					operations: {
-						"reorder-before": insertAbove ? "available" : "not-available",
-						"reorder-after": insertBelow ? "available" : "not-available",
-						combine: combine ? "available" : "not-available",
-					},
-				},
-			),
-		);
-
-		if (!instruction) return null;
-
-		return Match.value(instruction.operation).pipe(
-			Match.when("combine", () => combine),
-			Match.when("reorder-before", () => insertAbove),
-			Match.when("reorder-after", () => insertBelow),
-			Match.exhaustive,
-		);
-	};
 
 export const OperationTarget: FC<
 	{
