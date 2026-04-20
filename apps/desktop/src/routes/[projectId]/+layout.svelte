@@ -269,6 +269,14 @@
 					clientState.backendApi.util.invalidateTags([invalidatesList(ReduxTag.WorkspaceRules)]),
 				);
 			}),
+			backend.listen(`project://${projectId}/git/remote-activity`, () => {
+				clientState.dispatch(
+					clientState.backendApi.util.invalidateTags([
+						invalidatesList(ReduxTag.StackDetails),
+						invalidatesList(ReduxTag.BranchListing),
+					]),
+				);
+			}),
 		),
 	);
 

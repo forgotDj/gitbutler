@@ -46,6 +46,10 @@ pub(crate) mod state {
                             "headSha": head_sha,
                         }),
                     },
+                    Change::GitRemoteActivity { project_id } => ChangeForFrontend {
+                        name: format!("project://{project_id}/git/remote-activity"),
+                        payload: serde_json::json!({}),
+                    },
                     Change::WorktreeChanges {
                         project_id,
                         changes,

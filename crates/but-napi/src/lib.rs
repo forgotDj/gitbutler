@@ -23,8 +23,8 @@ use napi_derive::napi;
 use but_api::{
     self as _,
     watcher::{
-        WatcherGitActivityPayload, WatcherGitFetchPayload, WatcherGitHeadPayload, WatcherPayload,
-        WatcherWorktreeChangesPayload,
+        WatcherGitActivityPayload, WatcherGitFetchPayload, WatcherGitHeadPayload,
+        WatcherGitRemoteActivityPayload, WatcherPayload, WatcherWorktreeChangesPayload,
     },
 };
 
@@ -113,6 +113,12 @@ fn event_from_change(change: gitbutler_watcher::Change) -> WatcherEvent {
             payload: serde_json::json!(WatcherPayload::GitActivity(WatcherGitActivityPayload {
                 head_sha
             })),
+        },
+        gitbutler_watcher::Change::GitRemoteActivity { project_id } => WatcherEvent {
+            name: format!("project://{project_id}/git/remote-activity"),
+            payload: serde_json::json!(WatcherPayload::GitRemoteActivity(
+                WatcherGitRemoteActivityPayload
+            )),
         },
         gitbutler_watcher::Change::WorktreeChanges {
             project_id,
