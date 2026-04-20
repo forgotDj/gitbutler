@@ -186,8 +186,8 @@ export const OperationTarget: FC<
 			isOperationMode={!!operationMode}
 			item={item}
 			operation={targetData?.operation ?? null}
-			render={target}
 			source={targetData?.source}
+			render={target}
 		/>
 	);
 };
@@ -277,8 +277,8 @@ export const CommitTarget: FC<
 				isOperationMode={!!operationMode}
 				item={item}
 				operation={targetTooltipOperation}
-				render={target}
 				source={targetTooltipOperation ? targetData?.source : undefined}
+				render={target}
 			/>
 
 			{dropData && dragInsertionSide !== null && (
