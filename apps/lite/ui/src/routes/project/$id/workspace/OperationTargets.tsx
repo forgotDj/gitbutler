@@ -25,7 +25,10 @@ import {
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./route.module.css";
 import { useQueryClient } from "@tanstack/react-query";
-import { itemOperationSource } from "#ui/routes/project/$id/workspace/OperationSource.ts";
+import {
+	itemOperationSource,
+	OperationSource,
+} from "#ui/routes/project/$id/workspace/OperationSource.ts";
 
 type GetOperation = (
 	args: GetDataParams[0] & { resolvedOperationSource: ResolvedOperationSource },
@@ -119,13 +122,24 @@ const useOperationModeTarget = ({
 	};
 };
 
-const merge = (dropData: DropData, operationModeTarget: OperationModeTarget | null) => ({
-	isActiveTarget: !!dropData?.operation || !!operationModeTarget,
-	source:
-		dropData?.source ??
-		(operationModeTarget?.source ? itemOperationSource(operationModeTarget.source) : undefined),
-	operation: dropData?.operation ?? operationModeTarget?.operation ?? null,
-});
+const merge = (
+	dropData: DropData,
+	operationModeTarget: OperationModeTarget | null,
+): {
+	isActiveTarget: boolean;
+	source: OperationSource | undefined;
+	operation: Operation | null;
+} => {
+	if (dropData?.operation)
+		return { isActiveTarget: true, operation: dropData.operation, source: dropData.source };
+	if (operationModeTarget)
+		return {
+			isActiveTarget: true,
+			operation: operationModeTarget.operation,
+			source: itemOperationSource(operationModeTarget.source),
+		};
+	return { isActiveTarget: false, source: undefined, operation: null };
+};
 
 const dropTargetToOperation = ({
 	target,
