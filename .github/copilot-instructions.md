@@ -226,8 +226,7 @@ Located in `.github/workflows/`:
 
 - `push.yaml`: Main CI for linting, building, and testing on push
 - `publish.yaml`: Release builds for different platforms
-- `test-e2e-playwright.yml`: E2E tests with Playwright
-- `test-e2e-blackbox.yml`: E2E blackbox tests
+- `test-e2e.yml`: E2E tests (Playwright and blackbox)
 - `test-client-fe-integration.yml`: Frontend integration tests
 
 ### Pre-commit Checks
