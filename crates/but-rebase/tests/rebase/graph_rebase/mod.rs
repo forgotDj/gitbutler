@@ -14,7 +14,6 @@ mod insert_segment;
 mod materialize;
 mod multiple_operations;
 mod order_commit_selectors_by_parentage;
-mod parents_must_be_references_restriction;
 mod rebase_identities;
 mod replace;
 mod signing_preferences;

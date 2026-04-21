@@ -1,7 +1,7 @@
 use bstr::{BStr, BString, ByteSlice};
 use gix::diff::blob::{
     ResourceKind,
-    platform::prepare_diff::Operation,
+    platform::prepare_diff::{self, Operation},
     unified_diff::{ConsumeBinaryHunk, ContextSize, HunkHeader},
 };
 use serde::{Deserialize, Serialize};
@@ -170,7 +170,14 @@ impl UnifiedPatch {
             Err(err) => return Err(err.into()),
         };
 
-        let prep = diff_filter.prepare_diff()?;
+        let prep = match diff_filter.prepare_diff() {
+            Ok(prep) => prep,
+            Err(prepare_diff::Error::SourceAndDestinationRemoved) => {
+                tracing::warn!(%path, "ignoring diff of two removed resources");
+                return Ok(None);
+            }
+            Err(err) => return Err(err.into()),
+        };
         Ok(Some(match prep.operation {
             Operation::InternalDiff { algorithm } => {
                 #[derive(Default)]

@@ -5,7 +5,10 @@ use but_graph::Graph;
 use but_rebase::graph_rebase::{Editor, LookupStep, Pick, Step};
 use but_testsupport::{cat_commit, graph_tree, visualize_commit_graph_all};
 
-use crate::utils::{fixture_writable, fixture_writable_with_signing, standard_options};
+use crate::{
+    graph_rebase::add_stack_with_segments,
+    utils::{fixture_writable, fixture_writable_with_signing, standard_options},
+};
 
 #[test]
 fn workspace_remains_unchanged_with_no_operations() -> Result<()> {
@@ -257,39 +260,71 @@ fn workspace_commit_should_not_be_allowed_to_conflict() -> Result<()> {
 }
 
 #[test]
-fn workspace_commit_should_not_be_allowed_to_have_non_reference_parents() -> Result<()> {
-    let (repo, _tmpdir, mut meta) = fixture_writable_with_signing("workspace-signed")?;
+fn workspace_commit_with_deleted_branch_ref_rebases_successfully() -> Result<()> {
+    let (repo, _tmpdir, mut meta) = fixture_writable("workspace-with-empty-stack")?;
 
-    let before = visualize_commit_graph_all(&repo)?;
-    insta::assert_snapshot!(before, @"
-    * 8795f47 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
-    * dd72792 (main, c) c
-    * e5aa7b5 (b) b
-    * 3bfeb52 (a) a
-    * b6e2f57 (base) base
+    add_stack_with_segments(
+        &mut meta,
+        1,
+        "stack-1",
+        but_testsupport::StackState::InWorkspace,
+        &[],
+    );
+    add_stack_with_segments(
+        &mut meta,
+        2,
+        "stack-2",
+        but_testsupport::StackState::InWorkspace,
+        &[],
+    );
+
+    // Before deletion, both stacks are present.
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
+    *   74bcc92 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    |\  
+    * | 2169646 (stack-1) Commit D
+    * | 46ef828 Commit C
+    |/  
+    | * a0f2ac5 (origin/main, main) Commit X
+    |/  
+    * f555940 (stack-2) Commit A
+    * d664be0 Commit B
+    * fafd9d0 init
+    ");
+
+    // Delete the stack-1 branch ref to simulate a branch whose ref was
+    // removed (e.g. force-pushed or deleted) after the workspace commit was
+    // created.  The workspace commit still has the old stack-1 tip as a
+    // parent, but there is no longer a Reference node for it in the graph.
+    repo.find_reference("refs/heads/stack-1")?
+        .delete()
+        .expect("stack-1 ref should be deletable");
+
+    // Reload so gix sees the ref deletion on disk.
+    let repo = gix::open(repo.path())?;
+
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
+    *   74bcc92 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    |\  
+    * | 2169646 Commit D
+    * | 46ef828 Commit C
+    |/  
+    | * a0f2ac5 (origin/main, main) Commit X
+    |/  
+    * f555940 (stack-2) Commit A
+    * d664be0 Commit B
+    * fafd9d0 init
     ");
 
     let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
 
     let mut ws = graph.into_workspace()?;
-    let mut editor = Editor::create(&mut ws, &mut *meta, &repo)?;
+    let editor = Editor::create(&mut ws, &mut *meta, &repo)?;
 
-    // Replace both 'main' and 'c' references with Step::None. The commit 'c'
-    // has two references pointing to it, so we need to remove both for the
-    // workspace commit's parent path to traverse through None and hit
-    // Pick(c), violating the parents_must_be_references constraint.
-    let main_ref = editor.select_reference("refs/heads/main".try_into()?)?;
-    editor.replace(main_ref, Step::None)?;
-    let c_ref = editor.select_reference("refs/heads/c".try_into()?)?;
-    editor.replace(c_ref, Step::None)?;
-
-    // We should see an error saying the workspace commit has parents that are
-    // not references
-    insta::assert_debug_snapshot!(editor.rebase(), @r#"
-    Err(
-        "Commit 8795f479823adfeb8c692cf953ded9a57c17530c has parents that are not referenced",
-    )
-    "#);
+    // The rebase should succeed even though the workspace commit has a
+    // parent that no longer has a corresponding Reference node.
+    let outcome = editor.rebase()?;
+    let _materialized = outcome.materialize()?;
 
     Ok(())
 }

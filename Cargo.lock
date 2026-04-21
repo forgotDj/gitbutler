@@ -1250,6 +1250,7 @@ dependencies = [
  "but-utils",
  "serde",
  "serde_json",
+ "tracing",
 ]
 
 [[package]]

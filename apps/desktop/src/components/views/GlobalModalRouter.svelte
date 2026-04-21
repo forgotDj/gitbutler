@@ -107,10 +107,6 @@
 		}
 	});
 
-	function closeModal() {
-		modal?.close();
-	}
-
 	function handleModalClose() {
 		// If the login confirmation modal is closed without explicit user action (e.g., via ESC),
 		// we should reject the incoming user to maintain state consistency.
@@ -122,6 +118,20 @@
 		}
 		uiState.global.modal.set(undefined);
 	}
+
+	/**
+	 * Close the modal via the Modal component's own close() method so that
+	 * the portalled DOM is properly cleaned up with its closing animation.
+	 * Falls back to clearing state directly if the Modal ref is unavailable
+	 * (e.g. due to an unmount race condition).
+	 */
+	function closeModal() {
+		if (modal) {
+			modal.close();
+		} else {
+			handleModalClose();
+		}
+	}
 </script>
 
 {#if modalProps}
@@ -132,7 +142,7 @@
 		onSubmit={(close) => close()}
 	>
 		{#if modalProps.state.type === "commit-failed"}
-			<CommitFailedModalContent data={modalProps.state} oncloseclick={() => modal?.close()} />
+			<CommitFailedModalContent data={modalProps.state} oncloseclick={closeModal} />
 		{:else if modalProps.state.type === "author-missing"}
 			<AuthorMissingModalContent data={modalProps.state} close={closeModal} />
 		{:else if modalProps.state.type === "general-settings"}
