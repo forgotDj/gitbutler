@@ -142,15 +142,7 @@ const useOperationModeTarget = ({
 const getTargetData = (
 	dropData: DropData | null,
 	operationModeTarget: TargetData | null,
-): TargetData | null => {
-	if (dropData) return { operation: dropData.operation, source: dropData.source };
-	if (operationModeTarget)
-		return {
-			operation: operationModeTarget.operation,
-			source: operationModeTarget.source,
-		};
-	return null;
-};
+): TargetData | null => dropData ?? operationModeTarget;
 
 export const OperationTarget: FC<
 	{
