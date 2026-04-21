@@ -5,7 +5,7 @@ use but_ctx::{
     Context,
     access::{RepoExclusive, RepoShared},
 };
-use but_workspace::legacy::{commit_engine, stack_heads_info, ui};
+use but_workspace::legacy::{stack_heads_info, ui};
 use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
 use gitbutler_git::GitContextExt as _;
 use gitbutler_operating_modes::ensure_open_workspace_mode;
@@ -223,56 +223,6 @@ pub fn unapply_stack(
     let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     ws.refresh_from_head(&repo, &meta)?;
     Ok(branch_name)
-}
-
-pub fn amend(
-    ctx: &mut Context,
-    stack_id: StackId,
-    commit_oid: gix::ObjectId,
-    worktree_changes: Vec<DiffSpec>,
-) -> Result<gix::ObjectId> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    ensure_open_workspace_mode(ctx, guard.read_permission())
-        .context("Amending a commit requires open workspace mode")?;
-    {
-        // commit_engine::create_commit_and_update_refs_with_project is also doing a write lock,
-        // so we want to allow this guard to be dropped first
-        let mut guard = guard;
-        let _ = ctx.create_snapshot(
-            SnapshotDetails::new(OperationKind::AmendCommit),
-            guard.write_permission(),
-        );
-    }
-    amend_with_commit_engine(ctx, stack_id, commit_oid, worktree_changes)
-}
-
-/// This is backported version of amending using the new commit engine, in the old API
-fn amend_with_commit_engine(
-    ctx: &mut Context,
-    stack_id: StackId,
-    commit_oid: gix::ObjectId,
-    worktree_changes: Vec<DiffSpec>,
-) -> Result<gix::ObjectId> {
-    let mut guard = ctx.exclusive_worktree_access();
-
-    let outcome = commit_engine::create_commit_and_update_refs_with_project(
-        &*ctx.repo.get()?,
-        &ctx.project_data_dir(),
-        Some(stack_id),
-        but_workspace::commit_engine::Destination::AmendCommit {
-            commit_id: commit_oid,
-            new_message: None,
-        },
-        worktree_changes,
-        3, // for the old API this is hardcoded
-        guard.write_permission(),
-    )?;
-    let new_commit = outcome.new_commit.ok_or(anyhow::anyhow!(
-        "Failed to amend with commit engine. Rejected specs: {:?}",
-        outcome.rejected_specs
-    ))?;
-    Ok(new_commit)
 }
 
 pub fn undo_commit(ctx: &mut Context, stack_id: StackId, commit_oid: gix::ObjectId) -> Result<()> {

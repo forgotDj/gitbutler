@@ -314,7 +314,6 @@ fn maybe_find_branch_by_refname<'repo>(
     }
 }
 
-mod amend;
 mod apply_virtual_branch;
 mod create_virtual_branch_from_branch;
 mod init;

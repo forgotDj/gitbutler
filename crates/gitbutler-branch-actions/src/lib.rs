@@ -7,7 +7,7 @@
 mod actions;
 // This is our API
 pub use actions::{
-    amend, create_virtual_branch, create_virtual_branch_from_branch,
+    create_virtual_branch, create_virtual_branch_from_branch,
     create_virtual_branch_from_branch_with_perm, delete_local_branch, fetch_from_remotes,
     get_initial_integration_steps_for_branch, integrate_branch_with_steps, integrate_upstream,
     integrate_upstream_commits, move_branch, move_commit, push_base_branch, reorder_stack,
