@@ -95,11 +95,6 @@ const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) =
 	});
 };
 
-type OperationModeTarget = {
-	source: Item;
-	operation: Operation | null;
-};
-
 const useOperationModeTarget = ({
 	projectId,
 	item,
@@ -110,17 +105,17 @@ const useOperationModeTarget = ({
 	item: Item;
 	operationMode: OperationMode | null;
 	isSelected: boolean;
-}): OperationModeTarget | null => {
+}): TargetData | null => {
 	const queryClient = useQueryClient();
 
 	const isActiveTarget = !!operationMode && isSelected;
 
 	if (!isActiveTarget) return null;
 
-	const { source } = operationMode;
+	const source = itemOperationSource(operationMode.source);
 
 	const resolvedOperationSource = resolveOperationSource({
-		operationSource: itemOperationSource(operationMode.source),
+		operationSource: source,
 		queryClient,
 		projectId,
 	});
@@ -146,13 +141,13 @@ type TargetData = {
 
 const getTargetData = (
 	dropData: DropData | null,
-	operationModeTarget: OperationModeTarget | null,
+	operationModeTarget: TargetData | null,
 ): TargetData | null => {
 	if (dropData) return { operation: dropData.operation, source: dropData.source };
 	if (operationModeTarget)
 		return {
 			operation: operationModeTarget.operation,
-			source: itemOperationSource(operationModeTarget.source),
+			source: operationModeTarget.source,
 		};
 	return null;
 };
