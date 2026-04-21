@@ -3,7 +3,7 @@ import { operationLabel, useRunOperation, type Operation } from "#ui/Operation.t
 import uiStyles from "#ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
 import { FC } from "react";
-import styles from "./route.module.css";
+import styles from "./OperationTooltip.module.css";
 import { OperationSource, operationSourceMatchesItem } from "./OperationSource";
 import { Item } from "./Item";
 import { useAppDispatch } from "#ui/state/hooks.ts";
@@ -68,9 +68,7 @@ export const OperationTooltip: FC<
 			<Tooltip.Trigger render={trigger} />
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8}>
-					<Tooltip.Popup
-						className={classes(uiStyles.popup, uiStyles.tooltip, styles.operationTooltipPopup)}
-					>
+					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip, styles.popup)}>
 						{tooltipLabel}
 						{isOperationMode && (
 							<OperationModeControls projectId={projectId} operation={operation} />
