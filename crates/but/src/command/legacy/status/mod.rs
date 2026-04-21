@@ -1,8 +1,3 @@
-#![expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-
 use std::collections::{BTreeMap, HashMap};
 
 use anyhow::Context as _;
@@ -31,6 +26,7 @@ use crate::{
         status::output::{
             BranchLineContent, CommitLineContent, FileLineContent, StatusOutput, StatusOutputLine,
         },
+        workspace_target,
     },
     id::{SegmentWithId, ShortId, StackWithId, TreeChangeWithId},
     tui::text::truncate_text,
@@ -252,7 +248,7 @@ async fn build_status_context<'a>(
     render_mode: StatusRenderMode,
 ) -> anyhow::Result<StatusContext<'a>> {
     // Process rules with exclusive access to create repo and workspace
-    let (segments_by_id, local_commits_by_id, remote_commits_by_id, stacks) = {
+    let (segments_by_id, local_commits_by_id, remote_commits_by_id, stacks, resolved_target) = {
         let mut guard = ctx.exclusive_worktree_access();
         but_rules::process_rules(ctx, guard.write_permission()).ok(); // TODO: this is doing double work (hunk-dependencies can be reused)
 
@@ -283,11 +279,13 @@ async fn build_status_context<'a>(
         }
 
         let (_repo, ws, _db) = ctx.workspace_and_db_with_perm(guard.read_permission())?;
+        let resolved_target = workspace_target::ResolvedTarget::from_workspace(&ws)?;
         (
             segments_by_id,
             local_commits_by_id,
             remote_commits_by_id,
             ws.stacks.clone(),
+            resolved_target,
         )
     };
 
@@ -322,11 +320,13 @@ async fn build_status_context<'a>(
     // Calculate common_merge_base data and upstream state in a scope
     // to ensure repo reference is dropped before any async operations
     let (common_merge_base_data, upstream_state, last_fetched_ms, base_branch) = {
-        let stack = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
-        let target = stack.get_default_target()?;
-        let target_name = format!("{}/{}", target.branch.remote(), target.branch.branch());
+        let base_branch = but_api::legacy::virtual_branches::get_base_branch_data(ctx)
+            .ok()
+            .flatten();
+        let status_target = resolved_target.for_status(base_branch.as_ref());
         let repo = ctx.repo.get()?;
-        let base_commit = repo.find_commit(target.sha)?;
+        let target_commit_id = status_target.commit_id;
+        let base_commit = repo.find_commit(target_commit_id)?;
         let base_commit_decoded = base_commit.decode()?;
         let full_message = base_commit_decoded.message.to_string();
         let formatted_date = base_commit_decoded
@@ -335,62 +335,60 @@ async fn build_status_context<'a>(
             .format_or_unix(DATE_ONLY);
         let author = base_commit_decoded.author()?;
         let common_merge_base_data = CommonMergeBase {
-            target_name: target_name.clone(),
-            common_merge_base: shorten_object_id(&repo, target.sha),
+            target_name: status_target.display_name,
+            common_merge_base: shorten_object_id(&repo, target_commit_id),
             message: full_message,
             commit_date: formatted_date,
-            commit_id: target.sha,
+            commit_id: target_commit_id,
             created_at: base_commit_decoded.committer()?.time()?.seconds as i128 * 1000,
             author_name: author.name.to_string(),
             author_email: author.email.to_string(),
         };
 
         // Get cached upstream state information (without fetching)
-        let (upstream_state, last_fetched_ms, base_branch) =
-            but_api::legacy::virtual_branches::get_base_branch_data(ctx)
-                .ok()
-                .flatten()
-                .map(|base_branch| {
-                    let last_fetched = base_branch.last_fetched_ms;
-                    let state = if base_branch.behind > 0 {
-                        // Get the latest commit on the upstream branch (current_sha is the tip of the remote branch)
-                        let commit_id = base_branch.current_sha;
-                        repo.find_commit(commit_id).ok().and_then(|commit_obj| {
-                            let commit = commit_obj.decode().ok()?;
-                            let message = out.truncate_if_unpaged(
-                                &commit.message.to_string().replace('\n', " "),
-                                30,
-                            );
+        let (upstream_state, last_fetched_ms) = base_branch
+            .as_ref()
+            .map(|base_branch| {
+                let last_fetched = base_branch.last_fetched_ms;
+                let state = if base_branch.behind > 0 {
+                    // Get the latest commit on the upstream branch (current_sha is the tip of the remote branch)
+                    let commit_id = base_branch.current_sha;
+                    repo.find_commit(commit_id).ok().and_then(|commit_obj| {
+                        let commit = commit_obj.decode().ok()?;
+                        let message = out.truncate_if_unpaged(
+                            &commit.message.to_string().replace('\n', " "),
+                            30,
+                        );
 
-                            let formatted_date = commit
-                                .committer()
-                                .ok()?
-                                .time()
-                                .ok()?
-                                .format_or_unix(DATE_ONLY);
+                        let formatted_date = commit
+                            .committer()
+                            .ok()?
+                            .time()
+                            .ok()?
+                            .format_or_unix(DATE_ONLY);
 
-                            let author = commit.author().ok()?;
+                        let author = commit.author().ok()?;
 
-                            Some(UpstreamState {
-                                target_name: base_branch.branch_name.clone(),
-                                behind_count: base_branch.behind,
-                                latest_commit: shorten_object_id(&repo, commit_id),
-                                message,
-                                commit_date: formatted_date,
-                                last_fetched_ms: last_fetched,
-                                commit_id,
-                                created_at: commit.committer().ok()?.time().ok()?.seconds as i128
-                                    * 1000,
-                                author_name: author.name.to_string(),
-                                author_email: author.email.to_string(),
-                            })
+                        Some(UpstreamState {
+                            target_name: base_branch.branch_name.clone(),
+                            behind_count: base_branch.behind,
+                            latest_commit: shorten_object_id(&repo, commit_id),
+                            message,
+                            commit_date: formatted_date,
+                            last_fetched_ms: last_fetched,
+                            commit_id,
+                            created_at: commit.committer().ok()?.time().ok()?.seconds as i128
+                                * 1000,
+                            author_name: author.name.to_string(),
+                            author_email: author.email.to_string(),
                         })
-                    } else {
-                        None
-                    };
-                    (state, last_fetched, Some(base_branch))
-                })
-                .unwrap_or((None, None, None));
+                    })
+                } else {
+                    None
+                };
+                (state, last_fetched)
+            })
+            .unwrap_or((None, None));
 
         // repo, base_commit, and base_commit_decoded are automatically dropped here at end of scope
         (

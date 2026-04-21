@@ -121,7 +121,7 @@ fn check_merge_conflicts(ctx: &Context, branch_name: &str) -> Result<MergeCheck,
 
     // Find merge base
     let guard = ctx.shared_worktree_access();
-    let (merge_base, target_commit_id) = workspace_target::merge_base_with_target_with_perm(
+    let (merge_base, target) = workspace_target::merge_base_with_target_with_perm(
         ctx,
         guard.read_permission(),
         branch.head,
@@ -129,7 +129,7 @@ fn check_merge_conflicts(ctx: &Context, branch_name: &str) -> Result<MergeCheck,
     let repo = ctx.repo.get()?;
     let merge_repo = ctx.clone_repo_for_merging_non_persisting()?;
     let merge_base_tree_id = repo.find_commit(merge_base)?.tree_id()?.detach();
-    let target_tree_id = repo.find_commit(target_commit_id)?.tree_id()?.detach();
+    let target_tree_id = repo.find_commit(target.oid())?.tree_id()?.detach();
     let branch_tree_id = repo.find_commit(branch.head)?.tree_id()?.detach();
 
     // Check if branch merges cleanly into target
@@ -150,7 +150,7 @@ fn check_merge_conflicts(ctx: &Context, branch_name: &str) -> Result<MergeCheck,
                 find_commits_modifying_file(&repo, &path, merge_base, branch.head)?;
 
             let upstream_commits =
-                find_commits_modifying_file(&repo, &path, merge_base, target_commit_id)?;
+                find_commits_modifying_file(&repo, &path, merge_base, target.oid())?;
 
             conflicting_files.push(ConflictingFile {
                 path,
