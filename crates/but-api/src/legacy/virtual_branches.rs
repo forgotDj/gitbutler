@@ -504,19 +504,6 @@ pub fn tear_off_branch_legacy(
     gitbutler_branch_actions::tear_off_branch(ctx, source_stack_id, subject_branch_name.as_str())
 }
 
-#[but_api]
-#[instrument(err(Debug))]
-pub fn update_commit_message(
-    ctx: &mut but_ctx::Context,
-    stack_id: StackId,
-    commit_id: gix::ObjectId,
-    message: String,
-) -> Result<String> {
-    let new_commit_id =
-        gitbutler_branch_actions::update_commit_message(ctx, stack_id, commit_id, &message)?;
-    Ok(new_commit_id.to_string())
-}
-
 /// Compute upstream integration statuses, optionally scoped to `target_commit_id`.
 #[but_api]
 #[instrument(err(Debug))]
