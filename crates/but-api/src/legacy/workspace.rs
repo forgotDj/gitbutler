@@ -364,39 +364,6 @@ pub fn create_commit_from_worktree_changes(
     outcome
 }
 
-/// Amend all `changes` to `commit_id`, keeping its commit message exactly as is.
-/// `stack_id` is the stack that contains the `commit_id`, and it's fatal if that's not the case.
-/// All `changes` are meant to be relative to the worktree.
-/// Note that submodules *must* be provided as diffspec without hunks, as attempting to generate
-/// hunks would fail.
-#[but_api(commit_engine::ui::CreateCommitOutcome)]
-#[instrument(err(Debug))]
-pub fn amend_commit_from_worktree_changes(
-    ctx: &mut Context,
-    stack_id: StackId,
-    commit_id: gix::ObjectId,
-    worktree_changes: Vec<but_core::DiffSpec>,
-) -> Result<commit_engine::CreateCommitOutcome> {
-    let mut guard = ctx.exclusive_worktree_access();
-    let repo = ctx.repo.get()?;
-    let data_dir = ctx.project_data_dir();
-    let outcome = amend_commit_and_count_failures(
-        stack_id,
-        commit_id,
-        worktree_changes,
-        guard.write_permission(),
-        &repo,
-        &data_dir,
-    )?;
-
-    // Refresh the workspace commit so `gitbutler/workspace` HEAD stays in sync
-    // with the rewritten branch commits. Without this, tools that inspect HEAD
-    // (e.g. pre-push hooks that stash against it) see a stale synthetic commit.
-    update_workspace_commit(ctx, false)?;
-
-    Ok(outcome)
-}
-
 /// Amend a commit with the given changes and return the number of rejected files
 pub(crate) fn amend_commit_and_count_failures(
     stack_id: StackId,
