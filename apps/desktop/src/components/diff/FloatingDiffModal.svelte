@@ -199,6 +199,14 @@
 						<!-- Single-file mode: show selected file with header -->
 						{#if selectedChange}
 							{@const diffQuery = diffService.getDiff(projectId, selectedChange)}
+							{@const diffResponse = diffQuery.response}
+							{@const lineChangesStat =
+								diffResponse?.type === "Patch"
+									? {
+											added: diffResponse.subject.linesAdded,
+											removed: diffResponse.subject.linesRemoved,
+										}
+									: undefined}
 							<Drawer
 								noshrink
 								stickyHeader
@@ -212,6 +220,8 @@
 										filePath={selectedChange.path}
 										fileStatus={computeChangeStatus(selectedChange)}
 										executable={isExecutableStatus(selectedChange.status)}
+										linesAdded={lineChangesStat?.added}
+										linesRemoved={lineChangesStat?.removed}
 									/>
 								{/snippet}
 
@@ -222,16 +232,17 @@
 										size="tag"
 										activated={activeMenuPath === selectedChange.path}
 										onclick={async (e) => {
-											if (!contextMenu || !(e.currentTarget instanceof HTMLElement)) return;
+											const triggerEl = e.currentTarget;
+											if (!contextMenu || !(triggerEl instanceof HTMLElement)) return;
 											if (activeMenuPath === selectedChange.path) {
 												contextMenu.close();
 												return;
 											}
 											const changes = await idSelection.treeChanges(projectId, selectionId);
 											if (idSelection.has(selectedChange.path, selectionId) && changes.length > 0) {
-												contextMenu.open(e.currentTarget, { changes: changes });
+												contextMenu.open(triggerEl, { changes: changes });
 											} else {
-												contextMenu.open(e.currentTarget, { changes: [selectedChange] });
+												contextMenu.open(triggerEl, { changes: [selectedChange] });
 											}
 											activeMenuPath = selectedChange.path;
 										}}
@@ -317,16 +328,17 @@
 											size="tag"
 											activated={activeMenuPath === change.path}
 											onclick={async (e) => {
-												if (!contextMenu || !(e.currentTarget instanceof HTMLElement)) return;
+												const triggerEl = e.currentTarget;
+												if (!contextMenu || !(triggerEl instanceof HTMLElement)) return;
 												if (activeMenuPath === change.path) {
 													contextMenu.close();
 													return;
 												}
 												const allChanges = await idSelection.treeChanges(projectId, selectionId);
 												if (idSelection.has(change.path, selectionId) && allChanges.length > 0) {
-													contextMenu.open(e.currentTarget, { changes: allChanges });
+													contextMenu.open(triggerEl, { changes: allChanges });
 												} else {
-													contextMenu.open(e.currentTarget, { changes: [change] });
+													contextMenu.open(triggerEl, { changes: [change] });
 												}
 												activeMenuPath = change.path;
 											}}
@@ -380,6 +392,7 @@
 		flex-direction: column;
 		width: 15rem;
 		overflow: hidden;
+		border-right: 1px solid var(--border-2);
 	}
 
 	.left-header {

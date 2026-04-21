@@ -211,10 +211,11 @@
 
 	// Reactively wire the drag handle — handles element changes after mount.
 	$effect(() => {
-		if (!dragHandleElement) return;
-		dragHandleElement.addEventListener("pointerdown", handleHeaderPointerDown);
+		const element = dragHandleElement;
+		if (!element) return;
+		element.addEventListener("pointerdown", handleHeaderPointerDown);
 		return () => {
-			dragHandleElement!.removeEventListener("pointerdown", handleHeaderPointerDown);
+			element.removeEventListener("pointerdown", handleHeaderPointerDown);
 		};
 	});
 
