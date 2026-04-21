@@ -219,6 +219,8 @@ fn set_hook_executable(path: &Path) -> Result<()> {
         fs::set_permissions(path, fs::Permissions::from_mode(0o755))
             .context("Failed to set hook as executable")?;
     }
+    #[cfg(not(unix))]
+    let _ = path;
     Ok(())
 }
 
