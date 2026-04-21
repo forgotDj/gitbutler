@@ -33,7 +33,6 @@ impl MoveChangesResult {
     }
 }
 
-pub(super) mod move_between_commits;
 pub(super) mod remove_changes_from_commit_in_stack;
 pub(super) mod split_branch;
 pub(super) mod split_commit;

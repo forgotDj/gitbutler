@@ -379,37 +379,6 @@ pub fn discard_worktree_changes(
 
 #[but_api(json::MoveChangesResult)]
 #[instrument(err(Debug))]
-pub fn move_changes_between_commits(
-    ctx: &mut Context,
-    source_stack_id: StackId,
-    source_commit_id: gix::ObjectId,
-    destination_stack_id: StackId,
-    destination_commit_id: gix::ObjectId,
-    changes: Vec<but_core::DiffSpec>,
-) -> Result<but_workspace::legacy::MoveChangesResult> {
-    let mut guard = ctx.exclusive_worktree_access();
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::AmendCommit),
-        guard.write_permission(),
-    );
-    let result = but_workspace::legacy::move_changes_between_commits(
-        ctx,
-        source_stack_id,
-        source_commit_id,
-        destination_stack_id,
-        destination_commit_id,
-        changes,
-        guard.write_permission(),
-    )?;
-
-    // TODO(ctx): remove this, with the rebase engine this is done above - needs at least manual testing to be sure
-    update_workspace_commit(ctx, false)?;
-
-    Ok(result)
-}
-
-#[but_api(json::MoveChangesResult)]
-#[instrument(err(Debug))]
 pub fn split_branch(
     ctx: &mut Context,
     source_stack_id: StackId,
