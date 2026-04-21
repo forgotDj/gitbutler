@@ -249,6 +249,104 @@ Applied remote branch 'origin/remote-feature' to workspace
 }
 
 #[test]
+fn remote_branch_short_name_resolves_to_unique_remote_tracking_branch() -> anyhow::Result<()> {
+    let env = Sandbox::open_or_init_scenario_with_target_and_default_settings("one-stack")?;
+    insta::assert_snapshot!(env.git_log()?, @r"
+* edd3eb7 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+* 9477ae7 (A) add A
+* 0dc3733 (origin/main, origin/HEAD, main) add M
+");
+
+    env.setup_metadata(&["A"])?;
+
+    // Create a remote-only branch reference.
+    env.invoke_bash(
+        r#"
+    git checkout origin/main
+    git commit -m 'Add remote feature' --allow-empty
+    git update-ref refs/remotes/origin/remote-feature HEAD
+    git checkout gitbutler/workspace
+"#,
+    );
+
+    // Apply the remote branch by its bare name.
+    env.but("apply remote-feature")
+        .assert()
+        .success()
+        .stderr_eq(str![])
+        .stdout_eq(str![[r#"
+Applied remote branch 'origin/remote-feature' to workspace
+
+"#]]);
+
+    // It created the same local tracking branch as the qualified form.
+    insta::assert_snapshot!(env.git_log()?, @r"
+    *   1bb7daf (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    |\  
+    | * ba02e5f (origin/remote-feature, remote-feature) Add remote feature
+    * | 9477ae7 (A) add A
+    |/  
+    * 0dc3733 (origin/main, origin/HEAD, main, gitbutler/target) add M
+    ");
+
+    Ok(())
+}
+
+#[test]
+fn remote_branch_short_name_requires_disambiguation_across_multiple_remotes() -> anyhow::Result<()>
+{
+    let env = Sandbox::open_or_init_scenario_with_target_and_default_settings("one-stack")?;
+    insta::assert_snapshot!(env.git_log()?, @r"
+* edd3eb7 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+* 9477ae7 (A) add A
+* 0dc3733 (origin/main, origin/HEAD, main) add M
+");
+
+    env.setup_metadata(&["A"])?;
+
+    // Create two configured remotes that both expose the same short branch name.
+    env.invoke_bash(
+        r#"
+    git remote add upstream .
+    git checkout origin/main
+    git commit -m 'Add remote feature' --allow-empty
+    git update-ref refs/remotes/origin/remote-feature HEAD
+    git update-ref refs/remotes/upstream/remote-feature HEAD
+    git checkout gitbutler/workspace
+"#,
+    );
+
+    env.but("apply remote-feature")
+        .assert()
+        .failure()
+        .stderr_eq(str![[r#"
+Failed to apply branch. The reference 'remote-feature' did not exist
+
+"#]])
+        .stdout_eq(str![""]);
+
+    env.but("apply origin/remote-feature")
+        .assert()
+        .success()
+        .stderr_eq(str![])
+        .stdout_eq(str![[r#"
+Applied remote branch 'origin/remote-feature' to workspace
+
+"#]]);
+
+    insta::assert_snapshot!(env.git_log()?, @r"
+    *   1bb7daf (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    |\  
+    | * ba02e5f (upstream/remote-feature, origin/remote-feature, remote-feature) Add remote feature
+    * | 9477ae7 (A) add A
+    |/  
+    * 0dc3733 (origin/main, origin/HEAD, main, gitbutler/target) add M
+    ");
+
+    Ok(())
+}
+
+#[test]
 fn concurrent_apply_of_independent_branches_succeeds() -> anyhow::Result<()> {
     let env = Sandbox::open_or_init_scenario_with_target_and_default_settings("one-stack")?;
     env.setup_metadata(&["A"])?;
