@@ -11,15 +11,15 @@
 	let { onEmojiSelect: callback }: Props = $props();
 
 	let leftClickTrigger = $state<HTMLDivElement>();
-	let picker = $state<ReturnType<typeof ContextMenu>>();
+	let pickerOpen = $state(false);
 
 	function handleClick() {
-		picker?.toggle();
+		pickerOpen = !pickerOpen;
 	}
 
 	function onEmojiSelect(emoji: EmojiInfo) {
 		callback(emoji);
-		picker?.close();
+		pickerOpen = false;
 	}
 </script>
 
@@ -27,6 +27,16 @@
 	<Button kind="ghost" icon="smile" onclick={handleClick} />
 </div>
 
-<ContextMenu bind:this={picker} {leftClickTrigger} side="top" align="start">
-	<EmojiPicker {onEmojiSelect} />
-</ContextMenu>
+{#if pickerOpen}
+	<ContextMenu
+		{leftClickTrigger}
+		side="top"
+		align="start"
+		target={leftClickTrigger}
+		onclose={() => {
+			pickerOpen = false;
+		}}
+	>
+		<EmojiPicker {onEmojiSelect} />
+	</ContextMenu>
+{/if}

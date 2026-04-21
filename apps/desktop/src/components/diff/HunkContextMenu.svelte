@@ -56,7 +56,9 @@
 	const userSettings = inject(SETTINGS);
 
 	const filePath = $derived(change.path);
-	let contextMenu: ReturnType<typeof ContextMenu> | undefined;
+	let menuOpen = $state(false);
+	let menuTarget = $state<MouseEvent | HTMLElement>();
+	let menuItem = $state<HunkContextItem>();
 
 	function getDiscardLineLabel(item: HunkContextItem) {
 		const { selectedLines } = item;
@@ -108,22 +110,28 @@
 	}
 
 	export function open(e: MouseEvent | HTMLElement | undefined, item: HunkContextItem) {
-		contextMenu?.open(e, item);
+		menuTarget = e;
+		menuItem = item;
+		menuOpen = true;
 	}
 
 	export function close() {
-		contextMenu?.close();
+		menuOpen = false;
 	}
 </script>
 
-<ContextMenu
-	testId={TestId.HunkContextMenu}
-	bind:this={contextMenu}
-	rightClickTrigger={trigger}
-	align="start"
-	side="bottom"
->
-	{#snippet children(item)}
+{#if menuOpen && menuItem}
+	{@const item = menuItem}
+	<ContextMenu
+		testId={TestId.HunkContextMenu}
+		rightClickTrigger={trigger}
+		align="start"
+		side="bottom"
+		target={menuTarget}
+		onclose={() => {
+			menuOpen = false;
+		}}
+	>
 		{#if isHunkContextItem(item)}
 			{#if discardable}
 				<ContextMenuSection>
@@ -133,7 +141,7 @@
 						icon="bin"
 						onclick={() => {
 							discardHunk(item);
-							contextMenu?.close();
+							menuOpen = false;
 						}}
 					/>
 					{#if item.selectedLines !== undefined && item.selectedLines.length > 0 && change.status.type !== "Addition" && change.status.type !== "Deletion"}
@@ -143,7 +151,7 @@
 							icon="checklist-remove"
 							onclick={() => {
 								discardHunkLines(item);
-								contextMenu?.close();
+								menuOpen = false;
 							}}
 						/>
 					{/if}
@@ -167,7 +175,7 @@
 							});
 							urlService.openExternalUrl(path);
 						}
-						contextMenu?.close();
+						menuOpen = false;
 					}}
 				/>
 			</ContextMenuSection>
@@ -182,7 +190,7 @@
 						data,
 					});
 				}}
-				closeMenu={() => contextMenu?.close()}
+				closeMenu={() => (menuOpen = false)}
 			/>
 
 			{#if selectable}
@@ -193,7 +201,7 @@
 						icon="select-all"
 						onclick={() => {
 							selectAllHunkLines(item.hunk);
-							contextMenu?.close();
+							menuOpen = false;
 						}}
 					/>
 					<ContextMenuItem
@@ -202,7 +210,7 @@
 						icon="select-all-remove"
 						onclick={() => {
 							unselectAllHunkLines(item.hunk);
-							contextMenu?.close();
+							menuOpen = false;
 						}}
 					/>
 					<ContextMenuItem
@@ -211,7 +219,7 @@
 						icon="select-all-inverse"
 						onclick={() => {
 							invertHunkSelection(item.hunk);
-							contextMenu?.close();
+							menuOpen = false;
 						}}
 					/>
 				</ContextMenuSection>
@@ -219,5 +227,5 @@
 		{:else}
 			<p class="text-12 text-semibold clr-text-2">Malformed item (·•᷄‎ࡇ•᷅ )</p>
 		{/if}
-	{/snippet}
-</ContextMenu>
+	</ContextMenu>
+{/if}

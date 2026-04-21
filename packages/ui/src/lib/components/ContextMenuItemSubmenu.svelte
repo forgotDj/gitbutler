@@ -32,7 +32,6 @@
 	}: Props = $props();
 
 	let menuItemElement: HTMLDivElement | undefined = $state();
-	let contextMenu: ReturnType<typeof ContextMenu> | undefined = $state();
 	let isSubmenuOpen = $state(false);
 	let hoverTimeout: NodeJS.Timeout | undefined = $state();
 
@@ -82,7 +81,6 @@
 			submenuCoordination.closeAll();
 
 			isSubmenuOpen = true;
-			contextMenu?.open();
 		}, 100);
 	}
 
@@ -101,12 +99,10 @@
 		if (disabled) return;
 
 		isSubmenuOpen = !isSubmenuOpen;
-		contextMenu?.toggle();
 	}
 
 	function closeSubmenu() {
 		isSubmenuOpen = false;
-		contextMenu?.close();
 	}
 
 	// Handle arrow key navigation
@@ -119,7 +115,6 @@
 					e.preventDefault();
 					e.stopPropagation();
 					isSubmenuOpen = true;
-					contextMenu?.open();
 				}
 				break;
 			case "ArrowLeft":
@@ -127,7 +122,6 @@
 					e.preventDefault();
 					e.stopPropagation();
 					isSubmenuOpen = true;
-					contextMenu?.open();
 				}
 				break;
 			case "Enter":
@@ -137,7 +131,6 @@
 				if (disabled) return;
 
 				isSubmenuOpen = !isSubmenuOpen;
-				contextMenu?.toggle();
 				break;
 		}
 	}
@@ -164,19 +157,21 @@
 	</ContextMenuItem>
 </div>
 
-<ContextMenu
-	bind:this={contextMenu}
-	leftClickTrigger={menuItemElement}
-	parentMenuId={submenuCoordination.getMenuId()}
-	side={submenuSide}
-	align={submenuVerticalAlign === "top" ? "start" : "end"}
-	onclose={() => {
-		isSubmenuOpen = false;
-		menuItemElement?.focus();
-	}}
->
-	{@render submenu({ close: closeSubmenu })}
-</ContextMenu>
+{#if isSubmenuOpen}
+	<ContextMenu
+		leftClickTrigger={menuItemElement}
+		parentMenuId={submenuCoordination.getMenuId()}
+		side={submenuSide}
+		align={submenuVerticalAlign === "top" ? "start" : "end"}
+		target={menuItemElement}
+		onclose={() => {
+			isSubmenuOpen = false;
+			menuItemElement?.focus();
+		}}
+	>
+		{@render submenu({ close: closeSubmenu })}
+	</ContextMenu>
+{/if}
 
 <style lang="postcss">
 	.submenu-wrapper {

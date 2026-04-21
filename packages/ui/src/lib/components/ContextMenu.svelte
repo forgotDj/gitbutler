@@ -1,8 +1,8 @@
-<script lang="ts" generics="T = any">
+<script lang="ts">
 	import { focusable } from "$lib/focus/focusable";
 	import { menuManager } from "$lib/utils/menuManager";
 	import { portal } from "$lib/utils/portal";
-	import { setContext, onDestroy, tick } from "svelte";
+	import { onMount, setContext, onDestroy, tick } from "svelte";
 	import { type Snippet } from "svelte";
 
 	// Context key for submenu coordination
@@ -11,20 +11,23 @@
 	// Constants
 	const ANIMATION_SHIFT = "6px";
 
-	interface Props<T = any> {
+	interface Props {
 		testId?: string;
-		children?: Snippet<[item: T]>;
+		children?: Snippet;
 		leftClickTrigger?: HTMLElement;
 		rightClickTrigger?: HTMLElement;
 		parentMenuId?: string;
 		onclose?: () => void;
 		onopen?: () => void;
-		ontoggle?: (isOpen: boolean, isLeftClick: boolean) => void;
 		onclick?: () => void;
 		onkeypress?: () => void;
-		menu?: Snippet<[{ close: () => void }]>;
 		side?: "top" | "bottom" | "left" | "right";
 		align?: "start" | "center" | "end";
+		/**
+		 * Positioning target for the menu. The menu is positioned relative
+		 * to this element or mouse event.
+		 */
+		target?: MouseEvent | HTMLElement;
 	}
 
 	let {
@@ -37,15 +40,12 @@
 		children,
 		onclose,
 		onopen,
-		ontoggle,
 		onclick,
 		onkeypress,
-		menu,
-	}: Props<T> = $props();
+		target,
+	}: Props = $props();
 
 	let menuContainer: HTMLElement | undefined = $state();
-	let item = $state<T>();
-	let isVisible = $state(false);
 	let menuPosition = $state({ x: 0, y: 0 });
 
 	// Generate unique menu ID
@@ -72,11 +72,38 @@
 
 	setContext(SUBMENU_CONTEXT_KEY, submenuCoordination);
 
-	// Cleanup on destroy
 	onDestroy(() => {
-		if (isVisible) {
-			menuManager.unregister(menuId);
+		menuManager.unregister(menuId);
+	});
+
+	onMount(async () => {
+		// Save the target for repositioning after layout
+		if (target instanceof MouseEvent || target instanceof PointerEvent) {
+			savedMouseEvent = target;
+		} else if (target instanceof HTMLElement) {
+			savedElement = target;
 		}
+
+		await tick();
+
+		if (target) setPosition(target);
+
+		// Register with menu manager once the menu is rendered
+		setTimeout(() => {
+			if (menuContainer) {
+				menuManager.register({
+					id: menuId,
+					element: menuContainer,
+					triggerElement: leftClickTrigger ?? savedElement,
+					parentMenuId,
+					close: () => {
+						onclose?.();
+					},
+				});
+			}
+		}, 0);
+
+		onopen?.();
 	});
 
 	function calculatePosition(target: HTMLElement | MouseEvent): { x: number; y: number } {
@@ -164,15 +191,6 @@
 		return { x, y };
 	}
 
-	function executeByTrigger(callback: (isOpened: boolean, isLeftClick: boolean) => void) {
-		const isLeftClick = Boolean(leftClickTrigger);
-		const isRightClick = Boolean(rightClickTrigger);
-
-		if (isLeftClick || isRightClick) {
-			callback(isVisible, isLeftClick);
-		}
-	}
-
 	function setPosition(target: MouseEvent | HTMLElement) {
 		const basePosition = calculatePosition(target);
 		menuPosition = menuContainer ? constrainToViewport(basePosition) : basePosition;
@@ -180,12 +198,7 @@
 
 	// Recalculate position when menu dimensions become available
 	$effect(() => {
-		if (
-			isVisible &&
-			menuContainer &&
-			menuContainer.offsetWidth > 0 &&
-			menuContainer.offsetHeight > 0
-		) {
+		if (menuContainer && menuContainer.offsetWidth > 0 && menuContainer.offsetHeight > 0) {
 			const target = savedMouseEvent ?? savedElement ?? leftClickTrigger ?? rightClickTrigger;
 			if (target) {
 				setPosition(target);
@@ -195,68 +208,6 @@
 
 	let savedMouseEvent: MouseEvent | undefined = $state();
 	let savedElement: HTMLElement | undefined = $state();
-
-	export async function open(e?: MouseEvent | HTMLElement, newItem?: T) {
-		if (isVisible) return;
-
-		// Save the open target for repositioning after layout
-		if (e instanceof MouseEvent || e instanceof PointerEvent) {
-			savedMouseEvent = e;
-			savedElement = undefined;
-		} else if (e instanceof HTMLElement) {
-			savedElement = e;
-			savedMouseEvent = undefined;
-		}
-
-		isVisible = true;
-		if (newItem !== undefined) item = newItem;
-		await tick();
-
-		if (e) setPosition(e);
-
-		// Register with menu manager once the menu is rendered
-		setTimeout(() => {
-			if (menuContainer) {
-				menuManager.register({
-					id: menuId,
-					element: menuContainer,
-					triggerElement: leftClickTrigger ?? savedElement,
-					parentMenuId,
-					close: () => {
-						isVisible = false;
-						savedMouseEvent = undefined;
-						savedElement = undefined;
-						onclose?.();
-						if (ontoggle) executeByTrigger(ontoggle);
-					},
-				});
-			}
-		}, 0);
-
-		onopen?.();
-		if (ontoggle) executeByTrigger(ontoggle);
-	}
-
-	export function close() {
-		if (!isVisible) return;
-
-		// Unregister from menu manager
-		menuManager.unregister(menuId);
-
-		isVisible = false;
-		savedMouseEvent = undefined;
-		savedElement = undefined;
-		onclose?.();
-		if (ontoggle) executeByTrigger(ontoggle);
-	}
-
-	export function toggle(e?: MouseEvent, newItem?: T) {
-		if (isVisible) {
-			close();
-		} else {
-			open(e, newItem);
-		}
-	}
 
 	function getTransformOrigin(): string {
 		// Calculate origin based on side and alignment
@@ -285,25 +236,19 @@
 		return `${verticalOrigin} ${horizontalOrigin}`;
 	}
 
-	export function isOpen() {
-		return isVisible;
-	}
-
 	function handleKeyNavigation(e: KeyboardEvent) {
 		if (e.key === "Escape") {
 			e.preventDefault();
-			close();
+			onclose?.();
 		}
 	}
 
 	// Close on any scroll event (use capture since scroll doesn't bubble).
 	$effect(() => {
-		if (!isVisible) return;
-
 		function onScroll(e: Event) {
 			// Don't close if the scroll is inside the menu itself.
 			if (menuContainer?.contains(e.target as Node)) return;
-			close();
+			onclose?.();
 		}
 
 		document.addEventListener("scroll", onScroll, true);
@@ -320,7 +265,7 @@
 					// Only reposition if we don't have open submenus
 					// This prevents the menu from jumping when submenus open
 					const target = savedMouseEvent ?? savedElement;
-					if (isVisible && target && !submenuCoordination.hasOpenSubmenus()) {
+					if (target && !submenuCoordination.hasOpenSubmenus()) {
 						setPosition(target);
 					}
 				}
@@ -332,39 +277,35 @@
 	});
 </script>
 
-{#if isVisible}
-	<div class="portal-wrap" use:portal={"body"}>
-		<!-- svelte-ignore a11y_autofocus -->
-		<div
-			data-testid={testId}
-			bind:this={menuContainer}
-			tabindex="-1"
-			use:focusable={{ activate: true, isolate: true, focusable: true, dim: true, trap: true }}
-			autofocus
-			{onclick}
-			{onkeypress}
-			onkeydown={handleKeyNavigation}
-			class="context-menu hide-native-scrollbar"
-			class:top-oriented={side === "top"}
-			class:bottom-oriented={side === "bottom"}
-			class:left-oriented={side === "left"}
-			class:right-oriented={side === "right"}
-			style:top="{menuPosition.y}px"
-			style:left="{menuPosition.x}px"
-			style:transform-origin={getTransformOrigin()}
-			style:--animation-transform-y-shift={side === "top"
-				? ANIMATION_SHIFT
-				: side === "bottom"
-					? `-${ANIMATION_SHIFT}`
-					: "0"}
-			role="menu"
-		>
-			{@render children?.(item as T)}
-			<!-- TODO: refactor `children` and combine with this snippet. -->
-			{@render menu?.({ close })}
-		</div>
+<div class="portal-wrap" use:portal={"body"}>
+	<!-- svelte-ignore a11y_autofocus -->
+	<div
+		data-testid={testId}
+		bind:this={menuContainer}
+		tabindex="-1"
+		use:focusable={{ activate: true, isolate: true, focusable: true, dim: true, trap: true }}
+		autofocus
+		{onclick}
+		{onkeypress}
+		onkeydown={handleKeyNavigation}
+		class="context-menu hide-native-scrollbar"
+		class:top-oriented={side === "top"}
+		class:bottom-oriented={side === "bottom"}
+		class:left-oriented={side === "left"}
+		class:right-oriented={side === "right"}
+		style:top="{menuPosition.y}px"
+		style:left="{menuPosition.x}px"
+		style:transform-origin={getTransformOrigin()}
+		style:--animation-transform-y-shift={side === "top"
+			? ANIMATION_SHIFT
+			: side === "bottom"
+				? `-${ANIMATION_SHIFT}`
+				: "0"}
+		role="menu"
+	>
+		{@render children?.()}
 	</div>
-{/if}
+</div>
 
 <style lang="postcss">
 	.portal-wrap {

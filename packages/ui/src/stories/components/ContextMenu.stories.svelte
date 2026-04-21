@@ -31,8 +31,21 @@
 		},
 	});
 
-	let contextMenu = $state<ReturnType<typeof ContextMenu>>();
-	let contextTrigger = $state<HTMLButtonElement | undefined>();
+	let leftClickMenuOpen = $state(false);
+	let leftClickTrigger = $state<HTMLButtonElement | undefined>();
+
+	let rightClickMenuOpen = $state(false);
+	let rightClickTrigger = $state<HTMLButtonElement | undefined>();
+	let rightClickEvent = $state<MouseEvent | undefined>();
+
+	let flickeringMenuOpen = $state(false);
+	let flickeringTrigger = $state<HTMLButtonElement | undefined>();
+
+	let submenuMenuOpen = $state(false);
+	let submenuTrigger = $state<HTMLButtonElement | undefined>();
+
+	let captionMenuOpen = $state(false);
+	let captionTrigger = $state<HTMLButtonElement | undefined>();
 </script>
 
 <script lang="ts">
@@ -43,80 +56,89 @@
 		<div class="wrap">
 			<Button
 				kind="outline"
-				bind:el={contextTrigger}
+				bind:el={leftClickTrigger}
 				onclick={() => {
-					contextMenu?.toggle();
+					leftClickMenuOpen = !leftClickMenuOpen;
 				}}>Toggle context menu</Button
 			>
 		</div>
 
-		<ContextMenu bind:this={contextMenu} leftClickTrigger={contextTrigger} {...args}>
-			<ContextMenuSection>
-				<ContextMenuItem
-					label="Commit and bleep"
-					icon="commit"
-					onclick={() => {
-						// eslint-disable-next-line no-console
-						console.log("Commit and bleep");
-						contextMenu?.close();
-					}}
-					keyboardShortcut="⌘+Enter"
-				/>
-				<ContextMenuItem
-					label="Commit"
-					icon="text-contain"
-					onclick={() => {
-						// eslint-disable-next-line no-console
-						console.log("Commit and bleep");
-						contextMenu?.close();
-					}}
-				/>
-			</ContextMenuSection>
-			<ContextMenuSection title="More">
-				<ContextMenuItem
-					label="Another commit"
-					onclick={() => {
-						// eslint-disable-next-line no-console
-						console.log("Commit and bleep");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Amend"
-					onclick={() => {
-						// eslint-disable-next-line no-console
-						console.log("Commit and bleep");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Revert"
-					onclick={() => {
-						// eslint-disable-next-line no-console
-						console.log("Commit and bleep");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Squash"
-					onclick={() => {
-						// eslint-disable-next-line no-console
-						console.log("Commit and bleep");
-						contextMenu?.close();
-					}}
-				/>
-			</ContextMenuSection>
-			<ContextMenuSection title="Danger zone">
-				<ContextMenuItem
-					label="Delete"
-					onclick={() => {
-						// eslint-disable-next-line no-console
-						console.log("Commit and bleep");
-						contextMenu?.close();
-					}}
-				/>
-			</ContextMenuSection>
-		</ContextMenu>
+		{#if leftClickMenuOpen}
+			<ContextMenu
+				target={leftClickTrigger}
+				{leftClickTrigger}
+				onclose={() => {
+					leftClickMenuOpen = false;
+				}}
+				{...args}
+			>
+				<ContextMenuSection>
+					<ContextMenuItem
+						label="Commit and bleep"
+						icon="commit"
+						onclick={() => {
+							// eslint-disable-next-line no-console
+							console.log("Commit and bleep");
+							leftClickMenuOpen = false;
+						}}
+						keyboardShortcut="⌘+Enter"
+					/>
+					<ContextMenuItem
+						label="Commit"
+						icon="text-contain"
+						onclick={() => {
+							// eslint-disable-next-line no-console
+							console.log("Commit and bleep");
+							leftClickMenuOpen = false;
+						}}
+					/>
+				</ContextMenuSection>
+				<ContextMenuSection title="More">
+					<ContextMenuItem
+						label="Another commit"
+						onclick={() => {
+							// eslint-disable-next-line no-console
+							console.log("Commit and bleep");
+							leftClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Amend"
+						onclick={() => {
+							// eslint-disable-next-line no-console
+							console.log("Commit and bleep");
+							leftClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Revert"
+						onclick={() => {
+							// eslint-disable-next-line no-console
+							console.log("Commit and bleep");
+							leftClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Squash"
+						onclick={() => {
+							// eslint-disable-next-line no-console
+							console.log("Commit and bleep");
+							leftClickMenuOpen = false;
+						}}
+					/>
+				</ContextMenuSection>
+				<ContextMenuSection title="Danger zone">
+					<ContextMenuItem
+						label="Delete"
+						onclick={() => {
+							// eslint-disable-next-line no-console
+							console.log("Commit and bleep");
+							leftClickMenuOpen = false;
+						}}
+					/>
+				</ContextMenuSection>
+			</ContextMenu>
+		{/if}
 	{/snippet}
 </Story>
 
@@ -126,137 +148,147 @@
 		<div class="wrap">
 			<Button
 				kind="outline"
-				bind:el={contextTrigger}
+				bind:el={rightClickTrigger}
 				oncontextmenu={(e) => {
 					e.preventDefault();
-					contextMenu?.toggle(e);
+					rightClickEvent = e;
+					rightClickMenuOpen = !rightClickMenuOpen;
 				}}>Right-click for scrollable menu</Button
 			>
 		</div>
 
-		<ContextMenu bind:this={contextMenu} rightClickTrigger={contextTrigger} {...args}>
-			<ContextMenuSection title="Quick actions">
-				<ContextMenuItem
-					label="Commit"
-					onclick={() => {
-						console.log("Commit");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Push"
-					onclick={() => {
-						console.log("Push");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Pull"
-					onclick={() => {
-						console.log("Pull");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Fetch"
-					onclick={() => {
-						console.log("Fetch");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Merge"
-					onclick={() => {
-						console.log("Merge");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItemSubmenu label="More actions">
-					{#snippet submenu({ close })}
-						<ContextMenuSection>
-							<ContextMenuItem
-								label="Cherry-pick"
-								onclick={() => {
-									console.log("Cherry-pick");
-									close();
-									contextMenu?.close();
-								}}
-							/>
-							<ContextMenuItem
-								label="Rebase"
-								onclick={() => {
-									console.log("Rebase");
-									close();
-									contextMenu?.close();
-								}}
-							/>
-						</ContextMenuSection>
-					{/snippet}
-				</ContextMenuItemSubmenu>
-			</ContextMenuSection>
-			<ContextMenuSection title="Branch operations">
-				<ContextMenuItem
-					label="Create branch"
-					onclick={() => {
-						console.log("Create branch");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Switch branch"
-					onclick={() => {
-						console.log("Switch branch");
-						contextMenu?.close();
-					}}
-				/>
-			</ContextMenuSection>
-			<ContextMenuSection>
-				<ContextMenuItem
-					label="Stage changes"
-					onclick={() => {
-						console.log("Stage changes");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Unstage changes"
-					onclick={() => {
-						console.log("Unstage changes");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Discard changes"
-					onclick={() => {
-						console.log("Discard changes");
-						contextMenu?.close();
-					}}
-				/>
-			</ContextMenuSection>
-			<ContextMenuSection>
-				<ContextMenuItem
-					label="Bisect"
-					onclick={() => {
-						console.log("Bisect");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Reflog"
-					onclick={() => {
-						console.log("Reflog");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Worktree"
-					onclick={() => {
-						console.log("Worktree");
-						contextMenu?.close();
-					}}
-				/>
-			</ContextMenuSection>
-		</ContextMenu>
+		{#if rightClickMenuOpen}
+			<ContextMenu
+				target={rightClickEvent}
+				{rightClickTrigger}
+				onclose={() => {
+					rightClickMenuOpen = false;
+				}}
+				{...args}
+			>
+				<ContextMenuSection title="Quick actions">
+					<ContextMenuItem
+						label="Commit"
+						onclick={() => {
+							console.log("Commit");
+							rightClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Push"
+						onclick={() => {
+							console.log("Push");
+							rightClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Pull"
+						onclick={() => {
+							console.log("Pull");
+							rightClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Fetch"
+						onclick={() => {
+							console.log("Fetch");
+							rightClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Merge"
+						onclick={() => {
+							console.log("Merge");
+							rightClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItemSubmenu label="More actions">
+						{#snippet submenu({ close })}
+							<ContextMenuSection>
+								<ContextMenuItem
+									label="Cherry-pick"
+									onclick={() => {
+										console.log("Cherry-pick");
+										close();
+										rightClickMenuOpen = false;
+									}}
+								/>
+								<ContextMenuItem
+									label="Rebase"
+									onclick={() => {
+										console.log("Rebase");
+										close();
+										rightClickMenuOpen = false;
+									}}
+								/>
+							</ContextMenuSection>
+						{/snippet}
+					</ContextMenuItemSubmenu>
+				</ContextMenuSection>
+				<ContextMenuSection title="Branch operations">
+					<ContextMenuItem
+						label="Create branch"
+						onclick={() => {
+							console.log("Create branch");
+							rightClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Switch branch"
+						onclick={() => {
+							console.log("Switch branch");
+							rightClickMenuOpen = false;
+						}}
+					/>
+				</ContextMenuSection>
+				<ContextMenuSection>
+					<ContextMenuItem
+						label="Stage changes"
+						onclick={() => {
+							console.log("Stage changes");
+							rightClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Unstage changes"
+						onclick={() => {
+							console.log("Unstage changes");
+							rightClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Discard changes"
+						onclick={() => {
+							console.log("Discard changes");
+							rightClickMenuOpen = false;
+						}}
+					/>
+				</ContextMenuSection>
+				<ContextMenuSection>
+					<ContextMenuItem
+						label="Bisect"
+						onclick={() => {
+							console.log("Bisect");
+							rightClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Reflog"
+						onclick={() => {
+							console.log("Reflog");
+							rightClickMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Worktree"
+						onclick={() => {
+							console.log("Worktree");
+							rightClickMenuOpen = false;
+						}}
+					/>
+				</ContextMenuSection>
+			</ContextMenu>
+		{/if}
 	{/snippet}
 </Story>
 
@@ -266,122 +298,132 @@
 		<div class="wrap" style="margin-top: 200px;">
 			<Button
 				kind="outline"
-				bind:el={contextTrigger}
+				bind:el={flickeringTrigger}
 				onclick={() => {
-					contextMenu?.toggle();
+					flickeringMenuOpen = !flickeringMenuOpen;
 				}}>Test flickering fix</Button
 			>
 		</div>
 
-		<ContextMenu bind:this={contextMenu} leftClickTrigger={contextTrigger} side="bottom" {...args}>
-			<ContextMenuSection title="Many items to force scrolling">
-				<ContextMenuItem
-					label="Item 1"
-					onclick={() => {
-						console.log("Item 1");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 2"
-					onclick={() => {
-						console.log("Item 2");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 3"
-					onclick={() => {
-						console.log("Item 3");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 4"
-					onclick={() => {
-						console.log("Item 4");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 5"
-					onclick={() => {
-						console.log("Item 5");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 6"
-					onclick={() => {
-						console.log("Item 6");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 7"
-					onclick={() => {
-						console.log("Item 7");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 8"
-					onclick={() => {
-						console.log("Item 8");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 9"
-					onclick={() => {
-						console.log("Item 9");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 10"
-					onclick={() => {
-						console.log("Item 10");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 11"
-					onclick={() => {
-						console.log("Item 11");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 12"
-					onclick={() => {
-						console.log("Item 12");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 13"
-					onclick={() => {
-						console.log("Item 13");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 14"
-					onclick={() => {
-						console.log("Item 14");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Item 15"
-					onclick={() => {
-						console.log("Item 15");
-						contextMenu?.close();
-					}}
-				/>
-			</ContextMenuSection>
-		</ContextMenu>
+		{#if flickeringMenuOpen}
+			<ContextMenu
+				target={flickeringTrigger}
+				leftClickTrigger={flickeringTrigger}
+				side="bottom"
+				onclose={() => {
+					flickeringMenuOpen = false;
+				}}
+				{...args}
+			>
+				<ContextMenuSection title="Many items to force scrolling">
+					<ContextMenuItem
+						label="Item 1"
+						onclick={() => {
+							console.log("Item 1");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 2"
+						onclick={() => {
+							console.log("Item 2");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 3"
+						onclick={() => {
+							console.log("Item 3");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 4"
+						onclick={() => {
+							console.log("Item 4");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 5"
+						onclick={() => {
+							console.log("Item 5");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 6"
+						onclick={() => {
+							console.log("Item 6");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 7"
+						onclick={() => {
+							console.log("Item 7");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 8"
+						onclick={() => {
+							console.log("Item 8");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 9"
+						onclick={() => {
+							console.log("Item 9");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 10"
+						onclick={() => {
+							console.log("Item 10");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 11"
+						onclick={() => {
+							console.log("Item 11");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 12"
+						onclick={() => {
+							console.log("Item 12");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 13"
+						onclick={() => {
+							console.log("Item 13");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 14"
+						onclick={() => {
+							console.log("Item 14");
+							flickeringMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Item 15"
+						onclick={() => {
+							console.log("Item 15");
+							flickeringMenuOpen = false;
+						}}
+					/>
+				</ContextMenuSection>
+			</ContextMenu>
+		{/if}
 	{/snippet}
 </Story>
 
@@ -390,126 +432,136 @@
 		<div class="wrap">
 			<Button
 				kind="outline"
-				bind:el={contextTrigger}
+				bind:el={submenuTrigger}
 				onclick={() => {
-					contextMenu?.toggle();
+					submenuMenuOpen = !submenuMenuOpen;
 				}}>Context menu with submenus</Button
 			>
 		</div>
 
-		<ContextMenu bind:this={contextMenu} leftClickTrigger={contextTrigger} side="bottom" {...args}>
-			<ContextMenuSection title="Basic actions">
-				<ContextMenuItem
-					label="Copy"
-					onclick={() => {
-						console.log("Copy");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Paste"
-					onclick={() => {
-						console.log("Paste");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Cut"
-					onclick={() => {
-						console.log("Cut");
-						contextMenu?.close();
-					}}
-				/>
-			</ContextMenuSection>
-			<ContextMenuSection title="Advanced">
-				<ContextMenuItemSubmenu label="Format" icon="text-block">
-					{#snippet submenu({ close })}
-						<ContextMenuSection>
-							<ContextMenuItem
-								label="Bold"
-								onclick={() => {
-									console.log("Bold");
-									close();
-									contextMenu?.close();
-								}}
-							/>
-							<ContextMenuItem
-								label="Italic"
-								onclick={() => {
-									console.log("Italic");
-									close();
-									contextMenu?.close();
-								}}
-							/>
-							<ContextMenuItem
-								label="Underline"
-								onclick={() => {
-									console.log("Underline");
-									close();
-									contextMenu?.close();
-								}}
-							/>
-						</ContextMenuSection>
-						<ContextMenuSection title="Alignment">
-							<ContextMenuItem
-								label="Left"
-								onclick={() => {
-									console.log("Left");
-									close();
-									contextMenu?.close();
-								}}
-							/>
-							<ContextMenuItem
-								label="Center"
-								onclick={() => {
-									console.log("Center");
-									close();
-									contextMenu?.close();
-								}}
-							/>
-							<ContextMenuItem
-								label="Right"
-								onclick={() => {
-									console.log("Right");
-									close();
-									contextMenu?.close();
-								}}
-							/>
-						</ContextMenuSection>
-					{/snippet}
-				</ContextMenuItemSubmenu>
-				<ContextMenuItemSubmenu label="Insert" icon="plus">
-					{#snippet submenu({ close })}
-						<ContextMenuSection>
-							<ContextMenuItem
-								label="Image"
-								onclick={() => {
-									console.log("Image");
-									close();
-									contextMenu?.close();
-								}}
-							/>
-							<ContextMenuItem
-								label="Link"
-								onclick={() => {
-									console.log("Link");
-									close();
-									contextMenu?.close();
-								}}
-							/>
-							<ContextMenuItem
-								label="Table"
-								onclick={() => {
-									console.log("Table");
-									close();
-									contextMenu?.close();
-								}}
-							/>
-						</ContextMenuSection>
-					{/snippet}
-				</ContextMenuItemSubmenu>
-			</ContextMenuSection>
-		</ContextMenu>
+		{#if submenuMenuOpen}
+			<ContextMenu
+				target={submenuTrigger}
+				leftClickTrigger={submenuTrigger}
+				side="bottom"
+				onclose={() => {
+					submenuMenuOpen = false;
+				}}
+				{...args}
+			>
+				<ContextMenuSection title="Basic actions">
+					<ContextMenuItem
+						label="Copy"
+						onclick={() => {
+							console.log("Copy");
+							submenuMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Paste"
+						onclick={() => {
+							console.log("Paste");
+							submenuMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Cut"
+						onclick={() => {
+							console.log("Cut");
+							submenuMenuOpen = false;
+						}}
+					/>
+				</ContextMenuSection>
+				<ContextMenuSection title="Advanced">
+					<ContextMenuItemSubmenu label="Format" icon="text-block">
+						{#snippet submenu({ close })}
+							<ContextMenuSection>
+								<ContextMenuItem
+									label="Bold"
+									onclick={() => {
+										console.log("Bold");
+										close();
+										submenuMenuOpen = false;
+									}}
+								/>
+								<ContextMenuItem
+									label="Italic"
+									onclick={() => {
+										console.log("Italic");
+										close();
+										submenuMenuOpen = false;
+									}}
+								/>
+								<ContextMenuItem
+									label="Underline"
+									onclick={() => {
+										console.log("Underline");
+										close();
+										submenuMenuOpen = false;
+									}}
+								/>
+							</ContextMenuSection>
+							<ContextMenuSection title="Alignment">
+								<ContextMenuItem
+									label="Left"
+									onclick={() => {
+										console.log("Left");
+										close();
+										submenuMenuOpen = false;
+									}}
+								/>
+								<ContextMenuItem
+									label="Center"
+									onclick={() => {
+										console.log("Center");
+										close();
+										submenuMenuOpen = false;
+									}}
+								/>
+								<ContextMenuItem
+									label="Right"
+									onclick={() => {
+										console.log("Right");
+										close();
+										submenuMenuOpen = false;
+									}}
+								/>
+							</ContextMenuSection>
+						{/snippet}
+					</ContextMenuItemSubmenu>
+					<ContextMenuItemSubmenu label="Insert" icon="plus">
+						{#snippet submenu({ close })}
+							<ContextMenuSection>
+								<ContextMenuItem
+									label="Image"
+									onclick={() => {
+										console.log("Image");
+										close();
+										submenuMenuOpen = false;
+									}}
+								/>
+								<ContextMenuItem
+									label="Link"
+									onclick={() => {
+										console.log("Link");
+										close();
+										submenuMenuOpen = false;
+									}}
+								/>
+								<ContextMenuItem
+									label="Table"
+									onclick={() => {
+										console.log("Table");
+										close();
+										submenuMenuOpen = false;
+									}}
+								/>
+							</ContextMenuSection>
+						{/snippet}
+					</ContextMenuItemSubmenu>
+				</ContextMenuSection>
+			</ContextMenu>
+		{/if}
 	{/snippet}
 </Story>
 
@@ -518,33 +570,43 @@
 		<div class="wrap">
 			<Button
 				kind="outline"
-				bind:el={contextTrigger}
+				bind:el={captionTrigger}
 				onclick={() => {
-					contextMenu?.toggle();
+					captionMenuOpen = !captionMenuOpen;
 				}}>Context menu with caption</Button
 			>
 		</div>
 
-		<ContextMenu bind:this={contextMenu} leftClickTrigger={contextTrigger} side="bottom" {...args}>
-			<ContextMenuSection title="Item with caption">
-				<ContextMenuItem
-					label="Rebase"
-					caption="Move your commits on top of upstream changes. Creates clean, linear history."
-					onclick={() => {
-						console.log("Copy");
-						contextMenu?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Paste"
-					caption="Paste from clipboard"
-					onclick={() => {
-						console.log("Paste");
-						contextMenu?.close();
-					}}
-				/>
-			</ContextMenuSection>
-		</ContextMenu>
+		{#if captionMenuOpen}
+			<ContextMenu
+				target={captionTrigger}
+				leftClickTrigger={captionTrigger}
+				side="bottom"
+				onclose={() => {
+					captionMenuOpen = false;
+				}}
+				{...args}
+			>
+				<ContextMenuSection title="Item with caption">
+					<ContextMenuItem
+						label="Rebase"
+						caption="Move your commits on top of upstream changes. Creates clean, linear history."
+						onclick={() => {
+							console.log("Copy");
+							captionMenuOpen = false;
+						}}
+					/>
+					<ContextMenuItem
+						label="Paste"
+						caption="Paste from clipboard"
+						onclick={() => {
+							console.log("Paste");
+							captionMenuOpen = false;
+						}}
+					/>
+				</ContextMenuSection>
+			</ContextMenu>
+		{/if}
 	{/snippet}
 </Story>
 

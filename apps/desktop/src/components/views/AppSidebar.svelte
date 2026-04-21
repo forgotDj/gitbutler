@@ -31,7 +31,7 @@
 	const { projectId, disabled = false }: { projectId: string; disabled?: boolean } = $props();
 
 	let contextTriggerButton = $state<HTMLButtonElement | undefined>();
-	let contextMenuEl = $state<ContextMenu>();
+	let contextMenuOpen = $state(false);
 	let shareIssueModal = $state<ShareIssueModal>();
 
 	const userSettings = inject(SETTINGS);
@@ -276,55 +276,60 @@
 	</div>
 </div>
 
-<ContextMenu
-	bind:this={contextMenuEl}
-	leftClickTrigger={contextTriggerButton}
-	side="right"
-	align="start"
->
-	<ContextMenuSection>
-		<ContextMenuItem
-			label="Global settings"
-			onclick={() => {
-				openGeneralSettings();
-				contextMenuEl?.close();
-			}}
-			keyboardShortcut="⌘,"
-		/>
-	</ContextMenuSection>
-	<ContextMenuSection title="Theme (⌘T)">
-		<ContextMenuItem
-			label="Dark"
-			onclick={async () => {
-				userSettings.update((s) => ({
-					...s,
-					theme: "dark",
-				}));
-				contextMenuEl?.close();
-			}}
-		/>
-		<ContextMenuItem
-			label="Light"
-			onclick={async () => {
-				userSettings.update((s) => ({
-					...s,
-					theme: "light",
-				}));
-				contextMenuEl?.close();
-			}}
-		/>
-		<ContextMenuItem
-			label="System"
-			onclick={async () => {
-				userSettings.update((s) => ({
-					...s,
-					theme: "system",
-				}));
-				contextMenuEl?.close();
-			}}
-		/>
-	</ContextMenuSection>
-</ContextMenu>
+{#if contextMenuOpen}
+	<ContextMenu
+		target={contextTriggerButton}
+		leftClickTrigger={contextTriggerButton}
+		side="right"
+		align="start"
+		onclose={() => {
+			contextMenuOpen = false;
+		}}
+	>
+		<ContextMenuSection>
+			<ContextMenuItem
+				label="Global settings"
+				onclick={() => {
+					openGeneralSettings();
+					contextMenuOpen = false;
+				}}
+				keyboardShortcut="⌘,"
+			/>
+		</ContextMenuSection>
+		<ContextMenuSection title="Theme (⌘T)">
+			<ContextMenuItem
+				label="Dark"
+				onclick={async () => {
+					userSettings.update((s) => ({
+						...s,
+						theme: "dark",
+					}));
+					contextMenuOpen = false;
+				}}
+			/>
+			<ContextMenuItem
+				label="Light"
+				onclick={async () => {
+					userSettings.update((s) => ({
+						...s,
+						theme: "light",
+					}));
+					contextMenuOpen = false;
+				}}
+			/>
+			<ContextMenuItem
+				label="System"
+				onclick={async () => {
+					userSettings.update((s) => ({
+						...s,
+						theme: "system",
+					}));
+					contextMenuOpen = false;
+				}}
+			/>
+		</ContextMenuSection>
+	</ContextMenu>
+{/if}
 
 <ShareIssueModal bind:this={shareIssueModal} />
 

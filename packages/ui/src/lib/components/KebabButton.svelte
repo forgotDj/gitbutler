@@ -39,8 +39,8 @@
 
 	let visible = $state(false);
 	let buttonElement = $state<HTMLElement>();
-	let internalContextMenu = $state<ReturnType<typeof ContextMenu>>();
 	let isMenuOpen = $state(false);
+	let menuTarget = $state<MouseEvent | HTMLElement>();
 
 	function onMouseEnter() {
 		if (!showOnHover) return;
@@ -63,18 +63,22 @@
 	}
 
 	function onContextMenu(e: MouseEvent) {
-		e.preventDefault(); // Prevent default to avoid browser context menu
-		internalContextMenu?.open(e);
+		e.preventDefault();
+		menuTarget = e;
+		isMenuOpen = true;
+		onMenuToggle?.(true, false);
 	}
 
 	function onClick(e: MouseEvent) {
 		e.stopPropagation();
 		e.preventDefault();
-		internalContextMenu?.open();
+		menuTarget = buttonElement;
+		isMenuOpen = true;
+		onMenuToggle?.(true, true);
 	}
 
 	function closeMenu() {
-		internalContextMenu?.close();
+		isMenuOpen = false;
 	}
 
 	$effect(() => {
@@ -124,28 +128,25 @@
 	/>
 {/if}
 
-<ContextMenu
-	bind:this={internalContextMenu}
-	leftClickTrigger={buttonElement}
-	rightClickTrigger={contextElement}
-	side={menuSide}
-	align={menuAlign}
-	testId={contextMenuTestId}
-	onclose={() => {
-		isMenuOpen = false;
-		onMenuClose?.();
-	}}
-	onopen={() => {
-		isMenuOpen = true;
-		onMenuOpen?.();
-	}}
-	ontoggle={(isOpen, isLeftClick) => {
-		isMenuOpen = isOpen;
-		onMenuToggle?.(isOpen, isLeftClick);
-	}}
->
-	{@render contextMenuSnippet({ close: closeMenu })}
-</ContextMenu>
+{#if isMenuOpen}
+	<ContextMenu
+		target={menuTarget}
+		leftClickTrigger={buttonElement}
+		rightClickTrigger={contextElement}
+		side={menuSide}
+		align={menuAlign}
+		testId={contextMenuTestId}
+		onclose={() => {
+			isMenuOpen = false;
+			onMenuClose?.();
+		}}
+		onopen={() => {
+			onMenuOpen?.();
+		}}
+	>
+		{@render contextMenuSnippet({ close: closeMenu })}
+	</ContextMenu>
+{/if}
 
 <style lang="postcss">
 	.kebab-btn {

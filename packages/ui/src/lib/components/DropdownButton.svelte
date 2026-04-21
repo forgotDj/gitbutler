@@ -48,7 +48,6 @@
 		onclick,
 	}: Props = $props();
 
-	let contextMenu = $state<ReturnType<typeof ContextMenu>>();
 	let iconEl = $state<HTMLElement>();
 	let visible = $state(false);
 
@@ -59,12 +58,10 @@
 
 	export function show() {
 		visible = true;
-		contextMenu?.open();
 	}
 
 	export function close() {
 		visible = false;
-		contextMenu?.close();
 	}
 </script>
 
@@ -97,31 +94,32 @@
 			dropdownChild
 			onclick={() => {
 				visible = !visible;
-				contextMenu?.toggle();
 			}}
 			oncontextmenu={preventContextMenu}
 		/>
 	</div>
-	<ContextMenu
-		bind:this={contextMenu}
-		leftClickTrigger={iconEl}
-		side={menuSide}
-		onclose={() => {
-			visible = false;
-		}}
-		onclick={() => {
-			if (autoClose) {
-				contextMenu?.close();
-			}
-		}}
-		onkeypress={() => {
-			if (autoClose) {
-				contextMenu?.close();
-			}
-		}}
-	>
-		{@render contextMenuSlot()}
-	</ContextMenu>
+	{#if visible}
+		<ContextMenu
+			target={iconEl}
+			leftClickTrigger={iconEl}
+			side={menuSide}
+			onclose={() => {
+				visible = false;
+			}}
+			onclick={() => {
+				if (autoClose) {
+					visible = false;
+				}
+			}}
+			onkeypress={() => {
+				if (autoClose) {
+					visible = false;
+				}
+			}}
+		>
+			{@render contextMenuSlot()}
+		</ContextMenu>
+	{/if}
 </Tooltip>
 
 <style lang="postcss">

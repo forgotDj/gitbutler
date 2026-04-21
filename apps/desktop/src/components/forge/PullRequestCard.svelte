@@ -59,7 +59,8 @@
 		button,
 	}: Props = $props();
 
-	let contextMenuEl = $state<ReturnType<typeof ContextMenu>>();
+	let contextMenuOpen = $state(false);
+	let contextMenuTarget = $state<MouseEvent | HTMLElement>();
 	let container = $state<HTMLElement>();
 	let hasChecks = $state(false);
 
@@ -138,62 +139,69 @@
 			<PrStatusPoller number={pr.number} />
 		{/if}
 
-		<ContextMenu bind:this={contextMenuEl} rightClickTrigger={container}>
-			<ContextMenuSection>
-				<ContextMenuItem
-					label="Open in browser"
-					onclick={() => {
-						urlService.openExternalUrl(pr.htmlUrl);
-						contextMenuEl?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Copy link"
-					onclick={() => {
-						clipboardService.write(pr.htmlUrl, { message: `${abbr} link copied` });
-						contextMenuEl?.close();
-					}}
-				/>
-				<ContextMenuItem
-					label="Refetch status"
-					onclick={() => {
-						prService?.fetch(pr.number, { forceRefetch: true });
-						contextMenuEl?.close();
-						if (hasChecks) {
-							checksService?.fetch(pr.sourceBranch, { forceRefetch: true });
-						}
-					}}
-				/>
-				{#if pr.state === "open" && !pr.mergedAt}
-					<ContextMenuItem
-						label={pr.draft ? "Ready for review" : "Convert to draft"}
-						disabled={draftToggling}
-						onclick={async () => {
-							contextMenuEl?.close();
-							await handleSetDraft(!pr.draft);
-						}}
-					/>
-				{/if}
-			</ContextMenuSection>
-			{#if hasChecks}
+		{#if contextMenuOpen}
+			<ContextMenu
+				target={contextMenuTarget}
+				onclose={() => {
+					contextMenuOpen = false;
+				}}
+			>
 				<ContextMenuSection>
 					<ContextMenuItem
-						label="Open checks"
+						label="Open in browser"
 						onclick={() => {
-							urlService.openExternalUrl(`${pr.htmlUrl}/checks`);
-							contextMenuEl?.close();
+							contextMenuOpen = false;
+							urlService.openExternalUrl(pr.htmlUrl);
 						}}
 					/>
 					<ContextMenuItem
-						label="Copy checks"
+						label="Copy link"
 						onclick={() => {
-							clipboardService.write(`${pr.htmlUrl}/checks`, { message: "Checks link copied" });
-							contextMenuEl?.close();
+							contextMenuOpen = false;
+							clipboardService.write(pr.htmlUrl, { message: `${abbr} link copied` });
 						}}
 					/>
+					<ContextMenuItem
+						label="Refetch status"
+						onclick={() => {
+							contextMenuOpen = false;
+							prService?.fetch(pr.number, { forceRefetch: true });
+							if (hasChecks) {
+								checksService?.fetch(pr.sourceBranch, { forceRefetch: true });
+							}
+						}}
+					/>
+					{#if pr.state === "open" && !pr.mergedAt}
+						<ContextMenuItem
+							label={pr.draft ? "Ready for review" : "Convert to draft"}
+							disabled={draftToggling}
+							onclick={async () => {
+								contextMenuOpen = false;
+								await handleSetDraft(!pr.draft);
+							}}
+						/>
+					{/if}
 				</ContextMenuSection>
-			{/if}
-		</ContextMenu>
+				{#if hasChecks}
+					<ContextMenuSection>
+						<ContextMenuItem
+							label="Open checks"
+							onclick={() => {
+								contextMenuOpen = false;
+								urlService.openExternalUrl(`${pr.htmlUrl}/checks`);
+							}}
+						/>
+						<ContextMenuItem
+							label="Copy checks"
+							onclick={() => {
+								contextMenuOpen = false;
+								clipboardService.write(`${pr.htmlUrl}/checks`, { message: "Checks link copied" });
+							}}
+						/>
+					</ContextMenuSection>
+				{/if}
+			</ContextMenu>
+		{/if}
 
 		<div
 			data-testid={testId}
@@ -203,7 +211,8 @@
 			oncontextmenu={(e: MouseEvent) => {
 				e.preventDefault();
 				e.stopPropagation();
-				contextMenuEl?.open(e);
+				contextMenuTarget = e;
+				contextMenuOpen = true;
 			}}
 		>
 			<div class="pr-actions">

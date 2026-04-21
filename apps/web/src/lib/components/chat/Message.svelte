@@ -64,8 +64,8 @@
 
 	let kebabMenuTrigger = $state<HTMLButtonElement>();
 	let emojiPickerTrigger = $state<HTMLButtonElement>();
-	let contextMenu = $state<ReturnType<typeof ContextMenu>>();
-	let emojiPicker = $state<ReturnType<typeof ContextMenu>>();
+	let contextMenuOpen = $state(false);
+	let emojiPickerOpen = $state(false);
 	let isOpenedByKebabButton = $state(false);
 	let isOpenedByEmojiPicker = $state(false);
 	let recentlyUsedEmojis = $state<EmojiInfo[]>([]);
@@ -129,7 +129,7 @@
 
 	function onEmojiSelect(emoji: EmojiInfo) {
 		handleReaction(emoji);
-		emojiPicker?.close();
+		emojiPickerOpen = false;
 	}
 	async function handleClickOnExistingReaction(unicode: string) {
 		const emojiInfo = findEmojiByUnicode(unicode);
@@ -270,7 +270,7 @@
 				thin
 				overrideYScroll={0}
 				onclick={() => {
-					emojiPicker?.toggle();
+					emojiPickerOpen = !emojiPickerOpen;
 				}}
 			/>
 
@@ -291,7 +291,7 @@
 				tooltip="More options"
 				thin
 				onclick={() => {
-					contextMenu?.toggle();
+					contextMenuOpen = !contextMenuOpen;
 				}}
 				overrideYScroll={0}
 			/>
@@ -300,20 +300,34 @@
 </div>
 
 <MessageContextMenu
-	bind:menu={contextMenu}
+	open={contextMenuOpen}
 	leftClickTrigger={kebabMenuTrigger}
 	{message}
 	{projectSlug}
-	onToggle={(isOpen) => (isOpenedByKebabButton = isOpen)}
+	onclose={() => {
+		contextMenuOpen = false;
+		isOpenedByKebabButton = false;
+	}}
+	onopen={() => {
+		isOpenedByKebabButton = true;
+	}}
 />
 
-<ContextMenu
-	bind:this={emojiPicker}
-	leftClickTrigger={emojiPickerTrigger}
-	ontoggle={(isOpen) => (isOpenedByEmojiPicker = isOpen)}
->
-	<EmojiPicker {onEmojiSelect} />
-</ContextMenu>
+{#if emojiPickerOpen}
+	<ContextMenu
+		leftClickTrigger={emojiPickerTrigger}
+		target={emojiPickerTrigger}
+		onclose={() => {
+			emojiPickerOpen = false;
+			isOpenedByEmojiPicker = false;
+		}}
+		onopen={() => {
+			isOpenedByEmojiPicker = true;
+		}}
+	>
+		<EmojiPicker {onEmojiSelect} />
+	</ContextMenu>
+{/if}
 
 <style lang="postcss">
 	@keyframes temporary-highlight {
