@@ -798,20 +798,8 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(legacy::workspace::branch_details_cmd),
         )
         .route(
-            "/create_commit_from_worktree_changes",
-            but_post(legacy::workspace::create_commit_from_worktree_changes_cmd),
-        )
-        .route(
-            "/amend_commit_from_worktree_changes",
-            but_post(legacy::workspace::amend_commit_from_worktree_changes_cmd),
-        )
-        .route(
             "/discard_worktree_changes",
             but_post(legacy::workspace::discard_worktree_changes_cmd),
-        )
-        .route(
-            "/move_changes_between_commits",
-            but_post(legacy::workspace::move_changes_between_commits_cmd),
         )
         .route(
             "/split_branch",
@@ -820,10 +808,6 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .route(
             "/split_branch_into_dependent_branch",
             but_post(legacy::workspace::split_branch_into_dependent_branch_cmd),
-        )
-        .route(
-            "/uncommit_changes",
-            but_post(legacy::workspace::uncommit_changes_cmd),
         )
         .route(
             "/stash_into_branch",
@@ -941,10 +925,6 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(legacy::virtual_branches::unapply_stack_cmd),
         )
         .route(
-            "/amend_virtual_branch",
-            but_post(legacy::virtual_branches::amend_virtual_branch_cmd),
-        )
-        .route(
             "/undo_commit",
             but_post(legacy::virtual_branches::undo_commit_cmd),
         )
@@ -983,10 +963,6 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .route(
             "/tear_off_branch_legacy",
             but_post(legacy::virtual_branches::tear_off_branch_legacy_cmd),
-        )
-        .route(
-            "/update_commit_message",
-            but_post(legacy::virtual_branches::update_commit_message_cmd),
         )
         .route(
             "/operating_mode",
