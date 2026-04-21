@@ -3,10 +3,10 @@ use anyhow::{Result, bail};
 use bstr::ByteSlice;
 use but_ctx::Context;
 use but_ctx::access::RepoShared;
-use colored::Colorize;
 
 use crate::{
     CLI_DATE, CliId, IdMap,
+    theme::{self, Paint},
     utils::{OutputChannel, shorten_object_id, time::format_relative_time},
 };
 
@@ -16,6 +16,8 @@ pub(crate) fn show_commit(
     commit_id_str: &str,
     verbose: bool,
 ) -> Result<()> {
+    let t = theme::get();
+
     // First check if this is a branch by trying to find it in the branch list
     let branches = but_api::legacy::virtual_branches::list_branches(ctx, None)?;
     let branch_match = branches.iter().find(|b| {
@@ -107,13 +109,13 @@ pub(crate) fn show_commit(
         writeln!(
             out,
             "{} {}",
-            "Commit:   ".yellow().bold(),
-            commit_id.to_string().yellow()
+            t.important.paint("Commit:   "),
+            t.commit_id.paint(commit_id.to_string()),
         )?;
 
         // Change ID (if present)
         if let Some(ref change_id) = change_id {
-            writeln!(out, "{} {}", "Change-ID:".bold(), change_id)?;
+            writeln!(out, "{} {}", t.important.paint("Change-ID:"), change_id)?;
         }
 
         // Author
@@ -121,9 +123,9 @@ pub(crate) fn show_commit(
         writeln!(
             out,
             "{} {} <{}>",
-            "Author:   ".bold(),
-            author_sig.name.to_str_lossy().cyan(),
-            author_sig.email.to_str_lossy().cyan()
+            t.important.paint("Author:   "),
+            t.user.paint(author_sig.name.to_str_lossy()),
+            t.user.paint(author_sig.email.to_str_lossy())
         )?;
 
         // Date with relative time
@@ -133,9 +135,9 @@ pub(crate) fn show_commit(
         writeln!(
             out,
             "{}  {} {}",
-            "Date:    ".bold(),
-            date_str.green(),
-            format!("({relative})").dimmed()
+            t.important.paint("Date:    "),
+            t.time.paint(date_str),
+            t.hint.paint(format!("({relative})"))
         )?;
 
         // Committer (only if different from author)
@@ -144,9 +146,9 @@ pub(crate) fn show_commit(
             writeln!(
                 out,
                 "{} {} <{}>",
-                "Committer:".bold(),
-                committer_sig.name.to_str_lossy().cyan(),
-                committer_sig.email.to_str_lossy().cyan()
+                t.important.paint("Committer:"),
+                t.user.paint(committer_sig.name.to_str_lossy()),
+                t.user.paint(committer_sig.email.to_str_lossy())
             )?;
         }
 
@@ -156,7 +158,7 @@ pub(crate) fn show_commit(
         let message = decoded.message.to_str_lossy();
         let mut lines = message.lines();
         if let Some(first_line) = lines.next() {
-            writeln!(out, "{}", first_line.bold())?;
+            writeln!(out, "{}", t.important.paint(first_line))?;
             // Print remaining lines without indentation
             for line in lines {
                 writeln!(out, "{line}")?;
@@ -168,19 +170,19 @@ pub(crate) fn show_commit(
         // File list
         let changes = tree_changes.into_tree_changes();
         if !changes.is_empty() {
-            writeln!(out, "{}", "Files changed:".bold())?;
+            writeln!(out, "{}", t.important.paint("Files changed:"))?;
             for change in &changes {
                 let (status_char, status_color) = match &change.status {
-                    but_core::TreeStatus::Addition { .. } => ("A", "green"),
-                    but_core::TreeStatus::Deletion { .. } => ("D", "red"),
-                    but_core::TreeStatus::Modification { .. } => ("M", "yellow"),
-                    but_core::TreeStatus::Rename { .. } => ("R", "cyan"),
+                    but_core::TreeStatus::Addition { .. } => ("A", t.addition),
+                    but_core::TreeStatus::Deletion { .. } => ("D", t.deletion),
+                    but_core::TreeStatus::Modification { .. } => ("M", t.modification),
+                    but_core::TreeStatus::Rename { .. } => ("R", t.renaming),
                 };
 
                 writeln!(
                     out,
                     "  {} {}",
-                    status_char.color(status_color),
+                    status_color.paint(status_char),
                     change.path.to_str_lossy()
                 )?;
             }
@@ -239,6 +241,8 @@ fn show_branch(
     branch_name: &str,
     verbose: bool,
 ) -> Result<()> {
+    let t = theme::get();
+
     // In JSON mode, always include file info (verbose) so agents and tools
     // get complete data without needing to pass extra flags.
     let effective_verbose = verbose || out.is_json();
@@ -249,13 +253,18 @@ fn show_branch(
 
     // Display branch information
     if let Some(out) = out.for_human() {
-        writeln!(out, "{} {}", "Branch:".yellow().bold(), branch_name.green())?;
+        writeln!(
+            out,
+            "{} {}",
+            t.important.paint("Branch:"),
+            t.local_branch.paint(branch_name)
+        )?;
         writeln!(out)?;
 
         if commits.is_empty() {
             writeln!(out, "No commits on this branch.")?;
         } else {
-            writeln!(out, "{}", "Commits:".bold())?;
+            writeln!(out, "{}", t.important.paint("Commits:"))?;
             for (idx, commit) in commits.iter().enumerate() {
                 if verbose {
                     let now_t = std::time::SystemTime::now();
@@ -263,17 +272,17 @@ fn show_branch(
                     writeln!(
                         out,
                         "{} {} {}",
-                        "●".cyan(),
-                        commit.short_sha.blue(),
-                        commit.message.blue().bold()
+                        t.info.paint("●"),
+                        t.commit_id.paint(&commit.short_sha),
+                        t.important.paint(&commit.message),
                     )?;
                     writeln!(
                         out,
                         "{} {}, {} by {}",
-                        "│".dimmed(),
-                        format_timestamp(commit.timestamp).dimmed(),
-                        format_relative_time(now_t, commit.timestamp).dimmed(),
-                        commit.author_name.dimmed()
+                        t.border.paint("│"),
+                        t.time.paint(format_timestamp(commit.timestamp)),
+                        t.hint.paint(format_relative_time(now_t, commit.timestamp)),
+                        t.user.paint(&commit.author_name)
                     )?;
 
                     // Show full message if available
@@ -282,9 +291,9 @@ fn show_branch(
                         if lines.len() > 1 {
                             for line in lines.iter().skip(1) {
                                 if !line.is_empty() {
-                                    writeln!(out, "{} {}", "│".dimmed(), line)?;
+                                    writeln!(out, "{} {}", t.border.paint("│"), line)?;
                                 } else {
-                                    writeln!(out, "{}", "│".dimmed())?;
+                                    writeln!(out, "{}", t.border.paint("│"))?;
                                 }
                             }
                         }
@@ -294,22 +303,27 @@ fn show_branch(
                     if let Some(files) = &commit.files
                         && !files.is_empty()
                     {
-                        writeln!(out, "{}", "│".dimmed())?;
-                        writeln!(out, "{} {}:", "│".dimmed(), "Files changed".dimmed())?;
+                        writeln!(out, "{}", t.border.paint("│"))?;
+                        writeln!(
+                            out,
+                            "{} {}:",
+                            t.border.paint("│"),
+                            t.hint.paint("Files changed")
+                        )?;
                         for file in files {
                             let status_str = match file.status.as_str() {
-                                "added" => format!("A {}", file.path.green()),
-                                "deleted" => format!("D {}", file.path.red()),
-                                "modified" => format!("M {}", file.path.yellow()),
+                                "added" => format!("A {}", t.addition.paint(&file.path)),
+                                "deleted" => format!("D {}", t.deletion.paint(&file.path)),
+                                "modified" => format!("M {}", t.modification.paint(&file.path)),
                                 _ => format!("  {}", file.path),
                             };
                             writeln!(
                                 out,
                                 "{} {}  ({}, {})",
-                                "│".dimmed(),
+                                t.border.paint("│"),
                                 status_str,
-                                format!("+{}", file.insertions).green(),
-                                format!("-{}", file.deletions).red()
+                                t.addition.paint(format!("+{}", file.insertions)),
+                                t.deletion.paint(format!("-{}", file.deletions))
                             )?;
                         }
                     }
@@ -317,11 +331,11 @@ fn show_branch(
                     if let (Some(files_changed), Some(insertions), Some(deletions)) =
                         (commit.files_changed, commit.insertions, commit.deletions)
                     {
-                        writeln!(out, "{}", "│".dimmed())?;
+                        writeln!(out, "{}", t.border.paint("│"))?;
                         writeln!(
                             out,
                             "{} {} file{} changed, {} insertion{}, {} deletion{}",
-                            "│".dimmed(),
+                            t.border.paint("│"),
                             files_changed,
                             if files_changed == 1 { "" } else { "s" },
                             insertions,
@@ -333,16 +347,21 @@ fn show_branch(
 
                     // Add vertical line separator between commits (but not after the last one)
                     if idx < commits.len() - 1 {
-                        writeln!(out, "{}", "│".dimmed())?;
+                        writeln!(out, "{}", t.border.paint("│"))?;
                     }
                 } else {
                     // Normal mode: compact display
-                    writeln!(out, "  {} {}", commit.short_sha.yellow(), commit.message)?;
+                    writeln!(
+                        out,
+                        "  {} {}",
+                        t.commit_id.paint(&commit.short_sha),
+                        commit.message
+                    )?;
                     writeln!(
                         out,
                         "    {} by {}",
-                        format_timestamp(commit.timestamp).dimmed(),
-                        commit.author_name.dimmed()
+                        t.time.paint(format_timestamp(commit.timestamp)),
+                        t.user.paint(&commit.author_name)
                     )?;
                 }
             }
@@ -351,21 +370,22 @@ fn show_branch(
             if verbose {
                 if let Some(base_commit) = &base_commit_info {
                     let now_t = std::time::SystemTime::now();
-                    writeln!(out, "{}", "│".dimmed())?;
+                    writeln!(out, "{}", t.border.paint("│"))?;
                     writeln!(
                         out,
                         "{} {} {} {}",
-                        "┴".dimmed(),
-                        base_commit.short_sha.yellow(),
-                        base_commit.message.dimmed(),
-                        "(base)".dimmed()
+                        t.border.paint("┴"),
+                        t.commit_id.paint(&base_commit.short_sha),
+                        t.hint.paint(&base_commit.message),
+                        t.hint.paint("(base)")
                     )?;
                     writeln!(
                         out,
                         "  {}, {} by {}",
-                        format_timestamp(base_commit.timestamp).dimmed(),
-                        format_relative_time(now_t, base_commit.timestamp).dimmed(),
-                        base_commit.author_name.dimmed()
+                        t.time.paint(format_timestamp(base_commit.timestamp)),
+                        t.hint
+                            .paint(format_relative_time(now_t, base_commit.timestamp)),
+                        t.user.paint(&base_commit.author_name)
                     )?;
                 }
 
@@ -377,7 +397,7 @@ fn show_branch(
         // Display stack chain if this branch is stacked on others
         if !stack_chain.is_empty() {
             writeln!(out)?;
-            writeln!(out, "{}", "Stacked on:".bold())?;
+            writeln!(out, "{}", t.important.paint("Stacked on:"))?;
             for (i, chain_branch) in stack_chain.iter().enumerate() {
                 let connector = if i == stack_chain.len() - 1 {
                     "└─"
@@ -388,8 +408,8 @@ fn show_branch(
                     out,
                     "  {} {} ({})",
                     connector,
-                    chain_branch.name.cyan(),
-                    format!(
+                    t.local_branch.paint(&chain_branch.name),
+                    t.hint.paint(format!(
                         "{} commit{}",
                         chain_branch.commit_count,
                         if chain_branch.commit_count == 1 {
@@ -397,8 +417,7 @@ fn show_branch(
                         } else {
                             "s"
                         }
-                    )
-                    .dimmed()
+                    ))
                 )?;
             }
         }
@@ -586,11 +605,12 @@ fn format_timestamp(timestamp: i64) -> String {
 
 fn show_branch_summary(out: &mut dyn std::fmt::Write, commits: &[BranchCommitInfo]) -> Result<()> {
     use std::collections::HashMap;
+    let t = theme::get();
 
     writeln!(out)?;
-    writeln!(out, "{}", "─".repeat(50).dimmed())?;
+    writeln!(out, "{}", t.border.paint("─".repeat(50)))?;
     writeln!(out)?;
-    writeln!(out, "{}", "Branch Summary:".green().bold())?;
+    writeln!(out, "{}", t.important.paint("Branch Summary:"))?;
 
     // Count total commits
     writeln!(
@@ -642,14 +662,14 @@ fn show_branch_summary(out: &mut dyn std::fmt::Write, commits: &[BranchCommitInf
         files_vec.sort_by_key(|file| std::cmp::Reverse(file.1.0 + file.1.1));
 
         writeln!(out)?;
-        writeln!(out, "  {}:", "Files changed".dimmed())?;
+        writeln!(out, "  {}:", t.hint.paint("Files changed"))?;
         for (path, (insertions, deletions)) in files_vec.iter().take(10) {
             writeln!(
                 out,
                 "    {} ({}, {})",
                 path,
-                format!("+{insertions}").green(),
-                format!("-{deletions}").red()
+                t.addition.paint(format!("+{insertions}")),
+                t.deletion.paint(format!("-{deletions}"))
             )?;
         }
 
