@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CommitFailedFileEntry from "$components/commit/CommitFailedFileEntry.svelte";
 	import AppScrollableContainer from "$components/shared/AppScrollableContainer.svelte";
+	import { readableRejectionReason } from "$lib/stacks/stackEndpoints";
 	import { REJECTTION_REASONS } from "$lib/stacks/stackService.svelte";
 	import { type RejectionReason } from "$lib/state/uiState.svelte";
 	import { Icon, ModalHeader, TestId, Tooltip } from "@gitbutler/ui";
@@ -20,31 +21,6 @@
 		paths: string[];
 	};
 
-	function getReadableRejectionReason(reason: RejectionReason): string {
-		switch (reason) {
-			case "cherryPickMergeConflict":
-				return "Cherry-pick merge conflict";
-			case "noEffectiveChanges":
-				return "No effective changes";
-			case "workspaceMergeConflict":
-				return "Workspace merge conflict";
-			case "workspaceMergeConflictOfUnrelatedFile":
-				return "Workspace merge conflict of unrelated file";
-			case "worktreeFileMissingForObjectConversion":
-				return "Worktree file missing for object conversion";
-			case "fileToLargeOrBinary":
-				return "File too large or binary";
-			case "pathNotFoundInBaseTree":
-				return "Path not found in base tree";
-			case "unsupportedDirectoryEntry":
-				return "Unsupported directory entry";
-			case "unsupportedTreeEntry":
-				return "Unsupported tree entry";
-			case "missingDiffSpecAssociation":
-				return "Missing diff spec association";
-		}
-	}
-
 	function groupByReason(data: CommitFailedModalState): ReasonGroup[] {
 		const grouped: Partial<Record<RejectionReason, string[]>> = {};
 
@@ -59,7 +35,7 @@
 		for (const reason of REJECTTION_REASONS) {
 			const paths = grouped[reason];
 			if (!paths) continue;
-			result.push({ reason, reasonReadable: getReadableRejectionReason(reason), paths });
+			result.push({ reason, reasonReadable: readableRejectionReason(reason), paths });
 		}
 
 		return result;
