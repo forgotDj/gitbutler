@@ -1,12 +1,9 @@
-use anyhow::{Context as _, Result, anyhow, bail};
+use anyhow::{Context as _, Result};
 use but_core::RepositoryExt;
 use but_ctx::Context;
-use but_rebase::RebaseStep;
-use but_workspace::legacy::stack_ext::StackExt;
 use gitbutler_branch::BranchUpdateRequest;
 use gitbutler_commit::commit_ext::CommitExt;
-use gitbutler_repo::first_parent_commit_ids_until;
-use gitbutler_stack::{Stack, StackId, Target};
+use gitbutler_stack::{Stack, Target};
 use itertools::Itertools;
 
 use crate::VirtualBranchesExt;
@@ -138,64 +135,6 @@ impl IsCommitIntegrated<'_, '_, '_> {
         // then the vbranch is fully merged
         Ok(merge_tree_id == self.upstream_tree_id)
     }
-}
-
-// changes a commit message for commit_oid, rebases everything above it, updates branch head if successful
-pub(crate) fn update_commit_message(
-    ctx: &Context,
-    stack_id: StackId,
-    commit_id: gix::ObjectId,
-    message: &str,
-) -> Result<gix::ObjectId> {
-    if message.is_empty() {
-        bail!("commit message can not be empty");
-    }
-    let mut vb_state = ctx.virtual_branches();
-    let default_target = vb_state.get_default_target()?;
-    let repo = ctx.repo.get()?;
-
-    let mut stack = vb_state.get_stack_in_workspace(stack_id)?;
-    let branch_commit_oids =
-        first_parent_commit_ids_until(&repo, stack.head_oid(ctx)?, default_target.sha)?;
-
-    if !branch_commit_oids.contains(&commit_id) {
-        bail!("commit {commit_id} not in the branch");
-    }
-
-    let mut steps = stack.as_rebase_steps(ctx)?;
-    // Update the commit message
-    for step in steps.iter_mut() {
-        if let RebaseStep::Pick {
-            commit_id: id,
-            new_message,
-        } = step
-            && *id == commit_id
-        {
-            *new_message = Some(message.into());
-        }
-    }
-    let merge_base = stack.merge_base(ctx)?;
-    let output = {
-        let repo = ctx.repo.get()?;
-        let mut rebase = but_rebase::Rebase::new(&repo, Some(merge_base), None)?;
-        rebase.rebase_noops(false);
-        rebase.steps(steps)?;
-        rebase.rebase()?
-    };
-
-    stack.set_stack_head(&mut vb_state, &repo, output.top_commit)?;
-    stack.set_heads_from_rebase_output(ctx, output.references)?;
-
-    crate::integration::update_workspace_commit_with_vb_state(&vb_state, ctx, false)
-        .context("failed to update gitbutler workspace")?;
-
-    output
-        .commit_mapping
-        .iter()
-        .find_map(|(_base, old, new)| (*old == commit_id).then_some(*new))
-        .ok_or(anyhow!(
-            "Failed to find the updated commit id after rebasing"
-        ))
 }
 
 fn commit_ids_until(

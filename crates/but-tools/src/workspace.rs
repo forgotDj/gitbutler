@@ -4,11 +4,11 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::Context as _;
-use bstr::BString;
+use anyhow::{Context as _, bail};
+use bstr::{BString, ByteSlice as _};
 use but_core::{TreeChange, UnifiedPatch, ref_metadata::StackId};
 use but_ctx::Context;
-use but_rebase::graph_rebase::Editor;
+use but_rebase::graph_rebase::{Editor, LookupStep as _};
 use but_workspace::legacy::{CommmitSplitOutcome, ui::StackEntryNoOpt};
 use gitbutler_branch_actions::{BranchManagerExt, update_workspace_commit};
 use gitbutler_oplog::{
@@ -1027,14 +1027,24 @@ pub fn squash_commits(
     let squashed_commit =
         gitbutler_branch_actions::squash_commits(ctx, stack_id, source_ids, destination_id)?;
 
-    let new_commit_id = gitbutler_branch_actions::update_commit_message(
-        ctx,
-        stack_id,
-        squashed_commit,
-        message.as_str(),
-    )?;
+    if message.is_empty() {
+        bail!("commit message can not be empty");
+    }
 
-    // Update the commit mapping with the new commit id.
+    let mut guard = ctx.exclusive_worktree_access();
+    let mut meta = ctx.meta()?;
+    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(guard.write_permission())?;
+    let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+    let (rebase, edited_commit_selector) =
+        but_workspace::commit::reword(editor, squashed_commit, message.as_bytes().as_bstr())?;
+    let new_commit_id = rebase.lookup_pick(edited_commit_selector)?;
+    let materialized = rebase.materialize()?;
+
+    for (old_commit_id, new_commit_id) in materialized.history.commit_mappings() {
+        commit_mapping.insert(old_commit_id, new_commit_id);
+    }
+
+    // Keep the original destination commit id pointing at the final squashed + reworded commit.
     commit_mapping.insert(destination_id, new_commit_id);
 
     Ok(new_commit_id)

@@ -10,7 +10,6 @@ use but_testsupport::gix_testtools::{Creation, scripted_fixture_writable_with_ar
 use gitbutler_branch::BranchCreateRequest;
 use gitbutler_branch_actions::GITBUTLER_WORKSPACE_COMMIT_TITLE;
 use gitbutler_oplog::{OplogExt, SnapshotExt};
-use gitbutler_project::{self as projects};
 use gitbutler_reference::{LocalRefname, Refname};
 use gitbutler_stack::StackId;
 use tempfile::{TempDir, tempdir};
@@ -326,7 +325,6 @@ mod save_and_unapply_virtual_branch;
 mod set_base_branch;
 mod unapply_without_saving_virtual_branch;
 mod undo_commit;
-mod update_commit_message;
 mod workspace_migration;
 
 /// Create a raw git commit parented to `parent` that sets `filename` to `content`,

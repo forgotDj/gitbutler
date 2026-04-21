@@ -287,23 +287,6 @@ pub fn squash_commits_with_perm(
     crate::squash::squash_commits(ctx, stack_id, source_ids, destination_id, perm)
 }
 
-pub fn update_commit_message(
-    ctx: &mut Context,
-    stack_id: StackId,
-    commit_oid: gix::ObjectId,
-    message: &str,
-) -> Result<gix::ObjectId> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    ensure_open_workspace_mode(ctx, guard.read_permission())
-        .context("Updating a commit message requires open workspace mode")?;
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::UpdateCommitMessage),
-        guard.write_permission(),
-    );
-    vbranch::update_commit_message(ctx, stack_id, commit_oid, message)
-}
-
 pub fn fetch_from_remotes(ctx: &Context, askpass: Option<String>) -> Result<FetchResult> {
     let repo = ctx.repo.get()?;
     let remotes = repo

@@ -903,6 +903,7 @@ dependencies = [
  "but-error",
  "but-hunk-assignment",
  "but-llm",
+ "but-rebase",
  "but-schemars",
  "but-serde",
  "but-tools",
