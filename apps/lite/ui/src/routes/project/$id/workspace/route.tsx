@@ -405,27 +405,28 @@ const Hunk: FC<{
 		</div>
 	);
 
+	const source = fileParent
+		? hunkItem({
+				parent: fileParent,
+				path: change.path,
+				hunkHeader: hunk,
+			})
+		: undefined;
+
 	return (
 		<div>
-			{fileParent
-				? (() => {
-						const source = hunkItem({
-							parent: fileParent,
-							path: change.path,
-							hunkHeader: hunk,
-						});
-						return (
-							<OperationSourceC
-								operationMode={operationMode}
-								projectId={projectId}
-								source={source}
-								canDrag={() => !patch.subject.isResultOfBinaryToTextConversion}
-							>
-								{headerRow}
-							</OperationSourceC>
-						);
-					})()
-				: headerRow}
+			{source ? (
+				<OperationSourceC
+					operationMode={operationMode}
+					projectId={projectId}
+					source={source}
+					canDrag={() => !patch.subject.isResultOfBinaryToTextConversion}
+				>
+					{headerRow}
+				</OperationSourceC>
+			) : (
+				headerRow
+			)}
 			<HunkDiff change={change} diff={hunk.diff} />
 		</div>
 	);
