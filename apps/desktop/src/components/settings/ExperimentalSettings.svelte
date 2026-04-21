@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { fModeEnabled, useNewRebaseEngine } from "$lib/config/uiFeatureFlags";
+	import { fModeEnabled } from "$lib/config/uiFeatureFlags";
 	import { SETTINGS_SERVICE } from "$lib/settings/appSettings";
 	import { USER } from "$lib/user/user";
 	import { inject } from "@gitbutler/core/context";
@@ -46,21 +46,6 @@
 				id="f-mode"
 				checked={$fModeEnabled}
 				onclick={() => fModeEnabled.set(!$fModeEnabled)}
-			/>
-		{/snippet}
-	</CardGroup.Item>
-	<CardGroup.Item labelFor="new-rebase-engine">
-		{#snippet title()}
-			New rebase engine
-		{/snippet}
-		{#snippet caption()}
-			Use the new graph-based rebase engine for stack operations.
-		{/snippet}
-		{#snippet actions()}
-			<Toggle
-				id="new-rebase-engine"
-				checked={$useNewRebaseEngine}
-				onclick={() => useNewRebaseEngine.set(!$useNewRebaseEngine)}
 			/>
 		{/snippet}
 	</CardGroup.Item>

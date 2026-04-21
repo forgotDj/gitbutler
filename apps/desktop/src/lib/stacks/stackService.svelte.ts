@@ -1,5 +1,4 @@
 import { getBranchNameFromRef } from "$lib/branches/branchUtils";
-import { useNewRebaseEngine } from "$lib/config/uiFeatureFlags";
 import { sortLikeFileTree } from "$lib/files/filetreeV3";
 import { showToast } from "$lib/notifications/toasts";
 import {
@@ -21,24 +20,20 @@ import { type UiState } from "$lib/state/uiState.svelte";
 import { InjectionToken } from "@gitbutler/core/context";
 import { reactive } from "@gitbutler/shared/reactiveUtils.svelte";
 import { isDefined } from "@gitbutler/ui/utils/typeguards";
-import { get } from "svelte/store";
 import type { ReduxError } from "$lib/error/reduxError";
 import type { DefaultForgeFactory } from "$lib/forge/forgeFactory.svelte";
 import type { BackendApi } from "$lib/state/backendApi";
 import type { AppDispatch } from "$lib/state/clientState.svelte";
-import type { AbsorptionTarget, DiffSpec, RefInfo, StackDetails } from "@gitbutler/but-sdk";
+import type { AbsorptionTarget, DiffSpec, StackDetails } from "@gitbutler/but-sdk";
 
 export { REJECTTION_REASONS } from "$lib/stacks/stackEndpoints";
 
-type LegacyResult = {
-	replacedCommits: [string, string][];
-};
-
-type NormalizedResult = {
-	workspace: {
-		replacedCommits: Record<string, string>;
-		headInfo?: RefInfo;
-	};
+type AmendCommitRequest = {
+	projectId: string;
+	stackId: string;
+	commitId: string;
+	worktreeChanges: DiffSpec[];
+	dryRun: boolean;
 };
 
 export const STACK_SERVICE = new InjectionToken<StackService>("StackService");
@@ -437,19 +432,11 @@ export class StackService {
 	}
 
 	createCommit() {
-		if (get(useNewRebaseEngine)) {
-			return this.backendApi.endpoints.commitCreate.useMutation();
-		} else {
-			return this.backendApi.endpoints.legacyCreateCommit.useMutation();
-		}
+		return this.backendApi.endpoints.commitCreate.useMutation();
 	}
 
 	get createCommitMutation() {
-		if (get(useNewRebaseEngine)) {
-			return this.backendApi.endpoints.commitCreate.mutate;
-		} else {
-			return this.backendApi.endpoints.legacyCreateCommit.mutate;
-		}
+		return this.backendApi.endpoints.commitCreate.mutate;
 	}
 
 	filePathsChangedInCommits(projectId: string, commitIds: string[]) {
@@ -567,11 +554,7 @@ export class StackService {
 	}
 
 	get updateCommitMessage() {
-		if (get(useNewRebaseEngine)) {
-			return this.backendApi.endpoints.updateCommitMessage.useMutation();
-		} else {
-			return this.backendApi.endpoints.legacyUpdateCommitMessage.useMutation();
-		}
+		return this.backendApi.endpoints.updateCommitMessage.useMutation();
 	}
 
 	get newBranch() {
@@ -604,15 +587,6 @@ export class StackService {
 		return this.backendApi.endpoints.discardChanges.mutate;
 	}
 
-	private normalizeResult(result: LegacyResult | NormalizedResult): NormalizedResult {
-		if ("workspace" in result) return result;
-		return {
-			workspace: {
-				replacedCommits: Object.fromEntries(result.replacedCommits),
-			},
-		};
-	}
-
 	async moveChangesBetweenCommits(args: {
 		projectId: string;
 		changes: DiffSpec[];
@@ -622,21 +596,13 @@ export class StackService {
 		destinationStackId: string;
 		dryRun: boolean;
 	}) {
-		if (get(useNewRebaseEngine)) {
-			return this.normalizeResult(
-				await this.backendApi.endpoints.commitMoveChangesBetween.mutate({
-					projectId: args.projectId,
-					changes: args.changes,
-					sourceCommitId: args.sourceCommitId,
-					destinationCommitId: args.destinationCommitId,
-					dryRun: args.dryRun,
-				}),
-			);
-		} else {
-			return this.normalizeResult(
-				await this.backendApi.endpoints.legacyMoveChangesBetweenCommits.mutate(args),
-			);
-		}
+		return await this.backendApi.endpoints.commitMoveChangesBetween.mutate({
+			projectId: args.projectId,
+			changes: args.changes,
+			sourceCommitId: args.sourceCommitId,
+			destinationCommitId: args.destinationCommitId,
+			dryRun: args.dryRun,
+		});
 	}
 
 	async uncommitChanges(args: {
@@ -647,21 +613,13 @@ export class StackService {
 		assignTo?: string;
 		dryRun: boolean;
 	}) {
-		if (get(useNewRebaseEngine)) {
-			return this.normalizeResult(
-				await this.backendApi.endpoints.commitUncommitChanges.mutate({
-					projectId: args.projectId,
-					changes: args.changes,
-					commitId: args.commitId,
-					assignTo: args.assignTo,
-					dryRun: args.dryRun,
-				}),
-			);
-		} else {
-			return this.normalizeResult(
-				await this.backendApi.endpoints.legacyUncommitChanges.mutate(args),
-			);
-		}
+		return await this.backendApi.endpoints.commitUncommitChanges.mutate({
+			projectId: args.projectId,
+			changes: args.changes,
+			commitId: args.commitId,
+			assignTo: args.assignTo,
+			dryRun: args.dryRun,
+		});
 	}
 
 	get stashIntoBranch() {
@@ -759,19 +717,27 @@ export class StackService {
 	}
 
 	get amendCommit() {
-		if (get(useNewRebaseEngine)) {
-			return this.backendApi.endpoints.commitAmend.useMutation();
-		} else {
-			return this.backendApi.endpoints.legacyAmendCommit.useMutation();
-		}
+		const [amendCommit, amendCommitQuery] = this.backendApi.endpoints.commitAmend.useMutation();
+		return [
+			(args: AmendCommitRequest) =>
+				amendCommit({
+					projectId: args.projectId,
+					commitId: args.commitId,
+					worktreeChanges: args.worktreeChanges,
+					dryRun: args.dryRun,
+				}),
+			amendCommitQuery,
+		] as const;
 	}
 
 	get amendCommitMutation() {
-		if (get(useNewRebaseEngine)) {
-			return this.backendApi.endpoints.commitAmend.mutate;
-		} else {
-			return this.backendApi.endpoints.legacyAmendCommit.mutate;
-		}
+		return (args: AmendCommitRequest) =>
+			this.backendApi.endpoints.commitAmend.mutate({
+				projectId: args.projectId,
+				commitId: args.commitId,
+				worktreeChanges: args.worktreeChanges,
+				dryRun: args.dryRun,
+			});
 	}
 
 	/** Squash all the commits in a branch together */

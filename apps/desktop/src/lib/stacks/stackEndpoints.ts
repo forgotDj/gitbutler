@@ -9,7 +9,6 @@ import {
 	providesList,
 	ReduxTag,
 } from "$lib/state/tags";
-import { isDefined } from "@gitbutler/ui/utils/typeguards";
 import { createEntityAdapter, type EntityState } from "@reduxjs/toolkit";
 import type { MoveCommitIllegalAction } from "$lib/commits/commit";
 import type {
@@ -341,21 +340,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.BranchListing),
 			],
 		}),
-		legacyCreateCommit: build.mutation<
-			CreateCommitOutcome,
-			{ projectId: string } & CreateCommitRequest
-		>({
-			extraOptions: {
-				command: "create_commit_from_worktree_changes",
-				actionName: "Commit",
-			},
-			query: (args) => args,
-			invalidatesTags: [
-				invalidatesList(ReduxTag.WorktreeChanges),
-				invalidatesList(ReduxTag.UpstreamIntegrationStatus),
-				invalidatesList(ReduxTag.HeadSha),
-			],
-		}),
 		commitCreate: build.mutation<CreateCommitOutcome, { projectId: string } & CreateCommitRequest>({
 			extraOptions: {
 				command: "commit_create",
@@ -426,17 +410,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				};
 			},
 		}),
-		legacyUpdateCommitMessage: build.mutation<
-			string,
-			{ projectId: string; stackId: string; commitId: string; message: string }
-		>({
-			extraOptions: {
-				command: "update_commit_message",
-				actionName: "Update Commit Message",
-			},
-			query: (args) => args,
-			invalidatesTags: [invalidatesList(ReduxTag.HeadSha)],
-		}),
 		updateCommitMessage: build.mutation<
 			string,
 			{ projectId: string; stackId: string; commitId: string; message: string; dryRun: boolean }
@@ -482,26 +455,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			invalidatesTags: (_result, _error, args) => [
 				invalidatesItem(ReduxTag.BranchChanges, args.stackId),
 				invalidatesList(ReduxTag.WorktreeChanges),
-				invalidatesList(ReduxTag.HeadSha),
-			],
-		}),
-		legacyAmendCommit: build.mutation<
-			string /** Return value is the updated commit id. */,
-			{
-				projectId: string;
-				stackId: string;
-				commitId: string;
-				worktreeChanges: DiffSpec[];
-			}
-		>({
-			extraOptions: {
-				command: "amend_virtual_branch",
-				actionName: "Amend Commit",
-			},
-			query: (args) => args,
-			invalidatesTags: (_result, _error, args) => [
-				invalidatesList(ReduxTag.WorktreeChanges),
-				invalidatesItem(ReduxTag.BranchChanges, args.stackId),
 				invalidatesList(ReduxTag.HeadSha),
 			],
 		}),
@@ -600,36 +553,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			query: (args) => args,
 			invalidatesTags: [invalidatesList(ReduxTag.WorktreeChanges)],
 		}),
-		legacyMoveChangesBetweenCommits: build.mutation<
-			{ replacedCommits: [string, string][] },
-			{
-				projectId: string;
-				changes: DiffSpec[];
-				sourceCommitId: string;
-				sourceStackId: string;
-				destinationCommitId: string;
-				destinationStackId: string;
-			}
-		>({
-			extraOptions: {
-				command: "move_changes_between_commits",
-				actionName: "Move Changes Between Commits",
-			},
-			query: (args) => args,
-			invalidatesTags(result, _error, arg) {
-				const commitChangesTags = [arg.sourceCommitId, arg.destinationCommitId]
-					.map((id) => result?.replacedCommits.find(([oldId]) => oldId === id)?.[1])
-					.filter(isDefined)
-					.map((id) => invalidatesItem(ReduxTag.CommitChanges, id));
-				return [
-					invalidatesList(ReduxTag.HeadSha),
-					invalidatesList(ReduxTag.WorktreeChanges),
-					invalidatesItem(ReduxTag.BranchChanges, arg.sourceStackId),
-					invalidatesItem(ReduxTag.BranchChanges, arg.destinationStackId),
-					...commitChangesTags,
-				];
-			},
-		}),
 		commitMoveChangesBetween: build.mutation<
 			MoveChangesResult,
 			{
@@ -656,29 +579,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.WorktreeChanges),
 				invalidatesList(ReduxTag.CommitChanges),
 			],
-		}),
-		legacyUncommitChanges: build.mutation<
-			{ replacedCommits: [string, string][] },
-			{
-				projectId: string;
-				changes: DiffSpec[];
-				commitId: string;
-				stackId: string;
-				assignTo?: string;
-			}
-		>({
-			extraOptions: {
-				command: "uncommit_changes",
-				actionName: "Uncommit Changes",
-			},
-			query: (args) => args,
-			invalidatesTags(_result, _error, args) {
-				return [
-					invalidatesList(ReduxTag.HeadSha),
-					invalidatesList(ReduxTag.WorktreeChanges),
-					invalidatesItem(ReduxTag.BranchChanges, args.stackId),
-				];
-			},
 		}),
 		commitUncommitChanges: build.mutation<
 			MoveChangesResult,
