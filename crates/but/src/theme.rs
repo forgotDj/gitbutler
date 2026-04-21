@@ -127,7 +127,8 @@ fn apply_foreground(styled: ColoredString, color: Color) -> ColoredString {
         Color::Blue => styled.blue(),
         Color::Magenta => styled.magenta(),
         Color::Cyan => styled.cyan(),
-        Color::Gray | Color::White => styled.white(),
+        Color::Gray => styled.white(),
+        Color::White => styled.bright_white(),
         Color::DarkGray => styled.bright_black(),
         Color::LightRed => styled.bright_red(),
         Color::LightGreen => styled.bright_green(),
@@ -150,7 +151,8 @@ fn apply_background(styled: ColoredString, color: Color) -> ColoredString {
         Color::Blue => styled.on_blue(),
         Color::Magenta => styled.on_magenta(),
         Color::Cyan => styled.on_cyan(),
-        Color::Gray | Color::White => styled.on_white(),
+        Color::Gray => styled.on_white(),
+        Color::White => styled.on_bright_white(),
         Color::DarkGray => styled.on_bright_black(),
         Color::LightRed => styled.on_bright_red(),
         Color::LightGreen => styled.on_bright_green(),
@@ -197,7 +199,7 @@ fn apply_modifiers(mut styled: ColoredString, modifiers: Modifier) -> ColoredStr
 /// Style fields ([`Style`]) control colors and text attributes for semantic
 /// elements.  All fields fall back to their defaults when missing from a
 /// deserialized file.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Theme {
     // Concrete "things"
@@ -310,7 +312,28 @@ const fn style_fg_bold(fg: Color) -> Style {
 impl Default for Theme {
     /// Produces the canonical color palette.
     fn default() -> Self {
-        let mut t = Self {
+        // TODO move light/dark detection somewhere else. For now it's convenient to keep here as
+        // the serde deserialization automatically "fills in the blanks" with defaults
+        let mut t = if std::env::var_os("EXPERIMENTAL_BUT_LIGHT_THEME").is_some() {
+            Self::default_light()
+        } else {
+            Self::default_dark()
+        };
+        t.symbols = Some(ThemeSymbols::new(&t));
+        t
+    }
+}
+
+impl Theme {
+    /// Get the symbols for this theme.
+    pub fn sym(&self) -> &ThemeSymbols {
+        self.symbols
+            .as_ref()
+            .expect("symbols must always be initialized")
+    }
+
+    fn default_dark() -> Self {
+        Self {
             // Concrete "things"
             local_branch: style_fg(Color::Green),
             remote_branch: style_fg(Color::Magenta),
@@ -330,7 +353,12 @@ impl Default for Theme {
             renaming: style_fg(Color::Magenta),
             context: style_fg(Color::DarkGray),
             // Colors from Delta for preserving foreground syntax highlighting, with a lightness
-            // adjustment for enhanced readability
+            // adjustment for enhanced readability.
+            //
+            // IMPORTANT: These colors require 24 bit color (truecolor) support. Terminal.app on
+            // macOS does NOT support that, it only supports 8 bit (256) color.
+            //
+            // TODO detect if running in Terminal.app and use fallback 8 bit color
             addition_rich: Style::new().bg(Color::from_hsl(Hsl::new(
                 120.0,
                 1.0,
@@ -381,18 +409,50 @@ impl Default for Theme {
 
             // Symbols initialized below
             symbols: None,
-        };
-        t.symbols = Some(ThemeSymbols::new(&t));
-        t
+        }
     }
-}
 
-impl Theme {
-    /// Get the symbols for this theme.
-    pub fn sym(&self) -> &ThemeSymbols {
-        self.symbols
-            .as_ref()
-            .expect("symbols must always be initialized")
+    fn default_light() -> Self {
+        // Note: Many light themes butcher the ANSI white and bright white, we use the lightest
+        // possible 8 bit gray for foreground text where we _really_ need contrast against a darker
+        // color.
+        let white_256 = Color::Indexed(255);
+        let dark_t = Self::default_dark();
+
+        Self {
+            // Modifications
+            // Colors from Delta for preserving foreground syntax highlighting
+            //
+            // IMPORTANT: These colors require 24 bit color (truecolor) support. Terminal.app on
+            // macOS does NOT support that, it only supports 8 bit (256) color.
+            //
+            // TODO detect if running in Terminal.app and use fallback 8 bit color
+            addition_rich: Style::new().bg(Color::Rgb(208, 255, 208)),
+            addition_rich_subsection: Style::new().bg(Color::Rgb(160, 239, 160)),
+            deletion_rich: Style::new().bg(Color::Rgb(255, 224, 224)),
+            deletion_rich_subsection: Style::new().bg(Color::Rgb(255, 192, 192)),
+
+            // TUI modes
+            tui_mode_normal: dark_t.tui_mode_normal.fg(white_256),
+            tui_mode_commit: dark_t.tui_mode_commit.fg(white_256),
+            tui_mode_rub: dark_t.tui_mode_rub.fg(white_256),
+            tui_mode_inline_reword: dark_t
+                .tui_mode_inline_reword
+                .bg(Color::Magenta)
+                .fg(white_256),
+            tui_mode_command: dark_t.tui_mode_command.fg(white_256),
+            tui_mode_move: dark_t.tui_mode_move.fg(white_256),
+            tui_mode_details: dark_t.tui_mode_details.fg(Color::Black),
+
+            // General purpose
+            hint: style_fg(Color::DarkGray),
+
+            // Layout
+            selection_highlight: Style::new().fg(Color::Black).bg(Color::Indexed(252)),
+            discrete_selection_highlight: Style::new().bg(Color::Indexed(255)),
+
+            ..dark_t
+        }
     }
 }
 
