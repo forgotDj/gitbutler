@@ -69,6 +69,11 @@ const dropTargetToOperation =
 		);
 	};
 
+export type TargetData = {
+	source: OperationSource;
+	operation: Operation | null;
+};
+
 const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) => {
 	const queryClient = useQueryClient();
 
@@ -93,11 +98,6 @@ const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) =
 			operation,
 		};
 	});
-};
-
-export type TargetData = {
-	source: OperationSource;
-	operation: Operation | null;
 };
 
 const useOperationModeTarget = ({
