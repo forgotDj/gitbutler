@@ -45,10 +45,10 @@ pub fn list(
     // Resolve the target once for all target-based filtering and calculations we may perform.
     let target_oid: Option<gix::ObjectId> = if !show_empty || ahead || check_merge {
         let guard = ctx.shared_worktree_access();
-        Some(workspace_target::target_oid_with_perm(
-            ctx,
-            guard.read_permission(),
-        )?)
+        Some(
+            workspace_target::ResolvedTarget::resolve_with_perm(ctx, guard.read_permission())?
+                .oid(),
+        )
     } else {
         None
     };

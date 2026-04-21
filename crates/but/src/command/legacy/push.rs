@@ -1,8 +1,3 @@
-#![expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-
 use std::fmt::Write;
 
 use but_core::{RepositoryExt, ref_metadata::StackId};
@@ -15,6 +10,7 @@ use serde::Serialize;
 use crate::{
     CliId, IdMap,
     args::{push, push::Command},
+    command::legacy::workspace_target,
     utils::{OutputChannel, shorten_hex_object_id, shorten_object_id},
 };
 
@@ -133,6 +129,13 @@ struct DryRunUpstreamCommit {
     message: String,
 }
 
+/// Dry-run push destination details derived from branch metadata.
+#[derive(Debug, Clone)]
+struct DryRunPushDetails {
+    /// The remote-tracking reference that would be updated.
+    remote_ref: gix::refs::FullName,
+}
+
 /// Batch dry-run result for JSON output
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -195,10 +198,18 @@ fn handle_dry_run(
         Some(but_workspace::legacy::StacksFilter::InWorkspace),
     )?;
 
-    // Get the default target for remote name
-    let vb_state = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
-    let default_target = vb_state.get_default_target()?;
-    let remote = default_target.push_remote_name();
+    // Limit the shared lock to target resolution before continuing with dry-run analysis.
+    let remote = {
+        let guard = ctx.shared_worktree_access();
+        workspace_target::ResolvedTarget::resolve_with_perm(ctx, guard.read_permission())?
+            .push_remote_name()
+            .map(str::to_owned)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Failed to determine push remote for dry-run push: workspace target has no push remote."
+                )
+            })?
+    };
     let repo = ctx.repo.get()?.clone().for_commit_shortening();
     let remote_names = repo.remote_names();
     for (branch_name, unpushed_count, stack_name) in &branches_to_show {
@@ -213,14 +224,7 @@ fn handle_dry_run(
                     .iter()
                     .find(|b| b.name == branch_name.as_str())
                 {
-                    // Get the actual Stack to call push_details
-                    let stack = vb_state.get_stack(stack_id)?;
-
-                    // Get push details to determine remote ref
-                    let push_details = match stack.push_details(ctx, branch_name.clone()) {
-                        Ok(details) => details,
-                        Err(_) => continue, // Skip if we can't get push details
-                    };
+                    let push_details = dry_run_push_details(branch_detail, &remote)?;
 
                     // Collect commit information
                     let commits: Vec<DryRunCommit> = branch_detail
@@ -306,7 +310,7 @@ fn handle_dry_run(
                         stack_name: stack_name.clone(),
                         unpushed_commits: *unpushed_count,
                         remote: remote.clone(),
-                        remote_ref: push_details.remote_refname.to_string().try_into()?,
+                        remote_ref: push_details.remote_ref,
                         commits,
                         upstream_commits,
                         requires_force,
@@ -580,6 +584,16 @@ fn handle_dry_run(
     )?;
 
     Ok(())
+}
+
+/// Build dry-run push destination details from branch metadata.
+fn dry_run_push_details(
+    branch_detail: &but_workspace::ui::BranchDetails,
+    remote: &str,
+) -> anyhow::Result<DryRunPushDetails> {
+    let remote_ref: gix::refs::FullName =
+        format!("refs/remotes/{remote}/{}", branch_detail.name).try_into()?;
+    Ok(DryRunPushDetails { remote_ref })
 }
 
 fn push_single_branch(
