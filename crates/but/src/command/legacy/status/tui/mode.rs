@@ -10,6 +10,7 @@ use crate::{
     CliId,
     command::legacy::status::tui::MessageOnDrop,
     id::{ShortId, UncommittedCliId},
+    theme,
 };
 
 #[derive(Debug, Default, strum::EnumDiscriminants)]
@@ -28,28 +29,33 @@ pub(super) enum Mode {
 
 impl Mode {
     pub(super) fn bg(&self) -> Color {
+        let t = theme::get();
+
         match self {
-            Mode::Normal => Color::DarkGray,
-            Mode::Commit(_) => Color::Green,
-            Mode::Rub(_) => Color::Blue,
-            Mode::InlineReword(_) => Color::Magenta,
-            Mode::Command(CommandMode { kind, .. }) => match kind {
-                CommandModeKind::But | CommandModeKind::Shell => Color::Yellow,
-            },
-            Mode::Move(..) => Color::Cyan,
-            Mode::Details => Color::Rgb(255, 165, 0), // orange
+            Mode::Normal => t.tui_mode_normal.bg.unwrap_or(Color::DarkGray),
+            Mode::Commit(_) => t.tui_mode_commit.bg.unwrap_or(Color::Green),
+            Mode::Rub(_) => t.tui_mode_rub.bg.unwrap_or(Color::Blue),
+            Mode::InlineReword(_) => t.tui_mode_inline_reword.bg.unwrap_or(Color::Magenta),
+            Mode::Command(_) => t.tui_mode_command.bg.unwrap_or(Color::Yellow),
+            Mode::Move(..) => t.tui_mode_move.bg.unwrap_or(Color::Cyan),
+            Mode::Details => t
+                .tui_mode_details
+                .bg
+                .unwrap_or(Color::Rgb(255, 165, 0) /* orange */),
         }
     }
 
     pub(super) fn fg(&self) -> Color {
+        let t = theme::get();
+
         match self {
-            Mode::Normal => Color::White,
-            Mode::Commit(_)
-            | Mode::Details
-            | Mode::Rub(_)
-            | Mode::InlineReword(_)
-            | Mode::Move(..)
-            | Mode::Command(_) => Color::Black,
+            Mode::Normal => t.tui_mode_normal.fg.unwrap_or(Color::White),
+            Mode::Commit(_) => t.tui_mode_commit.fg.unwrap_or(Color::Black),
+            Mode::Rub(_) => t.tui_mode_rub.fg.unwrap_or(Color::Black),
+            Mode::InlineReword(_) => t.tui_mode_inline_reword.fg.unwrap_or(Color::Black),
+            Mode::Command(_) => t.tui_mode_command.fg.unwrap_or(Color::Black),
+            Mode::Move(..) => t.tui_mode_move.fg.unwrap_or(Color::Black),
+            Mode::Details => t.tui_mode_details.fg.unwrap_or(Color::Black),
         }
     }
 }

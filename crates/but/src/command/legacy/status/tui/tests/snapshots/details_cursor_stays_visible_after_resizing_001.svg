@@ -135,38 +135,38 @@
   <rect x="74" y="172" width="8" height="18" fill="#FFA500" />
   <rect x="82" y="172" width="8" height="18" fill="#FFA500" />
   <rect x="90" y="172" width="8" height="18" fill="#FFA500" />
-  <text x="10" y="24" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">╭</text>
-  <text x="18" y="24" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┄</text>
+  <text x="10" y="24" style="fill:#FFFFFF;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">╭</text>
+  <text x="18" y="24" style="fill:#FFFFFF;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┄</text>
   <text x="26" y="24" style="fill:#0000AA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">z</text>
   <text x="34" y="24" style="fill:#0000AA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">z</text>
-  <text x="50" y="24" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">[</text>
-  <text x="58" y="24" style="fill:#00AAAA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">u</text>
-  <text x="66" y="24" style="fill:#00AAAA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">n</text>
-  <text x="74" y="24" style="fill:#00AAAA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">a</text>
-  <text x="82" y="24" style="fill:#00AAAA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">s</text>
-  <text x="90" y="24" style="fill:#00AAAA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">s</text>
-  <text x="98" y="24" style="fill:#00AAAA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">i</text>
-  <text x="106" y="24" style="fill:#00AAAA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">g</text>
-  <text x="114" y="24" style="fill:#00AAAA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">n</text>
-  <text x="122" y="24" style="fill:#00AAAA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">e</text>
-  <text x="130" y="24" style="fill:#00AAAA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">d</text>
-  <text x="138" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
-  <text x="146" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="154" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="162" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="170" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="178" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="186" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="194" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="202" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="210" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="218" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="226" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="234" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="242" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="250" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="258" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="266" y="24" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">╮</text>
+  <text x="50" y="24" style="fill:#FFFFFF;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">[</text>
+  <text x="58" y="24" style="fill:#00AAAA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">u</text>
+  <text x="66" y="24" style="fill:#00AAAA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">n</text>
+  <text x="74" y="24" style="fill:#00AAAA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">a</text>
+  <text x="82" y="24" style="fill:#00AAAA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">s</text>
+  <text x="90" y="24" style="fill:#00AAAA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">s</text>
+  <text x="98" y="24" style="fill:#00AAAA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">i</text>
+  <text x="106" y="24" style="fill:#00AAAA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">g</text>
+  <text x="114" y="24" style="fill:#00AAAA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">n</text>
+  <text x="122" y="24" style="fill:#00AAAA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">e</text>
+  <text x="130" y="24" style="fill:#00AAAA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">d</text>
+  <text x="138" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
+  <text x="146" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="154" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="162" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="170" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="178" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="186" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="194" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="202" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="210" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="218" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="226" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="234" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="242" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="250" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="258" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="266" y="24" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">╮</text>
   <text x="10" y="42" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
   <text x="42" y="42" style="fill:#0000AA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">x</text>
   <text x="50" y="42" style="fill:#0000AA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">z</text>
@@ -178,7 +178,7 @@
   <text x="114" y="42" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">a</text>
   <text x="122" y="42" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">.</text>
   <text x="130" y="42" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">t</text>
-  <text x="138" y="42" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
+  <text x="138" y="42" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
   <text x="154" y="42" style="fill:#0000AA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">k</text>
   <text x="162" y="42" style="fill:#0000AA;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">0</text>
   <text x="170" y="42" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">:</text>
@@ -191,7 +191,7 @@
   <text x="234" y="42" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">t</text>
   <text x="242" y="42" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">x</text>
   <text x="250" y="42" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">t</text>
-  <text x="266" y="42" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
+  <text x="266" y="42" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
   <text x="10" y="60" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
   <text x="42" y="60" style="fill:#0000AA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">v</text>
   <text x="50" y="60" style="fill:#0000AA;font-weight:bold;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">q</text>
@@ -203,25 +203,25 @@
   <text x="114" y="60" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">.</text>
   <text x="122" y="60" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">t</text>
   <text x="130" y="60" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">x</text>
-  <text x="138" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
-  <text x="146" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="154" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="162" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="170" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="178" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="186" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="194" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="202" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="210" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="218" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="226" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="234" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="242" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="250" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="258" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="266" y="60" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">╯</text>
+  <text x="138" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
+  <text x="146" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="154" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="162" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="170" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="178" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="186" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="194" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="202" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="210" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="218" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="226" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="234" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="242" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="250" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="258" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="266" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">╯</text>
   <text x="10" y="78" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
-  <text x="138" y="78" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
+  <text x="138" y="78" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
   <text x="10" y="96" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
   <text x="18" y="96" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">╭</text>
   <text x="26" y="96" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┄</text>
@@ -230,7 +230,7 @@
   <text x="58" y="96" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">[</text>
   <text x="66" y="96" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">A</text>
   <text x="74" y="96" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">]</text>
-  <text x="138" y="96" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
+  <text x="138" y="96" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
   <text x="146" y="96" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">@</text>
   <text x="154" y="96" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">@</text>
   <text x="170" y="96" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">-</text>
@@ -256,29 +256,29 @@
   <text x="114" y="114" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">a</text>
   <text x="122" y="114" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">d</text>
   <text x="130" y="114" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">d</text>
-  <text x="138" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
-  <text x="146" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="154" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="162" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="170" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="178" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="186" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="194" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="202" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="210" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="218" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="226" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="234" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="242" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="250" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="258" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
-  <text x="266" y="114" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="138" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
+  <text x="146" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="154" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="162" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="170" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="178" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="186" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="194" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="202" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="210" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="218" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="226" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="234" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="242" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="250" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="258" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
+  <text x="266" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">─</text>
   <text x="10" y="132" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">├</text>
   <text x="18" y="132" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">╯</text>
-  <text x="138" y="132" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
-  <text x="162" y="132" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
-  <text x="186" y="132" style="fill:#006000;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">1</text>
-  <text x="202" y="132" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
+  <text x="138" y="132" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
+  <text x="162" y="132" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
+  <text x="186" y="132" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">1</text>
+  <text x="202" y="132" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
   <text x="218" y="132" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">+</text>
   <text x="226" y="132" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">t</text>
   <text x="234" y="132" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">h</text>
@@ -325,10 +325,10 @@
   <text x="634" y="132" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">t</text>
   <text x="642" y="132" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">h</text>
   <text x="10" y="150" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
-  <text x="138" y="150" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
-  <text x="162" y="150" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
-  <text x="186" y="150" style="fill:#006000;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">2</text>
-  <text x="202" y="150" style="fill:#CCCCCC;opacity:0.75;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
+  <text x="138" y="150" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
+  <text x="162" y="150" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
+  <text x="186" y="150" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">2</text>
+  <text x="202" y="150" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
   <text x="218" y="150" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">+</text>
   <text x="226" y="150" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">t</text>
   <text x="234" y="150" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">h</text>

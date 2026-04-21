@@ -7,6 +7,8 @@ use ratatui::{
     widgets::{Block, Borders, Clear, Padding, Paragraph, Wrap},
 };
 
+use crate::theme;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ToastKind {
     Error,
@@ -74,6 +76,7 @@ struct ToastMargin {
 }
 
 fn render_toast(frame: &mut Frame, area: Rect, margin: ToastMargin, toast: &Toast) -> u16 {
+    let t = theme::get();
     let horizontal_padding: u16 = 1;
     let vertical_padding: u16 = 0;
     let border_width: u16 = 2;
@@ -139,9 +142,9 @@ fn render_toast(frame: &mut Frame, area: Rect, margin: ToastMargin, toast: &Toas
     frame.render_widget(Clear, toast_area);
 
     let border_style = match toast.kind {
-        ToastKind::Error => Style::default().red(),
-        ToastKind::Info => Style::default().green(),
-        ToastKind::Debug => Style::default().magenta(),
+        ToastKind::Error => t.error,
+        ToastKind::Info => t.info,
+        ToastKind::Debug => t.hint,
     };
 
     let widget = Paragraph::new(toast_text)

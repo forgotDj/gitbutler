@@ -17,6 +17,7 @@ use crate::{
         build_status_output,
         tui::{App, EventPolling, Message, render_loop_once},
     },
+    theme,
     tui::TerminalGuard,
     utils::OutputChannel,
 };
@@ -217,7 +218,10 @@ impl TestTuiInputThenRenderResult<'_> {
         let backend = self.0.terminal.backend();
         let buffer = backend.buffer();
         let area = *buffer.area();
-        let selected_bg = *super::super::CURSOR_BG;
+        let selected_bg = theme::get()
+            .selection_highlight
+            .bg
+            .expect("background must be set on selection_highlight");
 
         (area.y..area.y.saturating_add(area.height))
             .find(|&y| {
@@ -506,8 +510,9 @@ fn is_blue_bold_hex_cell(cell: &ratatui::buffer::Cell) -> bool {
         && is_single_ascii_hex(cell.symbol())
 }
 
-fn is_blue_hex_cell(cell: &ratatui::buffer::Cell) -> bool {
-    matches!(cell.fg, Color::Blue) && is_single_ascii_hex(cell.symbol())
+fn is_commit_id_hex_cell(cell: &ratatui::buffer::Cell) -> bool {
+    let commit_id_fg = crate::theme::get().commit_id.fg;
+    commit_id_fg.is_some_and(|color| cell.fg == color) && is_single_ascii_hex(cell.symbol())
 }
 
 fn short_hash_start_for_cell(
@@ -546,7 +551,7 @@ fn short_hash_start_for_cell(
     None
 }
 
-/// Detect cells that are part of a full commit ID (40-char blue hex sequence),
+/// Detect cells that are part of a full commit ID (40-char commit_id-colored hex sequence),
 /// as rendered in the details view.
 fn long_hash_cell(
     buffer: &ratatui::buffer::Buffer,
@@ -554,22 +559,24 @@ fn long_hash_cell(
     x: u16,
     y: u16,
 ) -> bool {
-    if !is_blue_hex_cell(&buffer[(x, y)]) {
+    if !is_commit_id_hex_cell(&buffer[(x, y)]) {
         return false;
     }
 
     let row_start = area.x;
     let row_end = area.x.saturating_add(area.width);
 
-    // Walk left to find the start of the blue hex run
+    // Walk left to find the start of the commit ID hex run
     let mut start = x;
-    while start > row_start && is_blue_hex_cell(&buffer[(start.saturating_sub(1), y)]) {
+    while start > row_start && is_commit_id_hex_cell(&buffer[(start.saturating_sub(1), y)]) {
         start = start.saturating_sub(1);
     }
 
     // Walk right to find the end
     let mut end = x;
-    while end.saturating_add(1) < row_end && is_blue_hex_cell(&buffer[(end.saturating_add(1), y)]) {
+    while end.saturating_add(1) < row_end
+        && is_commit_id_hex_cell(&buffer[(end.saturating_add(1), y)])
+    {
         end = end.saturating_add(1);
     }
 

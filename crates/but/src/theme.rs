@@ -31,6 +31,7 @@ use std::{fmt::Display, path::Path, sync::OnceLock};
 
 use colored::{ColoredString, Colorize as _};
 use ratatui::{
+    palette::Hsl,
     style::{Color, Modifier, Style},
     text::Span,
 };
@@ -228,6 +229,16 @@ pub struct Theme {
     pub renaming: Style,
     /// Context surrounding modifications
     pub context: Style,
+    /// Rich-text version of [`Self::addition`], meant to preserve foreground text.
+    pub addition_rich: Style,
+    /// A more intense version of [`Self::addition_rich`], meant to highlight subsections of an
+    /// addition.
+    pub addition_rich_subsection: Style,
+    /// Rich-text version of [`Self::deletion`], meant to preserve foreground text.
+    pub deletion_rich: Style,
+    /// A more intense version of [`Self::deletion_rich`], meant to highlight subsections of an
+    /// deletion.
+    pub deletion_rich_subsection: Style,
 
     // State signals
     /// Something completed successfully or is in a good state
@@ -238,6 +249,15 @@ pub struct Theme {
     pub error: Style,
     /// Highlight something that is purely informational
     pub info: Style,
+
+    // TUI modes
+    pub tui_mode_normal: Style,
+    pub tui_mode_commit: Style,
+    pub tui_mode_rub: Style,
+    pub tui_mode_inline_reword: Style,
+    pub tui_mode_command: Style,
+    pub tui_mode_move: Style,
+    pub tui_mode_details: Style,
 
     // General purpose
     /// Subdued hint text for supplemental information that should not demand attention
@@ -260,6 +280,10 @@ pub struct Theme {
     pub border_active: Style,
     /// Highlight style to denote selection
     pub selection_highlight: Style,
+    /// Alternative selection highlight that is meant to be more discrete than the primary selection
+    /// highlight. Useful when selecting larger areas and the [`Self::selection_highlight`] is a bit
+    /// "too much".
+    pub discrete_selection_highlight: Style,
     /// Legend for symbol or keybind explanation
     pub legend: Style,
 
@@ -305,12 +329,36 @@ impl Default for Theme {
             modification: style_fg(Color::Yellow),
             renaming: style_fg(Color::Magenta),
             context: style_fg(Color::DarkGray),
+            // Colors from Delta for preserving foreground syntax highlighting, with a lightness
+            // adjustment for enhanced readability
+            addition_rich: Style::new().bg(Color::from_hsl(Hsl::new(
+                120.0,
+                1.0,
+                0.078 + /*lightness adjustment=*/0.05,
+            ))),
+            addition_rich_subsection: Style::new().bg(Color::from_hsl(Hsl::new(120.0, 1.0, 0.188))),
+            deletion_rich: Style::new().bg(Color::from_hsl(Hsl::new(
+                -0.952,
+                1.0,
+                0.123 + /*lightness adjustment=*/0.05,
+            ))),
+            deletion_rich_subsection: Style::new()
+                .bg(Color::from_hsl(Hsl::new(-0.468, 0.8, 0.313))),
 
             // State signals
             success: style_fg(Color::Green),
             attention: style_fg(Color::Yellow),
             error: style_fg(Color::Red),
             info: style_fg(Color::Cyan),
+
+            // TUI modes
+            tui_mode_normal: Style::new().bg(Color::DarkGray).fg(Color::White),
+            tui_mode_commit: Style::new().bg(Color::Green).fg(Color::Black),
+            tui_mode_rub: Style::new().bg(Color::Blue).fg(Color::Black),
+            tui_mode_inline_reword: Style::new().bg(Color::Magenta).fg(Color::Black),
+            tui_mode_command: Style::new().bg(Color::Yellow).fg(Color::Black),
+            tui_mode_move: Style::new().bg(Color::Cyan).fg(Color::Black),
+            tui_mode_details: Style::new().bg(Color::Rgb(255, 165, 0)).fg(Color::Black),
 
             // General purpose
             hint: Style::new().add_modifier(Modifier::DIM),
@@ -324,9 +372,11 @@ impl Default for Theme {
             border: Style::new().fg(Color::DarkGray),
             border_active: Style::new().fg(Color::Cyan),
             selection_highlight: Style::new()
-                .bg(Color::DarkGray)
+                .bg(Color::Rgb(69, 71, 90))
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
+            discrete_selection_highlight: Style::new()
+                .bg(Color::from_hsl(Hsl::new(236.8, 0.162, 0.229))),
             legend: Style::new().fg(Color::Blue),
 
             // Symbols initialized below
