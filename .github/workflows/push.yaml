@@ -163,6 +163,8 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/master' }}
       - name: Build but-sdk
         run: pnpm --filter @gitbutler/but-sdk build
+      - name: Verify generated types are up-to-date
+        run: ./scripts/generate-sdk-types.sh
       - name: Check but-sdk
         run: pnpm --filter @gitbutler/but-sdk check
 
