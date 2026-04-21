@@ -539,6 +539,8 @@ mod file {
             use std::os::unix::fs::PermissionsExt;
             builder.permissions(std::fs::Permissions::from_mode(kind as u32));
         }
+        #[cfg(not(unix))]
+        let _ = kind;
         Ok(builder.tempfile_in(root)?)
     }
 }
