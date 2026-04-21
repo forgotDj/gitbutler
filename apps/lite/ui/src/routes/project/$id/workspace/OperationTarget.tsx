@@ -19,7 +19,7 @@ import {
 	type ResolvedOperationSource,
 } from "./ResolvedOperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
-import styles from "./route.module.css";
+import styles from "./OperationTarget.module.css";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	itemOperationSource,
