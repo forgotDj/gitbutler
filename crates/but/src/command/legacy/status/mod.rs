@@ -3,7 +3,7 @@
     reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
 )]
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use anyhow::Context as _;
 use assignment::FileAssignment;
@@ -12,7 +12,11 @@ use but_api::diff::ComputeLineStats;
 use but_core::{RepositoryExt, TreeStatus, ui};
 use but_ctx::Context;
 use but_forge::ForgeReview;
-use but_workspace::{ref_info::LocalCommitRelation, ui::PushStatus};
+use but_graph::SegmentIndex;
+use but_workspace::{
+    ref_info::{Commit, LocalCommit, LocalCommitRelation, Segment},
+    ui::PushStatus,
+};
 use gitbutler_branch_actions::upstream_integration::BranchStatus as UpstreamBranchStatus;
 use gitbutler_operating_modes::OperatingMode;
 use gitbutler_stack::StackId;
@@ -170,6 +174,9 @@ struct StatusContext<'a> {
     is_paged: bool,
     should_truncate_for_terminal: bool,
     id_map: IdMap,
+    segments_by_id: HashMap<SegmentIndex, Segment>,
+    local_commits_by_id: HashMap<gix::ObjectId, LocalCommit>,
+    remote_commits_by_id: HashMap<gix::ObjectId, Commit>,
     base_branch: Option<gitbutler_branch_actions::BaseBranch>,
     mode: &'a gitbutler_operating_modes::OperatingMode,
 }
@@ -245,21 +252,43 @@ async fn build_status_context<'a>(
     render_mode: StatusRenderMode,
 ) -> anyhow::Result<StatusContext<'a>> {
     // Process rules with exclusive access to create repo and workspace
-    let head_info = {
+    let (segments_by_id, local_commits_by_id, remote_commits_by_id, stacks) = {
         let mut guard = ctx.exclusive_worktree_access();
         but_rules::process_rules(ctx, guard.write_permission()).ok(); // TODO: this is doing double work (hunk-dependencies can be reused)
 
         // TODO: use this for JSON status information (regular status information
         //       already uses this)
         let meta = ctx.meta()?;
-        but_workspace::head_info(
+        let head_info = but_workspace::head_info(
             &*ctx.repo.get()?,
             &meta,
             but_workspace::ref_info::Options {
                 expensive_commit_info: true,
                 ..Default::default()
             },
-        )?
+        )?;
+        let mut segments_by_id = HashMap::<SegmentIndex, Segment>::new();
+        let mut local_commits_by_id = HashMap::<gix::ObjectId, LocalCommit>::new();
+        let mut remote_commits_by_id = HashMap::<gix::ObjectId, Commit>::new();
+        for stack in head_info.stacks {
+            for segment in stack.segments {
+                for local_commit in segment.commits.clone() {
+                    local_commits_by_id.insert(local_commit.id, local_commit);
+                }
+                for remote_commit in segment.commits_on_remote.clone() {
+                    remote_commits_by_id.insert(remote_commit.id, remote_commit);
+                }
+                segments_by_id.insert(segment.id, segment);
+            }
+        }
+
+        let (_repo, ws, _db) = ctx.workspace_and_db_with_perm(guard.read_permission())?;
+        (
+            segments_by_id,
+            local_commits_by_id,
+            remote_commits_by_id,
+            ws.stacks.clone(),
+        )
     };
 
     let cache_config = if flags.refresh_prs {
@@ -271,7 +300,7 @@ async fn build_status_context<'a>(
 
     let worktree_changes = but_api::diff::changes_in_worktree(ctx)?;
 
-    let id_map = IdMap::new(head_info.stacks, worktree_changes.assignments.clone())?;
+    let id_map = IdMap::new(stacks, worktree_changes.assignments.clone())?;
 
     let stacks = id_map.stacks();
     // Store the count of stacks for hint logic later
@@ -288,7 +317,7 @@ async fn build_status_context<'a>(
         let assignments = assignment::filter_by_stack_id(assignments_by_file.values(), &stack.id);
         stack_details.push((stack.id, (Some(stack.clone()), assignments)));
     }
-    let ci_map = ci_map(ctx, &cache_config, &stack_details)?;
+    let ci_map = ci_map(ctx, &cache_config, &stack_details, &segments_by_id)?;
 
     // Calculate common_merge_base data and upstream state in a scope
     // to ensure repo reference is dropped before any async operations
@@ -398,6 +427,9 @@ async fn build_status_context<'a>(
         is_paged,
         should_truncate_for_terminal,
         id_map,
+        segments_by_id,
+        local_commits_by_id,
+        remote_commits_by_id,
         base_branch,
         mode,
     })
@@ -685,13 +717,17 @@ fn ci_map(
     ctx: &Context,
     cache_config: &but_forge::CacheConfig,
     stack_details: &[StackEntry],
+    segments_by_id: &HashMap<SegmentIndex, Segment>,
 ) -> Result<BTreeMap<String, Vec<but_forge::CiCheck>>, anyhow::Error> {
     let mut ci_map = BTreeMap::new();
     for (_, (stack_with_id, _)) in stack_details {
         if let Some(stack_with_id) = stack_with_id {
             for segment in &stack_with_id.segments {
+                let inner = segments_by_id
+                    .get(&segment.inner.id)
+                    .context("BUG: head_info does not contain segment that graph has")?;
                 if segment.pr_number().is_some()
-                    && !matches!(segment.inner.push_status, PushStatus::Integrated)
+                    && !matches!(inner.push_status, PushStatus::Integrated)
                     && let Some(branch_name) = segment.branch_name()
                     && let Ok(checks) = but_api::legacy::forge::list_ci_checks_and_update_cache(
                         ctx,
@@ -966,7 +1002,13 @@ fn print_group(
                     )]),
                 )?;
             }
+            let mut remote_commit_printed = false;
             for commit in &segment.remote_commits {
+                let Some(inner) = status_ctx.remote_commits_by_id.get(&commit.commit_id()) else {
+                    // This was filtered out because there is a corresponding
+                    // local commit, so don't show it.
+                    continue;
+                };
                 let details =
                     but_api::diff::commit_details(ctx, commit.commit_id(), ComputeLineStats::No)?;
                 print_commit(
@@ -974,24 +1016,29 @@ fn print_group(
                     status_ctx,
                     stack_with_id.id,
                     commit.short_id.clone(),
-                    &commit.inner,
+                    inner,
                     CommitChanges::Remote(&details.diff_with_first_parent),
                     CommitClassification::Upstream,
                     false,
                     None,
                     output,
                 )?;
+                remote_commit_printed = true;
             }
-            if !segment.remote_commits.is_empty() {
+            if remote_commit_printed {
                 output.connector(Vec::from([Span::raw("┊-")]))?;
             }
             for commit in segment.workspace_commits.iter() {
+                let inner = status_ctx
+                    .local_commits_by_id
+                    .get(&commit.commit_id())
+                    .context("BUG: head_info does not contain local commit that graph has")?;
                 let marked = crate::command::legacy::mark::commit_marked(
                     ctx,
                     commit.commit_id().to_string(),
                 )
                 .unwrap_or_default();
-                let classification = match commit.relation() {
+                let classification = match inner.relation {
                     LocalCommitRelation::LocalOnly => CommitClassification::LocalOnly,
                     LocalCommitRelation::LocalAndRemote(object_id) => {
                         if object_id == commit.commit_id() {
@@ -1008,7 +1055,7 @@ fn print_group(
                     status_ctx,
                     stack_with_id.id,
                     commit.short_id.clone(),
-                    &commit.inner.inner,
+                    &inner.inner,
                     CommitChanges::Workspace(&commit.tree_changes_using_repo(&repo)?),
                     classification,
                     marked,

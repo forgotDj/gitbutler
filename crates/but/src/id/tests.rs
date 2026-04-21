@@ -1,8 +1,8 @@
 use anyhow::bail;
 use but_core::ref_metadata::StackId;
+use but_graph::projection::Stack;
 use but_hunk_assignment::HunkAssignment;
 use but_testsupport::{hex_to_id, hunk_header};
-use but_workspace::branch::Stack;
 
 use crate::{CliId, IdMap, id::id_usage::UintId};
 
@@ -1503,11 +1503,8 @@ mod util {
     use anyhow::bail;
     use bstr::BString;
     use but_core::ref_metadata::StackId;
+    use but_graph::projection::{Stack, StackCommit, StackSegment};
     use but_hunk_assignment::HunkAssignment;
-    use but_workspace::{
-        branch::Stack,
-        ref_info::{Commit, LocalCommit, Segment},
-    };
     use itertools::Itertools;
 
     use crate::{CliId, IdMap};
@@ -1521,18 +1518,13 @@ mod util {
         local_commit_ids: [gix::ObjectId; N1],
         base: Option<gix::ObjectId>,
         remote_commit_ids: [gix::ObjectId; N2],
-    ) -> Segment {
-        fn commit(id: gix::ObjectId, parent_id: Option<gix::ObjectId>) -> Commit {
-            Commit {
+    ) -> StackSegment {
+        fn commit(id: gix::ObjectId, parent_id: Option<gix::ObjectId>) -> StackCommit {
+            StackCommit {
                 id,
                 parent_ids: parent_id.into_iter().collect::<Vec<gix::ObjectId>>(),
-                tree_id: gix::index::hash::Kind::Sha1.empty_tree(),
-                message: Default::default(),
-                author: Default::default(),
                 refs: Vec::new(),
                 flags: Default::default(),
-                has_conflicts: false,
-                change_id: None,
             }
         }
 
@@ -1541,38 +1533,36 @@ mod util {
                 .expect("could not generate ref name"),
             worktree: None,
         });
-        let mut commits: Vec<LocalCommit> = Vec::new();
+        let mut commits: Vec<StackCommit> = Vec::new();
         for (i, id) in local_commit_ids.iter().enumerate() {
             let parent_id = local_commit_ids.get(i + 1).or(base.as_ref());
-            commits.push(LocalCommit {
-                inner: commit(*id, parent_id.cloned()),
-                relation: Default::default(),
-            });
+            commits.push(commit(*id, parent_id.cloned()));
         }
-        let mut commits_on_remote: Vec<Commit> = Vec::new();
+        let mut commits_on_remote: Vec<StackCommit> = Vec::new();
         for id in remote_commit_ids {
             commits_on_remote.push(commit(id, None))
         }
-        Segment {
+        StackSegment {
             ref_info,
-            id: Default::default(),
             remote_tracking_ref_name: None,
+            sibling_segment_id: None,
             remote_tracking_branch_segment_id: None,
+            id: Default::default(),
             commits,
-            commits_on_remote,
             commits_outside: None,
+            base,
+            base_segment_id: None,
+            commits_by_segment: Vec::new(),
+            commits_on_remote,
             metadata: None,
             is_entrypoint: false,
-            push_status: but_workspace::ui::PushStatus::NothingToPush,
-            base,
         }
     }
 
-    pub fn stack<const N: usize>(segments: [Segment; N]) -> Stack {
+    pub fn stack<const N: usize>(segments: [StackSegment; N]) -> Stack {
         Stack {
             id: None,
-            base: None,
-            segments: segments.into_iter().collect::<Vec<Segment>>(),
+            segments: segments.into_iter().collect::<Vec<StackSegment>>(),
         }
     }
 
