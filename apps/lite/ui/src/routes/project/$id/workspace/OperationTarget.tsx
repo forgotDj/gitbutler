@@ -95,6 +95,11 @@ const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) =
 	});
 };
 
+type TargetData = {
+	source: OperationSource;
+	operation: Operation | null;
+};
+
 const useOperationModeTarget = ({
 	projectId,
 	item,
@@ -132,11 +137,6 @@ const useOperationModeTarget = ({
 		source,
 		operation,
 	};
-};
-
-type TargetData = {
-	source: OperationSource;
-	operation: Operation | null;
 };
 
 const getTargetData = (
