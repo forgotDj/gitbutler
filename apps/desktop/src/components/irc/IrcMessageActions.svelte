@@ -22,13 +22,13 @@
 
 	const quickEmojis = $derived(getInitialEmojis().slice(0, QUICK_EMOJI_COUNT));
 
-	let pickerMenu = $state<ReturnType<typeof ContextMenu>>();
 	let pickerTrigger = $state<HTMLButtonElement>();
+	let pickerOpen = $state(false);
 
 	function handleEmojiPick(emoji: EmojiInfo) {
 		markRecentlyUsedEmoji(emoji);
 		onReact(msg, emoji.unicode);
-		pickerMenu?.close();
+		pickerOpen = false;
 	}
 </script>
 
@@ -52,7 +52,10 @@
 		class="action-btn"
 		title="More reactions"
 		bind:this={pickerTrigger}
-		onclick={() => pickerMenu?.toggle()}>+</button
+		onclick={() => {
+			pickerOpen = !pickerOpen;
+			onPickerToggle?.(pickerOpen);
+		}}>+</button
 	>
 	{#if isOwn && onDelete}
 		<button
@@ -64,17 +67,20 @@
 	{/if}
 </div>
 
-<ContextMenu
-	bind:this={pickerMenu}
-	leftClickTrigger={pickerTrigger}
-	side="top"
-	align="end"
-	ontoggle={(isOpen) => {
-		onPickerToggle?.(isOpen);
-	}}
->
-	<EmojiPicker onEmojiSelect={handleEmojiPick} />
-</ContextMenu>
+{#if pickerOpen}
+	<ContextMenu
+		leftClickTrigger={pickerTrigger}
+		target={pickerTrigger}
+		side="top"
+		align="end"
+		onclose={() => {
+			pickerOpen = false;
+			onPickerToggle?.(false);
+		}}
+	>
+		<EmojiPicker onEmojiSelect={handleEmojiPick} />
+	</ContextMenu>
+{/if}
 
 <style lang="postcss">
 	.message-actions {

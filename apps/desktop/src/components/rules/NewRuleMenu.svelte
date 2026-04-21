@@ -11,7 +11,8 @@
 
 	const { addFromFilter, trigger, addEmpty, addedFilterTypes }: Props = $props();
 
-	let contextMenu = $state<ContextMenu>();
+	let menuOpen = $state(false);
+	let menuTarget = $state<MouseEvent>();
 
 	function filterHasBeenAdded(type: RuleFilterType): boolean {
 		return addedFilterTypes.includes(type);
@@ -19,57 +20,66 @@
 
 	function handleAddFilter(type: RuleFilterType) {
 		addFromFilter(type);
-		contextMenu?.close();
+		menuOpen = false;
 	}
 
 	function handleAddEmpty() {
 		addEmpty?.();
-		contextMenu?.close();
+		menuOpen = false;
 	}
 
 	export function toggle(e: MouseEvent) {
-		contextMenu?.toggle(e);
+		menuOpen = !menuOpen;
+		menuTarget = e;
 	}
 </script>
 
-<ContextMenu bind:this={contextMenu} leftClickTrigger={trigger}>
-	<ContextMenuSection>
-		<ContextMenuItem
-			icon="folder"
-			label="File or folder path"
-			disabled={filterHasBeenAdded("pathMatchesRegex")}
-			onclick={() => {
-				handleAddFilter("pathMatchesRegex");
-			}}
-		/>
-		<ContextMenuItem
-			icon="text-contain"
-			label="Contains text"
-			disabled={filterHasBeenAdded("contentMatchesRegex")}
-			onclick={() => {
-				handleAddFilter("contentMatchesRegex");
-			}}
-		/>
-		<ContextMenuItem
-			icon="file-diff"
-			label="Change type (coming soon)"
-			disabled={filterHasBeenAdded("fileChangeType") || true}
-			onclick={() => {
-				handleAddFilter("fileChangeType");
-			}}
-		/>
-		<ContextMenuItem
-			icon="tag"
-			label="Work category (coming soon)"
-			disabled={filterHasBeenAdded("semanticType") || true}
-			onclick={() => {
-				handleAddFilter("semanticType");
-			}}
-		/>
-	</ContextMenuSection>
-	{#if addEmpty}
+{#if menuOpen}
+	<ContextMenu
+		target={menuTarget ?? trigger}
+		leftClickTrigger={trigger}
+		onclose={() => {
+			menuOpen = false;
+		}}
+	>
 		<ContextMenuSection>
-			<ContextMenuItem icon="arrow-right" label="Stage all to branch" onclick={handleAddEmpty} />
+			<ContextMenuItem
+				icon="folder"
+				label="File or folder path"
+				disabled={filterHasBeenAdded("pathMatchesRegex")}
+				onclick={() => {
+					handleAddFilter("pathMatchesRegex");
+				}}
+			/>
+			<ContextMenuItem
+				icon="text-contain"
+				label="Contains text"
+				disabled={filterHasBeenAdded("contentMatchesRegex")}
+				onclick={() => {
+					handleAddFilter("contentMatchesRegex");
+				}}
+			/>
+			<ContextMenuItem
+				icon="file-diff"
+				label="Change type (coming soon)"
+				disabled={filterHasBeenAdded("fileChangeType") || true}
+				onclick={() => {
+					handleAddFilter("fileChangeType");
+				}}
+			/>
+			<ContextMenuItem
+				icon="tag"
+				label="Work category (coming soon)"
+				disabled={filterHasBeenAdded("semanticType") || true}
+				onclick={() => {
+					handleAddFilter("semanticType");
+				}}
+			/>
 		</ContextMenuSection>
-	{/if}
-</ContextMenu>
+		{#if addEmpty}
+			<ContextMenuSection>
+				<ContextMenuItem icon="arrow-right" label="Stage all to branch" onclick={handleAddEmpty} />
+			</ContextMenuSection>
+		{/if}
+	</ContextMenu>
+{/if}

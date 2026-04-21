@@ -27,7 +27,6 @@
 	let allowDropdownButton = $state<ReturnType<typeof DropdownButton>>();
 	let denyDropdownButton = $state<ReturnType<typeof DropdownButton>>();
 	let wildcardButton = $state<HTMLElement>();
-	let wildcardContextMenu = $state<ReturnType<typeof ContextMenu>>();
 	let wildcardMenuOpen = $state(false);
 
 	type AllowDecision = "allowOnce" | "allowSession" | "allowProject" | "allowAlways";
@@ -120,31 +119,35 @@
 				dropdownOpen={wildcardMenuOpen}
 				shrinkable
 				onclick={() => {
-					wildcardContextMenu?.toggle();
+					wildcardMenuOpen = !wildcardMenuOpen;
 				}}
 			>
 				{wildcardSelector.options.find((opt) => opt.value === selectedWildcardDecision)?.label ||
 					"Select scope"}
 			</Button>
 
-			<ContextMenu
-				bind:this={wildcardContextMenu}
-				leftClickTrigger={wildcardButton}
-				ontoggle={(isOpen) => (wildcardMenuOpen = isOpen)}
-			>
-				<ContextMenuSection>
-					{#each wildcardSelector.options as option}
-						<ContextMenuItem
-							label={option.label}
-							selected={option.value === selectedWildcardDecision}
-							onclick={() => {
-								selectedWildcardDecision = option.value;
-								wildcardContextMenu?.close();
-							}}
-						/>
-					{/each}
-				</ContextMenuSection>
-			</ContextMenu>
+			{#if wildcardMenuOpen}
+				<ContextMenu
+					target={wildcardButton}
+					leftClickTrigger={wildcardButton}
+					onclose={() => {
+						wildcardMenuOpen = false;
+					}}
+				>
+					<ContextMenuSection>
+						{#each wildcardSelector.options as option}
+							<ContextMenuItem
+								label={option.label}
+								selected={option.value === selectedWildcardDecision}
+								onclick={() => {
+									selectedWildcardDecision = option.value;
+									wildcardMenuOpen = false;
+								}}
+							/>
+						{/each}
+					</ContextMenuSection>
+				</ContextMenu>
+			{/if}
 		{/if}
 
 		<DropdownButton

@@ -21,7 +21,7 @@
 	let { noAccounts, disabled = false, loading = false, menuItems }: Props = $props();
 
 	let addProfileButtonRef = $state<HTMLElement>();
-	let addAccountContextMenu = $state<ContextMenu>();
+	let menuOpen = $state(false);
 
 	const buttonText = $derived(noAccounts ? "Add account" : "Add another account");
 </script>
@@ -29,7 +29,7 @@
 <Button
 	bind:el={addProfileButtonRef}
 	kind="outline"
-	onclick={() => addAccountContextMenu?.toggle()}
+	onclick={() => (menuOpen = !menuOpen)}
 	{disabled}
 	{loading}
 	icon="plus"
@@ -37,17 +37,23 @@
 	{buttonText}
 </Button>
 
-<ContextMenu bind:this={addAccountContextMenu} leftClickTrigger={addProfileButtonRef}>
-	<ContextMenuSection>
-		{#each menuItems as item}
-			<ContextMenuItem
-				label={item.label}
-				icon={item.icon}
-				onclick={() => {
-					item.onclick();
-					addAccountContextMenu?.close();
-				}}
-			/>
-		{/each}
-	</ContextMenuSection>
-</ContextMenu>
+{#if menuOpen}
+	<ContextMenu
+		target={addProfileButtonRef}
+		leftClickTrigger={addProfileButtonRef}
+		onclose={() => (menuOpen = false)}
+	>
+		<ContextMenuSection>
+			{#each menuItems as item}
+				<ContextMenuItem
+					label={item.label}
+					icon={item.icon}
+					onclick={() => {
+						item.onclick();
+						menuOpen = false;
+					}}
+				/>
+			{/each}
+		</ContextMenuSection>
+	</ContextMenu>
+{/if}

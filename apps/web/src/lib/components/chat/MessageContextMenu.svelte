@@ -6,14 +6,15 @@
 	import type { ChatMessage } from "@gitbutler/shared/chat/types";
 
 	type Props = {
-		menu: ReturnType<typeof ContextMenu> | undefined;
+		open: boolean;
 		leftClickTrigger: HTMLElement | undefined;
 		projectSlug: string;
 		message: ChatMessage;
-		onToggle?: (isOpen: boolean, isLeftClick: boolean) => void;
+		onclose?: () => void;
+		onopen?: () => void;
 	};
 
-	let { menu = $bindable(), leftClickTrigger, message, projectSlug, onToggle }: Props = $props();
+	let { open, leftClickTrigger, message, projectSlug, onclose, onopen }: Props = $props();
 
 	let rulesModal = $state<RulesModal>();
 
@@ -21,22 +22,24 @@
 		const url = new URL(window.location.href);
 		url.searchParams.set("m", message.uuid);
 		copyToClipboard(url.toString());
-		menu?.close();
+		onclose?.();
 	}
 
 	function openRulesModal() {
 		rulesModal?.show();
-		menu?.close();
+		onclose?.();
 	}
 </script>
 
-<ContextMenu bind:this={menu} {leftClickTrigger} ontoggle={onToggle}>
-	<ContextMenuSection>
-		<ContextMenuItem label="Copy link" onclick={copyLink} />
-	</ContextMenuSection>
-	<ContextMenuSection>
-		<ContextMenuItem label="Create a rule" onclick={openRulesModal} />
-	</ContextMenuSection>
-</ContextMenu>
+{#if open}
+	<ContextMenu {leftClickTrigger} target={leftClickTrigger} {onclose} {onopen}>
+		<ContextMenuSection>
+			<ContextMenuItem label="Copy link" onclick={copyLink} />
+		</ContextMenuSection>
+		<ContextMenuSection>
+			<ContextMenuItem label="Create a rule" onclick={openRulesModal} />
+		</ContextMenuSection>
+	</ContextMenu>
+{/if}
 
 <RulesModal {message} {projectSlug} bind:this={rulesModal} />

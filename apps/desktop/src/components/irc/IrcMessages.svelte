@@ -105,7 +105,9 @@
 
 	const userSettings = inject(SETTINGS);
 
-	let contextMenu = $state<ReturnType<typeof ContextMenu>>();
+	let contextMenuOpen = $state(false);
+	let contextMenuTarget = $state<MouseEvent | HTMLElement>();
+	let contextMenuItem = $state<{ filePath: string; lineNumber?: number }>();
 	let messagesEl = $state<HTMLDivElement>();
 
 	// ── Single shared IrcMessageActions instance ────────────────────────
@@ -249,7 +251,9 @@
 					change={data.change}
 					diff={data.diff}
 					onLineContextMenu={({ event, target, filePath, lineNumber }) => {
-						contextMenu?.open(event || target, { filePath, lineNumber });
+						contextMenuTarget = event || target;
+						contextMenuItem = { filePath, lineNumber };
+						contextMenuOpen = true;
 					}}
 				/>
 			{:else}
@@ -358,22 +362,27 @@
 	</div>
 {/if}
 
-{#if onOpenInEditor}
-	<ContextMenu bind:this={contextMenu} rightClickTrigger={messagesEl} align="start" side="right">
-		{#snippet children(item)}
-			<ContextMenuSection>
-				<ContextMenuItem
-					label="Open in {editorName ?? 'Editor'}"
-					icon="open-in-ide"
-					onclick={() => {
-						if (item.filePath) {
-							onOpenInEditor(item.filePath, item.lineNumber);
-						}
-						contextMenu?.close();
-					}}
-				/>
-			</ContextMenuSection>
-		{/snippet}
+{#if onOpenInEditor && contextMenuOpen}
+	<ContextMenu
+		target={contextMenuTarget}
+		align="start"
+		side="right"
+		onclose={() => {
+			contextMenuOpen = false;
+		}}
+	>
+		<ContextMenuSection>
+			<ContextMenuItem
+				label="Open in {editorName ?? 'Editor'}"
+				icon="open-in-ide"
+				onclick={() => {
+					if (contextMenuItem?.filePath) {
+						onOpenInEditor(contextMenuItem.filePath, contextMenuItem.lineNumber);
+					}
+					contextMenuOpen = false;
+				}}
+			/>
+		</ContextMenuSection>
 	</ContextMenu>
 {/if}
 
