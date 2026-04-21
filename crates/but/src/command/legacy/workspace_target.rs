@@ -16,6 +16,8 @@ pub(crate) struct ResolvedTarget {
     oid: gix::ObjectId,
     /// The target reference name when the workspace target is branch-backed.
     ref_name: Option<gix::refs::FullName>,
+    /// The remote name to push target branches to when one is configured.
+    push_remote_name: Option<String>,
 }
 
 /// Target information formatted for the `but status` command.
@@ -33,6 +35,7 @@ impl ResolvedTarget {
         Ok(Self {
             oid: target_oid_from_workspace(workspace)?,
             ref_name: target_ref_name_from_workspace(workspace),
+            push_remote_name: target_push_remote_name_from_workspace(workspace),
         })
     }
 
@@ -55,6 +58,11 @@ impl ResolvedTarget {
     /// Return a shortened display name for the target reference when one is available.
     pub(crate) fn display_name(&self) -> Option<String> {
         self.ref_name().map(|name| name.shorten().to_string())
+    }
+
+    /// Return the effective push remote name when one is available.
+    pub(crate) fn push_remote_name(&self) -> Option<&str> {
+        self.push_remote_name.as_deref()
     }
 
     /// Build the status-facing target information for display in `but status`.
@@ -133,6 +141,17 @@ fn target_ref_name_from_workspace(
         })
 }
 
+/// Resolve the effective target push remote name from workspace projection data.
+fn target_push_remote_name_from_workspace(
+    workspace: &but_graph::projection::Workspace,
+) -> Option<String> {
+    workspace
+        .metadata
+        .as_ref()
+        .and_then(|metadata| metadata.push_remote.clone())
+        .or_else(|| workspace.remote_name())
+}
+
 /// Find the merge base between `branch_oid` and the effective workspace target.
 ///
 /// Returns the merge-base commit ID together with the resolved target information.
@@ -149,6 +168,7 @@ pub(crate) fn merge_base_with_target_with_perm(
             ResolvedTarget {
                 oid: target_oid,
                 ref_name: target_ref_name_from_workspace(&workspace),
+                push_remote_name: target_push_remote_name_from_workspace(&workspace),
             },
         ));
     }

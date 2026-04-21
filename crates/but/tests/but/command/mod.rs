@@ -30,6 +30,8 @@ mod onboarding;
 #[cfg(feature = "legacy")]
 mod pick;
 #[cfg(feature = "legacy")]
+mod push;
+#[cfg(feature = "legacy")]
 mod resolve;
 #[cfg(feature = "legacy")]
 mod reword;
