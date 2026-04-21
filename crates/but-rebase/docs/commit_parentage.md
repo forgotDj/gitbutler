@@ -34,108 +34,99 @@ This means:
 
 ## High-Level Pipeline
 
-The algorithm has five phases.
+The current algorithm has three phases.
 
 1. Normalize and deduplicate input
 - Resolve each incoming selector to `(Selector, CommitOwned)` with `editor.find_selectable_commit`.
 - Keep only the first occurrence of each commit id.
+- Preserve `input_order` for deterministic tie-breaking.
 
-2. Compute deterministic fallback rank
+2. Build rank map from editor traversal
 
-  Build a map: `commit_id -> rank` from editor step graph structure.
+Build a map `commit_id -> rank` by traversing the entire editor step graph from all child-most nodes.
 
-  Implementation notes:
+Implementation notes:
 
-  - Consider only `Step::Pick` nodes.
-  - Build pick-to-pick parent/child relations from ordered step-graph parents.
-  - Perform deterministic topological ranking.
-  - Tie-break ready nodes by graph node index for stability.
+- Seed traversal with `editor.graph.externals(Direction::Incoming)`, i.e. all nodes with no children.
+- Sort these traversal entrypoints by graph index for deterministic iteration.
+- Traverse parent-direction edges using `collect_ordered_parents`, which respects parent edge weights.
+- Push parents onto the traversal stack in that same order (no reversal).
+- Use iterative DFS with post-order assignment so parents are ranked before descendants.
+- Use a global `seen` set so overlapping traversals do not revisit or re-rank nodes seen earlier.
+- Consider only selected commit ids (non-selected picks are ignored).
+- Stop traversal early once all selected commit ids have a rank.
 
-  - This rank is used only when ancestry does not constrain order.
+3. Sort selected commits by rank
+- Sort selected commits by `(rank, input_order)`.
+- `rank` is the sole ancestry source of truth for ordering.
+- `input_order` only breaks ties if equal ranks appear.
 
-3. Build ancestry constraint graph
-- For every selected pair `(left, right)`, determine relation.
-- If `left` is ancestor of `right`, add directed edge `left -> right`.
-- If `right` is ancestor of `left`, add directed edge `right -> left`.
-- If unrelated, add no edge.
+## Example
 
-Ancestry relation is computed by reachability in the editor step graph:
+Given a graph
 
-- Starting at the candidate descendant node, walk parent-direction edges (`Outgoing` in this graph representation).
-- If the ancestor selector id is reachable, it is an ancestor.
+```sh
+*-.   1348870 (HEAD -> main) Merge branches 'A', 'B' and 'C'
+|\ \
+| | * 930563a (C) C: add another 10 lines to new file
+| | * 68a2fc3 C: add 10 lines to new file
+| | * 984fd1c C: new file with 10 lines
+| * | a748762 (B) B: another 10 lines at the bottom
+| * | 62e05ba B: 10 lines at the bottom
+| |/
+* / add59d2 (A) A: 10 lines on top
+|/
+* 8f0d338 (tag: base) base
+```
 
-4. Topological sort with stable tie-breaking
-- Use Kahn's algorithm over indegrees.
-- Keep all currently ready nodes in a min-priority structure keyed by:
-  - `(step_graph_rank, input_order)`
-- Repeatedly pop the best ready node, emit it, and reduce indegree of its children.
+And the user asks to order selectors in this input sequence:
 
-5. Validate completeness
-- If output length is smaller than selected length, constraints were cyclic/inconsistent.
-- Return an explicit error in that case.
+- `a748762`
+- `add59d2`
+- `62e05ba`
 
-### Kahn's Algo
+The ranked would produce
 
-We use Kahn's algorithm to topologically sort the nodes.
+- `8f0d338` (`base`) = 0
+- `add59d2` (`A`) = 1
+- `62e05ba` (`B~`) = 2
+- `a748762` (`B`) = 3
+- `984fd1c` (`C~2`) = 4
+- `68a2fc3` (`C~`) = 5
+- `930563a` (`C`) = 6
+- STOP
 
-Indegree:
-- In a directed graph, indegree of a node = how many arrows point into it.
-- If node B has edges A → B and C → B, then indegree(B) = 2.
-- Intuition: indegree tells you how many prerequisites a node still has.
+The rank is assigned in post-order while traversing from all child-most nodes toward parents.
+This means all nodes in the editor graph are eligible for ranking, not only those reachable from checkout roots.
 
-Kahn’s algorithm:
-- It is a way to do topological sorting.
-- Topological sort means ordering nodes so every prerequisite appears before what depends on it.
-- Works only if there is no cycle
+Then sorting by `(rank, input_order)` returns:
 
-How Kahn’s algorithm works:
-1. Compute indegree for every node.
-2. Put all nodes with indegree 0 into a queue (or priority queue if you want deterministic tie-breaking).
-3. Repeatedly:
-   1. Remove one node from the queue and add it to output.
-   2. For each outgoing edge from that node to neighbor N, reduce indegree(N) by 1.
-   3. If indegree(N) becomes 0, push N into the queue.
-4. When done:
-   - If output contains all nodes, that is a valid topological order.
-   - If not, the graph has a cycle (some nodes never reached indegree 0).
+- `add59d2` (rank 1)
+- `62e05ba` (rank 2)
+- `a748762` (rank 3)
 
-Why indegree is the key:
-- Indegree 0 means no remaining unmet dependencies.
-- Removing a node simulates “completing” that task, which can unlock others.
-
-Tiny example:
-- Edges: A → C, B → C, C → D
-- Initial indegrees: A=0, B=0, C=2, D=1
-- Start queue: A, B
-- Pop A: C becomes 1
-- Pop B: C becomes 0, enqueue C
-- Pop C: D becomes 0, enqueue D
-- Pop D
-- Order could be A, B, C, D (or B, A, C, D depending on queue policy)
+If two commits had the same rank, the one that appeared earlier in input would come first.
 
 ## Complexity
 
 Let `n` be number of selected unique commits.
 
-- Pairwise relation discovery: `O(n^2)` comparisons.
-- Topological processing:
-  - each push/pop on ready queue: `O(log n)`
-  - overall typically `O((n + e) log n)` where `e` is number of ancestry edges.
-
-Total dominated by pairwise relation checks plus heap operations.
+- Ranking traversal is linear in the visited subgraph: `O(V + E)`.
+- Sorting selected commits is `O(n log n)`.
+- With early-exit ranking, traversal can end before visiting the full graph when selected commits are found early.
 
 ## Determinism Guarantees
 
 Determinism is achieved by:
 
 - deduping by first occurrence,
-- using step-graph-derived rank for unrelated commits,
+- deriving rank from ordered-parent traversal,
 - using `input_order` as secondary tiebreaker.
 
 So repeated runs with the same inputs and editor graph state produce the same output.
 
 ## Notes for Future Changes
 
-If behavior needs to include commits currently not represented in the editor graph,
-that must be solved before ordering (for example by changing editor graph construction).
-Ordering itself intentionally operates only on what the editor graph already contains.
+Ordering intentionally operates only on commits represented in the editor graph.
+If behavior needs to include commits not represented there, that must be solved before ordering
+(for example by changing editor graph construction).

@@ -315,9 +315,9 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
     /// the `skip_reconnect_step` is set to true.
     ///
     /// Returns an error when:
-    /// - `parents_to_disconnect` is `SelectorSet::None`
-    /// - `parents_to_disconnect` contains any parent that is not a direct parent of `target.parent`
-    /// - `children_to_disconnect` contains any child that is not a direct parent of `target.child`
+    /// - `parents_to_disconnect` is `SelectorSet::None` and `skip_reconnect_step` is false.
+    /// - `parents_to_disconnect` contains any parent that is not a direct parent of `target.parent`.
+    /// - `children_to_disconnect` contains any child that is not a direct parent of `target.child`.
     pub fn disconnect_segment_from<C, P>(
         &mut self,
         target: SegmentDelimiter<C, P>,
@@ -350,9 +350,13 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
         let parents_to_disconnect = match parents_to_disconnect {
             SelectorSet::All => None,
             SelectorSet::None => {
-                return Err(anyhow!(
-                    "Invalid parents to disconnect: SelectorSet::None is not allowed"
-                ));
+                if skip_reconnect_step {
+                    Some(Vec::new())
+                } else {
+                    return Err(anyhow!(
+                        "Invalid parents to disconnect: SelectorSet::None is not allowed"
+                    ));
+                }
             }
             SelectorSet::Some(parents) => Some(
                 parents
