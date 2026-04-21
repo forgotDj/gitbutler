@@ -1008,7 +1008,7 @@ export class FocusManager {
 		if (!element || !element.isConnected) return;
 
 		if (element.tabIndex !== -1) {
-			element.focus();
+			element.focus({ preventScroll: skipScroll });
 		} else {
 			const activeElement = document.activeElement;
 			if (activeElement instanceof HTMLElement && !element.contains(activeElement)) {
