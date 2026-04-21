@@ -1,10 +1,9 @@
-use std::{collections::HashSet, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::{Context as _, Result};
 use but_api_macros::but_api;
 use but_core::{RepositoryExt, sync::RepoExclusive};
 use but_ctx::Context;
-use but_hunk_assignment::HunkAssignmentRequest;
 use but_settings::AppSettings;
 use but_workspace::{
     commit_engine::{self, StackSegmentId},
@@ -449,95 +448,6 @@ pub fn split_branch_into_dependent_branch(
     update_workspace_commit(ctx, false)?;
 
     Ok(move_changes_result)
-}
-
-/// Uncommits the changes specified in the `diffspec`.
-///
-/// If `assign_to` is provided, the changes will be assigned to the stack
-/// specified.
-/// If `assign_to` is not provided, the changes will be unassigned.
-#[but_api(json::MoveChangesResult)]
-#[instrument(err(Debug))]
-pub fn uncommit_changes(
-    ctx: &mut Context,
-    stack_id: StackId,
-    commit_id: gix::ObjectId,
-    changes: Vec<but_core::DiffSpec>,
-    assign_to: Option<StackId>,
-) -> Result<but_workspace::legacy::MoveChangesResult> {
-    let mut guard = ctx.exclusive_worktree_access();
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::DiscardChanges),
-        guard.write_permission(),
-    );
-    // If we want to assign the changes after uncommitting, we could try to do
-    // something with the hunk headers, but this is not precise as the hunk
-    // headers might have changed from what they were like when they were
-    // committed.
-    //
-    // As such, we take all the old assignments, and all the new assignments from after the
-    // uncommit, and find the ones that are not present in the old assignments.
-    // We then convert those into assignment requests for the given stack.
-    let context_lines = ctx.settings.context_lines;
-    let before_assignments = if assign_to.is_some() {
-        let (repo, ws, mut db) = ctx.workspace_and_db_mut_with_perm(guard.read_permission())?;
-        let changes = but_hunk_assignment::assignments_with_fallback(
-            db.hunk_assignments_mut()?,
-            &repo,
-            &ws,
-            None::<Vec<but_core::TreeChange>>,
-            context_lines,
-        )?;
-        Some(changes.0)
-    } else {
-        None
-    };
-
-    let result = but_workspace::legacy::remove_changes_from_commit_in_stack(
-        ctx,
-        stack_id,
-        commit_id,
-        changes,
-        guard.write_permission(),
-    )?;
-
-    update_workspace_commit(ctx, false)?;
-
-    if let (Some(before_assignments), Some(stack_id)) = (before_assignments, assign_to) {
-        let (repo, ws, mut db) = ctx.workspace_and_db_mut_with_perm(guard.read_permission())?;
-        let (after_assignments, _) = but_hunk_assignment::assignments_with_fallback(
-            db.hunk_assignments_mut()?,
-            &repo,
-            &ws,
-            None::<Vec<but_core::TreeChange>>,
-            context_lines,
-        )?;
-
-        let before_assignments = before_assignments
-            .into_iter()
-            .filter_map(|a| a.id)
-            .collect::<HashSet<_>>();
-
-        let to_assign = after_assignments
-            .into_iter()
-            .filter(|a| a.id.is_some_and(|id| !before_assignments.contains(&id)))
-            .map(|a| HunkAssignmentRequest {
-                hunk_header: a.hunk_header,
-                path_bytes: a.path_bytes,
-                target: Some(but_hunk_assignment::HunkAssignmentTarget::Stack { stack_id }),
-            })
-            .collect::<Vec<_>>();
-
-        but_hunk_assignment::assign(
-            db.hunk_assignments_mut()?,
-            &repo,
-            &ws,
-            to_assign,
-            context_lines,
-        )?;
-    }
-
-    Ok(result)
 }
 
 /// This API allows the user to quickly "stash" a bunch of uncommitted changes - getting them out of the worktree.
