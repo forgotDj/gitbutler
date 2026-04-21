@@ -180,13 +180,13 @@ export const OperationTarget: FC<
 				render={target}
 			/>
 
-			{dropData && dropInsertionSide !== null && (
+			{dropInsertionSide !== null && (
 				<OperationTooltip
 					projectId={projectId}
 					isOperationMode={false}
 					item={item}
-					operation={dropData.operation}
-					source={dropData.source}
+					operation={dropData?.operation ?? null}
+					source={dropData?.source}
 					className={classes(
 						styles.insertionTarget,
 						pipe(
