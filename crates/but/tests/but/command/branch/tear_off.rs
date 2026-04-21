@@ -14,7 +14,7 @@ fn tear_off_by_name() -> anyhow::Result<()> {
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Unstacked branch 'C'.
+Unstacked branch C.
 
 "#]])
         .stderr_eq(str![""]);
@@ -59,7 +59,7 @@ fn tear_off_by_cli_id() -> anyhow::Result<()> {
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Unstacked branch 'C'.
+Unstacked branch C.
 
 "#]])
         .stderr_eq(str![""]);
@@ -104,7 +104,7 @@ fn tear_off_single_branch_stack_succeeds() -> anyhow::Result<()> {
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Unstacked branch 'A'.
+Unstacked branch A.
 
 "#]])
         .stderr_eq(str![""]);
