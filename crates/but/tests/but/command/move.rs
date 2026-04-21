@@ -2,7 +2,7 @@ use anyhow::Context as _;
 use snapbox::str;
 
 use crate::{
-    command::util::commit_two_files_as_two_hunks_each,
+    command::util::{commit_two_files_as_two_hunks_each, find_branch},
     utils::{CommandExt, Sandbox},
 };
 
@@ -87,6 +87,450 @@ Moved fce8ecc → after 23e1bf8
 
     // Should still have 4 commits (3 we created + initial "add A")
     assert_eq!(commits_after.as_array().unwrap().len(), 4);
+
+    Ok(())
+}
+
+#[test]
+fn move_multiple_commits_before_another_commit() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack")?;
+
+    env.setup_metadata(&["A"])?;
+
+    // Create three commits
+    commit_two_files_as_two_hunks_each(&env, "A", "a.txt", "b.txt", "first commit");
+    commit_two_files_as_two_hunks_each(&env, "A", "c.txt", "d.txt", "second commit");
+    commit_two_files_as_two_hunks_each(&env, "A", "e.txt", "f.txt", "third commit");
+
+    env.but("st")
+        .assert()
+        .success()
+        .stderr_eq(snapbox::str![])
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [unassigned changes] (no changes)
+┊
+┊╭┄g0 [A]
+┊●   23e1bf8 create e.txt and f.txt
+┊●   de41286 create c.txt and d.txt
+┊●   fce8ecc create a.txt and b.txt
+┊●   9477ae7 add A
+├╯
+┊
+┴ 0dc3733 [origin/main] 2000-01-02 add M
+
+Hint: run `but help` for all commands
+
+"#]]);
+    // Commits are ordered newest first.
+    let status_output = env.but("--json status").allow_json().output()?;
+    let status_json: serde_json::Value = serde_json::from_slice(&status_output.stdout)?;
+    let commits = &status_json["stacks"][0]["branches"][0]["commits"];
+
+    let third_commit_id = commits[0]["cliId"].as_str().unwrap();
+    let second_commit_id = commits[1]["cliId"].as_str().unwrap();
+    let first_commit_id = commits[2]["cliId"].as_str().unwrap();
+
+    env.but(format!(
+        "move {second_commit_id},{third_commit_id} {first_commit_id}"
+    ))
+    .assert()
+    .success()
+    .stdout_eq(str![[r#"
+Moved 2 commits → before fce8ecc
+
+"#]]);
+
+    let status_output = env.but("--json status").allow_json().output()?;
+    let status_json: serde_json::Value = serde_json::from_slice(&status_output.stdout)?;
+    let commits_after = &status_json["stacks"][0]["branches"][0]["commits"];
+
+    assert_eq!(commits_after.as_array().unwrap().len(), 4);
+
+    env.but("st")
+        .assert()
+        .success()
+        .stderr_eq(snapbox::str![])
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [unassigned changes] (no changes)
+┊
+┊╭┄g0 [A]
+┊●   0e08d58 create a.txt and b.txt
+┊●   7887784 create e.txt and f.txt
+┊●   078d9e6 create c.txt and d.txt
+┊●   9477ae7 add A
+├╯
+┊
+┴ 0dc3733 [origin/main] 2000-01-02 add M
+
+Hint: run `but help` for all commands
+
+"#]]);
+
+    Ok(())
+}
+
+#[test]
+fn move_multiple_commits_after_another_commit() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack")?;
+
+    env.setup_metadata(&["A"])?;
+
+    // Create three commits
+    commit_two_files_as_two_hunks_each(&env, "A", "a.txt", "b.txt", "first commit");
+    commit_two_files_as_two_hunks_each(&env, "A", "c.txt", "d.txt", "second commit");
+    commit_two_files_as_two_hunks_each(&env, "A", "e.txt", "f.txt", "third commit");
+
+    env.but("st")
+        .assert()
+        .success()
+        .stderr_eq(snapbox::str![])
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [unassigned changes] (no changes)
+┊
+┊╭┄g0 [A]
+┊●   23e1bf8 create e.txt and f.txt
+┊●   de41286 create c.txt and d.txt
+┊●   fce8ecc create a.txt and b.txt
+┊●   9477ae7 add A
+├╯
+┊
+┴ 0dc3733 [origin/main] 2000-01-02 add M
+
+Hint: run `but help` for all commands
+
+"#]]);
+    // Commits are ordered newest first.
+    let status_output = env.but("--json status").allow_json().output()?;
+    let status_json: serde_json::Value = serde_json::from_slice(&status_output.stdout)?;
+    let commits = &status_json["stacks"][0]["branches"][0]["commits"];
+
+    let third_commit_id = commits[0]["cliId"].as_str().unwrap();
+    let second_commit_id = commits[1]["cliId"].as_str().unwrap();
+    let first_commit_id = commits[2]["cliId"].as_str().unwrap();
+
+    env.but(format!(
+        "move {first_commit_id},{second_commit_id} {third_commit_id} --after"
+    ))
+    .assert()
+    .success()
+    .stdout_eq(str![[r#"
+Moved 2 commits → after 23e1bf8
+
+"#]]);
+
+    let status_output = env.but("--json status").allow_json().output()?;
+    let status_json: serde_json::Value = serde_json::from_slice(&status_output.stdout)?;
+    let commits_after = &status_json["stacks"][0]["branches"][0]["commits"];
+
+    assert_eq!(commits_after.as_array().unwrap().len(), 4);
+
+    env.but("st")
+        .assert()
+        .success()
+        .stderr_eq(snapbox::str![])
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [unassigned changes] (no changes)
+┊
+┊╭┄g0 [A]
+┊●   05b04e5 create c.txt and d.txt
+┊●   9f54aec create a.txt and b.txt
+┊●   d7e5fc7 create e.txt and f.txt
+┊●   9477ae7 add A
+├╯
+┊
+┴ 0dc3733 [origin/main] 2000-01-02 add M
+
+Hint: run `but help` for all commands
+
+"#]]);
+
+    Ok(())
+}
+
+#[test]
+fn move_multiple_commits_from_different_branches() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("three-stacks")?;
+
+    env.setup_metadata(&["A", "B", "C"])?;
+
+    env.but("st")
+        .assert()
+        .success()
+        .stderr_eq(snapbox::str![])
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [unassigned changes] (no changes)
+┊
+┊╭┄g0 [A]
+┊●   add59d2 A: 10 lines on top
+├╯
+┊
+┊╭┄h0 [B]
+┊●   a748762 B: another 10 lines at the bottom
+┊●   62e05ba B: 10 lines at the bottom
+├╯
+┊
+┊╭┄i0 [C]
+┊●   930563a C: add another 10 lines to new file
+┊●   68a2fc3 C: add 10 lines to new file
+┊●   984fd1c C: new file with 10 lines
+├╯
+┊
+┴ 8f0d338 [origin/main] 2000-01-02 base
+
+Hint: run `but help` for all commands
+
+"#]]);
+
+    let status_before = status_json(&env)?;
+
+    let branch_a = find_branch(&status_before, "A")?;
+    let branch_b = find_branch(&status_before, "B")?;
+    let branch_c = find_branch(&status_before, "C")?;
+
+    let a_commits = branch_a["commits"]
+        .as_array()
+        .context("Missing commits for branch A")?;
+    let b_commits = branch_b["commits"]
+        .as_array()
+        .context("Missing commits for branch B")?;
+    let c_commits = branch_c["commits"]
+        .as_array()
+        .context("Missing commits for branch C")?;
+
+    let mut source_commit_ids = Vec::with_capacity(4);
+    source_commit_ids.push(
+        a_commits[0]["cliId"]
+            .as_str()
+            .context("Missing cliId for A commit")?,
+    );
+    for commit in c_commits {
+        source_commit_ids.push(
+            commit["cliId"]
+                .as_str()
+                .context("Missing cliId for C commit")?,
+        );
+    }
+
+    let b_tip_commit_id = b_commits[0]["cliId"]
+        .as_str()
+        .context("Missing cliId for B tip commit")?;
+
+    env.but(format!(
+        "move {} {b_tip_commit_id}",
+        source_commit_ids.join(",")
+    ))
+    .assert()
+    .success()
+    .stdout_eq(str![[r#"
+Moved 4 commits → before [..]
+
+"#]]);
+
+    let status_after = status_json(&env)?;
+    let branch_b_after = find_branch(&status_after, "B")?;
+    let b_commits_after = branch_b_after["commits"]
+        .as_array()
+        .context("Missing commits for branch B after move")?;
+
+    assert_eq!(
+        b_commits_after.len(),
+        6,
+        "B should contain its original 2 commits plus the 4 moved commits"
+    );
+
+    let b_messages_after = b_commits_after
+        .iter()
+        .map(|commit| {
+            commit["message"]
+                .as_str()
+                .map(|message| message.trim_end())
+                .context("Missing commit message")
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+
+    assert_eq!(
+        b_messages_after,
+        vec![
+            "B: another 10 lines at the bottom",
+            "A: 10 lines on top",
+            "C: add another 10 lines to new file",
+            "C: add 10 lines to new file",
+            "C: new file with 10 lines",
+            "B: 10 lines at the bottom"
+        ]
+    );
+
+    env.but("st")
+        .assert()
+        .success()
+        .stderr_eq(snapbox::str![])
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [unassigned changes] (no changes)
+┊
+┊╭┄g0 [A] (no commits)
+├╯
+┊
+┊╭┄h0 [B]
+┊●   c399e25 B: another 10 lines at the bottom
+┊●   72227c2 A: 10 lines on top
+┊●   c26fa8e C: add another 10 lines to new file
+┊●   640a48b C: add 10 lines to new file
+┊●   fc29de6 C: new file with 10 lines
+┊●   62e05ba B: 10 lines at the bottom
+├╯
+┊
+┊╭┄i0 [C] (no commits)
+├╯
+┊
+┴ 8f0d338 [origin/main] 2000-01-02 base
+
+Hint: run `but help` for all commands
+
+"#]]);
+
+    Ok(())
+}
+
+#[test]
+fn move_multiple_commits_from_different_branches_after() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("three-stacks")?;
+
+    env.setup_metadata(&["A", "B", "C"])?;
+
+    env.but("st")
+        .assert()
+        .success()
+        .stderr_eq(snapbox::str![])
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [unassigned changes] (no changes)
+┊
+┊╭┄g0 [A]
+┊●   add59d2 A: 10 lines on top
+├╯
+┊
+┊╭┄h0 [B]
+┊●   a748762 B: another 10 lines at the bottom
+┊●   62e05ba B: 10 lines at the bottom
+├╯
+┊
+┊╭┄i0 [C]
+┊●   930563a C: add another 10 lines to new file
+┊●   68a2fc3 C: add 10 lines to new file
+┊●   984fd1c C: new file with 10 lines
+├╯
+┊
+┴ 8f0d338 [origin/main] 2000-01-02 base
+
+Hint: run `but help` for all commands
+
+"#]]);
+
+    let status_before = status_json(&env)?;
+
+    let branch_a = find_branch(&status_before, "A")?;
+    let branch_b = find_branch(&status_before, "B")?;
+    let branch_c = find_branch(&status_before, "C")?;
+
+    let a_commits = branch_a["commits"]
+        .as_array()
+        .context("Missing commits for branch A")?;
+    let b_commits = branch_b["commits"]
+        .as_array()
+        .context("Missing commits for branch B")?;
+    let c_commits = branch_c["commits"]
+        .as_array()
+        .context("Missing commits for branch C")?;
+
+    let mut source_commit_ids = Vec::with_capacity(4);
+    source_commit_ids.push(
+        a_commits[0]["cliId"]
+            .as_str()
+            .context("Missing cliId for A commit")?,
+    );
+    for commit in c_commits {
+        source_commit_ids.push(
+            commit["cliId"]
+                .as_str()
+                .context("Missing cliId for C commit")?,
+        );
+    }
+
+    let b_tip_commit_id = b_commits[0]["cliId"]
+        .as_str()
+        .context("Missing cliId for B tip commit")?;
+
+    env.but(format!(
+        "move {} {b_tip_commit_id} --after",
+        source_commit_ids.join(",")
+    ))
+    .assert()
+    .success()
+    .stdout_eq(str![[r#"
+Moved 4 commits → after a748762
+
+"#]]);
+
+    let status_after = status_json(&env)?;
+    let branch_b_after = find_branch(&status_after, "B")?;
+    let b_commits_after = branch_b_after["commits"]
+        .as_array()
+        .context("Missing commits for branch B after move")?;
+
+    assert_eq!(
+        b_commits_after.len(),
+        6,
+        "B should contain its original 2 commits plus the 4 moved commits"
+    );
+
+    let b_messages_after = b_commits_after
+        .iter()
+        .map(|commit| {
+            commit["message"]
+                .as_str()
+                .map(|message| message.trim_end())
+                .context("Missing commit message")
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+
+    assert_eq!(
+        b_messages_after,
+        vec![
+            "A: 10 lines on top",
+            "C: add another 10 lines to new file",
+            "C: add 10 lines to new file",
+            "C: new file with 10 lines",
+            "B: another 10 lines at the bottom",
+            "B: 10 lines at the bottom"
+        ]
+    );
+
+    env.but("st")
+        .assert()
+        .success()
+        .stderr_eq(snapbox::str![])
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [unassigned changes] (no changes)
+┊
+┊╭┄g0 [A] (no commits)
+├╯
+┊
+┊╭┄h0 [B]
+┊●   a42a7dc A: 10 lines on top
+┊●   48bd306 C: add another 10 lines to new file
+┊●   99b8c8b C: add 10 lines to new file
+┊●   b665de5 C: new file with 10 lines
+┊●   a748762 B: another 10 lines at the bottom
+┊●   62e05ba B: 10 lines at the bottom
+├╯
+┊
+┊╭┄i0 [C] (no commits)
+├╯
+┊
+┴ 8f0d338 [origin/main] 2000-01-02 base
+
+Hint: run `but help` for all commands
+
+"#]]);
 
     Ok(())
 }

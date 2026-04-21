@@ -133,8 +133,8 @@ const registerIpcHandlers = (): void => {
 	);
 	ipcMain.handle(
 		liteIpcChannels.commitMove,
-		(_e, { projectId, subjectCommitId, relativeTo, side, dryRun }: CommitMoveParams) =>
-			commitMove(projectId, subjectCommitId, relativeTo, side, dryRun),
+		(_e, { projectId, subjectCommitIds, relativeTo, side, dryRun }: CommitMoveParams) =>
+			commitMove(projectId, subjectCommitIds, relativeTo, side, dryRun),
 	);
 	ipcMain.handle(
 		liteIpcChannels.commitSquash,

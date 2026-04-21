@@ -281,7 +281,7 @@ pub(super) fn move_commit_to_branch(
     drop(repo);
     but_api::commit::move_commit::commit_move(
         ctx,
-        subject_commit_id,
+        vec![subject_commit_id],
         RelativeTo::Reference(target_branch_name),
         InsertSide::Below,
         DryRun::No,
@@ -297,7 +297,7 @@ pub(super) fn move_commit_to_commit(
 ) -> anyhow::Result<but_api::commit::types::CommitMoveResult> {
     but_api::commit::move_commit::commit_move(
         ctx,
-        subject_commit_id,
+        vec![subject_commit_id],
         RelativeTo::Commit(target_commit_id),
         insert_side,
         DryRun::No,

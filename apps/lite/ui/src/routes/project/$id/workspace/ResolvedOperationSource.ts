@@ -336,7 +336,7 @@ const getCommitTargetMoveOperation = ({
 		Match.tags({
 			Commit: (source) =>
 				commitMoveOperation({
-					subjectCommitId: source.commitId,
+					subjectCommitIds: [source.commitId],
 					relativeTo: { type: "commit", subject: commitId },
 					side,
 					dryRun: false,
@@ -388,7 +388,7 @@ const getBranchTargetOperation = ({
 				}),
 			Commit: ({ commitId }) =>
 				commitMoveOperation({
-					subjectCommitId: commitId,
+					subjectCommitIds: [commitId],
 					relativeTo: {
 						type: "referenceBytes",
 						subject: branchRef,

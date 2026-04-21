@@ -11,10 +11,28 @@ pub(crate) fn handle(
 ) -> anyhow::Result<()> {
     let mut guard = ctx.exclusive_worktree_access();
     let id_map = IdMap::new_from_context(ctx, None, guard.read_permission())?;
-    let source_id =
-        resolve_single(&id_map, ctx, source, "Source").context("Failed to move commit.")?;
+    let source_ids =
+        resolve_many(&id_map, ctx, source, "Source").context("Failed to move commit.")?;
     let target_id =
         resolve_single(&id_map, ctx, target, "Target").context("Failed to move commit.")?;
+
+    if source_ids.is_empty() {
+        anyhow::bail!("Source must include at least one selector")
+    }
+
+    if source_ids.len() > 1 {
+        return super::commit::r#move::handle_multiple_resolved_with_perm(
+            ctx,
+            out,
+            &source_ids,
+            &target_id,
+            after,
+            guard.write_permission(),
+        )
+        .context("Failed to move commit.");
+    }
+
+    let source_id = source_ids[0].clone();
 
     let branch_route = matches!(
         (&source_id, &target_id),
@@ -95,4 +113,18 @@ fn resolve_single(
         );
     }
     Ok(matches[0].clone())
+}
+
+fn resolve_many(
+    id_map: &IdMap,
+    ctx: &but_ctx::Context,
+    selectors: &str,
+    kind: &str,
+) -> anyhow::Result<Vec<CliId>> {
+    selectors
+        .split(',')
+        .map(str::trim)
+        .filter(|selector| !selector.is_empty())
+        .map(|selector| resolve_single(id_map, ctx, selector, kind))
+        .collect()
 }

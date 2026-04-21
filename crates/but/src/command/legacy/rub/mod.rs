@@ -662,7 +662,7 @@ impl<'a> MoveCommitToBranchOperation<'a> {
         let target_full_name = FullName::try_from(format!("refs/heads/{}", self.name))?;
         but_api::commit::move_commit::commit_move(
             ctx,
-            self.oid,
+            vec![self.oid],
             RelativeTo::Reference(target_full_name),
             InsertSide::Below,
             DryRun::No,
