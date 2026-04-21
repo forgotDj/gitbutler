@@ -320,50 +320,6 @@ pub fn branch_details(
     Ok(details)
 }
 
-/// Create a new commit with `message` on top of `parent_id` that contains all `changes`.
-/// If `parent_id` is `None`, this API will infer the parent to be the head of the provided `stack_branch_name`.
-/// `stack_id` is the stack that contains the `parent_id`, and it's fatal if that's not the case.
-/// All `changes` are meant to be relative to the worktree.
-/// Note that submodules *must* be provided as diffspec without hunks, as attempting to generate
-/// hunks would fail.
-/// `stack_branch_name` is the short name of the reference that the UI knows is present in a given segment.
-/// It is necessary to insert the new commit into the right bucket.
-#[but_api(commit_engine::ui::CreateCommitOutcome)]
-#[instrument(err(Debug))]
-pub fn create_commit_from_worktree_changes(
-    ctx: &mut but_ctx::Context,
-    stack_id: StackId,
-    parent_id: Option<HexHash>,
-    worktree_changes: Vec<but_core::DiffSpec>,
-    message: String,
-    stack_branch_name: String,
-) -> Result<commit_engine::CreateCommitOutcome> {
-    let mut guard = ctx.exclusive_worktree_access();
-    let snapshot_tree = ctx.prepare_snapshot(guard.read_permission());
-
-    let outcome = but_workspace::legacy::commit_engine::create_commit_simple(
-        ctx,
-        stack_id,
-        parent_id.map(|id| id.into()),
-        worktree_changes,
-        message.clone(),
-        stack_branch_name,
-        guard.write_permission(),
-    );
-
-    let _ = snapshot_tree.and_then(|snapshot_tree| {
-        ctx.snapshot_commit_creation(
-            snapshot_tree,
-            outcome.as_ref().err(),
-            message.to_owned(),
-            None,
-            guard.write_permission(),
-        )
-    });
-
-    outcome
-}
-
 /// Amend a commit with the given changes and return the number of rejected files
 pub(crate) fn amend_commit_and_count_failures(
     stack_id: StackId,
