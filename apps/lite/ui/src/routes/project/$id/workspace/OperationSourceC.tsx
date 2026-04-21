@@ -12,10 +12,10 @@ import {
 	type OperationSource,
 } from "./OperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
-import dragAndDropStyles from "./OperationDragAndDrop.module.css";
+import styles from "./OperationSourceC.module.css";
 
 const DragPreview = ({ children }: { children: ReactNode }) => (
-	<div className={dragAndDropStyles.dragPreview}>{children}</div>
+	<div className={styles.dragPreview}>{children}</div>
 );
 
 export const OperationSourceC: FC<
@@ -48,7 +48,7 @@ export const OperationSourceC: FC<
 		render,
 		ref: dragRef,
 		props: mergeProps<"div">(props, {
-			className: classes(isActive && dragAndDropStyles.activeSource),
+			className: classes(isActive && styles.activeSource),
 		}),
 	});
 };
