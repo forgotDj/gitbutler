@@ -14,6 +14,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::{VirtualBranchesExt, actions::Verify, r#virtual::IsCommitIntegrated};
 
+/// Return the legacy stack identified by `stack_id`.
+///
+/// This keeps legacy virtual-branches access encapsulated within
+/// `gitbutler-branch-actions` for callers that still operate on
+/// `gitbutler_stack::Stack`.
+pub fn get_stack(ctx: &Context, stack_id: StackId) -> Result<Stack> {
+    ctx.virtual_branches().get_stack(stack_id)
+}
+
 /// Adds a new "series/branch" to the Stack.
 /// This is in fact just creating a new  GitButler patch reference (head) and associates it with the stack.
 /// The name cannot be the same as existing git references or existing patch references.

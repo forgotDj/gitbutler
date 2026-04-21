@@ -23,7 +23,7 @@
 //!   - otherwise, it can be applied anywhere
 #![expect(
     deprecated,
-    reason = "calls but_workspace::legacy::stacks_v3; VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+    reason = "calls but_workspace::legacy::stacks_v3, stack_ext::StackExt, and legacy stack methods; these should be replaced with ctx.workspace_* helpers"
 )]
 
 use anyhow::{Context as _, Result, bail};
@@ -34,8 +34,7 @@ use but_ctx::{
 };
 use but_rebase::Rebase;
 use but_workspace::legacy::{StacksFilter, stack_ext::StackExt, stacks_v3};
-use gitbutler_branch_actions::update_workspace_commit_with_vb_state;
-use gitbutler_stack::VirtualBranchesHandle;
+use gitbutler_branch_actions::{stack::get_stack, update_workspace_commit};
 use gitbutler_workspace::branch_trees::{WorkspaceState, update_uncommitted_changes};
 use gix::{ObjectId, Repository};
 use serde::Serialize;
@@ -126,8 +125,7 @@ pub fn cherry_apply(
     };
 
     let repo = ctx.repo.get()?.clone().for_tree_diffing()?;
-    let vb_state = VirtualBranchesHandle::new(ctx.project_data_dir());
-    let mut stack = vb_state.get_stack(target)?;
+    let mut stack = get_stack(ctx, target)?;
     let mut steps = stack.as_rebase_steps(ctx)?;
     // Insert before the head references (len - 1)
     steps.insert(
@@ -148,7 +146,7 @@ pub fn cherry_apply(
         update_uncommitted_changes(ctx, old_workspace, new_workspace, perm)?;
     }
 
-    update_workspace_commit_with_vb_state(&vb_state, ctx, false)?;
+    update_workspace_commit(ctx, false)?;
 
     Ok(())
 }
