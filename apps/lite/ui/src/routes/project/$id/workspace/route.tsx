@@ -672,12 +672,12 @@ const Preview: FC<{
 			ChangeFile: ({ path }) => (
 				<ChangesPreview operationMode={operationMode} projectId={projectId} selectedPath={path} />
 			),
-			Commit: (selectedItem) => (
+			Commit: ({ commitId, stackId }) => (
 				<CommitPreview
 					operationMode={operationMode}
 					projectId={projectId}
-					commitId={selectedItem.commitId}
-					stackId={selectedItem.stackId}
+					commitId={commitId}
+					stackId={stackId}
 					editable
 				/>
 			),
