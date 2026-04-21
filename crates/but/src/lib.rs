@@ -1475,12 +1475,48 @@ async fn match_subcommand(
                 },
                 out,
             )?;
+            let branch_name = resolve_legacy_top_level_apply_branch_name(&ctx, &branch_name)?;
             command::branch::apply(ctx, &branch_name, out)
                 .context("Failed to apply branch.")
                 .emit_metrics(metrics_ctx)
                 .show_root_cause_error_then_exit_without_destructors(output)
         }
     }
+}
+
+/// Resolve a legacy top-level `but apply` branch name to the narrowest directly applicable ref.
+///
+/// This preserves exact-name behavior while restoring the removed alias that lets a bare branch
+/// name map to a unique remote-tracking branch. When multiple remotes provide the same branch
+/// identity, the original input is preserved so the shared apply command keeps its current error.
+#[cfg(feature = "legacy")]
+fn resolve_legacy_top_level_apply_branch_name(
+    ctx: &but_ctx::Context,
+    branch_name: &str,
+) -> Result<String> {
+    let repo = ctx.repo.get()?;
+    if repo.try_find_reference(branch_name)?.is_some() {
+        return Ok(branch_name.to_owned());
+    }
+
+    let mut remote_matches = repo
+        .remote_names()
+        .iter()
+        .filter_map(|remote_name| {
+            let full_name = format!("refs/remotes/{remote_name}/{branch_name}");
+            repo.try_find_reference(&full_name)
+                .transpose()
+                .map(|reference| reference.map(|_| full_name))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if remote_matches.len() == 1 {
+        return Ok(remote_matches
+            .pop()
+            .expect("exactly one remote match exists"));
+    }
+
+    Ok(branch_name.to_owned())
 }
 
 fn is_not_in_git_repository_error(err: &anyhow::Error) -> bool {
