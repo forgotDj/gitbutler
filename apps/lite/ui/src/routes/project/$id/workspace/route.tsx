@@ -470,6 +470,60 @@ const FileDiff: FC<{
 		Match.exhaustive,
 	);
 
+const ChangesFileDiffList: FC<{
+	changes: Array<TreeChange>;
+	operationMode: OperationMode | null;
+	projectId: string;
+	fileParent?: FileParent;
+	stackId?: string;
+	hunkDependencyDiffsByPath?: Map<string, Array<HunkDependencyDiff>>;
+}> = ({ changes, operationMode, projectId, fileParent, stackId, hunkDependencyDiffsByPath }) => {
+	const treeChangeDiffs = useSuspenseQueries({
+		queries: changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
+	}).map((result) => result.data);
+	const changesWithDiffs = pipe(changes, Array.zip(treeChangeDiffs));
+
+	return changesWithDiffs.length === 0 ? (
+		<div>No file changes.</div>
+	) : (
+		<ul>
+			{changesWithDiffs.map(([change, diff]) => {
+				const heading = <h4>{change.path}</h4>;
+				const source = Match.value(fileParent).pipe(
+					Match.tag("Change", () => changeFileItem({ path: change.path })),
+					Match.tag("Commit", ({ commitId }) =>
+						stackId !== undefined
+							? commitFileItem({ stackId, commitId, path: change.path })
+							: undefined,
+					),
+					Match.when(undefined, () => undefined),
+					Match.exhaustive,
+				);
+
+				return (
+					<li key={change.path}>
+						{source ? (
+							<OperationSourceC operationMode={operationMode} projectId={projectId} source={source}>
+								{heading}
+							</OperationSourceC>
+						) : (
+							heading
+						)}
+						<FileDiff
+							operationMode={operationMode}
+							projectId={projectId}
+							change={change}
+							fileParent={fileParent}
+							hunkDependencyDiffs={hunkDependencyDiffsByPath?.get(change.path)}
+							diff={diff}
+						/>
+					</li>
+				);
+			})}
+		</ul>
+	);
+};
+
 const ChangesPreview: FC<{
 	operationMode: OperationMode | null;
 	projectId: string;
@@ -484,41 +538,16 @@ const ChangesPreview: FC<{
 			? worktreeChanges.changes.find((candidate) => candidate.path === selectedPath)
 			: undefined;
 	const changes = selectedChange ? [selectedChange] : worktreeChanges.changes;
-	const treeChangeDiffs = useSuspenseQueries({
-		queries: changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
-	}).map((result) => result.data);
-	const changesWithDiffs = pipe(changes, Array.zip(treeChangeDiffs));
 
 	return (
 		<div>
-			{changesWithDiffs.length === 0 ? (
-				<div>No file changes.</div>
-			) : (
-				<ul>
-					{changesWithDiffs.map(([change, diff]) => {
-						const source = changeFileItem({ path: change.path });
-						return (
-							<li key={change.path}>
-								<OperationSourceC
-									operationMode={operationMode}
-									projectId={projectId}
-									source={source}
-								>
-									<h4>{change.path}</h4>
-								</OperationSourceC>
-								<FileDiff
-									operationMode={operationMode}
-									projectId={projectId}
-									change={change}
-									fileParent={changeFileParent}
-									hunkDependencyDiffs={hunkDependencyDiffsByPath.get(change.path)}
-									diff={diff}
-								/>
-							</li>
-						);
-					})}
-				</ul>
-			)}
+			<ChangesFileDiffList
+				changes={changes}
+				fileParent={changeFileParent}
+				hunkDependencyDiffsByPath={hunkDependencyDiffsByPath}
+				operationMode={operationMode}
+				projectId={projectId}
+			/>
 		</div>
 	);
 };
@@ -538,10 +567,7 @@ const CommitPreview: FC<{
 			? commitDetails.changes.find((candidate) => candidate.path === selectedPath)
 			: undefined;
 	const changes = selectedChange ? [selectedChange] : commitDetails.changes;
-	const treeChangeDiffs = useSuspenseQueries({
-		queries: changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
-	}).map((result) => result.data);
-	const changesWithDiffs = pipe(changes, Array.zip(treeChangeDiffs));
+	const fileParent = commitFileParent({ commitId });
 
 	return (
 		<div>
@@ -559,33 +585,13 @@ const CommitPreview: FC<{
 					)}
 				</>
 			)}
-			{changesWithDiffs.length === 0 ? (
-				<div>No file changes.</div>
-			) : (
-				<ul>
-					{changesWithDiffs.map(([change, diff]) => {
-						const source = commitFileItem({ stackId, commitId, path: change.path });
-						return (
-							<li key={change.path}>
-								<OperationSourceC
-									operationMode={operationMode}
-									projectId={projectId}
-									source={source}
-								>
-									<h4>{change.path}</h4>
-								</OperationSourceC>
-								<FileDiff
-									operationMode={operationMode}
-									projectId={projectId}
-									change={change}
-									fileParent={commitFileParent({ commitId })}
-									diff={diff}
-								/>
-							</li>
-						);
-					})}
-				</ul>
-			)}
+			<ChangesFileDiffList
+				changes={changes}
+				fileParent={fileParent}
+				operationMode={operationMode}
+				projectId={projectId}
+				stackId={stackId}
+			/>
 		</div>
 	);
 };
@@ -607,32 +613,16 @@ const BranchPreview: FC<{
 			branchDiffQueryOptions({ projectId, branch: decodedBranchRef }),
 		],
 	});
-	const treeChangeDiffs = useSuspenseQueries({
-		queries: branchDiff.changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
-	}).map((result) => result.data);
-	const changesWithDiffs = pipe(branchDiff.changes, Array.zip(treeChangeDiffs));
 
 	return (
 		<div>
 			<h3>{branchDetails.name}</h3>
 			{branchDetails.prNumber != null && <p>PR #{branchDetails.prNumber}</p>}
-			{changesWithDiffs.length === 0 ? (
-				<div>No file changes.</div>
-			) : (
-				<ul>
-					{changesWithDiffs.map(([change, diff]) => (
-						<li key={change.path}>
-							<h4>{change.path}</h4>
-							<FileDiff
-								operationMode={operationMode}
-								projectId={projectId}
-								change={change}
-								diff={diff}
-							/>
-						</li>
-					))}
-				</ul>
-			)}
+			<ChangesFileDiffList
+				changes={branchDiff.changes}
+				operationMode={operationMode}
+				projectId={projectId}
+			/>
 		</div>
 	);
 };
