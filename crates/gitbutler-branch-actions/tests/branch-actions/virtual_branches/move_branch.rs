@@ -156,22 +156,7 @@ fn move_branch_with_dependency_rejected() {
         "alpha\nbravo_modified\ncharlie\n",
     )
     .unwrap();
-    let mut guard = ctx.exclusive_worktree_access();
-    but_workspace::legacy::commit_engine::create_commit_simple(
-        ctx,
-        source_id,
-        None,
-        vec![but_core::DiffSpec {
-            previous_path: None,
-            path: "shared.txt".into(),
-            hunk_headers: vec![],
-        }],
-        "top: modify shared.txt".to_string(),
-        "source-top".to_string(),
-        guard.write_permission(),
-    )
-    .unwrap();
-    drop(guard);
+    create_commit(ctx, source_id, "top: modify shared.txt").unwrap();
 
     // Destination stack: empty.
     let mut guard = ctx.exclusive_worktree_access();

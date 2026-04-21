@@ -4,10 +4,11 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::Context as _;
-use bstr::BString;
+use anyhow::{Context as _, bail};
+use bstr::{BString, ByteSlice as _};
 use but_core::{TreeChange, UnifiedPatch, ref_metadata::StackId};
 use but_ctx::Context;
+use but_rebase::graph_rebase::{Editor, LookupStep as _};
 use but_workspace::legacy::{CommmitSplitOutcome, ui::StackEntryNoOpt};
 use gitbutler_branch_actions::{BranchManagerExt, update_workspace_commit};
 use gitbutler_oplog::{
@@ -687,10 +688,8 @@ fn move_file_changes(
 ) -> Result<Vec<(gix::ObjectId, gix::ObjectId)>, anyhow::Error> {
     let source_commit_id = gix::ObjectId::from_str(&params.source_commit_id)
         .map(|id| find_the_right_commit_id(id, commit_mapping))?;
-    let source_stack_id = StackId::from_str(&params.source_stack_id)?;
     let destination_commit_id = gix::ObjectId::from_str(&params.destination_commit_id)
         .map(|id| find_the_right_commit_id(id, commit_mapping))?;
-    let destination_stack_id = StackId::from_str(&params.destination_stack_id)?;
 
     let changes = params
         .files
@@ -702,26 +701,32 @@ fn move_file_changes(
         })
         .collect::<Vec<_>>();
 
+    let context_lines = ctx.settings.context_lines;
+    let mut meta = ctx.meta()?;
     let mut guard = ctx.exclusive_worktree_access();
-    let result = but_workspace::legacy::move_changes_between_commits(
-        ctx,
-        source_stack_id,
+    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(guard.write_permission())?;
+    let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+    let outcome = but_workspace::commit::move_changes_between_commits(
+        editor,
         source_commit_id,
-        destination_stack_id,
         destination_commit_id,
         changes,
-        guard.write_permission(),
+        context_lines,
     )?;
-
-    // TODO(ctx): remove this, with the rebase engine this is done above
-    gitbutler_branch_actions::update_workspace_commit(ctx, false)?;
+    let replaced_commits = outcome
+        .rebase
+        .materialize_without_checkout()?
+        .history
+        .commit_mappings()
+        .into_iter()
+        .collect::<Vec<_>>();
 
     // Update the commit mapping with the new commit ids.
-    for (old_commit_id, new_commit_id) in result.replaced_commits.clone().iter() {
+    for (old_commit_id, new_commit_id) in replaced_commits.iter() {
         commit_mapping.insert(*old_commit_id, *new_commit_id);
     }
 
-    Ok(result.replaced_commits)
+    Ok(replaced_commits)
 }
 
 pub struct GetCommitDetails;
@@ -1022,14 +1027,24 @@ pub fn squash_commits(
     let squashed_commit =
         gitbutler_branch_actions::squash_commits(ctx, stack_id, source_ids, destination_id)?;
 
-    let new_commit_id = gitbutler_branch_actions::update_commit_message(
-        ctx,
-        stack_id,
-        squashed_commit,
-        message.as_str(),
-    )?;
+    if message.is_empty() {
+        bail!("commit message can not be empty");
+    }
 
-    // Update the commit mapping with the new commit id.
+    let mut guard = ctx.exclusive_worktree_access();
+    let mut meta = ctx.meta()?;
+    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(guard.write_permission())?;
+    let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+    let (rebase, edited_commit_selector) =
+        but_workspace::commit::reword(editor, squashed_commit, message.as_bytes().as_bstr())?;
+    let new_commit_id = rebase.lookup_pick(edited_commit_selector)?;
+    let materialized = rebase.materialize()?;
+
+    for (old_commit_id, new_commit_id) in materialized.history.commit_mappings() {
+        commit_mapping.insert(old_commit_id, new_commit_id);
+    }
+
+    // Keep the original destination commit id pointing at the final squashed + reworded commit.
     commit_mapping.insert(destination_id, new_commit_id);
 
     Ok(new_commit_id)

@@ -5,12 +5,12 @@ use std::{fs, path, path::PathBuf, str::FromStr};
 use but_ctx::{Context, ProjectHandleOrLegacyProjectId, RepoOpenMode};
 use but_error::Marker;
 use but_project_handle::storage_path_config_key;
+use but_rebase::graph_rebase::LookupStep as _;
 use but_settings::AppSettings;
 use but_testsupport::gix_testtools::{Creation, scripted_fixture_writable_with_args};
 use gitbutler_branch::BranchCreateRequest;
 use gitbutler_branch_actions::GITBUTLER_WORKSPACE_COMMIT_TITLE;
 use gitbutler_oplog::{OplogExt, SnapshotExt};
-use gitbutler_project::{self as projects};
 use gitbutler_reference::{LocalRefname, Refname};
 use gitbutler_stack::StackId;
 use tempfile::{TempDir, tempdir};
@@ -314,7 +314,6 @@ fn maybe_find_branch_by_refname<'repo>(
     }
 }
 
-mod amend;
 mod apply_virtual_branch;
 mod create_virtual_branch_from_branch;
 mod init;
@@ -327,7 +326,6 @@ mod save_and_unapply_virtual_branch;
 mod set_base_branch;
 mod unapply_without_saving_virtual_branch;
 mod undo_commit;
-mod update_commit_message;
 mod workspace_migration;
 
 /// Create a raw git commit parented to `parent` that sets `filename` to `content`,
@@ -414,7 +412,7 @@ pub fn create_commit(
 ) -> anyhow::Result<gix::ObjectId> {
     let mut guard = ctx.exclusive_worktree_access();
 
-    let repo = ctx.repo.get()?;
+    let repo = ctx.repo.get()?.clone();
     let worktree = but_core::diff::worktree_changes(&repo)?;
     let file_changes: Vec<but_core::DiffSpec> =
         worktree.changes.iter().map(Into::into).collect::<Vec<_>>();
@@ -437,16 +435,29 @@ pub fn create_commit(
         .and_then(|s| s.heads.first().map(|h| h.name.to_string()))
         .ok_or(anyhow::anyhow!("Could not find associated reference name"))?;
 
-    let outcome = but_workspace::legacy::commit_engine::create_commit_simple(
-        ctx,
-        stack_id,
-        None,
-        file_changes,
-        message.to_string(),
-        stack_branch_name,
-        guard.write_permission(),
-    );
-
+    let mut meta = ctx.meta()?;
+    ctx.reload_repo_and_invalidate_workspace(guard.write_permission())?;
+    let full_ref_name: gix::refs::FullName =
+        format!("refs/heads/{stack_branch_name}").try_into()?;
+    let outcome = {
+        let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(guard.write_permission())?;
+        let editor = but_rebase::graph_rebase::Editor::create(&mut ws, &mut meta, &repo)?;
+        but_workspace::commit::commit_create(
+            editor,
+            file_changes,
+            but_rebase::graph_rebase::mutate::RelativeToRef::Reference(full_ref_name.as_ref()),
+            but_rebase::graph_rebase::mutate::InsertSide::Below,
+            message,
+            ctx.settings.context_lines,
+        )
+        .and_then(|outcome| {
+            let selector = outcome.commit_selector;
+            let materialized = outcome.rebase.materialize()?;
+            selector
+                .map(|selector| materialized.lookup_pick(selector))
+                .transpose()
+        })
+    };
     let _ = snapshot_tree.and_then(|snapshot_tree| {
         ctx.snapshot_commit_creation(
             snapshot_tree,
@@ -456,7 +467,7 @@ pub fn create_commit(
             guard.write_permission(),
         )
     });
-    outcome?
-        .new_commit
-        .ok_or(anyhow::anyhow!("No new commit created"))
+    let new_commit = outcome?.ok_or(anyhow::anyhow!("No new commit created"))?;
+    ctx.reload_repo_and_invalidate_workspace(guard.write_permission())?;
+    Ok(new_commit)
 }

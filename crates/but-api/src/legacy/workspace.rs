@@ -1,11 +1,9 @@
-use std::{collections::HashSet, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::{Context as _, Result};
 use but_api_macros::but_api;
-use but_core::{RepositoryExt, sync::RepoExclusive};
+use but_core::RepositoryExt;
 use but_ctx::Context;
-use but_hunk_assignment::HunkAssignmentRequest;
-use but_settings::AppSettings;
 use but_workspace::{
     commit_engine::{self, StackSegmentId},
     legacy::{StacksFilter, ui::StackEntry},
@@ -320,112 +318,6 @@ pub fn branch_details(
     Ok(details)
 }
 
-/// Create a new commit with `message` on top of `parent_id` that contains all `changes`.
-/// If `parent_id` is `None`, this API will infer the parent to be the head of the provided `stack_branch_name`.
-/// `stack_id` is the stack that contains the `parent_id`, and it's fatal if that's not the case.
-/// All `changes` are meant to be relative to the worktree.
-/// Note that submodules *must* be provided as diffspec without hunks, as attempting to generate
-/// hunks would fail.
-/// `stack_branch_name` is the short name of the reference that the UI knows is present in a given segment.
-/// It is necessary to insert the new commit into the right bucket.
-#[but_api(commit_engine::ui::CreateCommitOutcome)]
-#[instrument(err(Debug))]
-pub fn create_commit_from_worktree_changes(
-    ctx: &mut but_ctx::Context,
-    stack_id: StackId,
-    parent_id: Option<HexHash>,
-    worktree_changes: Vec<but_core::DiffSpec>,
-    message: String,
-    stack_branch_name: String,
-) -> Result<commit_engine::CreateCommitOutcome> {
-    let mut guard = ctx.exclusive_worktree_access();
-    let snapshot_tree = ctx.prepare_snapshot(guard.read_permission());
-
-    let outcome = but_workspace::legacy::commit_engine::create_commit_simple(
-        ctx,
-        stack_id,
-        parent_id.map(|id| id.into()),
-        worktree_changes,
-        message.clone(),
-        stack_branch_name,
-        guard.write_permission(),
-    );
-
-    let _ = snapshot_tree.and_then(|snapshot_tree| {
-        ctx.snapshot_commit_creation(
-            snapshot_tree,
-            outcome.as_ref().err(),
-            message.to_owned(),
-            None,
-            guard.write_permission(),
-        )
-    });
-
-    outcome
-}
-
-/// Amend all `changes` to `commit_id`, keeping its commit message exactly as is.
-/// `stack_id` is the stack that contains the `commit_id`, and it's fatal if that's not the case.
-/// All `changes` are meant to be relative to the worktree.
-/// Note that submodules *must* be provided as diffspec without hunks, as attempting to generate
-/// hunks would fail.
-#[but_api(commit_engine::ui::CreateCommitOutcome)]
-#[instrument(err(Debug))]
-pub fn amend_commit_from_worktree_changes(
-    ctx: &mut Context,
-    stack_id: StackId,
-    commit_id: gix::ObjectId,
-    worktree_changes: Vec<but_core::DiffSpec>,
-) -> Result<commit_engine::CreateCommitOutcome> {
-    let mut guard = ctx.exclusive_worktree_access();
-    let repo = ctx.repo.get()?;
-    let data_dir = ctx.project_data_dir();
-    let outcome = amend_commit_and_count_failures(
-        stack_id,
-        commit_id,
-        worktree_changes,
-        guard.write_permission(),
-        &repo,
-        &data_dir,
-    )?;
-
-    // Refresh the workspace commit so `gitbutler/workspace` HEAD stays in sync
-    // with the rewritten branch commits. Without this, tools that inspect HEAD
-    // (e.g. pre-push hooks that stash against it) see a stale synthetic commit.
-    update_workspace_commit(ctx, false)?;
-
-    Ok(outcome)
-}
-
-/// Amend a commit with the given changes and return the number of rejected files
-pub(crate) fn amend_commit_and_count_failures(
-    stack_id: StackId,
-    commit_id: gix::ObjectId,
-    worktree_changes: Vec<but_core::DiffSpec>,
-    perm: &mut RepoExclusive,
-    repo: &gix::Repository,
-    data_dir: &std::path::Path,
-) -> anyhow::Result<commit_engine::CreateCommitOutcome> {
-    let app_settings = AppSettings::load_from_default_path_creating_without_customization()?;
-    let outcome = but_workspace::legacy::commit_engine::create_commit_and_update_refs_with_project(
-        repo,
-        data_dir,
-        Some(stack_id),
-        commit_engine::Destination::AmendCommit {
-            commit_id,
-            // TODO: Expose this in the UI for 'edit message' functionality.
-            new_message: None,
-        },
-        worktree_changes,
-        app_settings.context_lines,
-        perm,
-    )?;
-    if !outcome.rejected_specs.is_empty() {
-        tracing::warn!(?outcome.rejected_specs, "Failed to commit at least one hunk");
-    }
-    Ok(outcome)
-}
-
 /// Discard all worktree changes that match the specs in `worktree_changes`.
 ///
 /// If whole files should be discarded, be sure to not pass any hunks
@@ -452,37 +344,6 @@ pub fn discard_worktree_changes(
         tracing::warn!(?refused, "Failed to discard at least one hunk");
     }
     Ok(refused)
-}
-
-#[but_api(json::MoveChangesResult)]
-#[instrument(err(Debug))]
-pub fn move_changes_between_commits(
-    ctx: &mut Context,
-    source_stack_id: StackId,
-    source_commit_id: gix::ObjectId,
-    destination_stack_id: StackId,
-    destination_commit_id: gix::ObjectId,
-    changes: Vec<but_core::DiffSpec>,
-) -> Result<but_workspace::legacy::MoveChangesResult> {
-    let mut guard = ctx.exclusive_worktree_access();
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::AmendCommit),
-        guard.write_permission(),
-    );
-    let result = but_workspace::legacy::move_changes_between_commits(
-        ctx,
-        source_stack_id,
-        source_commit_id,
-        destination_stack_id,
-        destination_commit_id,
-        changes,
-        guard.write_permission(),
-    )?;
-
-    // TODO(ctx): remove this, with the rebase engine this is done above - needs at least manual testing to be sure
-    update_workspace_commit(ctx, false)?;
-
-    Ok(result)
 }
 
 #[but_api(json::MoveChangesResult)]
@@ -557,95 +418,6 @@ pub fn split_branch_into_dependent_branch(
     update_workspace_commit(ctx, false)?;
 
     Ok(move_changes_result)
-}
-
-/// Uncommits the changes specified in the `diffspec`.
-///
-/// If `assign_to` is provided, the changes will be assigned to the stack
-/// specified.
-/// If `assign_to` is not provided, the changes will be unassigned.
-#[but_api(json::MoveChangesResult)]
-#[instrument(err(Debug))]
-pub fn uncommit_changes(
-    ctx: &mut Context,
-    stack_id: StackId,
-    commit_id: gix::ObjectId,
-    changes: Vec<but_core::DiffSpec>,
-    assign_to: Option<StackId>,
-) -> Result<but_workspace::legacy::MoveChangesResult> {
-    let mut guard = ctx.exclusive_worktree_access();
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::DiscardChanges),
-        guard.write_permission(),
-    );
-    // If we want to assign the changes after uncommitting, we could try to do
-    // something with the hunk headers, but this is not precise as the hunk
-    // headers might have changed from what they were like when they were
-    // committed.
-    //
-    // As such, we take all the old assignments, and all the new assignments from after the
-    // uncommit, and find the ones that are not present in the old assignments.
-    // We then convert those into assignment requests for the given stack.
-    let context_lines = ctx.settings.context_lines;
-    let before_assignments = if assign_to.is_some() {
-        let (repo, ws, mut db) = ctx.workspace_and_db_mut_with_perm(guard.read_permission())?;
-        let changes = but_hunk_assignment::assignments_with_fallback(
-            db.hunk_assignments_mut()?,
-            &repo,
-            &ws,
-            None::<Vec<but_core::TreeChange>>,
-            context_lines,
-        )?;
-        Some(changes.0)
-    } else {
-        None
-    };
-
-    let result = but_workspace::legacy::remove_changes_from_commit_in_stack(
-        ctx,
-        stack_id,
-        commit_id,
-        changes,
-        guard.write_permission(),
-    )?;
-
-    update_workspace_commit(ctx, false)?;
-
-    if let (Some(before_assignments), Some(stack_id)) = (before_assignments, assign_to) {
-        let (repo, ws, mut db) = ctx.workspace_and_db_mut_with_perm(guard.read_permission())?;
-        let (after_assignments, _) = but_hunk_assignment::assignments_with_fallback(
-            db.hunk_assignments_mut()?,
-            &repo,
-            &ws,
-            None::<Vec<but_core::TreeChange>>,
-            context_lines,
-        )?;
-
-        let before_assignments = before_assignments
-            .into_iter()
-            .filter_map(|a| a.id)
-            .collect::<HashSet<_>>();
-
-        let to_assign = after_assignments
-            .into_iter()
-            .filter(|a| a.id.is_some_and(|id| !before_assignments.contains(&id)))
-            .map(|a| HunkAssignmentRequest {
-                hunk_header: a.hunk_header,
-                path_bytes: a.path_bytes,
-                target: Some(but_hunk_assignment::HunkAssignmentTarget::Stack { stack_id }),
-            })
-            .collect::<Vec<_>>();
-
-        but_hunk_assignment::assign(
-            db.hunk_assignments_mut()?,
-            &repo,
-            &ws,
-            to_assign,
-            context_lines,
-        )?;
-    }
-
-    Ok(result)
 }
 
 /// This API allows the user to quickly "stash" a bunch of uncommitted changes - getting them out of the worktree.
