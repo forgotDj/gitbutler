@@ -36,6 +36,7 @@ import type {
 	CommitRewordResult,
 	CommitInsertBlankResult,
 	RejectionReason,
+	CommitUndoResult,
 } from "@gitbutler/but-sdk";
 
 export type BranchParams = {
@@ -469,12 +470,20 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.BranchListing),
 			],
 		}),
-		uncommit: build.mutation<void, { projectId: string; stackId: string; commitId: string }>({
+		uncommit: build.mutation<
+			CommitUndoResult,
+			{ projectId: string; stackId: string; commitId: string }
+		>({
 			extraOptions: {
-				command: "undo_commit",
+				command: "commit_undo",
 				actionName: "Uncommit",
 			},
-			query: (args) => args,
+			query: ({ projectId, stackId, commitId }) => ({
+				projectId,
+				subjectCommitId: commitId,
+				assignTo: stackId,
+				dryRun: false,
+			}),
 			invalidatesTags: (_result, _error, args) => [
 				invalidatesItem(ReduxTag.BranchChanges, args.stackId),
 				invalidatesList(ReduxTag.WorktreeChanges),

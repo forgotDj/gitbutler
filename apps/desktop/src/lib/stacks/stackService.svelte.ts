@@ -561,12 +561,7 @@ export class StackService {
 		return this.backendApi.endpoints.newBranch.useMutation();
 	}
 
-	async uncommit(args: {
-		projectId: string;
-		stackId: string;
-		branchName: string;
-		commitId: string;
-	}) {
+	async uncommit(args: { projectId: string; stackId: string; commitId: string }) {
 		const result = await this.backendApi.endpoints.uncommit.mutate(args);
 		const selection = this.uiState.lane(args.stackId).selection;
 		if (args.commitId === selection.current?.commitId) {
