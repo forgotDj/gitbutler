@@ -541,9 +541,8 @@ const CommitPreview: FC<{
 	projectId: string;
 	commitId: string;
 	selectedPath?: string | null;
-	editable: boolean;
 	stackId: string;
-}> = ({ operationMode, projectId, commitId, selectedPath, editable, stackId }) => {
+}> = ({ operationMode, projectId, commitId, selectedPath, stackId }) => {
 	const { data: commitDetails } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
@@ -581,23 +580,19 @@ const CommitPreview: FC<{
 						const source = commitFileItem({ stackId, commitId, path: change.path });
 						return (
 							<li key={change.path}>
-								{editable ? (
-									<OperationSourceC
-										operationMode={operationMode}
-										projectId={projectId}
-										source={source}
-									>
-										<h4>{change.path}</h4>
-									</OperationSourceC>
-								) : (
+								<OperationSourceC
+									operationMode={operationMode}
+									projectId={projectId}
+									source={source}
+								>
 									<h4>{change.path}</h4>
-								)}
+								</OperationSourceC>
 								<FileDiff
 									operationMode={operationMode}
 									projectId={projectId}
 									change={change}
 									fileParent={commitFileParent({ commitId })}
-									editable={editable}
+									editable
 									diff={diff}
 								/>
 							</li>
@@ -678,7 +673,6 @@ const Preview: FC<{
 					projectId={projectId}
 					commitId={commitId}
 					stackId={stackId}
-					editable
 				/>
 			),
 			CommitFile: ({ commitId, path, stackId }) => (
@@ -688,7 +682,6 @@ const Preview: FC<{
 					commitId={commitId}
 					stackId={stackId}
 					selectedPath={path}
-					editable
 				/>
 			),
 			BaseCommit: () => null,
