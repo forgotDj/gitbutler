@@ -260,45 +260,7 @@ fn workspace_commit_should_not_be_allowed_to_conflict() -> Result<()> {
 }
 
 #[test]
-fn workspace_commit_should_not_be_allowed_to_have_non_reference_parents() -> Result<()> {
-    let (repo, _tmpdir, mut meta) = fixture_writable_with_signing("workspace-signed")?;
-
-    let before = visualize_commit_graph_all(&repo)?;
-    insta::assert_snapshot!(before, @"
-    * 8795f47 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
-    * dd72792 (main, c) c
-    * e5aa7b5 (b) b
-    * 3bfeb52 (a) a
-    * b6e2f57 (base) base
-    ");
-
-    let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
-
-    let mut ws = graph.into_workspace()?;
-    let mut editor = Editor::create(&mut ws, &mut *meta, &repo)?;
-
-    // Replace both 'main' and 'c' references with Step::None. The commit 'c'
-    // has two references pointing to it, so we need to remove both for the
-    // workspace commit's parent path to traverse through None and hit
-    // Pick(c), violating the parents_must_be_references constraint.
-    let main_ref = editor.select_reference("refs/heads/main".try_into()?)?;
-    editor.replace(main_ref, Step::None)?;
-    let c_ref = editor.select_reference("refs/heads/c".try_into()?)?;
-    editor.replace(c_ref, Step::None)?;
-
-    // We should see an error saying the workspace commit has parents that are
-    // not references
-    insta::assert_debug_snapshot!(editor.rebase(), @r#"
-    Err(
-        "Commit 8795f479823adfeb8c692cf953ded9a57c17530c has parents that are not referenced",
-    )
-    "#);
-
-    Ok(())
-}
-
-#[test]
-fn workspace_commit_with_deleted_branch_ref_relaxes_parents_must_be_references() -> Result<()> {
+fn workspace_commit_with_deleted_branch_ref_rebases_successfully() -> Result<()> {
     let (repo, _tmpdir, mut meta) = fixture_writable("workspace-with-empty-stack")?;
 
     add_stack_with_segments(
@@ -359,23 +321,8 @@ fn workspace_commit_with_deleted_branch_ref_relaxes_parents_must_be_references()
     let mut ws = graph.into_workspace()?;
     let editor = Editor::create(&mut ws, &mut *meta, &repo)?;
 
-    // The workspace commit's first parent (the old stack-1 tip) no longer
-    // has a Reference node in front of it.  The fix in Editor::create
-    // detects this and relaxes parents_must_be_references so the rebase
-    // does not error with "parents not referenced".
-    let ws_id = repo.rev_parse_single("gitbutler/workspace")?;
-    let ws_sel = editor.select_commit(ws_id.detach())?;
-    let step = editor.lookup_step(ws_sel)?;
-    if let Step::Pick(ref pick) = step {
-        assert!(
-            !pick.parents_must_be_references,
-            "parents_must_be_references should have been relaxed for the workspace commit"
-        );
-    } else {
-        panic!("workspace commit step should be a Pick");
-    }
-
-    // The rebase should succeed.
+    // The rebase should succeed even though the workspace commit has a
+    // parent that no longer has a corresponding Reference node.
     let outcome = editor.rebase()?;
     let _materialized = outcome.materialize()?;
 

@@ -42,9 +42,6 @@ pub struct Pick {
     /// If set to false, a rebase will fail if this commit results in a
     /// conflicted state.
     pub conflictable: bool,
-    /// If set to true, a rebase will fail if not all of the parents (outgoing
-    /// nodes) are references.
-    pub parents_must_be_references: bool,
     /// Controls under what circumstances the commit is cherry-picked.
     pub pick_mode: PickMode,
     /// Controls whether the resulting commit is signed.
@@ -67,7 +64,6 @@ impl Pick {
             id,
             preserved_parents: None,
             conflictable: true,
-            parents_must_be_references: false,
             pick_mode: PickMode::IfChanged,
             sign_commit: SignCommit::IfSignCommitsEnabled,
             exclude_from_tracking: false,
@@ -90,7 +86,6 @@ impl Pick {
             id,
             preserved_parents: None,
             conflictable: false,
-            parents_must_be_references: true,
             pick_mode: PickMode::IfChanged,
             sign_commit: SignCommit::No,
             exclude_from_tracking: false,
@@ -452,7 +447,6 @@ mod test {
                 id: object_id,
                 preserved_parents: None,
                 conflictable: false,
-                parents_must_be_references: true,
                 pick_mode: PickMode::IfChanged,
                 sign_commit: SignCommit::No,
                 exclude_from_tracking: false
@@ -472,7 +466,6 @@ mod test {
                 id: object_id,
                 preserved_parents: None,
                 conflictable: true,
-                parents_must_be_references: false,
                 pick_mode: PickMode::IfChanged,
                 sign_commit: SignCommit::IfSignCommitsEnabled,
                 exclude_from_tracking: false
