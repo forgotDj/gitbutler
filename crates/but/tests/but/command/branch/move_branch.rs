@@ -46,7 +46,7 @@ Hint: run `but help` for all commands
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Moved branch 'A' on top of 'C'.
+Moved branch A on top of C.
 
 "#]])
         .stderr_eq(str![""]);
@@ -122,7 +122,7 @@ Hint: run `but help` for all commands
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Moved branch 'A' on top of 'C'.
+Moved branch A on top of C.
 
 "#]])
         .stderr_eq(str![""]);
@@ -198,7 +198,7 @@ Hint: run `but help` for all commands
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Moved branch 'A' on top of 'B'.
+Moved branch A on top of B.
 
 "#]])
         .stderr_eq(str![""]);
@@ -274,7 +274,7 @@ Hint: run `but help` for all commands
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Moved branch 'B' on top of 'A'.
+Moved branch B on top of A.
 
 "#]])
         .stderr_eq(str![""]);
@@ -351,7 +351,7 @@ Hint: run `but help` for all commands
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Moved branch 'B' on top of 'C'.
+Moved branch B on top of C.
 
 "#]])
         .stderr_eq(str![""]);
@@ -421,7 +421,7 @@ Hint: run `but help` for all commands
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Moved branch 'B' on top of 'A'.
+Moved branch B on top of A.
 
 "#]])
         .stderr_eq(str![""]);
@@ -486,7 +486,7 @@ Hint: run `but help` for all commands
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Moved branch 'A' on top of 'B'.
+Moved branch A on top of B.
 
 "#]])
         .stderr_eq(str![""]);
@@ -560,7 +560,7 @@ Hint: run `but diff` to see uncommitted changes and `but stage <file>` to stage 
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Moved branch 'B' on top of 'A'.
+Moved branch B on top of A.
 
 "#]])
         .stderr_eq(str![""]);
@@ -645,7 +645,7 @@ Hint: run `but diff` to see uncommitted changes and `but stage <file>` to stage 
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Moved branch 'B' on top of 'A'.
+Moved branch B on top of A.
 
 "#]])
         .stderr_eq(str![""]);

@@ -1,10 +1,10 @@
 use anyhow::bail;
 use but_api::json::HexHash;
 use but_core::{ref_metadata::StackId, sync::RepoExclusive};
-use colored::Colorize;
 
 use crate::{
     CliId, IdMap,
+    theme::{self, Paint},
     utils::{Confirm, ConfirmDefault, OutputChannel, shorten_object_id},
 };
 
@@ -55,6 +55,8 @@ pub fn new(
     branch_name: Option<String>,
     anchor: Option<String>,
 ) -> Result<(), anyhow::Error> {
+    let t = theme::get();
+
     let mut guard = ctx.exclusive_worktree_access();
     let id_map = IdMap::new_from_context(ctx, None, guard.read_permission())?;
     // Get branch name or use canned name
@@ -132,17 +134,17 @@ pub fn new(
         if let Some(anchor_name) = anchor_display {
             writeln!(
                 out,
-                "{} {} stacked on {}",
-                "✓ Created branch".green(),
-                branch_name.yellow(),
-                anchor_name.dimmed()
+                "{} Created branch {} stacked on {}",
+                t.sym().success,
+                t.local_branch.paint(branch_name),
+                t.hint.paint(anchor_name),
             )?;
         } else {
             writeln!(
                 out,
-                "{} {}",
-                "✓ Created branch".green(),
-                branch_name.yellow()
+                "{} Created branch {}",
+                t.sym().success,
+                t.local_branch.paint(branch_name),
             )?;
         }
     } else if let Some(out) = out.for_shell() {
@@ -210,10 +212,14 @@ fn confirm_branch_deletion(
     out: &mut OutputChannel,
     perm: &mut RepoExclusive,
 ) -> Result<(), anyhow::Error> {
+    let t = theme::get();
     if !force
         && let Some(mut inout) = out.prepare_for_terminal_input()
         && inout.confirm(
-            format!("Are you sure you want to delete branch '{branch_name}'?"),
+            format!(
+                "Are you sure you want to delete branch {}?",
+                t.local_branch.paint(branch_name)
+            ),
             ConfirmDefault::No,
         )? == Confirm::No
     {
@@ -223,7 +229,7 @@ fn confirm_branch_deletion(
     but_api::legacy::stack::remove_branch_with_perm(ctx, sid, branch_name.to_owned(), perm)?;
 
     if let Some(out) = out.for_human() {
-        writeln!(out, "Deleted branch {branch_name}")?;
+        writeln!(out, "Deleted branch {}", t.local_branch.paint(branch_name))?;
     }
     Ok(())
 }

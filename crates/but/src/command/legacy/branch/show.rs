@@ -2,11 +2,11 @@ use super::super::FileChange;
 use bstr::ByteSlice;
 use but_ctx::Context;
 use but_llm::ChatMessage;
-use colored::Colorize;
 use tracing::instrument;
 
 use crate::{
     command::legacy::workspace_target,
+    theme::{self, Paint},
     utils::{OutputChannel, shorten_object_id},
 };
 
@@ -489,6 +489,9 @@ fn output_human(
     out: &mut dyn std::fmt::Write,
 ) -> anyhow::Result<()> {
     use std::fmt::Write;
+
+    let t = theme::get();
+
     // Build output as a string first
     let mut buf = String::new();
 
@@ -499,7 +502,7 @@ fn output_human(
             .map(|r| format!("{}{}", r.unit_symbol, r.number))
             .collect::<Vec<String>>()
             .join(", ");
-        format!(" ({review_numbers})").blue().to_string()
+        t.info.paint(format!(" ({review_numbers})"))
     } else {
         String::new()
     };
@@ -507,10 +510,10 @@ fn output_human(
     writeln!(
         buf,
         "{} {}{} ({} commits ahead)",
-        "Branch:".bold(),
-        branch_name.green(),
+        t.important.paint("Branch:"),
+        t.local_branch.paint(branch_name),
         reviews_str,
-        commits.len().to_string().cyan()
+        t.info.paint(commits.len().to_string()),
     )?;
     writeln!(buf)?;
 
@@ -518,12 +521,17 @@ fn output_human(
         writeln!(buf, "No commits ahead of base branch.")?;
     } else {
         for (i, commit) in commits.iter().enumerate() {
-            writeln!(buf, "{} {}", commit.short_sha.yellow(), commit.message)?;
+            writeln!(
+                buf,
+                "{} {}",
+                t.commit_id.paint(&commit.short_sha),
+                commit.message
+            )?;
             writeln!(
                 buf,
                 "    {} by {}",
-                format_timestamp(commit.timestamp).dimmed(),
-                commit.author_name.dimmed()
+                t.hint.paint(format_timestamp(commit.timestamp)),
+                t.hint.paint(&commit.author_name)
             )?;
 
             // Show diff stats
@@ -536,17 +544,17 @@ fn output_human(
                 commit.deletions,
                 if commit.deletions == 1 { "" } else { "s" }
             );
-            writeln!(buf, "    {}", stats_str.dimmed())?;
+            writeln!(buf, "    {}", t.hint.paint(stats_str))?;
 
             // Show per-file changes if available
             if !commit.files.is_empty() {
                 writeln!(buf)?;
                 for file in &commit.files {
                     let status_color = match file.status.as_str() {
-                        "added" => file.path.green(),
-                        "deleted" => file.path.red(),
-                        "modified" => file.path.yellow(),
-                        _ => file.path.normal(),
+                        "added" => t.addition.paint(&file.path),
+                        "deleted" => t.deletion.paint(&file.path),
+                        "modified" => t.modification.paint(&file.path),
+                        _ => file.path.to_string(),
                     };
 
                     let change_str = if file.status == "added" {
@@ -575,9 +583,9 @@ fn output_human(
     if !unassigned_files.is_empty() {
         writeln!(buf)?;
         writeln!(buf)?;
-        writeln!(buf, "{}", "Unstaged Files:".bold())?;
+        writeln!(buf, "{}", t.important.paint("Unassigned Files:"))?;
         for file in unassigned_files {
-            writeln!(buf, "  {}", file.yellow())?;
+            writeln!(buf, "  {}", t.attention.paint(file))?;
         }
     }
 
@@ -585,23 +593,28 @@ fn output_human(
     if !reviews.is_empty() {
         writeln!(buf)?;
         writeln!(buf)?;
-        writeln!(buf, "{}", "Reviews:".bold())?;
+        writeln!(buf, "{}", t.important.paint("Reviews:"))?;
         for review in reviews {
             writeln!(buf)?;
             writeln!(
                 buf,
                 "  {} {}{}",
-                "PR/MR:".dimmed(),
+                t.hint.paint("PR/MR:"),
                 review.unit_symbol,
                 review.number
             )?;
-            writeln!(buf, "  {} {}", "Title:".dimmed(), review.title)?;
-            writeln!(buf, "  {} {}", "URL:".dimmed(), review.html_url.cyan())?;
+            writeln!(buf, "  {} {}", t.hint.paint("Title:"), review.title)?;
+            writeln!(
+                buf,
+                "  {} {}",
+                t.hint.paint("URL:"),
+                t.link.paint(&review.html_url)
+            )?;
 
             if let Some(body) = &review.body
                 && !body.is_empty()
             {
-                writeln!(buf, "  {}", "Description:".dimmed())?;
+                writeln!(buf, "  {}", t.hint.paint("Description:"))?;
                 // Indent each line of the description
                 for line in body.lines() {
                     writeln!(buf, "    {line}")?;
@@ -609,7 +622,12 @@ fn output_human(
             }
 
             if review.draft {
-                writeln!(buf, "  {} {}", "Status:".dimmed(), "Draft".yellow())?;
+                writeln!(
+                    buf,
+                    "  {} {}",
+                    t.hint.paint("Status:"),
+                    t.attention.paint("Draft")
+                )?;
             }
         }
     }
@@ -618,7 +636,7 @@ fn output_human(
     if let Some(summary) = ai_summary {
         writeln!(buf)?;
         writeln!(buf)?;
-        writeln!(buf, "{}", "AI Summary:".bold().cyan())?;
+        writeln!(buf, "{}", t.info.paint("AI Summary:"))?;
         writeln!(buf, "{summary}")?;
         writeln!(buf)?;
     }
@@ -631,15 +649,15 @@ fn output_human(
             writeln!(
                 buf,
                 "{} {}",
-                "Merge Check:".bold(),
-                "Merges cleanly into upstream".green()
+                t.important.paint("Merge Check:"),
+                t.success.paint("Merges cleanly into upstream")
             )?;
         } else {
             writeln!(
                 buf,
                 "{} {}",
-                "Merge Check:".bold(),
-                "Conflicts detected".red().bold()
+                t.important.paint("Merge Check:"),
+                t.error.paint("Conflicts detected"),
             )?;
             writeln!(buf)?;
             writeln!(
@@ -660,18 +678,23 @@ fn output_human(
             writeln!(buf)?;
 
             for file in &check.conflicting_files {
-                writeln!(buf, "  {}", file.path.yellow().bold())?;
+                writeln!(buf, "  {}", t.attention.paint(&file.path))?;
 
                 // Show branch commits that modified this file
                 if !file.branch_commits.is_empty() {
                     writeln!(buf, "    Modified by this branch:")?;
                     for commit in &file.branch_commits {
-                        writeln!(buf, "      {} {}", commit.short_sha.cyan(), commit.message)?;
+                        writeln!(
+                            buf,
+                            "      {} {}",
+                            t.commit_id.paint(&commit.short_sha),
+                            commit.message
+                        )?;
                         writeln!(
                             buf,
                             "        {} by {}",
-                            format_timestamp(commit.timestamp).dimmed(),
-                            commit.author_name.dimmed()
+                            t.hint.paint(format_timestamp(commit.timestamp)),
+                            t.hint.paint(&commit.author_name)
                         )?;
                     }
                     writeln!(buf)?;
@@ -684,14 +707,14 @@ fn output_human(
                         writeln!(
                             buf,
                             "      {} {}",
-                            commit.short_sha.magenta(),
+                            t.commit_id.paint(&commit.short_sha),
                             commit.message
                         )?;
                         writeln!(
                             buf,
                             "        {} by {}",
-                            format_timestamp(commit.timestamp).dimmed(),
-                            commit.author_name.dimmed()
+                            t.hint.paint(format_timestamp(commit.timestamp)),
+                            t.hint.paint(&commit.author_name)
                         )?;
                     }
                     writeln!(buf)?;

@@ -362,7 +362,7 @@ Hint: run `but help` for all commands
 "#]]);
 
     env.but("move A C").assert().success().stdout_eq(str![[r#"
-Moved branch 'A' on top of 'C'.
+Moved branch A on top of C.
 
 "#]]);
 
@@ -443,7 +443,7 @@ Hint: run `but help` for all commands
         .assert()
         .success()
         .stdout_eq(str![[r#"
-Moved branch 'A' on top of 'C'.
+Moved branch A on top of C.
 
 "#]]);
 
@@ -513,7 +513,7 @@ Hint: run `but help` for all commands
 "#]]);
 
     env.but("move C zz").assert().success().stdout_eq(str![[r#"
-Unstacked branch 'C'.
+Unstacked branch C.
 
 "#]]);
 

@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
 use but_ctx::Context;
-use colored::Colorize;
 use gitbutler_branch_actions::BranchListingFilter;
 
-use crate::{command::legacy::workspace_target, utils::OutputChannel};
+use crate::{
+    command::legacy::workspace_target,
+    theme::{self, Paint},
+    utils::OutputChannel,
+};
 
 #[expect(clippy::too_many_arguments)]
 pub fn list(
@@ -209,7 +212,7 @@ pub fn list(
     } else if let Some(out) = out.for_human() {
         // Print applied branches section with header
         if !applied_stacks.is_empty() {
-            writeln!(out, "{}", "Applied Branches".green())?;
+            writeln!(out, "Applied branches")?;
             print_applied_branches_table(
                 &applied_stacks,
                 &branch_review_map,
@@ -544,6 +547,8 @@ fn print_applied_branches_table(
 ) -> Result<(), anyhow::Error> {
     use crate::tui::{Table, table::Cell};
 
+    let t = theme::get();
+
     if applied_stacks.is_empty() {
         return Ok(());
     }
@@ -583,38 +588,60 @@ fn print_applied_branches_table(
             };
 
             // Type column
-            let type_str = "active".green().to_string();
+            let type_str = "active".to_string();
 
             // Ahead column
             let ahead_str = commits_ahead_map
                 .and_then(|map| map.get(&branch.name.to_string()))
-                .map(|count| format!("↑{count}").bright_cyan().to_string())
+                .map(|count| t.info.paint(format!("↑{count}")))
                 .unwrap_or_default();
 
             // Merge status indicator
             let merge_status_str = if let Some(map) = merge_status_map {
                 match map.get(&branch.name.to_string()) {
-                    Some(true) => "✓ ".green().to_string(),
-                    Some(false) => "✗ ".red().to_string(),
+                    Some(true) => format!("{} ", t.sym().success),
+                    Some(false) => format!("{} ", t.sym().error),
                     None => String::new(),
                 }
             } else {
                 String::new()
             };
 
+            let painted_branch_name = t.local_branch.paint(branch.name.to_string());
+
             // Branch name with tree prefix and merge status
             let branch_with_prefix = if is_single_branch {
-                format!("{}{}{}", merge_status_str, "*".green(), branch.name)
+                format!(
+                    "{}{}{}",
+                    merge_status_str,
+                    t.hint.paint("*"),
+                    painted_branch_name
+                )
             } else if let (Some(first), Some(last)) = (first_branch, last_branch) {
                 if branch.name == first.name {
-                    format!("{}{}{}", merge_status_str, "*-".green(), branch.name)
+                    format!(
+                        "{}{}{}",
+                        merge_status_str,
+                        t.hint.paint("*-"),
+                        painted_branch_name
+                    )
                 } else if branch.name == last.name {
-                    format!("{}{}{}", merge_status_str, "└─".green(), branch.name)
+                    format!(
+                        "{}{}{}",
+                        merge_status_str,
+                        t.hint.paint("└─"),
+                        painted_branch_name
+                    )
                 } else {
-                    format!("{}{}{}", merge_status_str, "├─".green(), branch.name)
+                    format!(
+                        "{}{}{}",
+                        merge_status_str,
+                        t.hint.paint("├─"),
+                        painted_branch_name
+                    )
                 }
             } else {
-                format!("{}{}", merge_status_str, branch.name)
+                format!("{merge_status_str}{painted_branch_name}")
             };
 
             // Get PR/review info
@@ -625,7 +652,7 @@ fn print_applied_branches_table(
                     .map(|r| format!("{}{}", r.unit_symbol, r.number))
                     .collect::<Vec<String>>()
                     .join(", ");
-                format!(" ({review_numbers})").blue().to_string()
+                t.info.paint(format!(" ({review_numbers})"))
             } else {
                 String::new()
             };
@@ -636,8 +663,8 @@ fn print_applied_branches_table(
                 Cell::new(type_str),
                 Cell::new(branch_str),
                 Cell::new(ahead_str),
-                Cell::new(date_str.dimmed().to_string()),
-                Cell::new(author_str.dimmed().to_string()),
+                Cell::new(t.hint.paint(date_str)),
+                Cell::new(t.hint.paint(author_str)),
             ]);
         }
     }
@@ -654,6 +681,7 @@ fn print_branches_table(
     out: &mut (dyn std::fmt::Write + 'static),
 ) -> Result<(), anyhow::Error> {
     use crate::tui::{Table, table::Cell};
+    let t = theme::get();
 
     if branches.is_empty() {
         return Ok(());
@@ -673,24 +701,17 @@ fn print_branches_table(
     let mut table = Table::new(headers);
 
     for branch in branches {
-        // Type column
-        let type_str = if branch.has_local {
-            "local".normal().to_string()
-        } else {
-            "remote".dimmed().to_string()
-        };
-
         // Ahead column
         let ahead_str = commits_ahead_map
             .and_then(|map| map.get(&branch.name.to_string()))
-            .map(|count| format!("↑{count}").bright_cyan().to_string())
+            .map(|count| t.info.paint(format!("↑{count}")).to_string())
             .unwrap_or_default();
 
         // Merge status indicator
         let merge_status_str = if let Some(map) = merge_status_map {
             match map.get(&branch.name.to_string()) {
-                Some(true) => "✓ ".green().to_string(),
-                Some(false) => "✗ ".red().to_string(),
+                Some(true) => format!("{} ", t.sym().success),
+                Some(false) => format!("{} ", t.sym().error),
                 None => String::new(),
             }
         } else {
@@ -716,19 +737,30 @@ fn print_branches_table(
                 .map(|r| format!("{}{}", r.unit_symbol, r.number))
                 .collect::<Vec<String>>()
                 .join(", ");
-            format!(" ({review_numbers})").blue().to_string()
+            t.info.paint(format!(" ({review_numbers})"))
         } else {
             String::new()
         };
 
-        let branch_str = format!("{}{}{}", merge_status_str, branch.name, reviews_str);
+        let (type_str, branch_name) = if branch.has_local {
+            (
+                "local".to_string(),
+                t.local_branch.paint(branch.name.to_string()),
+            )
+        } else {
+            (
+                t.hint.paint("remote"),
+                t.remote_branch.paint(branch.name.to_string()),
+            )
+        };
+        let branch_str = format!("{merge_status_str}{branch_name}{reviews_str}");
 
         table.add_row(vec![
             Cell::new(type_str),
             Cell::new(branch_str),
             Cell::new(ahead_str),
-            Cell::new(date_str.dimmed().to_string()),
-            Cell::new(author_str.dimmed().to_string()),
+            Cell::new(t.hint.paint(date_str)),
+            Cell::new(t.hint.paint(author_str)),
         ]);
     }
 
