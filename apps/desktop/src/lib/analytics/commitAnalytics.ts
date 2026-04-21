@@ -145,9 +145,11 @@ export class CommitAnalytics {
 
 	private getLanesWithAssignments(stacks: Stack[], assignments: HunkAssignment[]): Stack[] {
 		const assignedStacks = new Set<string>();
-		assignments
-			.filter((assignment) => assignment.stackId !== null)
-			.forEach((assignment) => assignedStacks.add(assignment.stackId!));
+		assignments.forEach((assignment) => {
+			if (assignment.stackId !== null) {
+				assignedStacks.add(assignment.stackId);
+			}
+		});
 
 		return stacks.filter((stack) => stack.id && assignedStacks.has(stack.id));
 	}
