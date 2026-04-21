@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    path::Path,
-};
+use std::collections::{BTreeMap, HashMap};
 
 use bstr::ByteSlice;
 use but_api_macros::but_api;
@@ -26,8 +23,7 @@ use itertools::Itertools;
 use tracing::instrument;
 
 use crate::{
-    commit::insert_blank::commit_insert_blank_only_impl,
-    legacy::workspace::amend_commit_and_count_failures,
+    commit::amend::commit_amend_only_impl, commit::insert_blank::commit_insert_blank_only_impl,
 };
 use but_core::DryRun;
 
@@ -43,8 +39,6 @@ use but_core::DryRun;
 #[instrument(err(Debug))]
 pub fn absorb(ctx: &mut Context, absorption_plan: Vec<CommitAbsorption>) -> anyhow::Result<usize> {
     let mut guard = ctx.exclusive_worktree_access();
-    let repo = ctx.repo.get()?;
-    let data_dir = ctx.project_data_dir();
     // Create a snapshot before performing absorb operations
     // This allows the user to undo if needed
     let _snapshot = ctx
@@ -54,8 +48,7 @@ pub fn absorb(ctx: &mut Context, absorption_plan: Vec<CommitAbsorption>) -> anyh
         )
         .ok(); // Ignore errors for snapshot creation
 
-    let total_rejected =
-        absorb_with_perm(absorption_plan, guard.write_permission(), &repo, &data_dir)?;
+    let total_rejected = absorb_with_perm(ctx, absorption_plan, guard.write_permission())?;
 
     // Refresh the workspace commit so `gitbutler/workspace` HEAD stays in sync
     // with the rewritten branch commits. Without this, tools that inspect HEAD
@@ -66,19 +59,18 @@ pub fn absorb(ctx: &mut Context, absorption_plan: Vec<CommitAbsorption>) -> anyh
 }
 
 /// Absorb the changes described by `absorption_plan` using the exclusive repository
-/// access granted by `perm`, applying the updates against `repo` and using `data_dir`
-/// for project data needed during commit amendment and rebasing.
+/// access granted by `perm`, applying the updates through the modern commit amend API.
 ///
 /// Returns the total amount of rejected diff specs.
 pub fn absorb_with_perm(
+    ctx: &mut Context,
     absorption_plan: Vec<CommitAbsorption>,
     perm: &mut RepoExclusive,
-    repo: &gix::Repository,
-    data_dir: &Path,
 ) -> anyhow::Result<usize> {
     // Apply each group to its target commit and track failures
     let mut total_rejected = 0;
     let mut commit_map = CommitMap::default();
+    let context_lines = ctx.settings.context_lines;
 
     for absorption in absorption_plan {
         let diff_specs = convert_assignments_to_diff_specs(
@@ -89,18 +81,13 @@ pub fn absorb_with_perm(
                 .collect::<Vec<_>>(),
         )?;
         let commit_id = commit_map.find_mapped_id(absorption.commit_id);
-        let outcome = amend_commit_and_count_failures(
-            absorption.stack_id,
-            commit_id,
-            diff_specs,
-            perm,
-            repo,
-            data_dir,
-        )?;
-        if let Some(rebase_output) = &outcome.rebase_output {
-            for (_base, old, new) in &rebase_output.commit_mapping {
-                commit_map.add_mapping(*old, *new);
-            }
+        let outcome =
+            commit_amend_only_impl(ctx, commit_id, diff_specs, DryRun::No, context_lines, perm)?;
+        if !outcome.rejected_specs.is_empty() {
+            tracing::warn!(?outcome.rejected_specs, "Failed to commit at least one hunk");
+        }
+        for (old, new) in &outcome.workspace.replaced_commits {
+            commit_map.add_mapping(*old, *new);
         }
         total_rejected += outcome.rejected_specs.len();
     }

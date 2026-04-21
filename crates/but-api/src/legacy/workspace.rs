@@ -2,9 +2,8 @@ use std::str::FromStr;
 
 use anyhow::{Context as _, Result};
 use but_api_macros::but_api;
-use but_core::{RepositoryExt, sync::RepoExclusive};
+use but_core::RepositoryExt;
 use but_ctx::Context;
-use but_settings::AppSettings;
 use but_workspace::{
     commit_engine::{self, StackSegmentId},
     legacy::{StacksFilter, ui::StackEntry},
@@ -317,35 +316,6 @@ pub fn branch_details(
         update_push_status(&mut details);
     }
     Ok(details)
-}
-
-/// Amend a commit with the given changes and return the number of rejected files
-pub(crate) fn amend_commit_and_count_failures(
-    stack_id: StackId,
-    commit_id: gix::ObjectId,
-    worktree_changes: Vec<but_core::DiffSpec>,
-    perm: &mut RepoExclusive,
-    repo: &gix::Repository,
-    data_dir: &std::path::Path,
-) -> anyhow::Result<commit_engine::CreateCommitOutcome> {
-    let app_settings = AppSettings::load_from_default_path_creating_without_customization()?;
-    let outcome = but_workspace::legacy::commit_engine::create_commit_and_update_refs_with_project(
-        repo,
-        data_dir,
-        Some(stack_id),
-        commit_engine::Destination::AmendCommit {
-            commit_id,
-            // TODO: Expose this in the UI for 'edit message' functionality.
-            new_message: None,
-        },
-        worktree_changes,
-        app_settings.context_lines,
-        perm,
-    )?;
-    if !outcome.rejected_specs.is_empty() {
-        tracing::warn!(?outcome.rejected_specs, "Failed to commit at least one hunk");
-    }
-    Ok(outcome)
 }
 
 /// Discard all worktree changes that match the specs in `worktree_changes`.

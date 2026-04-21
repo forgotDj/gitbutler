@@ -96,7 +96,7 @@ pub(crate) fn handle(
         return Ok(());
     }
 
-    let repo = ctx.repo.get()?;
+    let repo = ctx.repo.get()?.clone();
     let data_dir = ctx.project_data_dir();
     let context_lines = ctx.settings.context_lines;
     // Create a snapshot before performing absorb or auto-commit operations
@@ -127,7 +127,7 @@ pub(crate) fn handle(
 /// Absorb a single file into the appropriate commit
 #[expect(clippy::too_many_arguments)]
 fn absorb_assignments(
-    ctx: &Context,
+    ctx: &mut Context,
     absorption_plan: Vec<CommitAbsorption>,
     perm: &mut RepoExclusive,
     repo: &gix::Repository,
@@ -140,7 +140,7 @@ fn absorb_assignments(
     let total_rejected = if new {
         but_action::auto_commit_simple(repo, data_dir, context_lines, None, absorption_plan, perm)?
     } else {
-        but_api::legacy::absorb::absorb_with_perm(absorption_plan, perm, repo, data_dir)?
+        but_api::legacy::absorb::absorb_with_perm(ctx, absorption_plan, perm)?
     };
 
     // Refresh the workspace commit so `gitbutler/workspace` HEAD stays in sync
