@@ -195,7 +195,7 @@ impl Details {
             | Message::GrowDetails
             | Message::ShrinkDetails
             | Message::PickAndGotoBranch
-            | Message::RegisterMessageOnDrop(_)
+            | Message::RegisterOutOfBandMessage(_)
             | Message::WithOneFrameDelay(_)
             | Message::EnterNormalMode => false,
 

@@ -740,7 +740,7 @@ impl App {
                 self.details
                     .try_handle_message(details_message, details_viewport, messages)?;
             }
-            Message::RegisterMessageOnDrop(rx) => {
+            Message::RegisterOutOfBandMessage(rx) => {
                 self.incoming_out_of_band_messages.push(rx);
             }
             Message::WithOneFrameDelay(msg) => {
@@ -3061,7 +3061,8 @@ enum Message {
 
     // Utilities
     CopySelection,
-    RegisterMessageOnDrop(Rc<Receiver<Message>>),
+    #[expect(clippy::enum_variant_names)]
+    RegisterOutOfBandMessage(Rc<Receiver<Message>>),
     WithOneFrameDelay(Box<Message>),
     AndThen {
         lhs: Box<Message>,
