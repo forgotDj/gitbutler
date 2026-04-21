@@ -226,6 +226,8 @@ pub struct Theme {
     pub modification: Style,
     /// A renaming
     pub renaming: Style,
+    /// Context surrounding modifications
+    pub context: Style,
 
     // State signals
     /// Something completed successfully or is in a good state
@@ -244,6 +246,22 @@ pub struct Theme {
     pub important: Style,
     /// Suggested command the user can run (e.g. `but config target …`).
     pub command_suggestion: Style,
+    /// Default styling
+    pub default: Style,
+    /// User information, typically author or committer-related
+    pub user: Style,
+    /// Time-related information
+    pub time: Style,
+
+    // Layout
+    /// Default border style
+    pub border: Style,
+    /// Active border style
+    pub border_active: Style,
+    /// Highlight style to denote selection
+    pub selection_highlight: Style,
+    /// Legend for symbol or keybind explanation
+    pub legend: Style,
 
     #[serde(skip_serializing, skip_deserializing)]
     // This is a bit weird. We need the theme itself to initialize these nested symbols, so we
@@ -286,6 +304,7 @@ impl Default for Theme {
             deletion: style_fg(Color::Red),
             modification: style_fg(Color::Yellow),
             renaming: style_fg(Color::Magenta),
+            context: style_fg(Color::DarkGray),
 
             // State signals
             success: style_fg(Color::Green),
@@ -297,6 +316,18 @@ impl Default for Theme {
             hint: Style::new().add_modifier(Modifier::DIM),
             important: Style::new().add_modifier(Modifier::BOLD),
             command_suggestion: Style::new().fg(Color::Blue).add_modifier(Modifier::DIM),
+            default: Style::new(),
+            user: style_fg(Color::LightYellow),
+            time: style_fg(Color::Cyan),
+
+            // Layout
+            border: Style::new().fg(Color::DarkGray),
+            border_active: Style::new().fg(Color::Cyan),
+            selection_highlight: Style::new()
+                .bg(Color::DarkGray)
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+            legend: Style::new().fg(Color::Blue),
 
             // Symbols initialized below
             symbols: None,

@@ -5,12 +5,12 @@ use but_core::unified_diff::DiffHunk;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, MouseButton, MouseEventKind};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::Modifier,
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 
-use crate::{id::UncommittedCliId, tui::TerminalGuard as _};
+use crate::{id::UncommittedCliId, theme, tui::TerminalGuard as _};
 
 /// A single file's diff information for TUI display.
 pub(crate) struct DiffFileEntry {
@@ -394,6 +394,8 @@ impl DiffViewerApp {
 }
 
 fn ui(frame: &mut ratatui::Frame, app: &mut DiffViewerApp) {
+    let t = theme::get();
+
     // Vertical split: main area + help footer
     let outer = Layout::default()
         .direction(Direction::Vertical)
@@ -411,10 +413,10 @@ fn ui(frame: &mut ratatui::Frame, app: &mut DiffViewerApp) {
         .iter()
         .map(|f| {
             let style = match f.status {
-                'A' => Style::default().fg(Color::Green),
-                'D' => Style::default().fg(Color::Red),
-                'R' => Style::default().fg(Color::Yellow),
-                _ => Style::default(),
+                'A' => t.addition,
+                'D' => t.deletion,
+                'R' => t.renaming,
+                _ => t.default,
             };
             ListItem::new(Line::from(Span::styled(
                 format!("{} {}", f.status, f.path),
@@ -424,9 +426,9 @@ fn ui(frame: &mut ratatui::Frame, app: &mut DiffViewerApp) {
         .collect();
 
     let file_border_style = if app.active_pane == Pane::FileList {
-        Style::default().fg(Color::Cyan)
+        t.border_active
     } else {
-        Style::default().fg(Color::DarkGray)
+        t.border
     };
 
     let file_list = List::new(file_items)
@@ -436,13 +438,8 @@ fn ui(frame: &mut ratatui::Frame, app: &mut DiffViewerApp) {
                 .title(" Files ")
                 .border_style(file_border_style),
         )
-        .highlight_style(
-            Style::default()
-                .bg(Color::DarkGray)
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD),
-        )
-        .highlight_symbol("▶ ");
+        .highlight_style(t.selection_highlight)
+        .highlight_symbol("▶ "); // TODO make themed symbol?
 
     app.file_list_area = chunks[0];
     frame.render_stateful_widget(file_list, chunks[0], &mut app.list_state);
@@ -453,16 +450,14 @@ fn ui(frame: &mut ratatui::Frame, app: &mut DiffViewerApp) {
             .diff_lines
             .iter()
             .map(|dl| match dl {
-                DiffLine::HunkHeader(text) => {
-                    Line::from(Span::styled(text.clone(), Style::default().fg(Color::Cyan)))
-                }
+                DiffLine::HunkHeader(text) => Line::from(Span::styled(text.clone(), t.info)),
                 DiffLine::Added { line_num, content } => Line::from(Span::styled(
                     format!("{line_num:>5} +{content}"),
-                    Style::default().fg(Color::Green),
+                    t.addition,
                 )),
                 DiffLine::Removed { line_num, content } => Line::from(Span::styled(
                     format!("{line_num:>5} -{content}"),
-                    Style::default().fg(Color::Red),
+                    t.deletion,
                 )),
                 DiffLine::Context {
                     old_num,
@@ -470,21 +465,16 @@ fn ui(frame: &mut ratatui::Frame, app: &mut DiffViewerApp) {
                     content,
                 } => Line::from(vec![Span::styled(
                     format!("{old_num:>5} {new_num:>5}  {content}"),
-                    Style::default().fg(Color::DarkGray),
+                    t.context,
                 )]),
                 DiffLine::Info(text) => Line::from(Span::styled(
                     format!("  {text}"),
-                    Style::default()
-                        .fg(Color::Yellow)
-                        .add_modifier(Modifier::ITALIC),
+                    t.attention.add_modifier(Modifier::ITALIC),
                 )),
             })
             .collect()
     } else {
-        vec![Line::from(Span::styled(
-            "No file selected",
-            Style::default().fg(Color::DarkGray),
-        ))]
+        vec![Line::from(Span::styled("No file selected", t.hint))]
     };
 
     let diff_title = if let Some(idx) = app.selected_file() {
@@ -494,9 +484,9 @@ fn ui(frame: &mut ratatui::Frame, app: &mut DiffViewerApp) {
     };
 
     let diff_border_style = if app.active_pane == Pane::DiffView {
-        Style::default().fg(Color::Cyan)
+        t.border_active
     } else {
-        Style::default().fg(Color::DarkGray)
+        t.border
     };
 
     let diff_view = Paragraph::new(diff_lines)
@@ -512,41 +502,16 @@ fn ui(frame: &mut ratatui::Frame, app: &mut DiffViewerApp) {
 
     // Help footer
     let help = Line::from(vec![
-        Span::styled(
-            " j/k",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" navigate  ", Style::default().fg(Color::DarkGray)),
-        Span::styled(
-            "h/l/←/→/Tab",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" switch pane  ", Style::default().fg(Color::DarkGray)),
-        Span::styled(
-            "Space/PgDn",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" page down  ", Style::default().fg(Color::DarkGray)),
-        Span::styled(
-            "PgUp",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" page up  ", Style::default().fg(Color::DarkGray)),
-        Span::styled(
-            "q",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(" quit", Style::default().fg(Color::DarkGray)),
+        Span::styled(" j/k", t.legend),
+        Span::styled(" navigate  ", t.hint),
+        Span::styled("h/l/←/→/Tab", t.legend),
+        Span::styled(" switch pane  ", t.hint),
+        Span::styled("Space/PgDn", t.legend),
+        Span::styled(" page down  ", t.hint),
+        Span::styled("PgUp", t.legend),
+        Span::styled(" page up  ", t.hint),
+        Span::styled("q", t.legend),
+        Span::styled(" quit", t.hint),
     ]);
     frame.render_widget(Paragraph::new(help), outer[1]);
 }
