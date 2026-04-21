@@ -8,7 +8,7 @@ import { mergeProps, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
 import { FC } from "react";
 import { type GetDataParams, useDroppable } from "./DragAndDrop.tsx";
-import { type DropData, parseDragData } from "./OperationDragAndDrop.tsx";
+import { parseDragData } from "./OperationDragAndDrop.tsx";
 import { type Item } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
 import { OperationTooltip } from "./OperationTooltip.tsx";
@@ -19,7 +19,7 @@ import {
 	type ResolvedOperationSource,
 } from "./ResolvedOperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
-import styles from "./route.module.css";
+import styles from "./OperationTarget.module.css";
 import { useQueryClient } from "@tanstack/react-query";
 import {
 	itemOperationSource,
@@ -69,10 +69,15 @@ const dropTargetToOperation =
 		);
 	};
 
+export type TargetData = {
+	source: OperationSource;
+	operation: Operation | null;
+};
+
 const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) => {
 	const queryClient = useQueryClient();
 
-	return useDroppable((args): DropData | null => {
+	return useDroppable((args): TargetData | null => {
 		const dragData = parseDragData(args.source.data);
 		if (!dragData) return null;
 
@@ -95,11 +100,6 @@ const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) =
 	});
 };
 
-type OperationModeTarget = {
-	source: Item;
-	operation: Operation | null;
-};
-
 const useOperationModeTarget = ({
 	projectId,
 	item,
@@ -110,17 +110,17 @@ const useOperationModeTarget = ({
 	item: Item;
 	operationMode: OperationMode | null;
 	isSelected: boolean;
-}): OperationModeTarget | null => {
+}): TargetData | null => {
 	const queryClient = useQueryClient();
 
 	const isActiveTarget = !!operationMode && isSelected;
 
 	if (!isActiveTarget) return null;
 
-	const { source } = operationMode;
+	const source = itemOperationSource(operationMode.source);
 
 	const resolvedOperationSource = resolveOperationSource({
-		operationSource: itemOperationSource(operationMode.source),
+		operationSource: source,
 		queryClient,
 		projectId,
 	});
@@ -139,24 +139,6 @@ const useOperationModeTarget = ({
 	};
 };
 
-type TargetData = {
-	source: OperationSource;
-	operation: Operation | null;
-};
-
-const getTargetData = (
-	dropData: DropData | null,
-	operationModeTarget: OperationModeTarget | null,
-): TargetData | null => {
-	if (dropData) return { operation: dropData.operation, source: dropData.source };
-	if (operationModeTarget)
-		return {
-			operation: operationModeTarget.operation,
-			source: itemOperationSource(operationModeTarget.source),
-		};
-	return null;
-};
-
 export const OperationTarget: FC<
 	{
 		item: Item;
@@ -173,7 +155,7 @@ export const OperationTarget: FC<
 		isSelected,
 	});
 
-	const targetData = getTargetData(dropData, operationModeTarget);
+	const targetData: TargetData | null = dropData ?? operationModeTarget;
 
 	const dropInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
 
@@ -198,13 +180,13 @@ export const OperationTarget: FC<
 				render={target}
 			/>
 
-			{dropData && dropInsertionSide !== null && (
+			{dropInsertionSide !== null && (
 				<OperationTooltip
 					projectId={projectId}
 					isOperationMode={false}
 					item={item}
-					operation={dropData.operation}
-					source={dropData.source}
+					operation={dropData?.operation ?? null}
+					source={dropData?.source}
 					className={classes(
 						styles.insertionTarget,
 						pipe(
