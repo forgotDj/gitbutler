@@ -30,12 +30,22 @@ export type DzCommitData = {
 
 /** Details about a commit that can be dropped into a drop zone. */
 export class CommitDropData {
+	/** All commits being dragged (for multi-select). Defaults to just `[commit]`. */
+	readonly allCommits: DzCommitData[];
+
 	constructor(
 		readonly stackId: string,
 		readonly commit: DzCommitData,
 		readonly isHeadCommit: boolean,
 		readonly branchName?: string,
-	) {}
+		allCommits?: DzCommitData[],
+	) {
+		this.allCommits = allCommits && allCommits.length > 0 ? allCommits : [commit];
+	}
+
+	get isMultiCommit(): boolean {
+		return this.allCommits.length > 1;
+	}
 }
 
 /** Handler that can move commits between stacks. */
@@ -50,7 +60,10 @@ export class MoveCommitDzHandler implements DropzoneHandler {
 
 	accepts(data: unknown): boolean {
 		return (
-			data instanceof CommitDropData && data.stackId !== this.stackId && !data.commit.hasConflicts
+			data instanceof CommitDropData &&
+			!data.isMultiCommit &&
+			data.stackId !== this.stackId &&
+			!data.commit.hasConflicts
 		);
 	}
 
@@ -448,8 +461,11 @@ export class SquashCommitDzHandler implements DropzoneHandler {
 		if (!(data instanceof CommitDropData)) return false;
 		if (data.stackId !== stackId) return false;
 
-		if (commit.hasConflicts || data.commit.hasConflicts) return false;
-		if (commit.id === data.commit.id) return false;
+		if (commit.hasConflicts) return false;
+		if (data.allCommits.some((c) => c.hasConflicts)) return false;
+
+		// Don't show dropzone on any of the commits being dragged
+		if (data.allCommits.some((c) => c.id === commit.id)) return false;
 
 		return true;
 	}
@@ -457,6 +473,9 @@ export class SquashCommitDzHandler implements DropzoneHandler {
 	async ondrop(data: unknown) {
 		const { projectId, stackId, commit } = this.args;
 		if (data instanceof CommitDropData) {
+			const sourceCommitIds = data.allCommits.map((c) => c.id).filter((id) => id !== commit.id);
+			if (sourceCommitIds.length === 0) return;
+
 			await withStackBusy(
 				this.uiState,
 				projectId,
@@ -465,7 +484,7 @@ export class SquashCommitDzHandler implements DropzoneHandler {
 					await this.stackService.squashCommits({
 						projectId,
 						stackId,
-						sourceCommitIds: [data.commit.id],
+						sourceCommitIds,
 						targetCommitId: commit.id,
 					});
 				},

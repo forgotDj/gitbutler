@@ -77,7 +77,12 @@
 			commitType !== "Base"}
 		style:--commit-color={commitColor}
 	>
-		<div class="drag-animation-wrapper" class:activated={$dropLabel !== undefined}>
+		<div
+			class="drag-animation-wrapper"
+			class:activated={$dropLabel !== undefined}
+			class:commit-two={childrenAmount === 2}
+			class:commit-multiple={childrenAmount > 2}
+		>
 			{@render dropLabelSnippet({ label: $dropLabel, amount: childrenAmount })}
 			<div class="draggable-commit-indicator"></div>
 			<div class="truncate text-13 text-semibold draggable-commit-label">
@@ -374,6 +379,41 @@
 		height: 10px;
 		outline: 3px solid var(--bg-1);
 		background-color: var(--commit-color);
+	}
+
+	/* if dragging more than one commit */
+	.drag-animation-wrapper.commit-two::after,
+	.drag-animation-wrapper.commit-multiple::before,
+	.drag-animation-wrapper.commit-multiple::after {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		border: 1px solid var(--border-2);
+		border-radius: var(--radius-m);
+		background-color: var(--bg-1);
+		content: "";
+	}
+
+	.drag-animation-wrapper.commit-two {
+		&::after {
+			z-index: -1;
+			top: 6px;
+			left: 6px;
+		}
+	}
+
+	.drag-animation-wrapper.commit-multiple {
+		&::before {
+			z-index: -1;
+			top: 6px;
+			left: 6px;
+		}
+
+		&::after {
+			z-index: -2;
+			top: 12px;
+			left: 12px;
+		}
 	}
 
 	.draggable-commit-local {

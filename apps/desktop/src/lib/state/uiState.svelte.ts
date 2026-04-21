@@ -36,7 +36,10 @@ export type RejectionReason =
 
 export type StackSelection = {
 	branchName?: string;
+	/** The primary selected commit (drives the preview pane). */
 	commitId?: string;
+	/** All selected commit IDs (for multi-select). When undefined, only `commitId` is selected. */
+	commitIds?: string[];
 	upstream?: boolean;
 	previewOpen: boolean;
 	codegen?: boolean;

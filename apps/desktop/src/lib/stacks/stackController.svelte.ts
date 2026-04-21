@@ -116,6 +116,18 @@ export class StackController {
 		return this.selection.current?.commitId;
 	}
 
+	/** All selected commit IDs. Falls back to `[commitId]` when multi-select isn't active. */
+	get selectedCommitIds(): string[] {
+		const sel = this.selection.current;
+		if (sel?.commitIds && sel.commitIds.length > 0) return sel.commitIds;
+		if (sel?.commitId) return [sel.commitId];
+		return [];
+	}
+
+	isCommitSelected(commitId: string): boolean {
+		return this.selectedCommitIds.includes(commitId);
+	}
+
 	get branchName(): string | undefined {
 		return this.selection.current?.branchName;
 	}
