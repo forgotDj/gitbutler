@@ -1,13 +1,7 @@
-#![expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-
 use std::path::Path;
 
 use bstr::{BString, ByteSlice};
 use but_ctx::Context;
-use gitbutler_stack::{PatchReferenceUpdate, VirtualBranchesHandle};
 use serde::Serialize;
 
 /// Get the details of a branch by its name.
@@ -39,18 +33,6 @@ pub fn create_stack_with_branch(
     let perm = guard.write_permission();
     let stack_entry =
         gitbutler_branch_actions::create_virtual_branch(&ctx, &creation_request, perm)?;
-    drop(guard);
-
-    let vb_state = VirtualBranchesHandle::new(ctx.project_data_dir());
-    let mut stack = vb_state.get_stack(stack_entry.id)?;
-    stack.update_branch(
-        &ctx,
-        name.to_string(),
-        &PatchReferenceUpdate {
-            ..Default::default()
-        },
-    )?;
-
     Ok(stack_entry)
 }
 
@@ -196,4 +178,51 @@ fn parse_commits(
             commit_obj
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::create_stack_with_branch;
+    use but_ctx::Context;
+    use but_testsupport::Sandbox;
+    use temp_env::with_var;
+
+    #[test]
+    fn create_stack_with_branch_creates_named_head_without_follow_up_mutation() -> anyhow::Result<()>
+    {
+        let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack")?;
+        env.invoke_git("config user.name author");
+        env.invoke_git("config user.email author@example.com");
+
+        with_var(
+            "E2E_TEST_APP_DATA_DIR",
+            Some(env.app_data_dir()),
+            || -> anyhow::Result<()> {
+                let stack_entry = create_stack_with_branch("created-branch", env.projects_root())?;
+
+                assert_eq!(stack_entry.heads.len(), 1, "new stack should have one head");
+                assert_eq!(stack_entry.heads[0].name, "created-branch");
+
+                let ctx = Context::discover(env.projects_root())?;
+                let stacks = but_api::legacy::workspace::stacks(
+                    &ctx,
+                    Some(but_workspace::legacy::StacksFilter::InWorkspace),
+                )?;
+                let created_stack = stacks
+                    .iter()
+                    .find(|stack| stack.id == Some(stack_entry.id))
+                    .expect("created stack should be listed in workspace");
+
+                assert_eq!(
+                    created_stack.heads.len(),
+                    1,
+                    "created stack should keep one head"
+                );
+                assert_eq!(created_stack.heads[0].name, "created-branch");
+                Ok(())
+            },
+        )?;
+
+        Ok(())
+    }
 }
