@@ -663,7 +663,7 @@ impl SquashCommitsOperation {
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitSquashResult> {
         but_api::commit::squash::commit_squash(
             ctx,
-            self.source,
+            vec![self.source],
             self.destination,
             MessageCombinationStrategy::KeepBoth,
             DryRun::No,

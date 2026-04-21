@@ -1,6 +1,6 @@
 use anyhow::Result;
 use bstr::ByteSlice as _;
-use but_rebase::graph_rebase::{Editor, LookupStep as _};
+use but_rebase::graph_rebase::{Editor, LookupStep};
 use but_testsupport::{graph_workspace, visualize_commit_graph_all};
 use but_workspace::commit::squash_commits;
 
@@ -28,7 +28,7 @@ fn squash_top_commit_into_parent() -> Result<()> {
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
     let outcome = squash_commits(
         editor,
-        subject_id,
+        vec![subject_id],
         target_id,
         squash_commits::MessageCombinationStrategy::KeepBoth,
     )?;
@@ -87,7 +87,7 @@ fn squash_top_commit_into_parent_keeping_target_message() -> Result<()> {
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
     let outcome = squash_commits(
         editor,
-        subject_id,
+        vec![subject_id],
         target_id,
         squash_commits::MessageCombinationStrategy::KeepTarget,
     )?;
@@ -123,7 +123,7 @@ fn squash_top_commit_into_parent_keeping_subject_message() -> Result<()> {
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
     let outcome = squash_commits(
         editor,
-        subject_id,
+        vec![subject_id],
         target_id,
         squash_commits::MessageCombinationStrategy::KeepSubject,
     )?;
@@ -152,7 +152,7 @@ fn squash_reorders_when_subject_is_not_on_top() -> Result<()> {
     * 8b426d0 (one) commit one
     ");
 
-    // Subject starts below target in history and needs internal reorder first.
+    // Explicitly place the subject below the target before squashing.
     let subject_id = repo.rev_parse_single("two")?.detach();
     let target_id = repo.rev_parse_single("three")?.detach();
     let target_tree = repo.find_commit(target_id)?.tree_id()?.detach();
@@ -161,7 +161,7 @@ fn squash_reorders_when_subject_is_not_on_top() -> Result<()> {
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
     let outcome = squash_commits(
         editor,
-        subject_id,
+        vec![subject_id],
         target_id,
         squash_commits::MessageCombinationStrategy::KeepBoth,
     )?;
@@ -182,10 +182,10 @@ fn squash_reorders_when_subject_is_not_on_top() -> Result<()> {
     );
 
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
-    * 6426178 (HEAD -> three, two) commit three
+    * 6426178 (HEAD -> three) commit three
     | * 16fd221 (origin/two) commit two
     |/  
-    * 8b426d0 (one) commit one
+    * 8b426d0 (two, one) commit one
     ");
 
     Ok(())
@@ -209,7 +209,7 @@ fn squash_same_commit_is_rejected() -> Result<()> {
 
     let err = squash_commits(
         editor,
-        commit_id,
+        vec![commit_id],
         commit_id,
         squash_commits::MessageCombinationStrategy::KeepBoth,
     )
@@ -225,6 +225,33 @@ fn squash_same_commit_is_rejected() -> Result<()> {
     * 16fd221 (origin/two, two) commit two
     * 8b426d0 (one) commit one
     ");
+
+    Ok(())
+}
+
+#[test]
+fn squash_rejects_target_in_subject_commit_ids() -> Result<()> {
+    let (_tmp, graph, repo, mut _meta, _description) =
+        writable_scenario("reword-three-commits", |_| {})?;
+
+    let subject_id = repo.rev_parse_single("three")?.detach();
+    let target_id = repo.rev_parse_single("two")?.detach();
+
+    let mut ws = graph.into_workspace()?;
+    let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
+
+    let err = squash_commits(
+        editor,
+        vec![subject_id, target_id],
+        target_id,
+        squash_commits::MessageCombinationStrategy::KeepBoth,
+    )
+    .expect_err("must fail");
+    assert!(
+        err.to_string()
+            .contains("Cannot squash a commit into itself"),
+        "error should explain that target cannot be one of the source commits"
+    );
 
     Ok(())
 }
@@ -247,7 +274,7 @@ fn squash_down_keeps_topmost_tree_for_shared_file_lineage() -> Result<()> {
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
     let outcome = squash_commits(
         editor,
-        subject_id,
+        vec![subject_id],
         target_id,
         squash_commits::MessageCombinationStrategy::KeepBoth,
     )?;
@@ -268,7 +295,7 @@ fn squash_down_keeps_topmost_tree_for_shared_file_lineage() -> Result<()> {
 }
 
 #[test]
-fn squash_up_reorders_subject_below_target_for_shared_file_lineage() -> Result<()> {
+fn squash_move_subject_below_target_for_shared_file_lineage() -> Result<()> {
     let (_tmp, graph, repo, mut _meta, _description) =
         writable_scenario("squash-shared-file-three-commits", |_| {})?;
 
@@ -285,7 +312,7 @@ fn squash_up_reorders_subject_below_target_for_shared_file_lineage() -> Result<(
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
     let outcome = squash_commits(
         editor,
-        subject_id,
+        vec![subject_id],
         target_id,
         squash_commits::MessageCombinationStrategy::KeepBoth,
     )?;
@@ -304,15 +331,15 @@ fn squash_up_reorders_subject_below_target_for_shared_file_lineage() -> Result<(
     );
 
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
-    * 4fbac4b (HEAD -> three, two) commit three
-    * 8df0fa3 (one) commit one
+    * 4fbac4b (HEAD -> three) commit three
+    * 8df0fa3 (two, one) commit one
     ");
 
     Ok(())
 }
 
 #[test]
-fn squash_down_out_of_order_reorders_subject_below_target_for_shared_file_lineage() -> Result<()> {
+fn squash_move_subject_above_target_out_of_order_for_shared_file_lineage_fails() -> Result<()> {
     let (_tmp, graph, repo, mut _meta, _description) =
         writable_scenario("squash-shared-file-three-commits", |_| {})?;
 
@@ -327,29 +354,24 @@ fn squash_down_out_of_order_reorders_subject_below_target_for_shared_file_lineag
 
     let mut ws = graph.into_workspace()?;
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
-    let outcome = squash_commits(
+    let err = squash_commits(
         editor,
-        subject_id,
+        vec![subject_id],
         target_id,
         squash_commits::MessageCombinationStrategy::KeepBoth,
-    )?;
+    )
+    .expect_err("must fail when reordering produces conflicts");
 
-    let materialized = outcome.rebase.materialize()?;
-    let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
-
-    let spec = format!("{squashed_id}:shared.txt");
-    let object = repo.rev_parse_single(spec.as_str())?.object()?;
-    assert_eq!(object.data.as_bstr(), "v3\n");
-
-    let squashed_commit = repo.find_commit(squashed_id)?;
-    assert_eq!(
-        squashed_commit.message_raw()?,
-        "commit one\n\ncommit three\n"
+    assert!(
+        err.to_string()
+            .contains("became conflicted after reordering"),
+        "error should explain that conflicted commits cannot be squashed"
     );
 
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
-    * 85f51d5 (HEAD -> three, two) [conflict] commit two
-    * f3ac68e (one) commit one
+    * a209f1b (HEAD -> three) commit three
+    * c0570de (two) commit two
+    * 8df0fa3 (one) commit one
     ");
 
     Ok(())
@@ -364,12 +386,13 @@ fn squash_across_stacks_subject_into_target() -> Result<()> {
         })?;
 
     let mut ws = graph.into_workspace()?;
-    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
+    let normalized = visualize_commit_graph_all(&repo)?.replace("  \n", "\n");
+    insta::assert_snapshot!(normalized, @r"
     *   c49e4d8 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
-    |\  
+    |\
     | * 09d8e52 (A) A
     * | c813d8d (B) B
-    |/  
+    |/
     * 85efbe4 (origin/main, main) M
     ");
     insta::assert_snapshot!(graph_workspace(&ws), @"
@@ -389,7 +412,7 @@ fn squash_across_stacks_subject_into_target() -> Result<()> {
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
     let outcome = squash_commits(
         editor,
-        subject_id,
+        vec![subject_id],
         target_id,
         squash_commits::MessageCombinationStrategy::KeepBoth,
     )?;
@@ -430,12 +453,13 @@ fn squash_across_stacks_target_into_subject() -> Result<()> {
 
     let mut ws = graph.into_workspace()?;
 
-    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
+    let normalized = visualize_commit_graph_all(&repo)?.replace("  \n", "\n");
+    insta::assert_snapshot!(normalized, @r"
     *   c49e4d8 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
-    |\  
+    |\
     | * 09d8e52 (A) A
     * | c813d8d (B) B
-    |/  
+    |/
     * 85efbe4 (origin/main, main) M
     ");
 
@@ -456,7 +480,7 @@ fn squash_across_stacks_target_into_subject() -> Result<()> {
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
     let outcome = squash_commits(
         editor,
-        subject_id,
+        vec![subject_id],
         target_id,
         squash_commits::MessageCombinationStrategy::KeepBoth,
     )?;
@@ -482,6 +506,70 @@ fn squash_across_stacks_target_into_subject() -> Result<()> {
     └── ≡📙:3:A on 85efbe4 {1}
         └── 📙:3:A
             └── ·17e27b0 (🏘️)
+    ");
+
+    Ok(())
+}
+
+#[test]
+fn squash_all_c_commits_into_second_commit_of_b_keeps_new_file_content() -> Result<()> {
+    let (_tmp, graph, repo, mut meta, _description) = writable_scenario("three-stacks", |meta| {
+        add_stack_with_segments(meta, 1, "A", StackState::InWorkspace, &[]);
+        add_stack_with_segments(meta, 2, "B", StackState::InWorkspace, &[]);
+        add_stack_with_segments(meta, 3, "C", StackState::InWorkspace, &[]);
+    })?;
+
+    let c_top = repo.rev_parse_single("C")?.detach();
+    let c_second = repo.rev_parse_single("C~1")?.detach();
+    let c_third = repo.rev_parse_single("C~2")?.detach();
+    let target_id = repo.rev_parse_single("B~1")?.detach();
+
+    let mut ws = graph.into_workspace()?;
+    let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+    let outcome = squash_commits(
+        editor,
+        vec![c_top, c_second, c_third],
+        target_id,
+        squash_commits::MessageCombinationStrategy::KeepBoth,
+    )?;
+
+    let materialized = outcome.rebase.materialize()?;
+    let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
+
+    let new_file_blob = repo
+        .rev_parse_single(format!("{squashed_id}:new-file").as_str())?
+        .object()?;
+    insta::assert_snapshot!(new_file_blob.data.as_bstr(), @r"
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+    8
+    9
+    10
+    11
+    12
+    13
+    14
+    15
+    16
+    17
+    18
+    19
+    20
+    21
+    22
+    23
+    24
+    25
+    26
+    27
+    28
+    29
+    30
     ");
 
     Ok(())

@@ -119,7 +119,7 @@ export interface CommitRewordParams {
 
 export interface CommitSquashParams {
 	projectId: string;
-	sourceCommitId: string;
+	sourceCommitIds: Array<string>;
 	destinationCommitId: string;
 	dryRun: boolean;
 }

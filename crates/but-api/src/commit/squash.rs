@@ -1,14 +1,15 @@
-use crate::WorkspaceState;
 use but_api_macros::but_api;
 use but_core::{DryRun, sync::RepoExclusive};
 use but_oplog::legacy::{OperationKind, SnapshotDetails};
 use but_rebase::graph_rebase::{Editor, LookupStep as _};
-use but_workspace::commit::squash_commits::MessageCombinationStrategy;
+use but_workspace::commit::{SquashCommitsOutcome, squash_commits::MessageCombinationStrategy};
 use tracing::instrument;
+
+use crate::WorkspaceState;
 
 use super::types::CommitSquashResult;
 
-/// Squash `subject_commit_id` into `target_commit_id`.
+/// Squash `subject_commit_ids` into `target_commit_id`.
 ///
 /// This acquires exclusive worktree access from `ctx` before rewriting the
 /// commits.
@@ -20,7 +21,7 @@ use super::types::CommitSquashResult;
 #[instrument(err(Debug))]
 pub fn commit_squash_only(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     target_commit_id: gix::ObjectId,
     how_to_combine_messages: MessageCombinationStrategy,
     dry_run: DryRun,
@@ -28,7 +29,7 @@ pub fn commit_squash_only(
     let mut guard = ctx.exclusive_worktree_access();
     commit_squash_only_with_perm(
         ctx,
-        subject_commit_id,
+        subject_commit_ids,
         target_commit_id,
         how_to_combine_messages,
         dry_run,
@@ -36,22 +37,23 @@ pub fn commit_squash_only(
     )
 }
 
-/// Squash `subject_commit_id` into `target_commit_id` under caller-held
+/// Squash `subject_commit_ids` into `target_commit_id` under caller-held
 /// exclusive repository access.
 ///
-/// This materializes the squash rebase and returns the resulting squashed
-/// commit ID together with rewritten commit mappings. This variant does not
-/// create an oplog entry. When `dry_run` is enabled, it returns a preview of
-/// the resulting workspace state without materializing the rebase.
-/// For lower-level implementation details, see [`but_workspace::commit::squash_commits()`].
+/// This variant does not create an oplog entry. When `dry_run` is enabled, it
+/// returns a preview of the resulting workspace state without materializing the rebases.
 pub fn commit_squash_only_with_perm(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     target_commit_id: gix::ObjectId,
     how_to_combine_messages: MessageCombinationStrategy,
     dry_run: DryRun,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitSquashResult> {
+    if subject_commit_ids.is_empty() {
+        anyhow::bail!("No commits were provided to squash")
+    }
+
     let mut meta = ctx.meta()?;
     let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
@@ -67,12 +69,12 @@ pub fn commit_squash_only_with_perm(
     let workspace = WorkspaceState::from_successful_rebase(outcome.rebase, &repo, dry_run)?;
 
     Ok(CommitSquashResult {
-        new_commit,
+        new_commit: outcome.new_commit,
         workspace,
     })
 }
 
-/// Squash `subject_commit_id` into `target_commit_id` and record an oplog
+/// Squash `subject_commit_ids` into `target_commit_id` and record an oplog
 /// snapshot on success.
 ///
 /// This acquires exclusive worktree access from `ctx` before rewriting the
@@ -84,7 +86,7 @@ pub fn commit_squash_only_with_perm(
 #[instrument(err(Debug))]
 pub fn commit_squash(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     target_commit_id: gix::ObjectId,
     how_to_combine_messages: MessageCombinationStrategy,
     dry_run: DryRun,
@@ -92,7 +94,7 @@ pub fn commit_squash(
     let mut guard = ctx.exclusive_worktree_access();
     commit_squash_with_perm(
         ctx,
-        subject_commit_id,
+        subject_commit_ids,
         target_commit_id,
         how_to_combine_messages,
         dry_run,
@@ -100,17 +102,16 @@ pub fn commit_squash(
     )
 }
 
-/// Squash `subject_commit_id` into `target_commit_id` under caller-held
+/// Squash `subject_commit_ids` into `target_commit_id` under caller-held
 /// exclusive repository access and record an oplog snapshot on success.
 ///
 /// It prepares a best-effort `SquashCommit` oplog snapshot, performs the
-/// squash, and commits the snapshot only if the operation succeeds. When
+/// squashes, and commits the snapshot only if the operation succeeds. When
 /// `dry_run` is enabled, it returns a preview of the resulting workspace state
-/// and skips oplog persistence. For lower-level implementation details, see
-/// [`but_workspace::commit::squash_commits()`].
+/// and skips oplog persistence.
 pub fn commit_squash_with_perm(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     target_commit_id: gix::ObjectId,
     how_to_combine_messages: MessageCombinationStrategy,
     dry_run: DryRun,
@@ -125,7 +126,7 @@ pub fn commit_squash_with_perm(
 
     let res = commit_squash_only_with_perm(
         ctx,
-        subject_commit_id,
+        subject_commit_ids,
         target_commit_id,
         how_to_combine_messages,
         dry_run,
