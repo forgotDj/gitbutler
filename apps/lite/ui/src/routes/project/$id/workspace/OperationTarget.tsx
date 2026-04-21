@@ -139,11 +139,6 @@ const useOperationModeTarget = ({
 	};
 };
 
-const getTargetData = (
-	dropData: DropData | null,
-	operationModeTarget: TargetData | null,
-): TargetData | null => dropData ?? operationModeTarget;
-
 export const OperationTarget: FC<
 	{
 		item: Item;
@@ -160,7 +155,7 @@ export const OperationTarget: FC<
 		isSelected,
 	});
 
-	const targetData = getTargetData(dropData, operationModeTarget);
+	const targetData: TargetData | null = dropData ?? operationModeTarget;
 
 	const dropInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
 
