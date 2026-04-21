@@ -17,6 +17,8 @@ import { UI_STATE, withStackBusy, type UiState } from "$lib/state/uiState.svelte
 import { inject } from "@gitbutler/core/context";
 import { untrack } from "svelte";
 import type { DropzoneHandler } from "$lib/dragging/handler";
+import type { CreateCommitOutcome } from "$lib/stacks/stackEndpoints";
+import type { RejectionReason } from "@gitbutler/but-sdk";
 
 /** Details about a commit belonging to a drop zone. */
 export type DzCommitData = {
@@ -162,15 +164,19 @@ export class AmendCommitWithChangeDzHandler implements DropzoneHandler {
 					}
 				}
 
-				this.onresult(
-					await this.stackService.amendCommitMutation({
-						projectId: this.projectId,
-						stackId: this.stackId,
-						commitId: this.commit.id,
-						worktreeChanges: worktreeChanges,
-						dryRun: false,
-					}),
-				);
+				const outcome = await this.stackService.amendCommitMutation({
+					projectId: this.projectId,
+					stackId: this.stackId,
+					commitId: this.commit.id,
+					worktreeChanges: worktreeChanges,
+					dryRun: false,
+				});
+
+				if (outcome.newCommit) {
+					this.onresult(outcome.newCommit);
+				}
+
+				handleRejectedChanges(this.uiState, this.projectId, outcome);
 
 				if (this.runHooks) {
 					try {
@@ -401,13 +407,15 @@ export class AmendCommitWithHunkDzHandler implements DropzoneHandler {
 					return;
 				}
 			}
-			this.stackService.amendCommitMutation({
+			const outcome = await this.stackService.amendCommitMutation({
 				projectId,
 				stackId,
 				commitId: commit.id,
 				worktreeChanges,
 				dryRun: false,
 			});
+
+			handleRejectedChanges(this.uiState, projectId, outcome);
 			if (runHooks) {
 				try {
 					await this.hooksService.runPostCommitHooks(projectId);
@@ -464,6 +472,27 @@ export class SquashCommitDzHandler implements DropzoneHandler {
 			);
 		}
 	}
+}
+
+function handleRejectedChanges(uiState: UiState, projectId: string, outcome: CreateCommitOutcome) {
+	if (outcome.rejectedChanges.length === 0) return;
+
+	const pathsToRejectedChanges = outcome.rejectedChanges.reduce(
+		(acc: Record<string, RejectionReason>, { reason, path }) => {
+			acc[path] = reason;
+			return acc;
+		},
+		{},
+	);
+
+	uiState.global.modal.set({
+		type: "commit-failed",
+		projectId,
+		targetBranchName: "",
+		newCommitId: outcome.newCommit ?? undefined,
+		commitTitle: undefined,
+		pathsToRejectedChanges,
+	});
 }
 
 function updateUiState(

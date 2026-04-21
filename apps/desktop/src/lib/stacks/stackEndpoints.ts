@@ -1,6 +1,4 @@
-import { SilentError } from "$lib/error/error";
 import { ConflictEntries, type ConflictEntriesObj } from "$lib/files/conflicts";
-import { showToast } from "$lib/notifications/toasts";
 import { createSelectByIds, createSelectNth } from "$lib/state/customSelectors";
 import {
 	invalidatesItem,
@@ -20,7 +18,6 @@ import type {
 	GerritPushFlag,
 } from "$lib/stacks/stack";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
-import type { RejectionReason } from "$lib/state/uiState.svelte";
 import type {
 	StackOrder,
 	AbsorptionTarget,
@@ -38,6 +35,7 @@ import type {
 	CommitCreateResult,
 	CommitRewordResult,
 	CommitInsertBlankResult,
+	RejectionReason,
 } from "@gitbutler/but-sdk";
 
 export type BranchParams = {
@@ -97,6 +95,31 @@ type BackendRejectedChange = {
 	reason: RejectionReason;
 	path: string;
 };
+
+export function readableRejectionReason(reason: RejectionReason): string {
+	switch (reason) {
+		case "cherryPickMergeConflict":
+			return "Cherry-pick merge conflict";
+		case "noEffectiveChanges":
+			return "No effective changes";
+		case "workspaceMergeConflict":
+			return "Workspace merge conflict";
+		case "workspaceMergeConflictOfUnrelatedFile":
+			return "Workspace merge conflict of unrelated file";
+		case "worktreeFileMissingForObjectConversion":
+			return "Worktree file missing for object conversion";
+		case "fileToLargeOrBinary":
+			return "File too large or binary";
+		case "pathNotFoundInBaseTree":
+			return "Path not found in base tree";
+		case "unsupportedDirectoryEntry":
+			return "Unsupported directory entry";
+		case "unsupportedTreeEntry":
+			return "Unsupported tree entry";
+		case "missingDiffSpecAssociation":
+			return "Missing diff spec association";
+	}
+}
 
 export type CreateCommitOutcome = {
 	newCommit: string | null;
@@ -459,7 +482,7 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			],
 		}),
 		commitAmend: build.mutation<
-			string /** Return value is the updated commit id. */,
+			CreateCommitOutcome,
 			{
 				projectId: string;
 				commitId: string;
@@ -477,31 +500,7 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				changes: worktreeChanges,
 				dryRun,
 			}),
-			transformResponse: (response: CommitCreateResult) => {
-				const normalizedResponse = normalizeCreateCommitOutcome(response);
-				if (normalizedResponse.newCommit) {
-					return normalizedResponse.newCommit;
-				}
-
-				const allNoEffect = normalizedResponse.rejectedChanges.every(
-					({ reason }) => reason === "noEffectiveChanges",
-				);
-				if (allNoEffect) {
-					showToast({
-						title: "No changes to amend",
-						message:
-							"The selected changes are already part of this commit, so amending had no effect.",
-						style: "info",
-					});
-					throw new SilentError("No effective changes to amend");
-				}
-
-				const rejected = normalizedResponse.rejectedChanges
-					.map(({ reason, path }) => `${reason}: ${path}`)
-					.join(", ");
-				const details = rejected ? ` Rejected changes: ${rejected}` : "";
-				throw new Error(`Failed to amend commit: no commit was created.${details}`);
-			},
+			transformResponse: normalizeCreateCommitOutcome,
 			invalidatesTags: [
 				invalidatesList(ReduxTag.WorktreeChanges),
 				invalidatesList(ReduxTag.BranchChanges),
