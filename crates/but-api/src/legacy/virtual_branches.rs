@@ -342,18 +342,6 @@ pub fn unapply_stack_with_perm(
 
 #[but_api]
 #[instrument(err(Debug))]
-pub fn amend_virtual_branch(
-    ctx: &mut but_ctx::Context,
-    stack_id: StackId,
-    commit_id: gix::ObjectId,
-    worktree_changes: Vec<DiffSpec>,
-) -> Result<String> {
-    let oid = gitbutler_branch_actions::amend(ctx, stack_id, commit_id, worktree_changes)?;
-    Ok(oid.to_string())
-}
-
-#[but_api]
-#[instrument(err(Debug))]
 pub fn undo_commit(
     ctx: &mut but_ctx::Context,
     stack_id: StackId,
