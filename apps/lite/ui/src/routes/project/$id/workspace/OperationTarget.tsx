@@ -8,7 +8,7 @@ import { mergeProps, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
 import { FC } from "react";
 import { type GetDataParams, useDroppable } from "./DragAndDrop.tsx";
-import { type DropData, parseDragData } from "./OperationDragAndDrop.tsx";
+import { parseDragData } from "./OperationDragAndDrop.tsx";
 import { type Item } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
 import { OperationTooltip } from "./OperationTooltip.tsx";
@@ -72,7 +72,7 @@ const dropTargetToOperation =
 const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) => {
 	const queryClient = useQueryClient();
 
-	return useDroppable((args): DropData | null => {
+	return useDroppable((args): TargetData | null => {
 		const dragData = parseDragData(args.source.data);
 		if (!dragData) return null;
 
@@ -95,7 +95,7 @@ const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) =
 	});
 };
 
-type TargetData = {
+export type TargetData = {
 	source: OperationSource;
 	operation: Operation | null;
 };
