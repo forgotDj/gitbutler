@@ -4,13 +4,12 @@ use but_ctx::Context;
 use ratatui::{
     Frame,
     layout::{Constraint, Flex, Layout, Rect},
-    style::{Style, Stylize},
     text::{Line, Span},
     widgets::{Block, BorderType, Clear, List, ListItem, Padding},
 };
 use unicode_width::UnicodeWidthStr;
 
-use crate::{command::legacy::status::tui::Message, utils::DebugAsType};
+use crate::{command::legacy::status::tui::Message, theme, utils::DebugAsType};
 
 #[derive(Debug)]
 pub(super) struct Confirm {
@@ -63,7 +62,7 @@ impl Confirm {
             Block::bordered()
                 .padding(padding)
                 .border_type(BorderType::Rounded)
-                .border_style(Style::default().dark_gray()),
+                .border_style(theme::get().border),
         );
 
         frame.render_widget(Clear, centered_layout[0]);
@@ -102,10 +101,11 @@ impl Confirm {
 }
 
 fn style_button(span: Span<'static>, selected: bool) -> Span<'static> {
+    let t = theme::get();
     if selected {
-        span.white().on_dark_gray()
+        span.style(t.selection_highlight)
     } else {
-        span.dim()
+        span.style(t.hint)
     }
 }
 

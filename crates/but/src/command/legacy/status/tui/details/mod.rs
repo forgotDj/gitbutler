@@ -2,7 +2,7 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     iter::{empty, once, repeat_n},
-    sync::{Arc, LazyLock},
+    sync::Arc,
     time::Instant,
 };
 
@@ -20,8 +20,7 @@ use itertools::Either;
 use ratatui::{
     Frame,
     layout::Rect,
-    palette::Hsl,
-    style::{Color, Style, Stylize},
+    style::{Color, Stylize},
     text::{Line, Span, Text},
     widgets::{Block, Borders, List, ListItem, Widget},
 };
@@ -36,33 +35,17 @@ use uuid::Uuid;
 use crate::{
     CliId, IdMap,
     command::legacy::status::tui::{
-        CommandMessage, CommitMessage, DETAILS_CURSOR_BG, DebugAsType, FilesMessage, Message,
-        MessageOnDrop, MoveMessage, RewordMessage, RubMessage,
-        details::details_cursor::DetailsCursor, message_on_drop::message_on_drop,
-        mode::CommittedHunk,
+        CommandMessage, CommitMessage, DebugAsType, FilesMessage, Message, MessageOnDrop,
+        MoveMessage, RewordMessage, RubMessage, details::details_cursor::DetailsCursor,
+        message_on_drop::message_on_drop, mode::CommittedHunk,
     },
     id::{UncommittedCliId, UncommittedHunk},
+    theme,
 };
 
 use super::RubSource;
 
 mod details_cursor;
-
-// we don't currently compute word level diffs so MINUS_EMPH_BG and PLUS_EMPH_BG aren't used (in
-// the diff lines themselves). Without that MINUS_BG and PLUS_BG are a little too hard to see, so
-// this adjustment is applied to make them more clear.
-const LIGHTNESS_ADJUSTMENT: f32 = 0.05;
-
-// colors from delta with slight adjustment
-static MINUS_BG: LazyLock<Color> =
-    LazyLock::new(|| Color::from_hsl(Hsl::new(-0.952, 1.0, 0.123 + LIGHTNESS_ADJUSTMENT)));
-static PLUS_BG: LazyLock<Color> =
-    LazyLock::new(|| Color::from_hsl(Hsl::new(120.0, 1.0, 0.078 + LIGHTNESS_ADJUSTMENT)));
-
-static MINUS_EMPH_BG: LazyLock<Color> =
-    LazyLock::new(|| Color::from_hsl(Hsl::new(-0.468, 0.8, 0.313)));
-static PLUS_EMPH_BG: LazyLock<Color> =
-    LazyLock::new(|| Color::from_hsl(Hsl::new(120.0, 1.0, 0.188)));
 
 const MONOKAI_THEME: &[u8] =
     include_bytes!("../../../../../../assets/syntax-highlighting-themes/Monokai Extended.tmTheme");
@@ -534,7 +517,7 @@ impl Details {
     pub(super) fn render(&self, area: Rect, frame: &mut Frame) {
         let outer_block = Block::bordered()
             .borders(Borders::LEFT)
-            .border_style(Style::default().dim());
+            .border_style(theme::get().border);
         let inner_area = outer_block.inner(area);
         frame.render_widget(outer_block, area);
 
@@ -769,7 +752,9 @@ impl DetailsAndDiffWidget {
                     .selection()
                     .is_some_and(|selection| selection == section_id)
                 {
-                    list_item.to_owned().bg(*DETAILS_CURSOR_BG)
+                    list_item
+                        .to_owned()
+                        .style(theme::get().discrete_selection_highlight)
                 } else {
                     list_item.to_owned()
                 }
@@ -794,7 +779,7 @@ fn from_commit(
     let header_items = Vec::from([
         ListItem::new(Line::from_iter([
             Span::raw(format!("{:<11}", "Commit ID:")),
-            Span::raw(commit_id.to_hex().to_string()).blue(),
+            Span::styled(commit_id.to_hex().to_string(), theme::get().commit_id),
         ])),
         ListItem::new(Line::from_iter(
             once(Span::raw(format!("{:<11}", "Author:")))
@@ -1175,6 +1160,7 @@ impl IncrementalDiffRenderer {
                     }
 
                     let mut highlight_lines = HighlightLines::new(syntax.as_ref(), theme);
+                    let t = theme::get();
 
                     for line in diff.iter().skip(*line_idx).take(self.chunk_size) {
                         *line_idx += 1;
@@ -1184,19 +1170,19 @@ impl IncrementalDiffRenderer {
                             let item = ListItem::new(Line::from_iter(
                                 [
                                     Span::raw(" ".repeat(*old_width as _)),
-                                    Span::raw(" ┊ ").dim(),
+                                    Span::styled(" ┊ ", t.border),
                                     Span::raw(
                                         " ".repeat((*new_width - num_digits(*new_line_num)) as _),
                                     ),
-                                    Span::raw(new_line_num.to_string()).fg(*PLUS_EMPH_BG),
-                                    Span::raw(" │ ").dim(),
-                                    Span::raw("+").bg(*PLUS_BG),
+                                    Span::raw(new_line_num.to_string()).style(t.addition),
+                                    Span::styled(" │ ", t.border),
+                                    Span::raw("+").style(t.addition_rich),
                                 ]
                                 .into_iter()
                                 .chain(syntax_highlight(
                                     &code,
                                     path.as_ref(),
-                                    Some(*PLUS_BG),
+                                    t.addition_rich.bg,
                                     &mut highlight_lines,
                                     syntax_set,
                                     cache,
@@ -1211,17 +1197,17 @@ impl IncrementalDiffRenderer {
                                     Span::raw(
                                         " ".repeat((*old_width - num_digits(*old_line_num)) as _),
                                     ),
-                                    Span::raw(old_line_num.to_string()).fg(*MINUS_EMPH_BG),
-                                    Span::raw(" ┊ ").dim(),
+                                    Span::raw(old_line_num.to_string()).style(t.deletion),
+                                    Span::styled(" ┊ ", t.border),
                                     Span::raw(" ".repeat(*new_width as _)),
-                                    Span::raw(" │ ").dim(),
-                                    Span::raw("-").bg(*MINUS_BG),
+                                    Span::styled(" │ ", t.border),
+                                    Span::raw("-").style(t.deletion_rich),
                                 ]
                                 .into_iter()
                                 .chain(syntax_highlight(
                                     &code,
                                     path.as_ref(),
-                                    Some(*MINUS_BG),
+                                    t.deletion_rich.bg,
                                     &mut highlight_lines,
                                     syntax_set,
                                     cache,
@@ -1237,13 +1223,13 @@ impl IncrementalDiffRenderer {
                                     Span::raw(
                                         " ".repeat((*old_width - num_digits(*old_line_num)) as _),
                                     ),
-                                    Span::raw(old_line_num.to_string()).dark_gray(),
-                                    Span::raw(" ┊ ").dim(),
+                                    Span::styled(old_line_num.to_string(), t.hint),
+                                    Span::styled(" ┊ ", t.border),
                                     Span::raw(
                                         " ".repeat((*new_width - num_digits(*new_line_num)) as _),
                                     ),
-                                    Span::raw(new_line_num.to_string()).dark_gray(),
-                                    Span::raw(" │  ").dim(),
+                                    Span::styled(new_line_num.to_string(), t.hint),
+                                    Span::styled(" │  ", t.border),
                                 ]
                                 .into_iter()
                                 .chain(syntax_highlight(
@@ -1408,8 +1394,9 @@ fn render_hunk_path_header(
     status: Option<ShortIdOrTreeStatus<'_>>,
     out: &mut Vec<ListItem<'static>>,
 ) {
+    let t = theme::get();
     let status = status.map(|id_or_status| match id_or_status {
-        ShortIdOrTreeStatus::ShortId(id) => Span::raw(id.to_owned()).blue(),
+        ShortIdOrTreeStatus::ShortId(id) => Span::styled(id.to_owned(), t.cli_id),
         ShortIdOrTreeStatus::TreeStatus(status) => change_status(status),
     });
     let path = path.to_string();
@@ -1456,35 +1443,42 @@ fn build_hunk_path_header(
 }
 
 fn change_status(status: &TreeStatus) -> Span<'static> {
+    let t = theme::get();
     match status {
-        TreeStatus::Addition { .. } => Span::raw("added").green(),
-        TreeStatus::Deletion { .. } => Span::raw("deleted").red(),
-        TreeStatus::Modification { .. } => Span::raw("modified").magenta(),
-        TreeStatus::Rename { .. } => Span::raw("renamed").blue(),
+        TreeStatus::Addition { .. } => Span::styled("added", t.addition),
+        TreeStatus::Deletion { .. } => Span::styled("deleted", t.deletion),
+        TreeStatus::Modification { .. } => Span::styled("modified", t.modification),
+        TreeStatus::Rename { .. } => Span::styled("renamed", t.renaming),
     }
 }
 
 fn bordered_line_top_right_bottom(mut text: Line<'static>) -> impl Iterator<Item = Line<'static>> {
     let width_including_padding = text.width() + 1;
+    let t = theme::get();
 
-    text.spans.extend([Span::raw(" "), Span::raw("│").dim()]);
+    text.spans
+        .extend([Span::raw(" "), Span::styled("│", t.border)]);
 
     [
-        Line::from_iter(repeat_n("─", width_including_padding).chain(once("╮"))).dim(),
+        Line::from_iter(repeat_n("─", width_including_padding).chain(once("╮"))).style(t.border),
         text,
-        Line::from_iter(repeat_n("─", width_including_padding).chain(once("╯"))).dim(),
+        Line::from_iter(repeat_n("─", width_including_padding).chain(once("╯"))).style(t.border),
     ]
     .into_iter()
 }
 
 fn render_signature(sig: &Signature) -> impl IntoIterator<Item = Span<'static>> {
+    let t = theme::get();
     [
-        Span::raw(sig.name.to_string()).yellow(),
+        Span::styled(sig.name.to_string(), t.user),
         Span::raw(" <"),
-        Span::raw(sig.email.to_string()).yellow(),
+        Span::styled(sig.email.to_string(), t.user),
         Span::raw(">"),
         Span::raw(" ("),
-        Span::raw(sig.time.format_or_unix(gix::date::time::format::DEFAULT)).green(),
+        Span::styled(
+            sig.time.format_or_unix(gix::date::time::format::DEFAULT),
+            t.time,
+        ),
         Span::raw(")"),
     ]
     .into_iter()
@@ -1512,9 +1506,12 @@ fn build_unified_patch(
     }
 
     if let Some(headers) = diff.lines().next() {
+        let t = theme::get();
         content.extend([SectionContent::HunkHeader([
-            ListItem::new(Span::raw(headers.to_str_lossy().to_string()).dim()),
-            ListItem::new(Line::from_iter(repeat_n("─", headers.to_str_lossy().width())).dim()),
+            ListItem::new(Span::styled(headers.to_str_lossy().to_string(), t.hint)),
+            ListItem::new(
+                Line::from_iter(repeat_n("─", headers.to_str_lossy().width())).style(t.border),
+            ),
         ])]);
     }
 

@@ -6,7 +6,7 @@ use std::{
     iter::once,
     process::Command,
     rc::Rc,
-    sync::{Arc, LazyLock, mpsc::Receiver},
+    sync::{Arc, mpsc::Receiver},
     time::{Duration, Instant},
 };
 
@@ -24,7 +24,6 @@ use itertools::Either;
 use nonempty::NonEmpty;
 use ratatui::{
     Frame,
-    palette::Hsl,
     prelude::*,
     widgets::{Block, BorderType, Borders, List, ListItem},
 };
@@ -64,7 +63,7 @@ use crate::{
         },
     },
     id::UNASSIGNED,
-    theme::Theme,
+    theme::{self, Theme},
     tui::{CrosstermTerminalGuard, HeadlessTerminalGuard, TerminalGuard},
     utils::{DebugAsType, OutputChannel, binary_path::current_exe_for_but_exec},
 };
@@ -92,11 +91,6 @@ mod toast;
 
 #[cfg(test)]
 mod tests;
-
-static CURSOR_BG: LazyLock<Color> = LazyLock::new(|| Color::Rgb(69, 71, 90));
-
-static DETAILS_CURSOR_BG: LazyLock<Color> =
-    LazyLock::new(|| Color::from_hsl(Hsl::new(236.8, 0.162, 0.229)));
 
 const NOOP: &str = "noop";
 const CURSOR_CONTEXT_ROWS: usize = 3;
@@ -1904,13 +1898,15 @@ impl App {
             return Ok(());
         };
 
+        let t = theme::get();
+
         let inline_reword_mode = match &**cli_id {
             CliId::Branch { name, stack_id, .. } => {
                 let Some(stack_id) = stack_id else {
                     return Ok(());
                 };
                 let mut textarea = TextArea::from([name]);
-                textarea.set_cursor_line_style(Style::default().green());
+                textarea.set_cursor_line_style(t.local_branch);
                 textarea.move_cursor(CursorMove::End);
 
                 InlineRewordMode::Branch {
@@ -1929,7 +1925,7 @@ impl App {
 
                 let first_line = current_message.lines().next().unwrap_or("").to_string();
                 let mut textarea = TextArea::from([first_line]);
-                textarea.set_cursor_line_style(Style::default());
+                textarea.set_cursor_line_style(t.default);
                 textarea.move_cursor(CursorMove::End);
 
                 InlineRewordMode::Commit {
@@ -2082,7 +2078,7 @@ impl App {
 
     fn handle_enter_command_mode(&mut self, kind: CommandModeKind) {
         let mut textarea = TextArea::default();
-        textarea.set_cursor_line_style(Style::default());
+        textarea.set_cursor_line_style(theme::get().default);
         textarea.move_cursor(CursorMove::End);
 
         self.mode = Mode::Command(CommandMode {
@@ -2193,6 +2189,8 @@ impl App {
     }
 
     fn render(&self, frame: &mut Frame) {
+        let t = theme::get();
+
         let content_layout =
             Layout::vertical([Constraint::Min(1), Constraint::Length(1)]).split(frame.area());
         let main_content_area = content_layout[0];
@@ -2211,11 +2209,11 @@ impl App {
         let status_layout = self.status_layout(main_content_area);
 
         let dimmed_block = Block::bordered()
-            .border_style(Style::default().dark_gray())
+            .border_style(t.border)
             .border_type(BorderType::Plain)
             .borders(Borders::BOTTOM);
         let focused_block = Block::bordered()
-            .border_style(Style::default().fg(self.mode.bg()))
+            .border_style(t.default.fg(self.mode.bg()))
             .border_type(BorderType::Thick)
             .borders(Borders::BOTTOM);
 
@@ -2239,7 +2237,7 @@ impl App {
 
         if let Some(debug_area) = debug_area {
             let outer_block = Block::bordered()
-                .border_style(Style::default().dark_gray())
+                .border_style(t.border)
                 .border_type(BorderType::Thick)
                 .borders(Borders::LEFT);
             let inner_area = outer_block.inner(debug_area);
@@ -2490,11 +2488,13 @@ impl App {
                     line.extend(
                         content_spans
                             .into_iter()
-                            .map(|span| span.style(Style::default().dim())),
+                            .map(|span| span.style(theme::get().hint)),
                     );
                 }
             }
         }
+
+        let t = theme::get();
 
         if is_selected {
             match &self.mode {
@@ -2502,7 +2502,7 @@ impl App {
                     if matches!(data, StatusOutputLineData::Commit { .. })
                         || matches!(data, StatusOutputLineData::Branch { .. })
                     {
-                        let mut extension_line = Line::default().bg(*CURSOR_BG);
+                        let mut extension_line = Line::default().style(t.selection_highlight);
                         extend_connector_spans(
                             connector.as_deref().unwrap_or_default(),
                             ExtensionDirection::Below,
@@ -2520,7 +2520,7 @@ impl App {
                     if let StatusOutputLineData::Commit { cli_id: target, .. } = data
                         && *move_mode.source != **target
                     {
-                        let mut extension_line = Line::default().bg(*CURSOR_BG);
+                        let mut extension_line = Line::default().style(t.selection_highlight);
                         extend_connector_spans(
                             connector.as_deref().unwrap_or_default(),
                             ExtensionDirection::Below,
@@ -2536,7 +2536,7 @@ impl App {
                         && *move_mode.source != **target
                     {
                         if move_mode.source.is_commit() {
-                            let mut extension_line = Line::default().bg(*CURSOR_BG);
+                            let mut extension_line = Line::default().style(t.selection_highlight);
                             extend_connector_spans(
                                 connector.as_deref().unwrap_or_default(),
                                 ExtensionDirection::Below,
@@ -2549,7 +2549,7 @@ impl App {
                             );
                             return StatusListItem::Double(line, extension_line);
                         } else {
-                            let mut extension_line = Line::default().bg(*CURSOR_BG);
+                            let mut extension_line = Line::default().style(t.selection_highlight);
                             extend_connector_spans(
                                 connector.as_deref().unwrap_or_default(),
                                 ExtensionDirection::Above,
@@ -2573,7 +2573,7 @@ impl App {
         }
 
         if is_selected {
-            line = line.bg(*CURSOR_BG);
+            line = line.style(t.selection_highlight);
         }
 
         StatusListItem::Single(line)
@@ -2684,6 +2684,8 @@ impl App {
     }
 
     fn render_hotbar(&self, area: Rect, frame: &mut Frame) {
+        let t = theme::get();
+
         let mode_span = Span::raw(format!(
             "  {}  ",
             match self.mode {
@@ -2724,13 +2726,13 @@ impl App {
                     .peekable();
                 while let Some(key_bind) = key_binds_iter.next() {
                     line.extend([
-                        Span::styled(key_bind.chord_display(), Style::default().blue()),
+                        Span::styled(key_bind.chord_display(), t.legend),
                         Span::raw(" "),
-                        Span::styled(key_bind.short_description(), Style::default().dim()),
+                        Span::styled(key_bind.short_description(), t.hint),
                     ]);
 
                     if key_binds_iter.peek().is_some() {
-                        line.push_span(Span::styled(" • ", Style::default().dim()));
+                        line.push_span(Span::styled(" • ", t.hint));
                     }
                 }
 
