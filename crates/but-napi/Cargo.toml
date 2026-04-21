@@ -35,7 +35,7 @@ but-ctx.workspace = true
 but-path.workspace = true
 but-settings.workspace = true
 gitbutler-watcher.workspace = true
-napi = { version = "3", features = ["serde-json", "async"] }
+napi = { version = "3", features = ["serde-json", "tokio_rt"] }
 napi-derive = "3"
 serde_json.workspace = true
 tracing.workspace = true
