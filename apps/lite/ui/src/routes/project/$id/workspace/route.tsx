@@ -388,18 +388,8 @@ const Hunk: FC<{
 	fileParent?: FileParent;
 	change: TreeChange;
 	hunk: DiffHunk;
-	editable: boolean;
 	hunkDependencyDiffs?: Array<HunkDependencyDiff>;
-}> = ({
-	patch,
-	operationMode,
-	projectId,
-	fileParent,
-	change,
-	hunk,
-	editable,
-	hunkDependencyDiffs,
-}) => {
+}> = ({ patch, operationMode, projectId, fileParent, change, hunk, hunkDependencyDiffs }) => {
 	const dependencyCommitIds =
 		fileParent?._tag === "Change" && hunkDependencyDiffs
 			? getDependencyCommitIds({ hunk, hunkDependencyDiffs })
@@ -417,7 +407,7 @@ const Hunk: FC<{
 
 	return (
 		<div>
-			{fileParent && editable
+			{fileParent
 				? (() => {
 						const source = hunkItem({
 							parent: fileParent,
@@ -446,10 +436,9 @@ const FileDiff: FC<{
 	projectId: string;
 	change: TreeChange;
 	fileParent?: FileParent;
-	editable: boolean;
 	hunkDependencyDiffs?: Array<HunkDependencyDiff>;
 	diff: UnifiedPatch | null;
-}> = ({ operationMode, projectId, change, fileParent, editable, hunkDependencyDiffs, diff }) =>
+}> = ({ operationMode, projectId, change, fileParent, hunkDependencyDiffs, diff }) =>
 	Match.value(diff).pipe(
 		Match.when(null, () => <div>No diff available for this file.</div>),
 		Match.when({ type: "Binary" }, () => <div>Binary file (diff not available).</div>),
@@ -471,7 +460,6 @@ const FileDiff: FC<{
 								fileParent={fileParent}
 								change={change}
 								hunk={hunk}
-								editable={editable}
 								hunkDependencyDiffs={hunkDependencyDiffs}
 							/>
 						</li>
@@ -523,7 +511,6 @@ const ChangesPreview: FC<{
 									projectId={projectId}
 									change={change}
 									fileParent={changeFileParent}
-									editable
 									hunkDependencyDiffs={hunkDependencyDiffsByPath.get(change.path)}
 									diff={diff}
 								/>
@@ -592,7 +579,6 @@ const CommitPreview: FC<{
 									projectId={projectId}
 									change={change}
 									fileParent={commitFileParent({ commitId })}
-									editable
 									diff={diff}
 								/>
 							</li>
@@ -641,7 +627,6 @@ const BranchPreview: FC<{
 								operationMode={operationMode}
 								projectId={projectId}
 								change={change}
-								editable={false}
 								diff={diff}
 							/>
 						</li>
