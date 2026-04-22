@@ -246,15 +246,15 @@ impl TryFrom<EngineCommitDiscardResult> for CommitDiscardResult {
     }
 }
 
-/// JSON transport type for undoing a commit.
+/// JSON transport type for undoing one or more commits.
 #[derive(Debug, Serialize)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct CommitUndoResult {
-    /// The ID of the commit that was undone.
-    #[cfg_attr(feature = "export-schema", schemars(with = "String"))]
-    pub undone_commit: HexHash,
-    /// Workspace state after undoing the commit.
+    /// The IDs of the commits that were undone.
+    #[cfg_attr(feature = "export-schema", schemars(with = "Vec<String>"))]
+    pub undone_commits: Vec<HexHash>,
+    /// Workspace state after undoing the commits.
     pub workspace: crate::json::WorkspaceState,
 }
 
@@ -266,12 +266,12 @@ impl TryFrom<EngineCommitUndoResult> for CommitUndoResult {
 
     fn try_from(value: EngineCommitUndoResult) -> Result<Self, Self::Error> {
         let EngineCommitUndoResult {
-            undone_commit,
+            undone_commits,
             workspace,
         } = value;
 
         Ok(Self {
-            undone_commit: undone_commit.into(),
+            undone_commits: undone_commits.into_iter().map(Into::into).collect(),
             workspace: workspace.try_into()?,
         })
     }

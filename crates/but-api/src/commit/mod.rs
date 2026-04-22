@@ -4,7 +4,7 @@ pub mod amend;
 /// Functions for creating new commits.
 pub mod create;
 
-/// Functions for discarding commits.
+/// Functions for discarding commits (changes are lost).
 pub mod discard_commit;
 
 /// JSON transport types for commit APIs.
@@ -31,5 +31,5 @@ pub mod types;
 /// Functions for uncommitting changes from commits.
 pub mod uncommit;
 
-/// Functions for undoing commits.
+/// Functions for undoing commits (changes are kept in the workspace).
 pub mod undo;

@@ -460,15 +460,15 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 		}),
 		uncommit: build.mutation<
 			CommitUndoResult,
-			{ projectId: string; stackId: string; commitId: string }
+			{ projectId: string; stackId: string; commitIds: string[] }
 		>({
 			extraOptions: {
 				command: "commit_undo",
 				actionName: "Uncommit",
 			},
-			query: ({ projectId, stackId, commitId }) => ({
+			query: ({ projectId, stackId, commitIds }) => ({
 				projectId,
-				subjectCommitId: commitId,
+				subjectCommitIds: commitIds,
 				assignTo: stackId,
 				dryRun: false,
 			}),

@@ -24,11 +24,11 @@ describe("buildStackEndpoints", () => {
 			query?.({
 				projectId: "project-1",
 				stackId: "stack-1",
-				commitId: "commit-1",
+				commitIds: ["commit-1"],
 			}),
 		).toEqual({
 			projectId: "project-1",
-			subjectCommitId: "commit-1",
+			subjectCommitIds: ["commit-1"],
 			assignTo: "stack-1",
 			dryRun: false,
 		});

@@ -55,10 +55,10 @@ pub struct CommitDiscardResult {
     pub workspace: WorkspaceState,
 }
 
-/// Outcome of undoing a commit.
+/// Outcome of undoing one or more commits.
 pub struct CommitUndoResult {
-    /// The ID of the commit that was undone.
-    pub undone_commit: gix::ObjectId,
-    /// Workspace state after undoing the commit.
+    /// The IDs of the commits that were undone.
+    pub undone_commits: Vec<gix::ObjectId>,
+    /// Workspace state after undoing the commits.
     pub workspace: WorkspaceState,
 }

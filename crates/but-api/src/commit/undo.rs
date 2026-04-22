@@ -11,66 +11,80 @@ use tracing::instrument;
 
 use crate::commit::types::CommitUndoResult;
 
-/// Undo `subject_commit_id` using the behavior described by
-/// [`commit_undo_only_with_perm()`].
+/// Undo one or more commits, removing them from branch history while
+/// **keeping their changes** in the workspace as uncommitted modifications.
+///
+/// Unlike [`super::discard_commit::commit_discard()`], which permanently
+/// removes the commit's changes, this operation reassigns the affected hunks
+/// so they remain available for further editing or recommitting.
 ///
 /// When `dry_run` is enabled, the returned workspace previews the undo result
 /// without materializing the rewrite or persisting an oplog entry.
+/// See [`commit_undo_only_with_perm()`] for details.
 #[but_api(napi, try_from = crate::commit::json::CommitUndoResult)]
 #[instrument(err(Debug))]
 pub fn commit_undo(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     assign_to: Option<but_core::ref_metadata::StackId>,
     dry_run: DryRun,
 ) -> anyhow::Result<CommitUndoResult> {
     let mut guard = ctx.exclusive_worktree_access();
     commit_undo_with_perm(
         ctx,
-        subject_commit_id,
+        subject_commit_ids,
         assign_to,
         dry_run,
         guard.write_permission(),
     )
 }
 
-/// Undo `subject_commit_id` using the behavior described by
-/// [`commit_undo_only_with_perm()`].
+/// Undo one or more commits, removing them from branch history while
+/// **keeping their changes** in the workspace.
 ///
 /// When `dry_run` is enabled, the returned workspace previews the undo result
 /// without materializing the rewrite.
+/// See [`commit_undo_only_with_perm()`] for details.
 pub fn commit_undo_only(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     assign_to: Option<but_core::ref_metadata::StackId>,
     dry_run: DryRun,
 ) -> anyhow::Result<CommitUndoResult> {
     let mut guard = ctx.exclusive_worktree_access();
     commit_undo_only_with_perm(
         ctx,
-        subject_commit_id,
+        subject_commit_ids,
         assign_to,
         dry_run,
         guard.write_permission(),
     )
 }
 
-/// Undo `subject_commit_id` using the behavior described by
-/// [`commit_undo_only_with_perm()`].
+/// Undo one or more commits, removing them from branch history while
+/// **keeping their changes** in the workspace, and record an oplog snapshot.
 ///
 /// When `dry_run` is enabled, the returned workspace previews the undo result
 /// and skips oplog persistence.
+/// See [`commit_undo_only_with_perm()`] for details.
 pub fn commit_undo_with_perm(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     assign_to: Option<but_core::ref_metadata::StackId>,
     dry_run: DryRun,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitUndoResult> {
-    let details = SnapshotDetails::new(OperationKind::UndoCommit).with_trailers(vec![Trailer {
-        key: "sha".to_string(),
-        value: subject_commit_id.to_string(),
-    }]);
+    let details = SnapshotDetails::new(OperationKind::UndoCommit)
+        .with_count(subject_commit_ids.len())
+        .with_trailers(
+            subject_commit_ids
+                .iter()
+                .map(|id| Trailer {
+                    key: "sha".to_string(),
+                    value: id.to_string(),
+                })
+                .collect(),
+        );
     let maybe_oplog_entry = but_oplog::UnmaterializedOplogSnapshot::from_details_with_perm(
         ctx,
         details,
@@ -78,7 +92,7 @@ pub fn commit_undo_with_perm(
         dry_run,
     );
 
-    let res = commit_undo_only_with_perm(ctx, subject_commit_id, assign_to, dry_run, perm);
+    let res = commit_undo_only_with_perm(ctx, subject_commit_ids, assign_to, dry_run, perm);
     if let Some(snapshot) = maybe_oplog_entry
         && res.is_ok()
     {
@@ -87,18 +101,27 @@ pub fn commit_undo_with_perm(
     res
 }
 
-/// Undo `subject_commit_id`, under caller-held exclusive repository access.
+/// Undo one or more commits, under caller-held exclusive repository access.
 ///
-/// This will move the changes in the commit to be unassigned and discard the
-/// commit. When `dry_run` is enabled, it returns a preview of the resulting
-/// workspace state without materializing the rewrite.
+/// The commits are removed from branch history, but their changes are
+/// **kept** — they surface as uncommitted workspace modifications. When
+/// `assign_to` is set, newly surfaced hunks are assigned to that stack.
+///
+/// This contrasts with [`super::discard_commit::commit_discard()`], which
+/// removes both the commit and its changes.
+///
+/// When `dry_run` is enabled, it returns a preview of the resulting workspace
+/// state without materializing the rewrite.
 pub fn commit_undo_only_with_perm(
     ctx: &mut but_ctx::Context,
-    subject_commit_id: gix::ObjectId,
+    subject_commit_ids: Vec<gix::ObjectId>,
     assign_to: Option<but_core::ref_metadata::StackId>,
     dry_run: DryRun,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitUndoResult> {
+    if subject_commit_ids.is_empty() {
+        anyhow::bail!("no commit IDs provided for undo");
+    }
     let context_lines = ctx.settings.context_lines;
     let mut meta = ctx.meta()?;
     let (repo, mut ws, mut db) = ctx.workspace_mut_and_db_mut_with_perm(perm)?;
@@ -119,8 +142,17 @@ pub fn commit_undo_only_with_perm(
 
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
 
-    let rebase = but_workspace::commit::discard_commit(editor, subject_commit_id)
-        .with_context(|| format!("failed to discard {}", subject_commit_id.to_hex()))?;
+    let rebase = but_workspace::commit::discard_commits(editor, subject_commit_ids.iter().copied())
+        .with_context(|| {
+            format!(
+                "failed to undo commits: {}",
+                subject_commit_ids
+                    .iter()
+                    .map(|id| id.to_hex().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })?;
 
     let (workspace, replaced_commits, repo) = if dry_run.into() {
         let graph = rebase.overlayed_graph()?;
@@ -178,7 +210,7 @@ pub fn commit_undo_only_with_perm(
     }
 
     Ok(CommitUndoResult {
-        undone_commit: subject_commit_id,
+        undone_commits: subject_commit_ids,
         workspace: WorkspaceState::from_workspace(workspace, repo, replaced_commits)?,
     })
 }

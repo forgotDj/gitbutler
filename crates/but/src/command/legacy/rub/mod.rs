@@ -599,7 +599,7 @@ impl CommitToUnassignedOperation {
 
     /// Executes `UndoCommit` by uncommitting all changes from the selected commit.
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitUndoResult> {
-        but_api::commit::undo::commit_undo(ctx, self.oid, None, DryRun::No)
+        but_api::commit::undo::commit_undo(ctx, vec![self.oid], None, DryRun::No)
     }
 }
 
@@ -626,7 +626,7 @@ impl CommitToStackOperation {
 
     /// Executes `UndoCommit` by uncommitting all changes from the selected commit.
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitUndoResult> {
-        but_api::commit::undo::commit_undo(ctx, self.oid, Some(self.stack), DryRun::No)
+        but_api::commit::undo::commit_undo(ctx, vec![self.oid], Some(self.stack), DryRun::No)
     }
 }
 
