@@ -249,45 +249,6 @@ pub mod stacks {
         Ok(stack_entry)
     }
 
-    /// Add a branch to an existing stack by looking up the stack by name.
-    pub fn move_branch(
-        subject_branch: &str,
-        destination_branch: &str,
-        args: &crate::Args,
-    ) -> anyhow::Result<()> {
-        let mut ctx = context_from_args(args)?;
-        let meta = ctx.legacy_meta()?;
-        let stacks = {
-            but_workspace::legacy::stacks_v3(&*ctx.repo.get()?, &meta, Default::default(), None)?
-        };
-        let subject_stack = stacks
-            .clone()
-            .into_iter()
-            .find(|s| s.heads.iter().any(|h| h.name == subject_branch))
-            .context(format!(
-                "No stack branch found with name '{subject_branch}'"
-            ))?;
-
-        let destination_stack = stacks
-            .into_iter()
-            .find(|s| s.heads.iter().any(|h| h.name == destination_branch))
-            .context(format!(
-                "No stack branch found with name '{destination_branch}'"
-            ))?;
-
-        let outcome = gitbutler_branch_actions::move_branch(
-            &mut ctx,
-            destination_stack
-                .id
-                .context("BUG(opt-destination-stack-id)")?,
-            destination_branch,
-            subject_stack.id.context("BUG(opt-subject-stack-id)")?,
-            subject_branch,
-        )?;
-
-        debug_print(outcome)
-    }
-
     /// Create a new branch in the current project.
     ///
     /// If `id` is provided, it will be used to add the branch to an existing stack.

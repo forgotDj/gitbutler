@@ -432,24 +432,6 @@ pub fn fetch_from_remotes(ctx: &Context, action: Option<String>) -> Result<BaseB
 
 #[but_api]
 #[instrument(err(Debug))]
-pub fn move_branch_legacy(
-    ctx: &mut but_ctx::Context,
-    target_stack_id: StackId,
-    target_branch_name: String,
-    source_stack_id: StackId,
-    subject_branch_name: String,
-) -> Result<MoveBranchResult> {
-    gitbutler_branch_actions::move_branch(
-        ctx,
-        target_stack_id,
-        target_branch_name.as_str(),
-        source_stack_id,
-        subject_branch_name.as_str(),
-    )
-}
-
-#[but_api]
-#[instrument(err(Debug))]
 pub fn tear_off_branch_legacy(
     ctx: &mut but_ctx::Context,
     source_stack_id: StackId,
