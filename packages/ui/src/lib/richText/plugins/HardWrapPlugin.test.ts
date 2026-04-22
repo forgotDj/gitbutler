@@ -1,4 +1,9 @@
 import { wrapIfNecessary } from "$lib/richText/linewrap";
+import {
+	InlineCodeNode,
+	createInlineCodeNode,
+	isInlineCodeNode,
+} from "$lib/richText/node/inlineCode";
 import { handleEnter } from "$lib/richText/plugins/IndentPlugin.svelte";
 import {
 	createEditor,
@@ -650,6 +655,268 @@ describe("HardWrapPlugin with multi-paragraph structure", () => {
 				expect(allText).toContain("made significantly longer");
 				expect(allText).toContain("continuation");
 				expect(allText).toContain("more text");
+			});
+		});
+	});
+
+	describe("inline code nodes", () => {
+		const INLINE_CODE_REGEX = /`[^`]+`/;
+
+		/** Replicates the InlineCode plugin's node transform */
+		function inlineCodeTextNodeTransform(node: TextNode): void {
+			if (isInlineCodeNode(node)) return;
+			if (!node.isSimpleText()) return;
+			const text = node.getTextContent();
+			const match = INLINE_CODE_REGEX.exec(text);
+			if (!match || match.index === undefined) return;
+			const startIndex = match.index;
+			const endIndex = startIndex + match[0].length;
+			const codeNode = createInlineCodeNode(match[0]);
+			let replaceNode: TextNode;
+			if (startIndex === 0) {
+				[replaceNode] = node.splitText(endIndex);
+			} else {
+				[, replaceNode] = node.splitText(startIndex, endIndex);
+			}
+			replaceNode.replace(codeNode);
+		}
+
+		it("should move cursor to next line when wrapping a paragraph with inline code", () => {
+			editor = createEditor({
+				namespace: "test",
+				nodes: [InlineCodeNode],
+				onError: (error) => {
+					throw error;
+				},
+			});
+
+			let lastTextNodeKey = "";
+
+			editor.update(() => {
+				const root = getRoot();
+				const paragraph = createParagraphNode();
+
+				// Simulate: "This line has `backticks` and then some more text that overflows"
+				// which is how the editor structures inline code — multiple child nodes
+				const text1 = createTextNode("This line has ");
+				const code = new InlineCodeNode("`backticks`");
+				const text2 = createTextNode(" and then some more text that overflows");
+				paragraph.append(text1, code, text2);
+				root.append(paragraph);
+
+				lastTextNodeKey = text2.getKey();
+
+				// Set cursor at the end of the last text node (simulating typing at the end)
+				text2.select(text2.getTextContentSize(), text2.getTextContentSize());
+			});
+
+			editor.update(() => {
+				const node = getNodeByKey(lastTextNodeKey) as LexicalTextNode;
+				wrapIfNecessary({ node, maxLength: 40 });
+			});
+
+			editor.read(() => {
+				const root = getRoot();
+				const children = root.getChildren();
+				const selection = getSelection();
+
+				// Should have wrapped into multiple paragraphs
+				expect(children.length).toBeGreaterThan(1);
+
+				if (isRangeSelection(selection)) {
+					const anchorNode = selection.anchor.getNode();
+					const anchorParent = anchorNode.getParent();
+
+					// Cursor should NOT be on the first line — it should be on a later line
+					// since the cursor was at the very end of the text
+					const parentIndex = children.findIndex(
+						(child) => child.getKey() === anchorParent?.getKey(),
+					);
+					expect(parentIndex).toBeGreaterThan(0);
+				}
+			});
+		});
+
+		it("should correctly compute cursor offset with inline code in the middle", () => {
+			editor = createEditor({
+				namespace: "test",
+				nodes: [InlineCodeNode],
+				onError: (error) => {
+					throw error;
+				},
+			});
+
+			let lastTextNodeKey = "";
+
+			editor.update(() => {
+				const root = getRoot();
+				const paragraph = createParagraphNode();
+
+				// "Short `code` and a bunch of extra words to go over the limit"
+				const text1 = createTextNode("Short ");
+				const code = new InlineCodeNode("`code`");
+				const text2 = createTextNode(" and a bunch of extra words to go over the limit");
+				paragraph.append(text1, code, text2);
+				root.append(paragraph);
+
+				lastTextNodeKey = text2.getKey();
+
+				// Set cursor at offset 10 within text2 — global offset should be
+				// 6 ("Short ") + 6 ("`code`") + 10 = 22
+				text2.select(10, 10);
+			});
+
+			editor.update(() => {
+				const node = getNodeByKey(lastTextNodeKey) as LexicalTextNode;
+				wrapIfNecessary({ node, maxLength: 30 });
+			});
+
+			editor.read(() => {
+				const root = getRoot();
+				const children = root.getChildren();
+				const selection = getSelection();
+
+				// Should have wrapped
+				expect(children.length).toBeGreaterThan(1);
+
+				// First line should contain the code portion
+				const firstLine = children[0].getTextContent();
+				expect(firstLine).toContain("code");
+
+				if (isRangeSelection(selection)) {
+					const anchorNode = selection.anchor.getNode();
+
+					// Cursor was at global offset 22, which is within the first line
+					// (first line fits ~30 chars), so cursor should stay on first line
+					expect(anchorNode.getParent()?.getKey()).toBe(children[0].getKey());
+				}
+			});
+		});
+
+		it("should move cursor to next line with InlineCode transform active", () => {
+			// This test verifies that after wrapIfNecessary collapses inline code
+			// into plain text, the InlineCode node transform re-splits it, and the
+			// cursor still ends up on the correct line.
+			editor = createEditor({
+				namespace: "test",
+				nodes: [InlineCodeNode],
+				onError: (error) => {
+					throw error;
+				},
+			});
+
+			// Register the InlineCode node transform (as the real editor does)
+			editor.registerNodeTransform(TextNode, inlineCodeTextNodeTransform);
+
+			let lastTextNodeKey = "";
+
+			// Set up paragraph with inline code
+			editor.update(() => {
+				const root = getRoot();
+				const paragraph = createParagraphNode();
+				const text1 = createTextNode("Some text ");
+				const code = new InlineCodeNode("`code`");
+				const text2 = createTextNode(" and then some more words here overflow");
+				paragraph.append(text1, code, text2);
+				root.append(paragraph);
+
+				lastTextNodeKey = text2.getKey();
+				text2.select(text2.getTextContentSize(), text2.getTextContentSize());
+			});
+
+			// Call wrapIfNecessary directly — the InlineCode transform will run
+			// during the same update after wrapping modifies the tree
+			editor.update(() => {
+				const node = getNodeByKey(lastTextNodeKey) as LexicalTextNode;
+				wrapIfNecessary({ node, maxLength: 35 });
+			});
+
+			editor.read(() => {
+				const root = getRoot();
+				const children = root.getChildren();
+				const selection = getSelection();
+
+				// Should have wrapped into multiple paragraphs
+				expect(children.length).toBeGreaterThan(1);
+
+				// First paragraph should still contain the inline code
+				const firstText = children[0].getTextContent();
+				expect(firstText).toContain("`code`");
+
+				if (isRangeSelection(selection)) {
+					const anchorNode = selection.anchor.getNode();
+					const anchorParent = anchorNode.getParent();
+
+					// Cursor should be on a LATER paragraph (not the first)
+					const parentIndex = children.findIndex(
+						(child) => child.getKey() === anchorParent?.getKey(),
+					);
+					expect(parentIndex).toBeGreaterThan(0);
+				}
+			});
+		});
+
+		it("should position cursor correctly when wrap point falls after inline code", () => {
+			// Simulates the exact scenario from issue #12674: typing after
+			// inline code until the line exceeds 72 chars
+			editor = createEditor({
+				namespace: "test",
+				nodes: [InlineCodeNode],
+				onError: (error) => {
+					throw error;
+				},
+			});
+
+			editor.registerNodeTransform(TextNode, inlineCodeTextNodeTransform);
+
+			let lastTextNodeKey = "";
+
+			editor.update(() => {
+				const root = getRoot();
+				const paragraph = createParagraphNode();
+				const text1 = createTextNode("Refactor the ");
+				const code = new InlineCodeNode("`authentication`");
+				const text2 = createTextNode(" module to use the new token validation logic");
+				paragraph.append(text1, code, text2);
+				root.append(paragraph);
+
+				lastTextNodeKey = text2.getKey();
+				const len = text2.getTextContentSize();
+				text2.select(len, len);
+			});
+
+			editor.update(() => {
+				const node = getNodeByKey(lastTextNodeKey) as LexicalTextNode;
+				wrapIfNecessary({ node, maxLength: 72 });
+			});
+
+			editor.read(() => {
+				const root = getRoot();
+				const children = root.getChildren();
+				const selection = getSelection();
+
+				// Should have wrapped
+				expect(children.length).toBeGreaterThan(1);
+
+				// All content should be preserved
+				const allText = children.map((c) => c.getTextContent()).join(" ");
+				expect(allText).toContain("authentication");
+				expect(allText).toContain("validation logic");
+
+				if (isRangeSelection(selection)) {
+					const anchorNode = selection.anchor.getNode();
+					const anchorParent = anchorNode.getParent();
+					const offset = selection.anchor.offset;
+
+					// Cursor should be on the last paragraph (user was typing at the end)
+					const parentIndex = children.findIndex(
+						(child) => child.getKey() === anchorParent?.getKey(),
+					);
+					expect(parentIndex).toBeGreaterThan(0);
+
+					// Cursor should NOT be at offset 0 (the "jump to beginning" bug)
+					expect(offset).toBeGreaterThan(0);
+				}
 			});
 		});
 	});
