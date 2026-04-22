@@ -667,8 +667,8 @@ export class StackService {
 		return this.backendApi.endpoints.removeBranch.useMutation();
 	}
 
-	get reorderStack() {
-		return this.backendApi.endpoints.reorderStack.mutate;
+	get commitMove() {
+		return this.backendApi.endpoints.commitMove.mutate;
 	}
 
 	get moveCommit() {
