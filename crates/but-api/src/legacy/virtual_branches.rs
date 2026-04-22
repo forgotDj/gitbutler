@@ -8,7 +8,6 @@ use but_workspace::legacy::ui::{StackEntryNoOpt, StackHeadInfo};
 use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
 use gitbutler_branch_actions::{
     BaseBranch, BranchListing, BranchListingDetails, BranchListingFilter, MoveBranchResult,
-    MoveCommitIllegalAction,
     branch_upstream_integration::IntegrationStrategy,
     upstream_integration::{
         BaseBranchResolution, BaseBranchResolutionApproach, IntegrationOutcome, Resolution,
@@ -429,17 +428,6 @@ pub fn fetch_from_remotes(ctx: &Context, action: Option<String>) -> Result<BaseB
 
     let base_branch = gitbutler_branch_actions::base::get_base_branch_data(ctx)?;
     Ok(base_branch)
-}
-
-#[but_api]
-#[instrument(err(Debug))]
-pub fn move_commit(
-    ctx: &mut but_ctx::Context,
-    commit_id: gix::ObjectId,
-    target_stack_id: StackId,
-    source_stack_id: StackId,
-) -> Result<Option<MoveCommitIllegalAction>> {
-    gitbutler_branch_actions::move_commit(ctx, target_stack_id, commit_id, source_stack_id)
 }
 
 #[but_api]
