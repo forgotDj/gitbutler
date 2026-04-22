@@ -1,4 +1,5 @@
 import { ConflictEntries, type ConflictEntriesObj } from "$lib/files/conflicts";
+import { normalizeReferenceSubject } from "$lib/stacks/commitMovePlacement";
 import { createSelectByIds, createSelectNth } from "$lib/state/customSelectors";
 import {
 	invalidatesItem,
@@ -8,7 +9,6 @@ import {
 	ReduxTag,
 } from "$lib/state/tags";
 import { createEntityAdapter, type EntityState } from "@reduxjs/toolkit";
-import type { MoveCommitIllegalAction } from "$lib/commits/commit";
 import type {
 	Stack,
 	CreateRefRequest,
@@ -162,10 +162,6 @@ export function toCommitCreatePlacement(args: CreateCommitRequest): {
 		},
 		side: "below",
 	};
-}
-
-function normalizeReferenceSubject(referenceName: string): string {
-	return referenceName.startsWith("refs/") ? referenceName : `refs/heads/${referenceName}`;
 }
 // Entity adapters and selectors
 
@@ -697,6 +693,14 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.BranchListing),
 			],
 		}),
+		/**
+		 * Generic commit move wrapper around `commit_move` for both reorder and
+		 * cross-stack drag/drop flows.
+		 *
+		 * Callers must provide the exact placement using `relativeTo` and `side`.
+		 * Targeting a branch reference with `side: "below"` inserts the commit at
+		 * the top of that destination stack.
+		 */
 		commitMove: build.mutation<
 			void,
 			{
@@ -709,24 +713,13 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 		>({
 			extraOptions: {
 				command: "commit_move",
-				actionName: "Reorder Stack",
-			},
-			query: (args) => args,
-		}),
-		moveCommit: build.mutation<
-			MoveCommitIllegalAction | null,
-			{ projectId: string; sourceStackId: string; commitId: string; targetStackId: string }
-		>({
-			extraOptions: {
-				command: "move_commit",
 				actionName: "Move Commit",
 			},
 			query: (args) => args,
-			invalidatesTags: (_result, _error, args) => [
+			invalidatesTags: [
 				invalidatesList(ReduxTag.HeadSha),
 				invalidatesList(ReduxTag.WorktreeChanges), // Moving commits can cause conflicts
-				invalidatesItem(ReduxTag.BranchChanges, args.sourceStackId),
-				invalidatesItem(ReduxTag.BranchChanges, args.targetStackId),
+				invalidatesList(ReduxTag.BranchChanges),
 			],
 		}),
 		moveBranch: build.mutation<

@@ -671,10 +671,6 @@ export class StackService {
 		return this.backendApi.endpoints.commitMove.mutate;
 	}
 
-	get moveCommit() {
-		return this.backendApi.endpoints.moveCommit.mutate;
-	}
-
 	get moveBranch() {
 		return this.backendApi.endpoints.moveBranch.mutate;
 	}

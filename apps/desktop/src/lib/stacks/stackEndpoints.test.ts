@@ -1,4 +1,5 @@
 import { buildStackEndpoints } from "$lib/stacks/stackEndpoints";
+import { invalidatesList, ReduxTag } from "$lib/state/tags";
 import { describe, expect, test } from "vitest";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
 
@@ -31,5 +32,44 @@ describe("buildStackEndpoints", () => {
 			assignTo: "stack-1",
 			dryRun: false,
 		});
+	});
+
+	test("uses commit_move for generic commit moves", () => {
+		const endpoints = buildStackEndpoints(createEndpointBuilder());
+		const query = endpoints.commitMove.query;
+
+		expect(endpoints.commitMove.extraOptions).toEqual({
+			command: "commit_move",
+			actionName: "Move Commit",
+		});
+		expect(query).toBeDefined();
+		expect(
+			query?.({
+				projectId: "project-1",
+				subjectCommitIds: ["commit-1"],
+				relativeTo: {
+					type: "commit",
+					subject: "commit-2",
+				},
+				side: "below",
+				dryRun: false,
+			}),
+		).toEqual({
+			projectId: "project-1",
+			subjectCommitIds: ["commit-1"],
+			relativeTo: { type: "commit", subject: "commit-2" },
+			side: "below",
+			dryRun: false,
+		});
+	});
+
+	test("invalidates branch and worktree state after commit moves", () => {
+		const endpoints = buildStackEndpoints(createEndpointBuilder());
+
+		expect(endpoints.commitMove.invalidatesTags).toEqual([
+			invalidatesList(ReduxTag.HeadSha),
+			invalidatesList(ReduxTag.WorktreeChanges),
+			invalidatesList(ReduxTag.BranchChanges),
+		]);
 	});
 });
