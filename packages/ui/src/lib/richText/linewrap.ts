@@ -4,6 +4,7 @@ import {
 	$getSelection as getSelection,
 	$isRangeSelection as isRangeSelection,
 	type LexicalEditor,
+	type LexicalNode,
 	$getRoot,
 	$isParagraphNode,
 	ParagraphNode,
@@ -239,6 +240,59 @@ function updateParagraphsWithWrappedLines(
 }
 
 /**
+ * Computes the global text offset within a paragraph for the current selection.
+ * This is needed because `selection.focus.offset` is relative to the focused
+ * text node, but when a paragraph contains multiple nodes (e.g. inline code
+ * from backticks), we need the offset relative to the entire paragraph text.
+ */
+function getGlobalSelectionOffset(paragraph: ParagraphNode): number {
+	const selection = getSelection();
+	if (!isRangeSelection(selection)) return 0;
+
+	const focusNode = selection.focus.getNode();
+	const focusOffset = selection.focus.offset;
+
+	// Collect all text nodes in DFS order
+	const textNodes: TextNode[] = [];
+	collectTextNodes(paragraph, textNodes);
+
+	// When focus type is "element", the offset is a child index, not a character
+	// offset. Convert it by summing text content sizes of children up to that index.
+	if (selection.focus.type === "element") {
+		if (focusNode.getKey() !== paragraph.getKey()) return 0;
+		let charOffset = 0;
+		for (let i = 0; i < Math.min(focusOffset, textNodes.length); i++) {
+			charOffset += textNodes[i].getTextContentSize();
+		}
+		return charOffset;
+	}
+
+	// Focus type is "text" — find the text node and sum preceding lengths
+	let offset = 0;
+	for (const textNode of textNodes) {
+		if (textNode.getKey() === focusNode.getKey()) {
+			return offset + focusOffset;
+		}
+		offset += textNode.getTextContentSize();
+	}
+
+	// Focus node not found in this paragraph — don't guess
+	return 0;
+}
+
+function collectTextNodes(node: LexicalNode, result: TextNode[]): void {
+	if (isTextNode(node)) {
+		result.push(node);
+		return;
+	}
+	if ("getChildren" in node && typeof node.getChildren === "function") {
+		for (const child of node.getChildren() as LexicalNode[]) {
+			collectTextNodes(child, result);
+		}
+	}
+}
+
+/**
  * Repositions the cursor to the appropriate location after wrapping.
  */
 function repositionCursor(
@@ -312,8 +366,7 @@ export function wrapIfNecessary({ node, maxLength }: { node: TextNode; maxLength
 
 	const bullet = parseBullet(line);
 	const indent = bullet ? bullet.indent : parseIndent(line);
-	const selection = getSelection();
-	const selectionOffset = isRangeSelection(selection) ? selection.focus.offset : 0;
+	const selectionOffset = getGlobalSelectionOffset(paragraph);
 
 	// Collect, combine, and wrap the logical paragraph
 	const paragraphsToRewrap = collectLogicalParagraph(paragraph, indent);
