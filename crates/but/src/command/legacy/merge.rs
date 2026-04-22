@@ -45,7 +45,7 @@ pub async fn handle(
         writeln!(
             progress,
             "Merging branch {} into target {}",
-            t.remote_branch.paint(&branch_name),
+            t.local_branch.paint(&branch_name),
             t.remote_branch
                 .paint(format!("{}/{}", target_remote, base_branch.branch_name))
         )?;
@@ -74,10 +74,10 @@ pub async fn handle(
         writeln!(
             progress,
             "Merging {} ({}) into {} ({})",
-            t.remote_branch.paint(&branch_name),
+            t.local_branch.paint(&branch_name),
             t.hint
                 .paint(shorten_object_id(&repo, merge_in_branch_head_oid)),
-            t.remote_branch.paint(&local_branch_name),
+            t.local_branch.paint(&local_branch_name),
             t.hint
                 .paint(shorten_object_id(&repo, local_branch_head_oid))
         )?;

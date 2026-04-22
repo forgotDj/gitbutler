@@ -106,7 +106,7 @@ pub fn handle(
                 out,
                 "{} {} {} {}",
                 t.success.paint("Picked commit"),
-                t.attention.paint(&commit_short),
+                t.commit_id.paint(&commit_short),
                 t.success.paint("into branch"),
                 t.local_branch.paint(target_branch_name)
             )?;

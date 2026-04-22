@@ -50,7 +50,7 @@ fn display_splash_screen(out: &mut dyn std::fmt::Write) -> anyhow::Result<()> {
     writeln!(
         out,
         "{}",
-        t.progress.paint(
+        t.info.paint(
             r#"
  ██████▄      ▄██████    ██████╗ ██╗   ██╗████████╗
  ██▀▀▀▀██▄  ▄██▀▀▀▀██    ██╔══██╗██║   ██║╚══██╔══╝

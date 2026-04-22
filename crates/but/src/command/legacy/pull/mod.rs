@@ -155,7 +155,7 @@ async fn handle_check(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<
             out,
             "\n{}\t{}",
             t.hint.paint("Base branch:"),
-            t.config_value.paint(&base_branch.branch_name)
+            t.remote_branch.paint(&base_branch.branch_name)
         )?;
         let upstream_label = format!(
             "{} new commits on {}",
@@ -188,7 +188,7 @@ async fn handle_check(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<
                 writeln!(
                     out,
                     "  {} {}",
-                    t.attention.paint(&commit_short),
+                    t.commit_id.paint(&commit_short),
                     t.hint.paint(&msg)
                 )?;
             }
@@ -299,7 +299,7 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
     }
 
     if let Some(out) = out.for_human() {
-        writeln!(progress, "   Checking: {}", t.info.paint(&upstream_url))?;
+        writeln!(progress, "   Checking: {}", t.link.paint(&upstream_url))?;
 
         if base_branch.behind > 0 {
             writeln!(
@@ -601,7 +601,7 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                             out,
                             "{} of {} {}",
                             t.important.paint("Rebase"),
-                            t.remote_branch.paint(branch_name.as_str()),
+                            t.local_branch.paint(branch_name.as_str()),
                             t.success.paint("successful")
                         )?;
                     }
@@ -612,7 +612,7 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                             out,
                             "{} of {} {}",
                             t.important.paint("Rebase"),
-                            t.remote_branch.paint(branch_name.as_str()),
+                            t.local_branch.paint(branch_name.as_str()),
                             t.attention.paint("resulted in conflicts")
                         )?;
                     }
@@ -639,7 +639,7 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                         writeln!(
                             out,
                             "  {} - {}",
-                            t.remote_branch.paint(branch),
+                            t.local_branch.paint(branch),
                             t.success.paint("rebased")
                         )?;
                     }
@@ -648,7 +648,7 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                         writeln!(
                             out,
                             "  {} - {}",
-                            t.remote_branch.paint(branch),
+                            t.local_branch.paint(branch),
                             t.info.paint("integrated")
                         )?;
                     }
@@ -657,7 +657,7 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                         writeln!(
                             out,
                             "  {} - {}",
-                            t.remote_branch.paint(branch),
+                            t.local_branch.paint(branch),
                             t.error.paint("conflicted")
                         )?;
                     }

@@ -17,28 +17,28 @@ pub fn print_grouped(out: &mut dyn std::fmt::Write) -> std::fmt::Result {
 
     let groups = [
         (
-            t.attention.paint("Inspection"),
+            t.important.paint("Inspection"),
             vec!["status", "diff", "show"],
         ),
         (
-            t.attention.paint("Branching and Committing"),
+            t.important.paint("Branching and Committing"),
             vec![
                 "commit", "stage", "new", "branch", "merge", "discard", "resolve",
             ],
         ),
-        (t.attention.paint("Rules"), vec!["mark", "unmark"]),
+        (t.important.paint("Rules"), vec!["mark", "unmark"]),
         (
-            t.attention.paint("Server Interactions"),
+            t.important.paint("Server Interactions"),
             vec!["push", "pull", "base", "pr", "forge"],
         ),
         (
-            t.attention.paint("Editing Commits"),
+            t.important.paint("Editing Commits"),
             vec![
                 "rub", "absorb", "reword", "uncommit", "amend", "squash", "move",
             ],
         ),
         (
-            t.attention.paint("Operation History"),
+            t.important.paint("Operation History"),
             vec!["oplog", "undo", "restore"],
         ),
     ];
@@ -106,7 +106,7 @@ pub fn print_grouped(out: &mut dyn std::fmt::Write) -> std::fmt::Result {
 
     // Print MISC section if there are any ungrouped commands
     if !misc_commands.is_empty() {
-        writeln!(out, "{}:", t.attention.paint("Other Commands"))?;
+        writeln!(out, "{}:", t.important.paint("Other Commands"))?;
         for subcmd in misc_commands {
             let about = subcmd.get_about().unwrap_or_default().to_string();
             // Calculate available width: terminal_width - indent (2) - command column (10) - buffer (1)
@@ -140,7 +140,7 @@ pub fn print_grouped(out: &mut dyn std::fmt::Write) -> std::fmt::Result {
     )?;
     writeln!(out)?;
 
-    writeln!(out, "{}:", t.attention.paint("Options"))?;
+    writeln!(out, "{}:", t.important.paint("Options"))?;
     // Truncate long option descriptions if needed
     let option_descriptions = [
         (

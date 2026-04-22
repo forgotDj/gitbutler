@@ -337,7 +337,7 @@ fn handle_dry_run(
     writeln!(
         progress,
         "{} {}",
-        t.progress.paint("Dry run:"),
+        t.important.paint("Dry run:"),
         t.hint.paint("Showing what would be pushed")
     )?;
     writeln!(progress)?;
@@ -451,7 +451,7 @@ fn handle_dry_run(
                 t.hint.paint(line_prefix),
                 t.success.paint("→"),
                 t.hint.paint("Would push to:"),
-                t.attention
+                t.remote_branch
                     .paint(format!("{}/{}", info.remote, branch_name))
             )?;
             writeln!(
@@ -552,7 +552,7 @@ fn handle_dry_run(
     writeln!(
         progress,
         "{} Would push {} {} across {} {}",
-        t.progress.paint("Summary:"),
+        t.important.paint("Summary:"),
         t.attention.paint(total_commits.to_string()),
         if total_commits == 1 {
             "commit"
@@ -623,7 +623,7 @@ fn push_single_branch(
                 t.local_branch.paint(branch),
                 t.hint.paint(&remote_ref),
                 t.hint.paint(&before_str),
-                t.success.paint(&after_str)
+                t.commit_id.paint(&after_str)
             )?;
         }
     }
@@ -784,7 +784,7 @@ fn push_all_branches(
                     t.local_branch.paint(branch),
                     t.hint.paint(&remote_ref),
                     t.hint.paint(&before_str),
-                    t.success.paint(&after_str)
+                    t.commit_id.paint(&after_str)
                 )?;
             }
         }

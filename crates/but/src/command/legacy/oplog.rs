@@ -146,9 +146,9 @@ pub(crate) fn show_oplog(
                 "AMEND" | "REWORD" => t.attention.paint(operation_type),
                 "UNDO" | "RESTORE" => t.error.paint(operation_type),
                 "DISCARD" => t.error.paint(operation_type),
-                "BRANCH" | "CHECKOUT" => t.remote_branch.paint(operation_type),
+                "BRANCH" | "CHECKOUT" => t.local_branch.paint(operation_type),
                 "MOVE" | "REORDER" | "MOVE_HUNK" => t.info.paint(operation_type),
-                "SNAPSHOT" => t.remote_branch.paint(operation_type),
+                "SNAPSHOT" => t.hint.paint(operation_type),
                 _ => t.default.paint(operation_type),
             };
 
@@ -205,7 +205,7 @@ pub(crate) fn restore_to_oplog(
         writeln!(
             out,
             "  Target: {} ({})",
-            t.success.paint(target_operation),
+            t.important.paint(target_operation),
             t.time.paint(&target_time)
         )?;
         writeln!(out, "  Snapshot: {}", t.commit_id.paint(&commit_short))?;
@@ -278,7 +278,7 @@ pub(crate) fn undo_last_operation(
         writeln!(
             out,
             "  Reverting to: {} ({})",
-            t.success.paint(target_operation),
+            t.important.paint(target_operation),
             t.time.paint(&target_time)
         )?;
     }
@@ -323,7 +323,7 @@ pub(crate) fn create_snapshot(
         writeln!(out, "{}", t.success.paint("Snapshot created successfully!"))?;
 
         if let Some(msg) = message {
-            writeln!(out, "  Message: {}", t.config_value.paint(msg))?;
+            writeln!(out, "  Message: {}", t.info.paint(msg))?;
         }
 
         writeln!(out, "  Snapshot ID: {}", t.cli_id.paint(&short))?;

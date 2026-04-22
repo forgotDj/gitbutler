@@ -206,7 +206,7 @@ pub fn move_commit_to_commit_with_perm(
                 "Moved {} → {} {}",
                 t.cli_id.paint(shorten_object_id(&repo, source)),
                 action,
-                t.local_branch.paint(shorten_object_id(&repo, target)),
+                t.commit_id.paint(shorten_object_id(&repo, target)),
             )?;
         } else {
             writeln!(
@@ -214,7 +214,7 @@ pub fn move_commit_to_commit_with_perm(
                 "Moved {} commits → {} {}",
                 t.cli_id.paint(sources.len().to_string()),
                 action,
-                t.local_branch.paint(shorten_object_id(&repo, target)),
+                t.commit_id.paint(shorten_object_id(&repo, target)),
             )?;
         }
     } else if let Some(out) = out.for_json() {
