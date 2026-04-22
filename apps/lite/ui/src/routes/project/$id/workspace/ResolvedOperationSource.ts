@@ -93,9 +93,7 @@ const resolvedOperationSourceFromItem = ({
 			BaseCommit: () => baseCommitResolvedOperationSource,
 			Branch: ({ branchRef }) => branchResolvedOperationSource({ branchRef }),
 			ChangeFile: ({ path }) => {
-				if (!worktreeChanges) return null;
-
-				const change = worktreeChanges.changes.find((candidate) => candidate.path === path);
+				const change = worktreeChanges?.changes.find((candidate) => candidate.path === path);
 				if (!change) return null;
 
 				return treeChangesResolvedOperationSource({
@@ -116,10 +114,9 @@ const resolvedOperationSourceFromItem = ({
 			},
 			Commit: ({ commitId }) => commitResolvedOperationSource({ commitId }),
 			CommitFile: ({ commitId, path }) => {
-				const commitDetails = getCommitDetails(commitId);
-				if (!commitDetails) return null;
-
-				const change = commitDetails.changes.find((candidate) => candidate.path === path);
+				const change = getCommitDetails(commitId)?.changes.find(
+					(candidate) => candidate.path === path,
+				);
 				if (!change) return null;
 
 				return treeChangesResolvedOperationSource({
@@ -131,15 +128,8 @@ const resolvedOperationSourceFromItem = ({
 			Hunk: ({ parent, path, hunkHeader }) => {
 				const changes = Match.value(parent).pipe(
 					Match.tagsExhaustive({
-						Change: () => {
-							if (!worktreeChanges) return null;
-							return worktreeChanges.changes;
-						},
-						Commit: ({ commitId }) => {
-							const commitDetails = getCommitDetails(commitId);
-							if (!commitDetails) return null;
-							return commitDetails.changes;
-						},
+						Change: () => worktreeChanges?.changes,
+						Commit: ({ commitId }) => getCommitDetails(commitId)?.changes,
 					}),
 				);
 				if (!changes) return null;
