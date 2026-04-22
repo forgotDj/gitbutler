@@ -32,6 +32,7 @@ import type {
 	DiffSpec,
 	MoveChangesResult,
 	CommitCreateResult,
+	CommitMoveResult,
 	CommitRewordResult,
 	CommitInsertBlankResult,
 	RejectionReason,
@@ -166,6 +167,21 @@ export function toCommitCreatePlacement(args: CreateCommitRequest): {
 
 function normalizeReferenceSubject(referenceName: string): string {
 	return referenceName.startsWith("refs/") ? referenceName : `refs/heads/${referenceName}`;
+}
+
+function toBranchTopPlacement(branchName: string): {
+	relativeTo: RelativeTo;
+	side: "above" | "below";
+} {
+	return {
+		// `reference + below` inserts the commit as the new branch tip, matching the
+		// legacy cross-stack `move_commit` behavior.
+		relativeTo: {
+			type: "reference",
+			subject: normalizeReferenceSubject(branchName),
+		},
+		side: "below",
+	};
 }
 // Entity adapters and selectors
 
@@ -697,6 +713,13 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.BranchListing),
 			],
 		}),
+		/**
+		 * Generic commit move wrapper around `commit_move`.
+		 *
+		 * Callers must provide the exact placement using `relativeTo` and `side`.
+		 * The backend returns workspace state, but the desktop frontend currently
+		 * relies on invalidation rather than consuming that payload directly.
+		 */
 		commitMove: build.mutation<
 			void,
 			{
@@ -713,15 +736,38 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			},
 			query: (args) => args,
 		}),
+		/**
+		 * Compatibility wrapper for cross-stack drag/drop moves.
+		 *
+		 * This preserves the legacy `moveCommit` contract while translating it to
+		 * the more flexible `commit_move` API, always inserting at the top of the
+		 * destination stack.
+		 */
 		moveCommit: build.mutation<
 			MoveCommitIllegalAction | null,
-			{ projectId: string; sourceStackId: string; commitId: string; targetStackId: string }
+			{
+				projectId: string;
+				sourceStackId: string;
+				commitId: string;
+				targetStackId: string;
+				targetBranchName: string;
+			}
 		>({
 			extraOptions: {
-				command: "move_commit",
+				command: "commit_move",
 				actionName: "Move Commit",
 			},
-			query: (args) => args,
+			query: ({ projectId, commitId, targetBranchName }) => {
+				const { relativeTo, side } = toBranchTopPlacement(targetBranchName);
+				return {
+					projectId,
+					subjectCommitIds: [commitId],
+					relativeTo,
+					side,
+					dryRun: false,
+				};
+			},
+			transformResponse: (_response: CommitMoveResult) => null,
 			invalidatesTags: (_result, _error, args) => [
 				invalidatesList(ReduxTag.HeadSha),
 				invalidatesList(ReduxTag.WorktreeChanges), // Moving commits can cause conflicts

@@ -46,6 +46,7 @@ export class MoveCommitDzHandler implements DropzoneHandler {
 	constructor(
 		private stackId: string,
 		private projectId: string,
+		private targetBranchName: string,
 	) {}
 
 	accepts(data: unknown): boolean {
@@ -80,6 +81,7 @@ export class MoveCommitDzHandler implements DropzoneHandler {
 				const response = await this.stackService.moveCommit({
 					projectId: this.projectId,
 					targetStackId: this.stackId,
+					targetBranchName: this.targetBranchName,
 					commitId: data.commit.id,
 					sourceStackId: data.stackId,
 				});

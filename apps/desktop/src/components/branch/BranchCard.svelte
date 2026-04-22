@@ -172,7 +172,7 @@
 >
 	{#if args.type === "stack-branch"}
 		{@const moveHandler = args.stackId
-			? new MoveCommitDzHandler(args.stackId, projectId)
+			? new MoveCommitDzHandler(args.stackId, projectId, branchName)
 			: undefined}
 		{#if !args.prNumber && args.stackId}
 			<PrNumberSync {projectId} stackId={args.stackId} {branchName} />
