@@ -75,6 +75,7 @@ class SnapshotPager {
 type SnapshotDiffParams = {
 	projectId: string;
 	snapshotId: string;
+	childId?: string;
 };
 
 export class HistoryService {
@@ -145,7 +146,11 @@ function injectEndpoints(api: BackendApi) {
 		endpoints: (build) => ({
 			snapshotDiff: build.query<EntityState<TreeChange, string>, SnapshotDiffParams>({
 				extraOptions: { command: "snapshot_diff" },
-				query: ({ projectId, snapshotId }) => ({ projectId, sha: snapshotId }),
+				query: ({ projectId, snapshotId, childId }) => ({
+					projectId,
+					sha: snapshotId,
+					childId: childId ?? null,
+				}),
 				transformResponse: (data: TreeChange[]) => {
 					return snapshotDiffAdapter.addMany(snapshotDiffAdapter.getInitialState(), data);
 				},

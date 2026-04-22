@@ -124,8 +124,9 @@ pub fn restore_snapshot(ctx: &mut but_ctx::Context, sha: gix::ObjectId) -> Resul
 pub fn snapshot_diff(
     ctx: &but_ctx::Context,
     sha: gix::ObjectId,
+    child_id: Option<gix::ObjectId>,
 ) -> Result<Vec<but_core::ui::TreeChange>> {
-    let diff = ctx.snapshot_diff(sha)?;
+    let diff = ctx.snapshot_diff(sha, child_id)?;
     let diff: Vec<but_core::ui::TreeChange> = diff.into_iter().map(Into::into).collect();
     Ok(diff)
 }

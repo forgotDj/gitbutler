@@ -120,6 +120,7 @@
 							<SnapshotCard
 								{projectId}
 								{entry}
+								childId={idx > 0 ? $snapshots[idx - 1]?.id : undefined}
 								isWithinRestore={withinRestoreItems.includes(entry.id)}
 								restoring={restoration.current.isLoading}
 								onRestoreClick={async () => {
