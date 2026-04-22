@@ -149,7 +149,7 @@ pub(crate) fn show_oplog(
                 "BRANCH" | "CHECKOUT" => t.remote_branch.paint(operation_type),
                 "MOVE" | "REORDER" | "MOVE_HUNK" => t.info.paint(operation_type),
                 "SNAPSHOT" => t.remote_branch.paint(operation_type),
-                _ => operation_type.to_string(),
+                _ => t.default.paint(operation_type),
             };
 
             writeln!(

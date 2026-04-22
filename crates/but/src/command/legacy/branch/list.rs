@@ -654,7 +654,7 @@ fn print_applied_branches_table(
                     .join(", ");
                 t.info.paint(format!(" ({review_numbers})"))
             } else {
-                String::new()
+                t.default.paint("")
             };
 
             let branch_str = format!("{branch_with_prefix}{reviews_str}");
@@ -662,9 +662,9 @@ fn print_applied_branches_table(
             table.add_row(vec![
                 Cell::new(type_str),
                 Cell::new(branch_str),
-                Cell::new(ahead_str),
-                Cell::new(t.hint.paint(date_str)),
-                Cell::new(t.hint.paint(author_str)),
+                Cell::new(ahead_str.to_string()),
+                Cell::new(t.hint.paint(date_str).to_string()),
+                Cell::new(t.hint.paint(author_str).to_string()),
             ]);
         }
     }
@@ -739,12 +739,12 @@ fn print_branches_table(
                 .join(", ");
             t.info.paint(format!(" ({review_numbers})"))
         } else {
-            String::new()
+            t.default.paint("")
         };
 
         let (type_str, branch_name) = if branch.has_local {
             (
-                "local".to_string(),
+                t.default.paint("local"),
                 t.local_branch.paint(branch.name.to_string()),
             )
         } else {
@@ -756,11 +756,11 @@ fn print_branches_table(
         let branch_str = format!("{merge_status_str}{branch_name}{reviews_str}");
 
         table.add_row(vec![
-            Cell::new(type_str),
+            Cell::new(type_str.to_string()),
             Cell::new(branch_str),
             Cell::new(ahead_str),
-            Cell::new(t.hint.paint(date_str)),
-            Cell::new(t.hint.paint(author_str)),
+            Cell::new(t.hint.paint(date_str).to_string()),
+            Cell::new(t.hint.paint(author_str).to_string()),
         ]);
     }
 

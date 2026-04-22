@@ -61,6 +61,15 @@ const CLI_DATE: CustomFormat = gix::date::time::format::ISO8601;
 
 /// Handle `args` which must be what's passed by `std::env::args_os()`.
 pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
+    {
+        let theme = dirs::config_dir()
+            .map(|dir| dir.join("gitbutler").join("but-theme.json"))
+            .filter(|p| p.exists())
+            .and_then(|p| theme::load(&p).ok())
+            .unwrap_or_default();
+        theme::init(theme);
+    }
+
     let args: Vec<_> = args.collect();
 
     // Check if version is requested
@@ -136,15 +145,6 @@ pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
 
     // If no subcommand is provided, but we have source and target, default to rub
     let mut out = OutputChannel::new_with_optional_pager(output_format, use_pager);
-    // Initialize the global color theme, loading from a user config file if present.
-    {
-        let theme = dirs::config_dir()
-            .map(|dir| dir.join("gitbutler").join("but-theme.json"))
-            .filter(|p| p.exists())
-            .and_then(|p| theme::load(&p).ok())
-            .unwrap_or_default();
-        theme::init(theme);
-    }
 
     match args.cmd.take() {
         None if args.source_or_path.is_some() && args.target.is_some() => {

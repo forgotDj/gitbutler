@@ -504,7 +504,7 @@ fn output_human(
             .join(", ");
         t.info.paint(format!(" ({review_numbers})"))
     } else {
-        String::new()
+        t.default.paint("")
     };
 
     writeln!(
@@ -554,7 +554,7 @@ fn output_human(
                         "added" => t.addition.paint(&file.path),
                         "deleted" => t.deletion.paint(&file.path),
                         "modified" => t.modification.paint(&file.path),
-                        _ => file.path.to_string(),
+                        _ => t.default.paint(&file.path),
                     };
 
                     let change_str = if file.status == "added" {

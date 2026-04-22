@@ -1893,7 +1893,8 @@ fn format_scope(scope: Option<gix::config::Source>) -> String {
     match scope {
         Some(source) => theme::get()
             .hint
-            .paint(format!("({})", config_source_scope(source))),
+            .paint(format!("({})", config_source_scope(source)))
+            .to_string(),
         None => String::new(),
     }
 }

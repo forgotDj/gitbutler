@@ -606,7 +606,7 @@ fn print_human_check_output(
         };
 
         let version_display = if skill.up_to_date {
-            t.success.paint(&skill.installed_version)
+            t.success.paint(&skill.installed_version).to_string()
         } else {
             format!(
                 "{} → {}",

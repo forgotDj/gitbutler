@@ -1,10 +1,11 @@
 use but_core::{UnifiedPatch, ui, unified_diff::DiffHunk};
 use but_hunk_assignment::HunkAssignment;
+use colored::ColoredString;
 
 use crate::command::legacy::status::status_letter_ui;
 use crate::theme::Paint as _;
 
-fn path_with_color_ui(status: &ui::TreeStatus, path: String) -> String {
+fn path_with_color_ui(status: &ui::TreeStatus, path: String) -> ColoredString {
     let t = crate::theme::get();
     match status {
         ui::TreeStatus::Addition { .. } => t.addition.paint(&path),
