@@ -43,38 +43,34 @@ export const resolveAbsorptionTarget = ({
 }): AbsorptionTarget | null =>
 	Match.value(item).pipe(
 		Match.withReturnType<AbsorptionTarget | null>(),
-		Match.tags({
-			ChangeFile: ({ path }) => {
-				const change = worktreeChanges?.changes.find((candidate) => candidate.path === path);
-				if (!change) return null;
+		Match.tag("ChangeFile", ({ path }) => {
+			const change = worktreeChanges?.changes.find((candidate) => candidate.path === path);
+			if (!change) return null;
 
-				return {
-					type: "treeChanges",
-					subject: {
-						changes: [change],
-						assignedStackId: null,
-					},
-				};
-			},
-			ChangesSection: () => ({ type: "all" }),
-			Hunk: ({ parent, path, hunkHeader }) => {
-				if (parent._tag !== "Change") return null;
+			return {
+				type: "treeChanges",
+				subject: {
+					changes: [change],
+					assignedStackId: null,
+				},
+			};
+		}),
+		Match.tag("ChangesSection", () => ({ type: "all" })),
+		Match.when({ _tag: "Hunk", parent: { _tag: "Change" } }, ({ path, hunkHeader }) => {
+			const assignment = worktreeChanges?.assignments.find(
+				(candidate) =>
+					candidate.path === path &&
+					candidate.hunkHeader !== null &&
+					hunkHeadersEqual(candidate.hunkHeader, hunkHeader),
+			);
+			if (!assignment) return null;
 
-				const assignment = worktreeChanges?.assignments.find(
-					(candidate) =>
-						candidate.path === path &&
-						candidate.hunkHeader !== null &&
-						hunkHeadersEqual(candidate.hunkHeader, hunkHeader),
-				);
-				if (!assignment) return null;
-
-				return {
-					type: "hunkAssignments",
-					subject: {
-						assignments: [assignment],
-					},
-				};
-			},
+			return {
+				type: "hunkAssignments",
+				subject: {
+					assignments: [assignment],
+				},
+			};
 		}),
 		Match.orElse(() => null),
 	);
