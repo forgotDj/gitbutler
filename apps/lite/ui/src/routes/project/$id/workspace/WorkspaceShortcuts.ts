@@ -913,8 +913,10 @@ export const useWorkspaceShortcuts = ({
 
 		if (!selectedItem) return;
 
+		const { source } = operationMode;
+
 		const resolvedSource = resolveOperationSource({
-			operationSource: operationMode.source,
+			operationSource: source,
 			queryClient,
 			projectId,
 		});
