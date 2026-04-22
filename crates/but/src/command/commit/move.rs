@@ -1,13 +1,12 @@
+use crate::{
+    CliId,
+    theme::{self, Paint},
+    utils::{OutputChannel, shorten_object_id},
+};
 use anyhow::bail;
 use but_core::{DryRun, sync::RepoExclusive};
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
-use colored::Colorize;
-
-use crate::{
-    CliId,
-    utils::{OutputChannel, shorten_object_id},
-};
 
 pub(crate) fn handle_resolved_with_perm(
     ctx: &mut Context,
@@ -17,6 +16,7 @@ pub(crate) fn handle_resolved_with_perm(
     after: bool,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<()> {
+    let t = theme::get();
     // Validate --after flag usage
     if after {
         // Check if target is a branch (--after only makes sense for commit-to-commit moves)
@@ -42,10 +42,10 @@ pub(crate) fn handle_resolved_with_perm(
         bail!(
             "Cannot move {} ({}) to {} ({}).\n\
             Valid moves: commit→commit, commit→branch, or committed-file→commit",
-            source_id.to_short_string().blue().bold(),
-            source_id.kind_for_humans().yellow(),
-            target_id.to_short_string().blue().bold(),
-            target_id.kind_for_humans().yellow()
+            t.cli_id.paint(source_id.to_short_string()),
+            t.attention.paint(source_id.kind_for_humans()),
+            t.cli_id.paint(target_id.to_short_string()),
+            t.attention.paint(target_id.kind_for_humans())
         );
     };
 
@@ -60,6 +60,7 @@ pub(crate) fn handle_multiple_resolved_with_perm(
     after: bool,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<()> {
+    let t = theme::get();
     if source_ids.is_empty() {
         bail!("No source commits provided.");
     }
@@ -70,7 +71,7 @@ pub(crate) fn handle_multiple_resolved_with_perm(
             CliId::Commit { commit_id, .. } => Ok(*commit_id),
             _ => bail!(
                 "Cannot move {} as part of a multi-commit operation. Only commits are supported.",
-                id.to_short_string().blue().bold()
+                t.cli_id.paint(id.to_short_string())
             ),
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
@@ -92,8 +93,8 @@ pub(crate) fn handle_multiple_resolved_with_perm(
         _ => bail!(
             "Cannot move multiple commits to {} ({}).\n\
             Valid multi-commit moves: commit→commit or commit→branch",
-            target_id.to_short_string().blue().bold(),
-            target_id.kind_for_humans().yellow()
+            t.cli_id.paint(target_id.to_short_string()),
+            t.attention.paint(target_id.kind_for_humans())
         ),
     }
 }
@@ -194,6 +195,7 @@ pub fn move_commit_to_commit_with_perm(
         perm,
     )?;
 
+    let t = theme::get();
     if let Some(out) = out.for_human() {
         let repo = ctx.repo.get()?;
         let action = if after { "after" } else { "before" };
@@ -202,17 +204,17 @@ pub fn move_commit_to_commit_with_perm(
             writeln!(
                 out,
                 "Moved {} → {} {}",
-                shorten_object_id(&repo, source).blue(),
+                t.cli_id.paint(shorten_object_id(&repo, source)),
                 action,
-                shorten_object_id(&repo, target).green(),
+                t.local_branch.paint(shorten_object_id(&repo, target)),
             )?;
         } else {
             writeln!(
                 out,
                 "Moved {} commits → {} {}",
-                sources.len().to_string().blue(),
+                t.cli_id.paint(sources.len().to_string()),
                 action,
-                shorten_object_id(&repo, target).green(),
+                t.local_branch.paint(shorten_object_id(&repo, target)),
             )?;
         }
     } else if let Some(out) = out.for_json() {
@@ -238,6 +240,7 @@ pub fn move_commit_to_branch_with_perm(
         perm,
     )?;
 
+    let t = theme::get();
     if let Some(out) = out.for_human() {
         let repo = ctx.repo.get()?;
         if sources.len() == 1 {
@@ -245,15 +248,15 @@ pub fn move_commit_to_branch_with_perm(
             writeln!(
                 out,
                 "Moved {} → {}",
-                shorten_object_id(&repo, source).blue(),
-                format!("[{target_branch}]").green()
+                t.cli_id.paint(shorten_object_id(&repo, source)),
+                t.local_branch.paint(format!("[{target_branch}]"))
             )?;
         } else {
             writeln!(
                 out,
                 "Moved {} commits → {}",
-                sources.len().to_string().blue(),
-                format!("[{target_branch}]").green()
+                t.cli_id.paint(sources.len().to_string()),
+                t.local_branch.paint(format!("[{target_branch}]"))
             )?;
         }
     } else if let Some(out) = out.for_json() {

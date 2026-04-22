@@ -34,8 +34,8 @@ use args::{
     metrics, update as update_args, worktree,
 };
 use but_settings::AppSettings;
-use colored::Colorize;
 use gix::date::time::CustomFormat;
+use theme::Paint;
 
 #[cfg(feature = "legacy")]
 use crate::command::legacy::ShowDiffInEditor;
@@ -537,18 +537,20 @@ async fn match_subcommand(
                                 // For human-readable output, show timestamp and message
                                 println!(
                                     "{} {}",
-                                    "Timestamp:".bold(),
-                                    msg.created_at()
-                                        .format("%Y-%m-%d %H:%M:%S")
-                                        .to_string()
-                                        .cyan()
+                                    theme::get().important.paint("Timestamp:"),
+                                    theme::get().time.paint(
+                                        msg.created_at().format("%Y-%m-%d %H:%M:%S").to_string()
+                                    )
                                 );
                                 match msg.content() {
                                     but_claude::MessagePayload::User(input) => {
                                         println!("{}", input.message);
                                     }
                                     _ => {
-                                        println!("{}", "Not a user input message".red());
+                                        println!(
+                                            "{}",
+                                            theme::get().error.paint("Not a user input message")
+                                        );
                                     }
                                 }
                             }
@@ -594,8 +596,9 @@ async fn match_subcommand(
             writeln!(
                 progress,
                 "{}",
-                "Assuming you meant to check for upstream work, running `but pull --check`"
-                    .yellow()
+                theme::get().attention.paint(
+                    "Assuming you meant to check for upstream work, running `but pull --check`"
+                )
             )?;
             let ctx = setup::init_ctx(&args, InitCtxOptions::default(), out)?;
             command::legacy::pull::handle(&ctx, out, true)

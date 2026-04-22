@@ -2,12 +2,14 @@ use but_core::{DiffSpec, ref_metadata::StackId};
 use but_ctx::{Context, access::RepoExclusive};
 use but_hunk_assignment::HunkAssignment;
 use but_workspace::commit_engine::{self, CreateCommitOutcome};
-use colored::Colorize;
 use gitbutler_branch_actions::update_workspace_commit;
 use gix::ObjectId;
 use nonempty::NonEmpty;
 
-use crate::utils::{OutputChannel, shorten_object_id, split_short_id};
+use crate::{
+    theme::{self, Paint},
+    utils::{OutputChannel, shorten_object_id, split_short_id},
+};
 
 pub(crate) fn uncommitted_to_commit_with_perm(
     ctx: &mut Context,
@@ -34,7 +36,8 @@ pub(crate) fn uncommitted_to_commit_with_perm(
             .map(|c| {
                 let short = shorten_object_id(&repo, c);
                 let (lead, rest) = split_short_id(&short, 2);
-                format!("{}{}", lead.blue().bold(), rest.blue())
+                let t = theme::get();
+                format!("{}{}", t.cli_id.paint(lead), t.cli_id.paint(rest))
             })
             .unwrap_or_default();
         writeln!(out, "Amended {description} → {new_commit}")?;

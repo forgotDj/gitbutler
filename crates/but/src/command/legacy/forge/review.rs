@@ -681,7 +681,7 @@ async fn publish_reviews_for_branch_and_dependents(
                 "Creating {}review for {} {} {}...",
                 draftiness,
                 t.local_branch.paint(head.name.to_string()),
-                t.sym().info_right,
+                t.sym().arrow.info(),
                 t.remote_branch.paint(current_target_branch)
             )?;
         }

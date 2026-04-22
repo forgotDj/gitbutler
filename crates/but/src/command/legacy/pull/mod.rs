@@ -4,7 +4,6 @@ use std::{collections::HashMap, fmt::Write};
 
 use but_core::RepositoryExt;
 use but_ctx::Context;
-use colored::Colorize;
 use gitbutler_branch_actions::upstream_integration::{
     BranchStatus::{self, Conflicted, Empty, Integrated, SafelyUpdatable},
     Resolution, ResolutionApproach,
@@ -14,7 +13,10 @@ use gitbutler_branch_actions::upstream_integration::{
 use json::{BaseBranchInfo, BranchStatusInfo, PullCheckOutput, UpstreamCommit, UpstreamInfo};
 use serde::{Deserialize, Serialize};
 
-use crate::utils::{OutputChannel, shorten_hex_object_id};
+use crate::{
+    theme::{self, Paint},
+    utils::{OutputChannel, shorten_hex_object_id},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -76,6 +78,7 @@ pub async fn handle(
 }
 
 async fn handle_check(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<()> {
+    let t = theme::get();
     let mut progress = out.progress_channel();
 
     writeln!(progress, "Fetching from upstream remotes...")?;
@@ -143,12 +146,16 @@ async fn handle_check(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<
         };
         out.write_value(output)?;
     } else if let Some(out) = out.for_human() {
-        writeln!(progress, "{}", "Checking base branch status...".bold())?;
+        writeln!(
+            progress,
+            "{}",
+            t.important.paint("Checking base branch status...")
+        )?;
         writeln!(
             out,
             "\n{}\t{}",
-            "Base branch:".dimmed(),
-            base_branch.branch_name.cyan()
+            t.hint.paint("Base branch:"),
+            t.config_value.paint(&base_branch.branch_name)
         )?;
         let upstream_label = format!(
             "{} new commits on {}",
@@ -157,11 +164,11 @@ async fn handle_check(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<
         writeln!(
             out,
             "{}\t{}",
-            "Upstream:".dimmed(),
+            t.hint.paint("Upstream:"),
             if base_branch.behind > 0 {
-                upstream_label.yellow()
+                t.attention.paint(&upstream_label)
             } else {
-                upstream_label.green()
+                t.success.paint(&upstream_label)
             }
         )?;
 
@@ -171,29 +178,33 @@ async fn handle_check(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<
             let commits = base_branch.upstream_commits.iter().take(3);
             for commit in commits {
                 let commit_short = shorten_hex_object_id(&repo, &commit.id);
+                let msg: String = commit
+                    .description
+                    .to_string()
+                    .replace('\n', " ")
+                    .chars()
+                    .take(72)
+                    .collect();
                 writeln!(
                     out,
                     "  {} {}",
-                    commit_short.yellow(),
-                    commit
-                        .description
-                        .to_string()
-                        .replace('\n', " ")
-                        .chars()
-                        .take(72)
-                        .collect::<String>()
-                        .dimmed()
+                    t.attention.paint(&commit_short),
+                    t.hint.paint(&msg)
                 )?;
             }
             let hidden_commits = base_branch.behind.saturating_sub(3);
             if hidden_commits > 0 {
-                writeln!(out, "  {}", format!("... ({hidden_commits} more)").dimmed())?;
+                writeln!(
+                    out,
+                    "  {}",
+                    t.hint.paint(format!("... ({hidden_commits} more)"))
+                )?;
             }
         }
 
         match status {
             UpToDate => {
-                writeln!(out, "\n{}", "Up to date".green().bold())?;
+                writeln!(out, "\n{}", t.success.paint("Up to date"))?;
             }
             UpdatesRequired {
                 worktree_conflicts,
@@ -203,26 +214,25 @@ async fn handle_check(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<
                     writeln!(
                         out,
                         "\n{}",
-                        "Warning: uncommitted changes may conflict with updates."
-                            .yellow()
-                            .bold()
+                        t.attention
+                            .paint("Warning: uncommitted changes may conflict with updates.")
                     )?;
                 }
                 if !statuses.is_empty() {
-                    writeln!(out, "\n{}", "Branch Status".bold())?;
+                    writeln!(out, "\n{}", t.important.paint("Branch Status"))?;
                     for (_id, status) in statuses {
                         for bs in status.branch_statuses {
                             let status_text = match bs.status {
-                                SafelyUpdatable => "[ok]".green(),
-                                Integrated => "[integrated]".blue(),
+                                SafelyUpdatable => t.success.paint("[ok]"),
+                                Integrated => t.info.paint("[integrated]"),
                                 Conflicted { rebasable } => {
                                     if rebasable {
-                                        "[conflict - rebasable]".yellow()
+                                        t.attention.paint("[conflict - rebasable]")
                                     } else {
-                                        "[conflict]".red()
+                                        t.error.paint("[conflict]")
                                     }
                                 }
-                                Empty => "[empty]".dimmed(),
+                                Empty => t.hint.paint("[empty]"),
                             };
                             writeln!(out, "  {} {}", status_text, bs.name)?;
                         }
@@ -231,7 +241,7 @@ async fn handle_check(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<
                 writeln!(
                     out,
                     "\n{}",
-                    "Run `but pull` to update your branches".dimmed()
+                    t.hint.paint("Run `but pull` to update your branches")
                 )?;
             }
         }
@@ -240,6 +250,7 @@ async fn handle_check(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<
 }
 
 async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<()> {
+    let t = theme::get();
     let mut pull_result = PullResult {
         status: String::new(),
         upstream_url: None,
@@ -263,7 +274,7 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
     writeln!(
         progress,
         "{}",
-        "Fetching newest data from remotes...".bright_cyan()
+        t.progress.paint("Fetching newest data from remotes...")
     )?;
 
     // Fetch from remotes to get latest upstream info
@@ -288,15 +299,15 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
     }
 
     if let Some(out) = out.for_human() {
-        writeln!(progress, "   Checking: {}", upstream_url.bright_cyan())?;
+        writeln!(progress, "   Checking: {}", t.info.paint(&upstream_url))?;
 
         if base_branch.behind > 0 {
             writeln!(
                 out,
                 "\n{} {} upstream commits on {}",
-                "Found".bold(),
-                base_branch.behind.to_string().bright_yellow(),
-                base_branch.branch_name.bright_cyan()
+                t.important.paint("Found"),
+                t.attention.paint(base_branch.behind.to_string()),
+                t.remote_branch.paint(&base_branch.branch_name)
             )?;
 
             // Show upstream commits (actual new commits to integrate)
@@ -311,15 +322,19 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                     .take(65)
                     .collect::<String>();
                 let commit_short = shorten_hex_object_id(&repo, &commit_info.id);
-                writeln!(out, "   {} {}", commit_short.bright_black(), msg)?;
+                writeln!(out, "   {} {}", t.hint.paint(&commit_short), msg)?;
             }
 
             let hidden = base_branch.behind.saturating_sub(commits_to_show);
             if hidden > 0 {
-                writeln!(out, "   ... and {} more", hidden.to_string().bright_black())?;
+                writeln!(out, "   ... and {} more", t.hint.paint(hidden.to_string()))?;
             }
         } else {
-            writeln!(out, "\n{}", "No new upstream commits found".green())?;
+            writeln!(
+                out,
+                "\n{}",
+                t.success.paint("No new upstream commits found")
+            )?;
         }
 
         writeln!(progress, "   Checking integration statuses...")?;
@@ -334,7 +349,7 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
         UpToDate => {
             pull_result.status = "up_to_date".to_string();
             if let Some(out) = out.for_human() {
-                writeln!(out, "\n{}", "Everything is up to date".green())?;
+                writeln!(out, "\n{}", t.success.paint("Everything is up to date"))?;
             }
             if let Some(out) = out.for_json() {
                 out.write_value(&pull_result)?;
@@ -351,12 +366,13 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                     writeln!(
                         out,
                         "\n{}",
-                        "There are uncommitted changes in the worktree that may conflict with the updates.".red()
+                        t.error.paint("There are uncommitted changes in the worktree that may conflict with the updates.")
                     )?;
                     writeln!(
                         out,
                         "   {}",
-                        "Please commit or stash them and try again.".yellow()
+                        t.attention
+                            .paint("Please commit or stash them and try again.")
                     )?;
                 }
                 if let Some(out) = out.for_json() {
@@ -377,7 +393,8 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                             writeln!(
                                 out,
                                 "\n{}",
-                                "No stack ID, assuming we're on single-branch mode...".yellow()
+                                t.attention
+                                    .paint("No stack ID, assuming we're on single-branch mode...")
                             )?;
                         }
                         continue;
@@ -435,8 +452,8 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                     writeln!(
                         out,
                         "\n{} {} active branches...",
-                        "Updating".bright_cyan(),
-                        branches_to_update.to_string().bright_yellow()
+                        t.progress.paint("Updating"),
+                        t.attention.paint(branches_to_update.to_string())
                     )?;
                 }
 
@@ -583,9 +600,9 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                         writeln!(
                             out,
                             "{} of {} {}",
-                            "Rebase".bold(),
-                            branch_name.as_str().bright_cyan(),
-                            "successful".green()
+                            t.important.paint("Rebase"),
+                            t.remote_branch.paint(branch_name.as_str()),
+                            t.success.paint("successful")
                         )?;
                     }
 
@@ -594,9 +611,9 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                         writeln!(
                             out,
                             "{} of {} {}",
-                            "Rebase".bright_white(),
-                            branch_name.as_str().bright_cyan(),
-                            "resulted in conflicts".yellow()
+                            t.important.paint("Rebase"),
+                            t.remote_branch.paint(branch_name.as_str()),
+                            t.attention.paint("resulted in conflicts")
                         )?;
                     }
 
@@ -607,59 +624,69 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                             writeln!(
                                 out,
                                 "{} {} has been integrated upstream and removed locally",
-                                "Branch".bold(),
-                                branch.bright_green()
+                                t.important.paint("Branch"),
+                                t.local_branch.paint(branch)
                             )?;
                         }
                     }
 
                     // Final summary
-                    writeln!(out, "\n{}", "Summary".bold())?;
+                    writeln!(out, "\n{}", t.important.paint("Summary"))?;
                     writeln!(out, "────────")?;
 
                     // List each branch with color-coded status
                     for branch in &successful_rebases {
-                        writeln!(out, "  {} - {}", branch.bright_cyan(), "rebased".green())?;
+                        writeln!(
+                            out,
+                            "  {} - {}",
+                            t.remote_branch.paint(branch),
+                            t.success.paint("rebased")
+                        )?;
                     }
 
                     for branch in &pull_result.integrated_branches {
                         writeln!(
                             out,
                             "  {} - {}",
-                            branch.bright_cyan(),
-                            "integrated".bright_purple()
+                            t.remote_branch.paint(branch),
+                            t.info.paint("integrated")
                         )?;
                     }
 
                     for branch in &conflicted_rebases {
-                        writeln!(out, "  {} - {}", branch.bright_cyan(), "conflicted".red())?;
+                        writeln!(
+                            out,
+                            "  {} - {}",
+                            t.remote_branch.paint(branch),
+                            t.error.paint("conflicted")
+                        )?;
                     }
 
                     // Conflict resolution instructions
                     if has_conflicts {
                         writeln!(out)?;
-                        writeln!(out, "{}", "To resolve conflicts:".bold())?;
+                        writeln!(out, "{}", t.important.paint("To resolve conflicts:"))?;
                         writeln!(
                             out,
                             "  1. Run {} to see conflicted commits",
-                            "`but status`".bright_cyan()
+                            t.command_suggestion.paint("`but status`")
                         )?;
                         writeln!(
                             out,
                             "  2. Run {} to enter resolution mode on any conflicted commit",
-                            "`but resolve <commit>`".bright_cyan()
+                            t.command_suggestion.paint("`but resolve <commit>`")
                         )?;
                         writeln!(out, "  3. Edit files to resolve the conflicts")?;
                         writeln!(
                             out,
                             "  4. Run {} to finalize the resolution",
-                            "`but resolve finish`".bright_cyan()
+                            t.command_suggestion.paint("`but resolve finish`")
                         )?;
                     }
 
                     // Undo instructions
                     writeln!(out)?;
-                    writeln!(out, "{}", "To undo this operation:".bold())?;
+                    writeln!(out, "{}", t.important.paint("To undo this operation:"))?;
                     writeln!(out, "  Run `but undo`")?;
                 }
 
@@ -671,7 +698,12 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
             Err(e) => {
                 pull_result.status = "error".to_string();
                 if let Some(out) = out.for_human() {
-                    writeln!(out, "\n{} {}", "Error during integration:".red(), e)?;
+                    writeln!(
+                        out,
+                        "\n{} {}",
+                        t.error.paint("Error during integration:"),
+                        e
+                    )?;
                 }
                 if let Some(out) = out.for_json() {
                     out.write_value(&pull_result)?;

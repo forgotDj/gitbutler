@@ -7,11 +7,13 @@ use std::collections::HashMap;
 use anyhow::{Context as _, Result};
 use bstr::ByteSlice;
 use but_ctx::Context;
-use colored::Colorize;
 use serde::Serialize;
 
 use super::git_config::{EditGlobalConfig, edit_git_config};
-use crate::utils::OutputChannel;
+use crate::{
+    theme::{self, Paint},
+    utils::OutputChannel,
+};
 
 /// Represents where an alias is configured
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -64,6 +66,7 @@ pub fn list(repo: &gix::Repository, out: &mut OutputChannel) -> Result<()> {
     }
 
     if let Some(out) = out.for_human() {
+        let t = theme::get();
         // Calculate max name length for alignment
         let max_name_len = user_aliases
             .iter()
@@ -74,21 +77,21 @@ pub fn list(repo: &gix::Repository, out: &mut OutputChannel) -> Result<()> {
 
         // Show user-configured aliases first
         if !user_aliases.is_empty() {
-            writeln!(out, "{}:", "User aliases".bold())?;
+            writeln!(out, "{}:", t.important.paint("User aliases"))?;
             writeln!(out)?;
 
             for alias in &user_aliases {
                 let scope_indicator = match alias.scope {
-                    AliasScope::Local => "(local)".dimmed(),
-                    AliasScope::Global => "(global)".dimmed(),
-                    AliasScope::Both => "(local+global)".dimmed(),
+                    AliasScope::Local => t.hint.paint("(local)"),
+                    AliasScope::Global => t.hint.paint("(global)"),
+                    AliasScope::Both => t.hint.paint("(local+global)"),
                 };
                 writeln!(
                     out,
                     "  {:<width$}  {}  {} {}",
-                    alias.name.green(),
-                    "→".dimmed(),
-                    alias.value.cyan(),
+                    t.config_key.paint(&alias.name),
+                    t.sym().arrow,
+                    t.config_value.paint(&alias.value),
                     scope_indicator,
                     width = max_name_len
                 )?;
@@ -101,8 +104,8 @@ pub fn list(repo: &gix::Repository, out: &mut OutputChannel) -> Result<()> {
             writeln!(
                 out,
                 "{} {}:",
-                "Default aliases".bold(),
-                "(overridable)".dimmed()
+                t.important.paint("Default aliases"),
+                t.hint.paint("(overridable)")
             )?;
             writeln!(out)?;
 
@@ -114,19 +117,19 @@ pub fn list(repo: &gix::Repository, out: &mut OutputChannel) -> Result<()> {
                     writeln!(
                         out,
                         "  {:<width$}  {}  {}  {}",
-                        name.dimmed(),
-                        "→".dimmed(),
-                        value.dimmed(),
-                        "(overridden)".dimmed(),
+                        t.hint.paint(name),
+                        t.sym().arrow,
+                        t.hint.paint(value),
+                        t.hint.paint("(overridden)"),
                         width = max_name_len
                     )?;
                 } else {
                     writeln!(
                         out,
                         "  {:<width$}  {}  {}",
-                        name.green(),
-                        "→".dimmed(),
-                        value.cyan(),
+                        t.config_key.paint(name),
+                        t.sym().arrow,
+                        t.config_value.paint(value),
                         width = max_name_len
                     )?;
                 }
@@ -260,13 +263,14 @@ pub fn add(
     })?;
 
     if let Some(out) = out.for_human() {
+        let t = theme::get();
         writeln!(
             out,
             "{} Alias '{}' {} '{}'",
-            "✓".green(),
-            name.green(),
-            "→".dimmed(),
-            value.cyan()
+            t.sym().success,
+            t.config_key.paint(name),
+            t.sym().arrow,
+            t.config_value.paint(value)
         )?;
         if is_global {
             writeln!(out, "  (configured globally)")?;
@@ -297,11 +301,17 @@ pub fn remove(
     })?;
 
     if let Some(out) = out.for_human() {
+        let t = theme::get();
         if !success {
-            writeln!(out, "{} Alias '{}' not found", "✗".red(), name.green())?;
+            writeln!(
+                out,
+                "{} Alias '{}' not found",
+                t.sym().error,
+                t.config_key.paint(name)
+            )?;
             return Ok(());
         } else {
-            writeln!(out, "Alias '{}' removed", name.green())?;
+            writeln!(out, "Alias '{}' removed", t.config_key.paint(name))?;
             if is_global {
                 writeln!(out, "  (globally)")?;
             }

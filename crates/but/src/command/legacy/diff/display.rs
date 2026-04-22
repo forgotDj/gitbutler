@@ -1,6 +1,5 @@
 use but_core::{UnifiedPatch, ui, unified_diff::DiffHunk};
 use but_hunk_assignment::HunkAssignment;
-use colored::Colorize;
 
 use crate::command::legacy::status::status_letter_ui;
 use crate::theme::Paint as _;
@@ -45,6 +44,7 @@ impl TreeChangeWithPatch {
 
 impl DiffDisplay for TreeChangeWithPatch {
     fn print_diff(&self, _cli_id: Option<&str>) -> String {
+        let t = crate::theme::get();
         // Note: CLI IDs are per-hunk, so we don't display them for TreeChangeWithPatch
         // which shows file-level diffs with potentially multiple hunks.
         let mut output = String::new();
@@ -62,9 +62,9 @@ impl DiffDisplay for TreeChangeWithPatch {
         // M file  │
         // ────────╯
         let render_header = |out: &mut String| {
-            out.push_str(&format!("{}╮\n", "─".repeat(content_width).dimmed()));
+            out.push_str(&format!("{}╮\n", t.hint.paint("─".repeat(content_width))));
             out.push_str(&format!("{status} {path}│\n"));
-            out.push_str(&format!("{}╯\n", "─".repeat(content_width).dimmed()));
+            out.push_str(&format!("{}╯\n", t.hint.paint("─".repeat(content_width))));
         };
 
         if let Some(patch) = &self.patch {
@@ -81,20 +81,23 @@ impl DiffDisplay for TreeChangeWithPatch {
 /// This is a helper function for consistent patch formatting.
 /// The `render_header` function is called before each hunk to render the file header.
 fn format_patch(patch: &UnifiedPatch, render_header: impl Fn(&mut String)) -> String {
+    let t = crate::theme::get();
     let mut output = String::new();
     match patch {
         UnifiedPatch::Binary => {
             render_header(&mut output);
             output.push_str(&format!(
                 "   {}\n",
-                "Binary file - no diff available".dimmed()
+                t.hint.paint("Binary file - no diff available")
             ));
         }
         UnifiedPatch::TooLarge { size_in_bytes } => {
             render_header(&mut output);
             output.push_str(&format!(
                 "   {}\n",
-                format!("File too large ({size_in_bytes} bytes) - no diff available").dimmed()
+                t.hint.paint(format!(
+                    "File too large ({size_in_bytes} bytes) - no diff available"
+                ))
             ));
         }
         UnifiedPatch::Patch {
@@ -106,7 +109,8 @@ fn format_patch(patch: &UnifiedPatch, render_header: impl Fn(&mut String)) -> St
                 render_header(&mut output);
                 output.push_str(&format!(
                     "   {}\n",
-                    "(diff generated from binary-to-text conversion)".yellow()
+                    t.attention
+                        .paint("(diff generated from binary-to-text conversion)")
                 ));
             }
 
@@ -121,6 +125,7 @@ fn format_patch(patch: &UnifiedPatch, render_header: impl Fn(&mut String)) -> St
 
 fn fmt_hunk(hunk: &DiffHunk) -> String {
     use bstr::ByteSlice;
+    let t = crate::theme::get();
 
     let mut output = String::new();
 
@@ -177,7 +182,11 @@ fn fmt_hunk(hunk: &DiffHunk) -> String {
             ' ' => {
                 // Context line: show both line numbers
                 let line_nums = format!("{old_line:>width$} {new_line:>width$}");
-                output.push_str(&format!("   {}│ {}\n", line_nums.dimmed(), content_str));
+                output.push_str(&format!(
+                    "   {}│ {}\n",
+                    t.hint.paint(&line_nums),
+                    content_str
+                ));
                 old_line += 1;
                 new_line += 1;
             }
@@ -190,6 +199,7 @@ fn fmt_hunk(hunk: &DiffHunk) -> String {
 
 impl DiffDisplay for HunkAssignment {
     fn print_diff(&self, short_id: Option<&str>) -> String {
+        let t = crate::theme::get();
         let mut output = String::new();
 
         // Calculate the width needed for the box (id + space + filename)
@@ -199,7 +209,7 @@ impl DiffDisplay for HunkAssignment {
         // ─────────╮
         // <id> file│
         // ─────────╯
-        output.push_str(&format!("{}╮\n", "─".repeat(content_width).dimmed()));
+        output.push_str(&format!("{}╮\n", t.hint.paint("─".repeat(content_width))));
         if let Some(id) = &short_id {
             output.push_str(&format!(
                 "{} {}│\n",
@@ -212,7 +222,7 @@ impl DiffDisplay for HunkAssignment {
                 crate::theme::get().important.paint(&self.path)
             ));
         }
-        output.push_str(&format!("{}╯\n", "─".repeat(content_width).dimmed()));
+        output.push_str(&format!("{}╯\n", t.hint.paint("─".repeat(content_width))));
 
         // Check if we have diff data to display
         if let (Some(diff), Some(header)) = (&self.diff, &self.hunk_header) {
@@ -227,7 +237,10 @@ impl DiffDisplay for HunkAssignment {
             output.push_str(&fmt_hunk(&hunk));
         } else if self.hunk_header.is_none() {
             // Binary, too large, or whole file without detailed diff
-            output.push_str(&format!("   {}\n", "(no detailed diff available)".dimmed()));
+            output.push_str(&format!(
+                "   {}\n",
+                t.hint.paint("(no detailed diff available)")
+            ));
         }
 
         output

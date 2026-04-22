@@ -1,6 +1,5 @@
-use colored::Colorize;
-
 use crate::args::Args;
+use crate::theme::{self, Paint};
 use crate::tui::text::{terminal_width, truncate_text};
 
 pub fn print_grouped(out: &mut dyn std::fmt::Write) -> std::fmt::Result {
@@ -14,32 +13,41 @@ pub fn print_grouped(out: &mut dyn std::fmt::Write) -> std::fmt::Result {
     let subcommands: Vec<_> = cmd.get_subcommands().collect();
 
     // Define command groupings and their order (excluding MISC)
+    let t = theme::get();
+
     let groups = [
-        ("Inspection".yellow(), vec!["status", "diff", "show"]),
         (
-            "Branching and Committing".yellow(),
+            t.attention.paint("Inspection"),
+            vec!["status", "diff", "show"],
+        ),
+        (
+            t.attention.paint("Branching and Committing"),
             vec![
                 "commit", "stage", "new", "branch", "merge", "discard", "resolve",
             ],
         ),
-        ("Rules".yellow(), vec!["mark", "unmark"]),
+        (t.attention.paint("Rules"), vec!["mark", "unmark"]),
         (
-            "Server Interactions".yellow(),
+            t.attention.paint("Server Interactions"),
             vec!["push", "pull", "base", "pr", "forge"],
         ),
         (
-            "Editing Commits".yellow(),
+            t.attention.paint("Editing Commits"),
             vec![
                 "rub", "absorb", "reword", "uncommit", "amend", "squash", "move",
             ],
         ),
         (
-            "Operation History".yellow(),
+            t.attention.paint("Operation History"),
             vec!["oplog", "undo", "restore"],
         ),
     ];
 
-    writeln!(out, "{}", "The GitButler CLI change control system".red())?;
+    writeln!(
+        out,
+        "{}",
+        t.error.paint("The GitButler CLI change control system")
+    )?;
     writeln!(out)?;
     writeln!(out, "Usage: but [OPTIONS] <COMMAND>")?;
     writeln!(out, "       but [OPTIONS] [RUB-SOURCE] [RUB-TARGET]")?;
@@ -81,7 +89,7 @@ pub fn print_grouped(out: &mut dyn std::fmt::Write) -> std::fmt::Result {
                 writeln!(
                     out,
                     "  {:<LONGEST_COMMAND_LEN$}{}",
-                    cmd_name.green(),
+                    t.success.paint(cmd_name),
                     truncated_about,
                 )?;
                 printed_commands.insert(cmd_name.to_string());
@@ -98,7 +106,7 @@ pub fn print_grouped(out: &mut dyn std::fmt::Write) -> std::fmt::Result {
 
     // Print MISC section if there are any ungrouped commands
     if !misc_commands.is_empty() {
-        writeln!(out, "{}:", "Other Commands".yellow())?;
+        writeln!(out, "{}:", t.attention.paint("Other Commands"))?;
         for subcmd in misc_commands {
             let about = subcmd.get_about().unwrap_or_default().to_string();
             // Calculate available width: terminal_width - indent (2) - command column (10) - buffer (1)
@@ -107,7 +115,7 @@ pub fn print_grouped(out: &mut dyn std::fmt::Write) -> std::fmt::Result {
             writeln!(
                 out,
                 "  {:<LONGEST_COMMAND_LEN$}{}",
-                subcmd.get_name().green(),
+                t.success.paint(subcmd.get_name()),
                 truncated_about
             )?;
         }
@@ -132,7 +140,7 @@ pub fn print_grouped(out: &mut dyn std::fmt::Write) -> std::fmt::Result {
     )?;
     writeln!(out)?;
 
-    writeln!(out, "{}:", "Options".yellow())?;
+    writeln!(out, "{}:", t.attention.paint("Options"))?;
     // Truncate long option descriptions if needed
     let option_descriptions = [
         (

@@ -1,11 +1,13 @@
+use crate::{
+    args::update,
+    theme::{self, Paint},
+    utils::OutputChannel,
+};
 use anyhow::Result;
 #[cfg(all(unix, not(feature = "packaged-but-distribution")))]
 use but_installer::VersionRequest;
 use but_settings::AppSettings;
 use but_update::{AppName, CheckUpdateStatus, check_status};
-use colored::Colorize;
-
-use crate::{args::update, theme, utils::OutputChannel};
 
 pub fn handle(
     cmd: update::Subcommands,
@@ -38,7 +40,7 @@ fn check_for_updates(out: &mut OutputChannel, app_settings: &AppSettings) -> Res
         writeln!(
             writer,
             "{} Another process is currently checking for updates",
-            "→".yellow().bold()
+            theme::get().attention.paint("→")
         )?;
     }
 
@@ -52,7 +54,7 @@ fn print_human_output(writer: &mut dyn std::fmt::Write, status: &CheckUpdateStat
             writer,
             "{} You're running the latest version ({})",
             t.sym().success,
-            status.latest_version.bold()
+            t.important.paint(&status.latest_version)
         )?;
     } else {
         let current_version = option_env!("VERSION").unwrap_or("0.0.0");
@@ -71,10 +73,10 @@ fn print_human_output(writer: &mut dyn std::fmt::Write, status: &CheckUpdateStat
         writeln!(
             writer,
             "{} A new version is available: {} {} {}. {}",
-            "→".yellow().bold(),
-            current_version.dimmed(),
-            "→".dimmed(),
-            status.latest_version.green().bold(),
+            t.attention.paint("→"),
+            t.hint.paint(current_version),
+            t.hint.paint("→"),
+            t.success.paint(&status.latest_version),
             install_hint,
         )?;
 
@@ -90,7 +92,7 @@ fn print_human_output(writer: &mut dyn std::fmt::Write, status: &CheckUpdateStat
         #[cfg(not(target_os = "linux"))]
         if let Some(url) = &status.url {
             writeln!(writer)?;
-            writeln!(writer, "Download: {}", url.cyan())?;
+            writeln!(writer, "Download: {}", t.link.paint(url.as_str()))?;
         }
     }
 
@@ -169,11 +171,13 @@ fn install(out: &mut OutputChannel, target: Option<String>) -> Result<()> {
 
     // Show change log link
     if let Some(writer) = out.for_human() {
+        let t = theme::get();
         writeln!(
             writer,
             "{} {}",
-            "→".cyan().bold(),
-            "View release notes: https://gitbutler.com/releases".bold()
+            t.info.paint("→"),
+            t.link
+                .paint("View release notes: https://gitbutler.com/releases")
         )?;
         writeln!(writer)?;
     }

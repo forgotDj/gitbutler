@@ -1,11 +1,13 @@
 use anyhow::Context as _;
 use but_ctx::Context;
 use but_workspace::legacy::StacksFilter;
-use colored::Colorize;
 use gix::refs::transaction::PreviousValue;
 use serde::Serialize;
 
-use crate::utils::{OutputChannel, shorten_object_id};
+use crate::{
+    theme::{self, Paint},
+    utils::{OutputChannel, shorten_object_id},
+};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,6 +17,7 @@ struct TeardownResult {
 }
 
 pub(crate) fn teardown(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
+    let t = theme::get();
     // Check that we're on gitbutler/workspace
     let head_name = {
         let repo = ctx.repo.get()?;
@@ -29,26 +32,29 @@ pub(crate) fn teardown(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Re
             writeln!(
                 out,
                 "{}",
-                format!("Not currently on gitbutler/workspace branch (on: {head_name}).").red()
+                t.error.paint(format!(
+                    "Not currently on gitbutler/workspace branch (on: {head_name})."
+                ))
             )?;
             writeln!(out)?;
             writeln!(
                 out,
                 "{}",
-                "Teardown can only be run while on the gitbutler/workspace branch.".dimmed()
+                t.hint
+                    .paint("Teardown can only be run while on the gitbutler/workspace branch.")
             )?;
         }
         anyhow::bail!("Not on gitbutler/workspace branch");
     }
 
     if let Some(out) = out.for_human() {
-        writeln!(out, "{}", "Exiting GitButler mode...".cyan().bold())?;
+        writeln!(out, "{}", t.progress.paint("Exiting GitButler mode..."))?;
         writeln!(out)?;
     }
 
     // Create an oplog snapshot
     if let Some(out) = out.for_human() {
-        writeln!(out, "{}", "→ Creating snapshot...".dimmed())?;
+        writeln!(out, "{}", t.hint.paint("→ Creating snapshot..."))?;
     }
 
     let snapshot = but_api::legacy::oplog::create_snapshot(
@@ -64,7 +70,8 @@ pub(crate) fn teardown(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Re
         writeln!(
             out,
             "  {}",
-            format!("✓ Snapshot created: {snapshot_short}").green()
+            t.success
+                .paint(format!("✓ Snapshot created: {snapshot_short}"))
         )?;
         writeln!(out)?;
     }
@@ -74,7 +81,7 @@ pub(crate) fn teardown(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Re
         writeln!(
             out,
             "{}",
-            "→ Finding active branch to check out...".dimmed()
+            t.hint.paint("→ Finding active branch to check out...")
         )?;
     }
 
@@ -107,7 +114,8 @@ pub(crate) fn teardown(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Re
         writeln!(
             out,
             "  {}",
-            format!("✓ Will check out: {target_branch_name}").green()
+            t.success
+                .paint(format!("✓ Will check out: {target_branch_name}"))
         )?;
         writeln!(out)?;
     }
@@ -120,7 +128,8 @@ pub(crate) fn teardown(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Re
         writeln!(
             out,
             "  {}",
-            format!("Warning: Failed to uninstall Git hooks: {e}").yellow()
+            t.attention
+                .paint(format!("Warning: Failed to uninstall Git hooks: {e}"))
         )?;
     }
 
@@ -129,7 +138,8 @@ pub(crate) fn teardown(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Re
         writeln!(
             out,
             "{}",
-            format!("→ Checking out {target_branch_name}...").dimmed()
+            t.hint
+                .paint(format!("→ Checking out {target_branch_name}..."))
         )?;
     }
 
@@ -153,7 +163,7 @@ pub(crate) fn teardown(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Re
             writeln!(
                 out,
                 "  {}",
-                "⚠ Checkout failed, trying soft reset...\n  ⚠ This will leave changes from multiple branches in your working directory.\n  ⚠ You will have to manually remove, stash or re-commit the changes.".yellow()
+                t.attention.paint("⚠ Checkout failed, trying soft reset...\n  ⚠ This will leave changes from multiple branches in your working directory.\n  ⚠ You will have to manually remove, stash or re-commit the changes.")
             )?;
         }
 
@@ -174,7 +184,8 @@ pub(crate) fn teardown(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Re
         writeln!(
             out,
             "  {}",
-            format!("✓ Checked out: {target_branch_name}").green()
+            t.success
+                .paint(format!("✓ Checked out: {target_branch_name}"))
         )?;
         writeln!(out)?;
     }
@@ -184,17 +195,18 @@ pub(crate) fn teardown(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Re
         writeln!(
             out,
             "{}",
-            "✓ Successfully exited GitButler mode!".green().bold()
+            t.success.paint("✓ Successfully exited GitButler mode!")
         )?;
         writeln!(out)?;
         writeln!(
             out,
             "{}",
-            format!("You are now on branch: {target_branch_name}").dimmed()
+            t.hint
+                .paint(format!("You are now on branch: {target_branch_name}"))
         )?;
         writeln!(out)?;
-        writeln!(out, "{}", "To return to GitButler mode, run:".blue())?;
-        writeln!(out, "  {}", "but setup".cyan())?;
+        writeln!(out, "{}", t.info.paint("To return to GitButler mode, run:"))?;
+        writeln!(out, "  {}", t.command_suggestion.paint("but setup"))?;
         writeln!(out)?;
     }
 
@@ -212,11 +224,12 @@ pub(crate) fn teardown(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Re
 // a call to get stacks failed, which could be because someone committed on top
 // of gitbutler/workspace. Try to fix that.
 fn try_stack_fixes(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
+    let t = theme::get();
     if let Some(out) = out.for_human() {
         writeln!(
             out,
             "\n{}",
-            "Attempting to fix workspace stacks...".yellow()
+            t.attention.paint("Attempting to fix workspace stacks...")
         )?;
     }
 
@@ -225,7 +238,11 @@ fn try_stack_fixes(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result
 
     // Look for dangling commits on gitbutler/workspace
     if let Some(out) = out.for_human() {
-        writeln!(out, "{}", "→ Checking for dangling commits...".dimmed())?;
+        writeln!(
+            out,
+            "{}",
+            t.hint.paint("→ Checking for dangling commits...")
+        )?;
     }
 
     let mut workspace_ref = repo.find_reference("refs/heads/gitbutler/workspace")?;
@@ -257,7 +274,7 @@ fn try_stack_fixes(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result
 
     if dangling_commits.is_empty() {
         if let Some(out) = out.for_human() {
-            writeln!(out, "  {}", "✓ No dangling commits found".green())?;
+            writeln!(out, "  {}", t.success.paint("✓ No dangling commits found"))?;
             writeln!(out)?;
         }
     } else {
@@ -268,7 +285,8 @@ fn try_stack_fixes(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result
             writeln!(
                 out,
                 "{}",
-                format!("→ Resetting gitbutler/workspace to {target_short}").dimmed()
+                t.hint
+                    .paint(format!("→ Resetting gitbutler/workspace to {target_short}"))
             )?;
         }
         repo.reference(
@@ -281,7 +299,8 @@ fn try_stack_fixes(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result
             writeln!(
                 out,
                 "  {}",
-                format!("✓ gitbutler/workspace reset to {target_short}").green()
+                t.success
+                    .paint(format!("✓ gitbutler/workspace reset to {target_short}"))
             )?;
         }
 
@@ -292,11 +311,12 @@ fn try_stack_fixes(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result
             writeln!(
                 out,
                 "\n  {}",
-                format!(
-                    "⚠ Non-GitButler created commits found.\n  ⚠ Undoing these commits but keeping the changes in your working directory.\n  ⚠ Uncommitted {} dangling commit(s):",
+                t.attention.paint(format!(
+                    "⚠ Non-GitButler created commits found.
+  ⚠ Undoing these commits but keeping the changes in your working directory.
+  ⚠ Uncommitted {} dangling commit(s):",
                     dangling_commits.len()
-                )
-                .yellow()
+                ))
             )?;
             for commit in &dangling_commits {
                 let message = String::from_utf8_lossy(commit.message_raw().unwrap_or((&[]).into()));

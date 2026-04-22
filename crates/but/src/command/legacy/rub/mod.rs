@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use crate::theme::{self, Paint};
 use anyhow::{Context as _, bail};
 use bstr::BStr;
 use but_api::commit::types::{
@@ -9,7 +10,6 @@ use but_core::{DiffSpec, DryRun, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use but_hunk_assignment::{HunkAssignment, HunkAssignmentRequest, HunkAssignmentTarget};
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
-use colored::Colorize;
 mod amend;
 mod assign;
 pub(crate) mod squash;
@@ -286,7 +286,10 @@ impl<'a> UncommittedToCommitOperation<'a> {
                 .map(|c| {
                     let short = shorten_object_id(&repo, c);
                     let (lead, rest) = split_short_id(&short, 2);
-                    format!("{}{}", lead.blue().bold(), rest.blue())
+                    {
+                        let t = theme::get();
+                        format!("{}{}", t.cli_id.paint(lead), t.cli_id.paint(rest))
+                    }
                 })
                 .unwrap_or_default();
             writeln!(out, "Amended {} → {new_commit}", self.description)?;
@@ -318,11 +321,12 @@ impl<'a> UncommittedToBranchOperation<'a> {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             writeln!(
                 out,
                 "Staged {} → {}.",
                 self.description,
-                format!("[{}]", self.name).green()
+                t.local_branch.paint(format!("[{}]", self.name))
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -344,11 +348,12 @@ impl<'a> UncommittedToStackOperation<'a> {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             writeln!(
                 out,
                 "Staged {} → stack {}.",
                 self.description,
-                format!("[{}]", self.stack_id).green()
+                t.local_branch.paint(format!("[{}]", self.stack_id))
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -371,12 +376,13 @@ impl StackToUnassignedOperation {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             writeln!(
                 out,
                 "Unstaged all {} changes.",
                 stack_id_to_branch_name(ctx, self.stack_id)
-                    .map(|b| format!("[{b}]").green())
-                    .unwrap_or_else(|| "stack".to_string().bold())
+                    .map(|b| t.local_branch.paint(format!("[{b}]")))
+                    .unwrap_or_else(|| t.important.paint("stack"))
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -395,15 +401,16 @@ impl StackToStackOperation {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             writeln!(
                 out,
                 "Staged all {} changes to {}.",
                 stack_id_to_branch_name(ctx, self.from)
-                    .map(|b| format!("[{b}]").green())
-                    .unwrap_or_else(|| "stack".to_string().bold()),
+                    .map(|b| t.local_branch.paint(format!("[{b}]")))
+                    .unwrap_or_else(|| t.important.paint("stack")),
                 stack_id_to_branch_name(ctx, self.to)
-                    .map(|b| format!("[{b}]").green())
-                    .unwrap_or_else(|| "stack".to_string().bold())
+                    .map(|b| t.local_branch.paint(format!("[{b}]")))
+                    .unwrap_or_else(|| t.important.paint("stack"))
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -422,13 +429,14 @@ impl<'a> StackToBranchOperation<'a> {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             writeln!(
                 out,
                 "Staged all {} changes to {}.",
                 stack_id_to_branch_name(ctx, self.from)
-                    .map(|b| format!("[{b}]").green())
-                    .unwrap_or_else(|| "stack".to_string().bold()),
-                format!("[{}]", self.to).green(),
+                    .map(|b| t.local_branch.paint(format!("[{b}]")))
+                    .unwrap_or_else(|| t.important.paint("stack")),
+                t.local_branch.paint(format!("[{}]", self.to)),
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -449,21 +457,25 @@ impl StackToCommitOperation {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         let result = self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             let repo = ctx.repo.get()?;
             let new_commit = result
                 .new_commit
                 .map(|c| {
                     let short = shorten_object_id(&repo, c);
                     let (lead, rest) = split_short_id(&short, 2);
-                    format!("{}{}", lead.blue().bold(), rest.blue())
+                    {
+                        let t = theme::get();
+                        format!("{}{}", t.cli_id.paint(lead), t.cli_id.paint(rest))
+                    }
                 })
                 .unwrap_or_default();
             writeln!(
                 out,
                 "Amended files assigned to {} → {}",
                 stack_id_to_branch_name(ctx, self.from)
-                    .map(|b| format!("[{b}]").green())
-                    .unwrap_or_else(|| "stack".to_string().bold()),
+                    .map(|b| t.local_branch.paint(format!("[{b}]")))
+                    .unwrap_or_else(|| t.important.paint("stack")),
                 new_commit,
             )?;
         } else if let Some(out) = out.for_json() {
@@ -493,7 +505,10 @@ impl UnassignedToCommitOperation {
                 .map(|c| {
                     let short = shorten_object_id(&repo, c);
                     let (lead, rest) = split_short_id(&short, 2);
-                    format!("{}{}", lead.blue().bold(), rest.blue())
+                    {
+                        let t = theme::get();
+                        format!("{}{}", t.cli_id.paint(lead), t.cli_id.paint(rest))
+                    }
                 })
                 .unwrap_or_default();
             writeln!(out, "Amended unassigned files → {new_commit}")?;
@@ -518,11 +533,12 @@ impl<'a> UnassignedToBranchOperation<'a> {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             writeln!(
                 out,
                 "Staged all {} changes to {}.",
-                "unstaged".to_string().bold(),
-                format!("[{}]", self.to).green(),
+                t.important.paint("unstaged"),
+                t.local_branch.paint(format!("[{}]", self.to)),
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -542,13 +558,14 @@ impl UnassignedToStackOperation {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             writeln!(
                 out,
                 "Staged all {} changes to {}.",
-                "unstaged".bold(),
+                t.important.paint("unstaged"),
                 stack_id_to_branch_name(ctx, self.to)
-                    .map(|b| format!("[{b}]").green())
-                    .unwrap_or_else(|| "stack".bold())
+                    .map(|b| t.local_branch.paint(format!("[{b}]")))
+                    .unwrap_or_else(|| t.important.paint("stack"))
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -567,11 +584,12 @@ impl CommitToUnassignedOperation {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             let repo = ctx.repo.get()?;
             writeln!(
                 out,
                 "Uncommitted {}",
-                shorten_object_id(&repo, self.oid).blue()
+                t.cli_id.paint(shorten_object_id(&repo, self.oid))
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -590,14 +608,15 @@ impl CommitToStackOperation {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             let repo = ctx.repo.get()?;
             writeln!(
                 out,
                 "Uncommitted {} to {}",
-                shorten_object_id(&repo, self.oid).blue(),
+                t.cli_id.paint(shorten_object_id(&repo, self.oid)),
                 stack_id_to_branch_name(ctx, self.stack)
-                    .map(|b| format!("[{b}]").green())
-                    .unwrap_or_else(|| "stack".bold()),
+                    .map(|b| t.local_branch.paint(format!("[{b}]")))
+                    .unwrap_or_else(|| t.important.paint("stack")),
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -616,12 +635,13 @@ impl SquashCommitsOperation {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         let result = self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             let repo = ctx.repo.get()?;
             writeln!(
                 out,
                 "Squashed {} → {}",
-                shorten_object_id(&repo, self.source).blue(),
-                shorten_object_id(&repo, result.new_commit).blue(),
+                t.cli_id.paint(shorten_object_id(&repo, self.source)),
+                t.cli_id.paint(shorten_object_id(&repo, result.new_commit)),
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({
@@ -644,12 +664,13 @@ impl<'a> MoveCommitToBranchOperation<'a> {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             let repo = ctx.repo.get()?;
             writeln!(
                 out,
                 "Moved {} → {}",
-                shorten_object_id(&repo, self.oid).blue(),
-                format!("[{}]", self.name).green()
+                t.cli_id.paint(shorten_object_id(&repo, self.oid)),
+                t.local_branch.paint(format!("[{}]", self.name))
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -675,10 +696,11 @@ impl<'a> BranchToUnassignedOperation<'a> {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             writeln!(
                 out,
                 "Unstaged all {} changes.",
-                format!("[{}]", self.from).green(),
+                t.local_branch.paint(format!("[{}]", self.from)),
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -698,13 +720,14 @@ impl<'a> BranchToStackOperation<'a> {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             writeln!(
                 out,
                 "Staged all {} changes to {}.",
-                format!("[{}]", self.from).green(),
+                t.local_branch.paint(format!("[{}]", self.from)),
                 stack_id_to_branch_name(ctx, self.to)
-                    .map(|b| format!("[{b}]").green())
-                    .unwrap_or_else(|| "stack".to_string().bold()),
+                    .map(|b| t.local_branch.paint(format!("[{b}]")))
+                    .unwrap_or_else(|| t.important.paint("stack")),
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -724,19 +747,23 @@ impl<'a> BranchToCommitOperation<'a> {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         let result = self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             let repo = ctx.repo.get()?;
             let new_commit = result
                 .new_commit
                 .map(|c| {
                     let short = shorten_object_id(&repo, c);
                     let (lead, rest) = split_short_id(&short, 2);
-                    format!("{}{}", lead.blue().bold(), rest.blue())
+                    {
+                        let t = theme::get();
+                        format!("{}{}", t.cli_id.paint(lead), t.cli_id.paint(rest))
+                    }
                 })
                 .unwrap_or_default();
             writeln!(
                 out,
                 "Amended assigned files {} → {}",
-                format!("[{}]", self.name).green(),
+                t.local_branch.paint(format!("[{}]", self.name)),
                 new_commit,
             )?;
         } else if let Some(out) = out.for_json() {
@@ -764,11 +791,12 @@ impl<'a> BranchToBranchOperation<'a> {
     pub(crate) fn execute(self, ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
         self.execute_inner(ctx)?;
         if let Some(out) = out.for_human() {
+            let t = theme::get();
             writeln!(
                 out,
                 "Staged all {} changes to {}.",
-                format!("[{}]", self.from).green(),
-                format!("[{}]", self.to).green(),
+                t.local_branch.paint(format!("[{}]", self.from)),
+                t.local_branch.paint(format!("[{}]", self.to)),
             )?;
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({"ok": true}))?;
@@ -1166,12 +1194,13 @@ pub(crate) fn handle(
 }
 
 fn makes_no_sense_error(source: &CliId, target: &CliId) -> String {
+    let t = theme::get();
     format!(
         "Operation doesn't make sense. Source {} is {} and target {} is {}.",
-        source.to_short_string().blue().bold(),
-        source.kind_for_humans().yellow(),
-        target.to_short_string().blue().bold(),
-        target.kind_for_humans().yellow()
+        t.cli_id.paint(source.to_short_string()),
+        t.attention.paint(source.kind_for_humans()),
+        t.cli_id.paint(target.to_short_string()),
+        t.attention.paint(target.kind_for_humans())
     )
 }
 
@@ -1294,6 +1323,7 @@ pub(crate) fn handle_uncommit(
     source_str: &str,
     discard: bool,
 ) -> anyhow::Result<()> {
+    let t = theme::get();
     let id_map = IdMap::legacy_new_from_context(ctx, None)?;
     let sources = parse_sources_with_disambiguation(ctx, &id_map, source_str, out)?;
 
@@ -1306,8 +1336,8 @@ pub(crate) fn handle_uncommit(
             _ => {
                 bail!(
                     "Cannot uncommit {} - it is {}. Only commits and files-in-commits can be uncommitted.",
-                    source_str.blue().bold(),
-                    source.kind_for_humans().yellow()
+                    t.cli_id.paint(source_str),
+                    t.attention.paint(source.kind_for_humans())
                 );
             }
         }
@@ -1326,7 +1356,7 @@ pub(crate) fn handle_uncommit(
                         writeln!(
                             out,
                             "Discarded {}",
-                            shorten_object_id(&repo, commit_id).blue()
+                            t.cli_id.paint(shorten_object_id(&repo, commit_id))
                         )?;
                     }
                 }
@@ -1366,6 +1396,7 @@ pub(crate) fn handle_amend(
     file_str: &str,
     commit_str: &str,
 ) -> anyhow::Result<()> {
+    let t = theme::get();
     let mut guard = ctx.exclusive_worktree_access();
     let id_map = IdMap::new_from_context(ctx, None, guard.read_permission())?;
     let files = parse_sources_with_disambiguation(ctx, &id_map, file_str, out)?;
@@ -1380,8 +1411,8 @@ pub(crate) fn handle_amend(
             _ => {
                 bail!(
                     "Cannot amend {} - it is {}. Only uncommitted files and hunks can be amended.",
-                    file.to_short_string().blue().bold(),
-                    file.kind_for_humans().yellow()
+                    t.cli_id.paint(file.to_short_string()),
+                    t.attention.paint(file.kind_for_humans())
                 );
             }
         }
@@ -1417,8 +1448,8 @@ pub(crate) fn handle_amend(
         other => {
             bail!(
                 "Cannot amend into {} - it is {}. Target must be a commit.",
-                other.to_short_string().blue().bold(),
-                other.kind_for_humans().yellow()
+                t.cli_id.paint(other.to_short_string()),
+                t.attention.paint(other.kind_for_humans())
             );
         }
     }
@@ -1433,6 +1464,7 @@ pub(crate) fn handle_stage(
     file_or_hunk_str: &str,
     branch_str: &str,
 ) -> anyhow::Result<()> {
+    let t = theme::get();
     let id_map = IdMap::legacy_new_from_context(ctx, None)?;
     let files = parse_sources_with_disambiguation(ctx, &id_map, file_or_hunk_str, out)?;
     let branch = resolve_single_id(ctx, &id_map, branch_str, "Branch", out)?;
@@ -1446,8 +1478,8 @@ pub(crate) fn handle_stage(
             _ => {
                 bail!(
                     "Cannot stage {} - it is {}. Only uncommitted files and hunks can be staged.",
-                    file.to_short_string().blue().bold(),
-                    file.kind_for_humans().yellow()
+                    t.cli_id.paint(file.to_short_string()),
+                    t.attention.paint(file.kind_for_humans())
                 );
             }
         }
@@ -1461,8 +1493,8 @@ pub(crate) fn handle_stage(
         other => {
             bail!(
                 "Cannot stage to {} - it is {}. Target must be a branch.",
-                other.to_short_string().blue().bold(),
-                other.kind_for_humans().yellow()
+                t.cli_id.paint(other.to_short_string()),
+                t.attention.paint(other.kind_for_humans())
             );
         }
     }
@@ -1478,6 +1510,7 @@ pub(crate) fn handle_stage_tui(
     out: &mut OutputChannel,
     branch_str: Option<&str>,
 ) -> anyhow::Result<()> {
+    let t = theme::get();
     use crate::tui::stage_viewer::{StageFileEntry, StageResult};
 
     let id_map = IdMap::legacy_new_from_context(ctx, None)?;
@@ -1490,8 +1523,8 @@ pub(crate) fn handle_stage_tui(
             other => {
                 bail!(
                     "Cannot stage to {} - it is {}. Target must be a branch.",
-                    other.to_short_string().blue().bold(),
-                    other.kind_for_humans().yellow()
+                    t.cli_id.paint(other.to_short_string()),
+                    t.attention.paint(other.kind_for_humans())
                 );
             }
         }
@@ -1563,10 +1596,11 @@ pub(crate) fn handle_stage_tui(
             )?);
             assign::do_assignments(ctx, reqs)?;
             if let Some(out) = out.for_human() {
+                let t = theme::get();
                 writeln!(
                     out,
                     "Staged selected hunks → {}.",
-                    format!("[{branch_name}]").green()
+                    t.local_branch.paint(format!("[{branch_name}]"))
                 )?;
             }
             Ok(())
@@ -1589,6 +1623,7 @@ pub(crate) fn handle_unstage(
     file_or_hunk_str: &str,
     branch_str: Option<&str>,
 ) -> anyhow::Result<()> {
+    let t = theme::get();
     let id_map = IdMap::legacy_new_from_context(ctx, None)?;
     let files = parse_sources_with_disambiguation(ctx, &id_map, file_or_hunk_str, out)?;
 
@@ -1601,8 +1636,8 @@ pub(crate) fn handle_unstage(
             _ => {
                 bail!(
                     "Cannot unstage {} - it is {}. Only uncommitted files and hunks can be unstaged.",
-                    file.to_short_string().blue().bold(),
-                    file.kind_for_humans().yellow()
+                    t.cli_id.paint(file.to_short_string()),
+                    t.attention.paint(file.kind_for_humans())
                 );
             }
         }
@@ -1618,8 +1653,8 @@ pub(crate) fn handle_unstage(
             other => {
                 bail!(
                     "Cannot unstage from {} - it is {}. Target must be a branch.",
-                    other.to_short_string().blue().bold(),
-                    other.kind_for_humans().yellow()
+                    t.cli_id.paint(other.to_short_string()),
+                    t.attention.paint(other.kind_for_humans())
                 );
             }
         }

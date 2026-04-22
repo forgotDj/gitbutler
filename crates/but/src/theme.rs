@@ -274,6 +274,8 @@ pub struct Theme {
     pub user: Style,
     /// Time-related information
     pub time: Style,
+    /// In-progress action labels (e.g. "Pushing...", "Fetching...", "Setting up...").
+    pub progress: Style,
 
     // Layout
     /// Default border style
@@ -395,6 +397,7 @@ impl Theme {
             default: Style::new(),
             user: style_fg(Color::LightYellow),
             time: style_fg(Color::Cyan),
+            progress: style_fg(Color::DarkGray),
 
             // Layout
             border: Style::new().fg(Color::DarkGray),
@@ -463,8 +466,14 @@ pub struct ThemeSymbols {
     pub success: StyledSymbol,
     /// Error state.
     pub error: StyledSymbol,
-    /// Info to the right.
-    pub info_right: StyledSymbol,
+    /// Warning indicator.
+    pub warning: StyledSymbol,
+    /// Generic dot marker — use `.success()`/`.attention()`/`.error()`/`.info()` for context.
+    pub dot: StyledSymbol,
+    /// Arrow indicator.
+    pub arrow: StyledSymbol,
+    /// Force / lightning indicator.
+    pub lightning: StyledSymbol,
 }
 
 impl ThemeSymbols {
@@ -472,7 +481,10 @@ impl ThemeSymbols {
         Self {
             success: StyledSymbol::new("✓", t.success.add_modifier(Modifier::BOLD)),
             error: StyledSymbol::new("✗", t.error.add_modifier(Modifier::BOLD)),
-            info_right: StyledSymbol::new("→", t.info),
+            warning: StyledSymbol::new("⚠", t.attention.add_modifier(Modifier::BOLD)),
+            dot: StyledSymbol::new("●", t.default),
+            arrow: StyledSymbol::new("→", t.hint),
+            lightning: StyledSymbol::new("⚡", t.attention.add_modifier(Modifier::BOLD)),
         }
     }
 }
@@ -497,6 +509,30 @@ impl StyledSymbol {
     /// Convert the [`StyledSymbol`] into a styled [`Span`].
     pub fn span(&self) -> Span<'_> {
         Span::styled(&self.content, self.style)
+    }
+
+    /// Return a new symbol styled for success.
+    pub fn success(&self) -> StyledSymbol {
+        let t = get();
+        StyledSymbol::new(&self.content, t.success.add_modifier(Modifier::BOLD))
+    }
+
+    /// Return a new symbol styled for attention / warning.
+    pub fn attention(&self) -> StyledSymbol {
+        let t = get();
+        StyledSymbol::new(&self.content, t.attention.add_modifier(Modifier::BOLD))
+    }
+
+    /// Return a new symbol styled for error.
+    pub fn error(&self) -> StyledSymbol {
+        let t = get();
+        StyledSymbol::new(&self.content, t.error.add_modifier(Modifier::BOLD))
+    }
+
+    /// Return a new symbol styled for info.
+    pub fn info(&self) -> StyledSymbol {
+        let t = get();
+        StyledSymbol::new(&self.content, t.info.add_modifier(Modifier::BOLD))
     }
 }
 
