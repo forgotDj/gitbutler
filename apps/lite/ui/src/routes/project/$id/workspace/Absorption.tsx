@@ -7,7 +7,7 @@ import {
 	AbsorptionReason,
 	AbsorptionTarget,
 	CommitAbsorption,
-	TreeChange,
+	HunkHeader,
 	WorktreeChanges,
 } from "@gitbutler/but-sdk";
 import { useMutation } from "@tanstack/react-query";
@@ -28,34 +28,62 @@ const describeAbsorptionReason = (reason: AbsorptionReason): string | null => {
 	}
 };
 
-export const resolveTreeChanges = ({
+const hunkHeadersEqual = (a: HunkHeader, b: HunkHeader): boolean =>
+	a.oldStart === b.oldStart &&
+	a.oldLines === b.oldLines &&
+	a.newStart === b.newStart &&
+	a.newLines === b.newLines;
+
+export const resolveAbsorptionTarget = ({
 	item,
 	worktreeChanges,
 }: {
 	item: Item;
 	worktreeChanges: WorktreeChanges | undefined;
-}): Array<TreeChange> | null =>
+}): AbsorptionTarget | null =>
 	Match.value(item).pipe(
-		Match.withReturnType<Array<TreeChange> | null>(),
+		Match.withReturnType<AbsorptionTarget | null>(),
 		Match.tags({
 			ChangeFile: ({ path }) => {
 				const change = worktreeChanges?.changes.find((candidate) => candidate.path === path);
 				if (!change) return null;
 
-				return [change];
+				return {
+					type: "treeChanges",
+					subject: {
+						changes: [change],
+						assignedStackId: null,
+					},
+				};
 			},
 			ChangesSection: () => {
 				if (!worktreeChanges) return null;
 
-				return worktreeChanges.changes;
+				return {
+					type: "treeChanges",
+					subject: {
+						changes: worktreeChanges.changes,
+						assignedStackId: null,
+					},
+				};
 			},
-			Hunk: ({ parent, path }) => {
+			Hunk: ({ parent, path, hunkHeader }) => {
 				if (parent._tag !== "Change") return null;
 
-				const change = worktreeChanges?.changes.find((candidate) => candidate.path === path);
-				if (!change) return null;
+				const assignment = worktreeChanges?.assignments.find(
+					(candidate) =>
+						candidate.path === path &&
+						candidate.hunkHeader !== null &&
+						hunkHeadersEqual(candidate.hunkHeader, hunkHeader),
+				);
+				if (!assignment) return null;
 
-				return [change];
+				return {
+					type: "hunkAssignments",
+					subject: {
+						assignments: [assignment],
+					},
+				};
 			},
 		}),
 		Match.orElse(() => null),

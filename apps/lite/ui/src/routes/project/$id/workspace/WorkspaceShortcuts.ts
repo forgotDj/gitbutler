@@ -21,7 +21,7 @@ import {
 	StackItem,
 	stackItem,
 } from "./Item.ts";
-import { resolveTreeChanges } from "./Absorption.tsx";
+import { resolveAbsorptionTarget } from "./Absorption.tsx";
 import { operationModeToOperation } from "./OperationMode.tsx";
 import { resolveOperationSource } from "./ResolvedOperationSource.ts";
 import {
@@ -788,19 +788,13 @@ export const useWorkspaceShortcuts = ({
 		const worktreeChanges = queryClient.getQueryData(
 			changesInWorktreeQueryOptions(projectId).queryKey,
 		);
-		const changes = resolveTreeChanges({
+		const target = resolveAbsorptionTarget({
 			item: selectedItem,
 			worktreeChanges,
 		});
-		if (!changes) return;
+		if (!target) return;
 
-		requestAbsorptionPlan({
-			type: "treeChanges",
-			subject: {
-				changes,
-				assignedStackId: null,
-			},
-		});
+		requestAbsorptionPlan(target);
 	};
 
 	const handleChangesScopeAction = (action: ChangesAction, selectedItem: Item) =>
