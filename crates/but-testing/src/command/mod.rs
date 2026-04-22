@@ -274,6 +274,57 @@ pub mod stacks {
             debug_print(stack_entry)
         }
     }
+
+    /// Move a branch from one visible workspace stack onto another using the modern branch API.
+    pub fn move_branch(
+        subject_branch: &str,
+        destination_branch: &str,
+        args: &crate::Args,
+    ) -> anyhow::Result<()> {
+        let mut ctx = context_from_args(args)?;
+        let meta = ctx.legacy_meta()?;
+        let stacks = {
+            but_workspace::legacy::stacks_v3(&*ctx.repo.get()?, &meta, Default::default(), None)?
+        };
+        let subject_branch_name = stacks
+            .iter()
+            .find(|s| s.heads.iter().any(|h| h.name == subject_branch))
+            .context(format!(
+                "No stack branch found with name '{subject_branch}'"
+            ))?;
+        let destination_branch_name = stacks
+            .iter()
+            .find(|s| s.heads.iter().any(|h| h.name == destination_branch))
+            .context(format!(
+                "No stack branch found with name '{destination_branch}'"
+            ))?;
+
+        let subject_ref_name = format!(
+            "refs/heads/{}",
+            subject_branch_name
+                .heads
+                .iter()
+                .find(|h| h.name == subject_branch)
+                .expect("validated subject branch exists")
+                .name
+        );
+        let destination_ref_name = format!(
+            "refs/heads/{}",
+            destination_branch_name
+                .heads
+                .iter()
+                .find(|h| h.name == destination_branch)
+                .expect("validated destination branch exists")
+                .name
+        );
+        but_api::branch::move_branch(
+            &mut ctx,
+            subject_ref_name.as_str().try_into()?,
+            destination_ref_name.as_str().try_into()?,
+            but_core::DryRun::No,
+        )?;
+        Ok(())
+    }
 }
 
 pub(crate) mod discard_change {
