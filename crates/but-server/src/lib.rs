@@ -950,10 +950,6 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(legacy::virtual_branches::fetch_from_remotes_cmd),
         )
         .route(
-            "/tear_off_branch_legacy",
-            but_post(legacy::virtual_branches::tear_off_branch_legacy_cmd),
-        )
-        .route(
             "/operating_mode",
             but_post(legacy::modes::operating_mode_cmd),
         )

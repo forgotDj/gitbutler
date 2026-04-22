@@ -25,7 +25,6 @@ use crate::{
     branch_manager::BranchManagerExt,
     branch_upstream_integration,
     branch_upstream_integration::IntegrationStrategy,
-    move_branch::MoveBranchResult,
     upstream_integration::{
         self, BaseBranchResolution, BaseBranchResolutionApproach, IntegrationOutcome, Resolution,
         StackStatuses, UpstreamIntegrationContext,
@@ -282,27 +281,6 @@ pub fn fetch_from_remotes(ctx: &Context, askpass: Option<String>) -> Result<Fetc
     state.garbage_collect(&*ctx.repo.get()?)?;
 
     Ok(project_data_last_fetched)
-}
-
-pub fn tear_off_branch(
-    ctx: &mut Context,
-    source_stack_id: StackId,
-    subject_branch_name: &str,
-) -> Result<MoveBranchResult> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    ensure_open_workspace_mode(ctx, guard.read_permission())
-        .context("Moving a branch requires open workspace mode")?;
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::TearOffBranch),
-        guard.write_permission(),
-    );
-    crate::move_branch::tear_off_branch(
-        ctx,
-        source_stack_id,
-        subject_branch_name,
-        guard.write_permission(),
-    )
 }
 
 #[instrument(level = "debug", skip(ctx), err(Debug))]

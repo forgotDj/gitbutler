@@ -201,7 +201,6 @@ commands.allow = [
   "switch_back_to_workspace",
   "target_commits",
   "tear_off_branch",
-  "tear_off_branch_legacy",
   "tree_change_diffs",
   "unapply_stack",
   "update_branch_name",
