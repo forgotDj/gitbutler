@@ -6,14 +6,13 @@ import {
 	type ChangeDropData,
 } from "$lib/dragging/draggables";
 import { parseError } from "$lib/error/parser";
-import { showError } from "$lib/error/showError";
 import { HOOKS_SERVICE } from "$lib/git/hooksService";
-import { showToast } from "$lib/notifications/toasts";
 import { toCommitMovePlacement } from "$lib/stacks/commitMovePlacement";
 import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
 import { UI_STATE, withStackBusy, type UiState } from "$lib/state/uiState.svelte";
 import { inject } from "@gitbutler/core/context";
 import { untrack } from "svelte";
+import type { DropResult } from "$lib/dragging/dropResult";
 import type { DropzoneHandler } from "$lib/dragging/handler";
 import type { CreateCommitOutcome } from "$lib/stacks/stackEndpoints";
 import type { RejectionReason } from "@gitbutler/but-sdk";
@@ -66,7 +65,7 @@ export class MoveCommitDzHandler implements DropzoneHandler {
 		);
 	}
 
-	async ondrop(data: CommitDropData): Promise<void> {
+	async ondrop(data: CommitDropData): Promise<DropResult | void> {
 		const { relativeTo, side } = toCommitMovePlacement({
 			targetBranchName: this.targetBranchName,
 			targetCommitId: "top",
@@ -78,6 +77,7 @@ export class MoveCommitDzHandler implements DropzoneHandler {
 			this.uiState.lane(data.stackId).selection.set(undefined);
 		}
 
+		let result: DropResult | undefined;
 		await withStackBusy(
 			this.uiState,
 			this.projectId,
@@ -93,14 +93,15 @@ export class MoveCommitDzHandler implements DropzoneHandler {
 					});
 				} catch (error) {
 					const { description, message } = parseError(error);
-					showToast({
-						style: "warning",
+					result = {
+						type: "warning",
 						title: "Cannot move commit",
 						message: description ?? message,
-					});
+					};
 				}
 			},
 		);
+		return result;
 	}
 }
 
@@ -128,7 +129,7 @@ export class AmendCommitWithChangeDzHandler implements DropzoneHandler {
 		return true;
 	}
 
-	async ondrop(data: ChangeDropData) {
+	async ondrop(data: ChangeDropData): Promise<DropResult | void> {
 		switch (data.selectionId.type) {
 			case "commit": {
 				const sourceStackId = data.stackId;
@@ -174,8 +175,7 @@ export class AmendCommitWithChangeDzHandler implements DropzoneHandler {
 					try {
 						await this.hooksService.runPreCommitHooks(this.projectId, worktreeChanges);
 					} catch (err) {
-						showError("Git hook failed", err);
-						return;
+						return { type: "error", title: "Git hook failed", error: err };
 					}
 				}
 
@@ -191,16 +191,20 @@ export class AmendCommitWithChangeDzHandler implements DropzoneHandler {
 					this.onresult(outcome.newCommit);
 				}
 
-				handleRejectedChanges(this.uiState, this.projectId, outcome);
+				const rejectionResult = toRejectedChangesResult(this.projectId, outcome);
 
 				if (this.runHooks) {
 					try {
 						await this.hooksService.runPostCommitHooks(this.projectId);
 					} catch (err) {
-						showError("Git hook failed", err);
-						return;
+						if (!rejectionResult) {
+							return { type: "error", title: "Git hook failed", error: err };
+						}
+						console.error("Post-commit hook failed (rejected changes take priority):", err);
 					}
 				}
+
+				return rejectionResult;
 			}
 		}
 	}
@@ -346,7 +350,7 @@ export class AmendCommitWithHunkDzHandler implements DropzoneHandler {
 		return this.acceptsHunkV3(data);
 	}
 
-	async ondrop(data: HunkDropDataV3): Promise<void> {
+	async ondrop(data: HunkDropDataV3): Promise<DropResult | void> {
 		const { projectId, stackId, commit, okWithForce, runHooks } = this.args;
 		if (!okWithForce && commit.isRemote) return;
 
@@ -418,8 +422,7 @@ export class AmendCommitWithHunkDzHandler implements DropzoneHandler {
 				try {
 					await this.hooksService.runPreCommitHooks(projectId, worktreeChanges);
 				} catch (err) {
-					showError("Git hook failed", err);
-					return;
+					return { type: "error", title: "Git hook failed", error: err };
 				}
 			}
 			const outcome = await this.stackService.amendCommitMutation({
@@ -430,15 +433,20 @@ export class AmendCommitWithHunkDzHandler implements DropzoneHandler {
 				dryRun: false,
 			});
 
-			handleRejectedChanges(this.uiState, projectId, outcome);
+			const rejectionResult = toRejectedChangesResult(projectId, outcome);
+
 			if (runHooks) {
 				try {
 					await this.hooksService.runPostCommitHooks(projectId);
 				} catch (err) {
-					showError("Git hook failed", err);
-					return;
+					if (!rejectionResult) {
+						return { type: "error", title: "Git hook failed", error: err };
+					}
+					console.error("Post-commit hook failed (rejected changes take priority):", err);
 				}
 			}
+
+			return rejectionResult;
 		}
 	}
 }
@@ -495,8 +503,11 @@ export class SquashCommitDzHandler implements DropzoneHandler {
 	}
 }
 
-function handleRejectedChanges(uiState: UiState, projectId: string, outcome: CreateCommitOutcome) {
-	if (outcome.rejectedChanges.length === 0) return;
+function toRejectedChangesResult(
+	projectId: string,
+	outcome: CreateCommitOutcome,
+): DropResult | undefined {
+	if (outcome.rejectedChanges.length === 0) return undefined;
 
 	const pathsToRejectedChanges = outcome.rejectedChanges.reduce(
 		(acc: Record<string, RejectionReason>, { reason, path }) => {
@@ -506,14 +517,14 @@ function handleRejectedChanges(uiState: UiState, projectId: string, outcome: Cre
 		{},
 	);
 
-	uiState.global.modal.set({
-		type: "commit-failed",
+	return {
+		type: "rejectedChanges",
 		projectId,
-		targetBranchName: "",
 		newCommitId: outcome.newCommit ?? undefined,
 		commitTitle: undefined,
+		targetBranchName: "",
 		pathsToRejectedChanges,
-	});
+	};
 }
 
 function updateUiState(

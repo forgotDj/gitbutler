@@ -8,9 +8,10 @@ import {
 import { BranchDropData } from "$lib/dragging/dropHandlers/branchDropHandler";
 import { unstackPRs, updateStackPrs } from "$lib/forge/shared/prFooter";
 import StackMacros from "$lib/stacks/macros";
-import { handleMoveBranchResult } from "$lib/stacks/stack";
+import { toMoveBranchWarning } from "$lib/stacks/stack";
 import { ensureValue } from "$lib/utils/validation";
 import { chipToasts } from "@gitbutler/ui";
+import type { DropResult } from "$lib/dragging/dropResult";
 import type { DropzoneHandler } from "$lib/dragging/handler";
 import type { ForgePrService } from "$lib/forge/interface/forgePrService";
 import type { DiffService } from "$lib/hunks/diffService.svelte";
@@ -228,17 +229,14 @@ export class OutsideLaneDzHandler implements DropzoneHandler {
 		}
 	}
 
-	async ondropBranchData(data: BranchDropData) {
-		await this.stackService
-			.tearOffBranch({
-				projectId: this.projectId,
-				sourceStackId: data.stackId,
-				subjectBranchName: data.branchName,
-			})
-			.then(async (result) => {
-				handleMoveBranchResult(result);
-				return await this.updatePrDescriptions(data);
-			});
+	async ondropBranchData(data: BranchDropData): Promise<DropResult | void> {
+		const result = await this.stackService.tearOffBranch({
+			projectId: this.projectId,
+			sourceStackId: data.stackId,
+			subjectBranchName: data.branchName,
+		});
+		await this.updatePrDescriptions(data);
+		return toMoveBranchWarning(result);
 	}
 
 	private async updatePrDescriptions(data: BranchDropData) {
@@ -257,7 +255,7 @@ export class OutsideLaneDzHandler implements DropzoneHandler {
 		await updateStackPrs(this.prService, branchDetails, this.baseBranchName);
 	}
 
-	async ondrop(data: unknown): Promise<void> {
+	async ondrop(data: unknown): Promise<DropResult | void> {
 		if (this.acceptsChangeDropData(data)) {
 			await this.ondropChangeData(data);
 			return;
@@ -269,8 +267,7 @@ export class OutsideLaneDzHandler implements DropzoneHandler {
 		}
 
 		if (this.acceptsBranchDropData(data)) {
-			await this.ondropBranchData(data);
-			return;
+			return await this.ondropBranchData(data);
 		}
 	}
 }

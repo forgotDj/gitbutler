@@ -1,11 +1,19 @@
 <script lang="ts">
+	import { handleDropResult } from "$lib/dragging/dropResult";
 	import { dropzone, type HoverArgs } from "$lib/dragging/dropzone";
 	import { DROPZONE_REGISTRY } from "$lib/dragging/registry";
+	import { UI_STATE } from "$lib/state/uiState.svelte";
 	import { inject } from "@gitbutler/core/context";
+	import type { DropResult } from "$lib/dragging/dropResult";
 	import type { DropzoneHandler } from "$lib/dragging/handler";
 	import type { Snippet } from "svelte";
 
 	const dropzoneRegistry = inject(DROPZONE_REGISTRY);
+	const uiState = inject(UI_STATE);
+
+	function onDropResult(result: DropResult) {
+		handleDropResult(result, uiState);
+	}
 
 	interface Props {
 		disabled?: boolean;
@@ -70,6 +78,7 @@
 		onHoverEnd,
 		onActivationStart,
 		onActivationEnd,
+		onDropResult,
 		target: ".dropzone-target",
 		registry: dropzoneRegistry,
 	}}
