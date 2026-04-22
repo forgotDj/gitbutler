@@ -49,6 +49,7 @@ commands.allow = [
   "commit_details",
   "commit_details_with_line_stats",
   "commit_insert_blank",
+  "commit_move",
   "commit_move_changes_between",
   "commit_reword",
   "commit_undo",

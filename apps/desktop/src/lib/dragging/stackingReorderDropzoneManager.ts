@@ -3,7 +3,7 @@ import { withStackBusy, type UiState } from "$lib/state/uiState.svelte";
 import { InjectionToken } from "@gitbutler/core/context";
 import type { DropzoneHandler } from "$lib/dragging/handler";
 import type { StackService } from "$lib/stacks/stackService.svelte";
-import type { StackOrder } from "@gitbutler/but-sdk";
+import type { RelativeTo } from "@gitbutler/but-sdk";
 
 export class ReorderCommitDzHandler implements DropzoneHandler {
 	constructor(
@@ -32,27 +32,24 @@ export class ReorderCommitDzHandler implements DropzoneHandler {
 	}
 
 	async ondrop(data: CommitDropData) {
-		const stackOrder = buildNewStackOrder(
-			this.series,
-			this.currentSeriesName,
-			data.commit.id,
-			this.commitId,
+		const { side, relativeTo } = toCommitMovePlacement({
+			targetBranchName: this.currentSeriesName,
+			targetCommitId: this.commitId,
+		});
+		await withStackBusy(
+			this.uiState,
+			this.projectId,
+			{ commitId: data.commit.id, stackIds: [data.stackId] },
+			async () => {
+				await this.stackService.commitMove({
+					projectId: this.projectId,
+					subjectCommitIds: [data.commit.id],
+					relativeTo,
+					side,
+					dryRun: false,
+				});
+			},
 		);
-
-		if (stackOrder) {
-			await withStackBusy(
-				this.uiState,
-				this.projectId,
-				{ commitId: data.commit.id, stackIds: [data.stackId] },
-				async () => {
-					await this.stackService.reorderStack({
-						projectId: this.projectId,
-						stackId: data.stackId,
-						stackOrder,
-					});
-				},
-			);
-		}
 	}
 }
 
@@ -123,52 +120,6 @@ export class ReorderDropzoneFactory {
 	}
 }
 
-function buildNewStackOrder(
-	allSeries: { name: string; commitIds: string[] }[],
-	currentSeriesName: string,
-	actorCommitId: string,
-	targetCommitId: string,
-): StackOrder | undefined {
-	const branches = allSeries.map((s) => ({
-		name: s.name,
-		commitIds: s.commitIds,
-	}));
-
-	const allCommitIds = branches.flatMap((s) => s.commitIds);
-
-	if (
-		targetCommitId !== "top" &&
-		(!allCommitIds.includes(actorCommitId) || !allCommitIds.includes(targetCommitId))
-	) {
-		throw new Error("Commit not found in series");
-	}
-
-	const currentSeriesIndex = branches.findIndex((s) => s.name === currentSeriesName);
-	if (currentSeriesIndex === -1) return undefined;
-
-	// Remove actorCommitId from its current position
-	branches.forEach((s) => {
-		s.commitIds = s.commitIds.filter((id) => id !== actorCommitId);
-	});
-
-	const updatedCurrentSeries = branches[currentSeriesIndex];
-	if (!updatedCurrentSeries) return undefined;
-
-	// Put actorCommtId in its new position
-	if (targetCommitId === "top") {
-		updatedCurrentSeries.commitIds.unshift(actorCommitId);
-	} else {
-		const targetIndex = updatedCurrentSeries.commitIds.indexOf(targetCommitId);
-		updatedCurrentSeries.commitIds.splice(targetIndex + 1, 0, actorCommitId);
-	}
-
-	branches[currentSeriesIndex] = updatedCurrentSeries;
-
-	return {
-		series: branches,
-	};
-}
-
 function distanceBetweenDropzones(
 	allSeries: { name: string; commitIds: string[] }[],
 	actorDropzoneId: string,
@@ -190,4 +141,34 @@ function distanceBetweenDropzones(
 	const targetIndex = dropzoneIds.indexOf(targetDropzoneId);
 
 	return actorIndex - targetIndex;
+}
+
+function normalizeReferenceSubject(referenceName: string): string {
+	return referenceName.startsWith("refs/") ? referenceName : `refs/heads/${referenceName}`;
+}
+
+function toCommitMovePlacement(args: {
+	targetBranchName: string;
+	targetCommitId: string | "top";
+}): {
+	relativeTo: RelativeTo;
+	side: "above" | "below";
+} {
+	if (args.targetCommitId === "top") {
+		return {
+			relativeTo: {
+				type: "reference",
+				subject: normalizeReferenceSubject(args.targetBranchName),
+			},
+			side: "below",
+		};
+	}
+
+	return {
+		relativeTo: {
+			type: "commit",
+			subject: args.targetCommitId,
+		},
+		side: "below",
+	};
 }

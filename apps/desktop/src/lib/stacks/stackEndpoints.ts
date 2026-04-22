@@ -19,7 +19,6 @@ import type {
 } from "$lib/stacks/stack";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
 import type {
-	StackOrder,
 	AbsorptionTarget,
 	CommitAbsorption,
 	StackDetails,
@@ -37,6 +36,8 @@ import type {
 	CommitInsertBlankResult,
 	RejectionReason,
 	CommitUndoResult,
+	InsertSide,
+	RelativeTo,
 } from "@gitbutler/but-sdk";
 
 export type BranchParams = {
@@ -128,16 +129,6 @@ export type CreateCommitOutcome = {
 	commitMapping: ReplacedCommit[];
 };
 
-export type RelativeTo =
-	| {
-			type: "commit";
-			subject: string;
-	  }
-	| {
-			type: "reference";
-			subject: string;
-	  };
-
 export function normalizeCreateCommitOutcome(response: CommitCreateResult): CreateCommitOutcome {
 	return {
 		newCommit: response.newCommit ?? null,
@@ -167,14 +158,15 @@ export function toCommitCreatePlacement(args: CreateCommitRequest): {
 	return {
 		relativeTo: {
 			type: "reference",
-			subject: args.stackBranchName.startsWith("refs/")
-				? args.stackBranchName
-				: `refs/heads/${args.stackBranchName}`,
+			subject: normalizeReferenceSubject(args.stackBranchName),
 		},
 		side: "below",
 	};
 }
 
+function normalizeReferenceSubject(referenceName: string): string {
+	return referenceName.startsWith("refs/") ? referenceName : `refs/heads/${referenceName}`;
+}
 // Entity adapters and selectors
 
 export const stackAdapter = createEntityAdapter<Stack, string>({
@@ -705,18 +697,21 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.BranchListing),
 			],
 		}),
-		reorderStack: build.mutation<
+		commitMove: build.mutation<
 			void,
-			{ projectId: string; stackId: string; stackOrder: StackOrder }
+			{
+				projectId: string;
+				subjectCommitIds: Array<string>;
+				relativeTo: RelativeTo;
+				side: InsertSide;
+				dryRun: boolean;
+			}
 		>({
 			extraOptions: {
-				command: "reorder_stack",
+				command: "commit_move",
 				actionName: "Reorder Stack",
 			},
 			query: (args) => args,
-			invalidatesTags: (_result, _error, args) => [
-				invalidatesItem(ReduxTag.StackDetails, args.stackId), // This is probably still needed
-			],
 		}),
 		moveCommit: build.mutation<
 			MoveCommitIllegalAction | null,
