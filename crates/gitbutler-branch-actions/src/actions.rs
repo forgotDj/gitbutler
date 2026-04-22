@@ -10,7 +10,7 @@ use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
 use gitbutler_git::GitContextExt as _;
 use gitbutler_operating_modes::ensure_open_workspace_mode;
 use gitbutler_oplog::{
-    OplogExt, SnapshotExt,
+    OplogExt,
     entry::{OperationKind, SnapshotDetails, Trailer},
 };
 use gitbutler_project::FetchResult;
@@ -223,26 +223,6 @@ pub fn unapply_stack(
     let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     ws.refresh_from_head(&repo, &meta)?;
     Ok(branch_name)
-}
-
-pub fn undo_commit(ctx: &mut Context, stack_id: StackId, commit_oid: gix::ObjectId) -> Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    ensure_open_workspace_mode(ctx, guard.read_permission())
-        .context("Undoing a commit requires open workspace mode")?;
-    let snapshot_tree = ctx.prepare_snapshot(guard.read_permission());
-    let result: Result<()> =
-        crate::undo_commit::undo_commit(ctx, stack_id, commit_oid, guard.write_permission())
-            .map(|_| ());
-    let _ = snapshot_tree.and_then(|snapshot_tree| {
-        ctx.snapshot_commit_undo(
-            snapshot_tree,
-            result.as_ref(),
-            commit_oid,
-            guard.write_permission(),
-        )
-    });
-    result
 }
 
 pub fn reorder_stack(ctx: &mut Context, stack_id: StackId, stack_order: StackOrder) -> Result<()> {

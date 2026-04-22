@@ -12,7 +12,7 @@ pub use actions::{
     get_initial_integration_steps_for_branch, integrate_branch_with_steps, integrate_upstream,
     integrate_upstream_commits, move_branch, move_commit, push_base_branch, reorder_stack,
     resolve_upstream_integration, set_base_branch, set_target_push_remote, squash_commits,
-    squash_commits_with_perm, tear_off_branch, unapply_stack, undo_commit, update_stack_order,
+    squash_commits_with_perm, tear_off_branch, unapply_stack, update_stack_order,
     upstream_integration_statuses,
 };
 mod squash;
@@ -45,7 +45,6 @@ mod move_branch;
 mod move_commits;
 pub mod reorder;
 pub use reorder::StackOrder;
-mod undo_commit;
 
 mod gravatar;
 use gitbutler_stack::VirtualBranchesHandle;
