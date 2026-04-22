@@ -766,6 +766,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(diff::commit_details_with_line_stats_cmd),
         )
         .route("/branch_diff", but_post(but_api::branch::branch_diff_cmd))
+        .route("/move_branch", but_post(but_api::branch::move_branch_cmd))
         .route(
             "/changes_in_worktree",
             but_post(diff::changes_in_worktree_cmd),

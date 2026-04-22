@@ -1,7 +1,7 @@
 import { FileChangeDropData, FolderChangeDropData, HunkDropDataV3 } from "$lib/dragging/draggables";
 import { updateStackPrs } from "$lib/forge/shared/prFooter";
 import { UNCOMMITTED_SERVICE } from "$lib/selection/uncommittedService.svelte";
-import { toMoveBranchWarning } from "$lib/stacks/stack";
+import { normalizeReferenceSubject } from "$lib/stacks/commitMovePlacement";
 import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
 import { UI_STATE } from "$lib/state/uiState.svelte";
 import { inject } from "@gitbutler/core/context";
@@ -49,16 +49,16 @@ export class MoveBranchDzHandler implements DropzoneHandler {
 		);
 	}
 	async ondrop(data: BranchDropData): Promise<DropResult | void> {
-		const result = await this.stackService.moveBranch({
+		const sourceStackDeleted = data.numberOfBranchesInStack === 1;
+
+		await this.stackService.moveBranch({
 			projectId: this.projectId,
-			sourceStackId: data.stackId,
-			subjectBranchName: data.branchName,
-			targetBranchName: this.branchName,
-			targetStackId: this.stackId,
+			subjectBranch: normalizeReferenceSubject(data.branchName),
+			targetBranch: normalizeReferenceSubject(this.branchName),
 		});
 
 		if (this.prService && this.baseBranchName) {
-			if (!result.deletedStacks.includes(data.stackId)) {
+			if (!sourceStackDeleted) {
 				const branchDetails = await this.stackService.fetchBranches(this.projectId, data.stackId);
 				await updateStackPrs(this.prService, branchDetails, this.baseBranchName);
 			}
@@ -66,8 +66,6 @@ export class MoveBranchDzHandler implements DropzoneHandler {
 			const branchDetails = await this.stackService.fetchBranches(this.projectId, this.stackId);
 			await updateStackPrs(this.prService, branchDetails, this.baseBranchName);
 		}
-
-		return toMoveBranchWarning(result);
 	}
 }
 

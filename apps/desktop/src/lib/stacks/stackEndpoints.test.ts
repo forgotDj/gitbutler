@@ -72,4 +72,27 @@ describe("buildStackEndpoints", () => {
 			invalidatesList(ReduxTag.BranchChanges),
 		]);
 	});
+
+	test("uses move_branch with normalized refs and dryRun disabled", () => {
+		const endpoints = buildStackEndpoints(createEndpointBuilder());
+		const query = endpoints.moveBranch.query;
+
+		expect(endpoints.moveBranch.extraOptions).toEqual({
+			command: "move_branch",
+			actionName: "Move Branch",
+		});
+		expect(query).toBeDefined();
+		expect(
+			query?.({
+				projectId: "project-1",
+				subjectBranch: "refs/heads/feature/source",
+				targetBranch: "refs/heads/feature/target",
+			}),
+		).toEqual({
+			projectId: "project-1",
+			subjectBranch: "refs/heads/feature/source",
+			targetBranch: "refs/heads/feature/target",
+			dryRun: false,
+		});
+	});
 });

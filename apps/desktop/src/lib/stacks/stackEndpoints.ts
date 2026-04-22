@@ -14,7 +14,7 @@ import type {
 	CreateRefRequest,
 	InteractiveIntegrationStep,
 	CreateBranchFromBranchOutcome,
-	MoveBranchResult,
+	LegacyMoveBranchResult,
 	GerritPushFlag,
 } from "$lib/stacks/stack";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
@@ -34,6 +34,7 @@ import type {
 	CommitCreateResult,
 	CommitRewordResult,
 	CommitInsertBlankResult,
+	MoveBranchResult,
 	RejectionReason,
 	CommitUndoResult,
 	InsertSide,
@@ -726,26 +727,28 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			MoveBranchResult,
 			{
 				projectId: string;
-				sourceStackId: string;
-				subjectBranchName: string;
-				targetStackId: string;
-				targetBranchName: string;
+				subjectBranch: string;
+				targetBranch: string;
 			}
 		>({
 			extraOptions: {
-				command: "move_branch_legacy",
+				command: "move_branch",
 				actionName: "Move Branch",
 			},
-			query: (args) => args,
-			invalidatesTags: (_result, _error, args) => [
+			query: ({ projectId, subjectBranch, targetBranch }) => ({
+				projectId,
+				subjectBranch,
+				targetBranch,
+				dryRun: false,
+			}),
+			invalidatesTags: [
 				invalidatesList(ReduxTag.HeadSha),
 				invalidatesList(ReduxTag.WorktreeChanges), // Moving commits can cause conflicts
-				invalidatesItem(ReduxTag.BranchChanges, args.sourceStackId),
-				invalidatesItem(ReduxTag.BranchChanges, args.targetStackId),
+				invalidatesList(ReduxTag.BranchChanges),
 			],
 		}),
 		tearOffBranch: build.mutation<
-			MoveBranchResult,
+			LegacyMoveBranchResult,
 			{
 				projectId: string;
 				sourceStackId: string;

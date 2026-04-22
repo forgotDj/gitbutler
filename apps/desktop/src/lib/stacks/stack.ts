@@ -257,15 +257,15 @@ export type InteractiveIntegrationStep =
 			};
 	  };
 
-export type MoveBranchResult = {
+export type LegacyMoveBranchResult = {
 	deletedStacks: string[];
 	unappliedStacks: string[];
 };
 
 /**
- * Converts a `MoveBranchResult` into a `DropResult` warning if stacks were unapplied.
+ * Converts a legacy move-branch result into a `DropResult` warning if stacks were unapplied.
  */
-export function toMoveBranchWarning(result: MoveBranchResult): DropResult | undefined {
+export function toMoveBranchWarning(result: LegacyMoveBranchResult): DropResult | undefined {
 	if (result.unappliedStacks.length === 0) return undefined;
 	return {
 		type: "warning",
