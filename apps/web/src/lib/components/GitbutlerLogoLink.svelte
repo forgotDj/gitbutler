@@ -51,6 +51,7 @@
 		color: var(--text-1);
 		font-size: 40px;
 		font-family: var(--font-accent);
+		letter-spacing: -2%;
 	}
 
 	.logo-mark {

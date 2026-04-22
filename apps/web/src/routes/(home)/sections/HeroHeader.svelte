@@ -122,6 +122,7 @@
 		font-size: 82px;
 		line-height: 1;
 		font-family: var(--font-accent);
+		letter-spacing: -1%;
 	}
 
 	.but-text {
