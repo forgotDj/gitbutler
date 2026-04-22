@@ -284,27 +284,6 @@ pub fn fetch_from_remotes(ctx: &Context, askpass: Option<String>) -> Result<Fetc
     Ok(project_data_last_fetched)
 }
 
-pub fn move_branch(
-    ctx: &mut Context,
-    target_stack_id: StackId,
-    target_branch_name: &str,
-    source_stack_id: StackId,
-    subject_branch_name: &str,
-) -> Result<MoveBranchResult> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    ensure_open_workspace_mode(ctx, guard.read_permission())
-        .context("Moving a branch requires open workspace mode")?;
-    crate::move_branch::move_branch(
-        ctx,
-        target_stack_id,
-        target_branch_name,
-        source_stack_id,
-        subject_branch_name,
-        guard.write_permission(),
-    )
-}
-
 pub fn tear_off_branch(
     ctx: &mut Context,
     source_stack_id: StackId,
