@@ -788,6 +788,8 @@ export const useWorkspaceShortcuts = ({
 		const worktreeChanges = queryClient.getQueryData(
 			changesInWorktreeQueryOptions(projectId).queryKey,
 		);
+		if (!worktreeChanges) return;
+
 		const target = resolveAbsorptionTarget({
 			item: selectedItem,
 			worktreeChanges,
