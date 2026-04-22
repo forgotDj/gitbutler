@@ -4,7 +4,6 @@ use but_core::ref_metadata::StackId;
 use but_ctx::Context;
 use but_workspace::ui::Commit;
 use cli_prompts::DisplayPrompt;
-use colored::{ColoredString, Colorize};
 use gitbutler_project::Project;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
@@ -12,6 +11,7 @@ use tracing::instrument;
 use crate::{
     CliId, IdMap,
     id::parser::parse_sources,
+    theme::{self, Paint},
     tui::get_text::{self, HTML_COMMENT_END_MARKER, HTML_COMMENT_START_MARKER},
     utils::{Confirm, ConfirmDefault, OutputChannel},
 };
@@ -564,6 +564,7 @@ fn prompt_for_branch_selection(
     let mut inout = out
         .prepare_for_terminal_input()
         .context("Terminal input not available. Please specify branches to publish using command line arguments.")?;
+    let t = theme::get();
 
     // Display branches with numbers
     writeln!(inout, "\nAvailable branches to publish:\n")?;
@@ -577,10 +578,10 @@ fn prompt_for_branch_selection(
             inout,
             "  {}. {} - {} commit{}{}",
             idx + 1,
-            name.bold(),
+            t.local_branch.paint(name),
             commit_count,
             if *commit_count == 1 { "" } else { "s" },
-            review_str.blue()
+            t.pr_number.paint(&review_str)
         )?;
     }
 
@@ -625,6 +626,7 @@ async fn publish_reviews_for_branch_and_dependents(
     message: Option<&ForgeReviewMessage>,
     out: &mut OutputChannel,
 ) -> Result<PublishReviewsOutcome, anyhow::Error> {
+    let t = theme::get();
     let base_branch = gitbutler_branch_actions::base::get_base_branch_data(ctx)?;
     let all_branches_up_to_subject = stack_entry
         .heads
@@ -634,16 +636,15 @@ async fn publish_reviews_for_branch_and_dependents(
         .collect::<Vec<_>>();
 
     if let Some(out) = out.for_human() {
-        write!(out, "{} ", "→".cyan())?;
         if !all_branches_up_to_subject.is_empty() {
             writeln!(
                 out,
                 "Pushing {} with {} dependent branch(es)...",
-                branch_name.green().bold(),
-                all_branches_up_to_subject.len().to_string().yellow()
+                t.local_branch.paint(branch_name),
+                all_branches_up_to_subject.len()
             )?;
         } else {
-            writeln!(out, "Pushing {}...", branch_name.green().bold())?;
+            writeln!(out, "Pushing {}...", t.local_branch.paint(branch_name))?;
         }
     }
 
@@ -663,8 +664,8 @@ async fn publish_reviews_for_branch_and_dependents(
         writeln!(
             out,
             "  {} Pushed to {}",
-            "✓".green().bold(),
-            result.remote.cyan()
+            t.sym().success,
+            t.remote_branch.paint(&result.remote)
         )?;
     }
 
@@ -675,14 +676,13 @@ async fn publish_reviews_for_branch_and_dependents(
     for head in stack_entry.heads.iter().rev() {
         if let Some(out) = out.for_human() {
             let draftiness = if draft { "draft " } else { "" };
-            write!(out, "{} ", "→".cyan())?;
             writeln!(
                 out,
                 "Creating {}review for {} {} {}...",
                 draftiness,
-                head.name.to_string().green().bold(),
-                "→".dimmed(),
-                current_target_branch.cyan()
+                t.local_branch.paint(head.name.to_string()),
+                t.sym().info_right,
+                t.remote_branch.paint(current_target_branch)
             )?;
         }
 
@@ -767,29 +767,30 @@ fn print_new_pr_info(
     review: &but_forge::ForgeReview,
     out: &mut dyn std::fmt::Write,
 ) -> std::fmt::Result {
+    let t = theme::get();
     writeln!(
         out,
         "{} {} {}{}",
-        "✓".green().bold(),
-        "Created review".green(),
-        review.unit_symbol.cyan(),
-        review.number.to_string().cyan().bold()
+        t.sym().success,
+        t.success.paint("Created review"),
+        t.pr_number.paint(&review.unit_symbol),
+        t.pr_number.paint(review.number.to_string())
     )?;
-    writeln!(out, "  {} {}", "Title:".dimmed(), review.title.bold())?;
+    writeln!(out, "  {} {}", t.hint.paint("Title:"), &review.title)?;
     writeln!(
         out,
         "  {} {}",
-        "Branch:".dimmed(),
-        review.source_branch.green()
+        t.hint.paint("Branch:"),
+        t.remote_branch.paint(&review.source_branch)
     )?;
     writeln!(
         out,
         "  {} {}",
-        "URL:".dimmed(),
-        review.html_url.underline().blue()
+        t.hint.paint("URL:"),
+        t.link.paint(&review.html_url)
     )?;
     if review.draft {
-        writeln!(out, "  {}", "Draft only".dimmed())?;
+        writeln!(out, "  {}", t.hint.paint("Draft only"))?;
     }
 
     Ok(())
@@ -800,20 +801,20 @@ fn print_existing_pr_info(
     review: &but_forge::ForgeReview,
     out: &mut dyn std::fmt::Write,
 ) -> std::fmt::Result {
+    let t = theme::get();
     writeln!(
         out,
-        "{} {} {} {}{}",
-        "•".yellow(),
-        "PR already exists for".yellow(),
-        review.source_branch.green().bold(),
-        review.unit_symbol.cyan(),
-        review.number.to_string().cyan().bold()
+        "{} {} {}{}",
+        t.attention.paint("PR already exists for"),
+        t.remote_branch.paint(&review.source_branch),
+        t.pr_number.paint(&review.unit_symbol),
+        t.pr_number.paint(review.number.to_string())
     )?;
     writeln!(
         out,
         "  {} {}",
-        "URL:".dimmed(),
-        review.html_url.underline().blue()
+        t.hint.paint("URL:"),
+        t.link.paint(&review.html_url)
     )?;
 
     Ok(())
@@ -1128,7 +1129,7 @@ pub fn get_review_numbers(
     branch_name: &str,
     associated_review_number: &Option<usize>,
     branch_review_map: &std::collections::HashMap<String, Vec<but_forge::ForgeReview>>,
-) -> ColoredString {
+) -> String {
     if let Some(reviews) = branch_review_map.get(branch_name) {
         let review_numbers = reviews
             .iter()
@@ -1136,11 +1137,11 @@ pub fn get_review_numbers(
             .collect::<Vec<String>>()
             .join(", ");
 
-        format!(" ({review_numbers})").blue()
+        format!(" ({review_numbers})")
     } else if let Some(pr_number) = associated_review_number {
-        format!(" (#{pr_number})").blue()
+        format!(" (#{pr_number})")
     } else {
-        "".to_string().normal()
+        "".to_string()
     }
 }
 

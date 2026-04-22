@@ -513,15 +513,16 @@ fn convert_branch_to_json(
 ) -> anyhow::Result<Branch> {
     let cli_id = segment.short_id.clone();
 
+    let review_numbers = crate::command::legacy::forge::review::get_review_numbers(
+        &segment.branch_name().unwrap_or_default().to_string(),
+        &segment.pr_number(),
+        &status_ctx.review_map,
+    );
     let review_id = {
-        crate::command::legacy::forge::review::get_review_numbers(
-            &segment.branch_name().unwrap_or_default().to_string(),
-            &segment.pr_number(),
-            &status_ctx.review_map,
-        )
-        .split_whitespace()
-        .next()
-        .map(|s| s.to_string())
+        review_numbers
+            .split_whitespace()
+            .next()
+            .map(|s| s.to_string())
     };
 
     let ci = segment

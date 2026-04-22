@@ -463,6 +463,8 @@ pub struct ThemeSymbols {
     pub success: StyledSymbol,
     /// Error state.
     pub error: StyledSymbol,
+    /// Info to the right.
+    pub info_right: StyledSymbol,
 }
 
 impl ThemeSymbols {
@@ -470,6 +472,7 @@ impl ThemeSymbols {
         Self {
             success: StyledSymbol::new("✓", t.success.add_modifier(Modifier::BOLD)),
             error: StyledSymbol::new("✗", t.error.add_modifier(Modifier::BOLD)),
+            info_right: StyledSymbol::new("→", t.info),
         }
     }
 }
