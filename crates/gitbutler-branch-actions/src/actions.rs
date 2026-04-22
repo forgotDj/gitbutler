@@ -27,7 +27,6 @@ use crate::{
     branch_upstream_integration::IntegrationStrategy,
     move_branch::MoveBranchResult,
     move_commits::{self, MoveCommitIllegalAction},
-    reorder::{self, StackOrder},
     upstream_integration::{
         self, BaseBranchResolution, BaseBranchResolutionApproach, IntegrationOutcome, Resolution,
         StackStatuses, UpstreamIntegrationContext,
@@ -223,19 +222,6 @@ pub fn unapply_stack(
     let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     ws.refresh_from_head(&repo, &meta)?;
     Ok(branch_name)
-}
-
-pub fn reorder_stack(ctx: &mut Context, stack_id: StackId, stack_order: StackOrder) -> Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    ensure_open_workspace_mode(ctx, guard.read_permission())
-        .context("Reordering a commit requires open workspace mode")?;
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::ReorderCommit),
-        guard.write_permission(),
-    );
-    reorder::reorder_stack(ctx, stack_id, stack_order, guard.write_permission())?;
-    Ok(())
 }
 
 pub fn squash_commits(

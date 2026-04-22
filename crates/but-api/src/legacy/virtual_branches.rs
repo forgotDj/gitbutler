@@ -8,7 +8,7 @@ use but_workspace::legacy::ui::{StackEntryNoOpt, StackHeadInfo};
 use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
 use gitbutler_branch_actions::{
     BaseBranch, BranchListing, BranchListingDetails, BranchListingFilter, MoveBranchResult,
-    MoveCommitIllegalAction, StackOrder,
+    MoveCommitIllegalAction,
     branch_upstream_integration::IntegrationStrategy,
     upstream_integration::{
         BaseBranchResolution, BaseBranchResolutionApproach, IntegrationOutcome, Resolution,
@@ -337,17 +337,6 @@ pub fn unapply_stack_with_perm(
     );
     drop((repo, ws, db));
     gitbutler_branch_actions::unapply_stack(ctx, perm, stack_id, assigned_diffspec)?;
-    Ok(())
-}
-
-#[but_api]
-#[instrument(err(Debug))]
-pub fn reorder_stack(
-    ctx: &mut but_ctx::Context,
-    stack_id: StackId,
-    stack_order: StackOrder,
-) -> Result<()> {
-    gitbutler_branch_actions::reorder_stack(ctx, stack_id, stack_order)?;
     Ok(())
 }
 
