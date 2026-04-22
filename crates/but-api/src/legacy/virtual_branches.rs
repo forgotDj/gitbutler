@@ -7,7 +7,7 @@ use but_ctx::{Context, ThreadSafeContext};
 use but_workspace::legacy::ui::{StackEntryNoOpt, StackHeadInfo};
 use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
 use gitbutler_branch_actions::{
-    BaseBranch, BranchListing, BranchListingDetails, BranchListingFilter, MoveBranchResult,
+    BaseBranch, BranchListing, BranchListingDetails, BranchListingFilter,
     branch_upstream_integration::IntegrationStrategy,
     upstream_integration::{
         BaseBranchResolution, BaseBranchResolutionApproach, IntegrationOutcome, Resolution,
@@ -428,16 +428,6 @@ pub fn fetch_from_remotes(ctx: &Context, action: Option<String>) -> Result<BaseB
 
     let base_branch = gitbutler_branch_actions::base::get_base_branch_data(ctx)?;
     Ok(base_branch)
-}
-
-#[but_api]
-#[instrument(err(Debug))]
-pub fn tear_off_branch_legacy(
-    ctx: &mut but_ctx::Context,
-    source_stack_id: StackId,
-    subject_branch_name: String,
-) -> Result<MoveBranchResult> {
-    gitbutler_branch_actions::tear_off_branch(ctx, source_stack_id, subject_branch_name.as_str())
 }
 
 /// Compute upstream integration statuses, optionally scoped to `target_commit_id`.

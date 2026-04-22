@@ -230,13 +230,16 @@ export class OutsideLaneDzHandler implements DropzoneHandler {
 	}
 
 	async ondropBranchData(data: BranchDropData): Promise<DropResult | void> {
+		const beforeAppliedStackCount = (await this.stackService.fetchStacks(this.projectId)).length;
 		const result = await this.stackService.tearOffBranch({
 			projectId: this.projectId,
 			sourceStackId: data.stackId,
 			subjectBranchName: data.branchName,
 		});
+		const afterAppliedStackCount = result.workspace.headInfo.stacks.length;
+		const unappliedStackCount = Math.max(0, beforeAppliedStackCount + 1 - afterAppliedStackCount);
 		await this.updatePrDescriptions(data);
-		return toMoveBranchWarning(result);
+		return toMoveBranchWarning(unappliedStackCount);
 	}
 
 	private async updatePrDescriptions(data: BranchDropData) {

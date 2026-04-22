@@ -1,5 +1,5 @@
 import { buildStackEndpoints } from "$lib/stacks/stackEndpoints";
-import { invalidatesList, ReduxTag } from "$lib/state/tags";
+import { invalidatesItem, invalidatesList, ReduxTag } from "$lib/state/tags";
 import { describe, expect, test } from "vitest";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
 
@@ -94,5 +94,39 @@ describe("buildStackEndpoints", () => {
 			targetBranch: "refs/heads/feature/target",
 			dryRun: false,
 		});
+	});
+
+	test("uses tear_off_branch with normalized refs and dryRun disabled", () => {
+		const endpoints = buildStackEndpoints(createEndpointBuilder());
+		const query = endpoints.tearOffBranch.query;
+		const invalidatesTags = endpoints.tearOffBranch.invalidatesTags;
+		const args = {
+			projectId: "project-1",
+			sourceStackId: "stack-1",
+			subjectBranchName: "feature/source",
+		};
+
+		expect(endpoints.tearOffBranch.extraOptions).toEqual({
+			command: "tear_off_branch",
+			actionName: "Tear Off Branch",
+		});
+		expect(query).toBeDefined();
+		expect(query?.(args)).toEqual({
+			projectId: "project-1",
+			subjectBranch: "refs/heads/feature/source",
+			dryRun: false,
+		});
+
+		if (typeof invalidatesTags !== "function") {
+			throw new Error("Expected tearOffBranch.invalidatesTags to be callable");
+		}
+
+		expect(invalidatesTags(undefined, undefined, args, undefined)).toEqual([
+			invalidatesList(ReduxTag.HeadSha),
+			invalidatesList(ReduxTag.WorktreeChanges),
+			invalidatesList(ReduxTag.Stacks),
+			invalidatesItem(ReduxTag.StackDetails, "stack-1"),
+			invalidatesItem(ReduxTag.BranchChanges, "stack-1"),
+		]);
 	});
 });
