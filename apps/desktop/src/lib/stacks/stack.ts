@@ -257,20 +257,15 @@ export type InteractiveIntegrationStep =
 			};
 	  };
 
-export type LegacyMoveBranchResult = {
-	deletedStacks: string[];
-	unappliedStacks: string[];
-};
-
 /**
- * Converts a legacy move-branch result into a `DropResult` warning if stacks were unapplied.
+ * Converts an unapplied-stack count into a `DropResult` warning if stacks were unapplied.
  */
-export function toMoveBranchWarning(result: LegacyMoveBranchResult): DropResult | undefined {
-	if (result.unappliedStacks.length === 0) return undefined;
+export function toMoveBranchWarning(unappliedStackCount: number): DropResult | undefined {
+	if (unappliedStackCount === 0) return undefined;
 	return {
 		type: "warning",
 		title: "Heads up: We had to unapply some stacks to move this branch",
-		message: `It seems that the branch moved couldn't be applied cleanly alongside your other ${result.unappliedStacks.length} ${result.unappliedStacks.length === 1 ? "stack" : "stacks"}.
+		message: `It seems that the branch moved couldn't be applied cleanly alongside your other ${unappliedStackCount} ${unappliedStackCount === 1 ? "stack" : "stacks"}.
 You can always re-apply them later from the branches page.`,
 		testId: TestId.StacksUnappliedToast,
 	};

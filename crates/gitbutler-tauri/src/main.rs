@@ -312,6 +312,7 @@ fn main() -> anyhow::Result<()> {
                 diff::tauri_commit_details_with_line_stats::commit_details_with_line_stats,
                 but_api::branch::tauri_branch_diff::branch_diff,
                 but_api::branch::tauri_move_branch::move_branch,
+                but_api::branch::tauri_tear_off_branch::tear_off_branch,
                 legacy::git::tauri_git_remote_branches::git_remote_branches,
                 legacy::git::tauri_delete_all_data::delete_all_data,
                 legacy::git::tauri_git_set_global_config::git_set_global_config,

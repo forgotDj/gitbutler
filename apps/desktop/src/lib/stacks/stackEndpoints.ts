@@ -14,7 +14,6 @@ import type {
 	CreateRefRequest,
 	InteractiveIntegrationStep,
 	CreateBranchFromBranchOutcome,
-	LegacyMoveBranchResult,
 	GerritPushFlag,
 } from "$lib/stacks/stack";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
@@ -748,7 +747,7 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			],
 		}),
 		tearOffBranch: build.mutation<
-			LegacyMoveBranchResult,
+			MoveBranchResult,
 			{
 				projectId: string;
 				sourceStackId: string;
@@ -756,14 +755,20 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			}
 		>({
 			extraOptions: {
-				command: "tear_off_branch_legacy",
+				command: "tear_off_branch",
 				actionName: "Tear Off Branch",
 			},
-			query: (args) => args,
+			query: ({ projectId, subjectBranchName }) => ({
+				projectId,
+				subjectBranch: normalizeReferenceSubject(subjectBranchName),
+				dryRun: false,
+			}),
 			invalidatesTags: (_result, _error, args) => {
 				return [
 					invalidatesList(ReduxTag.HeadSha),
 					invalidatesList(ReduxTag.WorktreeChanges), // Moving commits can cause conflicts
+					invalidatesList(ReduxTag.Stacks),
+					invalidatesItem(ReduxTag.StackDetails, args.sourceStackId),
 					invalidatesItem(ReduxTag.BranchChanges, args.sourceStackId), // Affects source stack, new stack is new
 				];
 			},

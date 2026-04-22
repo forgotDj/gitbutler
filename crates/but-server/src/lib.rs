@@ -768,6 +768,10 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         .route("/branch_diff", but_post(but_api::branch::branch_diff_cmd))
         .route("/move_branch", but_post(but_api::branch::move_branch_cmd))
         .route(
+            "/tear_off_branch",
+            but_post(but_api::branch::tear_off_branch_cmd),
+        )
+        .route(
             "/changes_in_worktree",
             but_post(diff::changes_in_worktree_cmd),
         )
