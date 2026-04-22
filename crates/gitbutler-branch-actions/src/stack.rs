@@ -68,20 +68,6 @@ pub struct CreateSeriesRequest {
     pub preceding_head: Option<String>,
 }
 
-/// Removes series grouping from the Stack. This will not touch the patches / commits contained in the series.
-/// The very last branch (reference) cannot be removed (A Stack must always contain at least one reference)
-/// If there were commits/changes that were *only* referenced by the removed branch,
-/// those commits are moved to the branch underneath it (or more accurately, the preceding it)
-pub fn remove_branch(ctx: &mut Context, stack_id: StackId, branch_name: &str) -> Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    let _ = ctx.snapshot_remove_dependent_branch(branch_name, guard.write_permission());
-    ensure_open_workspace_mode(ctx, guard.read_permission())
-        .context("Requires an open workspace mode")?;
-    let mut stack = ctx.virtual_branches().get_stack(stack_id)?;
-    stack.remove_branch(ctx, branch_name)
-}
-
 /// Updates the name an existing branch and resets the pr_number to None.
 /// Same invariants as `create_branch` apply.
 ///
