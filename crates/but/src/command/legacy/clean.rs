@@ -1,13 +1,15 @@
 use std::collections::HashSet;
 
 use but_core::ref_metadata::StackId;
-use colored::Colorize;
 use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
 };
 
-use crate::utils::OutputChannel;
+use crate::{
+    theme::{self, Paint},
+    utils::OutputChannel,
+};
 
 /// Options for the clean command.
 pub struct CleanOptions {
@@ -73,10 +75,16 @@ pub fn handle(
             })?;
         } else if let Some(out) = out.for_human() {
             for (_, name) in &empty_branches {
-                writeln!(out, "Would delete branch: {}", name.yellow())?;
+                let t = theme::get();
+                writeln!(out, "Would delete branch: {}", t.attention.paint(name))?;
             }
             let count = empty_branches.len();
-            writeln!(out, "Found {} empty branch(es)", count.to_string().bold())?;
+            let t = theme::get();
+            writeln!(
+                out,
+                "Found {} empty branch(es)",
+                t.important.paint(count.to_string())
+            )?;
         } else if let Some(out) = out.for_shell() {
             for (_, name) in &empty_branches {
                 writeln!(out, "{name}")?;
@@ -122,22 +130,27 @@ pub fn handle(
             dry_run: false,
         })?;
     } else if let Some(out) = out.for_human() {
+        let t = theme::get();
         for branch in &deleted {
-            writeln!(out, "  Deleted branch: {}", branch.name.green())?;
+            writeln!(
+                out,
+                "  Deleted branch: {}",
+                t.local_branch.paint(&branch.name)
+            )?;
         }
         if !deleted.is_empty() {
             writeln!(
                 out,
                 "{} Deleted {} empty branch(es)",
-                "✓".green().bold(),
-                deleted.len().to_string().bold()
+                t.sym().success,
+                t.important.paint(deleted.len().to_string())
             )?;
         }
         for f in &failed {
             writeln!(
                 out,
                 "{} Failed to delete branch '{}': {}",
-                "!".red().bold(),
+                t.sym().error,
                 f.name,
                 f.error
             )?;

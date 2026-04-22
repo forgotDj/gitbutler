@@ -83,24 +83,25 @@ pub fn load(path: &Path) -> anyhow::Result<Theme> {
 /// writeln!(out, "{}", t.local_branch.paint(&name))?;
 /// ```
 pub trait Paint {
-    /// Apply this style to `text`, producing a [`String`] with ANSI escape codes baked in.
+    /// Apply this style to `text`, producing a [`ColoredString`] which can be used by the one-shot
+    /// CLI to output ANSI escape code formatted strings.
     ///
-    /// Each paint application produces an independently styled [`String`] in the sense that it is
-    /// terminated with a reset code.
+    /// Each paint application produces an independently styled [`ColoredString`] that respects its
+    /// surrounding during formatting. That is to say, you can nest paint applications and it will
+    /// work as expected, with the outer style resuming where the nested style ends.
     ///
-    /// Note that at this time, any implementation _must_ respect the control mechanisms via
-    /// [`colored::control::SHOULD_COLORIZE`] for enabling/disabling styled output. If we require
-    /// multiple implementations of this trait in the future, we'll probably want to roll our own
-    /// control mechanism.
-    fn paint<S: AsRef<str>>(&self, text: S) -> String;
+    /// Note: The reason we return [`ColoredString`] here instead of directly formatting a
+    /// [`String`] is that the former allows for formatting without accounting for the escape codes,
+    /// making it much easier to align with padding and the like.
+    fn paint<S: AsRef<str>>(&self, text: S) -> ColoredString;
 }
 
 impl Paint for Style {
-    fn paint<S: AsRef<str>>(&self, text: S) -> String {
+    fn paint<S: AsRef<str>>(&self, text: S) -> ColoredString {
         // This is technically unnecessary as `colored` performs this check internally, it's just
         // here for clarity of intent
         if !colored::control::SHOULD_COLORIZE.should_colorize() {
-            return text.as_ref().to_string();
+            return text.as_ref().into();
         }
 
         let mut styled = text.as_ref().normal();
@@ -113,7 +114,7 @@ impl Paint for Style {
         }
         styled = apply_modifiers(styled, self.add_modifier);
 
-        styled.to_string()
+        styled
     }
 }
 
@@ -274,6 +275,8 @@ pub struct Theme {
     pub user: Style,
     /// Time-related information
     pub time: Style,
+    /// In-progress action labels (e.g. "Pushing...", "Fetching...", "Setting up...").
+    pub progress: Style,
 
     // Layout
     /// Default border style
@@ -395,6 +398,7 @@ impl Theme {
             default: Style::new(),
             user: style_fg(Color::LightYellow),
             time: style_fg(Color::Cyan),
+            progress: style_fg(Color::DarkGray),
 
             // Layout
             border: Style::new().fg(Color::DarkGray),
@@ -463,8 +467,14 @@ pub struct ThemeSymbols {
     pub success: StyledSymbol,
     /// Error state.
     pub error: StyledSymbol,
-    /// Info to the right.
-    pub info_right: StyledSymbol,
+    /// Warning indicator.
+    pub warning: StyledSymbol,
+    /// Generic dot marker — use `.success()`/`.attention()`/`.error()`/`.info()` for context.
+    pub dot: StyledSymbol,
+    /// Arrow indicator.
+    pub arrow: StyledSymbol,
+    /// Force / lightning indicator.
+    pub lightning: StyledSymbol,
 }
 
 impl ThemeSymbols {
@@ -472,7 +482,10 @@ impl ThemeSymbols {
         Self {
             success: StyledSymbol::new("✓", t.success.add_modifier(Modifier::BOLD)),
             error: StyledSymbol::new("✗", t.error.add_modifier(Modifier::BOLD)),
-            info_right: StyledSymbol::new("→", t.info),
+            warning: StyledSymbol::new("⚠", t.attention.add_modifier(Modifier::BOLD)),
+            dot: StyledSymbol::new("●", t.default),
+            arrow: StyledSymbol::new("→", t.hint),
+            lightning: StyledSymbol::new("⚡", t.attention.add_modifier(Modifier::BOLD)),
         }
     }
 }
@@ -497,6 +510,30 @@ impl StyledSymbol {
     /// Convert the [`StyledSymbol`] into a styled [`Span`].
     pub fn span(&self) -> Span<'_> {
         Span::styled(&self.content, self.style)
+    }
+
+    /// Return a new symbol styled for success.
+    pub fn success(&self) -> StyledSymbol {
+        let t = get();
+        StyledSymbol::new(&self.content, t.success.add_modifier(Modifier::BOLD))
+    }
+
+    /// Return a new symbol styled for attention / warning.
+    pub fn attention(&self) -> StyledSymbol {
+        let t = get();
+        StyledSymbol::new(&self.content, t.attention.add_modifier(Modifier::BOLD))
+    }
+
+    /// Return a new symbol styled for error.
+    pub fn error(&self) -> StyledSymbol {
+        let t = get();
+        StyledSymbol::new(&self.content, t.error.add_modifier(Modifier::BOLD))
+    }
+
+    /// Return a new symbol styled for info.
+    pub fn info(&self) -> StyledSymbol {
+        let t = get();
+        StyledSymbol::new(&self.content, t.info.add_modifier(Modifier::BOLD))
     }
 }
 

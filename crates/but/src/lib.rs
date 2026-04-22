@@ -34,8 +34,8 @@ use args::{
     metrics, update as update_args, worktree,
 };
 use but_settings::AppSettings;
-use colored::Colorize;
 use gix::date::time::CustomFormat;
+use theme::Paint;
 
 #[cfg(feature = "legacy")]
 use crate::command::legacy::ShowDiffInEditor;
@@ -61,6 +61,15 @@ const CLI_DATE: CustomFormat = gix::date::time::format::ISO8601;
 
 /// Handle `args` which must be what's passed by `std::env::args_os()`.
 pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
+    {
+        let theme = dirs::config_dir()
+            .map(|dir| dir.join("gitbutler").join("but-theme.json"))
+            .filter(|p| p.exists())
+            .and_then(|p| theme::load(&p).ok())
+            .unwrap_or_default();
+        theme::init(theme);
+    }
+
     let args: Vec<_> = args.collect();
 
     // Check if version is requested
@@ -136,15 +145,6 @@ pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
 
     // If no subcommand is provided, but we have source and target, default to rub
     let mut out = OutputChannel::new_with_optional_pager(output_format, use_pager);
-    // Initialize the global color theme, loading from a user config file if present.
-    {
-        let theme = dirs::config_dir()
-            .map(|dir| dir.join("gitbutler").join("but-theme.json"))
-            .filter(|p| p.exists())
-            .and_then(|p| theme::load(&p).ok())
-            .unwrap_or_default();
-        theme::init(theme);
-    }
 
     match args.cmd.take() {
         None if args.source_or_path.is_some() && args.target.is_some() => {
@@ -537,18 +537,20 @@ async fn match_subcommand(
                                 // For human-readable output, show timestamp and message
                                 println!(
                                     "{} {}",
-                                    "Timestamp:".bold(),
-                                    msg.created_at()
-                                        .format("%Y-%m-%d %H:%M:%S")
-                                        .to_string()
-                                        .cyan()
+                                    theme::get().important.paint("Timestamp:"),
+                                    theme::get().time.paint(
+                                        msg.created_at().format("%Y-%m-%d %H:%M:%S").to_string()
+                                    )
                                 );
                                 match msg.content() {
                                     but_claude::MessagePayload::User(input) => {
                                         println!("{}", input.message);
                                     }
                                     _ => {
-                                        println!("{}", "Not a user input message".red());
+                                        println!(
+                                            "{}",
+                                            theme::get().error.paint("Not a user input message")
+                                        );
                                     }
                                 }
                             }
@@ -594,8 +596,9 @@ async fn match_subcommand(
             writeln!(
                 progress,
                 "{}",
-                "Assuming you meant to check for upstream work, running `but pull --check`"
-                    .yellow()
+                theme::get().attention.paint(
+                    "Assuming you meant to check for upstream work, running `but pull --check`"
+                )
             )?;
             let ctx = setup::init_ctx(&args, InitCtxOptions::default(), out)?;
             command::legacy::pull::handle(&ctx, out, true)

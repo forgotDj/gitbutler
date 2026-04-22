@@ -1,9 +1,11 @@
 use but_core::RepositoryExt;
-use colored::Colorize;
 use gitbutler_oplog::entry::{OperationKind, Snapshot};
 use gix::{date::time::CustomFormat, prelude::ObjectIdExt};
 
-use crate::utils::{Confirm, ConfirmDefault, OutputChannel, shorten_object_id};
+use crate::{
+    theme::{self, Paint},
+    utils::{Confirm, ConfirmDefault, OutputChannel, shorten_object_id},
+};
 
 pub const ISO8601_NO_TZ: CustomFormat = CustomFormat::new("%Y-%m-%d %H:%M:%S");
 
@@ -58,8 +60,9 @@ pub(crate) fn show_oplog(
         out.write_value(&snapshots)?;
     } else if let Some(out) = out.for_human() {
         let repo = ctx.repo.get()?.clone().for_commit_shortening();
-        writeln!(out, "{}", "Operations History".blue().bold())?;
-        writeln!(out, "{}", "─".repeat(50).dimmed())?;
+        let t = theme::get();
+        writeln!(out, "{}", t.important.paint("Operations History"))?;
+        writeln!(out, "{}", t.hint.paint("─".repeat(50)))?;
         // Find the longest short ID length to keep all lines aligned.
         let longest_short_id_len = snapshots
             .iter()
@@ -74,7 +77,7 @@ pub(crate) fn show_oplog(
             let time_string = snapshot_time_string(&snapshot);
             let short = snapshot.commit_id;
             let short = short.to_hex_with_len(longest_short_id_len);
-            let commit_id = short.to_string().blue().bold();
+            let commit_id = t.cli_id.paint(short.to_string());
 
             let (operation_type, title) = if let Some(details) = &snapshot.details {
                 let op_type = match details.operation {
@@ -139,21 +142,21 @@ pub(crate) fn show_oplog(
             };
 
             let operation_colored = match operation_type {
-                "CREATE" => operation_type.green(),
-                "AMEND" | "REWORD" => operation_type.yellow(),
-                "UNDO" | "RESTORE" => operation_type.red(),
-                "DISCARD" => operation_type.red().bold(),
-                "BRANCH" | "CHECKOUT" => operation_type.purple(),
-                "MOVE" | "REORDER" | "MOVE_HUNK" => operation_type.cyan(),
-                "SNAPSHOT" => operation_type.bright_magenta(),
-                _ => operation_type.normal(),
+                "CREATE" => t.success.paint(operation_type),
+                "AMEND" | "REWORD" => t.attention.paint(operation_type),
+                "UNDO" | "RESTORE" => t.error.paint(operation_type),
+                "DISCARD" => t.error.paint(operation_type),
+                "BRANCH" | "CHECKOUT" => t.local_branch.paint(operation_type),
+                "MOVE" | "REORDER" | "MOVE_HUNK" => t.info.paint(operation_type),
+                "SNAPSHOT" => t.hint.paint(operation_type),
+                _ => t.default.paint(operation_type),
             };
 
             writeln!(
                 out,
                 "{} {} [{}] {}",
                 commit_id,
-                time_string.dimmed(),
+                t.time.paint(&time_string),
                 operation_colored,
                 title
             )?;
@@ -193,23 +196,27 @@ pub(crate) fn restore_to_oplog(
 
     if let Some(mut out) = out.prepare_for_terminal_input() {
         use std::fmt::Write;
-        writeln!(out, "{}", "Restoring to oplog snapshot...".blue().bold())?;
+        let t = theme::get();
+        writeln!(
+            out,
+            "{}",
+            t.progress.paint("Restoring to oplog snapshot...")
+        )?;
         writeln!(
             out,
             "  Target: {} ({})",
-            target_operation.green(),
-            target_time.dimmed()
+            t.important.paint(target_operation),
+            t.time.paint(&target_time)
         )?;
-        writeln!(out, "  Snapshot: {}", commit_short.cyan().bold())?;
+        writeln!(out, "  Snapshot: {}", t.commit_id.paint(&commit_short))?;
 
         // Confirm the restoration (safety check)
         if !force {
             writeln!(
                 out,
                 "\n{}",
-                "⚠️  This will overwrite your current workspace state."
-                    .yellow()
-                    .bold()
+                t.attention
+                    .paint("⚠️  This will overwrite your current workspace state.")
             )?;
             if out.confirm("Continue with restore?", ConfirmDefault::No)? == Confirm::No {
                 return Ok(());
@@ -221,16 +228,14 @@ pub(crate) fn restore_to_oplog(
     but_api::legacy::oplog::restore_snapshot(ctx, commit_id)?;
 
     if let Some(out) = out.for_human() {
-        writeln!(
-            out,
-            "\n{} Restore completed successfully!",
-            "✓".green().bold(),
-        )?;
+        let t = theme::get();
+        writeln!(out, "\n{} Restore completed successfully!", t.sym().success,)?;
 
         writeln!(
             out,
             "{}",
-            "\nWorkspace has been restored to the selected snapshot.".green()
+            t.success
+                .paint("\nWorkspace has been restored to the selected snapshot.")
         )?;
     }
 
@@ -246,7 +251,12 @@ pub(crate) fn undo_last_operation(
 
     if snapshots.len() < 2 {
         if let Some(out) = out.for_human() {
-            writeln!(out, "{}", "No previous operations to undo.".yellow())?;
+            let t = theme::get();
+            writeln!(
+                out,
+                "{}",
+                t.attention.paint("No previous operations to undo.")
+            )?;
         }
         return Ok(());
     }
@@ -263,12 +273,13 @@ pub(crate) fn undo_last_operation(
     let target_time = snapshot_time_string(target_snapshot);
 
     if let Some(out) = out.for_human() {
-        writeln!(out, "{}", "Undoing operation...".blue().bold())?;
+        let t = theme::get();
+        writeln!(out, "{}", t.progress.paint("Undoing operation..."))?;
         writeln!(
             out,
             "  Reverting to: {} ({})",
-            target_operation.green(),
-            target_time.dimmed()
+            t.important.paint(target_operation),
+            t.time.paint(&target_time)
         )?;
     }
 
@@ -277,14 +288,15 @@ pub(crate) fn undo_last_operation(
     but_api::legacy::oplog::restore_snapshot(ctx, target_snapshot.commit_id)?;
 
     if let Some(out) = out.for_human() {
+        let t = theme::get();
         let repo = ctx.repo.get()?;
         let short = shorten_object_id(&repo, target_snapshot.commit_id);
 
         writeln!(
             out,
             "{} Undo completed successfully! Restored to snapshot: {}",
-            "✓".green().bold(),
-            short.blue().bold()
+            t.sym().success,
+            t.cli_id.paint(&short)
         )?;
     }
 
@@ -307,17 +319,18 @@ pub(crate) fn create_snapshot(
     } else if let Some(out) = out.for_human() {
         let repo = ctx.repo.get()?;
         let short = shorten_object_id(&repo, snapshot_id);
-        writeln!(out, "{}", "Snapshot created successfully!".green().bold())?;
+        let t = theme::get();
+        writeln!(out, "{}", t.success.paint("Snapshot created successfully!"))?;
 
         if let Some(msg) = message {
-            writeln!(out, "  Message: {}", msg.cyan())?;
+            writeln!(out, "  Message: {}", t.info.paint(msg))?;
         }
 
-        writeln!(out, "  Snapshot ID: {}", short.blue().bold(),)?;
+        writeln!(out, "  Snapshot ID: {}", t.cli_id.paint(&short))?;
         writeln!(
             out,
             "\n{} Use 'but oplog restore {}' to restore to this snapshot later.",
-            "💡".bright_blue(),
+            t.info.paint("💡"),
             short
         )?;
     }

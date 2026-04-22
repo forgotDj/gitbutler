@@ -14,7 +14,7 @@ fn paint_produces_self_contained_string_styling() {
     let style = ratatui::style::Style::new()
         .fg(ratatui::style::Color::Green)
         .add_modifier(ratatui::style::Modifier::BOLD);
-    let result = but::theme::Paint::paint(&style, "hello");
+    let result = but::theme::Paint::paint(&style, "hello").to_string();
 
     let bold_green = "\x1b[1;32m";
     let reset = "\x1b[0m";
@@ -34,7 +34,7 @@ fn paint_respects_colored_control_disable() {
     let style = ratatui::style::Style::new()
         .fg(ratatui::style::Color::Green)
         .add_modifier(ratatui::style::Modifier::BOLD);
-    let result = but::theme::Paint::paint(&style, "hello");
+    let result = but::theme::Paint::paint(&style, "hello").to_string();
 
     assert_eq!(result, "hello");
 

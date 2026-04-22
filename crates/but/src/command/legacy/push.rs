@@ -3,7 +3,6 @@ use std::fmt::Write;
 use but_core::{RepositoryExt, ref_metadata::StackId};
 use but_ctx::Context;
 use cli_prompts::DisplayPrompt;
-use colored::Colorize;
 use gitbutler_git::PushResult;
 use serde::Serialize;
 
@@ -11,6 +10,7 @@ use crate::{
     CliId, IdMap,
     args::{push, push::Command},
     command::legacy::workspace_target,
+    theme::{self, Paint},
     utils::{OutputChannel, shorten_hex_object_id, shorten_object_id},
 };
 
@@ -149,6 +149,7 @@ fn handle_dry_run(
     branch_id: &Option<String>,
     out: &mut OutputChannel,
 ) -> anyhow::Result<()> {
+    let t = theme::get();
     let mut progress = out.progress_channel();
 
     // Fetch from remote first to get latest state
@@ -185,7 +186,7 @@ fn handle_dry_run(
         writeln!(
             progress,
             "{}",
-            "No branches have unpushed commits.".dimmed()
+            t.hint.paint("No branches have unpushed commits.")
         )?;
         return Ok(());
     }
@@ -336,8 +337,8 @@ fn handle_dry_run(
     writeln!(
         progress,
         "{} {}",
-        "Dry run:".bright_blue().bold(),
-        "Showing what would be pushed".dimmed()
+        t.important.paint("Dry run:"),
+        t.hint.paint("Showing what would be pushed")
     )?;
     writeln!(progress)?;
 
@@ -362,9 +363,9 @@ fn handle_dry_run(
             writeln!(
                 progress,
                 "{} {} {}",
-                "Stack:".yellow().bold(),
-                stack_name.cyan(),
-                format!("({} branches)", branches.len()).dimmed()
+                t.attention.paint("Stack:"),
+                t.local_branch.paint(stack_name),
+                t.hint.paint(format!("({} branches)", branches.len()))
             )?;
         }
 
@@ -393,7 +394,7 @@ fn handle_dry_run(
             let has_next = is_in_stack && !is_last;
 
             if is_in_stack && !is_first {
-                writeln!(progress, "{}", "│".dimmed())?;
+                writeln!(progress, "{}", t.hint.paint("│"))?;
             } else {
                 writeln!(progress)?;
             }
@@ -416,19 +417,19 @@ fn handle_dry_run(
                 writeln!(
                     progress,
                     "{} {} {} {} {}",
-                    gutter.dimmed(),
-                    "Branch:".bold(),
-                    info.branch_name.cyan().bold(),
-                    "↑".dimmed(),
-                    format!("(on top of {stacked_on})").blue()
+                    t.hint.paint(gutter),
+                    t.important.paint("Branch:"),
+                    t.local_branch.paint(&info.branch_name),
+                    t.hint.paint("↑"),
+                    t.info.paint(format!("(on top of {stacked_on})"))
                 )?;
             } else {
                 writeln!(
                     progress,
                     "{} {} {}",
-                    gutter.dimmed(),
-                    "Branch:".bold(),
-                    info.branch_name.cyan().bold()
+                    t.hint.paint(gutter),
+                    t.important.paint("Branch:"),
+                    t.local_branch.paint(&info.branch_name)
                 )?;
             }
 
@@ -447,27 +448,24 @@ fn handle_dry_run(
             writeln!(
                 progress,
                 "{}  {} {} {}",
-                line_prefix.dimmed(),
-                "→".green(),
-                "Would push to:".dimmed(),
-                format!("{}/{}", info.remote, branch_name).yellow()
+                t.hint.paint(line_prefix),
+                t.success.paint("→"),
+                t.hint.paint("Would push to:"),
+                t.remote_branch
+                    .paint(format!("{}/{}", info.remote, branch_name))
             )?;
             writeln!(
                 progress,
-                "{}  {} {}",
-                line_prefix.dimmed(),
-                "Commits:".dimmed(),
-                format!(
-                    "{} unpushed commit{}",
-                    info.unpushed_commits,
-                    if info.unpushed_commits == 1 { "" } else { "s" }
-                )
-                .yellow()
+                "{}  {} {} unpushed commit{}",
+                t.hint.paint(line_prefix),
+                t.hint.paint("Commits:"),
+                info.unpushed_commits,
+                if info.unpushed_commits == 1 { "" } else { "s" }
             )?;
 
             if !info.commits.is_empty() {
                 if is_in_stack {
-                    writeln!(progress, "{}", line_prefix.dimmed())?;
+                    writeln!(progress, "{}", t.hint.paint(line_prefix))?;
                 } else {
                     writeln!(progress)?;
                 }
@@ -475,22 +473,18 @@ fn handle_dry_run(
                     writeln!(
                         progress,
                         "{}    {} {}",
-                        line_prefix.dimmed(),
-                        commit.sha_short.green(),
-                        commit.message.dimmed()
+                        t.hint.paint(line_prefix),
+                        t.commit_id.paint(&commit.sha_short),
+                        t.hint.paint(&commit.message)
                     )?;
                 }
 
                 if info.unpushed_commits > info.commits.len() {
                     writeln!(
                         progress,
-                        "{}    {}",
-                        line_prefix.dimmed(),
-                        format!(
-                            "... and {} more",
-                            info.unpushed_commits - info.commits.len()
-                        )
-                        .dimmed()
+                        "{}    ... and {} more",
+                        t.hint.paint(line_prefix),
+                        info.unpushed_commits - info.commits.len()
                     )?;
                 }
             }
@@ -500,29 +494,25 @@ fn handle_dry_run(
                 writeln!(progress)?;
                 writeln!(
                     progress,
-                    "{}  {} {} {}",
-                    line_prefix.dimmed(),
-                    "⚠".yellow(),
-                    "Upstream commits (on remote):".yellow(),
-                    format!(
-                        "{} commit{}",
-                        info.upstream_commits.len(),
-                        if info.upstream_commits.len() == 1 {
-                            ""
-                        } else {
-                            "s"
-                        }
-                    )
-                    .yellow()
+                    "{}  {} {} {} commit{}",
+                    t.hint.paint(line_prefix),
+                    t.sym().warning,
+                    t.attention.paint("Upstream commits (on remote):"),
+                    info.upstream_commits.len(),
+                    if info.upstream_commits.len() == 1 {
+                        ""
+                    } else {
+                        "s"
+                    }
                 )?;
                 writeln!(progress)?;
                 for commit in &info.upstream_commits {
                     writeln!(
                         progress,
                         "{}    {} {}",
-                        line_prefix.dimmed(),
-                        commit.sha_short.red(),
-                        commit.message.dimmed()
+                        t.hint.paint(line_prefix),
+                        t.error.paint(&commit.sha_short),
+                        t.hint.paint(&commit.message)
                     )?;
                 }
             }
@@ -533,9 +523,9 @@ fn handle_dry_run(
                 writeln!(
                     progress,
                     "{}  {} {}",
-                    line_prefix.dimmed(),
-                    "⚠".red().bold(),
-                    warning.red()
+                    t.hint.paint(line_prefix),
+                    t.sym().warning.error(),
+                    t.error.paint(warning)
                 )?;
             }
 
@@ -545,9 +535,9 @@ fn handle_dry_run(
                 writeln!(
                     progress,
                     "{}  {} {}",
-                    line_prefix.dimmed(),
-                    "⚡".yellow(),
-                    "Force push required".yellow()
+                    t.hint.paint(line_prefix),
+                    t.sym().lightning,
+                    t.attention.paint("Force push required")
                 )?;
             }
         }
@@ -562,14 +552,14 @@ fn handle_dry_run(
     writeln!(
         progress,
         "{} Would push {} {} across {} {}",
-        "Summary:".bright_blue().bold(),
-        total_commits.to_string().yellow().bold(),
+        t.important.paint("Summary:"),
+        t.attention.paint(total_commits.to_string()),
         if total_commits == 1 {
             "commit"
         } else {
             "commits"
         },
-        total_branches.to_string().cyan().bold(),
+        t.info.paint(total_branches.to_string()),
         if total_branches == 1 {
             "branch"
         } else {
@@ -580,7 +570,7 @@ fn handle_dry_run(
     writeln!(
         progress,
         "{}",
-        "Run without --dry-run to push these changes.".dimmed()
+        t.hint.paint("Run without --dry-run to push these changes.")
     )?;
 
     Ok(())
@@ -603,6 +593,7 @@ fn push_single_branch(
     gerrit_mode: bool,
     out: &mut OutputChannel,
 ) -> anyhow::Result<()> {
+    let t = theme::get();
     let result = push_single_branch_impl(ctx, branch_name, args, gerrit_mode)?;
     let mut progress = out.progress_channel();
 
@@ -611,11 +602,7 @@ fn push_single_branch(
     }
 
     writeln!(progress)?;
-    writeln!(
-        progress,
-        "{} Push completed successfully",
-        "✓".green().bold()
-    )?;
+    writeln!(progress, "{} Push completed successfully", t.sym().success)?;
     writeln!(progress)?;
     if !result.branch_sha_updates.is_empty() {
         let repo = ctx.repo.get()?.clone().for_commit_shortening();
@@ -633,10 +620,10 @@ fn push_single_branch(
             writeln!(
                 progress,
                 "  {} -> {} ({} -> {})",
-                branch.cyan(),
-                remote_ref.dimmed(),
-                before_str.dimmed(),
-                after_str.green()
+                t.local_branch.paint(branch),
+                t.hint.paint(&remote_ref),
+                t.hint.paint(&before_str),
+                t.commit_id.paint(&after_str)
             )?;
         }
     }
@@ -680,6 +667,7 @@ fn push_all_branches(
     gerrit_mode: bool,
     out: &mut OutputChannel,
 ) -> anyhow::Result<()> {
+    let t = theme::get();
     let mut progress = out.progress_channel();
     let branches_with_info = get_branches_with_unpushed_info(ctx)?;
 
@@ -702,13 +690,13 @@ fn push_all_branches(
         writeln!(
             progress,
             "{}",
-            "No branches have unpushed commits.".dimmed()
+            t.hint.paint("No branches have unpushed commits.")
         )?;
         return Ok(());
     }
 
     writeln!(progress)?;
-    writeln!(progress, "{}", "Pushing branches...".bright_blue().bold())?;
+    writeln!(progress, "{}", t.progress.paint("Pushing branches..."))?;
     writeln!(progress)?;
 
     let mut total_commits_pushed = 0;
@@ -716,7 +704,12 @@ fn push_all_branches(
     let mut failed_branches = Vec::new();
 
     for (branch_name, unpushed_count, _) in branches_to_push {
-        write!(progress, "  {} {}... ", "→".cyan(), branch_name.bold())?;
+        write!(
+            progress,
+            "  {} {}... ",
+            t.info.paint("→"),
+            t.important.paint(&branch_name)
+        )?;
 
         match push_single_branch_impl(ctx, &branch_name, args, gerrit_mode) {
             Ok(result) => {
@@ -724,8 +717,8 @@ fn push_all_branches(
                 writeln!(
                     progress,
                     "{} ({} commit{})",
-                    "✓".green(),
-                    unpushed_count.to_string().yellow(),
+                    t.sym().success,
+                    t.attention.paint(unpushed_count.to_string()),
                     if unpushed_count == 1 { "" } else { "s" }
                 )?;
                 pushed_results.push(result);
@@ -735,7 +728,12 @@ fn push_all_branches(
                     branch_name: branch_name.clone(),
                     error: e.to_string(),
                 });
-                writeln!(progress, "{} {}", "✗".red(), e.to_string().red())?;
+                writeln!(
+                    progress,
+                    "{} {}",
+                    t.sym().error,
+                    t.error.paint(e.to_string())
+                )?;
             }
         }
     }
@@ -755,9 +753,9 @@ fn push_all_branches(
         writeln!(
             progress,
             "{} {} {} {}",
-            "✓".green().bold(),
-            "Successfully pushed".green().bold(),
-            total_commits_pushed.to_string().yellow().bold(),
+            t.sym().success,
+            t.success.paint("Successfully pushed"),
+            t.attention.paint(total_commits_pushed.to_string()),
             if total_commits_pushed == 1 {
                 "commit"
             } else {
@@ -783,10 +781,10 @@ fn push_all_branches(
                 writeln!(
                     progress,
                     "  {} -> {} ({} -> {})",
-                    branch.cyan(),
-                    remote_ref.dimmed(),
-                    before_str.dimmed(),
-                    after_str.green()
+                    t.local_branch.paint(branch),
+                    t.hint.paint(&remote_ref),
+                    t.hint.paint(&before_str),
+                    t.commit_id.paint(&after_str)
                 )?;
             }
         }
@@ -797,8 +795,8 @@ fn push_all_branches(
         writeln!(
             progress,
             "{} Failed to push {} {}:",
-            "✗".red().bold(),
-            failed_branches.len().to_string().red().bold(),
+            t.sym().error,
+            t.error.paint(failed_branches.len().to_string()),
             if failed_branches.len() == 1 {
                 "branch"
             } else {
@@ -809,8 +807,8 @@ fn push_all_branches(
             writeln!(
                 progress,
                 "    {} - {}",
-                failed.branch_name.red(),
-                failed.error.dimmed()
+                t.error.paint(&failed.branch_name),
+                t.hint.paint(&failed.error)
             )?;
         }
     }
@@ -822,6 +820,7 @@ fn handle_no_branch_specified(
     ctx: &Context,
     out: &mut OutputChannel,
 ) -> anyhow::Result<BranchSelection> {
+    let t = theme::get();
     let branches_with_info = get_branches_with_unpushed_info(ctx)?;
 
     if branches_with_info.is_empty() {
@@ -852,7 +851,8 @@ fn handle_no_branch_specified(
         writeln!(
             progress,
             "{}",
-            "✓ All branches are up to date with the remote.".green()
+            t.success
+                .paint("✓ All branches are up to date with the remote.")
         )?;
         return Ok(BranchSelection::None);
     }

@@ -1,5 +1,6 @@
 //! Cherry-pick commits from unapplied branches into applied virtual branches.
 
+use crate::theme::{self, Paint};
 use anyhow::{Context as _, Result, bail};
 use bstr::ByteSlice;
 use but_api::legacy::{cherry_apply, virtual_branches, workspace};
@@ -8,7 +9,6 @@ use but_core::{RepositoryExt, ref_metadata::StackId, sync::RepoShared};
 use but_ctx::Context;
 use but_workspace::legacy::{StacksFilter, ui::StackEntry};
 use cli_prompts::DisplayPrompt;
-use colored::Colorize;
 use gitbutler_branch_actions::BranchListingFilter;
 use gitbutler_oplog::{
     OplogExt,
@@ -97,6 +97,7 @@ pub fn handle(
     }
 
     // Output results
+    let t = theme::get();
     let repo = ctx.repo.get()?.clone().for_commit_shortening();
     for (commit_hex, target_branch_name, _) in &picked {
         let commit_short = shorten_hex_object_id(&repo, commit_hex);
@@ -104,10 +105,10 @@ pub fn handle(
             writeln!(
                 out,
                 "{} {} {} {}",
-                "Picked commit".green(),
-                commit_short.yellow(),
-                "into branch".green(),
-                target_branch_name.cyan()
+                t.success.paint("Picked commit"),
+                t.commit_id.paint(&commit_short),
+                t.success.paint("into branch"),
+                t.local_branch.paint(target_branch_name)
             )?;
         }
     }
@@ -385,12 +386,13 @@ fn handle_locked_to_stack(
             h.name.to_str_lossy() == target || h.name.to_string().to_lowercase() == target_lower
         });
 
+        let t = theme::get();
         if !target_matches && let Some(out) = out.for_human() {
             writeln!(
                 out,
                 "{} Commit is locked to '{}' due to conflicts. Ignoring specified target.",
-                "Warning:".yellow(),
-                locked_branch_name.cyan()
+                t.attention.paint("Warning:"),
+                t.local_branch.paint(&locked_branch_name)
             )?;
         }
     }

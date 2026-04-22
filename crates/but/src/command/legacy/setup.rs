@@ -5,10 +5,12 @@ use but_core::{
     sync::{RepoExclusive, RepoShared},
 };
 use but_ctx::Context;
-use colored::Colorize;
 use serde::Serialize;
 
-use crate::utils::OutputChannel;
+use crate::{
+    theme::{self, Paint},
+    utils::OutputChannel,
+};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,64 +45,66 @@ struct TargetInfo {
 
 /// Display a colorful splash screen with GitButler branding and helpful commands
 fn display_splash_screen(out: &mut dyn std::fmt::Write) -> anyhow::Result<()> {
+    let t = theme::get();
     writeln!(out)?;
     writeln!(
         out,
         "{}",
-        r#"
+        t.info.paint(
+            r#"
  ██████▄      ▄██████    ██████╗ ██╗   ██╗████████╗
  ██▀▀▀▀██▄  ▄██▀▀▀▀██    ██╔══██╗██║   ██║╚══██╔══╝
  ██     ▀████▀     ██    ██████╔╝██║   ██║   ██║
  ██▄▄▄▄██▀  ▀██▄▄▄▄██    ██╔══██╗██║   ██║   ██║
  ██████▀      ▀██████    ██████╔╝╚██████╔╝   ██║
 "#
-        .cyan()
-        .bold()
+        )
     )?;
 
     writeln!(
         out,
         "{}",
-        "The command-line interface for GitButler".dimmed()
+        t.hint.paint("The command-line interface for GitButler")
     )?;
     writeln!(out)?;
 
     writeln!(
         out,
         "{:<45} {}",
-        "$ but branch new <name>".bright_blue(),
-        "Create a new branch".dimmed()
+        t.command_suggestion.paint("$ but branch new <name>"),
+        t.hint.paint("Create a new branch")
     )?;
     writeln!(
         out,
         "{:<45} {}",
-        "$ but status".bright_blue(),
-        "View workspace status".dimmed()
+        t.command_suggestion.paint("$ but status"),
+        t.hint.paint("View workspace status")
     )?;
     writeln!(
         out,
         "{:<45} {}",
-        "$ but commit -m <message>".bright_blue(),
-        "Commit changes to current branch".dimmed()
+        t.command_suggestion.paint("$ but commit -m <message>"),
+        t.hint.paint("Commit changes to current branch")
     )?;
     writeln!(
         out,
         "{:<45} {}",
-        "$ but push".bright_blue(),
-        "Push all branches".dimmed()
+        t.command_suggestion.paint("$ but push"),
+        t.hint.paint("Push all branches")
     )?;
     writeln!(
         out,
         "{:<45} {}",
-        "$ but teardown".bright_blue(),
-        "Return to normal Git mode".dimmed()
+        t.command_suggestion.paint("$ but teardown"),
+        t.hint.paint("Return to normal Git mode")
     )?;
     writeln!(out)?;
 
     writeln!(
         out,
         "{}",
-        "Learn more at https://docs.gitbutler.com/cli-overview".dimmed()
+        t.hint
+            .paint("Learn more at https://docs.gitbutler.com/cli-overview")
     )?;
     writeln!(out)?;
 
@@ -113,6 +117,7 @@ pub fn find_or_initialize_repo(
     out: &mut OutputChannel,
     init: bool,
 ) -> anyhow::Result<gix::Repository> {
+    let t = theme::get();
     match gix::open(repo_path) {
         Ok(repo) => Ok(repo),
         Err(_) => {
@@ -122,7 +127,8 @@ pub fn find_or_initialize_repo(
                     writeln!(
                         out,
                         "{}",
-                        "No git repository found. Initializing new repository...".dimmed()
+                        t.hint
+                            .paint("No git repository found. Initializing new repository...")
                     )?;
                 }
                 let repo = gix::init(repo_path)?;
@@ -131,7 +137,8 @@ pub fn find_or_initialize_repo(
                     writeln!(
                         out,
                         "{}",
-                        "✓ Initialized repository with empty commit".green()
+                        t.success
+                            .paint("✓ Initialized repository with empty commit")
                     )?;
                     writeln!(out)?;
                 }
@@ -146,7 +153,8 @@ pub fn find_or_initialize_repo(
                             writeln!(
                                 out,
                                 "{}",
-                                format!("Failed to initialize repository: {e}").red()
+                                t.error
+                                    .paint(format!("Failed to initialize repository: {e}"))
                             )?;
                         }
                         anyhow::bail!(
@@ -168,6 +176,7 @@ pub(crate) fn repo(
     out: &mut OutputChannel,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<()> {
+    let t = theme::get();
     let mut target_info: Option<TargetInfo> = None;
 
     // what branch is head() pointing to?
@@ -182,14 +191,17 @@ pub(crate) fn repo(
 
     // find or setup the gitbutler project
     if let Some(out) = out.for_human() {
-        writeln!(out, "{}", "Setting up GitButler project...".cyan())?;
+        writeln!(
+            out,
+            "{}",
+            t.progress.paint("Setting up GitButler project...")
+        )?;
         writeln!(out)?;
         writeln!(
             out,
             "{}",
-            "→ Adding repository to GitButler project registry"
-                .to_string()
-                .dimmed()
+            t.hint
+                .paint("→ Adding repository to GitButler project registry")
         )?;
     }
 
@@ -202,7 +214,7 @@ pub(crate) fn repo(
                 writeln!(
                     out,
                     "  {}",
-                    "✓ Repository added to project registry".green()
+                    t.success.paint("✓ Repository added to project registry")
                 )?;
             }
             Ok(ProjectStatus::Added)
@@ -212,7 +224,7 @@ pub(crate) fn repo(
                 writeln!(
                     out,
                     "  {}",
-                    "✓ Repository already in project registry".green()
+                    t.success.paint("✓ Repository already in project registry")
                 )?;
             }
             Ok(ProjectStatus::AlreadyExists)
@@ -261,7 +273,11 @@ pub(crate) fn repo(
         // Step 2: Determine remote
         if let Some(out) = out.for_human() {
             writeln!(out)?;
-            writeln!(out, "{}", "→ Configuring default target branch".dimmed())?;
+            writeln!(
+                out,
+                "{}",
+                t.hint.paint("→ Configuring default target branch")
+            )?;
         }
 
         let mut repo = ctx.repo.get_mut()?;
@@ -271,7 +287,8 @@ pub(crate) fn repo(
                     writeln!(
                         out,
                         "  {}",
-                        format!("✓ Using existing push remote: {name}").green()
+                        t.success
+                            .paint(format!("✓ Using existing push remote: {name}"))
                     )?;
                 }
                 name.to_string()
@@ -301,8 +318,9 @@ pub(crate) fn repo(
                         writeln!(
                             out,
                             "  {}",
-                            format!("✓ No remote HEAD found, using {remote_name}/{branch}")
-                                .yellow()
+                            t.attention.paint(format!(
+                                "✓ No remote HEAD found, using {remote_name}/{branch}"
+                            ))
                         )?;
                     }
                     format!("{remote_name}/{branch}")
@@ -332,16 +350,16 @@ pub(crate) fn repo(
             writeln!(
                 out,
                 "  {}",
-                format!("✓ Set default target to: {name}").green()
+                t.success.paint(format!("✓ Set default target to: {name}"))
             )?;
             writeln!(out)?;
             writeln!(
                 out,
                 "{}",
-                "GitButler project setup complete!".green().bold()
+                t.success.paint("GitButler project setup complete!")
             )?;
-            writeln!(out, "{}", format!("Target branch: {name}").dimmed())?;
-            writeln!(out, "{}", format!("Remote: {remote_name}").dimmed())?;
+            writeln!(out, "{}", t.hint.paint(format!("Target branch: {name}")))?;
+            writeln!(out, "{}", t.hint.paint(format!("Remote: {remote_name}")))?;
             writeln!(out)?;
         }
     } else {
@@ -359,13 +377,14 @@ pub(crate) fn repo(
             writeln!(
                 out,
                 "{}",
-                "GitButler project is already set up!".green().bold()
+                t.success.paint("GitButler project is already set up!")
             )?;
             if let Some(target) = target {
                 writeln!(
                     out,
                     "{}",
-                    format!("Target branch: {}", target.branch_name).dimmed()
+                    t.hint
+                        .paint(format!("Target branch: {}", target.branch_name))
                 )?;
             }
             writeln!(out)?;
@@ -393,7 +412,9 @@ pub(crate) fn repo(
         writeln!(
             out,
             "  {}",
-            format!("Warning: Failed to install GitButler managed hooks: {e}").yellow()
+            t.attention.paint(format!(
+                "Warning: Failed to install GitButler managed hooks: {e}"
+            ))
         )?;
     }
 
@@ -404,7 +425,7 @@ pub(crate) fn repo(
         writeln!(
             out,
             "{}",
-            format!(
+            t.attention.paint(format!(
                 r#"
 Setting up your project for GitButler tooling. Some things to note:
 
@@ -418,8 +439,7 @@ To undo these changes and return to normal Git mode, either:
 
 More info: https://docs.gitbutler.com/workspace-branch
 "#
-            )
-            .yellow()
+            ))
         )?;
     }
 
@@ -492,6 +512,7 @@ pub fn check_project_setup(ctx: &Context, perm: &RepoShared) -> anyhow::Result<b
 
 /// Creates a 'gb-local' remote pointing to this repository and creates tracking refs for the default branch.
 fn setup_local_remote(repo: &gix::Repository, out: &mut OutputChannel) -> anyhow::Result<String> {
+    let t = theme::get();
     let repo_url = repo
         .workdir()
         .ok_or_else(|| anyhow::anyhow!("Repository has no working directory"))?
@@ -502,7 +523,8 @@ fn setup_local_remote(repo: &gix::Repository, out: &mut OutputChannel) -> anyhow
         writeln!(
             out,
             "  {}",
-            "No push remote found, creating gb-local remote...".blue()
+            t.info
+                .paint("No push remote found, creating gb-local remote...")
         )?;
     }
 
@@ -557,7 +579,9 @@ fn setup_local_remote(repo: &gix::Repository, out: &mut OutputChannel) -> anyhow
         writeln!(
             out,
             "  {}",
-            format!("✓ Created gb-local remote tracking {default_branch_name}").green()
+            t.success.paint(format!(
+                "✓ Created gb-local remote tracking {default_branch_name}"
+            ))
         )?;
     }
 
@@ -566,6 +590,7 @@ fn setup_local_remote(repo: &gix::Repository, out: &mut OutputChannel) -> anyhow
 
 /// Sets up a new git repository and creates an initial empty commit.
 fn setup_new_repo(current_dir: &Path, out: &mut OutputChannel) -> anyhow::Result<gix::Repository> {
+    let t = theme::get();
     use std::fmt::Write as FmtWrite;
 
     let mut progress = out.progress_channel();
@@ -573,18 +598,20 @@ fn setup_new_repo(current_dir: &Path, out: &mut OutputChannel) -> anyhow::Result
         writeln!(
             &mut progress as &mut dyn FmtWrite,
             "{}",
-            "No git repository found.".red()
+            t.error.paint("No git repository found.")
         )?;
 
         let input = inout.prompt(format!(
             "Would you like to initialize a new one?\n{}\n[y/N]",
-            "(this will also create an empty first commit)".dimmed()
+            t.hint
+                .paint("(this will also create an empty first commit)")
         ))?;
         if input.as_deref() == Some("y") {
             writeln!(
                 &mut progress as &mut dyn FmtWrite,
                 "{}",
-                "Initializing new repository and creating an empty first commit...".dimmed()
+                t.hint
+                    .paint("Initializing new repository and creating an empty first commit...")
             )?;
             let repo = gix::init(current_dir)?;
 
@@ -593,7 +620,8 @@ fn setup_new_repo(current_dir: &Path, out: &mut OutputChannel) -> anyhow::Result
             writeln!(
                 &mut progress as &mut dyn FmtWrite,
                 "{}",
-                "Initialized a new repository and created an empty first commit.\n".green()
+                t.success
+                    .paint("Initialized a new repository and created an empty first commit.\n")
             )?;
             return Ok(repo);
         }

@@ -4,12 +4,13 @@ use anyhow::{Context as _, bail};
 use bstr::BString;
 use but_core::{DryRun, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
-use colored::Colorize;
 use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
 };
 use gix::ObjectId;
+
+use crate::theme::{self, Paint};
 
 use super::undo::stack_id_by_commit_id;
 use crate::{
@@ -166,8 +167,8 @@ fn handle_multi_commit_squash(
             other => {
                 bail!(
                     "Cannot squash {} - it is {}. All arguments must be commits.",
-                    other.to_short_string().blue().bold(),
-                    other.kind_for_humans().yellow()
+                    theme::get().cli_id.paint(other.to_short_string()),
+                    theme::get().attention.paint(other.kind_for_humans())
                 );
             }
         }
@@ -343,6 +344,7 @@ fn squash_commits_internal(
     };
 
     // Output message based on context
+    let t = theme::get();
     if let Some(out) = out.for_human() {
         let repo = ctx.repo.get()?;
         let final_short = shorten_object_id(&repo, final_commit_oid);
@@ -351,8 +353,8 @@ fn squash_commits_internal(
             writeln!(
                 out,
                 "Squashed {} → {}",
-                shorten_object_id(&repo, source_oids[0]).blue(),
-                final_short.blue()
+                t.cli_id.paint(shorten_object_id(&repo, source_oids[0])),
+                t.cli_id.paint(&final_short)
             )?
         } else {
             // Multiple commits squash
@@ -360,7 +362,7 @@ fn squash_commits_internal(
                 out,
                 "Squashed {} commits → {}",
                 source_oids.len(),
-                final_short.blue()
+                t.cli_id.paint(&final_short)
             )?
         }
     } else if let Some(out) = out.for_json() {
@@ -435,11 +437,12 @@ fn squash_branch_commits(
     )?;
 
     // Add branch-specific output message
+    let t = theme::get();
     if let Some(out) = out.for_human() {
         writeln!(
             out,
             "Squashed all commits in branch '{}'",
-            branch_name.blue()
+            t.local_branch.paint(branch_name)
         )?
     }
     Ok(())

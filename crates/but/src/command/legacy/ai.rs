@@ -7,10 +7,12 @@ use std::fmt::Write as _;
 
 use anyhow::{Context, Result};
 use but_llm::{ChatMessage, LLMProvider};
-use colored::Colorize;
 use schemars::JsonSchema;
 
-use crate::utils::OutputChannel;
+use crate::{
+    theme::{self, Paint},
+    utils::OutputChannel,
+};
 
 /// Generate a commit message using AI based on the unified diff and optional user summary.
 ///
@@ -40,7 +42,11 @@ pub fn generate_commit_message(
 ) -> Result<String> {
     let mut progress = out.progress_channel();
 
-    writeln!(progress, "{}", "Generating commit message...".bright_cyan())?;
+    writeln!(
+        progress,
+        "{}",
+        theme::get().progress.paint("Generating commit message...")
+    )?;
     let llm = LLMProvider::default_openai()
         .ok_or_else(|| anyhow::anyhow!("Failed to initialize default OpenAI LLM provider"))?;
     let system_message =
@@ -102,7 +108,11 @@ pub fn generate_commit_message_from_multiple_messages(
     user_summary: Option<String>,
 ) -> Result<String> {
     let mut progress = out.progress_channel();
-    writeln!(progress, "{}", "Generating commit message...".bright_cyan())?;
+    writeln!(
+        progress,
+        "{}",
+        theme::get().progress.paint("Generating commit message...")
+    )?;
     let llm = LLMProvider::default_openai()
         .ok_or_else(|| anyhow::anyhow!("Failed to initialize default OpenAI LLM provider"))?;
     let system_message =

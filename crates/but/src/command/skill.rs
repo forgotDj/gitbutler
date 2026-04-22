@@ -3,10 +3,13 @@ use std::{fmt::Write as _, path::PathBuf};
 use anyhow::{Context as _, Result};
 use but_ctx::Context;
 use cli_prompts::{DisplayPrompt, prompts::AbortReason};
-use colored::Colorize;
 use serde::Serialize;
 
-use crate::{args::skill, utils::OutputChannel};
+use crate::{
+    args::skill,
+    theme::{self, Paint},
+    utils::OutputChannel,
+};
 
 /// Error type for user-initiated cancellation
 #[derive(Debug, Clone, Copy)]
@@ -493,6 +496,7 @@ fn check_skills(
     local_only: bool,
     auto_update: bool,
 ) -> Result<()> {
+    let t = theme::get();
     // Determine scope
     let (check_global, check_local) = match (global_only, local_only) {
         (true, false) => (true, false),
@@ -523,7 +527,11 @@ fn check_skills(
     // Auto-update if requested (do this before displaying results)
     if auto_update && !outdated_paths.is_empty() {
         let mut progress = out.progress_channel();
-        writeln!(progress, "{}", "Updating outdated skills...".bold())?;
+        writeln!(
+            progress,
+            "{}",
+            t.important.paint("Updating outdated skills...")
+        )?;
         writeln!(progress)?;
 
         for path_str in &outdated_paths {
@@ -548,7 +556,7 @@ fn check_skills(
             writeln!(
                 writer,
                 "{} Run 'but skill check --update' to update outdated skills",
-                "→".yellow().bold()
+                t.sym().arrow.attention()
             )?;
         }
     } else if let Some(json_out) = out.for_json() {
@@ -567,8 +575,13 @@ fn print_human_check_output(
     writer: &mut dyn std::fmt::Write,
     result: &SkillCheckResult,
 ) -> Result<(), anyhow::Error> {
+    let t = theme::get();
     writeln!(writer)?;
-    writeln!(writer, "CLI version: {}", result.cli_version.cyan())?;
+    writeln!(
+        writer,
+        "CLI version: {}",
+        t.config_value.paint(&result.cli_version)
+    )?;
     writeln!(writer)?;
 
     if result.skills.is_empty() {
@@ -587,18 +600,18 @@ fn print_human_check_output(
 
     for skill in &result.skills {
         let status_icon = if skill.up_to_date {
-            "✓".green()
+            t.sym().success.to_string()
         } else {
-            "✗".red()
+            t.sym().error.to_string()
         };
 
         let version_display = if skill.up_to_date {
-            skill.installed_version.green().to_string()
+            t.success.paint(&skill.installed_version).to_string()
         } else {
             format!(
                 "{} → {}",
-                skill.installed_version.red(),
-                result.cli_version.green()
+                t.error.paint(&skill.installed_version),
+                t.success.paint(&result.cli_version)
             )
         };
 
@@ -608,7 +621,7 @@ fn print_human_check_output(
             status_icon,
             skill.format_name,
             skill.scope,
-            skill.path.display().to_string().dimmed(),
+            t.hint.paint(skill.path.display().to_string()),
             version_display
         )?;
     }
@@ -616,12 +629,12 @@ fn print_human_check_output(
     writeln!(writer)?;
 
     if result.outdated_count == 0 {
-        writeln!(writer, "{} All skills are up to date!", "✓".green().bold())?;
+        writeln!(writer, "{} All skills are up to date!", t.sym().success)?;
     } else {
         writeln!(
             writer,
             "{} {} skill(s) are outdated",
-            "!".yellow().bold(),
+            t.sym().warning,
             result.outdated_count
         )?;
     }
@@ -714,8 +727,13 @@ fn detect_install_path(ctx: Option<&mut Context>, global: bool) -> Result<PathBu
 }
 
 fn prompt_for_install_scope(progress: &mut impl std::io::Write) -> Result<InstallScope> {
+    let t = theme::get();
     writeln!(progress)?;
-    writeln!(progress, "{}", "Select installation scope:".bold())?;
+    writeln!(
+        progress,
+        "{}",
+        t.important.paint("Select installation scope:")
+    )?;
     writeln!(progress)?;
 
     let prompt = cli_prompts::prompts::Selection::new(
@@ -740,6 +758,7 @@ fn prompt_for_install_path(
     out: &mut OutputChannel,
     progress: &mut impl std::io::Write,
 ) -> Result<PathBuf> {
+    let t = theme::get();
     if out.for_human().is_none() {
         anyhow::bail!(
             "In non-interactive mode, you must specify --path or --detect. Use --path <path> to specify where to install the skill, or --detect to update an existing installation."
@@ -774,13 +793,13 @@ fn prompt_for_install_path(
             writeln!(
                 progress,
                 "{} Not in a git repository. Installing globally in your home directory.",
-                "ℹ".blue()
+                t.info.paint("ℹ")
             )?;
         } else {
             writeln!(
                 progress,
                 "{} Local installs require a repository workdir. Installing globally in your home directory.",
-                "ℹ".blue()
+                t.info.paint("ℹ")
             )?;
         }
         writeln!(progress)?;
@@ -789,7 +808,11 @@ fn prompt_for_install_path(
     let base_dir = get_base_dir(ctx, scope.is_global())?;
 
     writeln!(progress)?;
-    writeln!(progress, "{}", "Select a skill folder format:".bold())?;
+    writeln!(
+        progress,
+        "{}",
+        t.important.paint("Select a skill folder format:")
+    )?;
     writeln!(progress)?;
 
     let available_formats: Vec<&SkillFormat> = SKILL_FORMATS
@@ -809,7 +832,7 @@ fn prompt_for_install_path(
                 "{} - {} ({})",
                 format.name,
                 format.description,
-                full_path.display().to_string().dimmed()
+                t.hint.paint(full_path.display().to_string())
             )
         })
         .collect();
@@ -872,6 +895,7 @@ fn install_skill(
     custom_path: Option<String>,
     detect: bool,
 ) -> Result<()> {
+    let t = theme::get();
     // Validate that embedded files are not empty (catches build issues)
     if SKILL_FILES.iter().any(|f| f.content.is_empty()) {
         anyhow::bail!(
@@ -949,8 +973,8 @@ fn install_skill(
         writeln!(
             progress,
             "{} Skill files already exist at {}",
-            "⚠".yellow(),
-            install_path.display().to_string().cyan()
+            t.sym().warning,
+            t.config_value.paint(install_path.display().to_string())
         )?;
         writeln!(progress, "  Overwriting existing files...")?;
         writeln!(progress)?;
@@ -986,13 +1010,13 @@ fn install_skill(
     writeln!(
         progress,
         "{} GitButler skill installed successfully!",
-        "✓".green().bold()
+        t.sym().success
     )?;
     writeln!(progress)?;
     writeln!(
         progress,
         "  Location: {}",
-        install_path.display().to_string().cyan()
+        t.config_value.paint(install_path.display().to_string())
     )?;
     writeln!(progress)?;
     writeln!(progress, "  Files installed:")?;

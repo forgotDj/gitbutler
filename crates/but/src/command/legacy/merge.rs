@@ -1,13 +1,12 @@
 use std::fmt::Write;
 
-use anyhow::bail;
-use but_ctx::Context;
-use colored::Colorize;
-
 use crate::{
     CliId, IdMap,
+    theme::{self, Paint},
     utils::{OutputChannel, shorten_object_id},
 };
+use anyhow::bail;
+use but_ctx::Context;
 
 pub async fn handle(
     ctx: &mut Context,
@@ -15,6 +14,7 @@ pub async fn handle(
     branch_id: &str,
 ) -> anyhow::Result<()> {
     let mut progress = out.progress_channel();
+    let t = theme::get();
     let guard = ctx.exclusive_worktree_access();
 
     let id_map = IdMap::new_from_context(ctx, None, guard.read_permission())?;
@@ -45,8 +45,9 @@ pub async fn handle(
         writeln!(
             progress,
             "Merging branch {} into target {}",
-            branch_name.bright_cyan(),
-            format!("{}/{}", target_remote, base_branch.branch_name).bright_cyan()
+            t.local_branch.paint(&branch_name),
+            t.remote_branch
+                .paint(format!("{}/{}", target_remote, base_branch.branch_name))
         )?;
 
         // Extract the local branch name from the base branch
@@ -73,10 +74,12 @@ pub async fn handle(
         writeln!(
             progress,
             "Merging {} ({}) into {} ({})",
-            branch_name.bright_cyan(),
-            shorten_object_id(&repo, merge_in_branch_head_oid).bright_black(),
-            local_branch_name.bright_cyan(),
-            shorten_object_id(&repo, local_branch_head_oid).bright_black()
+            t.local_branch.paint(&branch_name),
+            t.hint
+                .paint(shorten_object_id(&repo, merge_in_branch_head_oid)),
+            t.local_branch.paint(&local_branch_name),
+            t.hint
+                .paint(shorten_object_id(&repo, local_branch_head_oid))
         )?;
 
         // do the merge
@@ -108,7 +111,11 @@ pub async fn handle(
             vec![merge_in_branch_head_oid, local_branch_head_oid],
         )?;
 
-        writeln!(progress, "\nUpdating {}", local_branch_name.blue())?;
+        writeln!(
+            progress,
+            "\nUpdating {}",
+            t.local_branch.paint(&local_branch_name)
+        )?;
 
         // update the local branch
         let branch_ref_name: gix::refs::FullName =
@@ -127,7 +134,7 @@ pub async fn handle(
         writeln!(
             progress,
             "\n{}",
-            "Merge and update complete!".green().bold()
+            t.success.paint("Merge and update complete!")
         )?;
     } else {
         bail!(

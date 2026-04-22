@@ -1,12 +1,12 @@
 use std::path::Path;
 
+use crate::theme::{self, Paint};
 use but_core::{RepositoryExt, sync::RepoExclusive};
 use but_ctx::Context;
 use but_hunk_assignment::{
     AbsorptionTarget, CommitAbsorption, HunkAssignment, JsonAbsorbOutput, JsonCommitAbsorption,
     JsonFileAbsorption,
 };
-use colored::Colorize;
 use gitbutler_branch_actions::update_workspace_commit;
 use gitbutler_oplog::{
     OplogExt,
@@ -90,7 +90,8 @@ pub(crate) fn handle(
     if dry_run {
         // Nothing more to do
         if let Some(out) = out.for_human() {
-            let message = "Dry run complete. No changes were made.".green();
+            let t = theme::get();
+            let message = t.success.paint("Dry run complete. No changes were made.");
             writeln!(out, "{message}")?;
         }
         return Ok(());
@@ -149,13 +150,14 @@ fn absorb_assignments(
     update_workspace_commit(ctx, false)?;
 
     // Display completion message
+    let t = theme::get();
     if let Some(out) = out.for_human() {
         writeln!(out)?;
         if total_rejected > 0 {
             writeln!(
                 out,
                 "{}: Failed to absorb {} file{}",
-                "Warning".yellow(),
+                t.attention.paint("Warning"),
                 total_rejected,
                 if total_rejected == 1 { "" } else { "s" }
             )?;
@@ -163,7 +165,7 @@ fn absorb_assignments(
         writeln!(
             out,
             "{}: you can run `but undo` to undo these changes",
-            "Hint".cyan()
+            t.info.paint("Hint")
         )?;
     } else if let Some(out) = out.for_json() {
         // Combine plan and result into a single JSON write to avoid overwriting
@@ -280,6 +282,7 @@ fn display_absorption_plan(
         json_out.write_value(&plan_output)?;
     }
 
+    let t = theme::get();
     if let Some(out) = out.for_human() {
         writeln!(
             out,
@@ -301,16 +304,16 @@ fn display_absorption_plan(
                 out,
                 "{}: {} {}",
                 verb,
-                short_hash.cyan(),
+                t.commit_id.paint(&short_hash),
                 absorption.commit_summary
             )?;
-            writeln!(out, "  ({})", absorption.reason.description().dimmed())?;
+            writeln!(out, "  ({})", t.hint.paint(absorption.reason.description()))?;
 
             for file in &absorption.files {
                 let hunks = get_hunk_ranges(&file.assignment);
                 let hunk_display = hunks.join(", ");
 
-                writeln!(out, "    {} {}", file.path, hunk_display.dimmed())?;
+                writeln!(out, "    {} {}", file.path, t.hint.paint(&hunk_display))?;
             }
             writeln!(out)?;
         }
