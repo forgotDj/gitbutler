@@ -1,6 +1,7 @@
 import { type CommitStatusType } from "$lib/commits/commit";
 import DragClone from "$lib/dragging/DragClone.svelte";
 import { FileChangeDropData, type DropData } from "$lib/dragging/draggables";
+import { CommitDropData } from "$lib/dragging/dropHandlers/commitDropHandler";
 import { pxToRem } from "@gitbutler/ui/utils/pxToRem";
 import { mount } from "svelte";
 import type { DropzoneRegistry } from "$lib/dragging/registry";
@@ -324,6 +325,17 @@ function setupDragHandlers(
 			}
 		}
 
+		// Handle multi-selection for commits
+		if (opts.data instanceof CommitDropData && opts.data.isMultiCommit) {
+			selectedElements = [];
+			for (const commit of opts.data.allCommits) {
+				const element = parentNode.querySelector(`[data-commit-id="${commit.id}"]`);
+				if (element) {
+					selectedElements.push(element);
+				}
+			}
+		}
+
 		if (selectedElements.length === 0) {
 			selectedElements = [node];
 		}
@@ -550,10 +562,12 @@ export function draggableBranch(node: HTMLElement, initialOpts: DraggableConfig)
 export function draggableCommitV3(node: HTMLElement, initialOpts: DraggableConfig) {
 	function createClone(opts: DraggableConfig) {
 		if (opts.disabled) return;
+		const commitData = opts.data instanceof CommitDropData ? opts.data : undefined;
 		return createSvelteDragClone({
 			type: "commit",
 			commitType: opts.commitType,
 			label: opts.label,
+			childrenAmount: commitData?.allCommits.length,
 			dragStateService: opts.dragStateService,
 		});
 	}

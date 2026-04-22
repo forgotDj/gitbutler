@@ -12,6 +12,12 @@
 		stackId?: string;
 		onUncommitClick: (event: MouseEvent) => void;
 		onEditMessageClick: (event: MouseEvent) => void;
+		/** When set, indicates multiple commits are selected. */
+		multiSelect?: {
+			commitIds: string[];
+			onSquashSelected: () => void;
+			onUncommitSelected: () => void;
+		};
 	}
 
 	interface RemoteCommitContextData extends BaseContextData {
@@ -182,169 +188,208 @@
 	>
 		{#snippet contextMenu({ close })}
 			{@const { commitId, commitUrl, commitMessage } = contextData}
-			{#if contextData.commitStatus === "LocalAndRemote" || contextData.commitStatus === "LocalOnly"}
-				{@const { onUncommitClick, onEditMessageClick } = contextData}
+			{@const isLocal =
+				contextData.commitStatus === "LocalAndRemote" || contextData.commitStatus === "LocalOnly"}
+			{@const multiSelect = isLocal ? contextData.multiSelect : undefined}
+			{@const isMultiSelect = multiSelect && multiSelect.commitIds.length > 1}
+
+			{#if isLocal}
+				{#if isMultiSelect}
+					<!-- Multi-select actions -->
+					<ContextMenuSection>
+						<ContextMenuItem
+							label="Squash {multiSelect.commitIds.length} commits"
+							icon="commit-double-chevron-down"
+							testId={TestId.CommitRowContextMenu_SquashSelected}
+							disabled={isReadOnly}
+							onclick={() => {
+								if (!isReadOnly) {
+									multiSelect.onSquashSelected();
+									close();
+								}
+							}}
+						/>
+						<ContextMenuItem
+							label="Uncommit {multiSelect.commitIds.length} commits"
+							icon="undo"
+							testId={TestId.CommitRowContextMenu_UncommitSelected}
+							disabled={isReadOnly}
+							onclick={() => {
+								if (!isReadOnly) {
+									multiSelect.onUncommitSelected();
+									close();
+								}
+							}}
+						/>
+					</ContextMenuSection>
+				{:else}
+					<!-- Single-commit actions -->
+					{@const { onUncommitClick, onEditMessageClick } = contextData}
+					<ContextMenuSection>
+						<ContextMenuItem
+							label="Uncommit"
+							icon="undo"
+							testId={TestId.CommitRowContextMenu_UncommitMenuButton}
+							disabled={isReadOnly}
+							onclick={(e: MouseEvent) => {
+								if (!isReadOnly) {
+									onUncommitClick?.(e);
+									close();
+								}
+							}}
+						/>
+						<ContextMenuItem
+							label="Reword commit"
+							icon="edit"
+							testId={TestId.CommitRowContextMenu_EditMessageMenuButton}
+							disabled={isReadOnly}
+							onclick={(e: MouseEvent) => {
+								if (!isReadOnly) {
+									onEditMessageClick?.(e);
+									close();
+								}
+							}}
+						/>
+						<ContextMenuItem
+							label="Edit commit"
+							icon="commit-edit"
+							testId={TestId.CommitRowContextMenu_EditCommit}
+							disabled={isReadOnly}
+							onclick={async () => {
+								if (!isReadOnly && contextData.stackId) {
+									await handleEditPatch(commitId, contextData.stackId);
+									close();
+								}
+							}}
+						/>
+					</ContextMenuSection>
+				{/if}
+			{/if}
+
+			{#if !isMultiSelect}
+				<ContextMenuSection>
+					{#if commitUrl}
+						<ContextMenuItem
+							label="Open in browser"
+							icon="open-in-browser"
+							onclick={async () => {
+								await urlService.openExternalUrl(commitUrl);
+								close();
+							}}
+						/>
+					{/if}
+					<ContextMenuItemSubmenu label="Copy" icon="copy">
+						{#snippet submenu({ close: closeSubmenu })}
+							<ContextMenuSection>
+								{#if commitUrl}
+									<ContextMenuItem
+										label="Copy commit link"
+										onclick={() => {
+											clipboardService.write(commitUrl, { message: "Commit link copied" });
+											closeSubmenu();
+											close();
+										}}
+									/>
+								{/if}
+								<ContextMenuItem
+									label="Copy commit hash"
+									onclick={() => {
+										clipboardService.write(commitId, { message: "Commit hash copied" });
+										closeSubmenu();
+										close();
+									}}
+								/>
+								<ContextMenuItem
+									label="Copy commit message"
+									onclick={() => {
+										clipboardService.write(commitMessage, { message: "Commit message copied" });
+										closeSubmenu();
+										close();
+									}}
+								/>
+							</ContextMenuSection>
+						{/snippet}
+					</ContextMenuItemSubmenu>
+					{#if isLocal}
+						{@const stackId = contextData.stackId}
+
+						<ContextMenuItemSubmenu label="Add empty commit" icon="commit-plus">
+							{#snippet submenu({ close: closeSubmenu })}
+								<ContextMenuSection>
+									<ContextMenuItem
+										label="Add empty commit above"
+										disabled={isReadOnly || commitInsertion.current.isLoading}
+										onclick={() => {
+											insertBlankCommit(ensureValue(stackId), commitId, "above");
+											closeSubmenu();
+											close();
+										}}
+									/>
+									<ContextMenuItem
+										label="Add empty commit below"
+										disabled={isReadOnly || commitInsertion.current.isLoading}
+										onclick={() => {
+											insertBlankCommit(ensureValue(stackId), commitId, "below");
+											closeSubmenu();
+											close();
+										}}
+									/>
+								</ContextMenuSection>
+							{/snippet}
+						</ContextMenuItemSubmenu>
+						<ContextMenuItemSubmenu label="Create branch" icon="branch">
+							{#snippet submenu({ close: closeSubmenu })}
+								<ContextMenuSection>
+									<ContextMenuItem
+										label="Add branch above"
+										disabled={isReadOnly || refCreation.current.isLoading}
+										onclick={async () => {
+											if (!isReadOnly) {
+												await handleCreateNewRef(ensureValue(stackId), commitId, "Above");
+												closeSubmenu();
+												close();
+											}
+										}}
+									/>
+									<ContextMenuItem
+										label="Add branch below"
+										disabled={isReadOnly || refCreation.current.isLoading}
+										onclick={async () => {
+											if (!isReadOnly) {
+												await handleCreateNewRef(ensureValue(stackId), commitId, "Below");
+												closeSubmenu();
+												close();
+											}
+										}}
+									/>
+								</ContextMenuSection>
+							{/snippet}
+						</ContextMenuItemSubmenu>
+					{/if}
+				</ContextMenuSection>
+
+				{#if "stackId" in contextData && contextData.stackId}
+					{@const ctxStackId = contextData.stackId}
+					<IrcSendToSubmenus
+						{projectId}
+						disabled={sending}
+						onSend={(target) => sendCommitToChannel(target, commitId, commitMessage, ctxStackId)}
+						closeMenu={close}
+					/>
+				{/if}
+
 				<ContextMenuSection>
 					<ContextMenuItem
-						label="Uncommit"
-						icon="undo"
-						testId={TestId.CommitRowContextMenu_UncommitMenuButton}
-						disabled={isReadOnly}
-						onclick={(e: MouseEvent) => {
-							if (!isReadOnly) {
-								onUncommitClick?.(e);
-								close();
-							}
-						}}
-					/>
-					<ContextMenuItem
-						label="Reword commit"
-						icon="edit"
-						testId={TestId.CommitRowContextMenu_EditMessageMenuButton}
-						disabled={isReadOnly}
-						onclick={(e: MouseEvent) => {
-							if (!isReadOnly) {
-								onEditMessageClick?.(e);
-								close();
-							}
-						}}
-					/>
-					<ContextMenuItem
-						label="Edit commit"
-						icon="commit-edit"
-						testId={TestId.CommitRowContextMenu_EditCommit}
-						disabled={isReadOnly}
-						onclick={async () => {
-							if (!isReadOnly && contextData.stackId) {
-								await handleEditPatch(commitId, contextData.stackId);
-								close();
-							}
+						label={$rewrapCommitMessage ? "Show original wrapping" : "Rewrap message"}
+						icon="text-wrap"
+						disabled={commitInsertion.current.isLoading}
+						onclick={() => {
+							rewrapCommitMessage.set(!$rewrapCommitMessage);
+							close();
 						}}
 					/>
 				</ContextMenuSection>
 			{/if}
-			<ContextMenuSection>
-				{#if commitUrl}
-					<ContextMenuItem
-						label="Open in browser"
-						icon="open-in-browser"
-						onclick={async () => {
-							await urlService.openExternalUrl(commitUrl);
-							close();
-						}}
-					/>
-				{/if}
-				<ContextMenuItemSubmenu label="Copy" icon="copy">
-					{#snippet submenu({ close: closeSubmenu })}
-						<ContextMenuSection>
-							{#if commitUrl}
-								<ContextMenuItem
-									label="Copy commit link"
-									onclick={() => {
-										clipboardService.write(commitUrl, { message: "Commit link copied" });
-										closeSubmenu();
-										close();
-									}}
-								/>
-							{/if}
-							<ContextMenuItem
-								label="Copy commit hash"
-								onclick={() => {
-									clipboardService.write(commitId, { message: "Commit hash copied" });
-									closeSubmenu();
-									close();
-								}}
-							/>
-							<ContextMenuItem
-								label="Copy commit message"
-								onclick={() => {
-									clipboardService.write(commitMessage, { message: "Commit message copied" });
-									closeSubmenu();
-									close();
-								}}
-							/>
-						</ContextMenuSection>
-					{/snippet}
-				</ContextMenuItemSubmenu>
-				{#if contextData.commitStatus === "LocalAndRemote" || contextData.commitStatus === "LocalOnly"}
-					{@const stackId = contextData.stackId}
-
-					<ContextMenuItemSubmenu label="Add empty commit" icon="commit-plus">
-						{#snippet submenu({ close: closeSubmenu })}
-							<ContextMenuSection>
-								<ContextMenuItem
-									label="Add empty commit above"
-									disabled={isReadOnly || commitInsertion.current.isLoading}
-									onclick={() => {
-										insertBlankCommit(ensureValue(stackId), commitId, "above");
-										closeSubmenu();
-										close();
-									}}
-								/>
-								<ContextMenuItem
-									label="Add empty commit below"
-									disabled={isReadOnly || commitInsertion.current.isLoading}
-									onclick={() => {
-										insertBlankCommit(ensureValue(stackId), commitId, "below");
-										closeSubmenu();
-										close();
-									}}
-								/>
-							</ContextMenuSection>
-						{/snippet}
-					</ContextMenuItemSubmenu>
-					<ContextMenuItemSubmenu label="Create branch" icon="branch">
-						{#snippet submenu({ close: closeSubmenu })}
-							<ContextMenuSection>
-								<ContextMenuItem
-									label="Add branch above"
-									disabled={isReadOnly || refCreation.current.isLoading}
-									onclick={async () => {
-										if (!isReadOnly) {
-											await handleCreateNewRef(ensureValue(stackId), commitId, "Above");
-											closeSubmenu();
-											close();
-										}
-									}}
-								/>
-								<ContextMenuItem
-									label="Add branch below"
-									disabled={isReadOnly || refCreation.current.isLoading}
-									onclick={async () => {
-										if (!isReadOnly) {
-											await handleCreateNewRef(ensureValue(stackId), commitId, "Below");
-											closeSubmenu();
-											close();
-										}
-									}}
-								/>
-							</ContextMenuSection>
-						{/snippet}
-					</ContextMenuItemSubmenu>
-				{/if}
-			</ContextMenuSection>
-
-			{#if "stackId" in contextData && contextData.stackId}
-				{@const ctxStackId = contextData.stackId}
-				<IrcSendToSubmenus
-					{projectId}
-					disabled={sending}
-					onSend={(target) => sendCommitToChannel(target, commitId, commitMessage, ctxStackId)}
-					closeMenu={close}
-				/>
-			{/if}
-
-			<ContextMenuSection>
-				<ContextMenuItem
-					label={$rewrapCommitMessage ? "Show original wrapping" : "Rewrap message"}
-					icon="text-wrap"
-					disabled={commitInsertion.current.isLoading}
-					onclick={() => {
-						rewrapCommitMessage.set(!$rewrapCommitMessage);
-						close();
-					}}
-				/>
-			</ContextMenuSection>
 		{/snippet}
 	</KebabButton>
 {/if}

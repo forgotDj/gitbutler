@@ -18,6 +18,7 @@ export class ReorderCommitDzHandler implements DropzoneHandler {
 
 	accepts(data: unknown) {
 		if (!(data instanceof CommitDropData)) return false;
+		if (data.isMultiCommit) return false;
 		if (data.stackId !== this.branchId) return false;
 
 		// Do not show dropzones directly above or below the commit in question

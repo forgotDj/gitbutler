@@ -23,6 +23,8 @@
 		lastCommit?: boolean;
 		lastBranch?: boolean;
 		selected?: boolean;
+		/** When true, expand the changed files panel. Defaults to `selected`. */
+		expandChangedFiles?: boolean;
 		opacity?: number;
 		borderTop?: boolean;
 		disableCommitActions?: boolean;
@@ -35,7 +37,7 @@
 		reactions?: Reaction[];
 		menu?: Snippet<[{ rightClickTrigger: HTMLElement }]>;
 		changedFiles?: Snippet;
-		onclick?: () => void;
+		onclick?: (event: MouseEvent) => void;
 	};
 
 	type RemoteStatusProps = {
@@ -75,6 +77,7 @@
 		lastCommit,
 		lastBranch,
 		selected,
+		expandChangedFiles,
 		opacity,
 		borderTop,
 		disabled,
@@ -89,6 +92,8 @@
 		changedFiles,
 		...args
 	}: Props = $props();
+
+	const shouldExpandFiles = $derived(expandChangedFiles ?? selected);
 
 	let container = $state<HTMLDivElement>();
 
@@ -126,7 +131,7 @@
 		class:disabled
 		{onclick}
 		use:focusable={{
-			onAction: () => onclick?.(),
+			onAction: () => onclick?.(new MouseEvent("click")),
 			focusable: true,
 		}}
 	>
@@ -226,7 +231,7 @@
 		</div>
 	</div>
 
-	{#if selected && changedFiles}
+	{#if shouldExpandFiles && changedFiles}
 		<div class="changed-files-container">
 			<CommitTimelineNode commitStatus={args.type} hideDot height="0.375rem" />
 			{@render changedFiles()}
