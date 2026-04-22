@@ -35,6 +35,22 @@ pub enum CherryPickOutcome {
     },
 }
 
+/// Controls how parent trees are merged during cherry-pick.
+///
+/// When cherry-picking a commit with multiple parents, both the old parents
+/// (base) and the new parents (ontos) are merged pairwise. This enum controls
+/// the merge options used for that pairwise merging.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum TreeMergeMode {
+    /// Merge with rename detection enabled (default).
+    #[default]
+    WithRenames,
+    /// Merge with rename detection disabled.
+    /// Useful when parents are independent and renames detected across them
+    /// would be false positives.
+    WithoutRenames,
+}
+
 /// Controls when a commit is cherry-picked during a rebase.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PickMode {
@@ -65,12 +81,14 @@ pub enum PickMode {
 /// X's "base" sub-tree as the base.
 ///
 /// `pick_mode` - controls how to determine if a commit should be cherry-picked.
+/// `tree_merge_mode` - controls how parent trees are merged for merge commits.
 /// `sign_commit` - controls how the resulting commit is signed.
 pub fn cherry_pick(
     repo: &gix::Repository,
     target: gix::ObjectId,
     ontos: &[gix::ObjectId],
     pick_mode: PickMode,
+    tree_merge_mode: TreeMergeMode,
     sign_commit: SignCommit,
 ) -> Result<CherryPickOutcome> {
     let target = but_core::Commit::from_id(target.attach(repo))?;
@@ -80,11 +98,11 @@ pub fn cherry_pick(
         return Ok(CherryPickOutcome::Identity(target.id.detach()));
     }
 
-    let base_t = find_base_tree(&target)?;
+    let base_t = find_base_tree(&target, tree_merge_mode)?;
     // We always want the "theirs-ist" side of the target if it's conflicted.
     let target_t = find_real_tree(&target, TreeKind::Theirs)?;
     // We want to cherry-pick onto the merge result.
-    let onto_t = tree_from_merging_commits(repo, ontos, TreeKind::AutoResolution)?;
+    let onto_t = merged_tree_from_commits(repo, ontos, tree_merge_mode, TreeKind::AutoResolution)?;
 
     match (&base_t, &onto_t) {
         (MergeOutcome::NoCommit, MergeOutcome::NoCommit) if pick_mode == PickMode::Force => {
@@ -191,20 +209,29 @@ impl MergeOutcome {
     }
 }
 
-fn find_base_tree(target: &but_core::Commit) -> Result<MergeOutcome> {
+fn find_base_tree(
+    target: &but_core::Commit,
+    tree_merge_mode: TreeMergeMode,
+) -> Result<MergeOutcome> {
     if target.is_conflicted() {
         Ok(MergeOutcome::Success(
             find_real_tree(target, TreeKind::Base)?.detach(),
         ))
     } else {
-        tree_from_merging_commits(target.id.repo, &target.parents, TreeKind::AutoResolution)
+        merged_tree_from_commits(
+            target.id.repo,
+            &target.parents,
+            tree_merge_mode,
+            TreeKind::AutoResolution,
+        )
     }
 }
 
-/// Merge together many commits, making use of the preferenced tree.
-fn tree_from_merging_commits(
+/// Merge together many commits, making use of the preferred tree.
+fn merged_tree_from_commits(
     repo: &gix::Repository,
     commits: &[gix::ObjectId],
+    tree_merge_mode: TreeMergeMode,
     preference: TreeKind,
 ) -> Result<MergeOutcome> {
     let mut to_merge = commits.to_vec();
@@ -231,7 +258,12 @@ fn tree_from_merging_commits(
 
         let commit = but_core::Commit::from_id(commit.attach(repo))?;
         let tree = find_real_tree(&commit, preference)?;
-        let (options, conflicts) = repo.merge_options_fail_fast()?;
+        // When parents are independent, rename detection can produce false
+        // positives across them, silently swallowing clean file deletions.
+        let (options, conflicts) = match tree_merge_mode {
+            TreeMergeMode::WithRenames => repo.merge_options_fail_fast()?,
+            TreeMergeMode::WithoutRenames => repo.merge_options_no_rewrites_fail_fast()?,
+        };
 
         let mut output = repo.merge_trees(
             peel_to_tree_or_empty(repo, base)?,

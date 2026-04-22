@@ -16,7 +16,7 @@ use gix::refs::transaction::RefEdit;
 
 use crate::graph_rebase::util::collect_ordered_parents;
 
-use crate::graph_rebase::cherry_pick::PickMode;
+use crate::graph_rebase::cherry_pick::{PickMode, TreeMergeMode};
 pub mod cherry_pick;
 pub mod commit;
 pub mod materialize;
@@ -39,9 +39,6 @@ pub struct Pick {
     /// If this is Some, the commit WILL NOT be picked onto the parents the
     /// graph implies but instead on to the parents listed here.
     pub preserved_parents: Option<Vec<gix::ObjectId>>,
-    /// If set to false, a rebase will fail if this commit results in a
-    /// conflicted state.
-    pub conflictable: bool,
     /// Controls under what circumstances the commit is cherry-picked.
     pub pick_mode: PickMode,
     /// Controls whether the resulting commit is signed.
@@ -55,6 +52,13 @@ pub struct Pick {
     /// creating a new commit since the the mappings will be non-sensical to the
     /// frontend consumers.
     pub exclude_from_tracking: bool,
+    /// If set to false, the rebase will fail if this commit results in a
+    /// conflicted state. The cherry-pick still runs and creates the
+    /// conflicted commit — this check happens afterwards in [`Editor::rebase`].
+    pub conflictable: bool,
+    /// Controls how parent trees are merged during cherry-pick.
+    /// See [`TreeMergeMode`] for details.
+    pub tree_merge_mode: TreeMergeMode,
 }
 
 impl Pick {
@@ -63,10 +67,11 @@ impl Pick {
         Self {
             id,
             preserved_parents: None,
-            conflictable: true,
             pick_mode: PickMode::IfChanged,
             sign_commit: SignCommit::IfSignCommitsEnabled,
             exclude_from_tracking: false,
+            conflictable: true,
+            tree_merge_mode: TreeMergeMode::WithRenames,
         }
     }
 
@@ -85,10 +90,11 @@ impl Pick {
         Self {
             id,
             preserved_parents: None,
-            conflictable: false,
             pick_mode: PickMode::IfChanged,
             sign_commit: SignCommit::No,
             exclude_from_tracking: false,
+            conflictable: false,
+            tree_merge_mode: TreeMergeMode::WithoutRenames,
         }
     }
 }
@@ -435,7 +441,10 @@ mod test {
 
     use but_core::commit::SignCommit;
 
-    use crate::graph_rebase::{Pick, cherry_pick::PickMode};
+    use crate::graph_rebase::{
+        Pick,
+        cherry_pick::{PickMode, TreeMergeMode},
+    };
 
     #[test]
     fn workspace_commit_defaults() -> anyhow::Result<()> {
@@ -446,10 +455,11 @@ mod test {
             Pick {
                 id: object_id,
                 preserved_parents: None,
-                conflictable: false,
                 pick_mode: PickMode::IfChanged,
                 sign_commit: SignCommit::No,
-                exclude_from_tracking: false
+                exclude_from_tracking: false,
+                conflictable: false,
+                tree_merge_mode: TreeMergeMode::WithoutRenames,
             }
         );
 
@@ -465,10 +475,11 @@ mod test {
             Pick {
                 id: object_id,
                 preserved_parents: None,
-                conflictable: true,
                 pick_mode: PickMode::IfChanged,
                 sign_commit: SignCommit::IfSignCommitsEnabled,
-                exclude_from_tracking: false
+                exclude_from_tracking: false,
+                conflictable: true,
+                tree_merge_mode: TreeMergeMode::WithRenames,
             }
         );
 

@@ -73,6 +73,7 @@ impl<'ws, 'graph, M: RefMetadata> Editor<'ws, 'graph, M> {
                         pick.id,
                         &ontos,
                         pick.pick_mode,
+                        pick.tree_merge_mode,
                         pick.sign_commit,
                     )?;
 
