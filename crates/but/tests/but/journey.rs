@@ -76,13 +76,13 @@ More info: https://docs.gitbutler.com/workspace-branch
 
 
 
- ██████▄      ▄██████    ██████╗ ██╗   ██╗████████╗
- ██▀▀▀▀██▄  ▄██▀▀▀▀██    ██╔══██╗██║   ██║╚══██╔══╝
- ██     ▀████▀     ██    ██████╔╝██║   ██║   ██║
- ██▄▄▄▄██▀  ▀██▄▄▄▄██    ██╔══██╗██║   ██║   ██║
- ██████▀      ▀██████    ██████╔╝╚██████╔╝   ██║
+██▄      ▄██  ▀██▀▀█▄ ▀██▀ ▀██▀ █▀▀██▀▀█
+████▄  ▄████   ██  ██  ██   ██  ▀  ██  ▀
+████████████   ██▀▀█▄  ██   ██     ██
+████▀  ▀████   ██  ██  ██   ██     ██
+██▀      ▀██  ▄██▄▄█▀  ▀█▄▄▄█▀   ▄▄██▄▄
 
-The command-line interface for GitButler
+The command-line interface for GitButler ⋈
 
 $ but branch new <name>                       Create a new branch
 $ but status                                  View workspace status
@@ -121,13 +121,13 @@ Target branch: gb-local/main
 
 
 
- ██████▄      ▄██████    ██████╗ ██╗   ██╗████████╗
- ██▀▀▀▀██▄  ▄██▀▀▀▀██    ██╔══██╗██║   ██║╚══██╔══╝
- ██     ▀████▀     ██    ██████╔╝██║   ██║   ██║
- ██▄▄▄▄██▀  ▀██▄▄▄▄██    ██╔══██╗██║   ██║   ██║
- ██████▀      ▀██████    ██████╔╝╚██████╔╝   ██║
+██▄      ▄██  ▀██▀▀█▄ ▀██▀ ▀██▀ █▀▀██▀▀█
+████▄  ▄████   ██  ██  ██   ██  ▀  ██  ▀
+████████████   ██▀▀█▄  ██   ██     ██
+████▀  ▀████   ██  ██  ██   ██     ██
+██▀      ▀██  ▄██▄▄█▀  ▀█▄▄▄█▀   ▄▄██▄▄
 
-The command-line interface for GitButler
+The command-line interface for GitButler ⋈
 
 $ but branch new <name>                       Create a new branch
 $ but status                                  View workspace status
