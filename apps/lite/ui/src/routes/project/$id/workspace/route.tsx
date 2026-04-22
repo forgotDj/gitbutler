@@ -1128,13 +1128,7 @@ const ChangesSectionRow: FC<{
 			label: "Absorb",
 			enabled: changes.length > 0,
 			onSelect: () => {
-				onAbsorbChanges({
-					type: "treeChanges",
-					subject: {
-						changes,
-						assignedStackId: null,
-					},
-				});
+				onAbsorbChanges({ type: "all" });
 			},
 		},
 	];

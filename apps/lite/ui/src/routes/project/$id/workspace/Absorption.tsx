@@ -56,17 +56,7 @@ export const resolveAbsorptionTarget = ({
 					},
 				};
 			},
-			ChangesSection: () => {
-				if (!worktreeChanges) return null;
-
-				return {
-					type: "treeChanges",
-					subject: {
-						changes: worktreeChanges.changes,
-						assignedStackId: null,
-					},
-				};
-			},
+			ChangesSection: () => ({ type: "all" }),
 			Hunk: ({ parent, path, hunkHeader }) => {
 				if (parent._tag !== "Change") return null;
 
