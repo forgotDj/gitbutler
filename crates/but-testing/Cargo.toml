@@ -23,6 +23,7 @@ testing = ["dep:gitbutler-commit"]
 
 [dependencies]
 but-settings.workspace = true
+but-api.workspace = true
 but-core.workspace = true
 but-db = { workspace = true, features = ["poll"] }
 but-workspace = {workspace = true, features = ["legacy"]}
