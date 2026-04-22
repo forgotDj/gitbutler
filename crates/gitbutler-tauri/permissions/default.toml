@@ -171,7 +171,6 @@ commands.allow = [
   "push_base_branch",
   "push_stack",
   "remove_branch",
-  "reorder_stack",
   "resolve_upstream_integration",
   "restore_snapshot",
   "save_edit_and_return_to_workspace",

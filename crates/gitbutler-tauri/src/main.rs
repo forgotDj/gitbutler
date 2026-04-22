@@ -354,7 +354,6 @@ fn main() -> anyhow::Result<()> {
                 legacy::virtual_branches::tauri_update_stack_order::update_stack_order,
                 legacy::virtual_branches::tauri_unapply_stack::unapply_stack,
                 legacy::virtual_branches::tauri_create_virtual_branch_from_branch::create_virtual_branch_from_branch,
-                legacy::virtual_branches::tauri_reorder_stack::reorder_stack,
                 legacy::virtual_branches::tauri_list_branches::list_branches,
                 legacy::virtual_branches::tauri_get_branch_listing_details::get_branch_listing_details,
                 legacy::virtual_branches::tauri_integrate_branch_with_steps::integrate_branch_with_steps,

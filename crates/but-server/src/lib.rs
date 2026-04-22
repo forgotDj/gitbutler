@@ -925,10 +925,6 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(legacy::virtual_branches::unapply_stack_cmd),
         )
         .route(
-            "/reorder_stack",
-            but_post(legacy::virtual_branches::reorder_stack_cmd),
-        )
-        .route(
             "/commit_insert_blank",
             but_post(commit::insert_blank::commit_insert_blank_cmd),
         )
