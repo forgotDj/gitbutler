@@ -134,10 +134,15 @@ pub trait OplogExt {
         guard: &mut RepoExclusive,
     ) -> Result<gix::ObjectId>;
 
-    /// Returns the diff of the snapshot and it's parent. It only includes the workdir changes.
+    /// Returns the diff showing what this snapshot's operation changed.
     ///
-    /// This is useful to show what has changed in this particular snapshot
-    fn snapshot_diff(&self, sha: gix::ObjectId) -> Result<Vec<TreeChange>>;
+    /// When `child_id` is provided, it is used as the "after" state directly,
+    /// avoiding an O(n) walk from the oplog head to find it.
+    fn snapshot_diff(
+        &self,
+        sha: gix::ObjectId,
+        child_id: Option<gix::ObjectId>,
+    ) -> Result<Vec<TreeChange>>;
 
     /// Gets a specific snapshot by its commit sha.
     fn get_snapshot(&self, sha: gix::ObjectId) -> Result<Snapshot>;
@@ -290,19 +295,37 @@ impl OplogExt for Context {
         restore_snapshot(self, snapshot_commit_id, guard)
     }
 
-    fn snapshot_diff(&self, sha: gix::ObjectId) -> Result<Vec<TreeChange>> {
+    fn snapshot_diff(
+        &self,
+        sha: gix::ObjectId,
+        child_id: Option<gix::ObjectId>,
+    ) -> Result<Vec<TreeChange>> {
         let repo = self.clone_repo_for_merging()?;
-        let commit = repo.find_commit(sha)?;
-        let wd_tree_id = tree_from_applied_vbranches(&repo, commit.id, self)?;
 
-        // Handle the case where this is the first snapshot (no parent)
-        let old_wd_tree_id = commit
-            .parent_ids()
-            .next()
-            .map(|parent_id| tree_from_applied_vbranches(&repo, parent_id.detach(), self))
-            .transpose()?;
+        // Each snapshot captures the state BEFORE its operation, so to show what
+        // the operation changed we need to diff this snapshot (before) against the
+        // next snapshot (after the operation ran). The next snapshot is the child
+        // commit — the one whose parent is `sha`.
+        let before_tree_id = tree_from_applied_vbranches(&repo, sha, self)?;
 
-        tree_changes(&repo, old_wd_tree_id, wd_tree_id)
+        let resolved_child = match child_id {
+            Some(id) => Some(id),
+            None => find_oplog_child(&repo, self, sha)?,
+        };
+        let after_tree_id = match resolved_child {
+            Some(child_id) => tree_from_applied_vbranches(&repo, child_id, self)?,
+            None => {
+                // This is the oplog head (most recent snapshot). The operation has
+                // completed but no subsequent snapshot exists yet, so diff against the
+                // current workspace commit tree.
+                let workspace_ref: &gix::refs::FullNameRef =
+                    "refs/heads/gitbutler/workspace".try_into()?;
+                let ws_commit = repo.find_reference(workspace_ref)?.peel_to_commit()?;
+                ws_commit.tree_id()?.detach()
+            }
+        };
+
+        tree_changes(&repo, Some(before_tree_id), after_tree_id)
     }
 
     fn snapshot_workspace_tree(&self, sha: gix::ObjectId) -> Result<gix::ObjectId> {
@@ -842,7 +865,15 @@ fn tree_from_applied_vbranches(
     let snapshot_commit = repo.find_commit(snapshot_commit_id)?;
     let snapshot_tree = snapshot_commit.tree()?;
 
-    // If the `worktree` subtree is available, we should return that instead
+    // Prefer the workspace commit tree over the worktree tree.
+    // The worktree tree captures the entire working directory state (including uncommitted
+    // and untracked files), so diffing consecutive worktree trees shows all file changes
+    // that accumulated between operations — not just what the operation itself changed.
+    // The workspace commit tree only reflects committed branch state, giving accurate diffs.
+    if let Some(tree) = snapshot_tree.lookup_entry_by_path("virtual_branches/workspace/tree")? {
+        return Ok(tree.id().detach());
+    }
+    // Fall back to worktree for older snapshots that don't have a workspace tree.
     if let Some(tree) = snapshot_tree.lookup_entry_by_path("worktree")? {
         return Ok(tree.id().detach());
     }
@@ -899,4 +930,31 @@ fn tree_from_applied_vbranches(
     }
 
     Ok(workdir_tree_id)
+}
+
+/// Walk the oplog from its head to find the child of `target_id` (the commit whose parent is `target_id`).
+/// Returns `None` if `target_id` is the oplog head (no child exists yet).
+fn find_oplog_child(
+    repo: &gix::Repository,
+    ctx: &Context,
+    target_id: gix::ObjectId,
+) -> Result<Option<gix::ObjectId>> {
+    let oplog_state = OplogHandle::new(&ctx.project_data_dir());
+    let Some(head_id) = oplog_state.oplog_head()? else {
+        return Ok(None);
+    };
+    if head_id == target_id {
+        return Ok(None);
+    }
+
+    let mut current = head_id;
+    loop {
+        let commit = repo.find_commit(current)?;
+        let parent_id = commit.parent_ids().next().map(|id| id.detach());
+        match parent_id {
+            Some(pid) if pid == target_id => return Ok(Some(current)),
+            Some(pid) => current = pid,
+            None => return Ok(None),
+        }
+    }
 }

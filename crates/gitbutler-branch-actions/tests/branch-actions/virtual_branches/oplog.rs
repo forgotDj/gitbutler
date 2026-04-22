@@ -571,7 +571,7 @@ fn first_snapshot_diff_works() -> anyhow::Result<()> {
 
     // Test snapshot_diff on all snapshots to make sure none fail (including the first one)
     for snapshot in &snapshots {
-        let diff_result = ctx.snapshot_diff(snapshot.commit_id);
+        let diff_result = ctx.snapshot_diff(snapshot.commit_id, None);
         assert!(
             diff_result.is_ok(),
             "snapshot_diff should work for snapshot {}, got error: {:?}",

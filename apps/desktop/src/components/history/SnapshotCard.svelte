@@ -14,6 +14,7 @@
 
 	interface Props {
 		entry: Snapshot;
+		childId?: string;
 		isWithinRestore?: boolean;
 		restoring?: boolean;
 		onRestoreClick: () => void;
@@ -24,6 +25,7 @@
 	const {
 		projectId,
 		entry,
+		childId,
 		isWithinRestore = true,
 		restoring = false,
 		onRestoreClick,
@@ -182,7 +184,9 @@
 	const mode = $derived(modeService.mode(projectId));
 
 	const historyService = inject(HISTORY_SERVICE);
-	const snapshotDiff = $derived(historyService.snapshotDiff({ projectId, snapshotId: entry.id }));
+	const snapshotDiff = $derived(
+		historyService.snapshotDiff({ projectId, snapshotId: entry.id, childId }),
+	);
 </script>
 
 <div
