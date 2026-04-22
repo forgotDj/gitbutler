@@ -1,7 +1,3 @@
-import {
-	getMoveCommitIllegalActionMessage,
-	type MoveCommitIllegalAction,
-} from "$lib/commits/commit";
 import { changesToDiffSpec } from "$lib/commits/utils";
 import {
 	FileChangeDropData,
@@ -9,9 +5,11 @@ import {
 	HunkDropDataV3,
 	type ChangeDropData,
 } from "$lib/dragging/draggables";
+import { parseError } from "$lib/error/parser";
 import { showError } from "$lib/error/showError";
 import { HOOKS_SERVICE } from "$lib/git/hooksService";
 import { showToast } from "$lib/notifications/toasts";
+import { toCommitMovePlacement } from "$lib/stacks/commitMovePlacement";
 import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
 import { UI_STATE, withStackBusy, type UiState } from "$lib/state/uiState.svelte";
 import { inject } from "@gitbutler/core/context";
@@ -55,18 +53,12 @@ export class MoveCommitDzHandler implements DropzoneHandler {
 		);
 	}
 
-	private handleIllegalMoveResponse(illegalMove: MoveCommitIllegalAction | null) {
-		if (illegalMove) {
-			const message = getMoveCommitIllegalActionMessage(illegalMove);
-			showToast({
-				style: "warning",
-				title: "Cannot move commit",
-				message,
-			});
-		}
-	}
-
 	async ondrop(data: CommitDropData): Promise<void> {
+		const { relativeTo, side } = toCommitMovePlacement({
+			targetBranchName: this.targetBranchName,
+			targetCommitId: "top",
+		});
+
 		// Clear the selection from the source lane if this commit was selected
 		const sourceSelection = untrack(() => this.uiState.lane(data.stackId).selection.current);
 		if (sourceSelection?.commitId === data.commit.id) {
@@ -78,14 +70,22 @@ export class MoveCommitDzHandler implements DropzoneHandler {
 			this.projectId,
 			{ commitId: data.commit.id, stackIds: [data.stackId, this.stackId] },
 			async () => {
-				const response = await this.stackService.moveCommit({
-					projectId: this.projectId,
-					targetStackId: this.stackId,
-					targetBranchName: this.targetBranchName,
-					commitId: data.commit.id,
-					sourceStackId: data.stackId,
-				});
-				this.handleIllegalMoveResponse(response);
+				try {
+					await this.stackService.commitMove({
+						projectId: this.projectId,
+						subjectCommitIds: [data.commit.id],
+						relativeTo,
+						side,
+						dryRun: false,
+					});
+				} catch (error) {
+					const { description, message } = parseError(error);
+					showToast({
+						style: "warning",
+						title: "Cannot move commit",
+						message: description ?? message,
+					});
+				}
 			},
 		);
 	}

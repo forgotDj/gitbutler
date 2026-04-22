@@ -1,7 +1,7 @@
 import { buildStackEndpoints } from "$lib/stacks/stackEndpoints";
+import { invalidatesList, ReduxTag } from "$lib/state/tags";
 import { describe, expect, test } from "vitest";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
-import type { CommitMoveResult } from "@gitbutler/but-sdk";
 
 function createEndpointBuilder(): BackendEndpointBuilder {
 	return {
@@ -34,11 +34,11 @@ describe("buildStackEndpoints", () => {
 		});
 	});
 
-	test("maps moveCommit to commit_move at the top of the destination stack", () => {
+	test("uses commit_move for generic commit moves", () => {
 		const endpoints = buildStackEndpoints(createEndpointBuilder());
-		const query = endpoints.moveCommit.query;
+		const query = endpoints.commitMove.query;
 
-		expect(endpoints.moveCommit.extraOptions).toEqual({
+		expect(endpoints.commitMove.extraOptions).toEqual({
 			command: "commit_move",
 			actionName: "Move Commit",
 		});
@@ -46,40 +46,30 @@ describe("buildStackEndpoints", () => {
 		expect(
 			query?.({
 				projectId: "project-1",
-				sourceStackId: "stack-1",
-				commitId: "commit-1",
-				targetStackId: "stack-2",
-				targetBranchName: "feature/target",
+				subjectCommitIds: ["commit-1"],
+				relativeTo: {
+					type: "commit",
+					subject: "commit-2",
+				},
+				side: "below",
+				dryRun: false,
 			}),
 		).toEqual({
 			projectId: "project-1",
 			subjectCommitIds: ["commit-1"],
-			relativeTo: {
-				type: "reference",
-				subject: "refs/heads/feature/target",
-			},
+			relativeTo: { type: "commit", subject: "commit-2" },
 			side: "below",
 			dryRun: false,
 		});
 	});
 
-	test("keeps moveCommit response compatible with the legacy drag/drop caller", () => {
+	test("invalidates branch and worktree state after commit moves", () => {
 		const endpoints = buildStackEndpoints(createEndpointBuilder());
 
-		const response = {
-			workspace: {
-				replacedCommits: {},
-			},
-		} as unknown as CommitMoveResult;
-
-		expect(
-			endpoints.moveCommit.transformResponse?.(response, undefined, {
-				projectId: "project-1",
-				sourceStackId: "stack-1",
-				commitId: "commit-1",
-				targetStackId: "stack-2",
-				targetBranchName: "feature/target",
-			}),
-		).toBeNull();
+		expect(endpoints.commitMove.invalidatesTags).toEqual([
+			invalidatesList(ReduxTag.HeadSha),
+			invalidatesList(ReduxTag.WorktreeChanges),
+			invalidatesList(ReduxTag.BranchChanges),
+		]);
 	});
 });

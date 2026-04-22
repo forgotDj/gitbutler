@@ -1,4 +1,5 @@
 import { ConflictEntries, type ConflictEntriesObj } from "$lib/files/conflicts";
+import { normalizeReferenceSubject } from "$lib/stacks/commitMovePlacement";
 import { createSelectByIds, createSelectNth } from "$lib/state/customSelectors";
 import {
 	invalidatesItem,
@@ -8,7 +9,6 @@ import {
 	ReduxTag,
 } from "$lib/state/tags";
 import { createEntityAdapter, type EntityState } from "@reduxjs/toolkit";
-import type { MoveCommitIllegalAction } from "$lib/commits/commit";
 import type {
 	Stack,
 	CreateRefRequest,
@@ -32,7 +32,6 @@ import type {
 	DiffSpec,
 	MoveChangesResult,
 	CommitCreateResult,
-	CommitMoveResult,
 	CommitRewordResult,
 	CommitInsertBlankResult,
 	RejectionReason,
@@ -160,25 +159,6 @@ export function toCommitCreatePlacement(args: CreateCommitRequest): {
 		relativeTo: {
 			type: "reference",
 			subject: normalizeReferenceSubject(args.stackBranchName),
-		},
-		side: "below",
-	};
-}
-
-function normalizeReferenceSubject(referenceName: string): string {
-	return referenceName.startsWith("refs/") ? referenceName : `refs/heads/${referenceName}`;
-}
-
-function toBranchTopPlacement(branchName: string): {
-	relativeTo: RelativeTo;
-	side: "above" | "below";
-} {
-	return {
-		// `reference + below` inserts the commit as the new branch tip, matching the
-		// legacy cross-stack `move_commit` behavior.
-		relativeTo: {
-			type: "reference",
-			subject: normalizeReferenceSubject(branchName),
 		},
 		side: "below",
 	};
@@ -714,11 +694,12 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			],
 		}),
 		/**
-		 * Generic commit move wrapper around `commit_move`.
+		 * Generic commit move wrapper around `commit_move` for both reorder and
+		 * cross-stack drag/drop flows.
 		 *
 		 * Callers must provide the exact placement using `relativeTo` and `side`.
-		 * The backend returns workspace state, but the desktop frontend currently
-		 * relies on invalidation rather than consuming that payload directly.
+		 * Targeting a branch reference with `side: "below"` inserts the commit at
+		 * the top of that destination stack.
 		 */
 		commitMove: build.mutation<
 			void,
@@ -732,47 +713,13 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 		>({
 			extraOptions: {
 				command: "commit_move",
-				actionName: "Reorder Stack",
-			},
-			query: (args) => args,
-		}),
-		/**
-		 * Compatibility wrapper for cross-stack drag/drop moves.
-		 *
-		 * This preserves the legacy `moveCommit` contract while translating it to
-		 * the more flexible `commit_move` API, always inserting at the top of the
-		 * destination stack.
-		 */
-		moveCommit: build.mutation<
-			MoveCommitIllegalAction | null,
-			{
-				projectId: string;
-				sourceStackId: string;
-				commitId: string;
-				targetStackId: string;
-				targetBranchName: string;
-			}
-		>({
-			extraOptions: {
-				command: "commit_move",
 				actionName: "Move Commit",
 			},
-			query: ({ projectId, commitId, targetBranchName }) => {
-				const { relativeTo, side } = toBranchTopPlacement(targetBranchName);
-				return {
-					projectId,
-					subjectCommitIds: [commitId],
-					relativeTo,
-					side,
-					dryRun: false,
-				};
-			},
-			transformResponse: (_response: CommitMoveResult) => null,
-			invalidatesTags: (_result, _error, args) => [
+			query: (args) => args,
+			invalidatesTags: [
 				invalidatesList(ReduxTag.HeadSha),
 				invalidatesList(ReduxTag.WorktreeChanges), // Moving commits can cause conflicts
-				invalidatesItem(ReduxTag.BranchChanges, args.sourceStackId),
-				invalidatesItem(ReduxTag.BranchChanges, args.targetStackId),
+				invalidatesList(ReduxTag.BranchChanges),
 			],
 		}),
 		moveBranch: build.mutation<

@@ -1,9 +1,9 @@
 import { CommitDropData } from "$lib/dragging/dropHandlers/commitDropHandler";
+import { toCommitMovePlacement } from "$lib/stacks/commitMovePlacement";
 import { withStackBusy, type UiState } from "$lib/state/uiState.svelte";
 import { InjectionToken } from "@gitbutler/core/context";
 import type { DropzoneHandler } from "$lib/dragging/handler";
 import type { StackService } from "$lib/stacks/stackService.svelte";
-import type { RelativeTo } from "@gitbutler/but-sdk";
 
 export class ReorderCommitDzHandler implements DropzoneHandler {
 	constructor(
@@ -141,34 +141,4 @@ function distanceBetweenDropzones(
 	const targetIndex = dropzoneIds.indexOf(targetDropzoneId);
 
 	return actorIndex - targetIndex;
-}
-
-function normalizeReferenceSubject(referenceName: string): string {
-	return referenceName.startsWith("refs/") ? referenceName : `refs/heads/${referenceName}`;
-}
-
-function toCommitMovePlacement(args: {
-	targetBranchName: string;
-	targetCommitId: string | "top";
-}): {
-	relativeTo: RelativeTo;
-	side: "above" | "below";
-} {
-	if (args.targetCommitId === "top") {
-		return {
-			relativeTo: {
-				type: "reference",
-				subject: normalizeReferenceSubject(args.targetBranchName),
-			},
-			side: "below",
-		};
-	}
-
-	return {
-		relativeTo: {
-			type: "commit",
-			subject: args.targetCommitId,
-		},
-		side: "below",
-	};
 }

@@ -114,10 +114,9 @@ export function getStackServiceMock() {
 		vi.fn(),
 		reactive(() => mockReduxFulfilled({})),
 	];
+	StackServiceMock.prototype.commitMove = vi.fn();
 	StackServiceMock.prototype.reorderStack = [vi.fn(), reactive(() => mockReduxFulfilled({}))];
 	StackServiceMock.prototype.reorderStackMutation = vi.fn();
-	StackServiceMock.prototype.moveCommit = [vi.fn(), reactive(() => mockReduxFulfilled({}))];
-	StackServiceMock.prototype.moveCommitMutation = vi.fn();
 	StackServiceMock.prototype.integrateUpstreamCommits = vi.fn();
 	StackServiceMock.prototype.legacyUnapplyLines = vi.fn();
 	StackServiceMock.prototype.legacyUnapplyHunk = vi.fn();
@@ -130,7 +129,6 @@ export function getStackServiceMock() {
 	StackServiceMock.prototype.squashCommits = vi.fn();
 	StackServiceMock.prototype.squashCommitsMutation = vi.fn();
 	StackServiceMock.prototype.amendCommitMutation = vi.fn();
-	StackServiceMock.prototype.moveCommitFileMutation = vi.fn();
 
 	return StackServiceMock;
 }
