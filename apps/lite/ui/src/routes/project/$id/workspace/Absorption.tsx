@@ -43,6 +43,7 @@ export const resolveAbsorptionTarget = ({
 }): AbsorptionTarget | null =>
 	Match.value(item).pipe(
 		Match.withReturnType<AbsorptionTarget | null>(),
+		Match.tag("ChangesSection", () => ({ type: "all" })),
 		Match.tag("ChangeFile", ({ path }) => {
 			const change = worktreeChanges.changes.find((candidate) => candidate.path === path);
 			if (!change) return null;
@@ -55,7 +56,6 @@ export const resolveAbsorptionTarget = ({
 				},
 			};
 		}),
-		Match.tag("ChangesSection", () => ({ type: "all" })),
 		Match.when({ _tag: "Hunk", parent: { _tag: "Change" } }, ({ path, hunkHeader }) => {
 			const assignment = worktreeChanges.assignments.find(
 				(candidate) =>
