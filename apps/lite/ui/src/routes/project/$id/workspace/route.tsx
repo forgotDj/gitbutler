@@ -1697,7 +1697,7 @@ const ProjectPage: FC = () => {
 
 	const operationMode = getOperationMode(workspaceMode);
 
-	const source = operationMode
+	const resolvedSource = operationMode
 		? resolveOperationSource({
 				operationSource: operationMode.source,
 				queryClient,
@@ -1710,7 +1710,7 @@ const ProjectPage: FC = () => {
 				isOperationModeSourceOrTarget({
 					item,
 					operationMode,
-					source,
+					source: resolvedSource,
 				}),
 			)
 		: navigationIndexUnfiltered;
