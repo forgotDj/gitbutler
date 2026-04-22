@@ -945,10 +945,6 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(legacy::virtual_branches::fetch_from_remotes_cmd),
         )
         .route(
-            "/move_commit",
-            but_post(legacy::virtual_branches::move_commit_cmd),
-        )
-        .route(
             "/move_branch_legacy",
             but_post(legacy::virtual_branches::move_branch_legacy_cmd),
         )

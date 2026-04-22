@@ -157,7 +157,6 @@ commands.allow = [
   "merge_review",
   "message_hook",
   "move_branch_legacy",
-  "move_commit",
   "normalize_branch_name",
   "open_in_terminal",
   "open_project_in_window",

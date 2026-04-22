@@ -26,7 +26,6 @@ use crate::{
     branch_upstream_integration,
     branch_upstream_integration::IntegrationStrategy,
     move_branch::MoveBranchResult,
-    move_commits::{self, MoveCommitIllegalAction},
     upstream_integration::{
         self, BaseBranchResolution, BaseBranchResolutionApproach, IntegrationOutcome, Resolution,
         StackStatuses, UpstreamIntegrationContext,
@@ -283,25 +282,6 @@ pub fn fetch_from_remotes(ctx: &Context, askpass: Option<String>) -> Result<Fetc
     state.garbage_collect(&*ctx.repo.get()?)?;
 
     Ok(project_data_last_fetched)
-}
-
-pub fn move_commit(
-    ctx: &mut Context,
-    target_stack_id: StackId,
-    commit_oid: gix::ObjectId,
-    source_stack_id: StackId,
-) -> Result<Option<MoveCommitIllegalAction>> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    ensure_open_workspace_mode(ctx, guard.read_permission())
-        .context("Moving a commit requires open workspace mode")?;
-    move_commits::move_commit(
-        ctx,
-        target_stack_id,
-        commit_oid,
-        guard.write_permission(),
-        source_stack_id,
-    )
 }
 
 pub fn move_branch(

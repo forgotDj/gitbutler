@@ -359,7 +359,6 @@ fn main() -> anyhow::Result<()> {
                 legacy::virtual_branches::tauri_integrate_branch_with_steps::integrate_branch_with_steps,
                 legacy::virtual_branches::tauri_squash_commits::squash_commits,
                 legacy::virtual_branches::tauri_fetch_from_remotes::fetch_from_remotes,
-                legacy::virtual_branches::tauri_move_commit::move_commit,
                 legacy::virtual_branches::tauri_move_branch_legacy::move_branch_legacy,
                 legacy::virtual_branches::tauri_tear_off_branch_legacy::tear_off_branch_legacy,
                 legacy::virtual_branches::tauri_normalize_branch_name::normalize_branch_name,
