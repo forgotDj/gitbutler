@@ -156,6 +156,7 @@ commands.allow = [
   "menu_item_set_enabled",
   "merge_review",
   "message_hook",
+  "move_branch",
   "move_branch_legacy",
   "normalize_branch_name",
   "open_in_terminal",
