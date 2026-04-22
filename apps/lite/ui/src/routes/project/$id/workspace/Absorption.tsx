@@ -3,11 +3,19 @@ import { classes } from "#ui/classes.ts";
 import { commitTitle, shortCommitId } from "#ui/routes/project/$id/shared.tsx";
 import uiStyles from "#ui/ui.module.css";
 import { AlertDialog, Toast } from "@base-ui/react";
-import { AbsorptionReason, AbsorptionTarget, CommitAbsorption } from "@gitbutler/but-sdk";
+import {
+	AbsorptionReason,
+	AbsorptionTarget,
+	CommitAbsorption,
+	TreeChange,
+	WorktreeChanges,
+} from "@gitbutler/but-sdk";
 import { useMutation } from "@tanstack/react-query";
+import { Match } from "effect";
 import { FC, useState } from "react";
 import styles from "./Absorption.module.css";
 import { dedupe } from "effect/Array";
+import { Item } from "./Item.ts";
 
 const describeAbsorptionReason = (reason: AbsorptionReason): string | null => {
 	switch (reason) {
@@ -19,6 +27,39 @@ const describeAbsorptionReason = (reason: AbsorptionReason): string | null => {
 			return null;
 	}
 };
+
+export const resolveTreeChanges = ({
+	item,
+	worktreeChanges,
+}: {
+	item: Item;
+	worktreeChanges: WorktreeChanges | undefined;
+}): Array<TreeChange> | null =>
+	Match.value(item).pipe(
+		Match.withReturnType<Array<TreeChange> | null>(),
+		Match.tags({
+			ChangeFile: ({ path }) => {
+				const change = worktreeChanges?.changes.find((candidate) => candidate.path === path);
+				if (!change) return null;
+
+				return [change];
+			},
+			ChangesSection: () => {
+				if (!worktreeChanges) return null;
+
+				return worktreeChanges.changes;
+			},
+			Hunk: ({ parent, path }) => {
+				if (parent._tag !== "Change") return null;
+
+				const change = worktreeChanges?.changes.find((candidate) => candidate.path === path);
+				if (!change) return null;
+
+				return [change];
+			},
+		}),
+		Match.orElse(() => null),
+	);
 
 export const AbsorptionDialog: FC<{
 	absorptionPlan: Array<CommitAbsorption>;
