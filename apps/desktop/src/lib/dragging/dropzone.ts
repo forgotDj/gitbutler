@@ -1,3 +1,4 @@
+import type { DropResult } from "$lib/dragging/dropResult";
 import type { DropzoneHandler } from "$lib/dragging/handler";
 import type { DropzoneRegistry } from "$lib/dragging/registry";
 
@@ -12,6 +13,7 @@ export interface DropzoneConfiguration {
 	onActivationEnd: () => void;
 	onHoverStart: (args: HoverArgs) => void;
 	onHoverEnd: () => void;
+	onDropResult: (result: DropResult) => void;
 	target: string;
 	registry: DropzoneRegistry;
 }
@@ -23,9 +25,9 @@ export class Dropzone {
 	private target!: HTMLElement;
 	private data?: unknown;
 
-	private boundOnDrop: (e: DragEvent | MouseEvent) => void;
-	private boundOnDragEnter: (e: DragEvent | MouseEvent) => void;
-	private boundOnDragLeave: (e: DragEvent | MouseEvent) => void;
+	private boundOnDrop: (e: DragEvent) => void;
+	private boundOnDragEnter: (e: DragEvent) => void;
+	private boundOnDragLeave: (e: DragEvent) => void;
 	private boundOnMouseUp: (e: MouseEvent) => void;
 	private boundOnDragOver: (e: DragEvent) => void;
 
@@ -33,11 +35,11 @@ export class Dropzone {
 		private configuration: DropzoneConfiguration,
 		private rootNode: HTMLElement,
 	) {
-		this.boundOnDrop = this.onDrop.bind(this);
-		this.boundOnDragEnter = this.onDragEnter.bind(this);
-		this.boundOnDragLeave = this.onDragLeave.bind(this);
-		this.boundOnMouseUp = this.onMouseUp.bind(this);
-		this.boundOnDragOver = this.onDragOver.bind(this);
+		this.boundOnDrop = (e) => void this.onDrop(e);
+		this.boundOnDragEnter = (e) => this.onDragEnter(e);
+		this.boundOnDragLeave = (e) => this.onDragLeave(e);
+		this.boundOnMouseUp = (e) => void this.onMouseUp(e);
+		this.boundOnDragOver = (e) => this.onDragOver(e);
 
 		this.setTarget();
 	}
@@ -102,20 +104,20 @@ export class Dropzone {
 
 	private registerListeners() {
 		// Support both native drag events and pointer-based events
-		this.target.addEventListener("drop", this.boundOnDrop as EventListener);
-		this.target.addEventListener("dragenter", this.boundOnDragEnter as EventListener);
-		this.target.addEventListener("dragleave", this.boundOnDragLeave as EventListener);
-		this.target.addEventListener("dragover", this.boundOnDragOver as EventListener);
-		this.target.addEventListener("mouseup", this.boundOnMouseUp as EventListener);
+		this.target.addEventListener("drop", this.boundOnDrop);
+		this.target.addEventListener("dragenter", this.boundOnDragEnter);
+		this.target.addEventListener("dragleave", this.boundOnDragLeave);
+		this.target.addEventListener("dragover", this.boundOnDragOver);
+		this.target.addEventListener("mouseup", this.boundOnMouseUp);
 		this.registered = true;
 	}
 
 	private unregisterListeners() {
-		this.target.removeEventListener("drop", this.boundOnDrop as EventListener);
-		this.target.removeEventListener("dragenter", this.boundOnDragEnter as EventListener);
-		this.target.removeEventListener("dragleave", this.boundOnDragLeave as EventListener);
-		this.target.removeEventListener("dragover", this.boundOnDragOver as EventListener);
-		this.target.removeEventListener("mouseup", this.boundOnMouseUp as EventListener);
+		this.target.removeEventListener("drop", this.boundOnDrop);
+		this.target.removeEventListener("dragenter", this.boundOnDragEnter);
+		this.target.removeEventListener("dragleave", this.boundOnDragLeave);
+		this.target.removeEventListener("dragover", this.boundOnDragOver);
+		this.target.removeEventListener("mouseup", this.boundOnMouseUp);
 		this.registered = false;
 	}
 
@@ -129,14 +131,14 @@ export class Dropzone {
 		}
 	}
 
-	private async onDrop(e: DragEvent | MouseEvent) {
+	private async onDrop(e: DragEvent) {
 		e.preventDefault();
 		e.stopPropagation();
 		if (!this.activated) return;
-		this.acceptedHandler?.ondrop(this.data);
+		await this.invokeHandler();
 	}
 
-	private onMouseUp(e: MouseEvent) {
+	private async onMouseUp(e: MouseEvent) {
 		// Handle drop via pointer events (mouseup)
 		if (!this.activated) return;
 
@@ -149,7 +151,7 @@ export class Dropzone {
 		// is released on this element or a descendant. The RAF-based position
 		// observer can race with the mouseup event and clear hovered=false right
 		// before this fires (the root cause of flaky drag-and-drop on CI).
-		this.acceptedHandler?.ondrop(this.data);
+		await this.invokeHandler();
 	}
 
 	private onDragOver(e: DragEvent) {
@@ -158,7 +160,7 @@ export class Dropzone {
 		e.preventDefault();
 	}
 
-	private onDragEnter(e: DragEvent | MouseEvent) {
+	private onDragEnter(e: DragEvent) {
 		e.preventDefault();
 		if (!this.activated) return;
 
@@ -169,7 +171,7 @@ export class Dropzone {
 		this.configuration.onHoverStart({ handler: this.acceptedHandler });
 	}
 
-	private onDragLeave(e: DragEvent | MouseEvent) {
+	private onDragLeave(e: DragEvent) {
 		e.preventDefault();
 		if (!this.activated) return;
 
@@ -181,6 +183,23 @@ export class Dropzone {
 
 		this.hovered = false;
 		this.configuration.onHoverEnd();
+	}
+
+	private async invokeHandler(): Promise<void> {
+		const handler = this.acceptedHandler;
+		if (!handler) return;
+		try {
+			const result = await handler.ondrop(this.data);
+			if (result) {
+				this.configuration.onDropResult(result);
+			}
+		} catch (err) {
+			this.configuration.onDropResult({
+				type: "error",
+				title: "Drop operation failed",
+				error: err,
+			});
+		}
 	}
 
 	/** It is assumed at most one will accept the data. */

@@ -1,6 +1,7 @@
 import { showToast } from "$lib/notifications/toasts";
 import { TestId } from "@gitbutler/ui";
 import type { BranchIconName } from "$lib/branches/branchIcon";
+import type { DropResult } from "$lib/dragging/dropResult";
 import type {
 	BranchDetails,
 	PushStatus,
@@ -261,13 +262,16 @@ export type MoveBranchResult = {
 	unappliedStacks: string[];
 };
 
-export function handleMoveBranchResult(result: MoveBranchResult) {
-	if (result.unappliedStacks.length > 0) {
-		showToast({
-			testId: TestId.StacksUnappliedToast,
-			title: "Heads up: We had to unapply some stacks to move this branch",
-			message: `It seems that the branch moved couldn't be applied cleanly alongside your other ${result.unappliedStacks.length} ${result.unappliedStacks.length === 1 ? "stack" : "stacks"}.
+/**
+ * Converts a `MoveBranchResult` into a `DropResult` warning if stacks were unapplied.
+ */
+export function toMoveBranchWarning(result: MoveBranchResult): DropResult | undefined {
+	if (result.unappliedStacks.length === 0) return undefined;
+	return {
+		type: "warning",
+		title: "Heads up: We had to unapply some stacks to move this branch",
+		message: `It seems that the branch moved couldn't be applied cleanly alongside your other ${result.unappliedStacks.length} ${result.unappliedStacks.length === 1 ? "stack" : "stacks"}.
 You can always re-apply them later from the branches page.`,
-		});
-	}
+		testId: TestId.StacksUnappliedToast,
+	};
 }
