@@ -111,8 +111,6 @@ members = [
     "crates/but-server",
     # Should be reviewed to mostly use `but-api`, to be renamed to `but-tauri` or something.
     "crates/gitbutler-tauri",
-    # Hack at will. Can be of any quality level, as long as it works for you.
-    "crates/but-testing",
     # GitButler installation binary
     "crates/but-installer",
     # Documentation binary

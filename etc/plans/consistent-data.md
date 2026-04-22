@@ -203,7 +203,6 @@ Sync the TOML file _on drop_ only, knowing well that this may write data that is
     - `crates/but-cherry-apply/tests/cherry_apply/main.rs`
     - `crates/but-claude/src/hooks/mod.rs`
     - `crates/but-cursor/src/lib.rs`
-    - `crates/but-testing/src/command/mod.rs`
     - `crates/but-tools/src/workspace.rs`
     - `crates/but-workspace/src/legacy/mod.rs`
     - `crates/but-worktrees/tests/worktree/main.rs`

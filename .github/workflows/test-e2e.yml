@@ -126,10 +126,10 @@ jobs:
         with:
           shared-key: e2e-playwright-rust-binaries
           save-if: ${{ github.ref == 'refs/heads/master' }}
-      - name: Preset Git Configuration and but-testing location
+      - name: Preset Git Configuration and but location
         run: |
           echo "GIT_CONFIG_GLOBAL=$PWD/e2e/playwright/fixtures/.gitconfig" >> $GITHUB_ENV
-          echo BUT_TESTING=$PWD/target/debug/but-testing >> $GITHUB_ENV
+          echo BUT=$PWD/target/debug/but >> $GITHUB_ENV
       - name: Setup node environment
         uses: ./.github/actions/init-env-node
         if: ${{ github.ref != 'refs/heads/master' }}
@@ -149,7 +149,7 @@ jobs:
         env:
           PLAYWRIGHT_CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
         run: |
-          cargo build -p gitbutler-git -p but-server -p but-testing &
+          cargo build -p gitbutler-git -p but-server -p but &
           cargo_pid=$!
           pnpm build:desktop &
           pnpm_pid=$!
@@ -165,7 +165,7 @@ jobs:
           exit "$status"
       - name: Build Rust binaries
         if: ${{ github.ref == 'refs/heads/master' }}
-        run: cargo build -p gitbutler-git -p but-server -p but-testing
+        run: cargo build -p gitbutler-git -p but-server -p but
       - name: Run Playwright tests
         run: pnpm exec turbo run test:e2e:playwright
         if: ${{ github.ref != 'refs/heads/master' }}
