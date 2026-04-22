@@ -3,7 +3,7 @@ import {
 	extractInstruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
 import { classes } from "#ui/classes.ts";
-import { getInsertionSide, type Operation } from "#ui/Operation.ts";
+import { getInsertionSide, moveOperation, rubOperation, type Operation } from "#ui/Operation.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
 import { FC } from "react";
@@ -12,41 +12,32 @@ import { parseDragData } from "./OperationDragAndDrop.tsx";
 import { type Item } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
 import { OperationTooltip } from "./OperationTooltip.tsx";
-import {
-	moveOperationSourceToOperation,
-	resolveOperationSource,
-	rubOperationSourceToOperation,
-	type ResolvedOperationSource,
-} from "./ResolvedOperationSource.ts";
+import { resolveOperationSource, type ResolvedOperationSource } from "./ResolvedOperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./OperationTarget.module.css";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-	itemOperationSource,
-	OperationSource,
-} from "#ui/routes/project/$id/workspace/OperationSource.ts";
 
 const dropTargetToOperation =
-	(item: Item, resolvedOperationSource: ResolvedOperationSource) =>
+	(item: Item, source: ResolvedOperationSource) =>
 	({ input, element }: GetDataParams[0]): Operation | null => {
-		const combine = rubOperationSourceToOperation({
-			resolvedOperationSource,
+		const combine = rubOperation({
+			source,
 			target: item,
 		});
-		const insertAbove = moveOperationSourceToOperation({
-			resolvedOperationSource,
+		const insertAbove = moveOperation({
+			source,
 			target: item,
 			side: "above",
 		});
-		const insertBelow = moveOperationSourceToOperation({
-			resolvedOperationSource,
+		const insertBelow = moveOperation({
+			source,
 			target: item,
 			side: "below",
 		});
 
 		const instruction = extractInstruction(
 			attachInstruction(
-				{ resolvedOperationSource },
+				{},
 				{
 					input,
 					element,
@@ -70,7 +61,7 @@ const dropTargetToOperation =
 	};
 
 export type TargetData = {
-	source: OperationSource;
+	source: Item;
 	operation: Operation | null;
 };
 
@@ -83,15 +74,13 @@ const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) =
 
 		const { source } = dragData;
 
-		const resolvedOperationSource = resolveOperationSource({
+		const resolvedSource = resolveOperationSource({
 			operationSource: source,
 			queryClient,
 			projectId,
 		});
 
-		const operation = resolvedOperationSource
-			? dropTargetToOperation(item, resolvedOperationSource)(args)
-			: null;
+		const operation = resolvedSource ? dropTargetToOperation(item, resolvedSource)(args) : null;
 
 		return {
 			source,
@@ -117,18 +106,18 @@ const useOperationModeTarget = ({
 
 	if (!isActiveTarget) return null;
 
-	const source = itemOperationSource(operationMode.source);
+	const { source } = operationMode;
 
-	const resolvedOperationSource = resolveOperationSource({
+	const resolvedSource = resolveOperationSource({
 		operationSource: source,
 		queryClient,
 		projectId,
 	});
 
-	const operation = resolvedOperationSource
+	const operation = resolvedSource
 		? operationModeToOperation({
 				operationMode,
-				resolvedOperationSource,
+				source: resolvedSource,
 				target: item,
 			})
 		: null;

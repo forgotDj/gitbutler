@@ -29,7 +29,7 @@ import {
 	selectProjectWorkspaceModeState,
 } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { AbsorptionDialog, useAbsorption } from "#ui/routes/project/$id/workspace/Absorption.tsx";
-import { useMonitorDraggedOperationSource } from "#ui/routes/project/$id/workspace/OperationDragAndDrop.tsx";
+import { useMonitorDraggedItem } from "#ui/routes/project/$id/workspace/OperationDragAndDrop.tsx";
 import { isOperationModeSourceOrTarget } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { resolveOperationSource } from "#ui/routes/project/$id/workspace/ResolvedOperationSource.ts";
@@ -96,9 +96,9 @@ import {
 	type CommitItem,
 	commitItem,
 	itemEquals,
-	itemIdentityKey,
 	type Item,
 	stackItem,
+	hunkItem,
 } from "./Item.ts";
 import {
 	buildNavigationIndex,
@@ -118,11 +118,6 @@ import {
 import { PositionedShortcutsBar } from "../ShortcutsBar.tsx";
 import { formatShortcutKeys, ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import styles from "./route.module.css";
-import {
-	fileOperationSource,
-	hunkOperationSource,
-	itemOperationSource,
-} from "./OperationSource.ts";
 import {
 	defaultWorkspaceMode,
 	getOperationMode,
@@ -157,18 +152,15 @@ const useIsItemSelected = ({
 	projectId: string;
 	item: Item;
 	navigationIndex: NavigationIndex;
-}): boolean => {
-	const itemKey = itemIdentityKey(item);
-
-	return useAppSelector((state) => {
+}): boolean =>
+	useAppSelector((state) => {
 		const selectedItem = selectNormalizedSelectedItem(state, {
 			projectId,
 			navigationIndex,
 		});
 
-		return selectedItem !== null && itemIdentityKey(selectedItem) === itemKey;
+		return selectedItem !== null && itemEquals(selectedItem, item);
 	});
-};
 
 const lineEndingForDiff = (diff: string): string => (diff.includes("\r\n") ? "\r\n" : "\n");
 
@@ -427,7 +419,7 @@ const Hunk: FC<{
 		<div>
 			{fileParent && editable
 				? (() => {
-						const source = hunkOperationSource({
+						const source = hunkItem({
 							parent: fileParent,
 							path: change.path,
 							hunkHeader: hunk,
@@ -516,8 +508,7 @@ const ChangesPreview: FC<{
 			) : (
 				<ul>
 					{changesWithDiffs.map(([change, diff]) => {
-						const parent = changeFileParent;
-						const source = fileOperationSource({ parent, path: change.path });
+						const source = changeFileItem({ path: change.path });
 						return (
 							<li key={change.path}>
 								<OperationSourceC
@@ -531,7 +522,7 @@ const ChangesPreview: FC<{
 									operationMode={operationMode}
 									projectId={projectId}
 									change={change}
-									fileParent={parent}
+									fileParent={changeFileParent}
 									editable
 									hunkDependencyDiffs={hunkDependencyDiffsByPath.get(change.path)}
 									diff={diff}
@@ -551,7 +542,8 @@ const CommitPreview: FC<{
 	commitId: string;
 	selectedPath?: string | null;
 	editable: boolean;
-}> = ({ operationMode, projectId, commitId, selectedPath, editable }) => {
+	stackId: string;
+}> = ({ operationMode, projectId, commitId, selectedPath, editable, stackId }) => {
 	const { data: commitDetails } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
@@ -586,8 +578,7 @@ const CommitPreview: FC<{
 			) : (
 				<ul>
 					{changesWithDiffs.map(([change, diff]) => {
-						const parent = commitFileParent({ commitId });
-						const source = fileOperationSource({ parent, path: change.path });
+						const source = commitFileItem({ stackId, commitId, path: change.path });
 						return (
 							<li key={change.path}>
 								{editable ? (
@@ -605,7 +596,7 @@ const CommitPreview: FC<{
 									operationMode={operationMode}
 									projectId={projectId}
 									change={change}
-									fileParent={parent}
+									fileParent={commitFileParent({ commitId })}
 									editable={editable}
 									diff={diff}
 								/>
@@ -686,19 +677,22 @@ const Preview: FC<{
 					operationMode={operationMode}
 					projectId={projectId}
 					commitId={selectedItem.commitId}
+					stackId={selectedItem.stackId}
 					editable
 				/>
 			),
-			CommitFile: ({ commitId, path }) => (
+			CommitFile: ({ commitId, path, stackId }) => (
 				<CommitPreview
 					operationMode={operationMode}
 					projectId={projectId}
 					commitId={commitId}
+					stackId={stackId}
 					selectedPath={path}
 					editable
 				/>
 			),
 			BaseCommit: () => null,
+			Hunk: () => null,
 		}),
 	);
 
@@ -978,7 +972,7 @@ const CommitFileRow: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={itemOperationSource(item)}
+			source={item}
 			render={
 				<ItemRow
 					inert={!navigationIndexIncludes(navigationIndex, item)}
@@ -1025,7 +1019,7 @@ const CommitC: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={itemOperationSource(item)}
+			source={item}
 			canDrag={() => !isSelected || workspaceMode._tag !== "RewordCommit"}
 			render={
 				<OperationTarget
@@ -1107,7 +1101,7 @@ const ChangeFileRow: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={itemOperationSource(item)}
+			source={item}
 			render={
 				<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected} />
 			}
@@ -1267,7 +1261,7 @@ const Changes: FC<{
 		<OperationSourceC
 			operationMode={operationMode}
 			projectId={projectId}
-			source={itemOperationSource(item)}
+			source={item}
 			className={styles.section}
 			render={
 				<OperationTarget
@@ -1447,7 +1441,7 @@ const BranchRow: FC<
 				<OperationSourceC
 					operationMode={operationMode}
 					projectId={projectId}
-					source={itemOperationSource(item)}
+					source={item}
 					render={
 						<ItemRow
 							inert={!navigationIndexIncludes(navigationIndex, item)}
@@ -1734,9 +1728,9 @@ const ProjectPage: FC = () => {
 
 	const operationMode = getOperationMode(workspaceMode);
 
-	const resolvedOperationSource = operationMode
+	const source = operationMode
 		? resolveOperationSource({
-				operationSource: itemOperationSource(operationMode.source),
+				operationSource: operationMode.source,
 				queryClient,
 				projectId,
 			})
@@ -1747,7 +1741,7 @@ const ProjectPage: FC = () => {
 				isOperationModeSourceOrTarget({
 					item,
 					operationMode,
-					resolvedOperationSource,
+					source,
 				}),
 			)
 		: navigationIndexUnfiltered;
@@ -1766,7 +1760,7 @@ const ProjectPage: FC = () => {
 		clearAbsorptionPlan,
 	} = useAbsorption(projectId);
 
-	useMonitorDraggedOperationSource({ projectId });
+	useMonitorDraggedItem({ projectId });
 
 	useWorkspaceShortcuts({
 		inlineRenameBranchFormRef,
@@ -1853,10 +1847,7 @@ const ProjectPage: FC = () => {
 
 			{operationMode && (
 				<div className={styles.operationModePreview}>
-					<OperationSourceLabel
-						headInfo={headInfo}
-						source={itemOperationSource(operationMode.source)}
-					/>
+					<OperationSourceLabel headInfo={headInfo} source={operationMode.source} />
 				</div>
 			)}
 

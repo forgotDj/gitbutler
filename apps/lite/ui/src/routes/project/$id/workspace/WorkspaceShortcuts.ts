@@ -23,7 +23,6 @@ import {
 	stackItem,
 } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
-import { itemOperationSource } from "./OperationSource.ts";
 import { resolveOperationSource } from "./ResolvedOperationSource.ts";
 import {
 	getAdjacent,
@@ -347,7 +346,7 @@ const stackDefaultModeScope = ({ bindings, context }: StackDefaultModeScope): De
 	context,
 });
 
-const getDefaultModeScope = (selectedItem: Item): DefaultModeScope =>
+const getDefaultModeScope = (selectedItem: Item): DefaultModeScope | null =>
 	Match.value(selectedItem).pipe(
 		Match.tagsExhaustive({
 			BaseCommit: () =>
@@ -383,6 +382,7 @@ const getDefaultModeScope = (selectedItem: Item): DefaultModeScope =>
 					bindings: branchBindings,
 					context: selectedItem,
 				}),
+			Hunk: () => null,
 		}),
 	);
 
@@ -569,12 +569,13 @@ const getModeScope = ({
 }): ModeScope | null =>
 	Match.value(workspaceMode).pipe(
 		Match.tagsExhaustive({
-			Default: () =>
-				selectedItem
-					? defaultModeScope({
-							scope: getDefaultModeScope(selectedItem),
-						})
-					: null,
+			Default: () => {
+				const scope = selectedItem && getDefaultModeScope(selectedItem);
+				if (!scope) return null;
+				return defaultModeScope({
+					scope,
+				});
+			},
 			Move: () =>
 				moveOperationModeScope({
 					bindings: operationModeBindings,
@@ -782,19 +783,19 @@ export const useWorkspaceShortcuts = ({
 		);
 
 	const requestAbsorptionPlanForItem = (selectedItem: Item) => {
-		const resolvedOperationSource = resolveOperationSource({
-			operationSource: itemOperationSource(selectedItem),
+		const source = resolveOperationSource({
+			operationSource: selectedItem,
 			queryClient,
 			projectId,
 		});
 
-		if (resolvedOperationSource?._tag !== "TreeChanges") return;
-		if (resolvedOperationSource.parent._tag !== "Change") return;
+		if (source?._tag !== "TreeChanges") return;
+		if (source.parent._tag !== "Change") return;
 
 		requestAbsorptionPlan({
 			type: "treeChanges",
 			subject: {
-				changes: resolvedOperationSource.changes.map(({ change }) => change),
+				changes: source.changes.map(({ change }) => change),
 				assignedStackId: null,
 			},
 		});
@@ -912,16 +913,16 @@ export const useWorkspaceShortcuts = ({
 
 		if (!selectedItem) return;
 
-		const resolvedOperationSource = resolveOperationSource({
-			operationSource: itemOperationSource(operationMode.source),
+		const source = resolveOperationSource({
+			operationSource: operationMode.source,
 			queryClient,
 			projectId,
 		});
 
-		const operation = resolvedOperationSource
+		const operation = source
 			? operationModeToOperation({
 					operationMode,
-					resolvedOperationSource,
+					source,
 					target: selectedItem,
 				})
 			: null;
