@@ -325,7 +325,6 @@ mod oplog;
 mod save_and_unapply_virtual_branch;
 mod set_base_branch;
 mod unapply_without_saving_virtual_branch;
-mod undo_commit;
 mod workspace_migration;
 
 /// Create a raw git commit parented to `parent` that sets `filename` to `content`,

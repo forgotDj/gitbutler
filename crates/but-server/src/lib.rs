@@ -925,10 +925,6 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(legacy::virtual_branches::unapply_stack_cmd),
         )
         .route(
-            "/undo_commit",
-            but_post(legacy::virtual_branches::undo_commit_cmd),
-        )
-        .route(
             "/reorder_stack",
             but_post(legacy::virtual_branches::reorder_stack_cmd),
         )

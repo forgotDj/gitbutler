@@ -342,17 +342,6 @@ pub fn unapply_stack_with_perm(
 
 #[but_api]
 #[instrument(err(Debug))]
-pub fn undo_commit(
-    ctx: &mut but_ctx::Context,
-    stack_id: StackId,
-    commit_id: gix::ObjectId,
-) -> Result<()> {
-    gitbutler_branch_actions::undo_commit(ctx, stack_id, commit_id)?;
-    Ok(())
-}
-
-#[but_api]
-#[instrument(err(Debug))]
 pub fn reorder_stack(
     ctx: &mut but_ctx::Context,
     stack_id: StackId,

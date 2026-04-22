@@ -204,7 +204,6 @@ commands.allow = [
   "tear_off_branch_legacy",
   "tree_change_diffs",
   "unapply_stack",
-  "undo_commit",
   "update_branch_name",
   "update_branch_pr_number",
   "update_claude",
