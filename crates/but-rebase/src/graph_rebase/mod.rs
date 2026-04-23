@@ -168,7 +168,14 @@ pub trait ToReferenceSelector {
 }
 
 /// Points to a step in the rebase editor.
-#[derive(Debug, Clone, Copy)]
+///
+/// Hash, PartialEq, and Eq are implemented for this struct. Because selectors
+/// are a pointer to a node in a particular version of the Editor's internal
+/// representation, it means that you can have two selectors that when
+/// normalised point to the same node. If you want to ensure you have just one
+/// selector to a given node, make sure you are working with selectors all
+/// normalised to the latest revision of the Editor.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct Selector {
     id: StepGraphIndex,
     revision: usize,
