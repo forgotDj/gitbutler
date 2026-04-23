@@ -2,7 +2,7 @@
 
 echo "GIT CONFIG $GIT_CONFIG_GLOBAL"
 echo "DATA DIR $GITBUTLER_CLI_DATA_DIR"
-echo "BUT_TESTING $BUT_TESTING"
+echo "BUT $BUT"
 
 # Setup a remote project with enough history to make shallow clones meaningful.
 mkdir remote-project
@@ -23,5 +23,8 @@ popd
 git clone --depth 1 remote-project local-clone
 pushd local-clone
   git checkout master
-  $BUT_TESTING add-project --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
+  target_branch="$(git rev-parse --symbolic-full-name @{u})"
+  target_branch="${target_branch#refs/remotes/}"
+  "$BUT" setup
+  "$BUT" config target "$target_branch"
 popd

@@ -51,9 +51,9 @@ test("should be able to start a commit by dragging a file", async ({ page, conte
 	const commits = getByTestId(page, "commit-row");
 	await expect(commits).toHaveCount(2);
 
-	// Push the changes to the remote branch
-	// (it's basically a no-op, just makes sure that the same commits after rebasing are on the remote)
-	await clickByTestId(page, "stack-push-button");
+	// Imported remote branches start out already synced when added via `but apply`.
+	const initialPushButton = getByTestId(page, "stack-push-button");
+	await expect(initialPushButton).toBeDisabled();
 
 	// Add a two new files to the workdir
 	writeFileSync(filePath, fileContent, { flag: "w" });

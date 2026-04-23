@@ -9,8 +9,7 @@ They are:
 
 The backend of the Tauri application is found in the `crates` directory.
 It contains different rust packages, with `gitbutler-tauri` for the tauri application,
-and `but-api` for implementing various command-line utilities like `but-testing`
-and `but`.
+and `but-api` for implementing various command-line utilities like `but`.
 
 The `packages` directory contains different self-contained npm packages.
 These are shared between the `desktop` and `web` applications.

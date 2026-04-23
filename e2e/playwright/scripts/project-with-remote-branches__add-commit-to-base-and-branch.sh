@@ -2,7 +2,7 @@
 
 echo "GIT CONFIG $GIT_CONFIG_GLOBAL"
 echo "DATA DIR $GITBUTLER_CLI_DATA_DIR"
-echo "BUT_TESTING $BUT_TESTING"
+echo "BUT $BUT"
 
 pushd remote-project
 # Checkout branch 1
@@ -19,4 +19,3 @@ git commit -am "branch1: update after base change"
 
 git checkout master
 popd
-

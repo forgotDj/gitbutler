@@ -1636,39 +1636,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "but-testing"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "but-api",
- "but-core",
- "but-ctx",
- "but-db",
- "but-graph",
- "but-hunk-assignment",
- "but-hunk-dependency",
- "but-path",
- "but-settings",
- "but-workspace",
- "clap",
- "gitbutler-branch",
- "gitbutler-branch-actions",
- "gitbutler-commit",
- "gitbutler-filemonitor",
- "gitbutler-operating-modes",
- "gitbutler-project",
- "gitbutler-reference",
- "gitbutler-stack",
- "gix",
- "itertools",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-forest",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "but-testsupport"
 version = "0.0.0"
 dependencies = [

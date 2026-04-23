@@ -1,11 +1,5 @@
 import { setConfig } from "./config.ts";
-import {
-	BUT_SERVER,
-	BUT_SERVER_PORT,
-	BUT_TESTING,
-	DESKTOP_PORT,
-	GIT_CONFIG_GLOBAL,
-} from "./env.ts";
+import { BUT, BUT_SERVER, BUT_SERVER_PORT, DESKTOP_PORT, GIT_CONFIG_GLOBAL } from "./env.ts";
 import { type BrowserContext } from "@playwright/test";
 import { ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
@@ -259,7 +253,7 @@ function spawnProcess(
 			...process.env,
 			ELECTRON_ENV: "development",
 			VITE_BUILD_TARGET: "web",
-			BUT_TESTING: BUT_TESTING,
+			BUT,
 			VITE_HOST,
 			...env,
 		},
