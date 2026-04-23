@@ -3,11 +3,19 @@ import { classes } from "#ui/classes.ts";
 import { commitTitle, shortCommitId } from "#ui/routes/project/$id/shared.tsx";
 import uiStyles from "#ui/ui.module.css";
 import { AlertDialog, Toast } from "@base-ui/react";
-import { AbsorptionReason, AbsorptionTarget, CommitAbsorption } from "@gitbutler/but-sdk";
+import {
+	AbsorptionReason,
+	AbsorptionTarget,
+	CommitAbsorption,
+	HunkHeader,
+	WorktreeChanges,
+} from "@gitbutler/but-sdk";
 import { useMutation } from "@tanstack/react-query";
+import { Match } from "effect";
 import { FC, useState } from "react";
 import styles from "./Absorption.module.css";
 import { dedupe } from "effect/Array";
+import { Item } from "./Item.ts";
 
 const describeAbsorptionReason = (reason: AbsorptionReason): string | null => {
 	switch (reason) {
@@ -19,6 +27,53 @@ const describeAbsorptionReason = (reason: AbsorptionReason): string | null => {
 			return null;
 	}
 };
+
+const hunkHeadersEqual = (a: HunkHeader, b: HunkHeader): boolean =>
+	a.oldStart === b.oldStart &&
+	a.oldLines === b.oldLines &&
+	a.newStart === b.newStart &&
+	a.newLines === b.newLines;
+
+export const resolveAbsorptionTarget = ({
+	item,
+	worktreeChanges,
+}: {
+	item: Item;
+	worktreeChanges: WorktreeChanges;
+}): AbsorptionTarget | null =>
+	Match.value(item).pipe(
+		Match.withReturnType<AbsorptionTarget | null>(),
+		Match.tag("ChangesSection", () => ({ type: "all" })),
+		Match.tag("ChangeFile", ({ path }) => {
+			const change = worktreeChanges.changes.find((candidate) => candidate.path === path);
+			if (!change) return null;
+
+			return {
+				type: "treeChanges",
+				subject: {
+					changes: [change],
+					assignedStackId: null,
+				},
+			};
+		}),
+		Match.when({ _tag: "Hunk", parent: { _tag: "Change" } }, ({ path, hunkHeader }) => {
+			const assignment = worktreeChanges.assignments.find(
+				(candidate) =>
+					candidate.path === path &&
+					candidate.hunkHeader !== null &&
+					hunkHeadersEqual(candidate.hunkHeader, hunkHeader),
+			);
+			if (!assignment) return null;
+
+			return {
+				type: "hunkAssignments",
+				subject: {
+					assignments: [assignment],
+				},
+			};
+		}),
+		Match.orElse(() => null),
+	);
 
 export const AbsorptionDialog: FC<{
 	absorptionPlan: Array<CommitAbsorption>;

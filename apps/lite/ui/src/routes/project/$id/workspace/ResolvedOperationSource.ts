@@ -3,20 +3,11 @@ import {
 	commitDetailsWithLineStatsQueryOptions,
 } from "#ui/api/queries.ts";
 import { changeFileParent, commitFileParent, type FileParent } from "#ui/domain/FileParent.ts";
+import { createDiffSpec } from "#ui/domain/DiffSpec.ts";
 import { QueryClient } from "@tanstack/react-query";
-import {
-	CommitDetails,
-	WorktreeChanges,
-	type HunkHeader,
-	type TreeChange,
-} from "@gitbutler/but-sdk";
+import { CommitDetails, DiffSpec, WorktreeChanges } from "@gitbutler/but-sdk";
 import { Match } from "effect";
 import { Item } from "#ui/routes/project/$id/workspace/Item.ts";
-
-type TreeChangeWithHunkHeaders = {
-	change: TreeChange;
-	hunkHeaders: Array<HunkHeader>;
-};
 
 /** @public */
 export type CommitResolvedOperationSource = { commitId: string };
@@ -25,9 +16,9 @@ export type StackResolvedOperationSource = { stackId: string };
 /** @public */
 export type BranchResolvedOperationSource = { branchRef: Array<number> };
 /** @public */
-export type TreeChangesResolvedOperationSource = {
+export type DiffSpecsResolvedOperationSource = {
 	parent: FileParent;
-	changes: Array<TreeChangeWithHunkHeaders>;
+	changes: Array<DiffSpec>;
 };
 
 /**
@@ -38,7 +29,7 @@ export type ResolvedOperationSource =
 	| ({ _tag: "Commit" } & CommitResolvedOperationSource)
 	| ({ _tag: "Stack" } & StackResolvedOperationSource)
 	| ({ _tag: "Branch" } & BranchResolvedOperationSource)
-	| ({ _tag: "TreeChanges" } & TreeChangesResolvedOperationSource);
+	| ({ _tag: "DiffSpecs" } & DiffSpecsResolvedOperationSource);
 
 /** @public */
 export const baseCommitResolvedOperationSource: ResolvedOperationSource = {
@@ -70,11 +61,11 @@ export const branchResolvedOperationSource = ({
 });
 
 /** @public */
-export const treeChangesResolvedOperationSource = ({
+export const diffSpecsResolvedOperationSource = ({
 	parent,
 	changes,
-}: TreeChangesResolvedOperationSource): ResolvedOperationSource => ({
-	_tag: "TreeChanges",
+}: DiffSpecsResolvedOperationSource): ResolvedOperationSource => ({
+	_tag: "DiffSpecs",
 	parent,
 	changes,
 });
@@ -93,53 +84,41 @@ const resolvedOperationSourceFromItem = ({
 			BaseCommit: () => baseCommitResolvedOperationSource,
 			Branch: ({ branchRef }) => branchResolvedOperationSource({ branchRef }),
 			ChangeFile: ({ path }) => {
-				if (!worktreeChanges) return null;
-
-				const change = worktreeChanges.changes.find((candidate) => candidate.path === path);
+				const change = worktreeChanges?.changes.find((candidate) => candidate.path === path);
 				if (!change) return null;
 
-				return treeChangesResolvedOperationSource({
+				return diffSpecsResolvedOperationSource({
 					parent: changeFileParent,
-					changes: [{ change, hunkHeaders: [] }],
+					changes: [createDiffSpec(change, [])],
 				});
 			},
 			ChangesSection: () => {
 				if (!worktreeChanges) return null;
 
-				const changes = worktreeChanges.changes.flatMap(
-					(change): Array<TreeChangeWithHunkHeaders> => [{ change, hunkHeaders: [] }],
-				);
-				return treeChangesResolvedOperationSource({
+				const changes = worktreeChanges.changes.map((change) => createDiffSpec(change, []));
+				return diffSpecsResolvedOperationSource({
 					parent: changeFileParent,
 					changes,
 				});
 			},
 			Commit: ({ commitId }) => commitResolvedOperationSource({ commitId }),
 			CommitFile: ({ commitId, path }) => {
-				const commitDetails = getCommitDetails(commitId);
-				if (!commitDetails) return null;
-
-				const change = commitDetails.changes.find((candidate) => candidate.path === path);
+				const change = getCommitDetails(commitId)?.changes.find(
+					(candidate) => candidate.path === path,
+				);
 				if (!change) return null;
 
-				return treeChangesResolvedOperationSource({
+				return diffSpecsResolvedOperationSource({
 					parent: commitFileParent({ commitId }),
-					changes: [{ change, hunkHeaders: [] }],
+					changes: [createDiffSpec(change, [])],
 				});
 			},
 			Stack: ({ stackId }) => stackResolvedOperationSource({ stackId }),
 			Hunk: ({ parent, path, hunkHeader }) => {
 				const changes = Match.value(parent).pipe(
 					Match.tagsExhaustive({
-						Change: () => {
-							if (!worktreeChanges) return null;
-							return worktreeChanges.changes;
-						},
-						Commit: ({ commitId }) => {
-							const commitDetails = getCommitDetails(commitId);
-							if (!commitDetails) return null;
-							return commitDetails.changes;
-						},
+						Change: () => worktreeChanges?.changes,
+						Commit: ({ commitId }) => getCommitDetails(commitId)?.changes,
 					}),
 				);
 				if (!changes) return null;
@@ -147,9 +126,9 @@ const resolvedOperationSourceFromItem = ({
 				const change = changes.find((candidate) => candidate.path === path);
 				if (!change) return null;
 
-				return treeChangesResolvedOperationSource({
+				return diffSpecsResolvedOperationSource({
 					parent,
-					changes: [{ change, hunkHeaders: [hunkHeader] }],
+					changes: [createDiffSpec(change, [hunkHeader])],
 				});
 			},
 		}),

@@ -1128,13 +1128,7 @@ const ChangesSectionRow: FC<{
 			label: "Absorb",
 			enabled: changes.length > 0,
 			onSelect: () => {
-				onAbsorbChanges({
-					type: "treeChanges",
-					subject: {
-						changes,
-						assignedStackId: null,
-					},
-				});
+				onAbsorbChanges({ type: "all" });
 			},
 		},
 	];
@@ -1697,7 +1691,7 @@ const ProjectPage: FC = () => {
 
 	const operationMode = getOperationMode(workspaceMode);
 
-	const source = operationMode
+	const resolvedSource = operationMode
 		? resolveOperationSource({
 				operationSource: operationMode.source,
 				queryClient,
@@ -1710,7 +1704,7 @@ const ProjectPage: FC = () => {
 				isOperationModeSourceOrTarget({
 					item,
 					operationMode,
-					source,
+					source: resolvedSource,
 				}),
 			)
 		: navigationIndexUnfiltered;

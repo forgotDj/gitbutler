@@ -3,7 +3,6 @@ import { useRunOperation } from "#ui/Operation.ts";
 import { getFocus, type ProjectLayoutState } from "#ui/routes/project/$id/state/layout.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { useAppDispatch } from "#ui/state/hooks.ts";
-import { AbsorptionTarget } from "@gitbutler/but-sdk";
 import { Match } from "effect";
 import { RefObject, useEffect, useEffectEvent } from "react";
 import {
@@ -22,6 +21,7 @@ import {
 	StackItem,
 	stackItem,
 } from "./Item.ts";
+import { resolveAbsorptionTarget } from "./Absorption.tsx";
 import { operationModeToOperation } from "./OperationMode.tsx";
 import { resolveOperationSource } from "./ResolvedOperationSource.ts";
 import {
@@ -32,6 +32,8 @@ import {
 } from "./WorkspaceModel.ts";
 import { OperationMode, type WorkspaceMode } from "./WorkspaceMode.ts";
 import { useQueryClient } from "@tanstack/react-query";
+import { AbsorptionTarget } from "@gitbutler/but-sdk";
+import { changesInWorktreeQueryOptions } from "#ui/api/queries.ts";
 
 const isTypingTarget = (target: EventTarget | null) => {
 	if (!(target instanceof HTMLElement)) return false;
@@ -783,22 +785,18 @@ export const useWorkspaceShortcuts = ({
 		);
 
 	const requestAbsorptionPlanForItem = (selectedItem: Item) => {
-		const source = resolveOperationSource({
-			operationSource: selectedItem,
-			queryClient,
-			projectId,
-		});
+		const worktreeChanges = queryClient.getQueryData(
+			changesInWorktreeQueryOptions(projectId).queryKey,
+		);
+		if (!worktreeChanges) return;
 
-		if (source?._tag !== "TreeChanges") return;
-		if (source.parent._tag !== "Change") return;
-
-		requestAbsorptionPlan({
-			type: "treeChanges",
-			subject: {
-				changes: source.changes.map(({ change }) => change),
-				assignedStackId: null,
-			},
+		const target = resolveAbsorptionTarget({
+			item: selectedItem,
+			worktreeChanges,
 		});
+		if (!target) return;
+
+		requestAbsorptionPlan(target);
 	};
 
 	const handleChangesScopeAction = (action: ChangesAction, selectedItem: Item) =>
@@ -913,16 +911,18 @@ export const useWorkspaceShortcuts = ({
 
 		if (!selectedItem) return;
 
-		const source = resolveOperationSource({
-			operationSource: operationMode.source,
+		const { source } = operationMode;
+
+		const resolvedSource = resolveOperationSource({
+			operationSource: source,
 			queryClient,
 			projectId,
 		});
 
-		const operation = source
+		const operation = resolvedSource
 			? operationModeToOperation({
 					operationMode,
-					source,
+					source: resolvedSource,
 					target: selectedItem,
 				})
 			: null;

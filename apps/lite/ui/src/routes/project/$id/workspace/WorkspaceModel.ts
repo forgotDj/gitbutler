@@ -3,8 +3,8 @@ import {
 	commitDetailsWithLineStatsQueryOptions,
 	headInfoQueryOptions,
 } from "#ui/api/queries.ts";
-import { Segment, type RefInfo, type TreeChange } from "@gitbutler/but-sdk";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { CommitDetails, Segment, type RefInfo, type TreeChange } from "@gitbutler/but-sdk";
+import { useQueries, useSuspenseQuery } from "@tanstack/react-query";
 import { type NonEmptyArray } from "effect/Array";
 import {
 	branchItem,
@@ -28,15 +28,13 @@ type WorkspaceOutline = NonEmptyArray<WorkspaceSection>;
 type BuildWorkspaceOutlineArgs = {
 	headInfo: RefInfo;
 	changes: Array<TreeChange>;
-	expandedCommitId?: string | null;
-	expandedCommitPaths?: Array<string>;
+	expandedCommitDetails?: CommitDetails;
 };
 
 const buildWorkspaceOutline = ({
 	headInfo,
 	changes,
-	expandedCommitId = null,
-	expandedCommitPaths,
+	expandedCommitDetails,
 }: BuildWorkspaceOutlineArgs): WorkspaceOutline => {
 	const changesSection: WorkspaceSection = {
 		section: changesSectionItem,
@@ -47,12 +45,12 @@ const buildWorkspaceOutline = ({
 		segment.commits.flatMap(
 			(commit): Array<Item> => [
 				commitItem({ stackId, commitId: commit.id }),
-				...(commit.id === expandedCommitId
-					? (expandedCommitPaths ?? []).map((path) =>
+				...(commit.id === expandedCommitDetails?.commit.id
+					? expandedCommitDetails.changes.map((change) =>
 							commitFileItem({
 								stackId,
 								commitId: commit.id,
-								path,
+								path: change.path,
 							}),
 						)
 					: []),
@@ -107,19 +105,16 @@ export const useWorkspaceOutline = ({
 }) => {
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
-	const { data: expandedCommitDetails } = useQuery({
-		...commitDetailsWithLineStatsQueryOptions({
-			projectId,
-			commitId: expandedCommitId ?? "",
-		}),
-		enabled: expandedCommitId !== null,
+	const commitDetailsQueries = useQueries({
+		queries: (expandedCommitId !== null ? [expandedCommitId] : []).map((commitId) =>
+			commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
+		),
 	});
 
 	return buildWorkspaceOutline({
 		headInfo,
 		changes: worktreeChanges.changes,
-		expandedCommitId,
-		expandedCommitPaths: expandedCommitDetails?.changes.map((change) => change.path) ?? [],
+		expandedCommitDetails: commitDetailsQueries[0]?.data,
 	});
 };
 

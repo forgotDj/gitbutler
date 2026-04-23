@@ -28,7 +28,6 @@ import {
 } from "#ui/api/mutations.ts";
 import { InsertSide, RelativeTo } from "@gitbutler/but-sdk";
 import { ResolvedOperationSource } from "#ui/routes/project/$id/workspace/ResolvedOperationSource.ts";
-import { createDiffSpec } from "#ui/domain/DiffSpec.ts";
 import { decodeRefName } from "#ui/routes/project/$id/shared.tsx";
 import { Item } from "#ui/routes/project/$id/workspace/Item.ts";
 
@@ -360,45 +359,39 @@ export const rubOperation = ({
 		),
 		Match.when(
 			{
-				source: { _tag: "TreeChanges", parent: { _tag: "Change" } },
+				source: { _tag: "DiffSpecs", parent: { _tag: "Change" } },
 				target: { _tag: "Commit" },
 			},
 			({ source, target }) =>
 				commitAmendOperation({
 					commitId: target.commitId,
-					changes: source.changes.map(({ change, hunkHeaders }) =>
-						createDiffSpec(change, hunkHeaders),
-					),
+					changes: source.changes,
 					dryRun: false,
 				}),
 		),
 		Match.when(
 			{
-				source: { _tag: "TreeChanges", parent: { _tag: "Commit" } },
+				source: { _tag: "DiffSpecs", parent: { _tag: "Commit" } },
 				target: { _tag: "ChangesSection" },
 			},
 			({ source }) =>
 				commitUncommitChangesOperation({
 					commitId: source.parent.commitId,
 					assignTo: null,
-					changes: source.changes.map(({ change, hunkHeaders }) =>
-						createDiffSpec(change, hunkHeaders),
-					),
+					changes: source.changes,
 					dryRun: false,
 				}),
 		),
 		Match.when(
 			{
-				source: { _tag: "TreeChanges", parent: { _tag: "Commit" } },
+				source: { _tag: "DiffSpecs", parent: { _tag: "Commit" } },
 				target: { _tag: "Commit" },
 			},
 			({ source, target }) =>
 				commitMoveChangesBetweenOperation({
 					sourceCommitId: source.parent.commitId,
 					destinationCommitId: target.commitId,
-					changes: source.changes.map(({ change, hunkHeaders }) =>
-						createDiffSpec(change, hunkHeaders),
-					),
+					changes: source.changes,
 					dryRun: false,
 				}),
 		),
@@ -467,25 +460,21 @@ export const moveOperation = ({
 				dryRun: false,
 			}),
 		),
-		Match.when({ _tag: "TreeChanges", parent: { _tag: "Change" } }, (source) =>
+		Match.when({ _tag: "DiffSpecs", parent: { _tag: "Change" } }, (source) =>
 			commitCreateOperation({
 				relativeTo,
 				side,
-				changes: source.changes.map(({ change, hunkHeaders }) =>
-					createDiffSpec(change, hunkHeaders),
-				),
+				changes: source.changes,
 				message: "",
 				dryRun: false,
 			}),
 		),
-		Match.when({ _tag: "TreeChanges", parent: { _tag: "Commit" } }, (source) =>
+		Match.when({ _tag: "DiffSpecs", parent: { _tag: "Commit" } }, (source) =>
 			commitCreateFromCommittedChangesOperation({
 				sourceCommitId: source.parent.commitId,
 				relativeTo,
 				side,
-				changes: source.changes.map(({ change, hunkHeaders }) =>
-					createDiffSpec(change, hunkHeaders),
-				),
+				changes: source.changes,
 				dryRun: false,
 			}),
 		),
