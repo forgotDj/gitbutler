@@ -62,7 +62,12 @@ import {
 	TreeChange,
 	UnifiedPatch,
 } from "@gitbutler/but-sdk";
-import { useMutation, useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query";
+import {
+	useMutation,
+	useQueryClient,
+	useSuspenseQueries,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
 import { createRoute } from "@tanstack/react-router";
 import { Array, Match, pipe } from "effect";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
@@ -1703,6 +1708,7 @@ const ProjectPage: FC = () => {
 
 	const [absorptionTarget, setAbsorptionTarget] = useState<AbsorptionTarget | null>(null);
 
+	const queryClient = useQueryClient();
 	const openAbsorptionDialog = (target: AbsorptionTarget) => {
 		// Before opening the dialog, warm cache to avoid showing loading states in
 		// the dialog itself. This also ensures we don't show a stale absorption
