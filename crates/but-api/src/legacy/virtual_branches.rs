@@ -15,7 +15,7 @@ use gitbutler_branch_actions::{
     },
 };
 use gitbutler_project::FetchResult;
-use gitbutler_reference::{Refname, RemoteRefname, normalize_branch_name as normalize_name};
+use gitbutler_reference::{Refname, normalize_branch_name as normalize_name};
 use gitbutler_stack::StackId;
 use gix::reference::Category;
 use tracing::instrument;
@@ -113,14 +113,12 @@ pub fn delete_local_branch(
 pub fn create_virtual_branch_from_branch(
     ctx: &mut but_ctx::Context,
     branch: Refname,
-    remote: Option<RemoteRefname>,
     pr_number: Option<usize>,
 ) -> Result<gitbutler_branch_actions::CreateBranchFromBranchOutcome> {
     let mut guard = ctx.exclusive_worktree_access();
     let outcome = create_virtual_branch_from_branch_with_perm(
         ctx,
         &branch,
-        remote,
         pr_number,
         guard.write_permission(),
     )?;
@@ -135,12 +133,11 @@ pub fn create_virtual_branch_from_branch(
 pub fn create_virtual_branch_from_branch_with_perm(
     ctx: &mut but_ctx::Context,
     branch: &Refname,
-    remote: Option<RemoteRefname>,
     pr_number: Option<usize>,
     perm: &mut RepoExclusive,
 ) -> Result<gitbutler_branch_actions::CreateBranchFromBranchOutcome> {
     let outcome = gitbutler_branch_actions::create_virtual_branch_from_branch_with_perm(
-        ctx, branch, remote, pr_number, perm,
+        ctx, branch, pr_number, perm,
     )?;
     Ok(outcome.into())
 }

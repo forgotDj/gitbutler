@@ -181,7 +181,7 @@ fn from_default_target() {
         )
         .unwrap_err()
         .to_string(),
-        "cannot create a branch from default target"
+        "Cannot add the target 'refs/remotes/origin/master' branch to its own workspace"
     );
 }
 
@@ -209,7 +209,7 @@ fn from_non_existent_branch() {
         )
         .unwrap_err()
         .to_string(),
-        "branch refs/remotes/origin/branch was not found"
+        "The reference 'refs/remotes/origin/branch' did not exist"
     );
 }
 

@@ -74,7 +74,6 @@ fn apply_by_name(ctx: &mut Context, branch_name: String) -> Result<()> {
                 .as_ref()
                 .context("local reference name was missing")?,
             None,
-            None,
             guard.write_permission(),
         )?,
     )
@@ -92,7 +91,6 @@ fn apply_from_branch(ctx: &mut Context, branch_name: String) -> Result<()> {
     let mut guard = ctx.exclusive_worktree_access();
     debug_print(ctx.branch_manager().create_virtual_branch_from_branch(
         &target,
-        None,
         None,
         guard.write_permission(),
     )?)

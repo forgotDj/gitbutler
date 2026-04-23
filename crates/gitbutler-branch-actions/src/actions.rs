@@ -291,19 +291,12 @@ pub fn create_virtual_branch_from_branch(
     pr_number: Option<usize>,
 ) -> Result<(StackId, Vec<StackId>, Vec<String>)> {
     let mut guard = ctx.exclusive_worktree_access();
-    create_virtual_branch_from_branch_with_perm(
-        ctx,
-        branch,
-        remote,
-        pr_number,
-        guard.write_permission(),
-    )
+    create_virtual_branch_from_branch_with_perm(ctx, branch, pr_number, guard.write_permission())
 }
 
 pub fn create_virtual_branch_from_branch_with_perm(
     ctx: &mut Context,
     branch: &Refname,
-    remote: Option<RemoteRefname>,
     pr_number: Option<usize>,
     perm: &mut RepoExclusive,
 ) -> Result<(StackId, Vec<StackId>, Vec<String>)> {
@@ -311,7 +304,7 @@ pub fn create_virtual_branch_from_branch_with_perm(
     ensure_open_workspace_mode(ctx, perm.read_permission())
         .context("Creating a virtual branch from a branch open workspace mode")?;
     let branch_manager = ctx.branch_manager();
-    branch_manager.create_virtual_branch_from_branch(branch, remote, pr_number, perm)
+    branch_manager.create_virtual_branch_from_branch(branch, pr_number, perm)
 }
 
 pub fn upstream_integration_statuses(

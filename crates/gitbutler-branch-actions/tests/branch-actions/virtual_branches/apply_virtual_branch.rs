@@ -10,7 +10,7 @@ use gitbutler_reference::Refname;
 use super::*;
 
 #[test]
-fn rebase_commit() {
+fn reapply_does_not_rebase_onto_updated_upstream() {
     let Test { repo, ctx, .. } = &mut Test::default();
 
     // make sure we have an undiscovered commit in the remote branch
@@ -112,7 +112,8 @@ fn rebase_commit() {
 
         stack_1_id = outcome.0;
 
-        // it should be rebased
+        // Re-applying an unapplied branch restores its saved branch state as-is.
+        // The current apply path does not rebase that branch onto a newer upstream.
         let stacks = stack_details(ctx);
         assert_eq!(stacks.len(), 1);
         assert_eq!(stacks[0].0, stack_1_id);
@@ -126,7 +127,7 @@ fn rebase_commit() {
 
         assert_eq!(
             fs::read_to_string(repo.path().join("file.txt")).unwrap(),
-            "two"
+            "one"
         );
     }
 }
