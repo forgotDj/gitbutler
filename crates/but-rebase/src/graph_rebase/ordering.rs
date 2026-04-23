@@ -1,22 +1,25 @@
 #![doc = include_str!("../../docs/commit_parentage.md")]
 
-use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashMap, HashSet},
-};
+use std::collections::{HashMap, HashSet};
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use but_core::RefMetadata;
-use petgraph::visit::EdgeRef as _;
+use petgraph::Direction;
 
 use crate::graph_rebase::{Editor, Pick, Selector, Step, StepGraphIndex, ToCommitSelector, util};
 
 impl<M: RefMetadata> Editor<'_, '_, M> {
     /// Order commit selectors by parentage, with parents first and children last.
     ///
-    /// If two commits are unrelated by ancestry, their relative order is determined by
-    /// deterministic editor graph order. Duplicate selectors are deduplicated by commit-id
-    /// with first occurrence winning.
+    /// Duplicate selectors are deduplicated by commit-id with first occurrence winning.
+    ///
+    /// Ordering is derived from a deterministic rank map built from the editor step graph.
+    /// The rank is computed by traversing from all child-most graph nodes in ordered-parent
+    /// post-order (parents are pushed in `collect_ordered_parents` order, without reversing),
+    /// then sorting selected commits by `(rank, input_order)`.
+    ///
+    /// The ranker considers only selected commit ids and exits traversal early once all selected
+    /// commits have been ranked.
     pub fn order_commit_selectors_by_parentage<I, S>(&self, selectors: I) -> Result<Vec<Selector>>
     where
         I: IntoIterator<Item = S>,
@@ -40,92 +43,34 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
             return Ok(selected.into_iter().map(|s| s.selector).collect());
         }
 
-        // Build a deterministic fallback rank from editor step-graph order for unrelated commits.
-        let step_graph_rank = step_graph_parent_to_child_rank(self);
-
-        // Build a DAG over selected commits where edges always point ancestor -> descendant.
-        let mut adjacency = vec![Vec::<usize>::new(); selected.len()];
-        let mut indegree = vec![0usize; selected.len()];
-
-        for (i, left_commit) in selected.iter().enumerate() {
-            for (offset, right_commit) in selected.iter().skip(i + 1).enumerate() {
-                let j = i + 1 + offset;
-                match ancestry_relation(self, left_commit, right_commit) {
-                    Relation::LeftIsAncestorOfRight => {
-                        adjacency
-                            .get_mut(i)
-                            .context("BUG: adjacency index should always be valid")?
-                            .push(j);
-                        *indegree
-                            .get_mut(j)
-                            .context("BUG: indegree index should always be valid")? += 1;
-                    }
-                    Relation::RightIsAncestorOfLeft => {
-                        adjacency
-                            .get_mut(j)
-                            .context("BUG: adjacency index should always be valid")?
-                            .push(i);
-                        *indegree
-                            .get_mut(i)
-                            .context("BUG: indegree index should always be valid")? += 1;
-                    }
-                    Relation::Unrelated => {}
-                }
-            }
-        }
-
-        // Kahn topological sort with a min-priority queue so output order is stable across unrelated nodes.
-        let mut output = Vec::with_capacity(selected.len());
-        let mut ready: BinaryHeap<Reverse<(usize, usize, usize)>> = indegree
+        // Build a deterministic rank from editor step-graph order.
+        let selected_ids = selected
             .iter()
-            .enumerate()
-            .filter_map(|(idx, degree)| {
-                if *degree != 0 {
-                    return None;
-                }
-                let commit = selected.get(idx)?;
-                let rank = *step_graph_rank
-                    .get(&commit.id)
-                    .context("BUG: selected commit should be rankable in editor graph")
-                    .ok()?;
-                Some(Reverse((rank, commit.input_order, idx)))
-            })
-            .collect();
+            .map(|commit| commit.id)
+            .collect::<HashSet<_>>();
+        let step_graph_rank = step_graph_parent_to_child_rank(self, &selected_ids)?;
 
-        // Repeatedly emit the best available node and unlock its descendants.
-        while let Some(Reverse((_, _, next))) = ready.pop() {
-            output.push(
-                selected
-                    .get(next)
-                    .context("BUG: ready index should be in-bounds")?
-                    .selector,
-            );
-            for &child in adjacency
-                .get(next)
-                .context("BUG: adjacency index should be in-bounds")?
-            {
-                let degree = indegree
-                    .get_mut(child)
-                    .context("BUG: child index should be in-bounds")?;
-                *degree -= 1;
-                if *degree == 0 {
-                    let commit = selected
-                        .get(child)
-                        .context("BUG: child index should point to selected commits")?;
-                    let rank = *step_graph_rank
-                        .get(&commit.id)
-                        .context("BUG: selected child commit should be rankable in editor graph")?;
-                    ready.push(Reverse((rank, commit.input_order, child)));
-                }
+        // Preserve the Result contract: unreachable selected commits are a runtime error,
+        // not an internal panic.
+        for commit in &selected {
+            if !step_graph_rank.contains_key(&commit.id) {
+                bail!(
+                    "Cannot order selected commits by parentage: selected commit {} could not be ranked from editor graph nodes",
+                    commit.id
+                );
             }
         }
 
-        // Any leftovers indicate impossible/cyclic constraints in what should be a DAG.
-        if output.len() != selected.len() {
-            bail!("Cannot order selected commits by parentage due to cyclic ancestry constraints")
-        }
+        // The rank map is the sole source of truth for deterministic parent-before-child ordering.
+        selected.sort_by_key(|commit| {
+            let rank = step_graph_rank
+                .get(&commit.id)
+                .copied()
+                .unwrap_or(usize::MAX);
+            (rank, commit.input_order)
+        });
 
-        Ok(output)
+        Ok(selected.into_iter().map(|s| s.selector).collect())
     }
 }
 
@@ -136,130 +81,60 @@ struct SelectedCommit {
     input_order: usize,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum Relation {
-    LeftIsAncestorOfRight,
-    RightIsAncestorOfLeft,
-    Unrelated,
-}
-
-fn ancestry_relation(
-    editor: &Editor<'_, '_, impl RefMetadata>,
-    left: &SelectedCommit,
-    right: &SelectedCommit,
-) -> Relation {
-    if is_pick_ancestor(editor, left.selector.id, right.selector.id) {
-        return Relation::LeftIsAncestorOfRight;
-    }
-    if is_pick_ancestor(editor, right.selector.id, left.selector.id) {
-        return Relation::RightIsAncestorOfLeft;
-    }
-    Relation::Unrelated
-}
-
-fn is_pick_ancestor(
-    editor: &Editor<'_, '_, impl RefMetadata>,
-    ancestor: StepGraphIndex,
-    descendant: StepGraphIndex,
-) -> bool {
-    let mut stack = vec![descendant];
-    let mut seen = HashSet::from([descendant]);
-
-    while let Some(node) = stack.pop() {
-        for edge in editor
-            .graph
-            .edges_directed(node, petgraph::Direction::Outgoing)
-        {
-            let parent = edge.target();
-            if parent == ancestor {
-                return true;
-            }
-            if seen.insert(parent) {
-                stack.push(parent);
-            }
-        }
-    }
-
-    false
-}
-
 fn step_graph_parent_to_child_rank<M: RefMetadata>(
     editor: &Editor<'_, '_, M>,
-) -> HashMap<gix::ObjectId, usize> {
-    let pick_nodes: Vec<StepGraphIndex> = editor
-        .graph
-        .node_indices()
-        .filter(|idx| matches!(editor.graph[*idx], Step::Pick(_)))
-        .collect();
-
-    let pick_pos_by_idx: HashMap<StepGraphIndex, usize> = pick_nodes
-        .iter()
-        .copied()
-        .enumerate()
-        .map(|(pos, idx)| (idx, pos))
-        .collect();
-
-    // Build parent -> child edges between pick nodes only.
-    let mut adjacency = vec![Vec::<usize>::new(); pick_nodes.len()];
-    let mut indegree = vec![0usize; pick_nodes.len()];
-
-    for (child_pos, child_idx) in pick_nodes.iter().copied().enumerate() {
-        for parent_idx in util::collect_ordered_parents(&editor.graph, child_idx) {
-            let Some(parent_pos) = pick_pos_by_idx.get(&parent_idx).copied() else {
-                continue;
-            };
-            adjacency[parent_pos].push(child_pos);
-            indegree[child_pos] += 1;
-        }
-    }
-
-    // Deterministic tie-break on node index keeps ranking stable.
-    let mut ready: BinaryHeap<Reverse<(usize, usize)>> = indegree
-        .iter()
-        .enumerate()
-        .filter_map(|(pos, degree)| {
-            (*degree == 0).then_some(Reverse((pick_nodes[pos].index(), pos)))
-        })
-        .collect();
-
+    selected_ids: &HashSet<gix::ObjectId>,
+) -> Result<HashMap<gix::ObjectId, usize>> {
     let mut rank_by_id = HashMap::<gix::ObjectId, usize>::new();
     let mut next_rank = 0usize;
+    let mut seen = HashSet::<StepGraphIndex>::new();
 
-    while let Some(Reverse((_, pos))) = ready.pop() {
-        if let Step::Pick(Pick { id, .. }) = editor.graph[pick_nodes[pos]] {
-            rank_by_id.entry(id).or_insert_with(|| {
-                let rank = next_rank;
-                next_rank += 1;
-                rank
-            });
+    let mut roots = editor
+        .graph
+        .externals(Direction::Incoming)
+        .collect::<Vec<StepGraphIndex>>();
+    roots.sort_unstable_by_key(|idx| idx.index());
+
+    // Traverse from all child-most entrypoints (graph nodes without children), assigning
+    // rank in post-order so parent commits always rank before descendants. Parents are
+    // pushed in collect_ordered_parents order (not reversed). The seen-set handles nodes
+    // reachable from multiple entrypoints, and traversal stops once all selected commits
+    // have ranks.
+    for root in roots {
+        if rank_by_id.len() == selected_ids.len() {
+            break;
         }
 
-        for &child in &adjacency[pos] {
-            let degree = &mut indegree[child];
-            *degree -= 1;
-            if *degree == 0 {
-                ready.push(Reverse((pick_nodes[child].index(), child)));
+        let mut stack = vec![(root, false)];
+        while let Some((node, expanded)) = stack.pop() {
+            if rank_by_id.len() == selected_ids.len() {
+                break;
+            }
+
+            if expanded {
+                if let Step::Pick(Pick { id, .. }) = editor.graph[node]
+                    && selected_ids.contains(&id)
+                {
+                    rank_by_id.entry(id).or_insert_with(|| {
+                        let rank = next_rank;
+                        next_rank += 1;
+                        rank
+                    });
+                }
+                continue;
+            }
+
+            if !seen.insert(node) {
+                continue;
+            }
+
+            let parents = util::collect_ordered_parents(&editor.graph, node);
+            stack.push((node, true));
+            for parent_idx in parents.into_iter() {
+                stack.push((parent_idx, false));
             }
         }
     }
 
-    // Step-graph cycles are unexpected; rank any leftovers deterministically.
-    let mut leftovers: Vec<usize> = indegree
-        .iter()
-        .enumerate()
-        .filter_map(|(pos, degree)| (*degree > 0).then_some(pos))
-        .collect();
-    leftovers.sort_by_key(|pos| pick_nodes[*pos].index());
-
-    for pos in leftovers {
-        if let Step::Pick(Pick { id, .. }) = editor.graph[pick_nodes[pos]] {
-            rank_by_id.entry(id).or_insert_with(|| {
-                let rank = next_rank;
-                next_rank += 1;
-                rank
-            });
-        }
-    }
-
-    rank_by_id
+    Ok(rank_by_id)
 }

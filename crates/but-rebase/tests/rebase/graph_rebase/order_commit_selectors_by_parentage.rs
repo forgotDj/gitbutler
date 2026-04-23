@@ -1,6 +1,6 @@
 use anyhow::Result;
 use but_graph::Graph;
-use but_rebase::graph_rebase::{Editor, LookupStep, Step, testing::Testing as _};
+use but_rebase::graph_rebase::{Editor, LookupStep, Step, mutate, testing::Testing as _};
 use but_testsupport::visualize_commit_graph_all;
 
 use crate::utils::{fixture, fixture_writable, standard_options};
@@ -16,6 +16,10 @@ fn short_ids(
             Ok(id.to_hex_with_len(7).to_string())
         })
         .collect()
+}
+
+fn short_id(id: gix::ObjectId) -> String {
+    id.to_hex_with_len(7).to_string()
 }
 
 fn trim_trailing_whitespace(input: &str) -> String {
@@ -333,6 +337,126 @@ fn orders_commit_present_in_editor_graph_even_if_workspace_projection_stale() ->
         "1787cd0",
     ]
     "#);
+
+    Ok(())
+}
+
+#[test]
+fn orders_commit_disconnected_from_checkout_roots_if_still_in_editor_graph() -> Result<()> {
+    let (repo, mut meta) = fixture("four-commits")?;
+
+    let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+    let mut ws = graph.into_workspace()?;
+    let mut editor = Editor::create(&mut ws, &mut *meta, &repo)?;
+
+    let b = repo.rev_parse_single("HEAD~1")?.detach();
+    let b_selector = editor.select_commit(b)?;
+
+    editor.disconnect_segment_from(
+        mutate::SegmentDelimiter {
+            child: b_selector,
+            parent: b_selector,
+        },
+        mutate::SelectorSet::All,
+        mutate::SelectorSet::All,
+        true,
+    )?;
+
+    let ordered = editor.order_commit_selectors_by_parentage([b])?;
+    let ordered_ids = short_ids(&editor, &ordered)?;
+    insta::assert_debug_snapshot!(ordered_ids, @r#"
+    [
+        "a96434e",
+    ]
+    "#);
+
+    Ok(())
+}
+
+#[test]
+fn orders_all_commits_in_y_shaped_two_branch_fixture() -> Result<()> {
+    let (repo, _tmpdir, mut meta) = fixture_writable("two-branches-shared-bottom-two")?;
+
+    let graph = trim_trailing_whitespace(&visualize_commit_graph_all(&repo)?);
+    insta::assert_snapshot!(graph, @r"
+    *   3127e18 (HEAD -> main) merge right into main
+    |\
+    | * ce0d74d (right) right: head
+    * | c3a0d4c (left) left: head
+    |/
+    * 67a0a68 shared
+    * 35b8235 base
+    ");
+    let right_ref: gix::refs::FullName = "refs/heads/right".try_into()?;
+
+    let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+    let mut ws = graph.into_workspace()?;
+    let mut editor = Editor::create(&mut ws, &mut *meta, &repo)?;
+
+    let merge = repo.rev_parse_single("HEAD")?.detach();
+    let left = repo.rev_parse_single("left")?.detach();
+    let shared = repo.rev_parse_single("right~")?.detach();
+    let base = repo.rev_parse_single("right~2")?.detach();
+
+    let right = repo.rev_parse_single("right")?.detach();
+    let right_ref_selector = editor.select_reference(right_ref.as_ref())?;
+    let right_selector = editor.select_commit(right)?;
+
+    let ordered = editor.order_commit_selectors_by_parentage([merge, right, left, shared, base])?;
+    let ordered_ids = short_ids(&editor, &ordered)?;
+    assert_eq!(
+        ordered_ids,
+        vec![
+            short_id(base),
+            short_id(shared),
+            short_id(right),
+            short_id(left),
+            short_id(merge),
+        ]
+    );
+
+    // Disconnect the 'right' branch from the merge commit, making it a leaf node, but keeping it in the editor
+    // graph.
+    editor.disconnect_segment_from(
+        mutate::SegmentDelimiter {
+            child: right_ref_selector,
+            parent: right_selector,
+        },
+        mutate::SelectorSet::All,
+        mutate::SelectorSet::None,
+        true,
+    )?;
+
+    // The right reference should still exist, but its tip commit should no longer have commit children.
+    assert_eq!(editor.lookup_reference(right_ref_selector)?, right_ref);
+    let right_children = editor.direct_children(right_ref_selector)?;
+    assert!(
+        right_children.is_empty(),
+        "right should be a leaf commit after disconnecting its children"
+    );
+
+    let right = repo.rev_parse_single("right")?.detach();
+    let merge = repo.rev_parse_single("HEAD")?.detach();
+    let left = repo.rev_parse_single("left")?.detach();
+    let shared = repo.rev_parse_single("right~")?.detach();
+    let base = repo.rev_parse_single("right~2")?.detach();
+
+    let ordered = editor.order_commit_selectors_by_parentage([merge, right, left, shared, base])?;
+    let ordered_ids = short_ids(&editor, &ordered)?;
+    assert_eq!(
+        ordered_ids,
+        vec![
+            short_id(base),
+            short_id(shared),
+            short_id(left),
+            short_id(merge),
+            short_id(right),
+        ]
+    );
+
+    let leaf_ordered = editor.order_commit_selectors_by_parentage([merge, right])?;
+    let leaf_ordered_ids = short_ids(&editor, &leaf_ordered)?;
+    assert_eq!(leaf_ordered_ids, vec![short_id(merge), short_id(right)]);
 
     Ok(())
 }
