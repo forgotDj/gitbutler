@@ -79,8 +79,8 @@ export const OperationTarget: FC<
 
 			return { operationType, target: item };
 		},
-		onActiveTargetDrag: (args) => {
-			const dropData = parseDropData(args.self.data);
+		onActiveTargetDrag: ({ self }) => {
+			const dropData = parseDropData(self.data);
 
 			dispatch(
 				projectActions.updateDragAndDropMode({
