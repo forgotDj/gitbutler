@@ -12,26 +12,24 @@ import { parseDragData } from "./OperationDragAndDrop.tsx";
 import { type Item } from "./Item.ts";
 import { operationModeToOperation } from "./OperationMode.tsx";
 import { OperationTooltip } from "./OperationTooltip.tsx";
-import { resolveOperationSource, type ResolvedOperationSource } from "./ResolvedOperationSource.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./OperationTarget.module.css";
-import { useQueryClient } from "@tanstack/react-query";
 
 const dropTargetToOperation =
-	(item: Item, source: ResolvedOperationSource) =>
+	(target: Item, source: Item) =>
 	({ input, element }: GetDataParams[0]): Operation | null => {
 		const combine = rubOperation({
 			source,
-			target: item,
+			target,
 		});
 		const insertAbove = moveOperation({
 			source,
-			target: item,
+			target,
 			side: "above",
 		});
 		const insertBelow = moveOperation({
 			source,
-			target: item,
+			target,
 			side: "below",
 		});
 
@@ -65,62 +63,39 @@ export type TargetData = {
 	operation: Operation | null;
 };
 
-const useDropTarget = ({ projectId, item }: { projectId: string; item: Item }) => {
-	const queryClient = useQueryClient();
-
-	return useDroppable((args): TargetData | null => {
+const useDropTarget = ({ item }: { item: Item }) =>
+	useDroppable((args): TargetData | null => {
 		const dragData = parseDragData(args.source.data);
 		if (!dragData) return null;
 
 		const { source } = dragData;
-
-		const resolvedSource = resolveOperationSource({
-			operationSource: source,
-			queryClient,
-			projectId,
-		});
-
-		const operation = resolvedSource ? dropTargetToOperation(item, resolvedSource)(args) : null;
+		const operation = dropTargetToOperation(item, source)(args);
 
 		return {
 			source,
 			operation,
 		};
 	});
-};
 
 const useOperationModeTarget = ({
-	projectId,
 	item,
 	operationMode,
 	isSelected,
 }: {
-	projectId: string;
 	item: Item;
 	operationMode: OperationMode | null;
 	isSelected: boolean;
 }): TargetData | null => {
-	const queryClient = useQueryClient();
-
 	const isActiveTarget = !!operationMode && isSelected;
 
 	if (!isActiveTarget) return null;
 
 	const { source } = operationMode;
-
-	const resolvedSource = resolveOperationSource({
-		operationSource: source,
-		queryClient,
-		projectId,
+	const operation = operationModeToOperation({
+		operationMode,
+		source,
+		target: item,
 	});
-
-	const operation = resolvedSource
-		? operationModeToOperation({
-				operationMode,
-				source: resolvedSource,
-				target: item,
-			})
-		: null;
 
 	return {
 		source,
@@ -136,9 +111,8 @@ export const OperationTarget: FC<
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
-	const [dropData, dropRef] = useDropTarget({ projectId, item });
+	const [dropData, dropRef] = useDropTarget({ item });
 	const operationModeTarget = useOperationModeTarget({
-		projectId,
 		item,
 		operationMode,
 		isSelected,
