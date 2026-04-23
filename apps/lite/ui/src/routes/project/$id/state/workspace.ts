@@ -1,3 +1,4 @@
+import { OperationType } from "#ui/Operation.ts";
 import {
 	branchItem,
 	commitItem,
@@ -7,6 +8,7 @@ import {
 } from "../workspace/Item.ts";
 import {
 	defaultWorkspaceMode,
+	dragAndDropOperationMode,
 	isValidWorkspaceModeForItem,
 	moveOperationMode,
 	renameBranchWorkspaceMode,
@@ -50,6 +52,14 @@ export const enterMoveMode = (state: WorkspaceState, source: Item) => {
 
 export const enterRubMode = (state: WorkspaceState, source: Item) => {
 	state.mode = rubOperationMode({ source });
+};
+
+export const enterDragAndDropMode = (
+	state: WorkspaceState,
+	source: Item,
+	operationType: OperationType | null,
+) => {
+	state.mode = dragAndDropOperationMode({ source, operationType });
 };
 
 export const exitMode = (state: WorkspaceState) => {

@@ -3,6 +3,7 @@ import type { RootState } from "#ui/state/store.ts";
 import { type BranchItem, type CommitItem, type Item } from "../workspace/Item.ts";
 import * as layout from "./layout.ts";
 import * as workspace from "./workspace.ts";
+import { OperationType } from "#ui/Operation.ts";
 
 type ProjectState = {
 	layout: layout.ProjectLayoutState;
@@ -87,6 +88,19 @@ const projectSlice = createSlice({
 			const projectState = ensureProjectState(state, projectId);
 			layout.focusPrimary(projectState.layout);
 			workspace.enterMoveMode(projectState.workspace, source);
+		},
+		enterDragAndDropMode: (
+			state,
+			action: PayloadAction<{
+				projectId: string;
+				source: Item;
+				operationType: OperationType | null;
+			}>,
+		) => {
+			const { projectId, source, operationType } = action.payload;
+			const projectState = ensureProjectState(state, projectId);
+			layout.focusPrimary(projectState.layout);
+			workspace.enterDragAndDropMode(projectState.workspace, source, operationType);
 		},
 		exitMode: (state, action: PayloadAction<{ projectId: string }>) => {
 			workspace.exitMode(ensureProjectState(state, action.payload.projectId).workspace);

@@ -1,14 +1,18 @@
 import { Match } from "effect";
 import { branchItem, commitItem, itemEquals, type Item } from "./Item.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "./WorkspaceModel.ts";
+import { OperationType } from "#ui/Operation.ts";
 
 /** @public */
 export type RubOperationMode = { source: Item };
 /** @public */
 export type MoveOperationMode = { source: Item };
+/** @public */
+export type DragAndDropOperationMode = { source: Item; operationType: OperationType | null };
 export type OperationMode =
 	| ({ _tag: "Rub" } & RubOperationMode)
-	| ({ _tag: "Move" } & MoveOperationMode);
+	| ({ _tag: "Move" } & MoveOperationMode)
+	| ({ _tag: "DragAndDrop" } & DragAndDropOperationMode);
 
 /** @public */
 export type RewordCommitWorkspaceMode = { stackId: string; commitId: string };
@@ -30,6 +34,16 @@ export const rubOperationMode = ({ source }: RubOperationMode): OperationMode =>
 export const moveOperationMode = ({ source }: MoveOperationMode): OperationMode => ({
 	_tag: "Move",
 	source,
+});
+
+/** @public */
+export const dragAndDropOperationMode = ({
+	source,
+	operationType,
+}: DragAndDropOperationMode): OperationMode => ({
+	_tag: "DragAndDrop",
+	source,
+	operationType,
 });
 
 /** @public */
@@ -58,7 +72,7 @@ export const renameBranchWorkspaceMode = ({
 });
 
 export const getOperationMode = (mode: WorkspaceMode): OperationMode | null =>
-	mode._tag === "Rub" || mode._tag === "Move" ? mode : null;
+	mode._tag === "Rub" || mode._tag === "Move" || mode._tag === "DragAndDrop" ? mode : null;
 
 export const isValidWorkspaceMode = ({
 	mode,
@@ -72,6 +86,9 @@ export const isValidWorkspaceMode = ({
 			Default: () => true,
 			Rub: (mode) => navigationIndexIncludes(navigationIndex, mode.source),
 			Move: (mode) => navigationIndexIncludes(navigationIndex, mode.source),
+			// Once we have keyboard selectable hunks, this should check the
+			// navigation index(es).
+			DragAndDrop: () => true,
 			RewordCommit: (mode) =>
 				navigationIndexIncludes(
 					navigationIndex,
@@ -103,6 +120,7 @@ export const isValidWorkspaceModeForItem = ({
 			Default: () => true,
 			Rub: () => true,
 			Move: () => true,
+			DragAndDrop: () => true,
 			RewordCommit: (mode) =>
 				itemEquals(
 					item,

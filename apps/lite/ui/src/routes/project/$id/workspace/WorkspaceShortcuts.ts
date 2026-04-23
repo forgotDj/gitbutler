@@ -577,6 +577,7 @@ const getModeScope = ({
 					scope,
 				});
 			},
+			DragAndDrop: () => null,
 			Move: () =>
 				moveOperationModeScope({
 					bindings: operationModeBindings,
