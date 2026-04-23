@@ -24,7 +24,6 @@
 	},
 	"build": {
 		"appId": "com.gitbutler.lite",
-		"afterSign": "scripts/after-sign.js",
 		"directories": {
 			"output": "release"
 		},
