@@ -685,14 +685,12 @@ const InlineRewordCommit: FC<{
 	onExit: () => void;
 	formRef?: Ref<HTMLFormElement>;
 }> = ({ message, onSubmit, onExit, formRef }) => {
-	const submit = (event: React.SyntheticEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		const formData = new FormData(event.currentTarget);
+	const submitAction = (formData: FormData) => {
 		onExit();
 		onSubmit(formData.get("message") as string);
 	};
 	return (
-		<form ref={formRef} className={styles.editorForm} onSubmit={submit}>
+		<form ref={formRef} className={styles.editorForm} action={submitAction}>
 			<textarea
 				ref={(el) => {
 					if (!el) return;
@@ -1278,14 +1276,12 @@ const InlineRenameBranch: FC<{
 	onExit: () => void;
 	formRef?: Ref<HTMLFormElement>;
 }> = ({ branchName, onSubmit, onExit, formRef }) => {
-	const submit = (event: React.SyntheticEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		const formData = new FormData(event.currentTarget);
+	const submitAction = (formData: FormData) => {
 		onExit();
 		onSubmit(formData.get("branchName") as string);
 	};
 	return (
-		<form ref={formRef} className={styles.editorForm} onSubmit={submit}>
+		<form ref={formRef} className={styles.editorForm} action={submitAction}>
 			<input
 				aria-label="Branch name"
 				ref={(el) => {
