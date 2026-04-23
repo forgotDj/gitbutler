@@ -18,16 +18,16 @@ import styles from "./OperationTarget.module.css";
 const dropTargetToOperation =
 	(target: Item, source: Item) =>
 	({ input, element }: GetDataParams[0]): Operation | null => {
-		const combine = rubOperation({
+		const rub = rubOperation({
 			source,
 			target,
 		});
-		const insertAbove = moveOperation({
+		const moveAbove = moveOperation({
 			source,
 			target,
 			side: "above",
 		});
-		const insertBelow = moveOperation({
+		const moveBelow = moveOperation({
 			source,
 			target,
 			side: "below",
@@ -40,9 +40,9 @@ const dropTargetToOperation =
 					input,
 					element,
 					operations: {
-						"reorder-before": insertAbove ? "available" : "not-available",
-						"reorder-after": insertBelow ? "available" : "not-available",
-						combine: combine ? "available" : "not-available",
+						"reorder-before": moveAbove ? "available" : "not-available",
+						"reorder-after": moveBelow ? "available" : "not-available",
+						combine: rub ? "available" : "not-available",
 					},
 				},
 			),
@@ -51,9 +51,9 @@ const dropTargetToOperation =
 		if (!instruction) return null;
 
 		return Match.value(instruction.operation).pipe(
-			Match.when("combine", () => combine),
-			Match.when("reorder-before", () => insertAbove),
-			Match.when("reorder-after", () => insertBelow),
+			Match.when("combine", () => rub),
+			Match.when("reorder-before", () => moveAbove),
+			Match.when("reorder-after", () => moveBelow),
 			Match.exhaustive,
 		);
 	};
