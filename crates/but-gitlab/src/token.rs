@@ -83,6 +83,18 @@ impl GitlabAccountIdentifier {
         }
     }
 
+    /// The key used to store and look up the cached profile for this account.
+    pub fn cache_key(&self) -> String {
+        match self {
+            GitlabAccountIdentifier::PatUsername { username } => {
+                format!("gitlab_pat_{username}")
+            }
+            GitlabAccountIdentifier::SelfHosted { host, .. } => {
+                format!("gitlab_selfhosted_{host}")
+            }
+        }
+    }
+
     pub fn client(&self, access_token: &Sensitive<String>) -> Result<GitLabClient> {
         match self {
             GitlabAccountIdentifier::PatUsername { .. } => GitLabClient::new(access_token),
@@ -180,8 +192,12 @@ impl GitLabAccount {
 
     fn secret_key(&self) -> String {
         match self {
-            GitLabAccount::Pat { username, .. } => format!("gitlab_pat_{username}"),
-            GitLabAccount::SelfHosted { host, .. } => format!("gitlab_selfhosted_{host}"),
+            GitLabAccount::Pat { username, .. } => {
+                GitlabAccountIdentifier::pat(username).cache_key()
+            }
+            GitLabAccount::SelfHosted { host, username, .. } => {
+                GitlabAccountIdentifier::selfhosted(username, host).cache_key()
+            }
         }
     }
 

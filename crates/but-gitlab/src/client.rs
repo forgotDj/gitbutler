@@ -7,6 +7,15 @@ use crate::GitLabProjectId;
 
 const GITLAB_API_BASE_URL: &str = "https://gitlab.com/api/v4";
 
+/// An HTTP error with a status code, returned when the API responds with a non-success status.
+///
+/// This can be downcasted from `anyhow::Error` to distinguish auth failures (401/403) from other errors.
+#[derive(Debug, thiserror::Error)]
+#[error("HTTP {status}")]
+pub struct HttpStatusError {
+    pub status: reqwest::StatusCode,
+}
+
 pub struct GitLabClient {
     client: reqwest::Client,
     base_url: String,
@@ -89,7 +98,10 @@ impl GitLabClient {
         let response = self.client.get(&url).send().await?;
 
         if !response.status().is_success() {
-            bail!("Failed to get authenticated user: {}", response.status());
+            return Err(HttpStatusError {
+                status: response.status(),
+            }
+            .into());
         }
 
         let user: User = response.json().await?;

@@ -1,4 +1,18 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Deserializer, Serialize, de::DeserializeOwned};
+
+/// Cached user profile data fetched from the forge API.
+///
+/// Stored separately from account credentials so the cache can evolve
+/// independently and be easily swapped for a different storage backend.
+#[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CachedProfile {
+    pub avatar_url: Option<String>,
+    pub name: Option<String>,
+    pub email: Option<String>,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -8,6 +22,9 @@ pub struct ForgeSettings {
     /// GitLab-specific settings.
     #[serde(default)]
     pub gitlab: GitLabSettings,
+    /// Cached user profiles, keyed by account `access_token_key`.
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub cached_profiles: HashMap<String, CachedProfile>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -18,7 +35,7 @@ pub struct GitHubSettings {
     pub known_accounts: Vec<GitHubAccount>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum GitHubAccount {
     OAuth {
@@ -67,51 +84,6 @@ impl GitHubAccount {
     }
 }
 
-impl PartialEq for GitHubAccount {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                GitHubAccount::OAuth {
-                    username: u1,
-                    access_token_key: k1,
-                },
-                GitHubAccount::OAuth {
-                    username: u2,
-                    access_token_key: k2,
-                },
-            ) => u1 == u2 && k1 == k2,
-            (
-                GitHubAccount::Pat {
-                    username: u1,
-                    access_token_key: k1,
-                },
-                GitHubAccount::Pat {
-                    username: u2,
-                    access_token_key: k2,
-                },
-            ) => u1 == u2 && k1 == k2,
-            (
-                GitHubAccount::Enterprise {
-                    host: h1,
-                    username: u1,
-                    access_token_key: k1,
-                },
-                GitHubAccount::Enterprise {
-                    host: h2,
-                    username: u2,
-                    access_token_key: k2,
-                },
-            ) => h1 == h2 && u1 == u2 && k1 == k2,
-            (GitHubAccount::OAuth { .. }, GitHubAccount::Pat { .. }) => false,
-            (GitHubAccount::Pat { .. }, GitHubAccount::OAuth { .. }) => false,
-            (GitHubAccount::Enterprise { .. }, GitHubAccount::OAuth { .. }) => false,
-            (GitHubAccount::OAuth { .. }, GitHubAccount::Enterprise { .. }) => false,
-            (GitHubAccount::Pat { .. }, GitHubAccount::Enterprise { .. }) => false,
-            (GitHubAccount::Enterprise { .. }, GitHubAccount::Pat { .. }) => false,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct GitLabSettings {
@@ -120,7 +92,7 @@ pub struct GitLabSettings {
     pub known_accounts: Vec<GitLabAccount>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "type")]
 pub enum GitLabAccount {
     Pat {
@@ -155,37 +127,6 @@ impl GitLabAccount {
         match self {
             GitLabAccount::Pat { username, .. } => username,
             GitLabAccount::SelfHosted { username, .. } => username,
-        }
-    }
-}
-
-impl PartialEq for GitLabAccount {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                GitLabAccount::Pat {
-                    username: u1,
-                    access_token_key: k1,
-                },
-                GitLabAccount::Pat {
-                    username: u2,
-                    access_token_key: k2,
-                },
-            ) => u1 == u2 && k1 == k2,
-            (
-                GitLabAccount::SelfHosted {
-                    host: h1,
-                    username: u1,
-                    access_token_key: k1,
-                },
-                GitLabAccount::SelfHosted {
-                    host: h2,
-                    username: u2,
-                    access_token_key: k2,
-                },
-            ) => h1 == h2 && u1 == u2 && k1 == k2,
-            (GitLabAccount::Pat { .. }, GitLabAccount::SelfHosted { .. }) => false,
-            (GitLabAccount::SelfHosted { .. }, GitLabAccount::Pat { .. }) => false,
         }
     }
 }
@@ -266,6 +207,7 @@ mod tests {
                     access_token_key: "gitlab_pat_gltest".into(),
                 }],
             },
+            cached_profiles: HashMap::new(),
         };
         let json = serde_json::to_string(&settings).unwrap();
         let roundtripped: ForgeSettings = serde_json::from_str(&json).unwrap();
