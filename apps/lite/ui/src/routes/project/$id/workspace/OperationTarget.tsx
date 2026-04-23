@@ -77,28 +77,6 @@ const useDropTarget = ({ item }: { item: Item }) =>
 		};
 	});
 
-const getOperationModeTarget = ({
-	item,
-	operationMode,
-	isSelected,
-}: {
-	item: Item;
-	operationMode: OperationMode | null;
-	isSelected: boolean;
-}): TargetData | null => {
-	const isActiveTarget = !!operationMode && isSelected;
-
-	if (!isActiveTarget) return null;
-
-	const { source } = operationMode;
-	const operation = operationModeToOperation({ operationMode, target: item });
-
-	return {
-		source,
-		operation,
-	};
-};
-
 export const OperationTarget: FC<
 	{
 		item: Item;
@@ -108,11 +86,13 @@ export const OperationTarget: FC<
 	} & useRender.ComponentProps<"div">
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
 	const [dropTarget, dropRef] = useDropTarget({ item });
-	const operationModeTarget = getOperationModeTarget({
-		item,
-		operationMode,
-		isSelected,
-	});
+	const operationModeTarget: TargetData | null =
+		operationMode && isSelected
+			? {
+					source: operationMode.source,
+					operation: operationModeToOperation({ operationMode, target: item }),
+				}
+			: null;
 
 	const targetData: TargetData | null = dropTarget ?? operationModeTarget;
 
