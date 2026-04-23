@@ -16,6 +16,44 @@ import { getOperations, OperationType } from "#ui/Operation.ts";
 import { useAppDispatch } from "#ui/state/hooks.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 
+const getDropOperationType = ({
+	source,
+	target,
+	input,
+	element,
+}: {
+	source: Item;
+	target: Item;
+	input: Parameters<typeof attachInstruction>[1]["input"];
+	element: Parameters<typeof attachInstruction>[1]["element"];
+}): OperationType | null => {
+	const { rub, moveAbove, moveBelow } = getOperations(source, target);
+
+	const instruction = extractInstruction(
+		attachInstruction(
+			{},
+			{
+				input,
+				element,
+				operations: {
+					"reorder-before": moveAbove ? "available" : "not-available",
+					"reorder-after": moveBelow ? "available" : "not-available",
+					combine: rub ? "available" : "not-available",
+				},
+			},
+		),
+	);
+	if (!instruction) return null;
+
+	return Match.value(instruction.operation).pipe(
+		Match.withReturnType<OperationType | null>(),
+		Match.when("combine", () => "rub"),
+		Match.when("reorder-before", () => "moveAbove"),
+		Match.when("reorder-after", () => "moveBelow"),
+		Match.exhaustive,
+	);
+};
+
 export const OperationTarget: FC<
 	{
 		item: Item;
@@ -31,31 +69,13 @@ export const OperationTarget: FC<
 			const dragData = parseDragData(source.data);
 			if (!dragData) return {};
 
-			const { rub, moveAbove, moveBelow } = getOperations(dragData.source, item);
-
-			const instruction = extractInstruction(
-				attachInstruction(
-					{},
-					{
-						input,
-						element,
-						operations: {
-							"reorder-before": moveAbove ? "available" : "not-available",
-							"reorder-after": moveBelow ? "available" : "not-available",
-							combine: rub ? "available" : "not-available",
-						},
-					},
-				),
-			);
-			if (!instruction) return {};
-
-			const operationType = Match.value(instruction.operation).pipe(
-				Match.withReturnType<OperationType | null>(),
-				Match.when("combine", () => "rub"),
-				Match.when("reorder-before", () => "moveAbove"),
-				Match.when("reorder-after", () => "moveBelow"),
-				Match.exhaustive,
-			);
+			const operationType = getDropOperationType({
+				source: dragData.source,
+				target: item,
+				input,
+				element,
+			});
+			if (operationType === null) return {};
 
 			return { operationType, target: item };
 		},

@@ -1,7 +1,7 @@
 import { Match } from "effect";
 import { branchItem, commitItem, itemEquals, type Item } from "./Item.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "./WorkspaceModel.ts";
-import { OperationType } from "#ui/Operation.ts";
+import { getOperation, getOperations, OperationType } from "#ui/Operation.ts";
 
 /** @public */
 export type RubOperationMode = { source: Item };
@@ -74,6 +74,18 @@ export const renameBranchWorkspaceMode = ({
 export const getOperationMode = (mode: WorkspaceMode): OperationMode | null =>
 	mode._tag === "Rub" || mode._tag === "Move" || mode._tag === "DragAndDrop" ? mode : null;
 
+export const operationModeToOperationType = (operationMode: OperationMode): OperationType | null =>
+	Match.value(operationMode).pipe(
+		Match.withReturnType<OperationType | null>(),
+		Match.tags({
+			Rub: () => "rub",
+			// We should have the ability to move either above or below.
+			Move: ({ source }) => (source._tag === "Branch" ? "moveAbove" : "moveBelow"),
+			DragAndDrop: ({ operationType }) => operationType,
+		}),
+		Match.exhaustive,
+	);
+
 export const isValidWorkspaceMode = ({
 	mode,
 	navigationIndex,
@@ -137,5 +149,50 @@ export const isValidWorkspaceModeForItem = ({
 						branchRef: mode.branchRef,
 					}),
 				),
+		}),
+	);
+
+export const includeItemForWorkspaceMode = ({
+	mode,
+	item,
+}: {
+	mode: WorkspaceMode;
+	item: Item;
+}): boolean =>
+	Match.value(mode).pipe(
+		Match.tagsExhaustive({
+			Default: () => true,
+			DragAndDrop: ({ source }) => {
+				const operations = getOperations(source, item);
+				return !!operations.rub || !!operations.moveAbove || !!operations.moveBelow;
+			},
+			Move: (mode) =>
+				!!getOperation({
+					source: mode.source,
+					target: item,
+					operationType: operationModeToOperationType(mode),
+				}),
+			RenameBranch: (mode) =>
+				itemEquals(
+					item,
+					branchItem({
+						stackId: mode.stackId,
+						branchRef: mode.branchRef,
+					}),
+				),
+			RewordCommit: (mode) =>
+				itemEquals(
+					item,
+					commitItem({
+						stackId: mode.stackId,
+						commitId: mode.commitId,
+					}),
+				),
+			Rub: (mode) =>
+				!!getOperation({
+					source: mode.source,
+					target: item,
+					operationType: operationModeToOperationType(mode),
+				}),
 		}),
 	);

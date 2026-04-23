@@ -120,12 +120,11 @@ import { formatShortcutKeys, ShortcutActionBase, type ShortcutBinding } from "#u
 import styles from "./route.module.css";
 import {
 	getOperationMode,
+	includeItemForWorkspaceMode,
 	isValidWorkspaceMode,
 	type OperationMode,
 	type WorkspaceMode,
 } from "./WorkspaceMode.ts";
-import { operationModeToOperationType } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
-import { getOperation, getOperations } from "#ui/Operation.ts";
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 
@@ -686,14 +685,12 @@ const InlineRewordCommit: FC<{
 	onExit: () => void;
 	formRef?: Ref<HTMLFormElement>;
 }> = ({ message, onSubmit, onExit, formRef }) => {
-	const submit = (event: React.SyntheticEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		const formData = new FormData(event.currentTarget);
+	const submitAction = (formData: FormData) => {
 		onExit();
 		onSubmit(formData.get("message") as string);
 	};
 	return (
-		<form ref={formRef} className={styles.editorForm} onSubmit={submit} onBlur={submit}>
+		<form ref={formRef} className={styles.editorForm} action={submitAction}>
 			<textarea
 				ref={(el) => {
 					if (!el) return;
@@ -1279,14 +1276,12 @@ const InlineRenameBranch: FC<{
 	onExit: () => void;
 	formRef?: Ref<HTMLFormElement>;
 }> = ({ branchName, onSubmit, onExit, formRef }) => {
-	const submit = (event: React.SyntheticEvent<HTMLFormElement>) => {
-		event.preventDefault();
-		const formData = new FormData(event.currentTarget);
+	const submitAction = (formData: FormData) => {
 		onExit();
 		onSubmit(formData.get("branchName") as string);
 	};
 	return (
-		<form ref={formRef} className={styles.editorForm} onSubmit={submit} onBlur={submit}>
+		<form ref={formRef} className={styles.editorForm} action={submitAction}>
 			<input
 				aria-label="Branch name"
 				ref={(el) => {
@@ -1725,23 +1720,15 @@ const ProjectPage: FC = () => {
 		selectNormalizedSelectedItem(state, { projectId, navigationIndex: navigationIndexUnfiltered }),
 	);
 
-	const navigationIndex = operationMode
-		? filterNavigationIndex(navigationIndexUnfiltered, (item) => {
-				const operationType = operationModeToOperationType(operationMode);
-				const hasOperation = Match.value(operationMode).pipe(
-					Match.tagsExhaustive({
-						DragAndDrop: ({ source }) => {
-							const operations = getOperations(source, item);
-							return !!operations.rub || !!operations.moveAbove || !!operations.moveBelow;
-						},
-						Rub: ({ source }) => !!getOperation({ source, target: item, operationType }),
-						Move: ({ source }) => !!getOperation({ source, target: item, operationType }),
-					}),
-				);
-
-				return (selectedItem && itemEquals(selectedItem, item)) || hasOperation;
-			})
-		: navigationIndexUnfiltered;
+	const navigationIndex =
+		workspaceMode._tag !== "Default"
+			? filterNavigationIndex(
+					navigationIndexUnfiltered,
+					(item) =>
+						(selectedItem && itemEquals(selectedItem, item)) ||
+						includeItemForWorkspaceMode({ mode: workspaceMode, item }),
+				)
+			: navigationIndexUnfiltered;
 
 	const shortcutScope = getScope({ selectedItem, layoutState, workspaceMode });
 

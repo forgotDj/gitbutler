@@ -7,14 +7,17 @@ import styles from "./OperationTooltip.module.css";
 import { Item, itemEquals } from "./Item";
 import { useAppDispatch } from "#ui/state/hooks.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
-import { OperationMode } from "#ui/routes/project/$id/workspace/WorkspaceMode.ts";
-import { operationModeToOperationType } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
+import {
+	operationModeToOperationType,
+	OperationMode,
+} from "#ui/routes/project/$id/workspace/WorkspaceMode.ts";
 import { Match } from "effect";
 
 const OperationModeControls: FC<{
 	projectId: string;
 	operation: Operation | null;
-}> = ({ projectId, operation }) => {
+	isSource: boolean;
+}> = ({ projectId, operation, isSource }) => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
 
@@ -30,9 +33,11 @@ const OperationModeControls: FC<{
 
 	return (
 		<>
-			<button type="button" className={uiStyles.button} onClick={confirm}>
-				Confirm
-			</button>
+			{!isSource && (
+				<button type="button" className={uiStyles.button} onClick={confirm}>
+					Confirm
+				</button>
+			)}
 			<button type="button" className={uiStyles.button} onClick={cancel}>
 				Cancel
 			</button>
@@ -91,7 +96,13 @@ export const OperationTooltip: FC<
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip, styles.popup)}>
 						{tooltipLabel}
-						{showControls && <OperationModeControls projectId={projectId} operation={operation} />}
+						{showControls && (
+							<OperationModeControls
+								projectId={projectId}
+								operation={operation}
+								isSource={isSource}
+							/>
+						)}
 					</Tooltip.Popup>
 				</Tooltip.Positioner>
 			</Tooltip.Portal>

@@ -98,7 +98,7 @@ export const useDroppable = ({
 			element,
 			getData,
 			onDrag: (args) => {
-				const innerMost = args.location.current.dropTargets[0];
+				const [innerMost] = args.location.current.dropTargets;
 
 				const isActiveDropTarget =
 					innerMost?.element === args.self.element && !!parseDropData(innerMost.data);
