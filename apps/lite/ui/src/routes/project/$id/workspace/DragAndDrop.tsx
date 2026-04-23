@@ -76,9 +76,9 @@ export type GetDataParams = Parameters<NonNullable<DropTargetParams["getData"]>>
 
 export const useDroppable = <TData extends Record<string | symbol, unknown>>(
 	getDataProp: (...args: GetDataParams) => TData | null,
-): [TData | null, RefCallback<HTMLElement>] => {
+): [boolean, RefCallback<HTMLElement>] => {
 	const ref = useRef<HTMLElement>(null);
-	const [data, setData] = useState<TData | null>(null);
+	const [isDragOver, setIsDragOver] = useState<boolean>(false);
 	const getData = useEffectEvent((...args: GetDataParams) => getDataProp(...args));
 	const canDrop: DropTargetParams["canDrop"] = useEffectEvent((args) => getData(args) !== null);
 
@@ -90,23 +90,20 @@ export const useDroppable = <TData extends Record<string | symbol, unknown>>(
 			element,
 			canDrop,
 			getData: (args) => getData(args) ?? {},
-			onDragEnter: ({ self }) => {
-				setData(self.data as TData);
-			},
-			onDrag: ({ self }) => {
-				setData(self.data as TData);
+			onDragEnter: () => {
+				setIsDragOver(true);
 			},
 			onDragLeave: () => {
-				setData(null);
+				setIsDragOver(false);
 			},
 			onDrop: () => {
-				setData(null);
+				setIsDragOver(false);
 			},
 		});
 	}, []);
 
 	return [
-		data,
+		isDragOver,
 		(element) => {
 			ref.current = element;
 		},

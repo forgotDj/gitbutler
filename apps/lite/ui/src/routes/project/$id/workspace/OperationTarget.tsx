@@ -74,7 +74,7 @@ export const OperationTarget: FC<
 		!!operationMode &&
 		Match.value(operationMode).pipe(
 			Match.tagsExhaustive({
-				DragAndDrop: () => !!isDragOver,
+				DragAndDrop: () => isDragOver,
 				Rub: () => isSelected,
 				Move: () => isSelected,
 			}),
@@ -108,7 +108,7 @@ export const OperationTarget: FC<
 		<div className={styles.target}>
 			<OperationTooltip
 				projectId={projectId}
-				isDropTarget={!!isDragOver}
+				isDropTarget={isDragOver}
 				targetData={mainTargetData}
 				render={target}
 			/>
