@@ -15,23 +15,16 @@ import { OperationTooltip } from "./OperationTooltip.tsx";
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./OperationTarget.module.css";
 
+const dropTargetOperations = (target: Item, source: Item) => ({
+	rub: rubOperation({ source, target }),
+	moveAbove: moveOperation({ source, target, side: "above" }),
+	moveBelow: moveOperation({ source, target, side: "below" }),
+});
+
 const dropTargetToOperation =
 	(target: Item, source: Item) =>
 	({ input, element }: GetDataParams[0]): Operation | null => {
-		const rub = rubOperation({
-			source,
-			target,
-		});
-		const moveAbove = moveOperation({
-			source,
-			target,
-			side: "above",
-		});
-		const moveBelow = moveOperation({
-			source,
-			target,
-			side: "below",
-		});
+		const { rub, moveAbove, moveBelow } = dropTargetOperations(target, source);
 
 		const instruction = extractInstruction(
 			attachInstruction(
