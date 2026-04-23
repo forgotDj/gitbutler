@@ -398,7 +398,7 @@ impl Theme {
             default: Style::new(),
             user: style_fg(Color::LightYellow),
             time: style_fg(Color::Cyan),
-            progress: style_fg(Color::DarkGray),
+            progress: Style::new().add_modifier(Modifier::DIM),
 
             // Layout
             border: Style::new().fg(Color::DarkGray),
@@ -450,6 +450,7 @@ impl Theme {
 
             // General purpose
             hint: style_fg(Color::DarkGray),
+            progress: style_fg(Color::DarkGray),
 
             // Layout
             selection_highlight: Style::new().fg(Color::Black).bg(Color::Indexed(252)),
