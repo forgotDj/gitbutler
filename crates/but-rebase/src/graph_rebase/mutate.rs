@@ -186,6 +186,18 @@ impl ToCommitSelector for gix::Id<'_> {
     }
 }
 
+impl ToSelector for gix::ObjectId {
+    fn to_selector(&self, editor: &Editor<impl RefMetadata>) -> Result<Selector> {
+        editor.select_commit(*self)
+    }
+}
+
+impl ToSelector for gix::Id<'_> {
+    fn to_selector(&self, editor: &Editor<impl RefMetadata>) -> Result<Selector> {
+        editor.select_commit(self.detach())
+    }
+}
+
 impl ToReferenceSelector for &gix::refs::FullNameRef {
     fn to_reference_selector(&self, editor: &Editor<impl RefMetadata>) -> Result<Selector> {
         editor.select_reference(self)
@@ -194,6 +206,18 @@ impl ToReferenceSelector for &gix::refs::FullNameRef {
 
 impl ToReferenceSelector for gix::refs::FullName {
     fn to_reference_selector(&self, editor: &Editor<impl RefMetadata>) -> Result<Selector> {
+        editor.select_reference(self.as_ref())
+    }
+}
+
+impl ToSelector for &gix::refs::FullNameRef {
+    fn to_selector(&self, editor: &Editor<impl RefMetadata>) -> Result<Selector> {
+        editor.select_reference(self)
+    }
+}
+
+impl ToSelector for gix::refs::FullName {
+    fn to_selector(&self, editor: &Editor<impl RefMetadata>) -> Result<Selector> {
         editor.select_reference(self.as_ref())
     }
 }
