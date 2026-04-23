@@ -28,9 +28,9 @@ pub mod pr {
             /// Skip force push protection checks
             #[clap(long, short = 's')]
             skip_force_push_protection: bool,
-            /// Run pre-push hooks (defaults to true).
-            #[clap(long, short = 'r', default_value_t = true)]
-            run_hooks: bool,
+            /// Bypass pre-push hooks.
+            #[clap(long = "no-hooks", visible_alias = "no-verify")]
+            no_hooks: bool,
             /// Use the default content for the review title and description, skipping any prompts.
             /// If the branch contains only a single commit, the commit message will be used.
             #[clap(long, short = 't', default_value_t = false)]

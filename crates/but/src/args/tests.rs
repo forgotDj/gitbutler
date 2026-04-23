@@ -136,7 +136,10 @@ fn clap() {
     Args::command().debug_assert();
 }
 
+#[cfg(feature = "legacy")]
 mod push {
+    use clap::Parser;
+
     #[cfg(feature = "legacy")]
     mod get_gerrit_flags {
         use crate::{args::push::Command as Args, command::legacy::push::get_gerrit_flags};
@@ -147,7 +150,7 @@ mod push {
                 branch_id: Some("test".to_string()),
                 with_force: true,
                 skip_force_push_protection: false,
-                run_hooks: true,
+                no_hooks: false,
                 wip: false,
                 ready: false,
                 hashtag: vec![],
@@ -168,7 +171,7 @@ mod push {
                 branch_id: Some("test".to_string()),
                 with_force: true,
                 skip_force_push_protection: false,
-                run_hooks: true,
+                no_hooks: false,
                 wip: true,
                 ready: false,
                 hashtag: vec![],
@@ -194,7 +197,7 @@ mod push {
                 branch_id: Some("test".to_string()),
                 with_force: true,
                 skip_force_push_protection: false,
-                run_hooks: true,
+                no_hooks: false,
                 wip: false,
                 ready: false,
                 hashtag: vec![],
@@ -217,7 +220,7 @@ mod push {
                 branch_id: Some("test".to_string()),
                 with_force: true,
                 skip_force_push_protection: false,
-                run_hooks: true,
+                no_hooks: false,
                 wip: true,
                 ready: false,
                 hashtag: vec![],
@@ -240,7 +243,7 @@ mod push {
                 branch_id: Some("test".to_string()),
                 with_force: true,
                 skip_force_push_protection: false,
-                run_hooks: true,
+                no_hooks: false,
                 wip: false,
                 ready: false,
                 hashtag: vec!["tag1".to_string(), "tag2".to_string(), "tag3".to_string()],
@@ -274,7 +277,7 @@ mod push {
                 branch_id: Some("test".to_string()),
                 with_force: true,
                 skip_force_push_protection: false,
-                run_hooks: true,
+                no_hooks: false,
                 wip: false,
                 ready: false,
                 hashtag: vec![],
@@ -305,7 +308,7 @@ mod push {
                 branch_id: Some("test".to_string()),
                 with_force: true,
                 skip_force_push_protection: false,
-                run_hooks: true,
+                no_hooks: false,
                 wip: false,
                 ready: false,
                 hashtag: vec![],
@@ -336,7 +339,7 @@ mod push {
                 branch_id: Some("test".to_string()),
                 with_force: true,
                 skip_force_push_protection: false,
-                run_hooks: true,
+                no_hooks: false,
                 wip: false,
                 ready: false,
                 hashtag: vec![],
@@ -364,7 +367,7 @@ mod push {
                 branch_id: Some("test".to_string()),
                 with_force: true,
                 skip_force_push_protection: false,
-                run_hooks: true,
+                no_hooks: false,
                 wip: true,
                 ready: false,
                 hashtag: vec!["tag1".to_string(), "tag2".to_string()],
@@ -410,7 +413,7 @@ mod push {
                 branch_id: Some("test".to_string()),
                 with_force: true,
                 skip_force_push_protection: false,
-                run_hooks: true,
+                no_hooks: false,
                 wip: false,
                 ready: false,
                 hashtag: vec!["  ".to_string()],
@@ -436,7 +439,7 @@ mod push {
                 branch_id: Some("test".to_string()),
                 with_force: true,
                 skip_force_push_protection: false,
-                run_hooks: true,
+                no_hooks: false,
                 wip: false,
                 ready: false,
                 hashtag: vec![],
@@ -454,6 +457,78 @@ mod push {
                     .to_string()
                     .contains("Topic cannot be empty")
             );
+        }
+    }
+
+    #[test]
+    fn defaults_to_running_hooks() {
+        let args = crate::args::Args::try_parse_from(["but", "push", "topic"]).expect("parse args");
+
+        let cmd = args.cmd.expect("subcommand");
+        match cmd {
+            crate::args::Subcommands::Push(crate::args::push::Command { no_hooks, .. }) => {
+                assert!(!no_hooks);
+            }
+            _ => panic!("unexpected command shape"),
+        }
+    }
+
+    #[test]
+    fn parses_no_hooks_and_alias() {
+        for argv in [
+            ["but", "push", "topic", "--no-hooks"],
+            ["but", "push", "topic", "--no-verify"],
+        ] {
+            let args = crate::args::Args::try_parse_from(argv).expect("parse args");
+            let cmd = args.cmd.expect("subcommand");
+            match cmd {
+                crate::args::Subcommands::Push(crate::args::push::Command { no_hooks, .. }) => {
+                    assert!(no_hooks);
+                }
+                _ => panic!("unexpected command shape"),
+            }
+        }
+    }
+}
+
+#[cfg(feature = "legacy")]
+mod pr {
+    use clap::Parser;
+
+    #[test]
+    fn defaults_to_running_hooks() {
+        let args =
+            crate::args::Args::try_parse_from(["but", "pr", "new", "topic"]).expect("parse args");
+
+        let cmd = args.cmd.expect("subcommand");
+        match cmd {
+            crate::args::Subcommands::Pr(crate::args::forge::pr::Platform {
+                cmd: Some(crate::args::forge::pr::Subcommands::New { no_hooks, .. }),
+                ..
+            }) => {
+                assert!(!no_hooks);
+            }
+            _ => panic!("unexpected command shape"),
+        }
+    }
+
+    #[test]
+    fn parses_no_hooks_and_alias() {
+        for argv in [
+            ["but", "pr", "new", "topic", "--no-hooks"],
+            ["but", "pr", "new", "topic", "--no-verify"],
+        ] {
+            let args = crate::args::Args::try_parse_from(argv).expect("parse args");
+            let cmd = args.cmd.expect("subcommand");
+            match cmd {
+                crate::args::Subcommands::Pr(crate::args::forge::pr::Platform {
+                    cmd: Some(crate::args::forge::pr::Subcommands::New { no_hooks, .. }),
+                    ..
+                }) => {
+                    assert!(no_hooks);
+                }
+                _ => panic!("unexpected command shape"),
+            }
         }
     }
 }

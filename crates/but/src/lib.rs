@@ -1168,7 +1168,7 @@ async fn match_subcommand(
                     file,
                     skip_force_push_protection,
                     with_force,
-                    run_hooks,
+                    no_hooks,
                     default,
                     draft,
                 }) => {
@@ -1208,7 +1208,7 @@ async fn match_subcommand(
                         branch,
                         skip_force_push_protection,
                         with_force,
-                        run_hooks,
+                        !no_hooks,
                         default,
                         draft,
                         review_message,

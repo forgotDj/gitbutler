@@ -8,9 +8,9 @@ pub struct Command {
     /// Skip force push protection checks
     #[clap(long, short = 's')]
     pub skip_force_push_protection: bool,
-    /// Run pre-push hooks
-    #[clap(long, short = 'r', default_value_t = true)]
-    pub run_hooks: bool,
+    /// Bypass pre-push hooks
+    #[clap(long = "no-hooks", visible_alias = "no-verify")]
+    pub no_hooks: bool,
     /// Mark change as work-in-progress (Gerrit). Mutually exclusive with --ready.
     #[clap(long, short = 'w', conflicts_with = "ready", hide = true)]
     pub wip: bool,
