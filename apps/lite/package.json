@@ -24,6 +24,7 @@
 	},
 	"build": {
 		"appId": "com.gitbutler.lite",
+		"afterSign": "scripts/after-sign.js",
 		"directories": {
 			"output": "release"
 		},
@@ -33,7 +34,11 @@
 			"package.json"
 		],
 		"mac": {
-			"target": "dmg"
+			"target": "dmg",
+			"hardenedRuntime": true,
+			"gatekeeperAssess": false,
+			"entitlements": "resources/entitlements.mac.plist",
+			"entitlementsInherit": "resources/entitlements.mac.inherit.plist"
 		},
 		"linux": {
 			"target": [
