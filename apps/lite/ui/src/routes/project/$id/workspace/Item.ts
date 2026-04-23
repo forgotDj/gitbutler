@@ -100,7 +100,7 @@ export const itemIdentityKey = (item: Item): string =>
 
 export const itemEquals = (a: Item, b: Item): boolean => itemIdentityKey(a) === itemIdentityKey(b);
 
-export const itemParent = (item: Item): FileParent | null =>
+export const itemFileParent = (item: Item): FileParent | null =>
 	Match.value(item).pipe(
 		Match.withReturnType<FileParent | null>(),
 		Match.tags({

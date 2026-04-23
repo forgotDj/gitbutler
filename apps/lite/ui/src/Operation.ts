@@ -27,7 +27,7 @@ import {
 	CommitUncommitParams,
 } from "#ui/api/mutations.ts";
 import { InsertSide, RelativeTo } from "@gitbutler/but-sdk";
-import { Item, itemParent } from "#ui/routes/project/$id/workspace/Item.ts";
+import { Item, itemFileParent } from "#ui/routes/project/$id/workspace/Item.ts";
 import { resolveDiffSpecs } from "#ui/routes/project/$id/workspace/resolveDiffSpecs.ts";
 import { decodeRefName } from "#ui/routes/project/$id/shared.tsx";
 
@@ -381,7 +381,7 @@ export const rubOperation = ({
 	source: Item;
 	target: Item;
 }): Operation | null =>
-	Match.value({ source, sourceParent: itemParent(source), target }).pipe(
+	Match.value({ source, sourceFileParent: itemFileParent(source), target }).pipe(
 		Match.when(
 			{
 				source: { _tag: "Commit" },
@@ -407,7 +407,7 @@ export const rubOperation = ({
 		),
 		Match.when(
 			{
-				sourceParent: { _tag: "Change" },
+				sourceFileParent: { _tag: "Change" },
 				target: { _tag: "Commit" },
 			},
 			({ source, target }) =>
@@ -419,12 +419,12 @@ export const rubOperation = ({
 		),
 		Match.when(
 			{
-				sourceParent: { _tag: "Commit" },
+				sourceFileParent: { _tag: "Commit" },
 				target: { _tag: "ChangesSection" },
 			},
-			({ source, sourceParent }) =>
+			({ source, sourceFileParent }) =>
 				commitUncommitChangesOperation({
-					commitId: sourceParent.commitId,
+					commitId: sourceFileParent.commitId,
 					assignTo: null,
 					source,
 					dryRun: false,
@@ -432,12 +432,12 @@ export const rubOperation = ({
 		),
 		Match.when(
 			{
-				sourceParent: { _tag: "Commit" },
+				sourceFileParent: { _tag: "Commit" },
 				target: { _tag: "Commit" },
 			},
-			({ source, sourceParent, target }) =>
+			({ source, sourceFileParent, target }) =>
 				commitMoveChangesBetweenOperation({
-					sourceCommitId: sourceParent.commitId,
+					sourceCommitId: sourceFileParent.commitId,
 					destinationCommitId: target.commitId,
 					source,
 					dryRun: false,
@@ -499,7 +499,7 @@ export const moveOperation = ({
 
 	if (!relativeTo) return null;
 
-	return Match.value({ source, sourceParent: itemParent(source) }).pipe(
+	return Match.value({ source, sourceFileParent: itemFileParent(source) }).pipe(
 		Match.when({ source: { _tag: "Commit" } }, ({ source }) =>
 			commitMoveOperation({
 				subjectCommitIds: [source.commitId],
@@ -508,7 +508,7 @@ export const moveOperation = ({
 				dryRun: false,
 			}),
 		),
-		Match.when({ sourceParent: { _tag: "Change" } }, ({ source }) =>
+		Match.when({ sourceFileParent: { _tag: "Change" } }, ({ source }) =>
 			commitCreateOperation({
 				relativeTo,
 				side,
@@ -517,9 +517,9 @@ export const moveOperation = ({
 				dryRun: false,
 			}),
 		),
-		Match.when({ sourceParent: { _tag: "Commit" } }, ({ source, sourceParent }) =>
+		Match.when({ sourceFileParent: { _tag: "Commit" } }, ({ source, sourceFileParent }) =>
 			commitCreateFromCommittedChangesOperation({
-				sourceCommitId: sourceParent.commitId,
+				sourceCommitId: sourceFileParent.commitId,
 				relativeTo,
 				side,
 				source,
