@@ -6,7 +6,7 @@ import { classes } from "#ui/classes.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
 import { FC } from "react";
-import { type GetDataParams, useDroppable } from "./DragAndDrop.tsx";
+import { useDroppable } from "./DragAndDrop.tsx";
 import { parseDragData } from "./OperationDragAndDrop.tsx";
 import { type Item } from "./Item.ts";
 import { OperationTooltip } from "./OperationTooltip.tsx";
@@ -16,37 +16,6 @@ import { getOperations, OperationType, TargetData } from "#ui/Operation.ts";
 import { operationModeToOperationType } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
 import { useAppDispatch } from "#ui/state/hooks.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
-
-const getDropOperationType =
-	(source: Item, target: Item) =>
-	({ input, element }: GetDataParams[0]): OperationType | null => {
-		const { rub, moveAbove, moveBelow } = getOperations(source, target);
-
-		const instruction = extractInstruction(
-			attachInstruction(
-				{},
-				{
-					input,
-					element,
-					operations: {
-						"reorder-before": moveAbove ? "available" : "not-available",
-						"reorder-after": moveBelow ? "available" : "not-available",
-						combine: rub ? "available" : "not-available",
-					},
-				},
-			),
-		);
-
-		if (!instruction) return null;
-
-		return Match.value(instruction.operation).pipe(
-			Match.withReturnType<OperationType | null>(),
-			Match.when("combine", () => "rub"),
-			Match.when("reorder-before", () => "moveAbove"),
-			Match.when("reorder-after", () => "moveBelow"),
-			Match.exhaustive,
-		);
-	};
 
 export const OperationTarget: FC<
 	{
@@ -58,17 +27,44 @@ export const OperationTarget: FC<
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
 	const dispatch = useAppDispatch();
 
-	const [isDragOver, dropRef] = useDroppable((args) => {
-		const dragData = parseDragData(args.source.data);
-		if (!dragData) return null;
+	const [isDragOver, dropRef] = useDroppable({
+		getData: ({ input, element, source }) => {
+			const dragData = parseDragData(source.data);
+			if (!dragData) return null;
 
-		const { source } = dragData;
-		const operationType = getDropOperationType(source, item)(args);
-		if (operationType == null) return null;
+			const { rub, moveAbove, moveBelow } = getOperations(dragData.source, item);
 
-		dispatch(projectActions.enterDragAndDropMode({ operationType, projectId, source }));
+			return attachInstruction(
+				{},
+				{
+					input,
+					element,
+					operations: {
+						"reorder-before": moveAbove ? "available" : "not-available",
+						"reorder-after": moveBelow ? "available" : "not-available",
+						combine: rub ? "available" : "not-available",
+					},
+				},
+			);
+		},
+		onDrag: (args) => {
+			const instruction = extractInstruction(args.self.data);
+			if (!instruction) return;
 
-		return {};
+			const dragData = parseDragData(args.source.data);
+			if (!dragData) return;
+
+			const { source } = dragData;
+			const operationType = Match.value(instruction.operation).pipe(
+				Match.withReturnType<OperationType | null>(),
+				Match.when("combine", () => "rub"),
+				Match.when("reorder-before", () => "moveAbove"),
+				Match.when("reorder-after", () => "moveBelow"),
+				Match.exhaustive,
+			);
+
+			dispatch(projectActions.enterDragAndDropMode({ operationType, projectId, source }));
+		},
 	});
 	const isActive =
 		!!operationMode &&

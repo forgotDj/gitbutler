@@ -19,8 +19,9 @@ type DraggableParams = Parameters<typeof draggable>[0];
 export const useDraggable = ({
 	getInitialData: getInitialDataProp,
 	canDrag: canDragProp,
+	onDragStart: onDragStartProp,
 	preview,
-}: Pick<DraggableParams, "canDrag" | "getInitialData"> & {
+}: Pick<DraggableParams, "canDrag" | "getInitialData" | "onDragStart"> & {
 	preview: ReactNode;
 }): [boolean, RefCallback<HTMLElement>] => {
 	const ref = useRef<HTMLElement>(null);
@@ -29,6 +30,9 @@ export const useDraggable = ({
 		(args) => getInitialDataProp?.(args) ?? {},
 	);
 	const canDrag: DraggableParams["canDrag"] = useEffectEvent((args) => canDragProp?.(args) ?? true);
+	const onDragStart: DraggableParams["onDragStart"] = useEffectEvent((args) =>
+		onDragStartProp?.(args),
+	);
 	const onGenerateDragPreview = useEffectEvent(
 		({ nativeSetDragImage }: { nativeSetDragImage: DataTransfer["setDragImage"] | null }) => {
 			setCustomNativeDragPreview({
@@ -54,8 +58,9 @@ export const useDraggable = ({
 			canDrag,
 			getInitialData,
 			onGenerateDragPreview,
-			onDragStart: () => {
+			onDragStart: (args) => {
 				setIsDragging(true);
+				onDragStart(args);
 			},
 			onDrop: () => {
 				setIsDragging(false);
@@ -72,13 +77,19 @@ export const useDraggable = ({
 };
 
 type DropTargetParams = Parameters<typeof dropTargetForElements>[0];
-export type GetDataParams = Parameters<NonNullable<DropTargetParams["getData"]>>;
+type GetDataParams = Parameters<NonNullable<DropTargetParams["getData"]>>;
+export type OnDragParams = Parameters<NonNullable<DropTargetParams["onDrag"]>>;
 
-export const useDroppable = <TData extends Record<string | symbol, unknown>>(
-	getDataProp: (...args: GetDataParams) => TData | null,
-): [boolean, RefCallback<HTMLElement>] => {
+export const useDroppable = <TData extends Record<string | symbol, unknown>>({
+	getData: getDataProp,
+	onDrag: onDragProp,
+}: {
+	getData: (...args: GetDataParams) => TData | null;
+	onDrag: (...args: OnDragParams) => void;
+}): [boolean, RefCallback<HTMLElement>] => {
 	const ref = useRef<HTMLElement>(null);
 	const [isDragOver, setIsDragOver] = useState<boolean>(false);
+	const onDrag = useEffectEvent((...args: OnDragParams) => onDragProp(...args));
 	const getData = useEffectEvent((...args: GetDataParams) => getDataProp(...args));
 	const canDrop: DropTargetParams["canDrop"] = useEffectEvent((args) => getData(args) !== null);
 
@@ -93,6 +104,7 @@ export const useDroppable = <TData extends Record<string | symbol, unknown>>(
 			onDragEnter: () => {
 				setIsDragOver(true);
 			},
+			onDrag,
 			onDragLeave: () => {
 				setIsDragOver(false);
 			},
