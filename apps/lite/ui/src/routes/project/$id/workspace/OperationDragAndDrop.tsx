@@ -42,7 +42,7 @@ export const useMonitorDraggedItem = ({ projectId }: { projectId: string }) => {
 						.map((x) => parseDropData(x.data))
 						.find((dropTarget) => dropTarget?.operationType != null);
 
-					if (dropTarget?.operationType == null) return;
+					if (!dropTarget) return;
 
 					const operation = getOperation({
 						source: dragData.source,
