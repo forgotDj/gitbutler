@@ -26,7 +26,7 @@ export const OperationTarget: FC<
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
 	const dispatch = useAppDispatch();
 
-	const [isDragOver, dropRef] = useDroppable({
+	const [isActiveDropTarget, dropRef] = useDroppable({
 		getData: ({ input, element, source }): DropData | {} => {
 			const dragData = parseDragData(source.data);
 			if (!dragData) return {};
@@ -59,7 +59,7 @@ export const OperationTarget: FC<
 
 			return { operationType, target: item };
 		},
-		onDrag: (args) => {
+		onActiveTargetDrag: (args) => {
 			const dropData = parseDropData(args.self.data);
 
 			dispatch(
@@ -75,7 +75,7 @@ export const OperationTarget: FC<
 		? Match.value(operationMode).pipe(
 				Match.tagsExhaustive({
 					DragAndDrop: ({ operationType }) =>
-						isDragOver && (operationType === "moveAbove" || operationType === "moveBelow")
+						isActiveDropTarget && (operationType === "moveAbove" || operationType === "moveBelow")
 							? operationType
 							: null,
 					Rub: () => null,
@@ -88,7 +88,7 @@ export const OperationTarget: FC<
 		!!operationMode &&
 		Match.value(operationMode).pipe(
 			Match.tagsExhaustive({
-				DragAndDrop: ({ operationType }) => isDragOver && operationType === "rub",
+				DragAndDrop: ({ operationType }) => isActiveDropTarget && operationType === "rub",
 				Rub: () => isSelected,
 				Move: () => isSelected,
 			}),

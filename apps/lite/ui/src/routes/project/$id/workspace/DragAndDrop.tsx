@@ -1,3 +1,4 @@
+import { parseDropData } from "#ui/routes/project/$id/workspace/OperationDragAndDrop.tsx";
 import {
 	draggable,
 	dropTargetForElements,
@@ -26,13 +27,11 @@ export const useDraggable = ({
 }): [boolean, RefCallback<HTMLElement>] => {
 	const ref = useRef<HTMLElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
-	const getInitialData: DraggableParams["getInitialData"] = useEffectEvent(
+	const getInitialData: typeof getInitialDataProp = useEffectEvent(
 		(args) => getInitialDataProp?.(args) ?? {},
 	);
-	const canDrag: DraggableParams["canDrag"] = useEffectEvent((args) => canDragProp?.(args) ?? true);
-	const onDragStart: DraggableParams["onDragStart"] = useEffectEvent((args) =>
-		onDragStartProp?.(args),
-	);
+	const canDrag: typeof canDragProp = useEffectEvent((args) => canDragProp?.(args) ?? true);
+	const onDragStart: typeof onDragStartProp = useEffectEvent((args) => onDragStartProp?.(args));
 	const onGenerateDragPreview = useEffectEvent(
 		({ nativeSetDragImage }: { nativeSetDragImage: DataTransfer["setDragImage"] | null }) => {
 			setCustomNativeDragPreview({
@@ -80,12 +79,16 @@ type DropTargetParams = Parameters<typeof dropTargetForElements>[0];
 
 export const useDroppable = ({
 	getData: getDataProp,
-	onDrag: onDragProp,
-}: Pick<Required<DropTargetParams>, "getData" | "onDrag">): [boolean, RefCallback<HTMLElement>] => {
+	onActiveTargetDrag: onActiveTargetDragProp,
+}: Pick<Required<DropTargetParams>, "getData"> & {
+	onActiveTargetDrag: DropTargetParams["onDrag"];
+}): [boolean, RefCallback<HTMLElement>] => {
 	const ref = useRef<HTMLElement>(null);
-	const [isDragOver, setIsDragOver] = useState<boolean>(false);
-	const onDrag: DropTargetParams["onDrag"] = useEffectEvent((args) => onDragProp(args));
-	const getData: DropTargetParams["getData"] = useEffectEvent((args) => getDataProp(args));
+	const [isActiveDropTarget, setIsActiveDropTarget] = useState<boolean>(false);
+	const onActiveTargetDrag: typeof onActiveTargetDragProp = useEffectEvent((args) =>
+		onActiveTargetDragProp?.(args),
+	);
+	const getData: typeof getDataProp = useEffectEvent((args) => getDataProp(args));
 
 	useEffect(() => {
 		const element = ref.current;
@@ -94,21 +97,27 @@ export const useDroppable = ({
 		return dropTargetForElements({
 			element,
 			getData,
-			onDragEnter: () => {
-				setIsDragOver(true);
+			onDrag: (args) => {
+				const innerMost = args.location.current.dropTargets[0];
+
+				const isActiveDropTarget =
+					innerMost?.element === args.self.element && !!parseDropData(innerMost.data);
+
+				setIsActiveDropTarget(isActiveDropTarget);
+
+				if (isActiveDropTarget) onActiveTargetDrag(args);
 			},
-			onDrag,
 			onDragLeave: () => {
-				setIsDragOver(false);
+				setIsActiveDropTarget(false);
 			},
 			onDrop: () => {
-				setIsDragOver(false);
+				setIsActiveDropTarget(false);
 			},
 		});
 	}, []);
 
 	return [
-		isDragOver,
+		isActiveDropTarget,
 		(element) => {
 			ref.current = element;
 		},
