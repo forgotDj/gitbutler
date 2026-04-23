@@ -1706,8 +1706,8 @@ const ProjectPage: FC = () => {
 							const operations = getOperations(source, item);
 							return !!operations.rub || !!operations.moveAbove || !!operations.moveBelow;
 						},
-						Rub: ({ source }) => !!getOperation({ source, item, operationType }),
-						Move: ({ source }) => !!getOperation({ source, item, operationType }),
+						Rub: ({ source }) => !!getOperation({ source, target: item, operationType }),
+						Move: ({ source }) => !!getOperation({ source, target: item, operationType }),
 					}),
 				);
 

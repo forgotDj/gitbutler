@@ -914,7 +914,7 @@ export const useWorkspaceShortcuts = ({
 		const operationType = operationModeToOperationType(operationMode);
 		const operation = getOperation({
 			source: operationMode.source,
-			item: selectedItem,
+			target: selectedItem,
 			operationType,
 		});
 		if (!operation) return;

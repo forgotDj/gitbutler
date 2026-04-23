@@ -59,7 +59,10 @@ export const enterDragAndDropMode = (state: WorkspaceState, source: Item) => {
 	state.mode = dragAndDropOperationMode({ source, operationType: null });
 };
 
-export const updateDragAndDropMode = (state: WorkspaceState, operationType: OperationType) => {
+export const updateDragAndDropMode = (
+	state: WorkspaceState,
+	operationType: OperationType | null,
+) => {
 	Match.value(state.mode).pipe(
 		Match.tags({
 			DragAndDrop: (mode) => {

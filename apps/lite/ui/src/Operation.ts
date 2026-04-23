@@ -525,15 +525,13 @@ export const getOperations = (
 	moveBelow: moveOperation({ source, target, side: "below" }),
 });
 
-export type TargetData = {
+export const getOperation = (x: {
 	source: Item;
-	item: Item;
+	target: Item;
 	operationType: OperationType | null;
-};
-
-export const getOperation = (targetData: TargetData): Operation | null => {
-	const { rub, moveAbove, moveBelow } = getOperations(targetData.source, targetData.item);
-	return Match.value(targetData.operationType).pipe(
+}): Operation | null => {
+	const { rub, moveAbove, moveBelow } = getOperations(x.source, x.target);
+	return Match.value(x.operationType).pipe(
 		Match.when(null, () => null),
 		Match.when("rub", () => rub),
 		Match.when("moveAbove", () => moveAbove),

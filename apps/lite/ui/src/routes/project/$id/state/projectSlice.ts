@@ -105,7 +105,7 @@ const projectSlice = createSlice({
 			state,
 			action: PayloadAction<{
 				projectId: string;
-				operationType: OperationType;
+				operationType: OperationType | null;
 			}>,
 		) => {
 			const { projectId, operationType } = action.payload;

@@ -7,13 +7,12 @@ import { mergeProps, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
 import { FC } from "react";
 import { useDroppable } from "./DragAndDrop.tsx";
-import { parseDragData } from "./OperationDragAndDrop.tsx";
+import { DropData, parseDragData, parseDropData } from "./OperationDragAndDrop.tsx";
 import { type Item } from "./Item.ts";
 import { OperationTooltip } from "./OperationTooltip.tsx";
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./OperationTarget.module.css";
-import { getOperations, OperationType, TargetData } from "#ui/Operation.ts";
-import { operationModeToOperationType } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
+import { getOperations, OperationType } from "#ui/Operation.ts";
 import { useAppDispatch } from "#ui/state/hooks.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 
@@ -28,28 +27,27 @@ export const OperationTarget: FC<
 	const dispatch = useAppDispatch();
 
 	const [isDragOver, dropRef] = useDroppable({
-		getData: ({ input, element, source }) => {
+		getData: ({ input, element, source }): DropData | {} => {
 			const dragData = parseDragData(source.data);
 			if (!dragData) return {};
 
 			const { rub, moveAbove, moveBelow } = getOperations(dragData.source, item);
 
-			return attachInstruction(
-				{},
-				{
-					input,
-					element,
-					operations: {
-						"reorder-before": moveAbove ? "available" : "not-available",
-						"reorder-after": moveBelow ? "available" : "not-available",
-						combine: rub ? "available" : "not-available",
+			const instruction = extractInstruction(
+				attachInstruction(
+					{},
+					{
+						input,
+						element,
+						operations: {
+							"reorder-before": moveAbove ? "available" : "not-available",
+							"reorder-after": moveBelow ? "available" : "not-available",
+							combine: rub ? "available" : "not-available",
+						},
 					},
-				},
+				),
 			);
-		},
-		onDrag: (args) => {
-			const instruction = extractInstruction(args.self.data);
-			if (!instruction) return;
+			if (!instruction) return {};
 
 			const operationType = Match.value(instruction.operation).pipe(
 				Match.withReturnType<OperationType | null>(),
@@ -59,40 +57,48 @@ export const OperationTarget: FC<
 				Match.exhaustive,
 			);
 
-			dispatch(projectActions.updateDragAndDropMode({ projectId, operationType }));
+			return { operationType, target: item };
+		},
+		onDrag: (args) => {
+			const dropData = parseDropData(args.self.data);
+
+			dispatch(
+				projectActions.updateDragAndDropMode({
+					projectId,
+					operationType: dropData?.operationType ?? null,
+				}),
+			);
 		},
 	});
-	const isActive =
+
+	const insertTargetOperationType = operationMode
+		? Match.value(operationMode).pipe(
+				Match.tagsExhaustive({
+					DragAndDrop: ({ operationType }) =>
+						isDragOver && (operationType === "moveAbove" || operationType === "moveBelow")
+							? operationType
+							: null,
+					Rub: () => null,
+					Move: () => null,
+				}),
+			)
+		: null;
+
+	const isMainTargetActive =
 		!!operationMode &&
 		Match.value(operationMode).pipe(
 			Match.tagsExhaustive({
-				DragAndDrop: () => isDragOver,
+				DragAndDrop: ({ operationType }) => isDragOver && operationType === "rub",
 				Rub: () => isSelected,
 				Move: () => isSelected,
 			}),
 		);
-	const targetData = ((): TargetData | null => {
-		if (!isActive) return null;
-
-		const { source } = operationMode;
-		const operationType = operationModeToOperationType(operationMode);
-
-		return { source, item, operationType };
-	})();
-	const dropMoveOperationType =
-		isDragOver &&
-		targetData &&
-		(targetData.operationType === "moveAbove" || targetData.operationType === "moveBelow")
-			? targetData.operationType
-			: null;
-
-	const mainTargetData = dropMoveOperationType === null ? targetData : null;
 
 	const target = useRender({
 		render,
 		ref: dropRef,
 		props: mergeProps<"div">(props, {
-			className: classes(mainTargetData != null && styles.activeTarget),
+			className: classes(isMainTargetActive && styles.activeTarget),
 		}),
 	});
 
@@ -100,20 +106,22 @@ export const OperationTarget: FC<
 		<div className={styles.target}>
 			<OperationTooltip
 				projectId={projectId}
-				isDropTarget={isDragOver}
-				targetData={mainTargetData}
+				item={item}
+				isActive={isMainTargetActive}
+				operationMode={operationMode}
 				render={target}
 			/>
 
-			{dropMoveOperationType !== null && (
+			{insertTargetOperationType !== null && (
 				<OperationTooltip
 					projectId={projectId}
-					isDropTarget
-					targetData={targetData}
+					item={item}
+					isActive
+					operationMode={operationMode}
 					className={classes(
 						styles.insertionTarget,
 						pipe(
-							dropMoveOperationType,
+							insertTargetOperationType,
 							Match.value,
 							Match.when("moveAbove", () => styles.insertionTargetAbove),
 							Match.when("moveBelow", () => styles.insertionTargetBelow),
