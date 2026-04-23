@@ -92,9 +92,7 @@ export const OperationTarget: FC<
 			<OperationTooltip
 				projectId={projectId}
 				isDropTarget={!!dropTarget}
-				item={item}
-				operationType={mainTargetData?.operationType ?? null}
-				source={mainTargetData?.source}
+				targetData={mainTargetData}
 				render={target}
 			/>
 
@@ -102,9 +100,7 @@ export const OperationTarget: FC<
 				<OperationTooltip
 					projectId={projectId}
 					isDropTarget
-					item={item}
-					operationType={dropMoveOperationType}
-					source={dropTarget?.source}
+					targetData={dropTarget}
 					className={classes(
 						styles.insertionTarget,
 						pipe(

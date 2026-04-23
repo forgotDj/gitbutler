@@ -2,7 +2,7 @@ import { classes } from "#ui/classes.ts";
 import {
 	getOperation,
 	operationLabel,
-	OperationType,
+	TargetData,
 	useRunOperation,
 	type Operation,
 } from "#ui/Operation.ts";
@@ -10,7 +10,7 @@ import uiStyles from "#ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
 import { FC } from "react";
 import styles from "./OperationTooltip.module.css";
-import { Item, itemEquals } from "./Item";
+import { itemEquals } from "./Item";
 import { useAppDispatch } from "#ui/state/hooks.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 
@@ -46,15 +46,13 @@ const OperationModeControls: FC<{
 export const OperationTooltip: FC<
 	{
 		projectId: string;
-		operationType: OperationType | null;
-		source?: Item;
-		item: Item;
+		targetData: TargetData | null;
 		isDropTarget?: boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ projectId, operationType, source, item, isDropTarget, render, ...props }) => {
-	const isSource = !!source && itemEquals(source, item);
+> = ({ projectId, targetData, isDropTarget, render, ...props }) => {
+	const isSource = !!targetData?.source && itemEquals(targetData.source, targetData.item);
 
-	const operation = source ? getOperation({ source, item, operationType }) : null;
+	const operation = targetData ? getOperation(targetData) : null;
 
 	const tooltipLabel = isSource ? (
 		<>Select a target</>
