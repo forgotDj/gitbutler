@@ -654,7 +654,7 @@ fn push_single_branch_impl(
         args.with_force,
         args.skip_force_push_protection,
         branch_name.to_string(),
-        args.run_hooks,
+        !args.no_hooks,
         gerrit_flags,
     )?;
 

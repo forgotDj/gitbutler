@@ -420,7 +420,7 @@ but push <branch-id>          # Push specific branch
 but push --dry-run            # Preview what would be pushed
 but push --with-force         # Force push (use carefully!)
 but push -s                   # Skip force push protection checks
-but push -r                   # Run pre-push hooks
+but push --no-hooks           # Bypass pre-push hooks
 ```
 
 ### `but pull`
@@ -443,11 +443,13 @@ but pr new <branch-id>        # Push branch and create PR (recommended)
 but pr new <branch-id> -F pr_message.txt    # Use file: first line is title, rest is description
 but pr new <branch-id> -m "Title..."        # Inline message: first line is title, rest is description
 but pr new <branch-id> -t     # Use default content (commit message), skip prompts
+but pr new <branch-id> --no-hooks  # Bypass pre-push hooks
 but pr                        # Create PR (prompts for branch)
 but pr template               # Configure PR description template
 ```
 
-**Key behavior:** `but pr new` automatically pushes the branch to remote before creating the PR. No need to run `but push` first. Force push (`--with-force`) and pre-push hooks (`--run-hooks`) are enabled by default.
+**Key behavior:** `but pr new` automatically pushes the branch to remote before creating the PR. No need to run `but push` first. Force push (`--with-force`) and pre-push hooks run by default.
+Use `--no-hooks` to bypass pre-push hooks when needed.
 
 In non-interactive environments, use `--message (-m)`, `--file (-F)`, or `--default (-t)` to avoid editor prompts. The `-t` flag uses the commit message as title/description for single-commit branches; for multi-commit branches it falls back to the branch name as the title.
 
