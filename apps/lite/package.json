@@ -86,7 +86,6 @@
 		"react-resizable-panels": "^4.7.3"
 	},
 	"devDependencies": {
-		"@electron/notarize": "^2.5.0",
 		"@tanstack/eslint-plugin-query": "^5.91.4",
 		"@types/node": "^22.19.15",
 		"@types/react": "^19.2.14",

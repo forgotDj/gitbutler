@@ -19,7 +19,7 @@
 			],
 			"project": ["electron/src/**!", "ui/src/**!"],
 			"includeEntryExports": true,
-			"ignoreDependencies": ["@tanstack/eslint-plugin-query", "electron", "@electron/notarize"],
+			"ignoreDependencies": ["@tanstack/eslint-plugin-query", "electron"],
 		},
 	},
 }
