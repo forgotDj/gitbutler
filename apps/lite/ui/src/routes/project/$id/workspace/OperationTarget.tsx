@@ -77,7 +77,7 @@ const useDropTarget = ({ item }: { item: Item }) =>
 		};
 	});
 
-const useOperationModeTarget = ({
+const getOperationModeTarget = ({
 	item,
 	operationMode,
 	isSelected,
@@ -108,7 +108,7 @@ export const OperationTarget: FC<
 	} & useRender.ComponentProps<"div">
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
 	const [dropTarget, dropRef] = useDropTarget({ item });
-	const operationModeTarget = useOperationModeTarget({
+	const operationModeTarget = getOperationModeTarget({
 		item,
 		operationMode,
 		isSelected,
