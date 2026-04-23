@@ -107,16 +107,16 @@ export const OperationTarget: FC<
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
-	const [dropData, dropRef] = useDropTarget({ item });
+	const [dropTarget, dropRef] = useDropTarget({ item });
 	const operationModeTarget = useOperationModeTarget({
 		item,
 		operationMode,
 		isSelected,
 	});
 
-	const targetData: TargetData | null = dropData ?? operationModeTarget;
+	const targetData: TargetData | null = dropTarget ?? operationModeTarget;
 
-	const dropInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
+	const dropInsertionSide = dropTarget?.operation ? getInsertionSide(dropTarget.operation) : null;
 
 	const mainTargetData = dropInsertionSide === null ? targetData : null;
 
@@ -144,8 +144,8 @@ export const OperationTarget: FC<
 					projectId={projectId}
 					isOperationMode={false}
 					item={item}
-					operation={dropData?.operation ?? null}
-					source={dropData?.source}
+					operation={dropTarget?.operation ?? null}
+					source={dropTarget?.source}
 					className={classes(
 						styles.insertionTarget,
 						pipe(

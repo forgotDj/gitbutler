@@ -26,13 +26,13 @@ export const useMonitorDraggedItem = ({ projectId }: { projectId: string }) => {
 			monitorForElements({
 				canMonitor: ({ source }) => parseDragData(source.data) !== null,
 				onDrop: ({ location }) => {
-					const dropData = location.current.dropTargets
-						.map((dropTarget) => parseDropData(dropTarget.data))
-						.find((dropData) => dropData?.operation);
+					const dropTarget = location.current.dropTargets
+						.map((x) => parseDropData(x.data))
+						.find((dropTarget) => dropTarget?.operation);
 
-					if (!dropData?.operation) return;
+					if (!dropTarget?.operation) return;
 
-					runOperation(projectId, dropData.operation);
+					runOperation(projectId, dropTarget.operation);
 				},
 			}),
 		[runOperation, projectId],
