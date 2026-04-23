@@ -119,7 +119,6 @@ import { PositionedShortcutsBar } from "../ShortcutsBar.tsx";
 import { formatShortcutKeys, ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import styles from "./route.module.css";
 import {
-	defaultWorkspaceMode,
 	getOperationMode,
 	isValidWorkspaceMode,
 	type OperationMode,
@@ -1664,7 +1663,7 @@ const ProjectPage: FC = () => {
 		selectProjectExpandedCommitId(state, projectId),
 	);
 	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
-	const workspaceModeState = useAppSelector((state) =>
+	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
 
@@ -1682,12 +1681,15 @@ const ProjectPage: FC = () => {
 
 	const navigationIndexUnfiltered = buildNavigationIndex(workspaceOutline);
 
-	const workspaceMode = isValidWorkspaceMode({
-		mode: workspaceModeState,
-		navigationIndex: navigationIndexUnfiltered,
-	})
-		? workspaceModeState
-		: defaultWorkspaceMode;
+	const dispatch = useAppDispatch();
+
+	if (
+		!isValidWorkspaceMode({
+			mode: workspaceMode,
+			navigationIndex: navigationIndexUnfiltered,
+		})
+	)
+		dispatch(projectActions.exitMode({ projectId }));
 
 	const operationMode = getOperationMode(workspaceMode);
 
@@ -1733,8 +1735,6 @@ const ProjectPage: FC = () => {
 		openAbsorptionDialog,
 		operationMode,
 	});
-
-	const dispatch = useAppDispatch();
 
 	// TODO: dedupe
 	if (!project) return <p>Project not found.</p>;
