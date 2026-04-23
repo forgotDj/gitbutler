@@ -910,11 +910,7 @@ export const useWorkspaceShortcuts = ({
 
 		if (!selectedItem) return;
 
-		const operation = operationModeToOperation({
-			operationMode,
-			target: selectedItem,
-		});
-
+		const operation = operationModeToOperation({ operationMode, target: selectedItem });
 		if (!operation) return;
 
 		runOperation(projectId, operation);

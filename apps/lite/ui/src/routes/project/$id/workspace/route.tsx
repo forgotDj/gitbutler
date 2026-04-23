@@ -1695,10 +1695,7 @@ const ProjectPage: FC = () => {
 				navigationIndexUnfiltered,
 				(item) =>
 					itemEquals(operationMode.source, item) ||
-					!!operationModeToOperation({
-						operationMode,
-						target: item,
-					}),
+					!!operationModeToOperation({ operationMode, target: item }),
 			)
 		: navigationIndexUnfiltered;
 
