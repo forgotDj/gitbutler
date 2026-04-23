@@ -689,7 +689,7 @@ export const useWorkspaceShortcuts = ({
 	projectId,
 	scope,
 	navigationIndex,
-	requestAbsorptionPlan,
+	setAbsorptionTarget,
 	operationMode,
 }: {
 	inlineRenameBranchFormRef: RefObject<HTMLFormElement | null>;
@@ -697,7 +697,7 @@ export const useWorkspaceShortcuts = ({
 	projectId: string;
 	scope: Scope | null;
 	navigationIndex: NavigationIndex;
-	requestAbsorptionPlan: (target: AbsorptionTarget) => void;
+	setAbsorptionTarget: (target: AbsorptionTarget) => void;
 	operationMode: OperationMode | null;
 }) => {
 	const dispatch = useAppDispatch();
@@ -784,7 +784,7 @@ export const useWorkspaceShortcuts = ({
 			}),
 		);
 
-	const requestAbsorptionPlanForItem = (selectedItem: Item) => {
+	const setAbsorptionTargetForItem = (selectedItem: Item) => {
 		const worktreeChanges = queryClient.getQueryData(
 			changesInWorktreeQueryOptions(projectId).queryKey,
 		);
@@ -796,13 +796,13 @@ export const useWorkspaceShortcuts = ({
 		});
 		if (!target) return;
 
-		requestAbsorptionPlan(target);
+		setAbsorptionTarget(target);
 	};
 
 	const handleChangesScopeAction = (action: ChangesAction, selectedItem: Item) =>
 		Match.value(action).pipe(
 			Match.tags({
-				Absorb: () => requestAbsorptionPlanForItem(selectedItem),
+				Absorb: () => setAbsorptionTargetForItem(selectedItem),
 			}),
 			Match.orElse((action) => handlePrimaryPanelAction(action, selectedItem)),
 		);

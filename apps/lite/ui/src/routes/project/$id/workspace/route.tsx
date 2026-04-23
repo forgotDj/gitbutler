@@ -28,7 +28,7 @@ import {
 	selectProjectSelectedItem,
 	selectProjectWorkspaceModeState,
 } from "#ui/routes/project/$id/state/projectSlice.ts";
-import { AbsorptionDialog, useAbsorption } from "#ui/routes/project/$id/workspace/Absorption.tsx";
+import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/Absorption.tsx";
 import { useMonitorDraggedItem } from "#ui/routes/project/$id/workspace/OperationDragAndDrop.tsx";
 import { isOperationModeSourceOrTarget } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
@@ -81,6 +81,7 @@ import {
 	useLayoutEffect,
 	useOptimistic,
 	useRef,
+	useState,
 	useTransition,
 } from "react";
 import { Route as projectRoute } from "#ui/routes/project/$id/route.tsx";
@@ -1715,13 +1716,7 @@ const ProjectPage: FC = () => {
 
 	const shortcutScope = getScope({ selectedItem, layoutState, workspaceMode });
 
-	const {
-		absorptionPlan,
-		isAbsorbing,
-		requestAbsorptionPlan,
-		confirmAbsorption,
-		clearAbsorptionPlan,
-	} = useAbsorption(projectId);
+	const [absorptionTarget, setAbsorptionTarget] = useState<AbsorptionTarget | null>(null);
 
 	useMonitorDraggedItem({ projectId });
 
@@ -1731,7 +1726,7 @@ const ProjectPage: FC = () => {
 		projectId,
 		scope: shortcutScope,
 		navigationIndex,
-		requestAbsorptionPlan,
+		setAbsorptionTarget,
 		operationMode,
 	});
 
@@ -1768,7 +1763,7 @@ const ProjectPage: FC = () => {
 					<Changes
 						operationMode={operationMode}
 						projectId={projectId}
-						onAbsorbChanges={requestAbsorptionPlan}
+						onAbsorbChanges={setAbsorptionTarget}
 						navigationIndex={navigationIndex}
 						workspaceMode={workspaceMode}
 					/>
@@ -1814,13 +1809,12 @@ const ProjectPage: FC = () => {
 				</div>
 			)}
 
-			{absorptionPlan && (
+			{absorptionTarget && (
 				<AbsorptionDialog
-					absorptionPlan={absorptionPlan}
-					isPending={isAbsorbing}
-					onConfirm={confirmAbsorption}
+					projectId={projectId}
+					target={absorptionTarget}
 					onOpenChange={(open) => {
-						if (!open) clearAbsorptionPlan();
+						if (!open) setAbsorptionTarget(null);
 					}}
 				/>
 			)}

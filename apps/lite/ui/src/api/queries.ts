@@ -1,4 +1,5 @@
 import type {
+	AbsorptionPlanParams,
 	BranchDetailsParams,
 	BranchDiffParams,
 	CommitDetailsWithLineStatsParams,
@@ -15,6 +16,7 @@ export enum QueryKey {
 	Branches = "branches",
 	Projects = "projects",
 	TreeChangeDiffs = "treeChangeDiffs",
+	AbsorptionPlan = "absorptionPlan",
 }
 
 export const branchDetailsQueryOptions = (params: BranchDetailsParams) =>
@@ -66,3 +68,9 @@ export const treeChangeDiffsQueryOptions = (params: TreeChangeDiffParams) => {
 		queryFn: () => window.lite.treeChangeDiffs({ projectId, change }),
 	});
 };
+
+export const absorptionPlanQueryOptions = (params: AbsorptionPlanParams) =>
+	queryOptions({
+		queryKey: [QueryKey.AbsorptionPlan, params],
+		queryFn: () => window.lite.absorptionPlan(params),
+	});
