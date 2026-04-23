@@ -48,7 +48,7 @@ import {
 	showNativeMenuFromTrigger,
 } from "#ui/native-menu.ts";
 import uiStyles from "#ui/ui.module.css";
-import { Tooltip } from "@base-ui/react";
+import { Tooltip, useRender } from "@base-ui/react";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import {
 	AbsorptionTarget,
@@ -1395,72 +1395,61 @@ const BranchRow: FC<
 	];
 
 	return (
-		<OperationTarget
+		<OperationSourceC
 			{...restProps}
-			projectId={projectId}
-			item={item}
 			operationMode={operationMode}
-			isSelected={isSelected}
+			projectId={projectId}
+			source={item}
 			render={
-				<OperationSourceC
-					operationMode={operationMode}
-					projectId={projectId}
-					source={item}
-					render={
-						<ItemRow
-							inert={!navigationIndexIncludes(navigationIndex, item)}
-							isSelected={isSelected}
-						>
-							{isRenaming ? (
-								<InlineRenameBranch
-									branchName={optimisticBranchName}
-									formRef={inlineRenameBranchFormRef}
-									onSubmit={saveBranchName}
-									onExit={endEditing}
-								/>
-							) : (
+				<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected}>
+					{isRenaming ? (
+						<InlineRenameBranch
+							branchName={optimisticBranchName}
+							formRef={inlineRenameBranchFormRef}
+							onSubmit={saveBranchName}
+							onExit={endEditing}
+						/>
+					) : (
+						<>
+							<button
+								type="button"
+								className={classes(styles.itemRowButton, styles.sectionButton)}
+								onClick={() => dispatch(projectActions.selectItem({ projectId, item }))}
+								onContextMenu={
+									workspaceMode._tag === "Default"
+										? (event) => {
+												void showNativeContextMenu(event, menuItems);
+											}
+										: undefined
+								}
+							>
+								{optimisticBranchName}
+							</button>
+							{workspaceMode._tag === "Default" && (
 								<>
 									<button
 										type="button"
-										className={classes(styles.itemRowButton, styles.sectionButton)}
-										onClick={() => dispatch(projectActions.selectItem({ projectId, item }))}
-										onContextMenu={
-											workspaceMode._tag === "Default"
-												? (event) => {
-														void showNativeContextMenu(event, menuItems);
-													}
-												: undefined
-										}
+										className={styles.itemRowAction}
+										aria-label="Push branch"
+										disabled
 									>
-										{optimisticBranchName}
+										<PushIcon />
 									</button>
-									{workspaceMode._tag === "Default" && (
-										<>
-											<button
-												type="button"
-												className={styles.itemRowAction}
-												aria-label="Push branch"
-												disabled
-											>
-												<PushIcon />
-											</button>
-											<button
-												type="button"
-												className={styles.itemRowAction}
-												aria-label="Branch menu"
-												onClick={(event) => {
-													void showNativeMenuFromTrigger(event.currentTarget, menuItems);
-												}}
-											>
-												<MenuTriggerIcon />
-											</button>
-										</>
-									)}
+									<button
+										type="button"
+										className={styles.itemRowAction}
+										aria-label="Branch menu"
+										onClick={(event) => {
+											void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+										}}
+									>
+										<MenuTriggerIcon />
+									</button>
 								</>
 							)}
-						</ItemRow>
-					}
-				/>
+						</>
+					)}
+				</ItemRow>
 			}
 		/>
 	);
@@ -1550,42 +1539,81 @@ const SegmentC: FC<{
 	segment,
 	stackId,
 	workspaceMode,
-}) => (
-	<div className={classes(styles.section, styles.segment)}>
-		{segment.refName && (
-			<BranchRow
-				inlineRenameBranchFormRef={inlineRenameBranchFormRef}
-				operationMode={operationMode}
-				workspaceMode={workspaceMode}
-				projectId={projectId}
-				branchName={segment.refName.displayName}
-				branchRef={segment.refName.fullNameBytes}
-				stackId={stackId}
-				navigationIndex={navigationIndex}
-			/>
-		)}
+}) => {
+	const section = (
+		<div className={classes(styles.section, styles.segment)}>
+			{segment.refName && (
+				<BranchRow
+					inlineRenameBranchFormRef={inlineRenameBranchFormRef}
+					operationMode={operationMode}
+					workspaceMode={workspaceMode}
+					projectId={projectId}
+					branchName={segment.refName.displayName}
+					branchRef={segment.refName.fullNameBytes}
+					stackId={stackId}
+					navigationIndex={navigationIndex}
+				/>
+			)}
 
-		{segment.commits.length === 0 ? (
-			<div className={styles.itemRowEmpty}>No commits.</div>
-		) : (
-			<ul>
-				{segment.commits.map((commit) => (
-					<li key={commit.id}>
-						<CommitC
-							commit={commit}
-							inlineRewordCommitFormRef={inlineRewordCommitFormRef}
-							operationMode={operationMode}
-							workspaceMode={workspaceMode}
-							projectId={projectId}
-							stackId={stackId}
-							navigationIndex={navigationIndex}
-						/>
-					</li>
-				))}
-			</ul>
-		)}
-	</div>
-);
+			{segment.commits.length === 0 ? (
+				<div className={styles.itemRowEmpty}>No commits.</div>
+			) : (
+				<ul>
+					{segment.commits.map((commit) => (
+						<li key={commit.id}>
+							<CommitC
+								commit={commit}
+								inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+								operationMode={operationMode}
+								workspaceMode={workspaceMode}
+								projectId={projectId}
+								stackId={stackId}
+								navigationIndex={navigationIndex}
+							/>
+						</li>
+					))}
+				</ul>
+			)}
+		</div>
+	);
+
+	return segment.refName ? (
+		<BranchOperationTarget
+			operationMode={operationMode}
+			projectId={projectId}
+			branchRef={segment.refName.fullNameBytes}
+			stackId={stackId}
+			navigationIndex={navigationIndex}
+			render={section}
+		/>
+	) : (
+		section
+	);
+};
+
+const BranchOperationTarget: FC<
+	{
+		operationMode: OperationMode | null;
+		projectId: string;
+		branchRef: Array<number>;
+		stackId: string;
+		navigationIndex: NavigationIndex;
+	} & useRender.ComponentProps<"div">
+> = ({ operationMode, projectId, branchRef, stackId, navigationIndex, render, ...restProps }) => {
+	const item = branchItem({ stackId, branchRef });
+	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
+
+	return (
+		<OperationTarget
+			{...restProps}
+			projectId={projectId}
+			item={item}
+			operationMode={operationMode}
+			isSelected={isSelected}
+			render={render}
+		/>
+	);
+};
 
 const StackC: FC<{
 	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
