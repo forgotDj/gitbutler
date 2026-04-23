@@ -1,3 +1,4 @@
+import { parseDropData } from "#ui/routes/project/$id/workspace/OperationDragAndDrop.tsx";
 import {
 	draggable,
 	dropTargetForElements,
@@ -19,16 +20,18 @@ type DraggableParams = Parameters<typeof draggable>[0];
 export const useDraggable = ({
 	getInitialData: getInitialDataProp,
 	canDrag: canDragProp,
+	onDragStart: onDragStartProp,
 	preview,
-}: Pick<DraggableParams, "canDrag" | "getInitialData"> & {
+}: Pick<DraggableParams, "canDrag" | "getInitialData" | "onDragStart"> & {
 	preview: ReactNode;
 }): [boolean, RefCallback<HTMLElement>] => {
 	const ref = useRef<HTMLElement>(null);
 	const [isDragging, setIsDragging] = useState(false);
-	const getInitialData: DraggableParams["getInitialData"] = useEffectEvent(
+	const getInitialData: typeof getInitialDataProp = useEffectEvent(
 		(args) => getInitialDataProp?.(args) ?? {},
 	);
-	const canDrag: DraggableParams["canDrag"] = useEffectEvent((args) => canDragProp?.(args) ?? true);
+	const canDrag: typeof canDragProp = useEffectEvent((args) => canDragProp?.(args) ?? true);
+	const onDragStart: typeof onDragStartProp = useEffectEvent((args) => onDragStartProp?.(args));
 	const onGenerateDragPreview = useEffectEvent(
 		({ nativeSetDragImage }: { nativeSetDragImage: DataTransfer["setDragImage"] | null }) => {
 			setCustomNativeDragPreview({
@@ -54,8 +57,9 @@ export const useDraggable = ({
 			canDrag,
 			getInitialData,
 			onGenerateDragPreview,
-			onDragStart: () => {
+			onDragStart: (args) => {
 				setIsDragging(true);
+				onDragStart(args);
 			},
 			onDrop: () => {
 				setIsDragging(false);
@@ -72,15 +76,19 @@ export const useDraggable = ({
 };
 
 type DropTargetParams = Parameters<typeof dropTargetForElements>[0];
-export type GetDataParams = Parameters<NonNullable<DropTargetParams["getData"]>>;
 
-export const useDroppable = <TData extends Record<string | symbol, unknown>>(
-	getDataProp: (...args: GetDataParams) => TData | null,
-): [TData | null, RefCallback<HTMLElement>] => {
+export const useDroppable = ({
+	getData: getDataProp,
+	onActiveTargetDrag: onActiveTargetDragProp,
+}: Pick<Required<DropTargetParams>, "getData"> & {
+	onActiveTargetDrag: DropTargetParams["onDrag"];
+}): [boolean, RefCallback<HTMLElement>] => {
 	const ref = useRef<HTMLElement>(null);
-	const [data, setData] = useState<TData | null>(null);
-	const getData = useEffectEvent((...args: GetDataParams) => getDataProp(...args));
-	const canDrop: DropTargetParams["canDrop"] = useEffectEvent((args) => getData(args) !== null);
+	const [isActiveDropTarget, setIsActiveDropTarget] = useState<boolean>(false);
+	const onActiveTargetDrag: typeof onActiveTargetDragProp = useEffectEvent((args) =>
+		onActiveTargetDragProp?.(args),
+	);
+	const getData: typeof getDataProp = useEffectEvent((args) => getDataProp(args));
 
 	useEffect(() => {
 		const element = ref.current;
@@ -88,25 +96,28 @@ export const useDroppable = <TData extends Record<string | symbol, unknown>>(
 
 		return dropTargetForElements({
 			element,
-			canDrop,
-			getData: (args) => getData(args) ?? {},
-			onDragEnter: ({ self }) => {
-				setData(self.data as TData);
-			},
-			onDrag: ({ self }) => {
-				setData(self.data as TData);
+			getData,
+			onDrag: (args) => {
+				const innerMost = args.location.current.dropTargets[0];
+
+				const isActiveDropTarget =
+					innerMost?.element === args.self.element && !!parseDropData(innerMost.data);
+
+				setIsActiveDropTarget(isActiveDropTarget);
+
+				if (isActiveDropTarget) onActiveTargetDrag(args);
 			},
 			onDragLeave: () => {
-				setData(null);
+				setIsActiveDropTarget(false);
 			},
 			onDrop: () => {
-				setData(null);
+				setIsActiveDropTarget(false);
 			},
 		});
 	}, []);
 
 	return [
-		data,
+		isActiveDropTarget,
 		(element) => {
 			ref.current = element;
 		},

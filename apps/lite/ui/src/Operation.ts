@@ -143,16 +143,6 @@ export const tearOffBranchOperation = (operation: TearOffBranchOperation): Opera
 	...operation,
 });
 
-export const getInsertionSide = (operation: Operation): InsertSide | null =>
-	Match.value(operation).pipe(
-		Match.tags({
-			CommitMove: (x) => x.side,
-			CommitCreate: (x) => x.side,
-			CommitCreateFromCommittedChanges: (x) => x.side,
-		}),
-		Match.orElse(() => null),
-	);
-
 export const operationLabel = (operation: Operation): string =>
 	Match.value(operation).pipe(
 		Match.tagsExhaustive({
@@ -374,13 +364,7 @@ export const useRunOperation = () => {
  * which also includes move operations.
  * https://linear.app/gitbutler/issue/GB-1160/what-should-rubbing-a-branch-into-another-branch-do#comment-db2abdb7
  */
-export const rubOperation = ({
-	source,
-	target,
-}: {
-	source: Item;
-	target: Item;
-}): Operation | null =>
+const rubOperation = ({ source, target }: { source: Item; target: Item }): Operation | null =>
 	Match.value({ source, sourceFileParent: itemFileParent(source), target }).pipe(
 		Match.when(
 			{
@@ -446,7 +430,7 @@ export const rubOperation = ({
 		Match.orElse(() => null),
 	);
 
-export const moveOperation = ({
+const moveOperation = ({
 	source,
 	target,
 	side,
@@ -455,7 +439,7 @@ export const moveOperation = ({
 	target: Item;
 	side: InsertSide;
 }) => {
-	const branchMoveOperation = Match.value({ source, target }).pipe(
+	const branchMoveOperation = Match.value({ source, target, side }).pipe(
 		// This should support `relativeTo`:
 		// https://linear.app/gitbutler/issue/GB-1161/refsbranches-should-use-bytes-instead-of-strings
 		// https://linear.app/gitbutler/issue/GB-1199/support-moving-branches-onto-commits
@@ -464,6 +448,7 @@ export const moveOperation = ({
 			{
 				source: { _tag: "Branch" },
 				target: { _tag: "Branch" },
+				side: "above",
 			},
 			({ source, target }) =>
 				moveBranchOperation({
@@ -476,6 +461,7 @@ export const moveOperation = ({
 			{
 				source: { _tag: "Branch" },
 				target: { _tag: "BaseCommit" },
+				side: "above",
 			},
 			({ source }) =>
 				tearOffBranchOperation({
@@ -527,5 +513,31 @@ export const moveOperation = ({
 			}),
 		),
 		Match.orElse(() => null),
+	);
+};
+
+export type OperationType = "rub" | "moveAbove" | "moveBelow";
+
+export const getOperations = (
+	source: Item,
+	target: Item,
+): Record<OperationType, Operation | null> => ({
+	rub: rubOperation({ source, target }),
+	moveAbove: moveOperation({ source, target, side: "above" }),
+	moveBelow: moveOperation({ source, target, side: "below" }),
+});
+
+export const getOperation = (x: {
+	source: Item;
+	target: Item;
+	operationType: OperationType | null;
+}): Operation | null => {
+	const { rub, moveAbove, moveBelow } = getOperations(x.source, x.target);
+	return Match.value(x.operationType).pipe(
+		Match.when(null, () => null),
+		Match.when("rub", () => rub),
+		Match.when("moveAbove", () => moveAbove),
+		Match.when("moveBelow", () => moveBelow),
+		Match.exhaustive,
 	);
 };

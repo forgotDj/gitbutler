@@ -1,5 +1,5 @@
 import { classes } from "#ui/classes.ts";
-import { operationLabel, useRunOperation, type Operation } from "#ui/Operation.ts";
+import { getOperation, operationLabel, useRunOperation, type Operation } from "#ui/Operation.ts";
 import uiStyles from "#ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
 import { FC } from "react";
@@ -7,6 +7,9 @@ import styles from "./OperationTooltip.module.css";
 import { Item, itemEquals } from "./Item";
 import { useAppDispatch } from "#ui/state/hooks.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
+import { OperationMode } from "#ui/routes/project/$id/workspace/WorkspaceMode.ts";
+import { operationModeToOperationType } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
+import { Match } from "effect";
 
 const OperationModeControls: FC<{
 	projectId: string;
@@ -40,26 +43,45 @@ const OperationModeControls: FC<{
 export const OperationTooltip: FC<
 	{
 		projectId: string;
-		operation: Operation | null;
-		source?: Item;
 		item: Item;
-		isDropTarget?: boolean;
+		operationMode: OperationMode | null;
+		isActive: boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ projectId, operation, source, item, isDropTarget, render, ...props }) => {
-	const isSource = !!source && itemEquals(source, item);
+> = ({ projectId, item, operationMode, isActive, render, ...props }) => {
+	const isSource = !!operationMode?.source && itemEquals(operationMode.source, item);
 
-	const tooltipLabel = isSource ? (
-		<>Select a target</>
-	) : operation ? (
-		<>{operationLabel(operation)}</>
+	const operation = operationMode?.source
+		? getOperation({
+				source: operationMode.source,
+				target: item,
+				operationType: operationModeToOperationType(operationMode),
+			})
+		: null;
+
+	const tooltipLabel = isActive ? (
+		isSource ? (
+			<>Select a target</>
+		) : operation ? (
+			<>{operationLabel(operation)}</>
+		) : null
 	) : null;
 
 	const trigger = useRender({ render, props });
 
+	const showControls =
+		!!operationMode &&
+		Match.value(operationMode).pipe(
+			Match.tagsExhaustive({
+				DragAndDrop: () => false,
+				Rub: () => true,
+				Move: () => true,
+			}),
+		);
+
 	return (
 		<Tooltip.Root
 			open={!!tooltipLabel}
-			disableHoverablePopup={isDropTarget}
+			disableHoverablePopup={!showControls}
 			onOpenChange={(_open, eventDetails) => {
 				eventDetails.allowPropagation();
 			}}
@@ -69,7 +91,7 @@ export const OperationTooltip: FC<
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip, styles.popup)}>
 						{tooltipLabel}
-						{!isDropTarget && <OperationModeControls projectId={projectId} operation={operation} />}
+						{showControls && <OperationModeControls projectId={projectId} operation={operation} />}
 					</Tooltip.Popup>
 				</Tooltip.Positioner>
 			</Tooltip.Portal>

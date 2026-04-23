@@ -9,6 +9,8 @@ import { OperationSourceLabel } from "./OperationSourceLabel.tsx";
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./OperationSourceC.module.css";
 import { Item, itemEquals } from "./Item.ts";
+import { useAppDispatch } from "#ui/state/hooks.ts";
+import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 
 const DragPreview = ({ children }: { children: ReactNode }) => (
 	<div className={styles.dragPreview}>{children}</div>
@@ -24,7 +26,12 @@ export const OperationSourceC: FC<
 > = ({ operationMode = null, projectId, source, canDrag, render, ...props }) => {
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 
+	const dispatch = useAppDispatch();
+
 	const [isDragging, dragRef] = useDraggable({
+		onDragStart: () => {
+			dispatch(projectActions.enterDragAndDropMode({ projectId, source }));
+		},
 		getInitialData: (): DragData => ({ source }),
 		preview: (
 			<DragPreview>

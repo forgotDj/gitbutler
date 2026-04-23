@@ -3,58 +3,18 @@ import {
 	extractInstruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
 import { classes } from "#ui/classes.ts";
-import { getInsertionSide, moveOperation, rubOperation, type Operation } from "#ui/Operation.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
 import { FC } from "react";
-import { type GetDataParams, useDroppable } from "./DragAndDrop.tsx";
-import { parseDragData } from "./OperationDragAndDrop.tsx";
+import { useDroppable } from "./DragAndDrop.tsx";
+import { DropData, parseDragData, parseDropData } from "./OperationDragAndDrop.tsx";
 import { type Item } from "./Item.ts";
-import { operationModeToOperation } from "./OperationMode.tsx";
 import { OperationTooltip } from "./OperationTooltip.tsx";
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./OperationTarget.module.css";
-
-const dropTargetOperations = (source: Item, target: Item) => ({
-	rub: rubOperation({ source, target }),
-	moveAbove: moveOperation({ source, target, side: "above" }),
-	moveBelow: moveOperation({ source, target, side: "below" }),
-});
-
-const dropTargetToOperation =
-	(source: Item, target: Item) =>
-	({ input, element }: GetDataParams[0]): Operation | null => {
-		const { rub, moveAbove, moveBelow } = dropTargetOperations(source, target);
-
-		const instruction = extractInstruction(
-			attachInstruction(
-				{},
-				{
-					input,
-					element,
-					operations: {
-						"reorder-before": moveAbove ? "available" : "not-available",
-						"reorder-after": moveBelow ? "available" : "not-available",
-						combine: rub ? "available" : "not-available",
-					},
-				},
-			),
-		);
-
-		if (!instruction) return null;
-
-		return Match.value(instruction.operation).pipe(
-			Match.when("combine", () => rub),
-			Match.when("reorder-before", () => moveAbove),
-			Match.when("reorder-after", () => moveBelow),
-			Match.exhaustive,
-		);
-	};
-
-export type TargetData = {
-	source: Item;
-	operation: Operation | null;
-};
+import { getOperations, OperationType } from "#ui/Operation.ts";
+import { useAppDispatch } from "#ui/state/hooks.ts";
+import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 
 export const OperationTarget: FC<
 	{
@@ -64,35 +24,81 @@ export const OperationTarget: FC<
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
-	const [dropTarget, dropRef] = useDroppable((args): TargetData | null => {
-		const dragData = parseDragData(args.source.data);
-		if (!dragData) return null;
+	const dispatch = useAppDispatch();
 
-		const { source } = dragData;
-		const operation = dropTargetToOperation(source, item)(args);
+	const [isActiveDropTarget, dropRef] = useDroppable({
+		getData: ({ input, element, source }): DropData | {} => {
+			const dragData = parseDragData(source.data);
+			if (!dragData) return {};
 
-		return { source, operation };
+			const { rub, moveAbove, moveBelow } = getOperations(dragData.source, item);
+
+			const instruction = extractInstruction(
+				attachInstruction(
+					{},
+					{
+						input,
+						element,
+						operations: {
+							"reorder-before": moveAbove ? "available" : "not-available",
+							"reorder-after": moveBelow ? "available" : "not-available",
+							combine: rub ? "available" : "not-available",
+						},
+					},
+				),
+			);
+			if (!instruction) return {};
+
+			const operationType = Match.value(instruction.operation).pipe(
+				Match.withReturnType<OperationType | null>(),
+				Match.when("combine", () => "rub"),
+				Match.when("reorder-before", () => "moveAbove"),
+				Match.when("reorder-after", () => "moveBelow"),
+				Match.exhaustive,
+			);
+
+			return { operationType, target: item };
+		},
+		onActiveTargetDrag: (args) => {
+			const dropData = parseDropData(args.self.data);
+
+			dispatch(
+				projectActions.updateDragAndDropMode({
+					projectId,
+					operationType: dropData?.operationType ?? null,
+				}),
+			);
+		},
 	});
-	const dropInsertionSide = dropTarget?.operation ? getInsertionSide(dropTarget.operation) : null;
 
-	const getOperationModeTarget = (): TargetData | null => {
-		if (!isSelected) return null;
-		if (!operationMode) return null;
+	const insertTargetOperationType = operationMode
+		? Match.value(operationMode).pipe(
+				Match.tagsExhaustive({
+					DragAndDrop: ({ operationType }) =>
+						isActiveDropTarget && (operationType === "moveAbove" || operationType === "moveBelow")
+							? operationType
+							: null,
+					Rub: () => null,
+					Move: () => null,
+				}),
+			)
+		: null;
 
-		const { source } = operationMode;
-		const operation = operationModeToOperation({ operationMode, target: item });
-
-		return { source, operation };
-	};
-
-	const mainTargetData =
-		dropInsertionSide === null ? (dropTarget ?? getOperationModeTarget()) : null;
+	const isMainTargetActive =
+		!!operationMode &&
+		Match.value(operationMode).pipe(
+			Match.tagsExhaustive({
+				DragAndDrop: ({ operationType }) => isActiveDropTarget && operationType === "rub",
+				Rub: () => isSelected,
+				Move: () => isSelected,
+			}),
+		);
 
 	const target = useRender({
 		render,
 		ref: dropRef,
 		props: mergeProps<"div">(props, {
-			className: classes(mainTargetData && styles.activeTarget),
+			className: classes(isMainTargetActive && styles.activeTarget),
 		}),
 	});
 
@@ -100,27 +106,25 @@ export const OperationTarget: FC<
 		<div className={styles.target}>
 			<OperationTooltip
 				projectId={projectId}
-				isDropTarget={!!dropTarget}
 				item={item}
-				operation={mainTargetData?.operation ?? null}
-				source={mainTargetData?.source}
+				isActive={isMainTargetActive}
+				operationMode={operationMode}
 				render={target}
 			/>
 
-			{dropInsertionSide !== null && (
+			{insertTargetOperationType !== null && (
 				<OperationTooltip
 					projectId={projectId}
-					isDropTarget
 					item={item}
-					operation={dropTarget?.operation ?? null}
-					source={dropTarget?.source}
+					isActive
+					operationMode={operationMode}
 					className={classes(
 						styles.insertionTarget,
 						pipe(
-							dropInsertionSide,
+							insertTargetOperationType,
 							Match.value,
-							Match.when("above", () => styles.insertionTargetAbove),
-							Match.when("below", () => styles.insertionTargetBelow),
+							Match.when("moveAbove", () => styles.insertionTargetAbove),
+							Match.when("moveBelow", () => styles.insertionTargetBelow),
 							Match.exhaustive,
 						),
 					)}
