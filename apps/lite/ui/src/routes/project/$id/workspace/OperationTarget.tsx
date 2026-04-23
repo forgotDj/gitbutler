@@ -111,7 +111,7 @@ export const OperationTarget: FC<
 		<div className={styles.target}>
 			<OperationTooltip
 				projectId={projectId}
-				isOperationMode={!!operationMode}
+				isDropTarget={!!dropTarget}
 				item={item}
 				operation={mainTargetData?.operation ?? null}
 				source={mainTargetData?.source}
@@ -121,7 +121,7 @@ export const OperationTarget: FC<
 			{dropInsertionSide !== null && (
 				<OperationTooltip
 					projectId={projectId}
-					isOperationMode={false}
+					isDropTarget
 					item={item}
 					operation={dropTarget?.operation ?? null}
 					source={dropTarget?.source}
