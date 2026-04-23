@@ -10,17 +10,23 @@ use crate::graph_rebase::{
     SuccessfulRebase, util,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 /// Options for the editor.
-pub struct GraphEditorOptions {
+pub struct GraphEditorOptions<'a> {
     /// Determines how cherry-picked commits are signed.
     pub default_sign_commit: SignCommit,
+    /// Extra references that should be included in the editor.
+    ///
+    /// If the parentage of a commit in the extra references list gets modified,
+    /// the extra reference will be updated.
+    pub extra_refs: Vec<&'a gix::refs::FullNameRef>,
 }
 
-impl Default for GraphEditorOptions {
+impl Default for GraphEditorOptions<'_> {
     fn default() -> Self {
         Self {
             default_sign_commit: SignCommit::IfSignCommitsEnabled,
+            extra_refs: vec![],
         }
     }
 }
@@ -54,6 +60,35 @@ impl<'ws, 'meta, M: RefMetadata> Editor<'ws, 'meta, M> {
         // reachable from the entrypoint TODO(CTO): Look into stopping at the
         // common base
         let entrypoint = workspace.graph.lookup_entrypoint()?;
+
+        let mut entrypoints = vec![entrypoint.segment_index];
+
+        for extra_ref in &options.extra_refs {
+            let Some((segment, _)) = workspace.graph.segment_and_commit_by_ref_name(extra_ref)
+            else {
+                bail!("Failed to find corresponding segment for {extra_ref}");
+            };
+            entrypoints.push(segment.id);
+        }
+
+        let mut segments_to_add = vec![];
+        let mut seen_segments = HashSet::new();
+
+        for entrypoint in entrypoints {
+            workspace.graph.visit_all_segments_including_start_until(
+                entrypoint,
+                Direction::Outgoing,
+                |segment| {
+                    if seen_segments.insert(segment.id) {
+                        segments_to_add.push(segment.id);
+                        false
+                    } else {
+                        true
+                    }
+                },
+            );
+        }
+
         let workspace_commit_id = workspace
             .graph
             .managed_entrypoint_commit(repo)?
@@ -71,74 +106,69 @@ impl<'ws, 'meta, M: RefMetadata> Editor<'ws, 'meta, M> {
 
         let mut segments = HashMap::<SegmentIndex, NodeSegment>::new();
 
-        workspace.graph.visit_all_segments_including_start_until(
-            entrypoint.segment_index,
-            Direction::Outgoing,
-            |segment| {
-                let mut nodes = vec![];
+        for sid in segments_to_add {
+            let segment = &workspace.graph[sid];
+            let mut nodes = vec![];
 
-                if let Some(reference) = segment.ref_name() {
-                    let refname = reference.to_owned();
-                    references.push(refname.clone());
-                    let ix = graph.add_node(Step::Reference {
-                        refname: refname.clone(),
+            if let Some(reference) = segment.ref_name() {
+                let refname = reference.to_owned();
+                references.push(refname.clone());
+                let ix = graph.add_node(Step::Reference {
+                    refname: refname.clone(),
+                });
+                if Some(reference) == entrypoint.segment.ref_name() {
+                    head_selectors.push(Selector {
+                        id: ix,
+                        revision: 0,
                     });
-                    if Some(reference) == entrypoint.segment.ref_name() {
-                        head_selectors.push(Selector {
-                            id: ix,
-                            revision: 0,
-                        });
-                    }
-                    nodes.push(ix);
                 }
+                nodes.push(ix);
+            }
 
-                for commit in &segment.commits {
-                    commits.push(commit.clone());
-                    commit_to_idx.insert(commit.id, segment.id);
+            for commit in &segment.commits {
+                commits.push(commit.clone());
+                commit_to_idx.insert(commit.id, segment.id);
 
-                    let refs = commit
-                        .refs
-                        .iter()
-                        .map(|r| r.ref_name.clone())
-                        .collect::<Vec<_>>();
+                let refs = commit
+                    .refs
+                    .iter()
+                    .map(|r| r.ref_name.clone())
+                    .collect::<Vec<_>>();
 
-                    for reference in refs {
-                        references.push(reference.to_owned());
-                        let ix = graph.add_node(Step::Reference {
-                            refname: reference.clone(),
-                        });
-                        if let Some(previous_ix) = nodes.last() {
-                            graph.add_edge(*previous_ix, ix, Edge { order: 0 });
-                        }
-                        nodes.push(ix);
-                    }
-
-                    let pick = if workspace_commit_id == Some(commit.id) {
-                        Pick::new_workspace_pick(commit.id)
-                    } else {
-                        let mut pick = Pick::new_pick(commit.id);
-                        pick.sign_commit = options.default_sign_commit;
-                        pick
-                    };
-                    let ix = graph.add_node(Step::Pick(pick));
-                    commit_to_pick_ix.insert(commit.id, ix);
+                for reference in refs {
+                    references.push(reference.to_owned());
+                    let ix = graph.add_node(Step::Reference {
+                        refname: reference.clone(),
+                    });
                     if let Some(previous_ix) = nodes.last() {
                         graph.add_edge(*previous_ix, ix, Edge { order: 0 });
                     }
                     nodes.push(ix);
                 }
 
-                if nodes.is_empty() {
-                    tracing::debug!("Empty node added - this is probably impossible");
-                    let ix = graph.add_node(Step::None);
-                    nodes.push(ix);
+                let pick = if workspace_commit_id == Some(commit.id) {
+                    Pick::new_workspace_pick(commit.id)
+                } else {
+                    let mut pick = Pick::new_pick(commit.id);
+                    pick.sign_commit = options.default_sign_commit;
+                    pick
+                };
+                let ix = graph.add_node(Step::Pick(pick));
+                commit_to_pick_ix.insert(commit.id, ix);
+                if let Some(previous_ix) = nodes.last() {
+                    graph.add_edge(*previous_ix, ix, Edge { order: 0 });
                 }
+                nodes.push(ix);
+            }
 
-                segments.insert(segment.id, NodeSegment { nodes });
+            if nodes.is_empty() {
+                tracing::debug!("Empty node added - this is probably impossible");
+                let ix = graph.add_node(Step::None);
+                nodes.push(ix);
+            }
 
-                false
-            },
-        );
+            segments.insert(segment.id, NodeSegment { nodes });
+        }
 
         let commit_ids = commits.iter().map(|c| c.id).collect::<HashSet<_>>();
 
