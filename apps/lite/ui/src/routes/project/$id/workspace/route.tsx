@@ -1697,7 +1697,6 @@ const ProjectPage: FC = () => {
 					itemEquals(operationMode.source, item) ||
 					!!operationModeToOperation({
 						operationMode,
-						source: operationMode.source,
 						target: item,
 					}),
 			)

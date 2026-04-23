@@ -5,16 +5,14 @@ import { type OperationMode } from "./WorkspaceMode.ts";
 
 export const operationModeToOperation = ({
 	operationMode,
-	source,
 	target,
 }: {
 	operationMode: OperationMode;
-	source: Item;
 	target: Item;
 }): Operation | null =>
 	Match.value(operationMode).pipe(
 		Match.tagsExhaustive({
-			Rub: () => rubOperation({ source, target }),
-			Move: () => moveOperation({ source, target, side: "below" }),
+			Rub: ({ source }) => rubOperation({ source, target }),
+			Move: ({ source }) => moveOperation({ source, target, side: "below" }),
 		}),
 	);

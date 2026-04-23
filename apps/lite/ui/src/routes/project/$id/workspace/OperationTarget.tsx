@@ -93,7 +93,6 @@ const useOperationModeTarget = ({
 	const { source } = operationMode;
 	const operation = operationModeToOperation({
 		operationMode,
-		source,
 		target: item,
 	});
 
