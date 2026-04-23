@@ -120,12 +120,11 @@ import { formatShortcutKeys, ShortcutActionBase, type ShortcutBinding } from "#u
 import styles from "./route.module.css";
 import {
 	getOperationMode,
+	includeItemForWorkspaceMode,
 	isValidWorkspaceMode,
 	type OperationMode,
 	type WorkspaceMode,
 } from "./WorkspaceMode.ts";
-import { operationModeToOperationType } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
-import { getOperation, getOperations } from "#ui/Operation.ts";
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 
@@ -1725,23 +1724,15 @@ const ProjectPage: FC = () => {
 		selectNormalizedSelectedItem(state, { projectId, navigationIndex: navigationIndexUnfiltered }),
 	);
 
-	const navigationIndex = operationMode
-		? filterNavigationIndex(navigationIndexUnfiltered, (item) => {
-				const operationType = operationModeToOperationType(operationMode);
-				const hasOperation = Match.value(operationMode).pipe(
-					Match.tagsExhaustive({
-						DragAndDrop: ({ source }) => {
-							const operations = getOperations(source, item);
-							return !!operations.rub || !!operations.moveAbove || !!operations.moveBelow;
-						},
-						Rub: ({ source }) => !!getOperation({ source, target: item, operationType }),
-						Move: ({ source }) => !!getOperation({ source, target: item, operationType }),
-					}),
-				);
-
-				return (selectedItem && itemEquals(selectedItem, item)) || hasOperation;
-			})
-		: navigationIndexUnfiltered;
+	const navigationIndex =
+		workspaceMode._tag !== "Default"
+			? filterNavigationIndex(
+					navigationIndexUnfiltered,
+					(item) =>
+						(selectedItem && itemEquals(selectedItem, item)) ||
+						includeItemForWorkspaceMode({ mode: workspaceMode, item }),
+				)
+			: navigationIndexUnfiltered;
 
 	const shortcutScope = getScope({ selectedItem, layoutState, workspaceMode });
 

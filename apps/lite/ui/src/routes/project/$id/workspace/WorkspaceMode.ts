@@ -1,7 +1,8 @@
 import { Match } from "effect";
 import { branchItem, commitItem, itemEquals, type Item } from "./Item.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "./WorkspaceModel.ts";
-import { OperationType } from "#ui/Operation.ts";
+import { getOperation, getOperations, OperationType } from "#ui/Operation.ts";
+import { operationModeToOperationType } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
 
 /** @public */
 export type RubOperationMode = { source: Item };
@@ -137,5 +138,50 @@ export const isValidWorkspaceModeForItem = ({
 						branchRef: mode.branchRef,
 					}),
 				),
+		}),
+	);
+
+export const includeItemForWorkspaceMode = ({
+	mode,
+	item,
+}: {
+	mode: WorkspaceMode;
+	item: Item;
+}): boolean =>
+	Match.value(mode).pipe(
+		Match.tagsExhaustive({
+			Default: () => true,
+			DragAndDrop: ({ source }) => {
+				const operations = getOperations(source, item);
+				return !!operations.rub || !!operations.moveAbove || !!operations.moveBelow;
+			},
+			Move: (mode) =>
+				!!getOperation({
+					source: mode.source,
+					target: item,
+					operationType: operationModeToOperationType(mode),
+				}),
+			RenameBranch: (mode) =>
+				itemEquals(
+					item,
+					branchItem({
+						stackId: mode.stackId,
+						branchRef: mode.branchRef,
+					}),
+				),
+			RewordCommit: (mode) =>
+				itemEquals(
+					item,
+					commitItem({
+						stackId: mode.stackId,
+						commitId: mode.commitId,
+					}),
+				),
+			Rub: (mode) =>
+				!!getOperation({
+					source: mode.source,
+					target: item,
+					operationType: operationModeToOperationType(mode),
+				}),
 		}),
 	);
