@@ -7,8 +7,10 @@ import styles from "./OperationTooltip.module.css";
 import { Item, itemEquals } from "./Item";
 import { useAppDispatch } from "#ui/state/hooks.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
-import { OperationMode } from "#ui/routes/project/$id/workspace/WorkspaceMode.ts";
-import { operationModeToOperationType } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
+import {
+	operationModeToOperationType,
+	OperationMode,
+} from "#ui/routes/project/$id/workspace/WorkspaceMode.ts";
 import { Match } from "effect";
 
 const OperationModeControls: FC<{

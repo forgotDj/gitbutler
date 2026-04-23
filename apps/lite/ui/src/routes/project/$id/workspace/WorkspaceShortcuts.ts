@@ -22,14 +22,17 @@ import {
 	stackItem,
 } from "./Item.ts";
 import { resolveAbsorptionTarget } from "./Absorption.tsx";
-import { operationModeToOperationType } from "./OperationMode.tsx";
 import {
 	getAdjacent,
 	getNextSection,
 	getPreviousSection,
 	type NavigationIndex,
 } from "./WorkspaceModel.ts";
-import { OperationMode, type WorkspaceMode } from "./WorkspaceMode.ts";
+import {
+	operationModeToOperationType,
+	OperationMode,
+	type WorkspaceMode,
+} from "./WorkspaceMode.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import { AbsorptionTarget } from "@gitbutler/but-sdk";
 import { changesInWorktreeQueryOptions } from "#ui/api/queries.ts";

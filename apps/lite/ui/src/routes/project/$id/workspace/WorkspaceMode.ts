@@ -2,7 +2,6 @@ import { Match } from "effect";
 import { branchItem, commitItem, itemEquals, type Item } from "./Item.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "./WorkspaceModel.ts";
 import { getOperation, getOperations, OperationType } from "#ui/Operation.ts";
-import { operationModeToOperationType } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
 
 /** @public */
 export type RubOperationMode = { source: Item };
@@ -74,6 +73,18 @@ export const renameBranchWorkspaceMode = ({
 
 export const getOperationMode = (mode: WorkspaceMode): OperationMode | null =>
 	mode._tag === "Rub" || mode._tag === "Move" || mode._tag === "DragAndDrop" ? mode : null;
+
+export const operationModeToOperationType = (operationMode: OperationMode): OperationType | null =>
+	Match.value(operationMode).pipe(
+		Match.withReturnType<OperationType | null>(),
+		Match.tags({
+			Rub: () => "rub",
+			// We should have the ability to move either above or below.
+			Move: ({ source }) => (source._tag === "Branch" ? "moveAbove" : "moveBelow"),
+			DragAndDrop: ({ operationType }) => operationType,
+		}),
+		Match.exhaustive,
+	);
 
 export const isValidWorkspaceMode = ({
 	mode,
