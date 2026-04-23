@@ -78,7 +78,7 @@ export const useDraggable = ({
 
 type DropTargetParams = Parameters<typeof dropTargetForElements>[0];
 type GetDataParams = Parameters<NonNullable<DropTargetParams["getData"]>>;
-export type OnDragParams = Parameters<NonNullable<DropTargetParams["onDrag"]>>;
+type OnDragParams = Parameters<NonNullable<DropTargetParams["onDrag"]>>;
 
 export const useDroppable = <TData extends Record<string | symbol, unknown>>({
 	getData: getDataProp,
