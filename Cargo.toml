@@ -106,6 +106,7 @@ members = [
     ### Binaries
     ##
     # Strive for testing main functionality and journeys where applicable.
+    "crates/but-debug",
     "crates/but",
     # Should be functionally equivalent to `gitbutler-tauri`
     "crates/but-server",
@@ -142,6 +143,7 @@ edition = "2024"
 rust-version = "1.89"
 
 [workspace.dependencies]
+but-debug = { path = "crates/but-debug" }
 but = { path = "crates/but" }
 but-debugging = { path = "crates/but-debugging" }
 but-testsupport = { path = "crates/but-testsupport" }

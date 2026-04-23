@@ -1198,6 +1198,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "but-debug"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "but-core",
+ "but-graph",
+ "clap",
+ "gix",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "but-debugging"
 version = "0.0.0"
 
