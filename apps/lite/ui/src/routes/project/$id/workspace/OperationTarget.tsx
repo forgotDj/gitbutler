@@ -94,11 +94,10 @@ export const OperationTarget: FC<
 				}
 			: null;
 
-	const targetData: TargetData | null = dropTarget ?? getOperationModeTarget();
-
 	const dropInsertionSide = dropTarget?.operation ? getInsertionSide(dropTarget.operation) : null;
 
-	const mainTargetData = dropInsertionSide === null ? targetData : null;
+	const mainTargetData =
+		dropInsertionSide === null ? (dropTarget ?? getOperationModeTarget()) : null;
 
 	const target = useRender({
 		render,
