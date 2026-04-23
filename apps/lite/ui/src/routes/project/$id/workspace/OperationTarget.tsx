@@ -65,9 +65,9 @@ export const OperationTarget: FC<
 	const dispatch = useAppDispatch();
 
 	const [isActiveDropTarget, dropRef] = useDroppable({
-		getData: ({ input, element, source }): DropData | {} => {
+		getData: ({ input, element, source }): DropData | null => {
 			const dragData = parseDragData(source.data);
-			if (!dragData) return {};
+			if (!dragData) return null;
 
 			const operationType = getDropOperationType({
 				source: dragData.source,
@@ -75,7 +75,7 @@ export const OperationTarget: FC<
 				input,
 				element,
 			});
-			if (operationType === null) return {};
+			if (operationType === null) return null;
 
 			return { operationType, target: item };
 		},

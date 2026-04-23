@@ -1,4 +1,3 @@
-import { parseDropData } from "#ui/routes/project/$id/workspace/OperationDragAndDrop.tsx";
 import {
 	draggable,
 	dropTargetForElements,
@@ -77,10 +76,13 @@ export const useDraggable = ({
 
 type DropTargetParams = Parameters<typeof dropTargetForElements>[0];
 
-export const useDroppable = ({
+type GetDataParams = Parameters<NonNullable<DropTargetParams["getData"]>>;
+
+export const useDroppable = <TData extends Record<string | symbol, unknown>>({
 	getData: getDataProp,
 	onActiveTargetDrag: onActiveTargetDragProp,
-}: Pick<Required<DropTargetParams>, "getData"> & {
+}: {
+	getData: (...args: GetDataParams) => TData | null;
 	onActiveTargetDrag: DropTargetParams["onDrag"];
 }): [boolean, RefCallback<HTMLElement>] => {
 	const ref = useRef<HTMLElement>(null);
@@ -89,6 +91,7 @@ export const useDroppable = ({
 		onActiveTargetDragProp?.(args),
 	);
 	const getData: typeof getDataProp = useEffectEvent((args) => getDataProp(args));
+	const canDrop: DropTargetParams["canDrop"] = useEffectEvent((args) => getData(args) !== null);
 
 	useEffect(() => {
 		const element = ref.current;
@@ -96,12 +99,12 @@ export const useDroppable = ({
 
 		return dropTargetForElements({
 			element,
-			getData,
+			getData: (args) => getData(args) ?? {},
+			canDrop,
 			onDrag: (args) => {
 				const [innerMost] = args.location.current.dropTargets;
 
-				const isActiveDropTarget =
-					innerMost?.element === args.self.element && !!parseDropData(innerMost.data);
+				const isActiveDropTarget = innerMost?.element === args.self.element;
 
 				setIsActiveDropTarget(isActiveDropTarget);
 
