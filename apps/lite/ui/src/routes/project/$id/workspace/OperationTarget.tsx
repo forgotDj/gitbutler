@@ -30,7 +30,7 @@ export const OperationTarget: FC<
 	const [isDragOver, dropRef] = useDroppable({
 		getData: ({ input, element, source }) => {
 			const dragData = parseDragData(source.data);
-			if (!dragData) return null;
+			if (!dragData) return {};
 
 			const { rub, moveAbove, moveBelow } = getOperations(dragData.source, item);
 

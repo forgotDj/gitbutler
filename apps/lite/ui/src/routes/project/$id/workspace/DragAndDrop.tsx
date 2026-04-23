@@ -77,18 +77,15 @@ export const useDraggable = ({
 };
 
 type DropTargetParams = Parameters<typeof dropTargetForElements>[0];
-type GetDataParams = Parameters<NonNullable<DropTargetParams["getData"]>>;
-type OnDragParams = Parameters<NonNullable<DropTargetParams["onDrag"]>>;
 
 export const useDroppable = ({
 	getData: getDataProp,
 	onDrag: onDragProp,
-}: Pick<DropTargetParams, "getData" | "onDrag">): [boolean, RefCallback<HTMLElement>] => {
+}: Pick<Required<DropTargetParams>, "getData" | "onDrag">): [boolean, RefCallback<HTMLElement>] => {
 	const ref = useRef<HTMLElement>(null);
 	const [isDragOver, setIsDragOver] = useState<boolean>(false);
-	const onDrag = useEffectEvent((...args: OnDragParams) => onDragProp?.(...args));
-	const getData = useEffectEvent((...args: GetDataParams) => getDataProp?.(...args));
-	const canDrop: DropTargetParams["canDrop"] = useEffectEvent((args) => getData(args) != null);
+	const onDrag: DropTargetParams["onDrag"] = useEffectEvent((args) => onDragProp(args));
+	const getData: DropTargetParams["getData"] = useEffectEvent((args) => getDataProp(args));
 
 	useEffect(() => {
 		const element = ref.current;
@@ -96,8 +93,7 @@ export const useDroppable = ({
 
 		return dropTargetForElements({
 			element,
-			canDrop,
-			getData: (args) => getData(args) ?? {},
+			getData,
 			onDragEnter: () => {
 				setIsDragOver(true);
 			},
