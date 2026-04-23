@@ -94,13 +94,23 @@ const projectSlice = createSlice({
 			action: PayloadAction<{
 				projectId: string;
 				source: Item;
-				operationType: OperationType | null;
 			}>,
 		) => {
-			const { projectId, source, operationType } = action.payload;
+			const { projectId, source } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
 			layout.focusPrimary(projectState.layout);
-			workspace.enterDragAndDropMode(projectState.workspace, source, operationType);
+			workspace.enterDragAndDropMode(projectState.workspace, source);
+		},
+		updateDragAndDropMode: (
+			state,
+			action: PayloadAction<{
+				projectId: string;
+				operationType: OperationType;
+			}>,
+		) => {
+			const { projectId, operationType } = action.payload;
+			const projectState = ensureProjectState(state, projectId);
+			workspace.updateDragAndDropMode(projectState.workspace, operationType);
 		},
 		exitMode: (state, action: PayloadAction<{ projectId: string }>) => {
 			workspace.exitMode(ensureProjectState(state, action.payload.projectId).workspace);

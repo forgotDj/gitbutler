@@ -30,7 +30,7 @@ export const OperationSourceC: FC<
 
 	const [isDragging, dragRef] = useDraggable({
 		onDragStart: () => {
-			dispatch(projectActions.enterDragAndDropMode({ operationType: null, projectId, source }));
+			dispatch(projectActions.enterDragAndDropMode({ projectId, source }));
 		},
 		getInitialData: (): DragData => ({ source }),
 		preview: (

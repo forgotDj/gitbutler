@@ -1,4 +1,5 @@
 import { OperationType } from "#ui/Operation.ts";
+import { Match } from "effect";
 import {
 	branchItem,
 	commitItem,
@@ -54,12 +55,19 @@ export const enterRubMode = (state: WorkspaceState, source: Item) => {
 	state.mode = rubOperationMode({ source });
 };
 
-export const enterDragAndDropMode = (
-	state: WorkspaceState,
-	source: Item,
-	operationType: OperationType | null,
-) => {
-	state.mode = dragAndDropOperationMode({ source, operationType });
+export const enterDragAndDropMode = (state: WorkspaceState, source: Item) => {
+	state.mode = dragAndDropOperationMode({ source, operationType: null });
+};
+
+export const updateDragAndDropMode = (state: WorkspaceState, operationType: OperationType) => {
+	Match.value(state.mode).pipe(
+		Match.tags({
+			DragAndDrop: (mode) => {
+				state.mode = dragAndDropOperationMode({ source: mode.source, operationType });
+			},
+		}),
+		Match.orElse(() => {}),
+	);
 };
 
 export const exitMode = (state: WorkspaceState) => {

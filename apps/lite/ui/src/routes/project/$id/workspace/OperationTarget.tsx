@@ -51,10 +51,6 @@ export const OperationTarget: FC<
 			const instruction = extractInstruction(args.self.data);
 			if (!instruction) return;
 
-			const dragData = parseDragData(args.source.data);
-			if (!dragData) return;
-
-			const { source } = dragData;
 			const operationType = Match.value(instruction.operation).pipe(
 				Match.withReturnType<OperationType | null>(),
 				Match.when("combine", () => "rub"),
@@ -63,7 +59,7 @@ export const OperationTarget: FC<
 				Match.exhaustive,
 			);
 
-			dispatch(projectActions.enterDragAndDropMode({ operationType, projectId, source }));
+			dispatch(projectActions.updateDragAndDropMode({ projectId, operationType }));
 		},
 	});
 	const isActive =
