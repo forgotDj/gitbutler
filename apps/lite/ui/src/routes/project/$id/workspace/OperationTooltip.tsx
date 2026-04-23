@@ -43,9 +43,9 @@ export const OperationTooltip: FC<
 		operation: Operation | null;
 		source?: Item;
 		item: Item;
-		isOperationMode?: boolean;
+		isDropTarget?: boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ projectId, operation, source, item, isOperationMode, render, ...props }) => {
+> = ({ projectId, operation, source, item, isDropTarget, render, ...props }) => {
 	const isSource = !!source && itemEquals(source, item);
 
 	const tooltipLabel = isSource ? (
@@ -59,7 +59,7 @@ export const OperationTooltip: FC<
 	return (
 		<Tooltip.Root
 			open={!!tooltipLabel}
-			disableHoverablePopup={!isOperationMode}
+			disableHoverablePopup={isDropTarget}
 			onOpenChange={(_open, eventDetails) => {
 				eventDetails.allowPropagation();
 			}}
@@ -69,9 +69,7 @@ export const OperationTooltip: FC<
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip, styles.popup)}>
 						{tooltipLabel}
-						{isOperationMode && (
-							<OperationModeControls projectId={projectId} operation={operation} />
-						)}
+						{!isDropTarget && <OperationModeControls projectId={projectId} operation={operation} />}
 					</Tooltip.Popup>
 				</Tooltip.Positioner>
 			</Tooltip.Portal>

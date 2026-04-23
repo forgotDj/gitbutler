@@ -15,23 +15,16 @@ import { OperationTooltip } from "./OperationTooltip.tsx";
 import { type OperationMode } from "./WorkspaceMode.ts";
 import styles from "./OperationTarget.module.css";
 
+const dropTargetOperations = (source: Item, target: Item) => ({
+	rub: rubOperation({ source, target }),
+	moveAbove: moveOperation({ source, target, side: "above" }),
+	moveBelow: moveOperation({ source, target, side: "below" }),
+});
+
 const dropTargetToOperation =
-	(target: Item, source: Item) =>
+	(source: Item, target: Item) =>
 	({ input, element }: GetDataParams[0]): Operation | null => {
-		const combine = rubOperation({
-			source,
-			target,
-		});
-		const insertAbove = moveOperation({
-			source,
-			target,
-			side: "above",
-		});
-		const insertBelow = moveOperation({
-			source,
-			target,
-			side: "below",
-		});
+		const { rub, moveAbove, moveBelow } = dropTargetOperations(source, target);
 
 		const instruction = extractInstruction(
 			attachInstruction(
@@ -40,9 +33,9 @@ const dropTargetToOperation =
 					input,
 					element,
 					operations: {
-						"reorder-before": insertAbove ? "available" : "not-available",
-						"reorder-after": insertBelow ? "available" : "not-available",
-						combine: combine ? "available" : "not-available",
+						"reorder-before": moveAbove ? "available" : "not-available",
+						"reorder-after": moveBelow ? "available" : "not-available",
+						combine: rub ? "available" : "not-available",
 					},
 				},
 			),
@@ -51,9 +44,9 @@ const dropTargetToOperation =
 		if (!instruction) return null;
 
 		return Match.value(instruction.operation).pipe(
-			Match.when("combine", () => combine),
-			Match.when("reorder-before", () => insertAbove),
-			Match.when("reorder-after", () => insertBelow),
+			Match.when("combine", () => rub),
+			Match.when("reorder-before", () => moveAbove),
+			Match.when("reorder-after", () => moveBelow),
 			Match.exhaustive,
 		);
 	};
@@ -61,46 +54,6 @@ const dropTargetToOperation =
 export type TargetData = {
 	source: Item;
 	operation: Operation | null;
-};
-
-const useDropTarget = ({ item }: { item: Item }) =>
-	useDroppable((args): TargetData | null => {
-		const dragData = parseDragData(args.source.data);
-		if (!dragData) return null;
-
-		const { source } = dragData;
-		const operation = dropTargetToOperation(item, source)(args);
-
-		return {
-			source,
-			operation,
-		};
-	});
-
-const useOperationModeTarget = ({
-	item,
-	operationMode,
-	isSelected,
-}: {
-	item: Item;
-	operationMode: OperationMode | null;
-	isSelected: boolean;
-}): TargetData | null => {
-	const isActiveTarget = !!operationMode && isSelected;
-
-	if (!isActiveTarget) return null;
-
-	const { source } = operationMode;
-	const operation = operationModeToOperation({
-		operationMode,
-		source,
-		target: item,
-	});
-
-	return {
-		source,
-		operation,
-	};
 };
 
 export const OperationTarget: FC<
@@ -111,18 +64,29 @@ export const OperationTarget: FC<
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
-	const [dropData, dropRef] = useDropTarget({ item });
-	const operationModeTarget = useOperationModeTarget({
-		item,
-		operationMode,
-		isSelected,
+	const [dropTarget, dropRef] = useDroppable((args): TargetData | null => {
+		const dragData = parseDragData(args.source.data);
+		if (!dragData) return null;
+
+		const { source } = dragData;
+		const operation = dropTargetToOperation(source, item)(args);
+
+		return { source, operation };
 	});
+	const dropInsertionSide = dropTarget?.operation ? getInsertionSide(dropTarget.operation) : null;
 
-	const targetData: TargetData | null = dropData ?? operationModeTarget;
+	const getOperationModeTarget = (): TargetData | null => {
+		if (!isSelected) return null;
+		if (!operationMode) return null;
 
-	const dropInsertionSide = dropData?.operation ? getInsertionSide(dropData.operation) : null;
+		const { source } = operationMode;
+		const operation = operationModeToOperation({ operationMode, target: item });
 
-	const mainTargetData = dropInsertionSide === null ? targetData : null;
+		return { source, operation };
+	};
+
+	const mainTargetData =
+		dropInsertionSide === null ? (dropTarget ?? getOperationModeTarget()) : null;
 
 	const target = useRender({
 		render,
@@ -136,7 +100,7 @@ export const OperationTarget: FC<
 		<div className={styles.target}>
 			<OperationTooltip
 				projectId={projectId}
-				isOperationMode={!!operationMode}
+				isDropTarget={!!dropTarget}
 				item={item}
 				operation={mainTargetData?.operation ?? null}
 				source={mainTargetData?.source}
@@ -146,10 +110,10 @@ export const OperationTarget: FC<
 			{dropInsertionSide !== null && (
 				<OperationTooltip
 					projectId={projectId}
-					isOperationMode={false}
+					isDropTarget
 					item={item}
-					operation={dropData?.operation ?? null}
-					source={dropData?.source}
+					operation={dropTarget?.operation ?? null}
+					source={dropTarget?.source}
 					className={classes(
 						styles.insertionTarget,
 						pipe(
