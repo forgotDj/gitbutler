@@ -31,7 +31,6 @@ import {
 } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/Absorption.tsx";
 import { useMonitorDraggedItem } from "#ui/routes/project/$id/workspace/OperationDragAndDrop.tsx";
-import { operationModeToOperation } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
@@ -126,6 +125,8 @@ import {
 	type OperationMode,
 	type WorkspaceMode,
 } from "./WorkspaceMode.ts";
+import { operationModeToOperationType } from "#ui/routes/project/$id/workspace/OperationMode.tsx";
+import { getOperation } from "#ui/Operation.ts";
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 
@@ -1691,12 +1692,16 @@ const ProjectPage: FC = () => {
 	const operationMode = getOperationMode(workspaceMode);
 
 	const navigationIndex = operationMode
-		? filterNavigationIndex(
-				navigationIndexUnfiltered,
-				(item) =>
-					itemEquals(operationMode.source, item) ||
-					!!operationModeToOperation({ operationMode, target: item }),
-			)
+		? filterNavigationIndex(navigationIndexUnfiltered, (item) => {
+				const operationType = operationModeToOperationType(operationMode);
+				const operation = getOperation({
+					source: operationMode.source,
+					item,
+					operationType,
+				});
+
+				return itemEquals(operationMode.source, item) || !!operation;
+			})
 		: navigationIndexUnfiltered;
 
 	const selectedItem = useAppSelector((state) =>

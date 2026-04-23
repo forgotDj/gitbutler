@@ -1,7 +1,6 @@
-import { useRunOperation } from "#ui/Operation.ts";
+import { getOperation, TargetData, useRunOperation } from "#ui/Operation.ts";
 import { monitorForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { useEffect } from "react";
-import { TargetData } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { Item } from "./Item";
 
 export type DragData = {
@@ -14,7 +13,7 @@ export const parseDragData = (data: unknown): DragData | null => {
 };
 
 const parseDropData = (data: unknown): TargetData | null => {
-	if (typeof data !== "object" || data === null || !("operation" in data)) return null;
+	if (typeof data !== "object" || data === null || !("operationType" in data)) return null;
 	return data as TargetData;
 };
 
@@ -28,11 +27,14 @@ export const useMonitorDraggedItem = ({ projectId }: { projectId: string }) => {
 				onDrop: ({ location }) => {
 					const dropTarget = location.current.dropTargets
 						.map((x) => parseDropData(x.data))
-						.find((dropTarget) => dropTarget?.operation);
+						.find((dropTarget) => dropTarget?.operationType != null);
 
-					if (!dropTarget?.operation) return;
+					if (dropTarget?.operationType == null) return;
 
-					runOperation(projectId, dropTarget.operation);
+					const operation = getOperation(dropTarget);
+					if (!operation) return;
+
+					runOperation(projectId, operation);
 				},
 			}),
 		[runOperation, projectId],

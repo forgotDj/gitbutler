@@ -1,5 +1,5 @@
 import { getAction, type ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
-import { useRunOperation } from "#ui/Operation.ts";
+import { getOperation, useRunOperation } from "#ui/Operation.ts";
 import { getFocus, type ProjectLayoutState } from "#ui/routes/project/$id/state/layout.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { useAppDispatch } from "#ui/state/hooks.ts";
@@ -22,7 +22,7 @@ import {
 	stackItem,
 } from "./Item.ts";
 import { resolveAbsorptionTarget } from "./Absorption.tsx";
-import { operationModeToOperation } from "./OperationMode.tsx";
+import { operationModeToOperationType } from "./OperationMode.tsx";
 import {
 	getAdjacent,
 	getNextSection,
@@ -910,7 +910,12 @@ export const useWorkspaceShortcuts = ({
 
 		if (!selectedItem) return;
 
-		const operation = operationModeToOperation({ operationMode, target: selectedItem });
+		const operationType = operationModeToOperationType(operationMode);
+		const operation = getOperation({
+			source: operationMode.source,
+			item: selectedItem,
+			operationType,
+		});
 		if (!operation) return;
 
 		runOperation(projectId, operation);
