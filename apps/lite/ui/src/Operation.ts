@@ -439,7 +439,7 @@ const moveOperation = ({
 	target: Item;
 	side: InsertSide;
 }) => {
-	const branchMoveOperation = Match.value({ source, target }).pipe(
+	const branchMoveOperation = Match.value({ source, target, side }).pipe(
 		// This should support `relativeTo`:
 		// https://linear.app/gitbutler/issue/GB-1161/refsbranches-should-use-bytes-instead-of-strings
 		// https://linear.app/gitbutler/issue/GB-1199/support-moving-branches-onto-commits
@@ -448,6 +448,7 @@ const moveOperation = ({
 			{
 				source: { _tag: "Branch" },
 				target: { _tag: "Branch" },
+				side: "above",
 			},
 			({ source, target }) =>
 				moveBranchOperation({
@@ -460,6 +461,7 @@ const moveOperation = ({
 			{
 				source: { _tag: "Branch" },
 				target: { _tag: "BaseCommit" },
+				side: "above",
 			},
 			({ source }) =>
 				tearOffBranchOperation({
