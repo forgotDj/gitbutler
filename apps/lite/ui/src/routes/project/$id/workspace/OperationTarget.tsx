@@ -86,7 +86,7 @@ export const OperationTarget: FC<
 	} & useRender.ComponentProps<"div">
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
 	const [dropTarget, dropRef] = useDropTarget({ item });
-	const operationModeTarget: TargetData | null =
+	const getOperationModeTarget = (): TargetData | null =>
 		operationMode && isSelected
 			? {
 					source: operationMode.source,
@@ -94,7 +94,7 @@ export const OperationTarget: FC<
 				}
 			: null;
 
-	const targetData: TargetData | null = dropTarget ?? operationModeTarget;
+	const targetData: TargetData | null = dropTarget ?? getOperationModeTarget();
 
 	const dropInsertionSide = dropTarget?.operation ? getInsertionSide(dropTarget.operation) : null;
 
