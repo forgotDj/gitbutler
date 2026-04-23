@@ -23,7 +23,7 @@ export default defineConfig({
 	plugins: ["eslint", "jsx-a11y", "oxc", "react", "typescript", "unicorn"],
 	rules: {
 		"object-shorthand": "warn",
-		"arrow-body-style": ["error", "as-needed"],
+		"arrow-body-style": ["warn", "as-needed"],
 		curly: ["warn", "multi"],
 		"default-param-last": "error",
 		"no-console": "warn",
