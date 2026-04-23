@@ -443,7 +443,6 @@ impl Sandbox {
             },
             feature_flags: FeatureFlags {
                 cv3: true,
-                apply3: true,
                 undo: true,
                 rules: true,
                 single_branch: true,

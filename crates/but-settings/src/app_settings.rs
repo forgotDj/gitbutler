@@ -40,8 +40,6 @@ but_schemars::register_sdk_type!(GitHubOAuthAppSettings);
 pub struct FeatureFlags {
     /// Turn on the set a v3 version of checkout
     pub cv3: bool,
-    /// Use the V3 version of apply and unapply.
-    pub apply3: bool,
     /// Enable undo/redo support.
     ///
     /// ### Progression for implementation

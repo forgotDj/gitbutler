@@ -13,6 +13,24 @@ use crate::{
 
 pub(crate) static DEFAULTS: &str = include_str!("../assets/defaults.jsonc");
 
+fn remove_deprecated_settings(customizations: &mut serde_json::Value) -> bool {
+    let Some(root) = customizations.as_object_mut() else {
+        return false;
+    };
+    let Some(feature_flags) = root
+        .get_mut("featureFlags")
+        .and_then(serde_json::Value::as_object_mut)
+    else {
+        return false;
+    };
+
+    let removed = feature_flags.remove("apply3").is_some();
+    if feature_flags.is_empty() {
+        root.remove("featureFlags");
+    }
+    removed
+}
+
 impl AppSettings {
     /// Load the settings from the configuration directory, or initialize the file with an empty JSON object at `config_path`.
     /// Finally, merge all customizations from `config_path` into the default settings.
@@ -66,14 +84,15 @@ impl AppSettings {
         let update = serde_json::to_value(self)?;
         let diff = json_difference(current, &update);
 
-        // If there are no changes, do nothing
-        if diff == json!({}) {
-            return Ok(());
-        }
-
         // Load the existing customizations only
         let mut customizations =
             serde_json_lenient::from_str(&std::fs::read_to_string(config_path)?)?;
+        let removed_deprecated_settings = remove_deprecated_settings(&mut customizations);
+
+        // If there are no changes and no deprecated settings to clean up, do nothing
+        if diff == json!({}) && !removed_deprecated_settings {
+            return Ok(());
+        }
 
         // Merge the new customizations into the existing ones
         // TODO: This will nuke any comments in the file
@@ -149,5 +168,30 @@ mod tests {
             !settings.telemetry.app_metrics_enabled,
             "Custom settings should be preserved when migration is skipped"
         );
+    }
+
+    #[test]
+    fn save_prunes_deprecated_apply3_flag() {
+        let (_temp_dir, config_path, _legacy_path) = create_test_env();
+
+        std::fs::write(
+            &config_path,
+            r#"{
+                "featureFlags": {
+                    "apply3": true,
+                    "cv3": true
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let settings = AppSettings::load(&config_path, None).unwrap();
+        settings.save(&config_path, None).unwrap();
+
+        let saved: serde_json::Value =
+            serde_json_lenient::from_str(&std::fs::read_to_string(&config_path).unwrap()).unwrap();
+
+        assert_eq!(saved["featureFlags"]["cv3"], json!(true));
+        assert_eq!(saved["featureFlags"].get("apply3"), None);
     }
 }

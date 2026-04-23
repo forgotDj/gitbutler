@@ -18,22 +18,6 @@
 </p>
 
 <CardGroup>
-	<CardGroup.Item labelFor="apply3">
-		{#snippet title()}
-			New apply to workspace
-		{/snippet}
-		{#snippet caption()}
-			Use the V3 version of apply and unapply operations for workspace changes.
-		{/snippet}
-		{#snippet actions()}
-			<Toggle
-				id="apply3"
-				checked={$settingsStore?.featureFlags.apply3}
-				onclick={() =>
-					settingsService.updateFeatureFlags({ apply3: !$settingsStore?.featureFlags.apply3 })}
-			/>
-		{/snippet}
-	</CardGroup.Item>
 	<CardGroup.Item labelFor="f-mode">
 		{#snippet title()}
 			F Mode Navigation

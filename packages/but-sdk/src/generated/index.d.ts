@@ -958,8 +958,6 @@ export type ExtraCsp = {
 export type FeatureFlags = {
   /** Turn on the set a v3 version of checkout */
   cv3: boolean;
-  /** Use the V3 version of apply and unapply. */
-  apply3: boolean;
   /**
    * Enable undo/redo support.
    *
