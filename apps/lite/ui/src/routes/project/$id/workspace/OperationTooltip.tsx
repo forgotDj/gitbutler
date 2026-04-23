@@ -50,7 +50,7 @@ export const OperationTooltip: FC<
 		isDropTarget?: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ projectId, targetData, isDropTarget, render, ...props }) => {
-	const isSource = !!targetData?.source && itemEquals(targetData.source, targetData.item);
+	const isSource = !!targetData && itemEquals(targetData.source, targetData.item);
 
 	const operation = targetData ? getOperation(targetData) : null;
 
