@@ -2,11 +2,24 @@ import {
 	changesInWorktreeQueryOptions,
 	commitDetailsWithLineStatsQueryOptions,
 } from "#ui/api/queries.ts";
-import { createDiffSpec } from "#ui/domain/DiffSpec.ts";
 import { Item } from "#ui/routes/project/$id/workspace/Item.ts";
 import { QueryClient } from "@tanstack/react-query";
-import { CommitDetails, DiffSpec, WorktreeChanges } from "@gitbutler/but-sdk";
+import {
+	CommitDetails,
+	DiffSpec,
+	HunkHeader,
+	TreeChange,
+	WorktreeChanges,
+} from "@gitbutler/but-sdk";
 import { Match } from "effect";
+
+const createDiffSpec = (change: TreeChange, hunkHeaders: Array<HunkHeader>): DiffSpec => ({
+	pathBytes: change.pathBytes,
+	previousPathBytes:
+		change.status.type === "Rename" ? change.status.subject.previousPathBytes : null,
+	hunkHeaders:
+		change.status.type === "Addition" || change.status.type === "Deletion" ? [] : hunkHeaders,
+});
 
 const resolvedDiffSpecsFromItem = ({
 	item,
