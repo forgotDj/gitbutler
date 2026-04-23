@@ -7,7 +7,8 @@ export const operationModeToOperationType = (operationMode: OperationMode): Oper
 		Match.withReturnType<OperationType | null>(),
 		Match.tags({
 			Rub: () => "rub",
-			Move: () => "moveBelow",
+			// We should have the ability to move either above or below.
+			Move: ({ source }) => (source._tag === "Branch" ? "moveAbove" : "moveBelow"),
 			DragAndDrop: ({ operationType }) => operationType,
 		}),
 		Match.exhaustive,
