@@ -203,6 +203,7 @@ fn force_picked_commit_with_sign_yes_is_signed_when_otherwise_unchanged() -> Res
         &repo,
         &GraphEditorOptions {
             default_sign_commit: SignCommit::No,
+            ..<_>::default()
         },
     )?;
 
@@ -270,6 +271,7 @@ fn force_picked_ancestor_does_not_sign_descendants_picked_with_sign_commit_no() 
         &repo,
         &GraphEditorOptions {
             default_sign_commit: SignCommit::No,
+            ..<_>::default()
         },
     )?;
 
@@ -356,6 +358,7 @@ fn force_picked_ancestor_triggers_cascading_signatures_on_descendants_picked_wit
         &repo,
         &GraphEditorOptions {
             default_sign_commit: SignCommit::Yes,
+            ..<_>::default()
         },
     )?;
 
@@ -440,6 +443,7 @@ fn commit_picked_with_sign_if_enabled_is_not_signed_when_signing_config_is_disab
         &repo,
         &GraphEditorOptions {
             default_sign_commit: SignCommit::IfSignCommitsEnabled,
+            ..<_>::default()
         },
     )?;
 
@@ -507,6 +511,7 @@ fn parentless_commit_force_picked_with_sign_yes_is_signed() -> Result<()> {
         &repo,
         &GraphEditorOptions {
             default_sign_commit: SignCommit::IfSignCommitsEnabled,
+            ..<_>::default()
         },
     )?;
 

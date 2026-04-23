@@ -1,6 +1,6 @@
 use anyhow::Result;
 use but_graph::Graph;
-use but_rebase::graph_rebase::{Editor, testing::Testing as _};
+use but_rebase::graph_rebase::{Editor, GraphEditorOptions, testing::Testing as _};
 use but_testsupport::{StackState, graph_tree, visualize_commit_graph_all};
 
 use crate::{
@@ -426,6 +426,69 @@ fn commit_with_two_parents() -> Result<()> {
     ● 35b8235 base
     ╵
     ");
+
+    Ok(())
+}
+
+#[test]
+fn includes_extra_refs_in_editor_creation() -> Result<()> {
+    let (repo, _tmpdir, mut meta) = fixture_writable("workspace-with-empty-stack")?;
+    add_stack_with_segments(&mut meta, 1, "stack-1", StackState::InWorkspace, &[]);
+    add_stack_with_segments(&mut meta, 2, "stack-2", StackState::InWorkspace, &[]);
+
+    let main_ref = gix::refs::FullName::try_from("refs/heads/main")?;
+
+    {
+        let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+        let mut ws = graph.into_workspace()?;
+        let editor = Editor::create(&mut ws, &mut *meta, &repo)?;
+
+        insta::assert_snapshot!(editor.steps_ascii(), @"
+        ◎ refs/heads/gitbutler/workspace
+        ● 74bcc92 GitButler Workspace Commit
+        ├─╮
+        ◎ │ refs/heads/stack-1
+        ● │ 2169646 Commit D
+        ● │ 46ef828 Commit C
+        │ ◎ refs/heads/stack-2
+        ├─╯
+        ● f555940 Commit A
+        ● d664be0 Commit B
+        ● fafd9d0 init
+        ╵
+        ");
+    }
+
+    {
+        let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+        let mut ws = graph.into_workspace()?;
+        let editor = Editor::create_with_opts(
+            &mut ws,
+            &mut *meta,
+            &repo,
+            &GraphEditorOptions {
+                extra_refs: vec![main_ref.as_ref()],
+                ..<_>::default()
+            },
+        )?;
+
+        insta::assert_snapshot!(editor.steps_ascii(), @"
+        ◎ refs/heads/gitbutler/workspace
+        ● 74bcc92 GitButler Workspace Commit
+        ├─╮
+        ◎ │ refs/heads/stack-1
+        ● │ 2169646 Commit D
+        ● │ 46ef828 Commit C
+        │ ◎ refs/heads/stack-2
+        │ │ ◎ refs/heads/main
+        │ │ ● a0f2ac5 Commit X
+        ├─┴─╯
+        ● f555940 Commit A
+        ● d664be0 Commit B
+        ● fafd9d0 init
+        ╵
+        ");
+    }
 
     Ok(())
 }
