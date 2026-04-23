@@ -33,7 +33,11 @@
 			"package.json"
 		],
 		"mac": {
-			"target": "dmg"
+			"target": "dmg",
+			"hardenedRuntime": true,
+			"gatekeeperAssess": false,
+			"entitlements": "resources/entitlements.mac.plist",
+			"entitlementsInherit": "resources/entitlements.mac.inherit.plist"
 		},
 		"linux": {
 			"target": [
@@ -88,9 +92,9 @@
 		"@typescript/native-preview": "7.0.0-dev.20260311.1",
 		"@vitejs/plugin-react": "^5.2.0",
 		"babel-plugin-react-compiler": "^1.0.0",
-		"electron": "^41.1.0",
 		"concurrently": "^9.2.1",
 		"cross-env": "^10.1.0",
+		"electron": "^41.1.0",
 		"electron-builder": "^26.8.1",
 		"jsdom": "28.1.0",
 		"vite": "catalog:",
