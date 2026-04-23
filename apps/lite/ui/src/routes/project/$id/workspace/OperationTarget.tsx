@@ -75,13 +75,15 @@ export const OperationTarget: FC<
 	});
 	const dropInsertionSide = dropTarget?.operation ? getInsertionSide(dropTarget.operation) : null;
 
-	const getOperationModeTarget = (): TargetData | null =>
-		operationMode && isSelected
-			? {
-					source: operationMode.source,
-					operation: operationModeToOperation({ operationMode, target: item }),
-				}
-			: null;
+	const getOperationModeTarget = (): TargetData | null => {
+		if (!isSelected) return null;
+		if (!operationMode) return null;
+
+		const { source } = operationMode;
+		const operation = operationModeToOperation({ operationMode, target: item });
+
+		return { source, operation };
+	};
 
 	const mainTargetData =
 		dropInsertionSide === null ? (dropTarget ?? getOperationModeTarget()) : null;
