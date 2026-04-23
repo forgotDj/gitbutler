@@ -1,6 +1,6 @@
 import { moveOperation, rubOperation, type Operation } from "#ui/Operation.ts";
 import { Match } from "effect";
-import { itemEquals, type Item } from "./Item.ts";
+import { type Item } from "./Item.ts";
 import { type OperationMode } from "./WorkspaceMode.ts";
 
 export const operationModeToOperation = ({
@@ -18,19 +18,3 @@ export const operationModeToOperation = ({
 			Move: () => moveOperation({ source, target, side: "below" }),
 		}),
 	);
-
-export const isOperationModeSourceOrTarget = ({
-	item,
-	operationMode,
-	source,
-}: {
-	item: Item;
-	operationMode: OperationMode;
-	source: Item;
-}): boolean =>
-	itemEquals(operationMode.source, item) ||
-	!!operationModeToOperation({
-		operationMode,
-		source,
-		target: item,
-	});
