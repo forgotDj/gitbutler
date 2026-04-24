@@ -7,6 +7,7 @@ use but_core::{
 use but_meta::VirtualBranchesTomlMetadata;
 #[cfg(feature = "sandbox-but-api")]
 use but_settings::AppSettings;
+use gix::bstr::ByteVec;
 use gix_testtools::{Creation, tempfile};
 use snapbox::{Assert, Redactions};
 
@@ -323,6 +324,13 @@ impl Sandbox {
             .write_all(data.as_ref())
             .expect("writes should work");
         self
+    }
+
+    /// Read a file at `path` from our projects root.
+    pub fn read_file(&self, path: impl AsRef<Path>) -> Result<String, gix::bstr::FromUtf8Error> {
+        std::fs::read(self.projects_root().join(path))
+            .expect("File exists and can be read")
+            .into_string()
     }
 
     /// Append `data` to `path` in our projects root.

@@ -1,5 +1,4 @@
 use bstr::ByteSlice;
-use snapbox::str;
 
 use crate::{command::util, utils::Sandbox};
 
@@ -84,42 +83,174 @@ fn concurrent_discard_to_independent_files_succeeds() -> anyhow::Result<()> {
 }
 
 #[test]
-/// Reproduces a bug where hunks from the same file were separated into different DiffSpecs and
-/// applied one at a time in order. Existing hunks in the workspace were resolved again in between
-/// each DiffSpec being applied. If any hunk caused line displacement by adding or removing
-/// lines, any subsequent hunks become displaced from the DiffSpecs and trigger an error.
-fn can_discard_multiple_hunks_from_same_file() -> anyhow::Result<()> {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack-with-large-file")?;
-    env.setup_metadata(&["large-file"])?;
+fn discard_reverts_simple_rename() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack")?;
+    env.setup_metadata(&["A"])?;
 
-    let initiale_file_content =
-        std::fs::read_to_string(env.projects_root().join("large_file.txt"))?;
+    env.file("src/rename-source.ts", "export const source = true;\n");
+    env.but("commit A -m 'seed rename source'")
+        .assert()
+        .success();
 
-    // We prepend a new line to the beggining of the file and append a line to the end. These two
-    // edits end up in different hunks, and naively discarding these hunks in order with a "disc
-    // materialization" in between fails as the second hunk ends up outside the initially computed
-    // DiffSpec once the first has been discarded.
-    let new_large_file_content = format!("New first line\n{initiale_file_content}\nNew last line");
-    env.file("large_file.txt", new_large_file_content);
+    std::fs::rename(
+        env.projects_root().join("src/rename-source.ts"),
+        env.projects_root().join("src/rename-target.ts"),
+    )?;
 
     let status = util::status_json(&env)?;
-    let large_file_id = find_unassigned_cli_id(&status, "large_file.txt")
-        .expect("should find CLI ID of large file");
+    let cli_id =
+        find_unassigned_cli_id(&status, "rename-target").expect("should find renamed file CLI ID");
 
-    env.but("discard")
-        .arg(large_file_id)
+    env.but(format!("discard {cli_id}")).assert().success();
+
+    assert!(
+        env.projects_root().join("src/rename-source.ts").exists(),
+        "discarding a rename should restore the source path"
+    );
+    assert!(
+        !env.projects_root().join("src/rename-target.ts").exists(),
+        "discarding a rename should remove the target path"
+    );
+    assert_eq!(
+        env.invoke_git("status --porcelain"),
+        "",
+        "discarding a rename should leave a clean worktree"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn discard_rename_does_not_discard_unrelated_changes() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack")?;
+    env.setup_metadata(&["A"])?;
+
+    env.file("src/rename-source-only.ts", "export const source = 1;\n");
+    env.but("commit A -m 'seed rename source only'")
         .assert()
-        .success()
-        .stdout_eq(str![[r#"
-Successfully discarded changes to 2 items
+        .success();
 
-"#]])
-        .stderr_eq("");
+    std::fs::rename(
+        env.projects_root().join("src/rename-source-only.ts"),
+        env.projects_root().join("src/rename-target-only.ts"),
+    )?;
+    env.file("src/keep-me.ts", "export const keep = true;\n");
 
-    let file_content_after_discard =
-        std::fs::read_to_string(env.projects_root().join("large_file.txt"))?;
+    let status_before = util::status_json(&env)?;
+    let cli_id = find_unassigned_cli_id(&status_before, "rename-target-only")
+        .expect("should find renamed file CLI ID");
 
-    assert_eq!(file_content_after_discard, initiale_file_content);
+    env.but(format!("discard {cli_id}")).assert().success();
+
+    assert!(
+        env.projects_root()
+            .join("src/rename-source-only.ts")
+            .exists(),
+        "discarding rename should restore source path"
+    );
+    assert!(
+        !env.projects_root()
+            .join("src/rename-target-only.ts")
+            .exists(),
+        "discard should remove renamed target path"
+    );
+
+    let status_after = util::status_json(&env)?;
+    assert!(
+        find_unassigned_cli_id(&status_after, "rename-target-only").is_none(),
+        "discarded renamed file should no longer appear in unassigned changes"
+    );
+    assert!(
+        find_unassigned_cli_id(&status_after, "keep-me").is_some(),
+        "discarding a rename should not discard unrelated unassigned changes"
+    );
+
+    let git_status = env.invoke_git("status --porcelain");
+    assert!(
+        git_status.contains("src/keep-me.ts"),
+        "expected unrelated unassigned file to remain, got:\n{git_status}"
+    );
+    assert!(
+        !git_status.contains("rename-target-only") && !git_status.contains("rename-source-only"),
+        "rename paths should no longer be dirty, got:\n{git_status}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn discard_the_whole_unassigned_changes() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack")?;
+    env.setup_metadata(&["A"])?;
+
+    env.file("src/rename-source-only.ts", "export const source = 1;\n");
+    env.but("commit A -m 'seed rename source only'")
+        .assert()
+        .success();
+
+    std::fs::rename(
+        env.projects_root().join("src/rename-source-only.ts"),
+        env.projects_root().join("src/rename-target-only.ts"),
+    )?;
+    env.file("src/keep-me.ts", "export const keep = true;\n");
+
+    env.but("discard zz").assert().success();
+
+    assert!(
+        env.projects_root()
+            .join("src/rename-source-only.ts")
+            .exists(),
+        "discarding rename should restore source path"
+    );
+    assert!(
+        !env.projects_root()
+            .join("src/rename-target-only.ts")
+            .exists(),
+        "discard should remove renamed target path"
+    );
+
+    let status_after = util::status_json(&env)?;
+    assert!(
+        find_unassigned_cli_id(&status_after, "rename-target-only").is_none(),
+        "discarded renamed file should no longer appear in unassigned changes"
+    );
+    assert!(
+        find_unassigned_cli_id(&status_after, "keep-me").is_none(),
+        "the added file should be gone as well"
+    );
+
+    assert_eq!(
+        env.invoke_git("status --porcelain"),
+        "",
+        "discarding a rename should leave a clean worktree"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn discarding_multiple_hunks_in_a_file_works() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack")?;
+    env.setup_metadata(&["A"])?;
+
+    let content = "1\n2\n3\n4\n5\n6\n7";
+    let file_path = "src/some_file.txt";
+
+    env.file(file_path, content);
+    env.but("commit A -m 'seed rename source only'")
+        .assert()
+        .success();
+
+    env.file(file_path, "a\nb\nc\n1\n2\n3\n4\n5\n6\n7\nd\ne\nf");
+    env.but("discard zz").assert().success();
+
+    assert!(
+        env.projects_root().join("src/some_file.txt").exists(),
+        "discarding multiple hunks should keep the tracked file present"
+    );
+
+    let content_after_discard = env.read_file(file_path)?;
+    assert_eq!(content_after_discard, content);
 
     Ok(())
 }
