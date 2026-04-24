@@ -371,10 +371,10 @@ Moved 4 commits → before [..]
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   c399e25 B: another 10 lines at the bottom
-┊●   72227c2 A: 10 lines on top
-┊●   c26fa8e C: add another 10 lines to new file
-┊●   640a48b C: add 10 lines to new file
+┊●   [..] B: another 10 lines at the bottom
+┊●   [..] A: 10 lines on top
+┊●   [..] C: add another 10 lines to new file
+┊●   [..] C: add 10 lines to new file
 ┊●   fc29de6 C: new file with 10 lines
 ┊●   62e05ba B: 10 lines at the bottom
 ├╯
@@ -515,9 +515,9 @@ Moved 4 commits → after a748762
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   a42a7dc A: 10 lines on top
-┊●   48bd306 C: add another 10 lines to new file
-┊●   99b8c8b C: add 10 lines to new file
+┊●   [..] A: 10 lines on top
+┊●   [..] C: add another 10 lines to new file
+┊●   [..] C: add 10 lines to new file
 ┊●   b665de5 C: new file with 10 lines
 ┊●   a748762 B: another 10 lines at the bottom
 ┊●   62e05ba B: 10 lines at the bottom

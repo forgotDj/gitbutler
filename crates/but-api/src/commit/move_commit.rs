@@ -80,33 +80,23 @@ pub fn commit_move_only_with_perm(
         .next()
         .expect("non-empty commit list always has a first subject");
 
-    let mut rebase =
-        but_workspace::commit::move_commit(editor, first_subject, relative_to.clone(), side)?;
+    let mut editor = but_workspace::commit::move_commit_no_rebase(
+        editor,
+        first_subject,
+        relative_to.clone(),
+        side,
+    )?;
 
-    for original_subject_id in subjects {
-        let remapped_ids = rebase.history.commit_mappings();
-        let subject_id = remapped_ids
-            .get(&original_subject_id)
-            .copied()
-            .unwrap_or(original_subject_id);
-
-        let remapped_relative_to = match &relative_to {
-            RelativeTo::Commit(target_commit_id) => RelativeTo::Commit(
-                remapped_ids
-                    .get(target_commit_id)
-                    .copied()
-                    .unwrap_or(*target_commit_id),
-            ),
-            RelativeTo::Reference(reference_name) => RelativeTo::Reference(reference_name.clone()),
-        };
-
-        rebase = but_workspace::commit::move_commit(
-            rebase.into_editor(),
+    for subject_id in subjects {
+        editor = but_workspace::commit::move_commit_no_rebase(
+            editor,
             subject_id,
-            remapped_relative_to,
+            relative_to.clone(),
             side,
         )?;
     }
+
+    let rebase = editor.rebase()?;
 
     Ok(CommitMoveResult {
         workspace: WorkspaceState::from_successful_rebase(rebase, &repo, dry_run)?,
