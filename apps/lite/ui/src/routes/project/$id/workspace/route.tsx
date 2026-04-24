@@ -1611,6 +1611,8 @@ const StackC: FC<{
 };
 
 const ProjectPage: FC = () => {
+	const dispatch = useAppDispatch();
+
 	const { id: projectId } = Route.useParams();
 
 	const expandedCommitId = useAppSelector((state) =>
@@ -1621,21 +1623,9 @@ const ProjectPage: FC = () => {
 		selectProjectWorkspaceModeState(state, projectId),
 	);
 
-	const inlineRenameBranchFormRef = useRef<HTMLFormElement | null>(null);
-	const inlineRewordCommitFormRef = useRef<HTMLFormElement | null>(null);
-
-	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
-
-	const project = projects.find((project) => project.id === projectId);
-
-	// TODO: handle project not found error. or only run when project is not null? waterfall.
-	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-
 	const workspaceOutline = useWorkspaceOutline({ projectId, expandedCommitId });
 
 	const navigationIndexUnfiltered = buildNavigationIndex(workspaceOutline);
-
-	const dispatch = useAppDispatch();
 
 	if (
 		!isValidWorkspaceMode({
@@ -1644,10 +1634,6 @@ const ProjectPage: FC = () => {
 		})
 	)
 		dispatch(projectActions.exitMode({ projectId }));
-
-	const operationMode = useAppSelector((state) =>
-		selectProjectOperationModeState(state, projectId),
-	);
 
 	const selectedItem = useAppSelector((state) =>
 		selectNormalizedSelectedItem(state, { projectId, navigationIndex: navigationIndexUnfiltered }),
@@ -1677,6 +1663,9 @@ const ProjectPage: FC = () => {
 		});
 	};
 
+	const inlineRenameBranchFormRef = useRef<HTMLFormElement | null>(null);
+	const inlineRewordCommitFormRef = useRef<HTMLFormElement | null>(null);
+
 	useWorkspaceShortcuts({
 		inlineRenameBranchFormRef,
 		inlineRewordCommitFormRef,
@@ -1686,6 +1675,15 @@ const ProjectPage: FC = () => {
 		openAbsorptionDialog,
 	});
 
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
+
+	// TODO: handle project not found error. or only run when project is not null? waterfall.
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+
+	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
+	const project = projects.find((project) => project.id === projectId);
 	// TODO: dedupe
 	if (!project) return <p>Project not found.</p>;
 
