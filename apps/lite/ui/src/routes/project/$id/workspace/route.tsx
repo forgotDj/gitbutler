@@ -1752,63 +1752,65 @@ const ProjectPage: FC = () => {
 		);
 
 	return (
-		<ProjectPreviewLayout
-			projectId={projectId}
-			preview={
-				selectedItem && (
-					<Suspense fallback={<div>Loading preview…</div>}>
-						<Preview projectId={projectId} selectedItem={selectedItem} />
-					</Suspense>
-				)
-			}
-		>
-			<div className={styles.sections}>
-				<div className={styles.changesContainer}>
-					<Changes
-						projectId={projectId}
-						onAbsorbChanges={openAbsorptionDialog}
-						onCommit={commit}
-						navigationIndex={navigationIndex}
-						workspaceMode={workspaceMode}
-					/>
+		<>
+			<ProjectPreviewLayout
+				projectId={projectId}
+				preview={
+					selectedItem && (
+						<Suspense fallback={<div>Loading preview…</div>}>
+							<Preview projectId={projectId} selectedItem={selectedItem} />
+						</Suspense>
+					)
+				}
+			>
+				<div className={styles.sections}>
+					<div className={styles.changesContainer}>
+						<Changes
+							projectId={projectId}
+							onAbsorbChanges={openAbsorptionDialog}
+							onCommit={commit}
+							navigationIndex={navigationIndex}
+							workspaceMode={workspaceMode}
+						/>
+					</div>
+
+					{headInfo.stacks.map((stack) => (
+						<StackC
+							key={stack.id}
+							inlineRenameBranchFormRef={inlineRenameBranchFormRef}
+							inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+							projectId={project.id}
+							stack={stack}
+							workspaceMode={workspaceMode}
+							navigationIndex={navigationIndex}
+						/>
+					))}
+
+					<div className={styles.section}>
+						<BaseCommitRow
+							projectId={projectId}
+							commitId={getCommonBaseCommitId(headInfo)}
+							navigationIndex={navigationIndex}
+						/>
+					</div>
 				</div>
 
-				{headInfo.stacks.map((stack) => (
-					<StackC
-						key={stack.id}
-						inlineRenameBranchFormRef={inlineRenameBranchFormRef}
-						inlineRewordCommitFormRef={inlineRewordCommitFormRef}
-						projectId={project.id}
-						stack={stack}
-						workspaceMode={workspaceMode}
-						navigationIndex={navigationIndex}
-					/>
-				))}
-
-				<div className={styles.section}>
-					<BaseCommitRow
-						projectId={projectId}
-						commitId={getCommonBaseCommitId(headInfo)}
-						navigationIndex={navigationIndex}
-					/>
-				</div>
-			</div>
+				{Match.value(operationMode).pipe(
+					Match.when(null, () => null),
+					Match.tag("DragAndDrop", () => null),
+					Match.orElse(({ source }) => (
+						<div className={styles.operationModePreview}>
+							<OperationSourceLabel headInfo={headInfo} source={source} />
+						</div>
+					)),
+				)}
+			</ProjectPreviewLayout>
 
 			{shortcutScope && (
 				<PositionedShortcutsBar
 					label={getScopeLabel(shortcutScope)}
 					items={getScopeBindings(shortcutScope)}
 				/>
-			)}
-
-			{Match.value(operationMode).pipe(
-				Match.when(null, () => null),
-				Match.tag("DragAndDrop", () => null),
-				Match.orElse(({ source }) => (
-					<div className={styles.operationModePreview}>
-						<OperationSourceLabel headInfo={headInfo} source={source} />
-					</div>
-				)),
 			)}
 
 			{absorptionTarget && (
@@ -1840,7 +1842,7 @@ const ProjectPage: FC = () => {
 				onSelectItem={selectBranch}
 				placeholder="Search for branches…"
 			/>
-		</ProjectPreviewLayout>
+		</>
 	);
 };
 
