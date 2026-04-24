@@ -67,14 +67,7 @@ const getDropOperationType = ({
 	);
 };
 
-export const OperationTarget: FC<
-	{
-		item: Item;
-		projectId: string;
-		operationMode: OperationMode | null;
-		isSelected: boolean;
-	} & useRender.ComponentProps<"div">
-> = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
+const useOperationDropTarget = ({ item, projectId }: { item: Item; projectId: string }) => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
 	const dropRef = useRef<HTMLElement>(null);
@@ -148,6 +141,19 @@ export const OperationTarget: FC<
 			},
 		});
 	}, [dispatch, projectId, runOperation]);
+
+	return { dropRef, isActiveDropTarget };
+};
+
+export const OperationTarget: FC<
+	{
+		item: Item;
+		projectId: string;
+		operationMode: OperationMode | null;
+		isSelected: boolean;
+	} & useRender.ComponentProps<"div">
+> = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
+	const { dropRef, isActiveDropTarget } = useOperationDropTarget({ item, projectId });
 
 	const insertTargetOperationType = operationMode
 		? Match.value(operationMode).pipe(
