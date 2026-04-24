@@ -2253,6 +2253,21 @@ impl App {
         }
 
         self.render_hotbar(hotbar_area, frame);
+
+        self.render_toasts(
+            status_layout
+                .details_area
+                .unwrap_or(status_layout.status_area),
+            frame,
+        );
+
+        if let Some(confirm) = &self.confirm {
+            confirm.render(frame.area(), frame);
+        }
+
+        if let Some(branch_picker) = &self.branch_picker {
+            branch_picker.render(frame.area(), frame);
+        }
     }
 
     fn status_layout(&self, area: Rect) -> StatusLayout {
@@ -2290,16 +2305,6 @@ impl App {
         frame.render_widget(list, content_area);
 
         self.render_inline_reword(content_area, frame);
-
-        self.render_toasts(content_area, frame);
-
-        if let Some(confirm) = &self.confirm {
-            confirm.render(content_area, frame);
-        }
-
-        if let Some(branch_picker) = &self.branch_picker {
-            branch_picker.render(content_area, frame);
-        }
     }
 
     fn render_status_list_item(
