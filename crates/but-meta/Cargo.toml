@@ -30,6 +30,7 @@ legacy = [
 
 [dependencies]
 but-core.workspace = true
+but-error.workspace = true
 but-db = { workspace = true, optional = true }
 but-serde = { workspace = true, optional = true }
 but-graph = { workspace = true, optional = true }
