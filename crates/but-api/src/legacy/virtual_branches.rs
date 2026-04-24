@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::{Context as _, Result, anyhow};
+use bstr::ByteSlice;
 use but_api_macros::but_api;
 use but_core::{DiffSpec, sync::RepoExclusive};
 use but_ctx::{Context, ThreadSafeContext};
@@ -14,6 +15,7 @@ use gitbutler_branch_actions::{
         StackStatuses,
     },
 };
+use gitbutler_git::GitContextExt as _;
 use gitbutler_project::FetchResult;
 use gitbutler_reference::{Refname, normalize_branch_name as normalize_name};
 use gitbutler_stack::StackId;
@@ -405,10 +407,39 @@ pub fn squash_commits_with_perm(
 #[but_api]
 #[instrument(err(Debug))]
 pub fn fetch_from_remotes(ctx: &Context, action: Option<String>) -> Result<BaseBranch> {
-    let project_data_last_fetched = gitbutler_branch_actions::fetch_from_remotes(
-        ctx,
-        Some(action.unwrap_or_else(|| "unknown".to_string())),
-    )?;
+    let remotes = {
+        let repo = ctx.repo.get()?;
+        repo.remote_names()
+            .iter()
+            .map(|name| name.to_str().map(str::to_owned))
+            .collect::<std::result::Result<Vec<_>, _>>()?
+    };
+    let askpass = Some(action.unwrap_or_else(|| "unknown".to_string()));
+    let fetch_errors: Vec<_> = remotes
+        .iter()
+        .filter_map(|remote| {
+            ctx.fetch(remote, askpass.clone())
+                .err()
+                .map(|err| err.to_string())
+        })
+        .collect();
+
+    let timestamp = std::time::SystemTime::now();
+    let project_data_last_fetched = if fetch_errors.is_empty() {
+        FetchResult::Fetched { timestamp }
+    } else {
+        FetchResult::Error {
+            timestamp,
+            error: fetch_errors.join("\n"),
+        }
+    };
+    #[expect(
+        deprecated,
+        reason = "legacy virtual branch garbage collection still uses VirtualBranchesHandle"
+    )]
+    let mut state = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
+
+    state.garbage_collect(&*ctx.repo.get()?)?;
 
     // Updates the project controller with the last fetched timestamp
     //
