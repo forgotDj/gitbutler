@@ -1,18 +1,23 @@
-import { headInfoQueryOptions } from "#ui/api/queries.ts";
-import { classes } from "#ui/classes.ts";
-import { mergeProps, useRender } from "@base-ui/react";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { FC, type ReactNode } from "react";
-import { useDraggable } from "./DragAndDrop.tsx";
+import { Item, itemEquals } from "./Item.ts";
 import { type DragData } from "./OperationDragAndDrop.tsx";
+import styles from "./OperationSourceC.module.css";
 import { OperationSourceLabel } from "./OperationSourceLabel.tsx";
 import { type OperationMode } from "./WorkspaceMode.ts";
-import styles from "./OperationSourceC.module.css";
-import { Item, itemEquals } from "./Item.ts";
-import { useAppDispatch } from "#ui/state/hooks.ts";
+import { headInfoQueryOptions } from "#ui/api/queries.ts";
+import { classes } from "#ui/classes.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
+import { useAppDispatch } from "#ui/state/hooks.ts";
+import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
+import { centerUnderPointer } from "@atlaskit/pragmatic-drag-and-drop/element/center-under-pointer";
+import { setCustomNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview";
+import { mergeProps, useRender } from "@base-ui/react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { FC, type ReactNode, useEffect, useEffectEvent, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
 
-const DragPreview = ({ children }: { children: ReactNode }) => (
+type DraggableParams = Parameters<typeof draggable>[0];
+
+const DragPreview: FC<{ children: ReactNode }> = ({ children }) => (
 	<div className={styles.dragPreview}>{children}</div>
 );
 
@@ -27,19 +32,49 @@ export const OperationSourceC: FC<
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 
 	const dispatch = useAppDispatch();
-
-	const [isDragging, dragRef] = useDraggable({
-		onDragStart: () => {
-			dispatch(projectActions.enterDragAndDropMode({ projectId, source }));
+	const dragRef = useRef<HTMLElement>(null);
+	const [isDragging, setIsDragging] = useState(false);
+	const canDragEvent: NonNullable<DraggableParams["canDrag"]> = useEffectEvent(
+		() => canDrag?.() ?? true,
+	);
+	const onGenerateDragPreview = useEffectEvent(
+		({ nativeSetDragImage }: { nativeSetDragImage: DataTransfer["setDragImage"] | null }) => {
+			setCustomNativeDragPreview({
+				nativeSetDragImage,
+				getOffset: centerUnderPointer,
+				render: ({ container }) => {
+					const root = createRoot(container);
+					root.render(
+						<DragPreview>
+							<OperationSourceLabel source={source} headInfo={headInfo} />
+						</DragPreview>,
+					);
+					return () => {
+						root.unmount();
+					};
+				},
+			});
 		},
-		getInitialData: (): DragData => ({ source }),
-		preview: (
-			<DragPreview>
-				<OperationSourceLabel source={source} headInfo={headInfo} />
-			</DragPreview>
-		),
-		canDrag,
-	});
+	);
+
+	useEffect(() => {
+		const element = dragRef.current;
+		if (!element) return;
+
+		return draggable({
+			element,
+			canDrag: canDragEvent,
+			getInitialData: (): DragData => ({ source }),
+			onGenerateDragPreview,
+			onDragStart: () => {
+				setIsDragging(true);
+				dispatch(projectActions.enterDragAndDropMode({ projectId, source }));
+			},
+			onDrop: () => {
+				setIsDragging(false);
+			},
+		});
+	}, [dispatch, projectId, source]);
 
 	const isActiveOperationModeSource =
 		operationMode?.source && itemEquals(operationMode.source, source);

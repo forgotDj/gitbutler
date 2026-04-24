@@ -1,20 +1,23 @@
+import { type Item } from "./Item.ts";
+import { DropData, parseDragData, parseDropData } from "./OperationDragAndDrop.tsx";
+import styles from "./OperationTarget.module.css";
+import { OperationTooltip } from "./OperationTooltip.tsx";
+import { type OperationMode } from "./WorkspaceMode.ts";
+import { getOperations, OperationType } from "#ui/Operation.ts";
+import { classes } from "#ui/classes.ts";
+import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
+import { useAppDispatch } from "#ui/state/hooks.ts";
+import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import {
 	attachInstruction,
 	extractInstruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
-import { classes } from "#ui/classes.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
-import { FC } from "react";
-import { useDroppable } from "./DragAndDrop.tsx";
-import { DropData, parseDragData, parseDropData } from "./OperationDragAndDrop.tsx";
-import { type Item } from "./Item.ts";
-import { OperationTooltip } from "./OperationTooltip.tsx";
-import { type OperationMode } from "./WorkspaceMode.ts";
-import styles from "./OperationTarget.module.css";
-import { getOperations, OperationType } from "#ui/Operation.ts";
-import { useAppDispatch } from "#ui/state/hooks.ts";
-import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
+import { FC, useEffect, useEffectEvent, useRef, useState } from "react";
+
+type DropTargetParams = Parameters<typeof dropTargetForElements>[0];
+type GetDropDataArgs = Parameters<NonNullable<DropTargetParams["getData"]>>[0];
 
 const getDropOperationType = ({
 	source,
@@ -63,9 +66,11 @@ export const OperationTarget: FC<
 	} & useRender.ComponentProps<"div">
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
 	const dispatch = useAppDispatch();
+	const dropRef = useRef<HTMLElement>(null);
+	const [isActiveDropTarget, setIsActiveDropTarget] = useState<boolean>(false);
 
-	const [isActiveDropTarget, dropRef] = useDroppable({
-		getData: ({ input, element, source }): DropData | null => {
+	const getDropData = useEffectEvent(
+		({ input, element, source }: GetDropDataArgs): DropData | null => {
 			const dragData = parseDragData(source.data);
 			if (!dragData) return null;
 
@@ -79,17 +84,41 @@ export const OperationTarget: FC<
 
 			return { operationType, target: item };
 		},
-		onActiveTargetDrag: ({ self }) => {
-			const dropData = parseDropData(self.data);
+	);
 
-			dispatch(
-				projectActions.updateDragAndDropMode({
-					projectId,
-					operationType: dropData?.operationType ?? null,
-				}),
-			);
-		},
-	});
+	useEffect(() => {
+		const element = dropRef.current;
+		if (!element) return;
+
+		return dropTargetForElements({
+			element,
+			getData: (args) => getDropData(args) ?? {},
+			canDrop: (args) => getDropData(args) !== null,
+			onDrag: (args) => {
+				const [innerMost] = args.location.current.dropTargets;
+				const isActiveDropTarget = innerMost?.element === args.self.element;
+
+				setIsActiveDropTarget(isActiveDropTarget);
+
+				if (!isActiveDropTarget) return;
+
+				const dropData = parseDropData(args.self.data);
+
+				dispatch(
+					projectActions.updateDragAndDropMode({
+						projectId,
+						operationType: dropData?.operationType ?? null,
+					}),
+				);
+			},
+			onDragLeave: () => {
+				setIsActiveDropTarget(false);
+			},
+			onDrop: () => {
+				setIsActiveDropTarget(false);
+			},
+		});
+	}, [dispatch, projectId]);
 
 	const insertTargetOperationType = operationMode
 		? Match.value(operationMode).pipe(
