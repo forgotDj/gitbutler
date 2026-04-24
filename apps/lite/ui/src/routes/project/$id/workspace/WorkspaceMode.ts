@@ -72,7 +72,15 @@ export const renameBranchWorkspaceMode = ({
 });
 
 export const getOperationMode = (mode: WorkspaceMode): OperationMode | null =>
-	mode._tag === "Rub" || mode._tag === "Move" || mode._tag === "DragAndDrop" ? mode : null;
+	Match.value(mode).pipe(
+		Match.withReturnType<OperationMode | null>(),
+		Match.tags({
+			Rub: (mode) => mode,
+			Move: (mode) => mode,
+			DragAndDrop: (mode) => mode,
+		}),
+		Match.orElse(() => null),
+	);
 
 export const operationModeToOperationType = (operationMode: OperationMode): OperationType | null =>
 	Match.value(operationMode).pipe(
