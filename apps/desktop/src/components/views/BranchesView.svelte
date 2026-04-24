@@ -92,7 +92,6 @@
 			const outcome = await stackService.createVirtualBranchFromBranch({
 				projectId,
 				branch: branchRef,
-				remote: remoteRef,
 				prNumber,
 			});
 			handleCreateBranchFromBranchOutcome(outcome);

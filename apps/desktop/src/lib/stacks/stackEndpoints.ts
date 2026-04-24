@@ -827,7 +827,7 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 		}),
 		createVirtualBranchFromBranch: build.mutation<
 			CreateBranchFromBranchOutcome,
-			{ projectId: string; branch: string; remote?: string; prNumber?: number }
+			{ projectId: string; branch: string; prNumber?: number }
 		>({
 			extraOptions: {
 				command: "create_virtual_branch_from_branch",

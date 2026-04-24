@@ -375,12 +375,7 @@ pub fn split_branch(
 
     let refname = Refname::Local(LocalRefname::new(&new_branch_name, None));
     let branch_manager = ctx.branch_manager();
-    branch_manager.create_virtual_branch_from_branch(
-        &refname,
-        None,
-        None,
-        guard.write_permission(),
-    )?;
+    branch_manager.create_virtual_branch_from_branch(&refname, None, guard.write_permission())?;
 
     // TODO(ctx): use new branch creation, which would update the ctx workspace as well.
     let meta = ctx.meta()?;

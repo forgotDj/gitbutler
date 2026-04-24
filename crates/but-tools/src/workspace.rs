@@ -1174,7 +1174,6 @@ pub fn split_branch(
     let (stack_id, _, _) = branch_manager.create_virtual_branch_from_branch(
         &refname,
         None,
-        None,
         guard.write_permission(),
     )?;
 
