@@ -1,11 +1,13 @@
 import { Item, itemEquals } from "./Item.ts";
 import styles from "./OperationSourceC.module.css";
 import { OperationSourceLabel } from "./OperationSourceLabel.tsx";
-import { type OperationMode } from "./WorkspaceMode.ts";
 import { headInfoQueryOptions } from "#ui/api/queries.ts";
 import { classes } from "#ui/classes.ts";
-import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
-import { useAppDispatch } from "#ui/state/hooks.ts";
+import {
+	projectActions,
+	selectProjectOperationModeState,
+} from "#ui/routes/project/$id/state/projectSlice.ts";
+import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { centerUnderPointer } from "@atlaskit/pragmatic-drag-and-drop/element/center-under-pointer";
 import { setCustomNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview";
@@ -31,13 +33,15 @@ const DragPreview: FC<{ children: ReactNode }> = ({ children }) => (
 
 export const OperationSourceC: FC<
 	{
-		operationMode?: OperationMode | null;
 		projectId: string;
 		source: Item;
 		canDrag?: () => boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ operationMode = null, projectId, source, canDrag: canDragProp, render, ...props }) => {
+> = ({ projectId, source, canDrag: canDragProp, render, ...props }) => {
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
 
 	const dispatch = useAppDispatch();
 	const dragRef = useRef<HTMLElement>(null);

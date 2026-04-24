@@ -1,8 +1,11 @@
 import { getAction, type ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import { getOperation, useRunOperation } from "#ui/Operation.ts";
 import { getFocus, type ProjectLayoutState } from "#ui/routes/project/$id/state/layout.ts";
-import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
-import { useAppDispatch } from "#ui/state/hooks.ts";
+import {
+	projectActions,
+	selectProjectOperationModeState,
+} from "#ui/routes/project/$id/state/projectSlice.ts";
+import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import { Match } from "effect";
 import { RefObject, useEffect, useEffectEvent } from "react";
 import {
@@ -28,11 +31,7 @@ import {
 	getPreviousSection,
 	type NavigationIndex,
 } from "./WorkspaceModel.ts";
-import {
-	operationModeToOperationType,
-	OperationMode,
-	type WorkspaceMode,
-} from "./WorkspaceMode.ts";
+import { operationModeToOperationType, type WorkspaceMode } from "./WorkspaceMode.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import { AbsorptionTarget } from "@gitbutler/but-sdk";
 import { changesInWorktreeQueryOptions } from "#ui/api/queries.ts";
@@ -162,7 +161,7 @@ type PrimaryPanelAction =
 	| PanelNavigationAction;
 
 const commitAction: PrimaryPanelAction = { _tag: "Commit" };
-const SelectChangesAction: PrimaryPanelAction = { _tag: "SelectChanges" };
+const selectChangesAction: PrimaryPanelAction = { _tag: "SelectChanges" };
 
 const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 	...itemSelectionBindings,
@@ -177,7 +176,7 @@ const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 		id: "primary-panel-select-changes",
 		description: "Changes",
 		keys: ["z"],
-		action: SelectChangesAction,
+		action: selectChangesAction,
 		repeat: false,
 	},
 	...panelNavigationBindings,
@@ -580,12 +579,22 @@ const getModeScope = ({
 					scope,
 				});
 			},
-			DragAndDrop: () => null,
-			Move: () =>
-				moveOperationModeScope({
-					bindings: operationModeBindings,
-					context: selectedItem,
-				}),
+			Operation: ({ value }) =>
+				Match.value(value).pipe(
+					Match.tagsExhaustive({
+						DragAndDrop: () => null,
+						Move: () =>
+							moveOperationModeScope({
+								bindings: operationModeBindings,
+								context: selectedItem,
+							}),
+						Rub: () =>
+							rubOperationModeScope({
+								bindings: operationModeBindings,
+								context: selectedItem,
+							}),
+					}),
+				),
 			RenameBranch: (workspaceMode) =>
 				selectedItem?._tag === "Branch" &&
 				itemEquals(
@@ -614,11 +623,6 @@ const getModeScope = ({
 							context: selectedItem,
 						})
 					: null,
-			Rub: () =>
-				rubOperationModeScope({
-					bindings: operationModeBindings,
-					context: selectedItem,
-				}),
 		}),
 	);
 
@@ -693,7 +697,6 @@ export const useWorkspaceShortcuts = ({
 	scope,
 	navigationIndex,
 	openAbsorptionDialog,
-	operationMode,
 }: {
 	inlineRenameBranchFormRef: RefObject<HTMLFormElement | null>;
 	inlineRewordCommitFormRef: RefObject<HTMLFormElement | null>;
@@ -701,9 +704,11 @@ export const useWorkspaceShortcuts = ({
 	scope: Scope | null;
 	navigationIndex: NavigationIndex;
 	openAbsorptionDialog: (target: AbsorptionTarget) => void;
-	operationMode: OperationMode | null;
 }) => {
 	const dispatch = useAppDispatch();
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
 	const queryClient = useQueryClient();
 	const runOperation = useRunOperation();
 
