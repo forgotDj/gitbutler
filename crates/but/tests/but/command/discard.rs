@@ -1,4 +1,5 @@
 use bstr::ByteSlice;
+use snapbox::str;
 
 use crate::{command::util, utils::Sandbox};
 
@@ -78,6 +79,47 @@ fn concurrent_discard_to_independent_files_succeeds() -> anyhow::Result<()> {
         0,
         "both discarded files should be removed from the workspace"
     );
+
+    Ok(())
+}
+
+#[test]
+/// Reproduces a bug where hunks from the same file were separated into different DiffSpecs and
+/// applied one at a time in order. Existing hunks in the workspace were resolved again in between
+/// each DiffSpec being applied. If any hunk caused line displacement by adding or removing
+/// lines, any subsequent hunks become displaced from the DiffSpecs and trigger an error.
+fn can_discard_multiple_hunks_from_same_file() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack-with-large-file")?;
+    env.setup_metadata(&["large-file"])?;
+
+    let initiale_file_content =
+        std::fs::read_to_string(env.projects_root().join("large_file.txt"))?;
+
+    // We prepend a new line to the beggining of the file and append a line to the end. These two
+    // edits end up in different hunks, and naively discarding these hunks in order with a "disc
+    // materialization" in between fails as the second hunk ends up outside the initially computed
+    // DiffSpec once the first has been discarded.
+    let new_large_file_content = format!("New first line\n{initiale_file_content}\nNew last line");
+    env.file("large_file.txt", new_large_file_content);
+
+    let status = util::status_json(&env)?;
+    let large_file_id = find_unassigned_cli_id(&status, "large_file.txt")
+        .expect("should find CLI ID of large file");
+
+    env.but("discard")
+        .arg(large_file_id)
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Successfully discarded changes to 2 items
+
+"#]])
+        .stderr_eq("");
+
+    let file_content_after_discard =
+        std::fs::read_to_string(env.projects_root().join("large_file.txt"))?;
+
+    assert_eq!(file_content_after_discard, initiale_file_content);
 
     Ok(())
 }

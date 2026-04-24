@@ -22,8 +22,6 @@
 //! * **DiffSpec**
 //!   - A type that identifies changes, either as whole file, or as hunks in the file.
 //!   - It doesn't specify if the change is in a commit, or in the worktree, so that information must be provided separately.
-use std::collections::HashMap;
-
 use but_core::DiffSpec;
 
 /// **Do not use!**
@@ -38,6 +36,7 @@ pub mod ui;
 pub mod commit_engine;
 /// Tools for manipulating trees
 pub mod tree_manipulation;
+use indexmap::IndexMap;
 pub use tree_manipulation::discard_worktree_changes::discard_workspace_changes;
 
 /// 🚧utilities for applying and unapplying branches 🚧.
@@ -166,8 +165,16 @@ pub struct WorkspaceCommit<'repo> {
 }
 
 /// If there are multiple diffs spces where path and previous_path are the same, collapse them into one.
-pub fn flatten_diff_specs(input: Vec<DiffSpec>) -> Vec<DiffSpec> {
-    let mut output: HashMap<String, DiffSpec> = HashMap::new();
+///
+/// This flattening preserves the initial order of each (path, previous_path) pair. The output order
+/// is relative to the _first_ occurrence in the input. As a simplified example using, an input of
+/// `[2, 1, 2, 3]` deterministically produces an output ordered as `[2, 1, 3]`.
+///
+/// This is an important property as there are applications of [`DiffSpec`] sequences that are
+/// currently very sensitive to ordering, such as when discarding file renamings, additions and
+/// deletions of intersecting paths.
+pub fn flatten_diff_specs(input: impl IntoIterator<Item = DiffSpec>) -> Vec<DiffSpec> {
+    let mut output: IndexMap<String, DiffSpec> = IndexMap::new();
     for spec in input {
         let key = format!(
             "{}:{}",

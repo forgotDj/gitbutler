@@ -2,6 +2,8 @@ use anyhow::{Context as _, bail};
 use bstr::ByteSlice;
 use but_core::{ChangeState, DiffSpec, TreeStatus};
 
+use crate::flatten_diff_specs;
+
 /// Discard the given `changes` in the worktree of `repo`. If a change could not be matched with an actual worktree change, for
 /// instance due to a race, that's not an error, instead it will be returned in the result Vec, along with all hunks that couldn't
 /// be matched.
@@ -50,7 +52,8 @@ pub fn discard_workspace_changes(
     let mut path_check = gix::status::plumbing::SymlinkCheck::new(
         repo.workdir().context("non-bare repository")?.into(),
     );
-    for mut spec in changes {
+
+    for mut spec in flatten_diff_specs(changes) {
         let Some(wt_change) = wt_changes.changes.iter().find(|c| {
             c.path == spec.path
                 && c.previous_path() == spec.previous_path.as_ref().map(|p| p.as_bstr())
