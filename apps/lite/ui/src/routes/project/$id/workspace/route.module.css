@@ -52,14 +52,13 @@
 }
 
 .itemRowToolbar {
-	display: flex;
-	visibility: hidden;
+	display: none;
 	align-items: stretch;
 
 	.itemRow:hover &,
 	.itemRow:focus-within &,
 	.itemRowSelected & {
-		visibility: visible;
+		display: flex;
 	}
 }
 
