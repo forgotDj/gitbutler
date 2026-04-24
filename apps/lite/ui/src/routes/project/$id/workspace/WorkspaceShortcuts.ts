@@ -162,7 +162,7 @@ type PrimaryPanelAction =
 	| PanelNavigationAction;
 
 const commitAction: PrimaryPanelAction = { _tag: "Commit" };
-const SelectChangesAction: PrimaryPanelAction = { _tag: "SelectChanges" };
+const selectChangesAction: PrimaryPanelAction = { _tag: "SelectChanges" };
 
 const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 	...itemSelectionBindings,
@@ -177,7 +177,7 @@ const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 		id: "primary-panel-select-changes",
 		description: "Changes",
 		keys: ["z"],
-		action: SelectChangesAction,
+		action: selectChangesAction,
 		repeat: false,
 	},
 	...panelNavigationBindings,
