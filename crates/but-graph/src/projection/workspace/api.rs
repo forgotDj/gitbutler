@@ -93,6 +93,49 @@ impl Workspace {
         }
     }
 
+    /// Return the target reference name if this workspace has a branch-backed target.
+    pub fn target_ref_name(&self) -> Option<&gix::refs::FullNameRef> {
+        self.target_ref
+            .as_ref()
+            .map(|target| target.ref_name.as_ref())
+            .or_else(|| {
+                self.metadata
+                    .as_ref()
+                    .and_then(|metadata| metadata.target_ref.as_ref().map(|name| name.as_ref()))
+            })
+    }
+
+    /// Return the remembered target commit id that anchors this workspace to its target.
+    ///
+    /// This is the projection equivalent of the legacy `Target::sha` field. It intentionally
+    /// differs from [`Self::target_ref_tip_oid()`], which returns the current tip of the target
+    /// branch.
+    pub fn target_base_oid(&self) -> Option<gix::ObjectId> {
+        self.metadata
+            .as_ref()
+            .and_then(|metadata| metadata.target_commit_id)
+            .or_else(|| self.target_commit.as_ref().map(|target| target.commit_id))
+    }
+
+    /// Return the current tip commit id of the target reference if it is available in the graph.
+    pub fn target_ref_tip_oid(&self) -> Option<gix::ObjectId> {
+        self.target_ref
+            .as_ref()
+            .and_then(|target| self.graph.tip_skip_empty(target.segment_index))
+            .map(|commit| commit.id)
+    }
+
+    /// Return the remote name to use when pushing branches associated with this target.
+    ///
+    /// The explicit push remote in workspace metadata wins. If none is configured, this falls
+    /// back to the remote name implied by the target reference.
+    pub fn target_push_remote_name(&self) -> Option<String> {
+        self.metadata
+            .as_ref()
+            .and_then(|metadata| metadata.push_remote.clone())
+            .or_else(|| self.remote_name())
+    }
+
     /// Return the `(merge-base, target-commit-id)` of the merge-base between the `commit_to_merge`
     /// and either the [target-branch](Self::target_ref), the [extra-target](Self::extra_target)
     /// or the [target-commit](Self::target_commit), depending on which is set and encountered
