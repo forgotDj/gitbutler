@@ -72,6 +72,7 @@ export const OperationSourceC: FC<
 			},
 			onDrop: () => {
 				setIsDragging(false);
+				dispatch(projectActions.exitMode({ projectId }));
 			},
 		});
 	}, [dispatch, projectId, source]);

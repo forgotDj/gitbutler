@@ -30,7 +30,6 @@ import {
 	selectProjectWorkspaceModeState,
 } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/Absorption.tsx";
-import { useMonitorDraggedItem } from "#ui/routes/project/$id/workspace/OperationDragAndDrop.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
@@ -1743,8 +1742,6 @@ const ProjectPage: FC = () => {
 			setAbsorptionTarget(target);
 		});
 	};
-
-	useMonitorDraggedItem({ projectId });
 
 	useWorkspaceShortcuts({
 		inlineRenameBranchFormRef,

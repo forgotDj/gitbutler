@@ -3,7 +3,7 @@ import { DropData, parseDragData, parseDropData } from "./OperationDragAndDrop.t
 import styles from "./OperationTarget.module.css";
 import { OperationTooltip } from "./OperationTooltip.tsx";
 import { type OperationMode } from "./WorkspaceMode.ts";
-import { getOperations, OperationType } from "#ui/Operation.ts";
+import { getOperation, getOperations, OperationType, useRunOperation } from "#ui/Operation.ts";
 import { classes } from "#ui/classes.ts";
 import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { useAppDispatch } from "#ui/state/hooks.ts";
@@ -66,6 +66,7 @@ export const OperationTarget: FC<
 	} & useRender.ComponentProps<"div">
 > = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
 	const dispatch = useAppDispatch();
+	const runOperation = useRunOperation();
 	const dropRef = useRef<HTMLElement>(null);
 	const [isActiveDropTarget, setIsActiveDropTarget] = useState<boolean>(false);
 
@@ -114,11 +115,29 @@ export const OperationTarget: FC<
 			onDragLeave: () => {
 				setIsActiveDropTarget(false);
 			},
-			onDrop: () => {
+			onDrop: (args) => {
 				setIsActiveDropTarget(false);
+
+				const [innerMost] = args.location.current.dropTargets;
+				if (innerMost?.element !== args.self.element) return;
+
+				const dragData = parseDragData(args.source.data);
+				if (!dragData) return;
+
+				const dropData = parseDropData(args.self.data);
+				if (!dropData) return;
+
+				const operation = getOperation({
+					source: dragData.source,
+					target: dropData.target,
+					operationType: dropData.operationType,
+				});
+				if (!operation) return;
+
+				runOperation(projectId, operation);
 			},
 		});
-	}, [dispatch, projectId]);
+	}, [dispatch, projectId, runOperation]);
 
 	const insertTargetOperationType = operationMode
 		? Match.value(operationMode).pipe(
