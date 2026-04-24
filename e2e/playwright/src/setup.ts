@@ -144,7 +144,6 @@ class GitButlerManager implements GitButler {
 		const scriptArgs = args ?? [];
 
 		const envVars = {
-			GITBUTLER_CLI_DATA_DIR: getButlerDataDir(this.configDir),
 			E2E_TEST_APP_DATA_DIR: this.configDir,
 			GIT_CONFIG_GLOBAL,
 			...this.env,
@@ -176,10 +175,6 @@ function createButServerProcess(rootDir: string, serverEnv: Record<string, strin
 	});
 
 	return child;
-}
-
-function getButlerDataDir(configDir: string): string {
-	return path.join(configDir, "com.gitbutler.app");
 }
 
 async function waitForServer(port: string, host = "localhost", maxAttempts = 500) {

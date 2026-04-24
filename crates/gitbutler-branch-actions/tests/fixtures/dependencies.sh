@@ -56,177 +56,177 @@ git init remote
   git add . && git commit -m "init"
 )
 
-export GITBUTLER_CLI_DATA_DIR=../user/gitbutler/app-data
+export E2E_TEST_APP_DATA_DIR=../user/gitbutler/app-data
 git clone remote independent-commits
 (cd independent-commits
   git branch existing-branch
-  $CLI project add --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
+  $CLI setup
 
 
-  $CLI branch create --set-default my_stack
+  $CLI branch new my_stack
   echo "this is a" >> a
-  $CLI branch commit my_stack -m "add a"
+  $CLI commit my_stack -m "add a"
   echo "this is b" >> b
-  $CLI branch commit my_stack -m "add b"
+  $CLI commit my_stack -m "add b"
   echo "this is c" >> c
-  $CLI branch commit my_stack -m "add c"
+  $CLI commit my_stack -m "add c"
 
-  $CLI branch series my_stack -s "top-series"
+  $CLI branch new "top-series" --anchor my_stack
   echo "this is d" >> d
-  $CLI branch commit my_stack -m "add d"
+  $CLI commit my_stack -m "add d"
   echo "this is e" >> e
-  $CLI branch commit my_stack -m "add e"
+  $CLI commit my_stack -m "add e"
   echo "this is f" >> f
-  $CLI branch commit my_stack -m "add f"
+  $CLI commit my_stack -m "add f"
 )
 
 git clone remote independent-commits-multi-stack
 (cd independent-commits-multi-stack
   git branch existing-branch
-  $CLI project add --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
+  $CLI setup
 
 
-  $CLI branch create --set-default other_stack
+  $CLI branch new other_stack
   echo "this is a" >> a
-  $CLI branch commit other_stack -m "add a"
+  $CLI commit other_stack -m "add a"
   echo "this is b" >> b
-  $CLI branch commit other_stack -m "add b"
+  $CLI commit other_stack -m "add b"
   echo "this is c" >> c
-  $CLI branch commit other_stack -m "add c"
+  $CLI commit other_stack -m "add c"
 
-  $CLI branch series other_stack -s "other-top-series"
+  $CLI branch new "other-top-series" --anchor other_stack
   echo "this is d" >> d
-  $CLI branch commit other_stack -m "add d"
+  $CLI commit other_stack -m "add d"
   echo "this is e" >> e
-  $CLI branch commit other_stack -m "add e"
+  $CLI commit other_stack -m "add e"
   echo "this is f" >> f
-  $CLI branch commit other_stack -m "add f"
+  $CLI commit other_stack -m "add f"
 
 
-  $CLI branch create --set-default my_stack
+  $CLI branch new my_stack
   echo "this is g" >> g
-  $CLI branch commit my_stack -m "add g"
+  $CLI commit my_stack -m "add g"
   echo "this is h" >> h
-  $CLI branch commit my_stack -m "add h"
+  $CLI commit my_stack -m "add h"
   echo "this is i" >> i
-  $CLI branch commit my_stack -m "add i"
+  $CLI commit my_stack -m "add i"
 
-  $CLI branch series my_stack -s "top-series"
+  $CLI branch new "top-series" --anchor my_stack
   echo "this is j" >> j
-  $CLI branch commit my_stack -m "add j"
+  $CLI commit my_stack -m "add j"
   echo "this is k" >> k
-  $CLI branch commit my_stack -m "add k"
+  $CLI commit my_stack -m "add k"
   echo "this is l" >> l
-  $CLI branch commit my_stack -m "add l"
+  $CLI commit my_stack -m "add l"
 )
 
 git clone remote sequentially-dependent-commits
 (cd sequentially-dependent-commits
   git branch existing-branch
-  $CLI project add --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
+  $CLI setup
 
 
-  $CLI branch create --set-default my_stack
+  $CLI branch new my_stack
   echo "this is a" > file
-  $CLI branch commit my_stack -m "add file"
+  $CLI commit my_stack -m "add file"
   echo "this is b" > file
-  $CLI branch commit my_stack -m "overwrite file with b"
+  $CLI commit my_stack -m "overwrite file with b"
   echo "this is c" > file
-  $CLI branch commit my_stack -m "overwrite file with c"
+  $CLI commit my_stack -m "overwrite file with c"
 
-  $CLI branch series my_stack -s "top-series"
+  $CLI branch new "top-series" --anchor my_stack
   echo "this is d" > file
-  $CLI branch commit my_stack -m "overwrite file with d"
+  $CLI commit my_stack -m "overwrite file with d"
   echo "this is e" > file
-  $CLI branch commit my_stack -m "overwrite file with e"
+  $CLI commit my_stack -m "overwrite file with e"
   echo "this is f" > file
-  $CLI branch commit my_stack -m "overwrite file with f"
+  $CLI commit my_stack -m "overwrite file with f"
 )
 
 git clone remote sequentially-dependent-commits-muli-stack
 (cd sequentially-dependent-commits-muli-stack
   git branch existing-branch
-  $CLI project add --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
+  $CLI setup
 
 
-  $CLI branch create --set-default other_stack
+  $CLI branch new other_stack
   echo "this is a" > file
-  $CLI branch commit other_stack -m "add file"
+  $CLI commit other_stack -m "add file"
   echo "this is b" > file
-  $CLI branch commit other_stack -m "overwrite file with b"
+  $CLI commit other_stack -m "overwrite file with b"
   echo "this is c" > file
-  $CLI branch commit other_stack -m "overwrite file with c"
+  $CLI commit other_stack -m "overwrite file with c"
 
-  $CLI branch series other_stack -s "other-top-series"
+  $CLI branch new "other-top-series" --anchor other_stack
   echo "this is d" > file
-  $CLI branch commit other_stack -m "overwrite file with d"
+  $CLI commit other_stack -m "overwrite file with d"
   echo "this is e" > file
-  $CLI branch commit other_stack -m "overwrite file with e"
+  $CLI commit other_stack -m "overwrite file with e"
   echo "this is f" > file
-  $CLI branch commit other_stack -m "overwrite file with f"
+  $CLI commit other_stack -m "overwrite file with f"
 
-  $CLI branch create --set-default my_stack
+  $CLI branch new my_stack
   echo "this is a" > file_2
-  $CLI branch commit my_stack -m "add file_2"
+  $CLI commit my_stack -m "add file_2"
   echo "this is b" > file_2
-  $CLI branch commit my_stack -m "overwrite file_2 with b"
+  $CLI commit my_stack -m "overwrite file_2 with b"
   echo "this is c" > file_2
-  $CLI branch commit my_stack -m "overwrite file_2 with c"
+  $CLI commit my_stack -m "overwrite file_2 with c"
 
-  $CLI branch series my_stack -s "top-series"
+  $CLI branch new "top-series" --anchor my_stack
   echo "this is d" > file_2
-  $CLI branch commit my_stack -m "overwrite file_2 with d"
+  $CLI commit my_stack -m "overwrite file_2 with d"
   echo "this is e" > file_2
-  $CLI branch commit my_stack -m "overwrite file_2 with e"
+  $CLI commit my_stack -m "overwrite file_2 with e"
   echo "this is f" > file_2
-  $CLI branch commit my_stack -m "overwrite file_2 with f"
+  $CLI commit my_stack -m "overwrite file_2 with f"
 )
 
 git clone remote delete-and-recreate-file-multi-stack
 (cd delete-and-recreate-file-multi-stack
   git branch existing-branch
-  $CLI project add --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
+  $CLI setup
 
 
-  $CLI branch create --set-default other_stack
+  $CLI branch new other_stack
   echo "this is a" > file
-  $CLI branch commit other_stack -m "add file"
+  $CLI commit other_stack -m "add file"
   echo "this is b" > file
-  $CLI branch commit other_stack -m "overwrite file with b"
+  $CLI commit other_stack -m "overwrite file with b"
   rm -rf file
-  $CLI branch commit other_stack -m "remove file"
+  $CLI commit other_stack -m "remove file"
 
-  $CLI branch series other_stack -s "other-top-series"
+  $CLI branch new "other-top-series" --anchor other_stack
   echo "this is d" > file
-  $CLI branch commit other_stack -m "recreate file with d"
+  $CLI commit other_stack -m "recreate file with d"
   rm -rf file
-  $CLI branch commit other_stack -m "remove file again"
+  $CLI commit other_stack -m "remove file again"
   echo "this is f" > file
-  $CLI branch commit other_stack -m "recreate file with f"
+  $CLI commit other_stack -m "recreate file with f"
 
-  $CLI branch create --set-default my_stack
+  $CLI branch new my_stack
   echo "this is a" > file_2
-  $CLI branch commit my_stack -m "add file_2"
+  $CLI commit my_stack -m "add file_2"
   rm -rf file_2
-  $CLI branch commit my_stack -m "remove file_2"
+  $CLI commit my_stack -m "remove file_2"
   echo "this is c" > file_2
-  $CLI branch commit my_stack -m "recreate file_2 with c"
+  $CLI commit my_stack -m "recreate file_2 with c"
 
-  $CLI branch series my_stack -s "top-series"
+  $CLI branch new "top-series" --anchor my_stack
   rm -rf file_2
-  $CLI branch commit my_stack -m "remove file_2 again"
+  $CLI commit my_stack -m "remove file_2 again"
   echo "this is e" > file_2
-  $CLI branch commit my_stack -m "recreate file_2 with e"
+  $CLI commit my_stack -m "recreate file_2 with e"
   rm -rf file_2
-  $CLI branch commit my_stack -m "remove file_2 one last time"
+  $CLI commit my_stack -m "remove file_2 one last time"
 )
 
 git clone remote complex-file-manipulation
 (cd complex-file-manipulation
   git branch existing-branch
-  $CLI project add --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
+  $CLI setup
 
-  $CLI branch create --set-default my_stack
+  $CLI branch new my_stack
   echo "1
 2
 3
@@ -247,7 +247,7 @@ g
 h
 i
 " > file_2
-  $CLI branch commit my_stack -m "add file"
+  $CLI commit my_stack -m "add file"
   echo "1
 2
 3
@@ -258,7 +258,7 @@ __update1__
 8
 9
 " > file
-  $CLI branch commit my_stack -m "modify line 5"
+  $CLI commit my_stack -m "modify line 5"
   echo "1
 2
 3
@@ -273,11 +273,11 @@ d
 e
 f
 " > file_2
-  $CLI branch commit my_stack -m "file: delete lines 4, 5 and 6 | file_2: delete lines g, h and i"
+  $CLI commit my_stack -m "file: delete lines 4, 5 and 6 | file_2: delete lines g, h and i"
   rm -rf file
-  $CLI branch commit my_stack -m "remove file"
+  $CLI commit my_stack -m "remove file"
 
-  $CLI branch series my_stack -s "top-series"
+  $CLI branch new "top-series" --anchor my_stack
   echo "1
 2
 3
@@ -285,7 +285,7 @@ f
 8
 9
 " > file
-  $CLI branch commit my_stack -m "recreate file"
+  $CLI commit my_stack -m "recreate file"
   echo "1
 2
 3
@@ -295,7 +295,7 @@ f
 a
 b
 c" > file
-  $CLI branch commit my_stack -m "add lines a, b and c at the end"
+  $CLI commit my_stack -m "add lines a, b and c at the end"
   echo "d
 e
 1
@@ -314,15 +314,15 @@ d
 e
 f
 " > file_2
-  $CLI branch commit my_stack -m "file: add lines d and e at the beginning | file_2: modify line 1"
+  $CLI commit my_stack -m "file: add lines d and e at the beginning | file_2: modify line 1"
 )
 
 git clone remote complex-file-manipulation-multiple-hunks
 (cd complex-file-manipulation-multiple-hunks
   git branch existing-branch
-  $CLI project add --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
+  $CLI setup
 
-  $CLI branch create --set-default my_stack
+  $CLI branch new my_stack
 
   echo "1
 2
@@ -334,7 +334,7 @@ git clone remote complex-file-manipulation-multiple-hunks
 8
 9
 " > file
-  $CLI branch commit my_stack -m "create file"
+  $CLI commit my_stack -m "create file"
   echo "1
 2
 3
@@ -345,7 +345,7 @@ update 4
 update 8
 9
 " > file
-  $CLI branch commit my_stack -m "modify lines 4 and 8"
+  $CLI commit my_stack -m "modify lines 4 and 8"
   echo "1
 2
 insert line
@@ -357,7 +357,7 @@ update 4 again
 update 8
 9
 " > file
-  $CLI branch commit my_stack -m "insert 2 lines after 2, modify line 4 and remove line 6"
+  $CLI commit my_stack -m "insert 2 lines after 2, modify line 4 and remove line 6"
   echo "added at the top
 1
 2
@@ -369,7 +369,7 @@ update 8
 9
 added at the bottom
 " > file
-  $CLI branch commit my_stack -m "insert 1 line at the top and bottom, remove lines 3 and 4 and update line 7"
+  $CLI commit my_stack -m "insert 1 line at the top and bottom, remove lines 3 and 4 and update line 7"
 )
 
 git clone remote complex-branch-checkout
@@ -406,6 +406,6 @@ git clone remote complex-branch-checkout
 
   git checkout main
 
-  $CLI project add --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
-  $CLI branch apply -b my_stack
+  $CLI setup
+  $CLI apply my_stack
 )

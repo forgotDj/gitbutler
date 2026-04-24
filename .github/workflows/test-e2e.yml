@@ -53,7 +53,7 @@ jobs:
       - name: Build CLI, SvelteKit, and tauri-driver
         if: ${{ github.ref != 'refs/heads/master' }}
         run: |
-          cargo build -p gitbutler-cli &
+          cargo build -p but &
           cargo_pid=$!
           pnpm build:desktop -- --mode development &
           pnpm_pid=$!
@@ -72,7 +72,7 @@ jobs:
         run: pnpm build:test
       - name: Build CLI (cache warming)
         if: ${{ github.ref == 'refs/heads/master' }}
-        run: cargo build -p gitbutler-cli
+        run: cargo build -p but
 
       # Run it through `xvfb-run` to have a fake display server which allows our
       # application to run headless without any changes to the code

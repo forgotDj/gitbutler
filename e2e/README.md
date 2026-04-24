@@ -140,10 +140,7 @@ import { spawnAndLog, findAndClick, setElementValue } from "../utils.js";
 describe("Your Feature", () => {
 	before(() => {
 		// Setup test repositories
-		spawnAndLog("bash", [
-			"-c",
-			"./blackbox/scripts/your-setup-script.sh ../target/debug/gitbutler-cli",
-		]);
+		spawnAndLog("bash", ["-c", "./blackbox/scripts/your-setup-script.sh ../target/debug/but"]);
 	});
 
 	it("should perform an action", async () => {

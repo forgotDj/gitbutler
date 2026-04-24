@@ -2,7 +2,7 @@
 set -eu -o pipefail
 CLI=${1:?The first argument is the GitButler CLI}
 
-export GITBUTLER_CLI_DATA_DIR=../user/gitbutler/app-data
+export E2E_TEST_APP_DATA_DIR=../user/gitbutler/app-data
 
 git init big-repo
 (cd big-repo
@@ -10018,8 +10018,8 @@ EOF
 
 git clone big-repo big-repo-clone
 (cd big-repo-clone
-  $CLI project add --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
-  $CLI branch create no-change
+  $CLI setup
+  $CLI branch new no-change
 )
 
 function change-all() {
@@ -10032,11 +10032,11 @@ function change-all() {
 
 git clone big-repo big-repo-clone-one-commit-ahead
 (cd big-repo-clone-one-commit-ahead
-  $CLI project add --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
-  $CLI branch create virtual
+  $CLI setup
+  $CLI branch new virtual
 
   change-all new-content
-  $CLI branch create trigger-auto-branch-creation
+  $CLI branch new trigger-auto-branch-creation
 )
 
 git init remote
@@ -10061,10 +10061,10 @@ git clone remote revwalk-repo
   done
 
   git checkout main
-  $CLI project add --switch-to-workspace "$local_tracking_ref"
+  $CLI setup
   for round in $(seq 10); do
     echo virtual-main >> file
-    $CLI branch commit --message "virt-$round" main
+    $CLI commit --message "virt-$round" main
   done
 
   git checkout -b non-virtual-feature main

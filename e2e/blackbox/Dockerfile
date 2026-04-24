@@ -9,7 +9,7 @@
 # The rest is run inside the container in your SSH session:
 # 6. cd /root/gitbutler
 # 7. pnpm install && cargo build
-# 8. cargo build -p gitbutler-git && cargo build -p gitbutler-cli
+# 8. cargo build -p gitbutler-git && cargo build -p but
 # 9. pnpm build:test
 # 10. pnpm test:e2e:blackbox
 
