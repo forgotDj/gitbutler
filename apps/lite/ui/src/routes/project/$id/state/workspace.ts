@@ -12,6 +12,7 @@ import {
 	dragAndDropOperationMode,
 	isValidWorkspaceModeForSelectedItem,
 	moveOperationMode,
+	operationWorkspaceMode,
 	renameBranchWorkspaceMode,
 	rewordCommitWorkspaceMode,
 	rubOperationMode,
@@ -48,15 +49,15 @@ export const closeCommitFiles = (state: WorkspaceState, item: CommitItem) => {
 };
 
 export const enterMoveMode = (state: WorkspaceState, source: Item) => {
-	state.mode = moveOperationMode({ source });
+	state.mode = operationWorkspaceMode(moveOperationMode({ source }));
 };
 
 export const enterRubMode = (state: WorkspaceState, source: Item) => {
-	state.mode = rubOperationMode({ source });
+	state.mode = operationWorkspaceMode(rubOperationMode({ source }));
 };
 
 export const enterDragAndDropMode = (state: WorkspaceState, source: Item) => {
-	state.mode = dragAndDropOperationMode({ source, operationType: null });
+	state.mode = operationWorkspaceMode(dragAndDropOperationMode({ source, operationType: null }));
 };
 
 export const updateDragAndDropMode = (
@@ -65,8 +66,17 @@ export const updateDragAndDropMode = (
 ) => {
 	Match.value(state.mode).pipe(
 		Match.tags({
-			DragAndDrop: (mode) => {
-				state.mode = dragAndDropOperationMode({ source: mode.source, operationType });
+			Operation: ({ value }) => {
+				Match.value(value).pipe(
+					Match.tags({
+						DragAndDrop: (mode) => {
+							state.mode = operationWorkspaceMode(
+								dragAndDropOperationMode({ source: mode.source, operationType }),
+							);
+						},
+					}),
+					Match.orElse(() => {}),
+				);
 			},
 		}),
 		Match.orElse(() => {}),

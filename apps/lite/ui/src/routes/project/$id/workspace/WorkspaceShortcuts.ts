@@ -580,12 +580,22 @@ const getModeScope = ({
 					scope,
 				});
 			},
-			DragAndDrop: () => null,
-			Move: () =>
-				moveOperationModeScope({
-					bindings: operationModeBindings,
-					context: selectedItem,
-				}),
+			Operation: ({ value }) =>
+				Match.value(value).pipe(
+					Match.tagsExhaustive({
+						DragAndDrop: () => null,
+						Move: () =>
+							moveOperationModeScope({
+								bindings: operationModeBindings,
+								context: selectedItem,
+							}),
+						Rub: () =>
+							rubOperationModeScope({
+								bindings: operationModeBindings,
+								context: selectedItem,
+							}),
+					}),
+				),
 			RenameBranch: (workspaceMode) =>
 				selectedItem?._tag === "Branch" &&
 				itemEquals(
@@ -614,11 +624,6 @@ const getModeScope = ({
 							context: selectedItem,
 						})
 					: null,
-			Rub: () =>
-				rubOperationModeScope({
-					bindings: operationModeBindings,
-					context: selectedItem,
-				}),
 		}),
 	);
 
