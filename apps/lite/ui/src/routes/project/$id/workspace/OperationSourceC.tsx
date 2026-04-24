@@ -36,13 +36,13 @@ export const OperationSourceC: FC<
 		source: Item;
 		canDrag?: () => boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ operationMode = null, projectId, source, canDrag, render, ...props }) => {
+> = ({ operationMode = null, projectId, source, canDrag: canDragProp, render, ...props }) => {
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 
 	const dispatch = useAppDispatch();
 	const dragRef = useRef<HTMLElement>(null);
-	const canDragEvent: NonNullable<DraggableParams["canDrag"]> = useEffectEvent(
-		() => canDrag?.() ?? true,
+	const canDrag: NonNullable<DraggableParams["canDrag"]> = useEffectEvent(
+		() => canDragProp?.() ?? true,
 	);
 	const onGenerateDragPreview = useEffectEvent(
 		({ nativeSetDragImage }: { nativeSetDragImage: DataTransfer["setDragImage"] | null }) => {
@@ -70,7 +70,7 @@ export const OperationSourceC: FC<
 
 		return draggable({
 			element,
-			canDrag: canDragEvent,
+			canDrag,
 			getInitialData: (): DragData => ({ source }),
 			onGenerateDragPreview,
 			onDragStart: () => {
