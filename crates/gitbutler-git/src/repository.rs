@@ -279,8 +279,7 @@ where
 /// for the CLI, as the child process simply inherits stdin from the parent process and therefore
 /// doesn't need the askpass mechanism.
 ///
-/// It's doubly useful in the sense that the CLI then does not need the askpass and setsid
-/// binaries.
+/// It's doubly useful in the sense that the CLI then does not need the askpass binary.
 async fn execute_direct<P, E>(
     harness_env: HarnessEnv<P>,
     executor: &E,
