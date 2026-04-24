@@ -27,7 +27,7 @@ import {
 	CommitUncommitParams,
 } from "#ui/api/mutations.ts";
 import { InsertSide, RelativeTo } from "@gitbutler/but-sdk";
-import { Item, itemFileParent } from "#ui/routes/project/$id/workspace/Item.ts";
+import { Item, itemEquals, itemFileParent } from "#ui/routes/project/$id/workspace/Item.ts";
 import { resolveDiffSpecs } from "#ui/routes/project/$id/workspace/resolveDiffSpecs.ts";
 import { decodeRefName } from "#ui/routes/project/$id/shared.tsx";
 
@@ -515,11 +515,19 @@ export type OperationType = "rub" | "moveAbove" | "moveBelow";
 export const getOperations = (
 	source: Item,
 	target: Item,
-): Record<OperationType, Operation | null> => ({
-	rub: rubOperation({ source, target }),
-	moveAbove: moveOperation({ source, target, side: "above" }),
-	moveBelow: moveOperation({ source, target, side: "below" }),
-});
+): Record<OperationType, Operation | null> => {
+	if (itemEquals(source, target))
+		return {
+			rub: null,
+			moveAbove: null,
+			moveBelow: null,
+		};
+	return {
+		rub: rubOperation({ source, target }),
+		moveAbove: moveOperation({ source, target, side: "above" }),
+		moveBelow: moveOperation({ source, target, side: "below" }),
+	};
+};
 
 export const getOperation = (x: {
 	source: Item;
