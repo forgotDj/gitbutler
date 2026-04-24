@@ -1795,10 +1795,14 @@ const ProjectPage: FC = () => {
 				/>
 			)}
 
-			{operationMode && (
-				<div className={styles.operationModePreview}>
-					<OperationSourceLabel headInfo={headInfo} source={operationMode.source} />
-				</div>
+			{Match.value(operationMode).pipe(
+				Match.when(null, () => null),
+				Match.tag("DragAndDrop", () => null),
+				Match.orElse(({ source }) => (
+					<div className={styles.operationModePreview}>
+						<OperationSourceLabel headInfo={headInfo} source={source} />
+					</div>
+				)),
 			)}
 
 			{absorptionTarget && (
