@@ -49,6 +49,7 @@ import {
 } from "#ui/native-menu.ts";
 import uiStyles from "#ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
+import { Toolbar } from "@base-ui/react/toolbar";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import {
 	AbsorptionTarget,
@@ -289,12 +290,12 @@ const ItemRow: FC<
 	);
 };
 
-const DependencyIndicatorButton: FC<{
-	projectId: string;
-	commitIds: NonEmptyArray<string>;
-	className?: string;
-	children: ReactNode;
-}> = ({ projectId, commitIds, className, children }) => {
+const DependencyIndicatorButton: FC<
+	{
+		projectId: string;
+		commitIds: NonEmptyArray<string>;
+	} & useRender.ComponentProps<"button">
+> = ({ projectId, commitIds, ...restProps }) => {
 	const dispatch = useAppDispatch();
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	// TODO: expensive
@@ -324,16 +325,14 @@ const DependencyIndicatorButton: FC<{
 			disableHoverablePopup
 		>
 			<Tooltip.Trigger
+				{...restProps}
 				type="button"
-				className={className}
 				onMouseEnter={highlightCommitIds}
 				onMouseLeave={clearHighlightedCommitIds}
 				onFocus={highlightCommitIds}
 				onBlur={clearHighlightedCommitIds}
 				aria-label={tooltip}
-			>
-				{children}
-			</Tooltip.Trigger>
+			/>
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
@@ -855,15 +854,14 @@ const CommitRow: FC<
 						<CommitLabel commit={commitWithOptimisticMessage} />
 					</button>
 					{workspaceMode._tag === "Default" && (
-						<>
+						<Toolbar.Root aria-label="Commit actions" className={styles.itemRowActions}>
 							<Tooltip.Root
 								// Prevent tooltip from lingering while moving between nearby controls.
 								// [tag:tooltip-disable-hoverable-popup]
 								disableHoverablePopup
 							>
 								<Tooltip.Trigger
-									className={styles.itemRowAction}
-									type="button"
+									render={<Toolbar.Button type="button" className={styles.itemRowActionButton} />}
 									onClick={() =>
 										dispatch(projectActions.toggleCommitFiles({ projectId, item: commitItemV }))
 									}
@@ -880,17 +878,17 @@ const CommitRow: FC<
 									</Tooltip.Positioner>
 								</Tooltip.Portal>
 							</Tooltip.Root>
-							<button
+							<Toolbar.Button
 								type="button"
-								className={styles.itemRowAction}
+								className={styles.itemRowActionButton}
 								aria-label="Commit menu"
 								onClick={(event) => {
 									void showNativeMenuFromTrigger(event.currentTarget, menuItems);
 								}}
 							>
 								<MenuTriggerIcon />
-							</button>
-						</>
+							</Toolbar.Button>
+						</Toolbar.Root>
 					)}
 				</>
 			)}
@@ -1041,27 +1039,27 @@ const ChangeFileRow: FC<{
 				}}
 			/>
 			{workspaceMode._tag === "Default" && (
-				<>
+				<Toolbar.Root aria-label="File actions" className={styles.itemRowActions}>
 					{dependencyCommitIds && (
 						<DependencyIndicatorButton
 							projectId={projectId}
 							commitIds={dependencyCommitIds}
-							className={styles.itemRowAction}
+							render={<Toolbar.Button type="button" className={styles.itemRowActionButton} />}
 						>
 							<DependencyIcon />
 						</DependencyIndicatorButton>
 					)}
-					<button
+					<Toolbar.Button
 						type="button"
-						className={styles.itemRowAction}
+						className={styles.itemRowActionButton}
 						aria-label="File menu"
 						onClick={(event) => {
 							void showNativeMenuFromTrigger(event.currentTarget, menuItems);
 						}}
 					>
 						<MenuTriggerIcon />
-					</button>
-				</>
+					</Toolbar.Button>
+				</Toolbar.Root>
 			)}
 		</OperationSourceC>
 	);
@@ -1105,21 +1103,21 @@ const ChangesSectionRow: FC<{
 				Changes
 			</button>
 			{workspaceMode._tag === "Default" && (
-				<>
-					<button type="button" className={styles.itemRowAction} onClick={onCommit}>
+				<Toolbar.Root aria-label="Changes actions" className={styles.itemRowActions}>
+					<Toolbar.Button type="button" className={styles.itemRowActionButton} onClick={onCommit}>
 						Commit
-					</button>
-					<button
+					</Toolbar.Button>
+					<Toolbar.Button
 						type="button"
-						className={styles.itemRowAction}
+						className={styles.itemRowActionButton}
 						aria-label="Changes menu"
 						onClick={(event) => {
 							void showNativeMenuFromTrigger(event.currentTarget, menuItems);
 						}}
 					>
 						<MenuTriggerIcon />
-					</button>
-				</>
+					</Toolbar.Button>
+				</Toolbar.Root>
 			)}
 		</ItemRow>
 	);
@@ -1372,26 +1370,26 @@ const BranchRow: FC<
 								{optimisticBranchName}
 							</button>
 							{workspaceMode._tag === "Default" && (
-								<>
-									<button
+								<Toolbar.Root aria-label="Branch actions" className={styles.itemRowActions}>
+									<Toolbar.Button
 										type="button"
-										className={styles.itemRowAction}
+										className={styles.itemRowActionButton}
 										aria-label="Push branch"
 										disabled
 									>
 										<PushIcon />
-									</button>
-									<button
+									</Toolbar.Button>
+									<Toolbar.Button
 										type="button"
-										className={styles.itemRowAction}
+										className={styles.itemRowActionButton}
 										aria-label="Branch menu"
 										onClick={(event) => {
 											void showNativeMenuFromTrigger(event.currentTarget, menuItems);
 										}}
 									>
 										<MenuTriggerIcon />
-									</button>
-								</>
+									</Toolbar.Button>
+								</Toolbar.Root>
 							)}
 						</>
 					)}
@@ -1452,16 +1450,18 @@ const StackRow: FC<
 				Stack
 			</button>
 			{workspaceMode._tag === "Default" && (
-				<button
-					type="button"
-					className={styles.itemRowAction}
-					aria-label="Stack menu"
-					onClick={(event) => {
-						void showNativeMenuFromTrigger(event.currentTarget, menuItems);
-					}}
-				>
-					<MenuTriggerIcon />
-				</button>
+				<Toolbar.Root aria-label="Stack actions" className={styles.itemRowActions}>
+					<Toolbar.Button
+						type="button"
+						className={styles.itemRowActionButton}
+						aria-label="Stack menu"
+						onClick={(event) => {
+							void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+						}}
+					>
+						<MenuTriggerIcon />
+					</Toolbar.Button>
+				</Toolbar.Root>
 			)}
 		</ItemRow>
 	);

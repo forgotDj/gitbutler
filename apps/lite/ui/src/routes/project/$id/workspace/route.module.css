@@ -51,14 +51,25 @@
 	background-color: var(--color-section-selected-bg);
 }
 
-.itemRowAction {
-	display: grid;
+.itemRowActions {
+	display: flex;
 	visibility: hidden;
+	align-items: stretch;
+
+	.itemRow:hover &,
+	.itemRow:focus-within &,
+	.itemRowSelected & {
+		visibility: visible;
+	}
+}
+
+.itemRowActionButton {
+	display: grid;
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
 	border-radius: 8px;
 
-	&:enabled:hover {
+	&:not([data-disabled]):hover {
 		background-color: var(--color-item-row-action-hover-bg);
 
 		.itemRowSelected & {
@@ -71,13 +82,7 @@
 		height: var(--row-line-height);
 	}
 
-	.itemRow:hover &,
-	.itemRow:focus-within &,
-	.itemRowSelected & {
-		visibility: visible;
-	}
-
-	&:disabled {
+	&[data-disabled] {
 		opacity: 0.5;
 	}
 }
