@@ -141,13 +141,6 @@
 	align-items: center;
 }
 
-.commonBaseCommit {
-	flex-grow: 1;
-	padding-inline: var(--row-inline-padding);
-	padding-block: var(--row-block-padding);
-	line-height: var(--row-line-height);
-}
-
 .editorForm {
 	display: flex;
 	row-gap: var(--row-block-padding);

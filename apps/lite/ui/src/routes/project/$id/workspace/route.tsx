@@ -1143,7 +1143,7 @@ const BaseCommitRow: FC<
 				>
 					<button
 						type="button"
-						className={styles.commonBaseCommit}
+						className={classes(styles.itemRowButton, styles.sectionButton)}
 						onClick={() => {
 							dispatch(projectActions.selectItem({ projectId, item }));
 						}}
