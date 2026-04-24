@@ -13,7 +13,7 @@ use std::collections::HashMap;
 
 use anyhow::Context as _;
 use but_graph::SegmentIndex;
-use but_workspace::ref_info::{LocalCommit, Segment};
+use but_workspace::ref_info::LocalCommit;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
@@ -302,7 +302,7 @@ impl Branch {
         repo: &gix::Repository,
         cli_id: String,
         segment: SegmentWithId,
-        segments_by_id: &HashMap<SegmentIndex, Segment>,
+        push_statuses_by_segment_id: &HashMap<SegmentIndex, but_workspace::ui::PushStatus>,
         local_commits_by_id: &HashMap<gix::ObjectId, LocalCommit>,
         remote_commits_by_id: &HashMap<gix::ObjectId, but_workspace::ref_info::Commit>,
         review_id: Option<String>,
@@ -338,10 +338,13 @@ impl Branch {
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
 
-        let push_status = segments_by_id
+        let push_status = push_statuses_by_segment_id
             .get(&segment.inner.id)
-            .context("BUG: head_info does not have segment that graph has")?
-            .push_status;
+            .copied()
+            .unwrap_or_else(|| {
+                eprintln!("warning: head_info does not have segment that graph has");
+                but_workspace::ui::PushStatus::CompletelyUnpushed
+            });
         Ok(Branch {
             cli_id,
             name: segment.branch_name().unwrap_or_default().to_string(),
@@ -555,7 +558,7 @@ fn convert_branch_to_json(
         repo,
         cli_id,
         segment.clone(),
-        &status_ctx.segments_by_id,
+        &status_ctx.push_statuses_by_segment_id,
         &status_ctx.local_commits_by_id,
         &status_ctx.remote_commits_by_id,
         review_id,
