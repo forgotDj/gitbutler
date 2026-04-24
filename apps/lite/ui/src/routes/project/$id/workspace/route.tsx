@@ -1720,6 +1720,10 @@ const ProjectPage: FC = () => {
 		selectNormalizedSelectedItem(state, { projectId, navigationIndex: navigationIndexUnfiltered }),
 	);
 
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
+
 	const navigationIndex =
 		workspaceMode._tag !== "Default"
 			? filterNavigationIndex(
@@ -1729,6 +1733,8 @@ const ProjectPage: FC = () => {
 						// selectable otherwise the preview will suddenly appear to change
 						// and the user may lose sight of their source item (e.g. hunk).
 						(selectedItem && itemEquals(selectedItem, item)) ||
+						// After selection moves, allow returning selection to the source item.
+						(operationMode?.source && itemEquals(operationMode.source, item)) ||
 						includeItemForWorkspaceMode({ mode: workspaceMode, item }),
 				)
 			: navigationIndexUnfiltered;
@@ -1762,10 +1768,6 @@ const ProjectPage: FC = () => {
 		focusPanel,
 		focusAdjacentPanel,
 	});
-
-	const operationMode = useAppSelector((state) =>
-		selectProjectOperationModeState(state, projectId),
-	);
 
 	// TODO: handle project not found error. or only run when project is not null? waterfall.
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
