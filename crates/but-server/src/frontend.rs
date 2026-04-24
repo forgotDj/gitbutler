@@ -3,7 +3,7 @@
 //! Build the frontend first (from the repo root):
 //!
 //! ```sh
-//! VITE_BUILD_TARGET=web VITE_BUTLER_API_BASE_URL=/api \
+//! SVELTEKIT_OUT_DIR=embedded-frontend VITE_BUILD_TARGET=web VITE_BUTLER_API_BASE_URL=/api \
 //!   pnpm --filter @gitbutler/desktop build
 //! ```
 //!
@@ -65,7 +65,7 @@ fn extract_inline_script_hashes(html: &str) -> Vec<String> {
 const _: &str = env!("EMBEDDED_FRONTEND_HASH");
 
 #[derive(RustEmbed)]
-#[folder = "../../apps/desktop/build/"]
+#[folder = "../../apps/desktop/embedded-frontend/"]
 struct Assets;
 
 /// Axum fallback handler — serves embedded static files with SPA fallback.

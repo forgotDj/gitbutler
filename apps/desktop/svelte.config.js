@@ -2,6 +2,8 @@ import svelteInjectComment from "@gitbutler/svelte-comment-injector";
 import staticAdapter from "@sveltejs/adapter-static";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 
+const outDir = process.env.SVELTEKIT_OUT_DIR || "build";
+
 const config = {
 	preprocess: [vitePreprocess({ script: true }), svelteInjectComment()],
 	kit: {
@@ -9,8 +11,8 @@ const config = {
 			$components: "./src/components",
 		},
 		adapter: staticAdapter({
-			pages: "build",
-			assets: "build",
+			pages: outDir,
+			assets: outDir,
 			fallback: "index.html",
 			precompress: false,
 			strict: false,

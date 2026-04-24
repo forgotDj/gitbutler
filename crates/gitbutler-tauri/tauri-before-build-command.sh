@@ -18,6 +18,13 @@ if [ "${OS:-}" == "windows" ] || [ "${OS:-}" == "linux" ]; then
   BUT_FEATURES=""
   if [ "${CHANNEL:-}" != "release" ]; then
     BUT_FEATURES="--features irc,remote"
+    # Build the embedded frontend with VITE_BUILD_TARGET=web so it uses the
+    # HTTP backend instead of Tauri IPC (see #13500).  Output to a separate
+    # directory so the Tauri-targeted build in apps/desktop/build/ is not
+    # disturbed.
+    SVELTEKIT_OUT_DIR=embedded-frontend \
+      VITE_BUILD_TARGET=web VITE_BUTLER_API_BASE_URL=/api VITE_EMBEDDED_BUILD=1 \
+      pnpm --filter @gitbutler/desktop build
   fi
   # shellcheck disable=SC2086
   cargo build --release -p but $BUT_FEATURES

@@ -5,25 +5,25 @@ fn main() {
     // dist directory to exist at compile time. Fail with clear instructions
     // rather than writing placeholder files into the source tree.
     if std::env::var("CARGO_FEATURE_EMBEDDED_FRONTEND").is_ok() {
-        let dist = Path::new("../../apps/desktop/build");
+        let dist = Path::new("../../apps/desktop/embedded-frontend");
         if !dist.exists() {
             // Create an empty directory so rust-embed can compile. The embedded
             // server will serve no frontend assets until `pnpm build` is run:
             //
-            //   VITE_BUILD_TARGET=web VITE_BUTLER_API_BASE_URL=/api \
-            //   pnpm --filter @gitbutler/desktop build
+            //   SVELTEKIT_OUT_DIR=embedded-frontend VITE_BUILD_TARGET=web \
+            //   VITE_BUTLER_API_BASE_URL=/api pnpm --filter @gitbutler/desktop build
             //
             // This allows `cargo check --workspace` to succeed without a prior
             // frontend build (e.g. in CI steps that only lint Rust code).
             let _ = std::fs::create_dir_all(dist);
             println!(
-                "cargo:warning=Frontend assets not found at apps/desktop/build/. \
+                "cargo:warning=Frontend assets not found at apps/desktop/embedded-frontend/. \
                       The embedded server will have no UI until you run `pnpm build`."
             );
             println!("cargo:rustc-env=EMBEDDED_FRONTEND_HASH=0");
             // Always watch the dist directory so Cargo reruns this script once
             // `pnpm build` creates it and populates it with assets.
-            println!("cargo:rerun-if-changed=../../apps/desktop/build");
+            println!("cargo:rerun-if-changed=../../apps/desktop/embedded-frontend");
             return;
         }
 
