@@ -840,10 +840,7 @@ const CommitRow: FC<
 				<>
 					<button
 						type="button"
-						className={classes(
-							styles.itemRowButton,
-							isCommitMessagePending && styles.commitButtonPending,
-						)}
+						className={styles.itemRowButton}
 						onClick={() => {
 							dispatch(projectActions.selectItem({ projectId, item }));
 						}}
