@@ -5,6 +5,7 @@ use but_meta::{
 };
 use but_testsupport::StackState;
 
+mod add_edge;
 mod cherry_pick;
 mod conflictable_restriction;
 mod disconnect;

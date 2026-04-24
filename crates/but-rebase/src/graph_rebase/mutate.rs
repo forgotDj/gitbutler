@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use but_core::RefMetadata;
 use petgraph::{Direction, visit::EdgeRef};
 use serde::{Deserialize, Serialize};
@@ -742,6 +742,59 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
                 })
             }
         }
+    }
+
+    /// Add an edge to the graph with a desired order.
+    ///
+    /// Bails if there is already an edge from the child to the parent with the
+    /// same order.
+    pub fn add_edge(
+        &mut self,
+        child: impl ToSelector,
+        parent: impl ToSelector,
+        desired_order: usize,
+    ) -> Result<()> {
+        let child = self.history.normalize_selector(child.to_selector(self)?)?;
+        let parent = self.history.normalize_selector(parent.to_selector(self)?)?;
+
+        if cfg!(debug_assertions) {
+            let mut seen = HashSet::from([parent.id]);
+            let mut tips = vec![parent.id];
+
+            while let Some(tip) = tips.pop() {
+                for parent in self
+                    .graph
+                    .edges_directed(tip, Direction::Outgoing)
+                    .map(|e| e.target())
+                {
+                    if seen.insert(parent) {
+                        tips.push(parent);
+                    }
+                }
+            }
+
+            if seen.contains(&child.id) {
+                bail!("BUG: Add edge introduces a cycle");
+            }
+        }
+
+        if self
+            .graph
+            .edges_directed(child.id, Direction::Outgoing)
+            .any(|edge| edge.weight().order == desired_order)
+        {
+            bail!("An edge with desired order {desired_order} already exists");
+        }
+
+        self.graph.add_edge(
+            child.id,
+            parent.id,
+            Edge {
+                order: desired_order,
+            },
+        );
+
+        Ok(())
     }
 }
 
