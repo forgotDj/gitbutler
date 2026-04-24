@@ -51,7 +51,7 @@
 	background-color: var(--color-section-selected-bg);
 }
 
-.itemRowActions {
+.itemRowToolbar {
 	display: flex;
 	visibility: hidden;
 	align-items: stretch;
@@ -63,7 +63,7 @@
 	}
 }
 
-.itemRowActionButton {
+.itemRowToolbarButton {
 	display: grid;
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
