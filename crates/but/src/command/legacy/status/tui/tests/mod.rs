@@ -94,6 +94,40 @@ fn shows_full_error_cause_chain_with_multiple_contexts() {
 }
 
 #[test]
+fn help_popup_opens_over_status_view() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render('?')
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_opens_over_status_view_001.svg"]);
+
+    tui.input_then_render(KeyCode::Esc)
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_opens_over_status_view_002.svg"]);
+}
+
+#[test]
+fn help_popup_scrolls() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+
+    let mut tui = test_tui_with_size(env, 100, 10);
+
+    tui.input_then_render('?')
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_scrolls_001.svg"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('J')))
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_scrolls_002.svg"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('K')))
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_scrolls_003.svg"]);
+
+    tui.input_then_render(KeyCode::Esc)
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_scrolls_004.svg"]);
+}
+
+#[test]
 fn format_error_for_tui_shows_cause_chain_without_backtrace() {
     let err = anyhow!("root-cause")
         .context("context-level-1")
@@ -491,7 +525,7 @@ fn esc_leaves_rub_mode() {
 }
 
 #[test]
-fn mode_toggle_key_r_enters_and_leaves_rub_mode() {
+fn mode_key_r_enters_and_escape_leaves_rub_mode() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
     env.setup_metadata(&["A"]).unwrap();
 
@@ -508,7 +542,7 @@ fn mode_toggle_key_r_enters_and_leaves_rub_mode() {
         ])
         .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
 
-    tui.input_then_render('r')
+    tui.input_then_render(KeyCode::Esc)
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 }
 
@@ -579,7 +613,7 @@ fn rub_mode_shift_k_jumps_to_first_selectable_in_previous_branch() {
 }
 
 #[test]
-fn mode_toggle_key_c_enters_and_leaves_commit_mode() {
+fn mode_key_c_enters_and_escape_leaves_commit_mode() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
     env.setup_metadata(&["A"]).unwrap();
 
@@ -593,12 +627,12 @@ fn mode_toggle_key_c_enters_and_leaves_commit_mode() {
         ])
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [unassigned changes]"]);
 
-    tui.input_then_render('c')
+    tui.input_then_render(KeyCode::Esc)
         .assert_current_line_eq(str!["╭┄zz [unassigned changes]"]);
 }
 
 #[test]
-fn mode_toggle_key_m_enters_and_leaves_move_mode() {
+fn mode_key_m_enters_and_escape_leaves_move_mode() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
     env.setup_metadata(&["A"]).unwrap();
 
@@ -613,7 +647,7 @@ fn mode_toggle_key_m_enters_and_leaves_move_mode() {
         ])
         .assert_current_line_eq(str!["┊╭┄<< source >> << noop >> g0 [A]"]);
 
-    tui.input_then_render('m')
+    tui.input_then_render(KeyCode::Esc)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 }
 
@@ -781,14 +815,14 @@ fn commit_file_list_rub_can_escape_scope_and_esc_reenters_file_list() {
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
     tui.input_then_render(KeyCode::Esc)
-        .assert_current_line_eq(str!["┊●   9477ae7 add A"])
+        .assert_current_line_eq(str!["┊│     94:tm A A"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/commit_file_list_rub_can_escape_scope_and_esc_reenters_file_list_final.svg"
         ]);
 }
 
 #[test]
-fn confirm_rub_closes_commit_file_list() {
+fn confirm_rub_keeps_commit_file_list_open() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
     env.setup_metadata(&["A", "B"]).unwrap();
 
@@ -811,7 +845,7 @@ fn confirm_rub_closes_commit_file_list() {
 }
 
 #[test]
-fn esc_in_normal_mode_closes_global_file_list() {
+fn esc_in_normal_mode_keeps_global_file_list_open() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
     env.setup_metadata(&["A", "B"]).unwrap();
 
@@ -827,14 +861,14 @@ fn esc_in_normal_mode_closes_global_file_list() {
         .assert_current_line_eq(str!["┊│     [..] A A"]);
 
     tui.input_then_render(KeyCode::Esc)
-        .assert_current_line_eq(str!["┊●   [..] add A"])
+        .assert_current_line_eq(str!["┊│     94:tm A A"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/esc_in_normal_mode_closes_global_file_list_final.svg"
         ]);
 }
 
 #[test]
-fn esc_in_normal_mode_closes_commit_file_list() {
+fn esc_in_normal_mode_keeps_commit_file_list_open() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
     env.setup_metadata(&["A", "B"]).unwrap();
 
@@ -847,7 +881,7 @@ fn esc_in_normal_mode_closes_commit_file_list() {
         .assert_current_line_eq(str!["┊│     [..] A A"]);
 
     tui.input_then_render(KeyCode::Esc)
-        .assert_current_line_eq(str!["┊●   [..] add A"])
+        .assert_current_line_eq(str!["┊│     94:tm A A"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/esc_in_normal_mode_closes_commit_file_list_final.svg"
         ]);

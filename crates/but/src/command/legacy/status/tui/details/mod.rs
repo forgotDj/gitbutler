@@ -43,7 +43,7 @@ use crate::{
     theme::Theme,
 };
 
-use super::RubSource;
+use super::{HelpMessage, RubSource};
 
 mod details_cursor;
 
@@ -199,6 +199,7 @@ impl Details {
             | Message::GrowDetails
             | Message::ShrinkDetails
             | Message::PickAndGotoBranch
+            | Message::ToggleHelp
             | Message::RegisterOutOfBandMessage(_)
             | Message::WithOneFrameDelay(_)
             | Message::EnterNormalMode => false,
@@ -252,6 +253,9 @@ impl Details {
                 | DetailsMessage::ScrollUp(_)
                 | DetailsMessage::ScrollDown(_)
                 | DetailsMessage::ToggleVisibility => false,
+            },
+            Message::Help(help_message) => match help_message {
+                HelpMessage::Close | HelpMessage::ScrollUp(_) | HelpMessage::ScrollDown(_) => false,
             },
 
             Message::AndThen { lhs, rhs } => {
@@ -550,7 +554,7 @@ impl Details {
         }
     }
 
-    pub(super) fn render(&self, area: Rect, frame: &mut Frame) {
+    pub(super) fn render(&self, help_shown: bool, area: Rect, frame: &mut Frame) {
         let outer_block = Block::bordered()
             .borders(Borders::LEFT)
             .border_style(self.theme.border);
@@ -558,7 +562,14 @@ impl Details {
         frame.render_widget(outer_block, area);
 
         if let Some(diff) = &self.widget {
-            diff.render(&self.cursor, self.scroll_top, inner_area, frame, self.theme);
+            diff.render(
+                &self.cursor,
+                self.scroll_top,
+                inner_area,
+                frame,
+                help_shown,
+                self.theme,
+            );
         }
     }
 }
@@ -736,6 +747,7 @@ impl DetailsAndDiffWidget {
         scroll_top: usize,
         area: Rect,
         buf: &mut Frame,
+        help_shown: bool,
         theme: &'static Theme,
     ) {
         enum ListItemOrString<'a> {
@@ -791,9 +803,10 @@ impl DetailsAndDiffWidget {
         .map(|item| match item {
             ListItemOrString::ListItem(list_item) => list_item.to_owned(),
             ListItemOrString::ListItemInSection(section_id, list_item) => {
-                if cursor
-                    .selection()
-                    .is_some_and(|selection| selection == section_id)
+                if !help_shown
+                    && cursor
+                        .selection()
+                        .is_some_and(|selection| selection == section_id)
                 {
                     list_item
                         .to_owned()
