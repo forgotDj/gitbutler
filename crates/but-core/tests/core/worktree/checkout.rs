@@ -340,7 +340,7 @@ inserted in new tree
 }
 
 #[test]
-fn worktree_snapshot_of_legacy_crlf_blob_conflicts_with_independent_target_change()
+fn worktree_snapshot_of_legacy_crlf_blob_merges_cleanly_with_independent_target_change()
 -> anyhow::Result<()> {
     let (repo, _tmp) = writable_scenario_slow("legacy-crlf-blob-with-gitattributes");
     let file_path = repo.workdir_path("ImportOrdersJob.cs").unwrap();
@@ -364,7 +364,7 @@ fn worktree_snapshot_of_legacy_crlf_blob_conflicts_with_independent_target_chang
     let (head_commit, new_commit) = build_commit(
         &repo,
         |tree| {
-            // This commit also has the right light endings (CRLF)
+            // This commit also has the right line endings (CRLF)
             let blob_id = repo.write_blob(b"1\r\n2\r\nthree from target\r\n")?;
             tree.upsert("ImportOrdersJob.cs", EntryKind::Blob, blob_id)?;
             Ok(())
