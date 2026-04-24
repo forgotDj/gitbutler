@@ -2,13 +2,13 @@ use std::{fs, path::PathBuf};
 
 use anyhow::{Context as _, Result, anyhow, bail};
 use bstr::BString;
-use but_core::{ref_metadata::StackId, sync::RepoShared};
+use but_core::{WORKSPACE_REF_NAME, ref_metadata::StackId, sync::RepoShared};
 use but_ctx::Context;
 use but_serde::BStringForFrontend;
 use serde::{Deserialize, Serialize};
 
 /// The reference the app will checkout when the workspace is open
-pub const WORKSPACE_BRANCH_REF: &str = "refs/heads/gitbutler/workspace";
+pub const WORKSPACE_BRANCH_REF: &str = WORKSPACE_REF_NAME;
 
 /// Previous workspace reference, delete after transition.
 pub const INTEGRATION_BRANCH_REF: &str = "refs/heads/gitbutler/integration";

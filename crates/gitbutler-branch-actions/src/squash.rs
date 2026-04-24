@@ -62,9 +62,9 @@ fn do_squash_commits(
         let stack = vb_state.get_stack_in_workspace(stack_id)?;
         let repo = ctx.repo.get()?;
 
-        let default_target = vb_state.get_default_target()?;
+        let target_base_oid = ctx.persisted_default_target()?.sha;
         let merge_base = repo
-            .merge_base(stack.head_oid(ctx)?, default_target.sha)?
+            .merge_base(stack.head_oid(ctx)?, target_base_oid)?
             .detach();
 
         // =========== Step 1: Reorder

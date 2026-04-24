@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use crate::theme::{self, Paint};
-use but_core::sync::LockScope;
+use but_core::{WORKSPACE_REF_NAME, sync::LockScope};
 use but_ctx::Context;
 use command_group::AsyncCommandGroup;
 
@@ -483,7 +483,7 @@ fn check_workspace_commits_before_init(
     }
 
     // Check the HEAD commit message
-    let mut workspace_ref = repo.find_reference("refs/heads/gitbutler/workspace")?;
+    let mut workspace_ref = repo.find_reference(WORKSPACE_REF_NAME)?;
     let workspace_commit = workspace_ref.peel_to_commit()?;
     let message = workspace_commit.message_raw()?;
     let message_str = String::from_utf8_lossy(message);

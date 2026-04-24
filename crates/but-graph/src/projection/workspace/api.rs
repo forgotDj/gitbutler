@@ -125,17 +125,6 @@ impl Workspace {
             .map(|commit| commit.id)
     }
 
-    /// Return the remote name to use when pushing branches associated with this target.
-    ///
-    /// The explicit push remote in workspace metadata wins. If none is configured, this falls
-    /// back to the remote name implied by the target reference.
-    pub fn target_push_remote_name(&self) -> Option<String> {
-        self.metadata
-            .as_ref()
-            .and_then(|metadata| metadata.push_remote.clone())
-            .or_else(|| self.remote_name())
-    }
-
     /// Return the `(merge-base, target-commit-id)` of the merge-base between the `commit_to_merge`
     /// and either the [target-branch](Self::target_ref), the [extra-target](Self::extra_target)
     /// or the [target-commit](Self::target_commit), depending on which is set and encountered

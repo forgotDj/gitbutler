@@ -77,7 +77,9 @@ pub fn worktree_integrate(
     status
         .stack
         .set_heads_from_rebase_output(ctx, status.rebase_output.references)?;
-    let after = WorkspaceState::create(ctx, perm.read_permission())?;
+    ctx.invalidate_workspace_cache()?;
+    let after =
+        WorkspaceState::create_from_heads(ctx, perm.read_permission(), &status.after_heads)?;
     update_uncommitted_changes(ctx, before, after, perm)?;
     update_workspace_commit(ctx, false)?;
 
@@ -89,6 +91,7 @@ pub fn worktree_integrate(
 struct IntegrationResult {
     rebase_output: RebaseOutput,
     stack: Stack,
+    after_heads: Vec<gix::ObjectId>,
 }
 
 /// Performs the workspace integration operations in memory, returning the
@@ -250,22 +253,22 @@ fn worktree_integration_inner(
     #[expect(deprecated)]
     let wd_tree = repo.create_wd_tree(0)?;
 
+    let before_heads = stacks
+        .iter()
+        .map(|s| s.head_oid(ctx))
+        .collect::<Result<Vec<_>>>()?;
+    let mut after_heads = stacks
+        .iter()
+        .filter(|s| s.id != stack.id)
+        .map(|s| s.head_oid(ctx))
+        .collect::<Result<Vec<_>>>()?;
+    after_heads.push(output.top_commit);
+
     let working_dir_conflicts = {
-        let before_heads = stacks
-            .iter()
-            .map(|s| s.head_oid(ctx))
-            .collect::<Result<Vec<_>>>()?;
         let before = WorkspaceState::create_from_heads(ctx, perm, &before_heads)?;
         let before = merge_workspace(&repo, &before)?;
-        let mut after_heads = stacks
-            .iter()
-            .filter(|s| s.id != stack.id)
-            .map(|s| s.head_oid(ctx))
-            .collect::<Result<Vec<_>>>()?;
-        after_heads.push(output.top_commit);
         let after = WorkspaceState::create_from_heads(ctx, perm, &after_heads)?;
         let after = merge_workspace(&repo, &after)?;
-
         move_tree_has_conflicts(ctx, wd_tree, before, after)?
     };
 
@@ -278,6 +281,7 @@ fn worktree_integration_inner(
         Some(IntegrationResult {
             rebase_output: output,
             stack,
+            after_heads,
         }),
     ))
 }

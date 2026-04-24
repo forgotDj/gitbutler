@@ -3,7 +3,7 @@ use but_core::RepositoryExt;
 use but_ctx::Context;
 use gitbutler_branch::BranchUpdateRequest;
 use gitbutler_commit::commit_ext::CommitExt;
-use gitbutler_stack::{Stack, Target};
+use gitbutler_stack::Stack;
 use itertools::Itertools;
 
 use crate::VirtualBranchesExt;
@@ -36,17 +36,18 @@ pub(crate) struct IsCommitIntegrated<'repo, 'cache, 'graph> {
 }
 
 impl<'repo, 'cache, 'graph> IsCommitIntegrated<'repo, 'cache, 'graph> {
-    pub(crate) fn new(
-        target: &Target,
+    pub(crate) fn new_with_target(
+        target_ref_name: &gix::refs::FullNameRef,
+        target_base_oid: gix::ObjectId,
         gix_repo: &'repo gix::Repository,
         graph: &'graph mut MergeBaseCommitGraph<'repo, 'cache>,
     ) -> anyhow::Result<Self> {
         let remote_head = gix_repo
-            .find_reference(&target.branch.to_string())?
+            .find_reference(target_ref_name)?
             .peel_to_commit()?
             .id;
         let upstream_tree_id = gix_repo.find_commit(remote_head)?.tree_id()?.detach();
-        let upstream_commits = commit_ids_until(gix_repo, remote_head, target.sha)?;
+        let upstream_commits = commit_ids_until(gix_repo, remote_head, target_base_oid)?;
         let upstream_change_ids = upstream_commits
             .iter()
             .filter_map(|commit_id| {
@@ -62,7 +63,7 @@ impl<'repo, 'cache, 'graph> IsCommitIntegrated<'repo, 'cache, 'graph> {
         Ok(Self {
             gix_repo,
             graph,
-            target_commit_id: target.sha,
+            target_commit_id: target_base_oid,
             upstream_tree_id,
             upstream_commits,
             upstream_change_ids,

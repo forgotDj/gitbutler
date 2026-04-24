@@ -5,7 +5,10 @@
 
 use std::path::Path;
 
+use anyhow::Context as _;
+use but_core::{RefMetadata, WORKSPACE_REF_NAME};
 use but_ctx::Context;
+use but_meta::VirtualBranchesTomlMetadata;
 use gitbutler_stack::VirtualBranchesHandle;
 use serde::{Deserialize, Serialize};
 
@@ -39,7 +42,11 @@ pub mod stack_ext;
 /// Returns the last-seen fork-point that the workspace has with the target branch with which it wants to integrate.
 // TODO: at some point this should be optional, integration branch doesn't have to be defined.
 pub fn common_merge_base_with_target_branch(gb_dir: &Path) -> anyhow::Result<gix::ObjectId> {
-    Ok(VirtualBranchesHandle::new(gb_dir).get_default_target()?.sha)
+    let meta = VirtualBranchesTomlMetadata::from_path(gb_dir.join("virtual_branches.toml"))?;
+    let workspace_ref: gix::refs::FullName = WORKSPACE_REF_NAME.try_into()?;
+    meta.workspace(workspace_ref.as_ref())?
+        .target_commit_id
+        .context("failed to get target base oid")
 }
 
 /// Return a list of commits on the target branch
@@ -60,10 +67,11 @@ pub fn log_target_first_parent(
             commit.parent_ids().next()
         }
         None => {
-            let state = state_handle(&ctx.project_data_dir());
-            let default_target = state.get_default_target()?;
+            let default_target = ctx.persisted_default_target()?;
+            let target_ref_name: gix::refs::FullName =
+                default_target.branch.to_string().try_into()?;
             Some(
-                repo.find_reference(&default_target.branch.to_string())?
+                repo.find_reference(target_ref_name.as_ref())?
                     .peel_to_commit()?
                     .id(),
             )

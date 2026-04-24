@@ -1,8 +1,3 @@
-#![expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-
 use std::collections::HashMap;
 
 use anyhow::anyhow;
@@ -13,7 +8,6 @@ use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
 };
-use gitbutler_stack::VirtualBranchesHandle;
 use uuid::Uuid;
 
 use crate::{Outcome, Source, default_target_setting_if_none};
@@ -38,8 +32,7 @@ pub(crate) fn handle_changes(
     let mut guard = ctx.exclusive_worktree_access();
     let perm = guard.write_permission();
 
-    let mut vb_state = VirtualBranchesHandle::new(ctx.project_data_dir());
-    default_target_setting_if_none(ctx, &mut vb_state)?; // Create a default target if none exists.
+    default_target_setting_if_none(ctx)?; // Create a default target if none exists.
 
     let snapshot_before = ctx.create_snapshot(
         SnapshotDetails::new(OperationKind::AutoHandleChangesBefore),
@@ -50,7 +43,6 @@ pub(crate) fn handle_changes(
         ctx,
         change_summary,
         external_prompt.clone(),
-        &mut vb_state,
         perm,
         exclusive_stack,
     );
@@ -78,7 +70,6 @@ fn handle_changes_simple_inner(
     ctx: &mut Context,
     change_summary: &str,
     external_prompt: Option<String>,
-    vb_state: &mut VirtualBranchesHandle,
     perm: &mut RepoExclusive,
     exclusive_stack: Option<StackId>,
 ) -> anyhow::Result<Outcome> {
@@ -92,7 +83,7 @@ fn handle_changes_simple_inner(
             ));
         }
         OperatingMode::OutsideWorkspace(_) => {
-            let default_target = vb_state.get_default_target()?;
+            let default_target = ctx.persisted_default_target()?;
             gitbutler_branch_actions::set_base_branch(ctx, &default_target.branch, perm)?;
         }
     }

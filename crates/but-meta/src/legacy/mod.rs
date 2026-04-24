@@ -11,7 +11,7 @@ use std::{
 use anyhow::{Context as _, bail};
 use bstr::ByteSlice;
 use but_core::{
-    RefMetadata, is_workspace_ref_name,
+    RefMetadata, WORKSPACE_REF_NAME, is_workspace_ref_name,
     ref_metadata::{
         Branch, RefInfo, StackId,
         StackKind::{Applied, AppliedAndUnapplied},
@@ -551,6 +551,19 @@ impl VirtualBranchesTomlMetadata {
         }
         Ok(())
     }
+
+    /// Set the legacy default target and write it immediately.
+    ///
+    /// This exists for transitional callers that still have to initialize the old
+    /// `default_target` shape, which stores fields that don't exist in workspace metadata.
+    pub fn set_default_target(
+        &mut self,
+        target: impl Into<crate::virtual_branches_legacy_types::Target>,
+    ) -> anyhow::Result<()> {
+        self.snapshot.content.default_target = Some(target.into());
+        self.snapshot.set_changed_to_necessitate_write();
+        self.write_unreconciled()
+    }
 }
 
 /// Mostly used in testing, and it's fine as it's intermediate, and we are very practical here.
@@ -583,7 +596,7 @@ impl Drop for VirtualBranchesTomlMetadata {
     }
 }
 
-const INTEGRATION_BRANCH: &str = "refs/heads/gitbutler/workspace";
+const INTEGRATION_BRANCH: &str = WORKSPACE_REF_NAME;
 
 impl RefMetadata for VirtualBranchesTomlMetadata {
     type Handle<T> = VBTomlMetadataHandle<T>;
@@ -857,6 +870,7 @@ impl RefMetadata for VirtualBranchesTomlMetadata {
                     && new_id != existing.sha
                 {
                     existing.sha = new_id;
+                    changed_target = true;
                 }
             }
             (None, None) => {}

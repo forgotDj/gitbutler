@@ -13,6 +13,7 @@ use but_core::{
     RepositoryExt,
     sync::{RepoExclusive, RepoExclusiveGuard, RepoShared, RepoSharedGuard},
 };
+use but_error::Code;
 use but_path::AppChannel;
 use but_settings::AppSettings;
 use but_utils::OnDemandCache;
@@ -766,6 +767,26 @@ impl Context {
         graph.into_workspace()
     }
 
+    /// Return the configured GitButler default target from persisted project metadata.
+    ///
+    /// This is deliberately not derived from the current-`HEAD` workspace projection. When
+    /// `HEAD` is outside the GitButler workspace, projection may produce an ad-hoc workspace,
+    /// infer its target from the checked-out branch's upstream, or clear target metadata when
+    /// the checked-out branch is outside the managed workspace bounds. Legacy compatibility
+    /// flows that re-enter the workspace or operate from outside-workspace states need the
+    /// configured GitButler target instead.
+    pub fn persisted_default_target(
+        &self,
+    ) -> anyhow::Result<but_meta::virtual_branches_legacy_types::Target> {
+        self.meta_inner()?
+            .data()
+            .default_target
+            .clone()
+            .ok_or_else(|| {
+                anyhow!("there is no default target").context(Code::DefaultTargetNotFound)
+            })
+    }
+
     fn meta_inner(&self) -> anyhow::Result<but_meta::VirtualBranchesTomlMetadata> {
         but_meta::VirtualBranchesTomlMetadata::from_path(
             self.project_data_dir().join("virtual_branches.toml"),
@@ -796,6 +817,12 @@ impl Context {
         _perm: &mut RepoExclusive,
     ) -> anyhow::Result<()> {
         self.repo.get_mut()?.reload()?;
+        self.invalidate_workspace_cache()
+    }
+
+    /// Drop the cached workspace projection so the next read re-projects from the current repository
+    /// and metadata state.
+    pub fn invalidate_workspace_cache(&self) -> anyhow::Result<()> {
         *self.workspace.try_borrow_mut()? = None;
         Ok(())
     }

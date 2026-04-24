@@ -117,6 +117,9 @@ pub use ext::ObjectStorageExt;
 mod repo_ext;
 pub use repo_ext::{RepositoryExt, update_head_reference};
 
+/// The legacy single-workspace reference used by GitButler.
+pub const WORKSPACE_REF_NAME: &str = "refs/heads/gitbutler/workspace";
+
 /// Return `true` if `ref_name` looks like the standard GitButler workspace.
 ///
 /// Note that in the future, ideally we won't rely on the name at all, but instead
@@ -124,7 +127,7 @@ pub use repo_ext::{RepositoryExt, update_head_reference};
 ///
 /// TODO: no special handling by branch-name should be needed, it's all in the ref-metadata.
 pub fn is_workspace_ref_name(ref_name: &FullNameRef) -> bool {
-    ref_name.as_bstr() == "refs/heads/gitbutler/workspace"
+    ref_name.as_bstr() == WORKSPACE_REF_NAME
         || ref_name.as_bstr() == "refs/heads/gitbutler/integration"
 }
 

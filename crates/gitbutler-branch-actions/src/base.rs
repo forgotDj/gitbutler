@@ -1,19 +1,19 @@
-use std::{path::Path, time};
+use std::time;
 
 use anyhow::{Context as _, Result, anyhow};
 use but_core::{
+    RefMetadata, WORKSPACE_REF_NAME,
     git_config::{edit_repo_config, ensure_config_value},
     worktree::checkout::UncommitedWorktreeChanges,
 };
 use but_ctx::Context;
-use but_error::Marker;
+use but_error::{Code, Marker};
 use but_oxidize::ObjectIdExt;
-use gitbutler_branch::GITBUTLER_WORKSPACE_REFERENCE;
 use gitbutler_git::GitContextExt as _;
 use gitbutler_project::FetchResult;
 use gitbutler_reference::{Refname, RemoteRefname};
 use gitbutler_repo::first_parent_commit_ids_until_with_graph;
-use gitbutler_stack::{Stack, Target, VirtualBranchesHandle, canned_branch_name};
+use gitbutler_stack::{Stack, Target, canned_branch_name};
 use serde::Serialize;
 use tracing::instrument;
 
@@ -95,14 +95,14 @@ impl BaseBranch {
 
 #[instrument(skip(ctx), err(Debug))]
 pub fn get_base_branch_data(ctx: &Context) -> Result<BaseBranch> {
-    let target = default_target(&ctx.project_data_dir())?;
+    let target = default_target(ctx)?;
     let base = target_to_base_branch(ctx, &target)?;
     Ok(base)
 }
 
 #[instrument(skip(ctx), err(Debug))]
 pub fn get_base_branch_remote_url(ctx: &Context) -> Result<String> {
-    let target = default_target(&ctx.project_data_dir())?;
+    let target = default_target(ctx)?;
     remote_url_of_target_to_base_branch(ctx, &target)
 }
 
@@ -118,16 +118,15 @@ pub fn get_base_branch_remote_url(ctx: &Context) -> Result<String> {
 /// there wasn't enough repository state to infer a safe target.
 #[instrument(skip(ctx), err(Debug))]
 pub fn bootstrap_default_target_if_missing(ctx: &Context) -> Result<bool> {
-    let mut vb_state = VirtualBranchesHandle::new(ctx.project_data_dir());
-    if vb_state.maybe_get_default_target()?.is_some() {
+    let repo = ctx.repo.get()?;
+    if repo.try_find_reference(WORKSPACE_REF_NAME)?.is_none() {
         return Ok(false);
     }
 
-    let repo = ctx.repo.get()?;
-    if repo
-        .try_find_reference(GITBUTLER_WORKSPACE_REFERENCE.to_string().as_str())?
-        .is_none()
-    {
+    let workspace_ref: gix::refs::FullName = WORKSPACE_REF_NAME.try_into()?;
+    let meta = ctx.legacy_meta()?;
+    let workspace = meta.workspace(workspace_ref.as_ref())?;
+    if workspace.target_ref.is_some() {
         return Ok(false);
     }
 
@@ -148,7 +147,9 @@ pub fn bootstrap_default_target_if_missing(ctx: &Context) -> Result<bool> {
             return Ok(false);
         }
     };
-    vb_state.set_default_target(target)?;
+    let mut meta = ctx.legacy_meta()?;
+    meta.set_default_target(target)?;
+    ctx.invalidate_workspace_cache()?;
     set_exclude_decoration(ctx)?;
     Ok(true)
 }
@@ -204,7 +205,7 @@ pub(crate) fn set_base_branch(
     let repo = ctx.repo.get()?;
 
     // if target exists, and it is the same as the requested branch, we should go back
-    if let Ok(target) = default_target(&ctx.project_data_dir())
+    if let Ok(target) = default_target(ctx)
         && target.branch.eq(target_branch_ref)
     {
         return go_back_to_integration(ctx, &target);
@@ -256,8 +257,10 @@ pub(crate) fn set_base_branch(
         push_remote_name: None,
     };
 
+    let mut meta = ctx.legacy_meta()?;
+    meta.set_default_target(target.clone())?;
+    ctx.invalidate_workspace_cache()?;
     let mut vb_state = ctx.virtual_branches();
-    vb_state.set_default_target(target.clone())?;
 
     // TODO: make sure this is a real branch
     let head_name: Refname = current_head
@@ -268,10 +271,7 @@ pub(crate) fn set_base_branch(
                 .expect("BUG: we have to avoid using these legacy types")
         })
         .context("Failed to get HEAD reference name")?;
-    if !head_name
-        .to_string()
-        .eq(&GITBUTLER_WORKSPACE_REFERENCE.to_string())
-    {
+    if !head_name.to_string().eq(WORKSPACE_REF_NAME) {
         // if there are any commits on the head branch or uncommitted changes in the working directory, we need to
         // put them into a virtual branch
 
@@ -328,11 +328,17 @@ pub(crate) fn set_target_push_remote(ctx: &Context, push_remote_name: &str) -> R
         .find_remote(push_remote_name)
         .context(format!("failed to find remote {push_remote_name}"))?;
 
-    // if target exists, and it is the same as the requested branch, we should go back
-    let mut target = default_target(&ctx.project_data_dir())?;
-    target.push_remote_name = Some(push_remote_name.to_owned());
-    let mut vb_state = ctx.virtual_branches();
-    vb_state.set_default_target(target)?;
+    let workspace_ref: gix::refs::FullName = WORKSPACE_REF_NAME.try_into()?;
+    let mut meta = ctx.legacy_meta()?;
+    let mut workspace = meta.workspace(workspace_ref.as_ref())?;
+    workspace
+        .target_ref
+        .as_ref()
+        .context("there is no default target")?;
+    workspace.push_remote = Some(push_remote_name.to_owned());
+    meta.set_workspace(&workspace)?;
+    meta.write_unreconciled()?;
+    ctx.invalidate_workspace_cache()?;
 
     Ok(())
 }
@@ -466,8 +472,13 @@ fn remote_url_of_target_to_base_branch(ctx: &Context, target: &Target) -> Result
     Ok(remote_url)
 }
 
-fn default_target(base_path: &Path) -> Result<Target> {
-    VirtualBranchesHandle::new(base_path).get_default_target()
+fn default_target(ctx: &Context) -> Result<Target> {
+    ctx.legacy_meta()?
+        .data()
+        .default_target
+        .clone()
+        .map(Into::into)
+        .ok_or_else(|| anyhow!("there is no default target").context(Code::DefaultTargetNotFound))
 }
 
 /// Infer the default target from the Git repository without mutating workspace refs.
@@ -548,7 +559,7 @@ fn first_parent_commit_ids_with_limit(
 }
 
 pub(crate) fn push(ctx: &Context, with_force: bool) -> Result<()> {
-    let target = default_target(&ctx.project_data_dir())?;
+    let target = default_target(ctx)?;
     let _ = ctx.push(
         target.sha,
         &target.branch,

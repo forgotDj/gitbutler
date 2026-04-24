@@ -2,19 +2,19 @@ use std::collections::HashMap;
 
 use anyhow::{Context as _, Result, bail};
 use bstr::ByteSlice;
-use but_core::{Reference, RepositoryExt};
+use but_core::{RefMetadata, Reference, RepositoryExt, WORKSPACE_REF_NAME};
 use but_ctx::{Context, access::RepoExclusive};
 use but_rebase::{RebaseOutput, RebaseStep};
 use but_serde::BStringForFrontend;
 use but_workspace::{legacy::stack_ext::StackDetailsExt, ref_info::Options};
 use gitbutler_commit::commit_ext::CommitExt as _;
 use gitbutler_repo::{first_parent_commit_ids_until, rebase::merge_commits};
-use gitbutler_stack::{StackId, Target, VirtualBranchesHandle};
+use gitbutler_stack::{StackId, VirtualBranchesHandle};
 use gitbutler_workspace::branch_trees::{WorkspaceState, update_uncommitted_changes};
 use gix::merge::tree::TreatAsUnresolved;
 use serde::{Deserialize, Serialize};
 
-use crate::{BranchManagerExt, VirtualBranchesExt as _};
+use crate::BranchManagerExt;
 
 #[derive(Serialize, PartialEq, Debug)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
@@ -207,7 +207,8 @@ pub struct UpstreamIntegrationContext<'a> {
     ctx: &'a Context,
     stacks_in_workspace: Vec<but_workspace::legacy::ui::StackEntry>,
     new_target: gix::ObjectId,
-    target: Target,
+    target_ref_name: gix::refs::FullName,
+    old_target_id: gix::ObjectId,
     gix_repo: &'a gix::Repository,
     review_map: &'a HashMap<String, but_forge::ForgeReview>,
 }
@@ -233,13 +234,24 @@ impl<'a> UpstreamIntegrationContext<'a> {
             )?;
         }
 
-        let virtual_branches_handle = ctx.virtual_branches();
-        let target = virtual_branches_handle.get_default_target()?;
+        let (target_ref_name, old_target_id) = {
+            let (_repo, workspace, _db) =
+                ctx.workspace_and_db_with_perm(permission.read_permission())?;
+            (
+                workspace
+                    .target_ref_name()
+                    .context("failed to get target reference name")?
+                    .to_owned(),
+                workspace
+                    .target_base_oid()
+                    .context("failed to get target base oid")?,
+            )
+        };
         let new_target = match target_commit_oid {
             Some(oid) => oid,
             None => {
                 gix_repo
-                    .find_reference(&target.branch.to_string())?
+                    .find_reference(target_ref_name.as_ref())?
                     .peel_to_commit()?
                     .id
             }
@@ -250,7 +262,8 @@ impl<'a> UpstreamIntegrationContext<'a> {
         Ok(Self {
             _permission: Some(permission),
             new_target,
-            target: target.clone(),
+            target_ref_name,
+            old_target_id,
             stacks_in_workspace,
             ctx,
             gix_repo,
@@ -384,7 +397,7 @@ pub fn upstream_integration_statuses(
 ) -> Result<StackStatuses> {
     let UpstreamIntegrationContext {
         new_target,
-        target,
+        old_target_id,
         stacks_in_workspace,
         review_map,
         ctx,
@@ -394,7 +407,7 @@ pub fn upstream_integration_statuses(
     let repo = ctx.clone_repo_for_merging()?;
     let repo_in_memory = repo.clone().with_object_memory();
 
-    if *new_target == target.sha {
+    if *new_target == *old_target_id {
         return Ok(StackStatuses::UpToDate);
     };
 
@@ -488,7 +501,6 @@ pub(crate) fn integrate_upstream(
     let context =
         UpstreamIntegrationContext::open(ctx, target_commit_oid, permission, &repo, review_map)?;
     let mut virtual_branches_state = VirtualBranchesHandle::new(ctx.project_data_dir());
-    let default_target = virtual_branches_state.get_default_target()?;
 
     let mut deleted_branches = vec![];
 
@@ -599,10 +611,15 @@ pub(crate) fn integrate_upstream(
 
         let mut stacks = virtual_branches_state.list_stacks_in_workspace()?;
 
-        virtual_branches_state.set_default_target(Target {
-            sha: context.new_target,
-            ..default_target
-        })?;
+        {
+            let workspace_ref: gix::refs::FullName = WORKSPACE_REF_NAME.try_into()?;
+            let mut meta = ctx.legacy_meta()?;
+            let mut workspace = meta.workspace(workspace_ref.as_ref())?;
+            workspace.target_commit_id = Some(context.new_target);
+            meta.set_workspace(&workspace)?;
+            meta.write_unreconciled()?;
+            ctx.invalidate_workspace_cache()?;
+        }
 
         // Update branch trees
         for (maybe_stack_id, integration_result) in &integration_results {
@@ -679,13 +696,13 @@ pub(crate) fn resolve_upstream_integration(
     let repo = ctx.repo.get()?;
     let context = UpstreamIntegrationContext::open(ctx, None, permission, &repo, review_map)?;
     let new_target_id = context.new_target;
-    let old_target_id = context.target.sha;
+    let old_target_id = context.old_target_id;
     let fork_point = repo.merge_base(old_target_id, new_target_id)?.detach();
 
     match resolution_approach {
         BaseBranchResolutionApproach::HardReset => Ok(new_target_id),
         BaseBranchResolutionApproach::Merge => {
-            let branch_name = context.target.branch.to_string();
+            let branch_name = context.target_ref_name.as_bstr().to_str_lossy();
             let new_head = merge_commits(
                 &repo,
                 old_target_id,
@@ -719,7 +736,8 @@ fn compute_resolutions(
 ) -> Result<Vec<(Option<StackId>, IntegrationResult)>> {
     let UpstreamIntegrationContext {
         new_target,
-        target,
+        target_ref_name,
+        old_target_id,
         stacks_in_workspace,
         gix_repo,
         ..
@@ -743,7 +761,7 @@ fn compute_resolutions(
                     let top_branch = stack.heads.last().context("top branch not found")?;
 
                     // These two go into the merge commit message.
-                    let incoming_branch_name = target.branch.fullname();
+                    let incoming_branch_name = target_ref_name.as_bstr().to_str_lossy();
                     let target_branch_name = top_branch.name.to_str()?;
 
                     let new_head = merge_commits(
@@ -769,7 +787,7 @@ fn compute_resolutions(
                     // If the base branch needs to resolve its divergence
                     // pick only the commits that are ahead of the old target head
                     let lower_bound = if base_branch_resolution_approach.is_some() {
-                        target.sha
+                        *old_target_id
                     } else {
                         *new_target
                     };

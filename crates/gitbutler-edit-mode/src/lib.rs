@@ -273,7 +273,17 @@ pub(crate) fn save_and_return_to_workspace(ctx: &Context, perm: &mut RepoExclusi
     let git2_repo = &*ctx.git2_repo.get()?;
     let repo = &*ctx.repo.get()?;
 
-    let old_workspace = WorkspaceState::create(ctx, perm.read_permission())?;
+    let old_workspace_projection = workspace_from_workspace_ref(ctx)?;
+    let old_target_base_oid = old_workspace_projection
+        .target_base_oid()
+        .context("failed to get target base oid")?;
+    let old_head_oids = old_workspace_projection
+        .stacks
+        .iter()
+        .map(|stack| stack.tip_skip_empty().unwrap_or(old_target_base_oid))
+        .collect::<Vec<_>>();
+    let old_workspace =
+        WorkspaceState::create_from_heads_and_target(repo, &old_head_oids, old_target_base_oid)?;
 
     let head_commit = repo.head_commit()?;
     let decoded_head_commit = head_commit.decode()?;
@@ -323,6 +333,7 @@ pub(crate) fn save_and_return_to_workspace(ctx: &Context, perm: &mut RepoExclusi
     // because there are none (they have been written to a tree earlier in this
     // function). Therefore, use `materialize_without_checkout`.
     outcome.materialize_without_checkout()?;
+    ctx.invalidate_workspace_cache()?;
 
     // Switch branch to gitbutler/workspace
     git2_repo

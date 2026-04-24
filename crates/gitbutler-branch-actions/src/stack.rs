@@ -1,5 +1,5 @@
 use anyhow::{Context as _, Result};
-use but_core::RepositoryExt;
+use but_core::{RepositoryExt, extract_remote_name_and_short_name};
 use but_ctx::Context;
 use gitbutler_git::{GitContextExt as _, PushResult};
 use gitbutler_operating_modes::ensure_open_workspace_mode;
@@ -9,7 +9,8 @@ use gitbutler_oplog::{
 };
 use gitbutler_reference::{RemoteRefname, normalize_branch_name};
 use gitbutler_repo::hooks;
-use gitbutler_stack::{PatchReferenceUpdate, Stack, StackBranch, StackId, Target};
+use gitbutler_stack::{PatchReferenceUpdate, Stack, StackBranch, StackId};
+use gix::reference::Category;
 use serde::{Deserialize, Serialize};
 
 use crate::{VirtualBranchesExt, actions::Verify, r#virtual::IsCommitIntegrated};
@@ -155,8 +156,43 @@ pub fn push_stack(
         .context("Requires an open workspace mode")?;
     let virtual_branches = ctx.virtual_branches();
     let stack = virtual_branches.get_stack(stack_id)?;
-    let default_target = virtual_branches.get_default_target()?;
-    let push_env = PushStackEnv::new(ctx, &stack, default_target, skip_force_push_protection)?;
+    let (target_ref_name, target_base_oid, target_push_remote_name, target_branch_name) = {
+        let (repo, workspace, _db) = ctx.workspace_and_db_with_perm(guard.read_permission())?;
+        let target_ref_name = workspace
+            .target_ref_name()
+            .context("failed to get target reference name")?
+            .to_owned();
+        let remote_names = repo.remote_names();
+        let target_branch_name =
+            target_branch_name_from_ref_name(target_ref_name.as_ref(), &remote_names)?;
+        let target_push_remote_name = match workspace
+            .metadata
+            .as_ref()
+            .and_then(|metadata| metadata.push_remote.clone())
+        {
+            Some(push_remote) => push_remote,
+            None => extract_remote_name_and_short_name(target_ref_name.as_ref(), &remote_names)
+                .map(|(remote, _)| remote)
+                .context("failed to get target push remote name")?,
+        };
+        (
+            target_ref_name,
+            workspace
+                .target_base_oid()
+                .context("failed to get target base oid")?,
+            target_push_remote_name,
+            target_branch_name.to_string(),
+        )
+    };
+    let push_env = PushStackEnv::new(
+        ctx,
+        &stack,
+        target_ref_name,
+        target_base_oid,
+        target_push_remote_name,
+        target_branch_name,
+        skip_force_push_protection,
+    )?;
 
     // First fetch, because we dont want to push integrated series
     ctx.fetch(&push_env.remote_name, Some("push_stack".into()))?;
@@ -192,10 +228,12 @@ pub fn push_stack(
 }
 
 struct PushStackEnv {
-    default_target: Target,
+    target_ref_name: gix::refs::FullName,
+    target_branch_name: String,
     gix_repo: gix::Repository,
     commit_graph_cache: Option<gix::commitgraph::Graph>,
     merge_base_id: gix::ObjectId,
+    target_base_oid: gix::ObjectId,
     remote_name: String,
     gerrit_mode: bool,
     force_push_protection: bool,
@@ -206,13 +244,15 @@ impl PushStackEnv {
     fn new(
         ctx: &Context,
         stack: &Stack,
-        default_target: Target,
+        target_ref_name: gix::refs::FullName,
+        target_base_oid: gix::ObjectId,
+        remote_name: String,
+        target_branch_name: String,
         skip_force_push_protection: bool,
     ) -> Result<Self> {
-        let remote_name = default_target.push_remote_name();
         let gix_repo = ctx.clone_repo_for_merging_non_persisting()?;
         let merge_base_id = gix_repo
-            .merge_base(stack.head_oid(ctx)?, default_target.sha)?
+            .merge_base(stack.head_oid(ctx)?, target_base_oid)?
             .detach();
         let commit_graph_cache = gix_repo.commit_graph_if_enabled()?;
         let gerrit_mode = gix_repo
@@ -221,10 +261,12 @@ impl PushStackEnv {
             .unwrap_or(false);
 
         Ok(Self {
-            default_target,
+            target_ref_name,
+            target_branch_name,
             gix_repo,
             commit_graph_cache,
             merge_base_id,
+            target_base_oid,
             remote_name,
             gerrit_mode,
             force_push_protection: !skip_force_push_protection
@@ -337,8 +379,12 @@ fn skip_reason_for_branch(
     let mut graph = push_env
         .gix_repo
         .revision_graph(push_env.commit_graph_cache.as_ref());
-    let mut check_commit =
-        IsCommitIntegrated::new(&push_env.default_target, &push_env.gix_repo, &mut graph)?;
+    let mut check_commit = IsCommitIntegrated::new_with_target(
+        push_env.target_ref_name.as_ref(),
+        push_env.target_base_oid,
+        &push_env.gix_repo,
+        &mut graph,
+    )?;
     if check_commit.is_integrated(local_sha)? {
         return Ok(Some(SkipBranchReason::Integrated));
     }
@@ -418,6 +464,30 @@ fn run_pre_push_hook(
     }
 }
 
+/// Derive the target branch name while tolerating stale target remotes. Pushes
+/// can use a configured push remote even when the integration target is a
+/// preserved remote-tracking ref like `refs/remotes/origin/main`. When the
+/// target remote is configured, keep using it so remote names containing slashes
+/// remain unambiguous.
+fn target_branch_name_from_ref_name(
+    target_ref_name: &gix::refs::FullNameRef,
+    remote_names: &gix::remote::Names<'_>,
+) -> Result<String> {
+    let (category, shorthand_name) = target_ref_name
+        .category_and_short_name()
+        .context("Target branch could not be categorized")?;
+    if matches!(category, Category::RemoteBranch) {
+        if let Some((_remote, short_name)) =
+            extract_remote_name_and_short_name(target_ref_name, remote_names)
+        {
+            return Ok(short_name.to_string());
+        }
+        let remote_ref: RemoteRefname = target_ref_name.to_string().parse()?;
+        return Ok(remote_ref.branch().to_owned());
+    }
+    Ok(shorthand_name.to_string())
+}
+
 fn gerrit_push_args(
     push_env: &PushStackEnv,
     head: gix::ObjectId,
@@ -425,10 +495,7 @@ fn gerrit_push_args(
 ) -> GerritPushArgs {
     if push_env.gerrit_mode {
         GerritPushArgs {
-            refspec: Some(format!(
-                "{head}:refs/for/{}",
-                push_env.default_target.branch.branch(),
-            )),
+            refspec: Some(format!("{head}:refs/for/{}", push_env.target_branch_name,)),
             push_opts: push_flags.iter().map(|flag| flag.to_string()).collect(),
         }
     } else {
@@ -464,4 +531,41 @@ fn append_push_result(result: &mut PushResult, pushed_branch: PushedBranch) {
         pushed_branch.before_sha.to_string(),
         pushed_branch.after_sha.to_string(),
     ));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::target_branch_name_from_ref_name;
+    use std::borrow::Cow;
+
+    use bstr::ByteSlice;
+
+    fn remote_names(names: &[&str]) -> gix::remote::Names<'static> {
+        names
+            .iter()
+            .map(|name| Cow::Owned(name.as_bytes().as_bstr().to_owned()))
+            .collect()
+    }
+
+    #[test]
+    fn target_branch_name_from_remote_ref_without_configured_remote() -> anyhow::Result<()> {
+        let remote_names = remote_names(&[]);
+        let ref_name: gix::refs::FullName = "refs/remotes/origin/main".try_into()?;
+        assert_eq!(
+            target_branch_name_from_ref_name(ref_name.as_ref(), &remote_names)?,
+            "main"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn target_branch_name_preserves_configured_nested_remote() -> anyhow::Result<()> {
+        let remote_names = remote_names(&["nested/remote"]);
+        let ref_name: gix::refs::FullName = "refs/remotes/nested/remote/feature/a".try_into()?;
+        assert_eq!(
+            target_branch_name_from_ref_name(ref_name.as_ref(), &remote_names)?,
+            "feature/a"
+        );
+        Ok(())
+    }
 }

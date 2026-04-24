@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 
-use but_core::{ref_metadata::StackId, worktree::checkout::UncommitedWorktreeChanges};
+use but_core::{
+    WORKSPACE_REF_NAME, ref_metadata::StackId, worktree::checkout::UncommitedWorktreeChanges,
+};
 
 use crate::branch::OnWorkspaceMergeConflict;
 
@@ -296,8 +298,7 @@ pub fn apply<'ws>(
             // so it needs to be added as well.
             let next_ws_ref_name = match workspace_reference_naming {
                 WorkspaceReferenceNaming::Default => {
-                    gix::refs::FullName::try_from("refs/heads/gitbutler/workspace")
-                        .expect("known statically")
+                    gix::refs::FullName::try_from(WORKSPACE_REF_NAME).expect("known statically")
                 }
                 WorkspaceReferenceNaming::Given(name) => name,
             };

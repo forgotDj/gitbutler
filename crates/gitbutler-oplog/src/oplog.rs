@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context as _, Result, anyhow, bail};
-use but_core::{RepositoryExt, TreeChange, diff::tree_changes};
+use but_core::{RepositoryExt, TreeChange, WORKSPACE_REF_NAME, diff::tree_changes};
 use but_ctx::{
     Context,
     access::{RepoExclusive, RepoShared},
@@ -162,6 +162,7 @@ impl OplogExt for Context {
         details: SnapshotDetails,
         perm: &mut RepoExclusive,
     ) -> Result<gix::ObjectId> {
+        let target = self.persisted_default_target()?.sha;
         let repo = self.repo.get()?;
         commit_snapshot(
             &self.project_data_dir(),
@@ -169,6 +170,7 @@ impl OplogExt for Context {
             snapshot_tree_id,
             details,
             perm,
+            target,
         )
     }
 
@@ -178,9 +180,19 @@ impl OplogExt for Context {
         details: SnapshotDetails,
         perm: &mut RepoExclusive,
     ) -> Result<gix::ObjectId> {
-        let tree_id = prepare_snapshot(self, perm.read_permission())?;
+        let PreparedSnapshot {
+            tree_id,
+            target_base_oid,
+        } = prepare_snapshot_with_target(self, perm.read_permission())?;
         let repo = self.repo.get()?;
-        commit_snapshot(&self.project_data_dir(), &repo, tree_id, details, perm)
+        commit_snapshot(
+            &self.project_data_dir(),
+            &repo,
+            tree_id,
+            details,
+            perm,
+            target_base_oid,
+        )
     }
 
     #[instrument(skip(self), err(Debug))]
@@ -318,8 +330,7 @@ impl OplogExt for Context {
                 // This is the oplog head (most recent snapshot). The operation has
                 // completed but no subsequent snapshot exists yet, so diff against the
                 // current workspace commit tree.
-                let workspace_ref: &gix::refs::FullNameRef =
-                    "refs/heads/gitbutler/workspace".try_into()?;
+                let workspace_ref: &gix::refs::FullNameRef = WORKSPACE_REF_NAME.try_into()?;
                 let ws_commit = repo.find_reference(workspace_ref)?.peel_to_commit()?;
                 ws_commit.tree_id()?.detach()
             }
@@ -453,18 +464,29 @@ fn reset_index_to_tree(ctx: &Context, tree_id: gix::ObjectId) -> Result<()> {
     Ok(())
 }
 
+pub fn prepare_snapshot(ctx: &Context, shared_access: &RepoShared) -> Result<gix::ObjectId> {
+    prepare_snapshot_with_target(ctx, shared_access).map(|prepared| prepared.tree_id)
+}
+
+struct PreparedSnapshot {
+    tree_id: gix::ObjectId,
+    target_base_oid: gix::ObjectId,
+}
+
 #[expect(
     deprecated,
     reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
 )]
-pub fn prepare_snapshot(ctx: &Context, _shared_access: &RepoShared) -> Result<gix::ObjectId> {
+fn prepare_snapshot_with_target(
+    ctx: &Context,
+    _shared_access: &RepoShared,
+) -> Result<PreparedSnapshot> {
     let repo = ctx.repo.get()?;
     let empty_tree_id = repo.empty_tree().id;
-
     let mut vb_state = VirtualBranchesHandle::new(ctx.project_data_dir());
 
     // grab the target commit
-    let default_target_commit_id = vb_state.get_default_target()?.sha;
+    let default_target_commit_id = ctx.persisted_default_target()?.sha;
     let target_tree_id = repo
         .find_commit(default_target_commit_id)?
         .tree_id()?
@@ -540,7 +562,7 @@ pub fn prepare_snapshot(ctx: &Context, _shared_access: &RepoShared) -> Result<gi
     let mut head = repo.head()?;
     if head
         .referent_name()
-        .is_some_and(|name| name.as_bstr() == "refs/heads/gitbutler/workspace")
+        .is_some_and(|name| name.as_bstr() == WORKSPACE_REF_NAME)
     {
         let head_commit = head.peel_to_commit()?;
         let head_tree_id = head_commit.tree_id()?.detach();
@@ -564,7 +586,10 @@ pub fn prepare_snapshot(ctx: &Context, _shared_access: &RepoShared) -> Result<gi
         )?;
     }
 
-    Ok(snapshot_tree.write()?.detach())
+    Ok(PreparedSnapshot {
+        tree_id: snapshot_tree.write()?.detach(),
+        target_base_oid: default_target_commit_id,
+    })
 }
 
 fn commit_snapshot(
@@ -573,6 +598,7 @@ fn commit_snapshot(
     snapshot_tree_id: gix::ObjectId,
     details: SnapshotDetails,
     _exclusive_access: &mut RepoExclusive,
+    target: gix::ObjectId,
 ) -> Result<gix::ObjectId> {
     repo.find_tree(snapshot_tree_id)?;
 
@@ -600,7 +626,10 @@ fn commit_snapshot(
 
     oplog_state.set_oplog_head(snapshot_commit_id)?;
 
-    set_reference_to_oplog(repo.git_dir(), ReflogCommits::new(project_data_dir)?)?;
+    set_reference_to_oplog(
+        repo.git_dir(),
+        ReflogCommits::new(project_data_dir, target)?,
+    )?;
 
     Ok(snapshot_commit_id)
 }
@@ -643,7 +672,7 @@ fn restore_snapshot(
         .context("failed to convert virtual_branches tree entry to tree")?;
 
     // walk through all the entries (branches by id)
-    let workspace_ref: &gix::refs::FullNameRef = "refs/heads/gitbutler/workspace".try_into()?;
+    let workspace_ref: &gix::refs::FullNameRef = WORKSPACE_REF_NAME.try_into()?;
     for branch_entry in vb_tree.iter() {
         let branch_entry = branch_entry?;
         let branch_tree = repo
@@ -732,6 +761,7 @@ fn restore_snapshot(
             branch.set_reference_to_head_value(&gix_repo).ok();
         }
     }
+    ctx.invalidate_workspace_cache()?;
 
     // reset the repo index to our index tree
     let index_tree_entry = snapshot_tree
@@ -771,12 +801,14 @@ fn restore_snapshot(
         ],
     };
     let repo = ctx.repo.get()?;
+    let target = ctx.persisted_default_target()?.sha;
     commit_snapshot(
         &ctx.project_data_dir(),
         &repo,
         before_restore_snapshot_tree_id,
         details,
         exclusive_access,
+        target,
     )
 }
 

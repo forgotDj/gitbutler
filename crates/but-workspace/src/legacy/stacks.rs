@@ -493,15 +493,15 @@ impl ui::BranchDetails {
 /// The entries are ordered from newest to oldest.
 pub fn stack_branches(stack_id: StackId, ctx: &Context) -> anyhow::Result<Vec<ui::Branch>> {
     let state = state_handle(&ctx.project_data_dir());
-    let remote = state
-        .get_default_target()
-        .context("failed to get default target")?
-        .push_remote_name();
+    let repo = ctx.repo.get()?;
+    let target = ctx.persisted_default_target()?;
+    let remote = target
+        .push_remote_name
+        .unwrap_or_else(|| target.branch.remote().to_owned());
 
     let mut stack_branches = vec![];
     let stack = state.get_stack(stack_id)?;
     let mut current_base = stack.merge_base(ctx)?;
-    let repo = ctx.repo.get()?;
     for internal in stack.branches() {
         let upstream_reference_name = internal.remote_reference(remote.as_str());
         let upstream_reference = repo
@@ -561,13 +561,28 @@ pub fn local_and_remote_commits(
     stack_branch: &gitbutler_stack::StackBranch,
     stack: &Stack,
 ) -> anyhow::Result<Vec<ui::Commit>> {
-    let state = state_handle(&ctx.project_data_dir());
-    let default_target = state
-        .get_default_target()
-        .context("failed to get default target")?;
+    let (target_ref_name, target_base_oid) = {
+        let meta = ctx.legacy_meta()?;
+        let workspace =
+            default_workspace_metadata(&meta)?.context("failed to get workspace metadata")?;
+        (
+            workspace
+                .target_ref
+                .context("failed to get target reference")?
+                .clone(),
+            workspace
+                .target_commit_id
+                .context("failed to get target base oid")?,
+        )
+    };
     let cache = repo.commit_graph_if_enabled()?;
     let mut graph = repo.revision_graph(cache.as_ref());
-    let mut check_commit = IsCommitIntegrated::new(repo, &default_target, &mut graph)?;
+    let mut check_commit = IsCommitIntegrated::new_with_target(
+        repo,
+        target_ref_name.as_ref(),
+        target_base_oid,
+        &mut graph,
+    )?;
 
     let branch_commits = stack_branch.commit_ids(repo, ctx, stack)?;
     let mut local_and_remote: Vec<ui::Commit> = vec![];

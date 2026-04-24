@@ -6,16 +6,12 @@ use std::{
     str::FromStr,
 };
 
-use but_core::{TreeChange, sync::RepoExclusive};
+use but_core::{RefMetadata, TreeChange, WORKSPACE_REF_NAME, sync::RepoExclusive};
 use but_ctx::{Context, ProjectHandleOrLegacyProjectId};
 use but_hunk_assignment::CommitAbsorption;
+use but_meta::virtual_branches_legacy_types::Target;
 use but_workspace::legacy::ui::StackEntry;
 use gitbutler_branch::BranchCreateRequest;
-#[expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-use gitbutler_stack::{Target, VirtualBranchesHandle};
 use serde::{Deserialize, Serialize};
 
 mod action;
@@ -103,16 +99,12 @@ pub fn handle_changes(
     }
 }
 
-#[expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-fn default_target_setting_if_none(
-    ctx: &Context,
-    vb_state: &mut VirtualBranchesHandle,
-) -> anyhow::Result<Target> {
-    if let Ok(default_target) = vb_state.get_default_target() {
-        return Ok(default_target);
+fn default_target_setting_if_none(ctx: &Context) -> anyhow::Result<()> {
+    let workspace_ref: gix::refs::FullName = WORKSPACE_REF_NAME.try_into()?;
+    let mut meta = ctx.legacy_meta()?;
+    let workspace = meta.workspace(workspace_ref.as_ref())?;
+    if workspace.target_ref.is_some() {
+        return Ok(());
     }
     // Lets do the equivalent of `git symbolic-ref refs/remotes/origin/HEAD --short` to guess the default target.
 
@@ -125,11 +117,16 @@ fn default_target_setting_if_none(
     let mut head_ref = repo
         .find_reference(&format!("refs/remotes/{remote_name}/HEAD"))
         .map_err(|_| anyhow::anyhow!("No HEAD reference found for remote {remote_name}"))?;
+    let target_ref_name = head_ref
+        .target()
+        .try_name()
+        .ok_or_else(|| anyhow::anyhow!("Remote HEAD for {remote_name} is not symbolic"))?
+        .to_owned();
 
     let head_commit = head_ref.peel_to_commit()?;
 
     let remote_refname =
-        gitbutler_reference::RemoteRefname::from_str(&head_ref.name().as_bstr().to_string())?;
+        gitbutler_reference::RemoteRefname::from_str(&target_ref_name.as_bstr().to_string())?;
 
     let target = Target {
         branch: remote_refname,
@@ -138,8 +135,9 @@ fn default_target_setting_if_none(
         push_remote_name: None,
     };
 
-    vb_state.set_default_target(target.clone())?;
-    Ok(target)
+    meta.set_default_target(target)?;
+    ctx.invalidate_workspace_cache()?;
+    Ok(())
 }
 
 #[expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
