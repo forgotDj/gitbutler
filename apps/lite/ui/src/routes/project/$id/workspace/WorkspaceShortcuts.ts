@@ -707,6 +707,7 @@ export const useWorkspaceShortcuts = ({
 	navigationIndex,
 	openAbsorptionDialog,
 	openBranchPicker,
+	focusPanel,
 	focusAdjacentPanel,
 }: {
 	inlineRenameBranchFormRef: RefObject<HTMLFormElement | null>;
@@ -716,6 +717,7 @@ export const useWorkspaceShortcuts = ({
 	navigationIndex: NavigationIndex;
 	openAbsorptionDialog: (target: AbsorptionTarget) => void;
 	openBranchPicker: () => void;
+	focusPanel: (panel: Panel) => void;
 	focusAdjacentPanel: (offset: -1 | 1) => void;
 }) => {
 	const dispatch = useAppDispatch();
@@ -966,7 +968,10 @@ export const useWorkspaceShortcuts = ({
 	const handleRewordCommitScopeAction = (action: RewordCommitAction) =>
 		Match.value(action).pipe(
 			Match.tagsExhaustive({
-				Cancel: () => dispatch(projectActions.exitMode({ projectId })),
+				Cancel: () => {
+					dispatch(projectActions.exitMode({ projectId }));
+					focusPanel("primary");
+				},
 				Save: () => inlineRewordCommitFormRef.current?.requestSubmit(),
 			}),
 		);
@@ -974,7 +979,10 @@ export const useWorkspaceShortcuts = ({
 	const handleRenameBranchScopeAction = (action: RenameBranchAction) =>
 		Match.value(action).pipe(
 			Match.tagsExhaustive({
-				Cancel: () => dispatch(projectActions.exitMode({ projectId })),
+				Cancel: () => {
+					dispatch(projectActions.exitMode({ projectId }));
+					focusPanel("primary");
+				},
 				Save: () => inlineRenameBranchFormRef.current?.requestSubmit(),
 			}),
 		);

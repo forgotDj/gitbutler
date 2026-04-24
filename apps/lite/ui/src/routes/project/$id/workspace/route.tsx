@@ -128,6 +128,7 @@ import {
 	isValidWorkspaceMode,
 	type WorkspaceMode,
 } from "./WorkspaceMode.ts";
+import { Panel } from "#ui/routes/project/$id/state/layout.ts";
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 
@@ -699,6 +700,7 @@ const CommitRow: FC<
 		projectId: string;
 		stackId: string;
 		navigationIndex: NavigationIndex;
+		focusPanel: (panel: Panel) => void;
 	} & ComponentProps<"div">
 > = ({
 	commit,
@@ -708,6 +710,7 @@ const CommitRow: FC<
 	projectId,
 	stackId,
 	navigationIndex,
+	focusPanel,
 	...restProps
 }) => {
 	const isHighlighted = useAppSelector((state) =>
@@ -755,6 +758,7 @@ const CommitRow: FC<
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
 		dispatch(projectActions.selectItem({ projectId, item }));
+		focusPanel("primary");
 	};
 
 	const saveNewMessage = (newMessage: string) => {
@@ -951,6 +955,7 @@ const CommitC: FC<{
 	projectId: string;
 	stackId: string;
 	navigationIndex: NavigationIndex;
+	focusPanel: (panel: Panel) => void;
 }> = ({
 	commit,
 	inlineRewordCommitFormRef,
@@ -958,6 +963,7 @@ const CommitC: FC<{
 	projectId,
 	stackId,
 	navigationIndex,
+	focusPanel,
 }) => {
 	const isExpanded = useAppSelector(
 		(state) => selectProjectExpandedCommitId(state, projectId) === commit.id,
@@ -981,6 +987,7 @@ const CommitC: FC<{
 				projectId={projectId}
 				stackId={stackId}
 				navigationIndex={navigationIndex}
+				focusPanel={focusPanel}
 			/>
 			{isExpanded && (
 				<Suspense fallback={<div className={styles.itemRowEmpty}>Loading commit files…</div>}>
@@ -1278,6 +1285,7 @@ const BranchRow: FC<
 		branchRef: Array<number>;
 		stackId: string;
 		navigationIndex: NavigationIndex;
+		focusPanel: (panel: Panel) => void;
 	} & ComponentProps<"div">
 > = ({
 	inlineRenameBranchFormRef,
@@ -1287,6 +1295,7 @@ const BranchRow: FC<
 	branchRef,
 	stackId,
 	navigationIndex,
+	focusPanel,
 	...restProps
 }) => {
 	const dispatch = useAppDispatch();
@@ -1320,6 +1329,7 @@ const BranchRow: FC<
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
 		dispatch(projectActions.selectItem({ projectId, item }));
+		focusPanel("primary");
 	};
 
 	const saveBranchName = (newBranchName: string) => {
@@ -1494,6 +1504,7 @@ const SegmentC: FC<{
 	segment: Segment;
 	stackId: string;
 	workspaceMode: WorkspaceMode;
+	focusPanel: (panel: Panel) => void;
 }> = ({
 	inlineRenameBranchFormRef,
 	inlineRewordCommitFormRef,
@@ -1502,6 +1513,7 @@ const SegmentC: FC<{
 	segment,
 	stackId,
 	workspaceMode,
+	focusPanel,
 }) => {
 	const section = (
 		<div className={classes(styles.section, styles.segment)}>
@@ -1514,6 +1526,7 @@ const SegmentC: FC<{
 					branchRef={segment.refName.fullNameBytes}
 					stackId={stackId}
 					navigationIndex={navigationIndex}
+					focusPanel={focusPanel}
 				/>
 			)}
 
@@ -1530,6 +1543,7 @@ const SegmentC: FC<{
 								projectId={projectId}
 								stackId={stackId}
 								navigationIndex={navigationIndex}
+								focusPanel={focusPanel}
 							/>
 						</li>
 					))}
@@ -1580,6 +1594,7 @@ const StackC: FC<{
 	stack: Stack;
 	workspaceMode: WorkspaceMode;
 	navigationIndex: NavigationIndex;
+	focusPanel: (panel: Panel) => void;
 }> = ({
 	inlineRenameBranchFormRef,
 	inlineRewordCommitFormRef,
@@ -1587,6 +1602,7 @@ const StackC: FC<{
 	stack,
 	workspaceMode,
 	navigationIndex,
+	focusPanel,
 }) => {
 	// From Caleb:
 	// > There shouldn't be a way within GitButler to end up with a stack without a
@@ -1630,6 +1646,7 @@ const StackC: FC<{
 								segment={segment}
 								stackId={stackId}
 								workspaceMode={workspaceMode}
+								focusPanel={focusPanel}
 							/>
 						</li>
 					);
@@ -1684,7 +1701,7 @@ const ProjectPage: FC = () => {
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
-	const { focusAdjacentPanel, panelElementRef } = useProjectPanelFocusManager();
+	const { focusAdjacentPanel, focusPanel, panelElementRef } = useProjectPanelFocusManager();
 	const focusedPanel = useFocusedProjectPanel();
 
 	const workspaceOutline = useWorkspaceOutline({ projectId, expandedCommitId });
@@ -1739,6 +1756,7 @@ const ProjectPage: FC = () => {
 		navigationIndex,
 		openAbsorptionDialog,
 		openBranchPicker: () => setBranchPickerOpen(true),
+		focusPanel,
 		focusAdjacentPanel,
 	});
 
@@ -1805,6 +1823,7 @@ const ProjectPage: FC = () => {
 							stack={stack}
 							workspaceMode={workspaceMode}
 							navigationIndex={navigationIndex}
+							focusPanel={focusPanel}
 						/>
 					))}
 
