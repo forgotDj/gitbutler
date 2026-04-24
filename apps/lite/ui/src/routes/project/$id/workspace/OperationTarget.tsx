@@ -128,6 +128,7 @@ export const OperationTarget: FC<
 
 				const [innerMost] = args.location.current.dropTargets;
 				const isActiveDropTarget = innerMost?.element === args.self.element;
+
 				if (!isActiveDropTarget) return;
 
 				const dragData = parseDragData(args.source.data);
