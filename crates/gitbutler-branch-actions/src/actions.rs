@@ -1,5 +1,4 @@
 use anyhow::{Context as _, Result};
-use bstr::ByteSlice;
 use but_core::DiffSpec;
 use but_ctx::{
     Context,
@@ -7,13 +6,11 @@ use but_ctx::{
 };
 use but_workspace::legacy::{stack_heads_info, ui};
 use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
-use gitbutler_git::GitContextExt as _;
 use gitbutler_operating_modes::ensure_open_workspace_mode;
 use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails, Trailer},
 };
-use gitbutler_project::FetchResult;
 use gitbutler_reference::{Refname, RemoteRefname};
 use gitbutler_stack::StackId;
 
@@ -248,38 +245,6 @@ pub fn squash_commits_with_perm(
     ensure_open_workspace_mode(ctx, perm.read_permission())
         .context("Squashing a commit requires open workspace mode")?;
     crate::squash::squash_commits(ctx, stack_id, source_ids, destination_id, perm)
-}
-
-pub fn fetch_from_remotes(ctx: &Context, askpass: Option<String>) -> Result<FetchResult> {
-    let repo = ctx.repo.get()?;
-    let remotes = repo
-        .remote_names()
-        .iter()
-        .map(|name| name.to_str().map(str::to_owned))
-        .collect::<std::result::Result<Vec<_>, _>>()?;
-    let fetch_errors: Vec<_> = remotes
-        .iter()
-        .filter_map(|remote| {
-            ctx.fetch(remote, askpass.clone())
-                .err()
-                .map(|err| err.to_string())
-        })
-        .collect();
-
-    let timestamp = std::time::SystemTime::now();
-    let project_data_last_fetched = if fetch_errors.is_empty() {
-        FetchResult::Fetched { timestamp }
-    } else {
-        FetchResult::Error {
-            timestamp,
-            error: fetch_errors.join("\n"),
-        }
-    };
-    let mut state = ctx.virtual_branches();
-
-    state.garbage_collect(&*ctx.repo.get()?)?;
-
-    Ok(project_data_last_fetched)
 }
 
 pub fn create_virtual_branch_from_branch_with_perm(
