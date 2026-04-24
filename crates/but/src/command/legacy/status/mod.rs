@@ -170,7 +170,7 @@ struct StatusContext<'a> {
     is_paged: bool,
     should_truncate_for_terminal: bool,
     id_map: IdMap,
-    segments_by_id: HashMap<SegmentIndex, Segment>,
+    push_statuses_by_segment_id: HashMap<SegmentIndex, but_workspace::ui::PushStatus>,
     local_commits_by_id: HashMap<gix::ObjectId, LocalCommit>,
     remote_commits_by_id: HashMap<gix::ObjectId, Commit>,
     base_branch: Option<gitbutler_branch_actions::BaseBranch>,
@@ -248,7 +248,13 @@ async fn build_status_context<'a>(
     render_mode: StatusRenderMode,
 ) -> anyhow::Result<StatusContext<'a>> {
     // Process rules with exclusive access to create repo and workspace
-    let (segments_by_id, local_commits_by_id, remote_commits_by_id, stacks, resolved_target) = {
+    let (
+        push_statuses_by_segment_id,
+        local_commits_by_id,
+        remote_commits_by_id,
+        stacks,
+        resolved_target,
+    ) = {
         let mut guard = ctx.exclusive_worktree_access();
         but_rules::process_rules(ctx, guard.write_permission()).ok(); // TODO: this is doing double work (hunk-dependencies can be reused)
 
@@ -263,25 +269,31 @@ async fn build_status_context<'a>(
                 ..Default::default()
             },
         )?;
-        let mut segments_by_id = HashMap::<SegmentIndex, Segment>::new();
+        let mut push_statuses_by_segment_id = HashMap::<SegmentIndex, PushStatus>::new();
         let mut local_commits_by_id = HashMap::<gix::ObjectId, LocalCommit>::new();
         let mut remote_commits_by_id = HashMap::<gix::ObjectId, Commit>::new();
         for stack in head_info.stacks {
             for segment in stack.segments {
-                for local_commit in segment.commits.clone() {
+                let Segment {
+                    commits,
+                    commits_on_remote,
+                    push_status,
+                    ..
+                } = segment;
+                for local_commit in commits {
                     local_commits_by_id.insert(local_commit.id, local_commit);
                 }
-                for remote_commit in segment.commits_on_remote.clone() {
+                for remote_commit in commits_on_remote {
                     remote_commits_by_id.insert(remote_commit.id, remote_commit);
                 }
-                segments_by_id.insert(segment.id, segment);
+                push_statuses_by_segment_id.insert(segment.id, push_status);
             }
         }
 
         let (_repo, ws, _db) = ctx.workspace_and_db_with_perm(guard.read_permission())?;
         let resolved_target = workspace_target::ResolvedTarget::from_workspace(&ws)?;
         (
-            segments_by_id,
+            push_statuses_by_segment_id,
             local_commits_by_id,
             remote_commits_by_id,
             ws.stacks.clone(),
@@ -315,7 +327,12 @@ async fn build_status_context<'a>(
         let assignments = assignment::filter_by_stack_id(assignments_by_file.values(), &stack.id);
         stack_details.push((stack.id, (Some(stack.clone()), assignments)));
     }
-    let ci_map = ci_map(ctx, &cache_config, &stack_details, &segments_by_id)?;
+    let ci_map = ci_map(
+        ctx,
+        &cache_config,
+        &stack_details,
+        &push_statuses_by_segment_id,
+    )?;
 
     // Calculate common_merge_base data and upstream state in a scope
     // to ensure repo reference is dropped before any async operations
@@ -425,7 +442,7 @@ async fn build_status_context<'a>(
         is_paged,
         should_truncate_for_terminal,
         id_map,
-        segments_by_id,
+        push_statuses_by_segment_id,
         local_commits_by_id,
         remote_commits_by_id,
         base_branch,
@@ -715,17 +732,18 @@ fn ci_map(
     ctx: &Context,
     cache_config: &but_forge::CacheConfig,
     stack_details: &[StackEntry],
-    segments_by_id: &HashMap<SegmentIndex, Segment>,
+    push_statuses_by_segment_id: &HashMap<SegmentIndex, PushStatus>,
 ) -> Result<BTreeMap<String, Vec<but_forge::CiCheck>>, anyhow::Error> {
     let mut ci_map = BTreeMap::new();
     for (_, (stack_with_id, _)) in stack_details {
         if let Some(stack_with_id) = stack_with_id {
             for segment in &stack_with_id.segments {
-                let inner = segments_by_id
-                    .get(&segment.inner.id)
-                    .context("BUG: head_info does not contain segment that graph has")?;
+                let push_status = push_statuses_by_segment_id.get(&segment.inner.id);
+                if push_status.is_none() {
+                    eprintln!("warning: head_info does not contain segment that graph has");
+                }
                 if segment.pr_number().is_some()
-                    && !matches!(inner.push_status, PushStatus::Integrated)
+                    && !matches!(push_status, Some(PushStatus::Integrated))
                     && let Some(branch_name) = segment.branch_name()
                     && let Ok(checks) = but_api::legacy::forge::list_ci_checks_and_update_cache(
                         ctx,
