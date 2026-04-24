@@ -10,7 +10,7 @@ import {
 import {
 	defaultWorkspaceMode,
 	dragAndDropOperationMode,
-	isValidWorkspaceModeForItem,
+	isValidWorkspaceModeForSelectedItem,
 	moveOperationMode,
 	renameBranchWorkspaceMode,
 	rewordCommitWorkspaceMode,
@@ -84,7 +84,7 @@ export const openCommitFiles = (state: WorkspaceState, item: CommitItem) => {
 
 export const selectItem = (state: WorkspaceState, item: Item | null) => {
 	state.selection.item = item;
-	if (!item || !isValidWorkspaceModeForItem({ mode: state.mode, item }))
+	if (!item || !isValidWorkspaceModeForSelectedItem({ mode: state.mode, selectedItem: item }))
 		state.mode = defaultWorkspaceMode;
 };
 

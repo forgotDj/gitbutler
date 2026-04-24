@@ -120,12 +120,12 @@ export const isValidWorkspaceMode = ({
 		}),
 	);
 
-export const isValidWorkspaceModeForItem = ({
+export const isValidWorkspaceModeForSelectedItem = ({
 	mode,
-	item,
+	selectedItem,
 }: {
 	mode: WorkspaceMode;
-	item: Item;
+	selectedItem: Item;
 }): boolean =>
 	Match.value(mode).pipe(
 		Match.tagsExhaustive({
@@ -135,7 +135,7 @@ export const isValidWorkspaceModeForItem = ({
 			DragAndDrop: () => true,
 			RewordCommit: (mode) =>
 				itemEquals(
-					item,
+					selectedItem,
 					commitItem({
 						stackId: mode.stackId,
 						commitId: mode.commitId,
@@ -143,7 +143,7 @@ export const isValidWorkspaceModeForItem = ({
 				),
 			RenameBranch: (mode) =>
 				itemEquals(
-					item,
+					selectedItem,
 					branchItem({
 						stackId: mode.stackId,
 						branchRef: mode.branchRef,
