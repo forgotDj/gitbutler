@@ -102,13 +102,15 @@ fn reapply_does_not_rebase_onto_updated_upstream() {
 
     {
         // apply first vbranch again
-        let outcome = gitbutler_branch_actions::create_virtual_branch_from_branch(
+        let mut guard = ctx.exclusive_worktree_access();
+        let outcome = gitbutler_branch_actions::create_virtual_branch_from_branch_with_perm(
             ctx,
             &unapplied_branch,
             None,
-            None,
+            guard.write_permission(),
         )
         .unwrap();
+        drop(guard);
 
         stack_1_id = outcome.0;
 

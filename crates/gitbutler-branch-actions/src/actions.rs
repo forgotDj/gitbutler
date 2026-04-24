@@ -16,7 +16,6 @@ use gitbutler_oplog::{
 use gitbutler_project::FetchResult;
 use gitbutler_reference::{Refname, RemoteRefname};
 use gitbutler_stack::StackId;
-use tracing::instrument;
 
 use super::r#virtual as vbranch;
 use crate::{
@@ -281,17 +280,6 @@ pub fn fetch_from_remotes(ctx: &Context, askpass: Option<String>) -> Result<Fetc
     state.garbage_collect(&*ctx.repo.get()?)?;
 
     Ok(project_data_last_fetched)
-}
-
-#[instrument(level = "debug", skip(ctx), err(Debug))]
-pub fn create_virtual_branch_from_branch(
-    ctx: &mut Context,
-    branch: &Refname,
-    remote: Option<RemoteRefname>,
-    pr_number: Option<usize>,
-) -> Result<(StackId, Vec<StackId>, Vec<String>)> {
-    let mut guard = ctx.exclusive_worktree_access();
-    create_virtual_branch_from_branch_with_perm(ctx, branch, pr_number, guard.write_permission())
 }
 
 pub fn create_virtual_branch_from_branch_with_perm(
