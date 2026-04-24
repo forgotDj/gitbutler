@@ -8,7 +8,7 @@ use itertools::Itertools;
 
 use crate::VirtualBranchesExt;
 
-pub fn update_stack(ctx: &Context, update: &BranchUpdateRequest) -> Result<Stack> {
+pub(crate) fn update_stack(ctx: &Context, update: &BranchUpdateRequest) -> Result<Stack> {
     let mut vb_state = ctx.virtual_branches();
     let mut stack = vb_state.get_stack_in_workspace(update.id.context("BUG(opt-stack-id)")?)?;
 

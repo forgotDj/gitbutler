@@ -17,11 +17,6 @@ pub use actions::{
 mod squash;
 
 mod r#virtual;
-/// Avoid using these!
-/// This was previously `pub use r#virtual::*;`
-pub mod internal {
-    pub use super::{branch_upstream_integration, r#virtual::*};
-}
 
 mod branch_manager;
 pub use branch_manager::{BranchManagerExt, CreateBranchFromBranchOutcome};
@@ -40,8 +35,7 @@ pub use integration::{
 mod remote;
 
 pub mod branch_upstream_integration;
-pub mod reorder;
-pub use reorder::StackOrder;
+mod reorder;
 
 mod gravatar;
 use gitbutler_stack::VirtualBranchesHandle;
