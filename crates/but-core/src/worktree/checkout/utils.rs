@@ -77,6 +77,9 @@ pub fn merge_worktree_changes_into_destination_or_keep_snapshot(
 
         if !selection_of_changes_checkout_would_affect.is_empty() {
             let mut repo_in_memory = repo.clone().with_object_memory();
+            repo_in_memory
+                .config_snapshot_mut()
+                .set_value(&gix::config::tree::Merge::RENORMALIZE, "true")?;
             let out = crate::snapshot::create_tree(
                 source_tree_id.attach(&repo_in_memory),
                 snapshot::create_tree::State {

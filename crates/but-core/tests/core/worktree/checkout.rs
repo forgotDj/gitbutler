@@ -373,29 +373,29 @@ fn worktree_snapshot_of_legacy_crlf_blob_conflicts_with_independent_target_chang
     )?;
 
     // A lot happens here, but the significant part is that the overlapping worktree changes are cherry-picked
-    // onto the `new_commit` to be transferred by merge. This means they are worktree-filtered and added to
-    // a tree.
-    // That filtering step is what in this case normalise line separators to \n, which is what Git should actually
-    // store as well.
-    // But because of that, the entire file changes, and is marked as conflicting even though the merge would be
-    // fine otherwise.
-    let err = safe_checkout(head_commit.id, new_commit.id, &repo, Default::default()).unwrap_err();
-    assert_eq!(
-        err.to_string(),
-        "Worktree changes would be overwritten by checkout: \"ImportOrdersJob.cs\"",
-        "status quo: snapshot filtering makes the legacy CRLF worktree change conflict
-        as its line separators are turned into \\n"
-    );
+    // onto the `new_commit` to be transferred by merge. That snapshot now normalizes line endings correctly,
+    // so the independent edits merge cleanly instead of being treated as a whole-file conflict.
+    let out = safe_checkout(head_commit.id, new_commit.id, &repo, Default::default())?;
+    insta::assert_debug_snapshot!(out, @r#"
+    Outcome {
+        snapshot_tree: Some(
+            Sha1(77d39e5c3dae5dde723f5be3c45e3525ef424447),
+        ),
+        num_deleted_files: 0,
+        num_added_or_updated_files: 1,
+        head_update: "Update refs/heads/main to Some(Object(Sha1(a530b145a2513ba5b2a4418bbb74920d3967f8fb)))",
+    }
+    "#);
 
     assert_eq!(
         std::fs::read(&file_path)?.as_bstr(),
-        "1\r\ntwo from worktree\r\n3\r\n",
-        "checkout aborts before applying the target change"
+        "1\r\ntwo from worktree\r\nthree from target\r\n",
+        "checkout keeps the worktree edit and applies the independent target change"
     );
     assert_eq!(
         repo.head_id()?,
-        head_commit.id,
-        "checkout aborts before updating HEAD"
+        new_commit.id,
+        "checkout updates HEAD to the target commit"
     );
 
     Ok(())
