@@ -457,22 +457,8 @@ async fn match_subcommand(
                     let ctx = but_ctx::Context::discover(&args.current_dir)?;
                     command::branch::apply(ctx, &branch_name, out)
                 }
-                Some(branch::Subcommands::Move {
-                    branch,
-                    target_branch,
-                    unstack,
-                }) => {
-                    let mut ctx = but_ctx::Context::discover(&args.current_dir)?;
-                    if unstack {
-                        command::branch::tear_off_branch(&mut ctx, &branch, out)
-                    } else {
-                        let target_branch = target_branch.ok_or_else(|| {
-                            anyhow::anyhow!(
-                                "`but branch move` requires <TARGET_BRANCH> unless --unstack is used"
-                            )
-                        })?;
-                        command::branch::move_branch(&mut ctx, &branch, &target_branch, out)
-                    }
+                Some(branch::Subcommands::Move { .. }) => {
+                    anyhow::bail!("`but branch move` has been removed. Use `but move` instead.")
                 }
             };
             result.emit_metrics(metrics_ctx)

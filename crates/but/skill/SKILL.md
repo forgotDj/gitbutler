@@ -45,7 +45,6 @@ but <mutation> ... --status-after
 - Reorder commits: `but move <source-commit-id> <target-commit-id> --status-after` (**commit IDs**, not branch names)
 - Stack branches: `but move <branch-name-or-id> <target-branch-name-or-id> --status-after` (**branch names or branch CLI IDs**)
 - Tear off a branch: `but move <branch-name-or-id> zz --status-after` (`zz` = unassigned; branch name or branch CLI ID)
-- Equivalent branch subcommand syntax remains available: `but branch move <branch-name> <target-branch-name>` and `but branch move --unstack <branch-name>`
 - Push: `but push` or `but push <branch-id>`
 - Pull: `but pull --check` then `but pull --status-after`
 
@@ -83,24 +82,12 @@ but move feature/frontend feature/backend
 
 This moves the frontend branch on top of the backend branch in one step.
 
-Equivalent subcommand syntax:
-
-```bash
-but branch move feature/frontend feature/backend
-```
-
-**DO NOT** use `uncommit` + `branch delete` + `branch new -a` to stack existing branches. That approach fails because git branch names persist even after `but branch delete`. Always use `but move <branch> <target-branch>` (or the equivalent `but branch move ...`).
+**DO NOT** use `uncommit` + `branch delete` + `branch new -a` to stack existing branches. That approach fails because git branch names persist even after `but branch delete`. Always use `but move <branch> <target-branch>`.
 
 **To unstack** (make a stacked branch independent again):
 
 ```bash
 but move feature/logging zz
-```
-
-Equivalent subcommand syntax:
-
-```bash
-but branch move --unstack feature/logging
 ```
 
 **Note:** branch stack/tear-off operations use branch **names** (like `feature/frontend`) or branch CLI IDs, while commit reordering uses commit **IDs** (like `c3`). Do NOT use `but undo` to unstack — it may revert more than intended and lose commits.
@@ -144,7 +131,7 @@ If `but move` causes conflicts (conflicted commits in status):
 | `git checkout -b` | `but branch new <name>` |
 | `git push` | `but push` |
 | `git rebase -i` | `but move`, `but squash`, `but reword` |
-| `git rebase --onto` | `but branch move <branch> <new-base>` |
+| `git rebase --onto` | `but move <branch> <new-base>` |
 | `git cherry-pick` | `but pick` |
 
 ## Notes
