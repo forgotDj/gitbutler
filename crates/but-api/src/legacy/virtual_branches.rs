@@ -433,13 +433,8 @@ pub fn fetch_from_remotes(ctx: &Context, action: Option<String>) -> Result<BaseB
             error: fetch_errors.join("\n"),
         }
     };
-    #[expect(
-        deprecated,
-        reason = "legacy virtual branch garbage collection still uses VirtualBranchesHandle"
-    )]
-    let mut state = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
-
-    state.garbage_collect(&*ctx.repo.get()?)?;
+    let mut meta = ctx.legacy_meta()?;
+    meta.garbage_collect(&*ctx.repo.get()?)?;
 
     // Updates the project controller with the last fetched timestamp
     //

@@ -1551,6 +1551,120 @@ fn removes_duplicate_heads_even_if_they_point_to_the_same_commit() -> anyhow::Re
 }
 
 #[test]
+fn garbage_collect_removes_outside_workspace_stack_at_target() -> anyhow::Result<()> {
+    let repo = but_testsupport::read_only_in_memory_scenario("dlib-standin")?;
+    let target = repo.head_id()?.detach();
+    let (mut store, _tmp) = empty_vb_store_rw()?;
+    store.data_mut().default_target.as_mut().unwrap().sha = target;
+
+    let workspace_stack = LegacyStack::new_with_just_heads(
+        vec![StackBranch {
+            head: target,
+            name: "kept".into(),
+            pr_number: None,
+            archived: false,
+            review_id: None,
+        }],
+        0,
+        true,
+    );
+    let outside_stack = LegacyStack::new_with_just_heads(
+        vec![StackBranch {
+            head: target,
+            name: "collected".into(),
+            pr_number: None,
+            archived: false,
+            review_id: None,
+        }],
+        1,
+        false,
+    );
+    let workspace_stack_id = workspace_stack.id;
+    let outside_stack_id = outside_stack.id;
+    store
+        .data_mut()
+        .branches
+        .insert(workspace_stack_id, workspace_stack);
+    store
+        .data_mut()
+        .branches
+        .insert(outside_stack_id, outside_stack);
+
+    store.garbage_collect(&repo)?;
+
+    assert!(store.data().branches.contains_key(&workspace_stack_id));
+    assert!(!store.data().branches.contains_key(&outside_stack_id));
+    Ok(())
+}
+
+#[test]
+fn garbage_collect_removes_outside_workspace_stack_with_missing_head() -> anyhow::Result<()> {
+    let repo = but_testsupport::read_only_in_memory_scenario("dlib-standin")?;
+    let target = repo.head_id()?.detach();
+    let missing_head = gix::ObjectId::from_hex(b"30696678319e0fa3a20e54f22d47fc8cf1ceaade")?;
+    let (mut store, _tmp) = empty_vb_store_rw()?;
+    store.data_mut().default_target.as_mut().unwrap().sha = target;
+    let outside_stack = LegacyStack::new_with_just_heads(
+        vec![StackBranch {
+            head: missing_head,
+            name: "missing".into(),
+            pr_number: None,
+            archived: false,
+            review_id: None,
+        }],
+        0,
+        false,
+    );
+    let outside_stack_id = outside_stack.id;
+    store
+        .data_mut()
+        .branches
+        .insert(outside_stack_id, outside_stack);
+
+    store.garbage_collect(&repo)?;
+
+    assert!(!store.data().branches.contains_key(&outside_stack_id));
+    Ok(())
+}
+
+#[test]
+fn garbage_collect_removes_outside_workspace_stack_with_broken_ref() -> anyhow::Result<()> {
+    let (mut repo, _tmp) = but_testsupport::writable_scenario("dlib-standin");
+    let target = repo.head_id()?.detach();
+    let missing_head = gix::ObjectId::from_hex(b"30696678319e0fa3a20e54f22d47fc8cf1ceaade")?;
+    repo.reference(
+        "refs/heads/missing",
+        missing_head,
+        gix::refs::transaction::PreviousValue::Any,
+        "test",
+    )?;
+    repo.reload()?;
+    let (mut store, _tmp) = empty_vb_store_rw()?;
+    store.data_mut().default_target.as_mut().unwrap().sha = target;
+    let outside_stack = LegacyStack::new_with_just_heads(
+        vec![StackBranch {
+            head: target,
+            name: "missing".into(),
+            pr_number: None,
+            archived: false,
+            review_id: None,
+        }],
+        0,
+        false,
+    );
+    let outside_stack_id = outside_stack.id;
+    store
+        .data_mut()
+        .branches
+        .insert(outside_stack_id, outside_stack);
+
+    store.garbage_collect(&repo)?;
+
+    assert!(!store.data().branches.contains_key(&outside_stack_id));
+    Ok(())
+}
+
+#[test]
 fn preserves_duplicate_heads_if_they_map_to_the_same_workspace_segment() -> anyhow::Result<()> {
     let repo = but_testsupport::read_only_in_memory_scenario("ws/multi-lane-with-shared-segment")?;
     let (mut store, _tmp) = empty_vb_store_rw()?;

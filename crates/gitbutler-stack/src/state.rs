@@ -329,52 +329,6 @@ impl VirtualBranchesHandle {
         Ok(())
     }
 
-    /// Garbage collects branches that are not in the workspace and hold no changes:
-    ///   1. They do not have a WIP commit
-    ///   2. They have no regular commits
-    ///
-    /// Also collects branches with a head oid pointing to a commit that can't be found in the repo
-    pub fn garbage_collect(&mut self, repo: &gix::Repository) -> Result<()> {
-        let target = self.get_default_target()?;
-        let stacks_not_in_workspace = self
-            .list_all_stacks()?
-            .into_iter()
-            .filter(|b| !b.in_workspace)
-            .collect_vec();
-        let mut to_remove: Vec<StackId> = vec![];
-        let ctx = but_ctx::Context::try_from(repo.clone())?;
-        let cache = repo.commit_graph_if_enabled()?;
-        let mut graph = repo.revision_graph(cache.as_ref());
-        for branch in stacks_not_in_workspace {
-            if let Ok(branch_head) = branch.head_oid(&ctx) {
-                if repo.find_commit(branch_head).is_err() {
-                    // if the head commit can't be found, we can GC the branch
-                    to_remove.push(branch.id);
-                } else {
-                    // if there are no commits between the head and the merge base,
-                    // i.e. the head is the merge base, we can GC the branch
-                    if branch_head
-                        == repo
-                            .merge_base_with_graph(branch_head, target.sha, &mut graph)?
-                            .detach()
-                    {
-                        to_remove.push(branch.id);
-                    }
-                }
-            }
-        }
-        if !to_remove.is_empty() {
-            let mut virtual_branches = self.read_file()?;
-            for branch_id in to_remove {
-                virtual_branches.branches.remove(&branch_id);
-            }
-            // Perform all removals in one go (Windows doesn't like multiple writes in quick succession)
-            self.write_file(&virtual_branches)?;
-        }
-
-        Ok(())
-    }
-
     /// Returns a base commit for use when pushing a stack for review.
     /// The last pushed base either has no parents, or either has the base
     /// that was pushed previously as the base.
