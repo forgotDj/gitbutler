@@ -128,23 +128,6 @@ but branch show <id> --check  # Check if branch merges cleanly into upstream
 but branch show <id> -r       # Fetch and display review information (PRs/MRs)
 ```
 
-### `but branch move <branch> <target-branch>`
-
-Move an existing branch on top of another branch, stacking them.
-
-```bash
-but branch move feature/frontend feature/backend
-but branch move --unstack feature/frontend
-```
-
-Equivalent top-level syntax:
-
-```bash
-but move feature/frontend feature/backend
-but move feature/frontend zz
-```
-
-Uses branch names or branch CLI IDs.
 ### `but pick <source> [target]`
 
 Cherry-pick commits from unapplied branches into applied branches.
