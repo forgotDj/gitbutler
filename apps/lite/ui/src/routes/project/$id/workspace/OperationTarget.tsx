@@ -2,11 +2,13 @@ import { type Item } from "./Item.ts";
 import { parseDragData } from "./OperationSourceC.tsx";
 import styles from "./OperationTarget.module.css";
 import { OperationTooltip } from "./OperationTooltip.tsx";
-import { type OperationMode } from "./WorkspaceMode.ts";
 import { getOperation, getOperations, OperationType, useRunOperation } from "#ui/Operation.ts";
 import { classes } from "#ui/classes.ts";
-import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
-import { useAppDispatch } from "#ui/state/hooks.ts";
+import {
+	projectActions,
+	selectProjectOperationModeState,
+} from "#ui/routes/project/$id/state/projectSlice.ts";
+import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import {
 	attachInstruction,
@@ -149,11 +151,13 @@ export const OperationTarget: FC<
 	{
 		item: Item;
 		projectId: string;
-		operationMode: OperationMode | null;
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ item, projectId, operationMode, isSelected, render, ...props }) => {
+> = ({ item, projectId, isSelected, render, ...props }) => {
 	const { dropRef, isActiveDropTarget } = useOperationDropTarget({ item, projectId });
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
 
 	const insertTargetOperationType = operationMode
 		? Match.value(operationMode).pipe(

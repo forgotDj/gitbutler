@@ -26,6 +26,7 @@ import {
 	selectProjectExpandedCommitId,
 	selectProjectHighlightedCommitIds,
 	selectProjectLayoutState,
+	selectProjectOperationModeState,
 	selectProjectSelectedItem,
 	selectProjectWorkspaceModeState,
 } from "#ui/routes/project/$id/state/projectSlice.ts";
@@ -118,10 +119,8 @@ import { PositionedShortcutsBar } from "../ShortcutsBar.tsx";
 import { formatShortcutKeys, ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import styles from "./route.module.css";
 import {
-	getOperationMode,
 	includeItemForWorkspaceMode,
 	isValidWorkspaceMode,
-	type OperationMode,
 	type WorkspaceMode,
 } from "./WorkspaceMode.ts";
 
@@ -382,13 +381,12 @@ const getDependencyCommitIds = ({
 
 const Hunk: FC<{
 	patch: Extract<UnifiedPatch, { type: "Patch" }>;
-	operationMode: OperationMode | null;
 	projectId: string;
 	fileParent?: FileParent;
 	change: TreeChange;
 	hunk: DiffHunk;
 	hunkDependencyDiffs?: Array<HunkDependencyDiff>;
-}> = ({ patch, operationMode, projectId, fileParent, change, hunk, hunkDependencyDiffs }) => {
+}> = ({ patch, projectId, fileParent, change, hunk, hunkDependencyDiffs }) => {
 	const dependencyCommitIds =
 		fileParent?._tag === "Change" && hunkDependencyDiffs
 			? getDependencyCommitIds({ hunk, hunkDependencyDiffs })
@@ -416,7 +414,6 @@ const Hunk: FC<{
 		<div>
 			{source ? (
 				<OperationSourceC
-					operationMode={operationMode}
 					projectId={projectId}
 					source={source}
 					canDrag={() => !patch.subject.isResultOfBinaryToTextConversion}
@@ -432,13 +429,12 @@ const Hunk: FC<{
 };
 
 const FileDiff: FC<{
-	operationMode: OperationMode | null;
 	projectId: string;
 	change: TreeChange;
 	fileParent?: FileParent;
 	hunkDependencyDiffs?: Array<HunkDependencyDiff>;
 	diff: UnifiedPatch | null;
-}> = ({ operationMode, projectId, change, fileParent, hunkDependencyDiffs, diff }) =>
+}> = ({ projectId, change, fileParent, hunkDependencyDiffs, diff }) =>
 	Match.value(diff).pipe(
 		Match.when(null, () => <div>No diff available for this file.</div>),
 		Match.when({ type: "Binary" }, () => <div>Binary file (diff not available).</div>),
@@ -455,7 +451,6 @@ const FileDiff: FC<{
 						<li key={hunkKey(hunk)}>
 							<Hunk
 								patch={patch}
-								operationMode={operationMode}
 								projectId={projectId}
 								fileParent={fileParent}
 								change={change}
@@ -472,12 +467,11 @@ const FileDiff: FC<{
 
 const ChangesFileDiffList: FC<{
 	changes: Array<TreeChange>;
-	operationMode: OperationMode | null;
 	projectId: string;
 	fileParent?: FileParent;
 	stackId?: string;
 	hunkDependencyDiffsByPath?: Map<string, Array<HunkDependencyDiff>>;
-}> = ({ changes, operationMode, projectId, fileParent, stackId, hunkDependencyDiffsByPath }) => {
+}> = ({ changes, projectId, fileParent, stackId, hunkDependencyDiffsByPath }) => {
 	const treeChangeDiffs = useSuspenseQueries({
 		queries: changes.map((change) => treeChangeDiffsQueryOptions({ projectId, change })),
 	}).map((result) => result.data);
@@ -503,14 +497,13 @@ const ChangesFileDiffList: FC<{
 				return (
 					<li key={change.path}>
 						{source ? (
-							<OperationSourceC operationMode={operationMode} projectId={projectId} source={source}>
+							<OperationSourceC projectId={projectId} source={source}>
 								{heading}
 							</OperationSourceC>
 						) : (
 							heading
 						)}
 						<FileDiff
-							operationMode={operationMode}
 							projectId={projectId}
 							change={change}
 							fileParent={fileParent}
@@ -525,10 +518,9 @@ const ChangesFileDiffList: FC<{
 };
 
 const ChangesPreview: FC<{
-	operationMode: OperationMode | null;
 	projectId: string;
 	selectedPath?: string;
-}> = ({ operationMode, projectId, selectedPath }) => {
+}> = ({ projectId, selectedPath }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
 		worktreeChanges.dependencies?.diffs ?? [],
@@ -545,7 +537,6 @@ const ChangesPreview: FC<{
 				changes={changes}
 				fileParent={changeFileParent}
 				hunkDependencyDiffsByPath={hunkDependencyDiffsByPath}
-				operationMode={operationMode}
 				projectId={projectId}
 			/>
 		</div>
@@ -553,12 +544,11 @@ const ChangesPreview: FC<{
 };
 
 const CommitPreview: FC<{
-	operationMode: OperationMode | null;
 	projectId: string;
 	commitId: string;
 	selectedPath?: string | null;
 	stackId: string;
-}> = ({ operationMode, projectId, commitId, selectedPath, stackId }) => {
+}> = ({ projectId, commitId, selectedPath, stackId }) => {
 	const { data: commitDetails } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
@@ -588,7 +578,6 @@ const CommitPreview: FC<{
 			<ChangesFileDiffList
 				changes={changes}
 				fileParent={fileParent}
-				operationMode={operationMode}
 				projectId={projectId}
 				stackId={stackId}
 			/>
@@ -597,10 +586,9 @@ const CommitPreview: FC<{
 };
 
 const BranchPreview: FC<{
-	operationMode: OperationMode | null;
 	projectId: string;
 	branchRef: Array<number>;
-}> = ({ operationMode, projectId, branchRef }) => {
+}> = ({ projectId, branchRef }) => {
 	const decodedBranchRef = decodeRefName(branchRef);
 	const [{ data: branchDetails }, { data: branchDiff }] = useSuspenseQueries({
 		queries: [
@@ -618,41 +606,26 @@ const BranchPreview: FC<{
 		<div>
 			<h3>{branchDetails.name}</h3>
 			{branchDetails.prNumber != null && <p>PR #{branchDetails.prNumber}</p>}
-			<ChangesFileDiffList
-				changes={branchDiff.changes}
-				operationMode={operationMode}
-				projectId={projectId}
-			/>
+			<ChangesFileDiffList changes={branchDiff.changes} projectId={projectId} />
 		</div>
 	);
 };
 
 const Preview: FC<{
-	operationMode: OperationMode | null;
 	projectId: string;
 	selectedItem: Item;
-}> = ({ operationMode, projectId, selectedItem }) =>
+}> = ({ projectId, selectedItem }) =>
 	Match.value(selectedItem).pipe(
 		Match.tagsExhaustive({
 			Stack: () => null,
-			Branch: ({ branchRef }) => (
-				<BranchPreview operationMode={operationMode} projectId={projectId} branchRef={branchRef} />
-			),
-			ChangesSection: () => <ChangesPreview operationMode={operationMode} projectId={projectId} />,
-			ChangeFile: ({ path }) => (
-				<ChangesPreview operationMode={operationMode} projectId={projectId} selectedPath={path} />
-			),
+			Branch: ({ branchRef }) => <BranchPreview projectId={projectId} branchRef={branchRef} />,
+			ChangesSection: () => <ChangesPreview projectId={projectId} />,
+			ChangeFile: ({ path }) => <ChangesPreview projectId={projectId} selectedPath={path} />,
 			Commit: ({ commitId, stackId }) => (
-				<CommitPreview
-					operationMode={operationMode}
-					projectId={projectId}
-					commitId={commitId}
-					stackId={stackId}
-				/>
+				<CommitPreview projectId={projectId} commitId={commitId} stackId={stackId} />
 			),
 			CommitFile: ({ commitId, path, stackId }) => (
 				<CommitPreview
-					operationMode={operationMode}
 					projectId={projectId}
 					commitId={commitId}
 					stackId={stackId}
@@ -925,18 +898,16 @@ const CommitRow: FC<
 
 const CommitFileRow: FC<{
 	change: TreeChange;
-	operationMode: OperationMode | null;
 	parentCommitItem: CommitItem;
 	navigationIndex: NavigationIndex;
 	projectId: string;
-}> = ({ change, operationMode, parentCommitItem, navigationIndex, projectId }) => {
+}> = ({ change, parentCommitItem, navigationIndex, projectId }) => {
 	const dispatch = useAppDispatch();
 	const item = commitFileItem({ ...parentCommitItem, path: change.path });
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	return (
 		<OperationSourceC
-			operationMode={operationMode}
 			projectId={projectId}
 			source={item}
 			render={
@@ -960,7 +931,6 @@ const CommitFileRow: FC<{
 const CommitC: FC<{
 	commit: Commit;
 	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
-	operationMode: OperationMode | null;
 	workspaceMode: WorkspaceMode;
 	projectId: string;
 	stackId: string;
@@ -968,7 +938,6 @@ const CommitC: FC<{
 }> = ({
 	commit,
 	inlineRewordCommitFormRef,
-	operationMode,
 	workspaceMode,
 	projectId,
 	stackId,
@@ -983,18 +952,10 @@ const CommitC: FC<{
 
 	return (
 		<OperationSourceC
-			operationMode={operationMode}
 			projectId={projectId}
 			source={item}
 			canDrag={() => !isSelected || workspaceMode._tag !== "RewordCommit"}
-			render={
-				<OperationTarget
-					item={item}
-					projectId={projectId}
-					operationMode={operationMode}
-					isSelected={isSelected}
-				/>
-			}
+			render={<OperationTarget item={item} projectId={projectId} isSelected={isSelected} />}
 		>
 			<CommitRow
 				commit={commit}
@@ -1013,7 +974,6 @@ const CommitC: FC<{
 						renderFile={(change) => (
 							<CommitFileRow
 								change={change}
-								operationMode={operationMode}
 								parentCommitItem={commitItemV}
 								navigationIndex={navigationIndex}
 								projectId={projectId}
@@ -1031,7 +991,6 @@ const ChangeFileRow: FC<{
 	dependencyCommitIds: NonEmptyArray<string> | undefined;
 	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	operationMode: OperationMode | null;
 	workspaceMode: WorkspaceMode;
 	projectId: string;
 }> = ({
@@ -1039,7 +998,6 @@ const ChangeFileRow: FC<{
 	dependencyCommitIds,
 	navigationIndex,
 	onAbsorbChanges,
-	operationMode,
 	workspaceMode,
 	projectId,
 }) => {
@@ -1065,7 +1023,6 @@ const ChangeFileRow: FC<{
 
 	return (
 		<OperationSourceC
-			operationMode={operationMode}
 			projectId={projectId}
 			source={item}
 			render={
@@ -1165,9 +1122,8 @@ const BaseCommitRow: FC<
 		projectId: string;
 		commitId?: string;
 		navigationIndex: NavigationIndex;
-		operationMode: OperationMode | null;
 	} & ComponentProps<"div">
-> = ({ projectId, commitId, navigationIndex, operationMode, ...props }) => {
+> = ({ projectId, commitId, navigationIndex, ...props }) => {
 	const dispatch = useAppDispatch();
 	const item = baseCommitItem;
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
@@ -1176,7 +1132,6 @@ const BaseCommitRow: FC<
 		<OperationTarget
 			projectId={projectId}
 			item={item}
-			operationMode={operationMode}
 			isSelected={isSelected}
 			render={
 				<ItemRow
@@ -1202,12 +1157,11 @@ const BaseCommitRow: FC<
 };
 
 const Changes: FC<{
-	operationMode: OperationMode | null;
 	projectId: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	navigationIndex: NavigationIndex;
 	workspaceMode: WorkspaceMode;
-}> = ({ operationMode, projectId, onAbsorbChanges, navigationIndex, workspaceMode }) => {
+}> = ({ projectId, onAbsorbChanges, navigationIndex, workspaceMode }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
@@ -1219,18 +1173,10 @@ const Changes: FC<{
 
 	return (
 		<OperationSourceC
-			operationMode={operationMode}
 			projectId={projectId}
 			source={item}
 			className={styles.section}
-			render={
-				<OperationTarget
-					item={item}
-					projectId={projectId}
-					operationMode={operationMode}
-					isSelected={isSelected}
-				/>
-			}
+			render={<OperationTarget item={item} projectId={projectId} isSelected={isSelected} />}
 		>
 			<ChangesSectionRow
 				changes={worktreeChanges.changes}
@@ -1256,7 +1202,6 @@ const Changes: FC<{
 									dependencyCommitIds={dependencyCommitIds}
 									navigationIndex={navigationIndex}
 									onAbsorbChanges={onAbsorbChanges}
-									operationMode={operationMode}
 									workspaceMode={workspaceMode}
 									projectId={projectId}
 								/>
@@ -1300,7 +1245,6 @@ const InlineRenameBranch: FC<{
 const BranchRow: FC<
 	{
 		inlineRenameBranchFormRef: Ref<HTMLFormElement>;
-		operationMode: OperationMode | null;
 		workspaceMode: WorkspaceMode;
 		projectId: string;
 		branchName: string;
@@ -1310,7 +1254,6 @@ const BranchRow: FC<
 	} & ComponentProps<"div">
 > = ({
 	inlineRenameBranchFormRef,
-	operationMode,
 	workspaceMode,
 	projectId,
 	branchName,
@@ -1391,7 +1334,6 @@ const BranchRow: FC<
 	return (
 		<OperationSourceC
 			{...restProps}
-			operationMode={operationMode}
 			projectId={projectId}
 			source={item}
 			render={
@@ -1519,7 +1461,6 @@ const SegmentC: FC<{
 	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
 	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
 	navigationIndex: NavigationIndex;
-	operationMode: OperationMode | null;
 	projectId: string;
 	segment: Segment;
 	stackId: string;
@@ -1528,7 +1469,6 @@ const SegmentC: FC<{
 	inlineRenameBranchFormRef,
 	inlineRewordCommitFormRef,
 	navigationIndex,
-	operationMode,
 	projectId,
 	segment,
 	stackId,
@@ -1539,7 +1479,6 @@ const SegmentC: FC<{
 			{segment.refName && (
 				<BranchRow
 					inlineRenameBranchFormRef={inlineRenameBranchFormRef}
-					operationMode={operationMode}
 					workspaceMode={workspaceMode}
 					projectId={projectId}
 					branchName={segment.refName.displayName}
@@ -1558,7 +1497,6 @@ const SegmentC: FC<{
 							<CommitC
 								commit={commit}
 								inlineRewordCommitFormRef={inlineRewordCommitFormRef}
-								operationMode={operationMode}
 								workspaceMode={workspaceMode}
 								projectId={projectId}
 								stackId={stackId}
@@ -1573,7 +1511,6 @@ const SegmentC: FC<{
 
 	return segment.refName ? (
 		<BranchOperationTarget
-			operationMode={operationMode}
 			projectId={projectId}
 			branchRef={segment.refName.fullNameBytes}
 			stackId={stackId}
@@ -1587,13 +1524,12 @@ const SegmentC: FC<{
 
 const BranchOperationTarget: FC<
 	{
-		operationMode: OperationMode | null;
 		projectId: string;
 		branchRef: Array<number>;
 		stackId: string;
 		navigationIndex: NavigationIndex;
 	} & useRender.ComponentProps<"div">
-> = ({ operationMode, projectId, branchRef, stackId, navigationIndex, render, ...restProps }) => {
+> = ({ projectId, branchRef, stackId, navigationIndex, render, ...restProps }) => {
 	const item = branchItem({ stackId, branchRef });
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
@@ -1602,7 +1538,6 @@ const BranchOperationTarget: FC<
 			{...restProps}
 			projectId={projectId}
 			item={item}
-			operationMode={operationMode}
 			isSelected={isSelected}
 			render={render}
 		/>
@@ -1612,7 +1547,6 @@ const BranchOperationTarget: FC<
 const StackC: FC<{
 	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
 	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
-	operationMode: OperationMode | null;
 	projectId: string;
 	stack: Stack;
 	workspaceMode: WorkspaceMode;
@@ -1620,7 +1554,6 @@ const StackC: FC<{
 }> = ({
 	inlineRenameBranchFormRef,
 	inlineRewordCommitFormRef,
-	operationMode,
 	projectId,
 	stack,
 	workspaceMode,
@@ -1664,7 +1597,6 @@ const StackC: FC<{
 								inlineRenameBranchFormRef={inlineRenameBranchFormRef}
 								inlineRewordCommitFormRef={inlineRewordCommitFormRef}
 								navigationIndex={navigationIndex}
-								operationMode={operationMode}
 								projectId={projectId}
 								segment={segment}
 								stackId={stackId}
@@ -1713,7 +1645,9 @@ const ProjectPage: FC = () => {
 	)
 		dispatch(projectActions.exitMode({ projectId }));
 
-	const operationMode = getOperationMode(workspaceMode);
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
 
 	const selectedItem = useAppSelector((state) =>
 		selectNormalizedSelectedItem(state, { projectId, navigationIndex: navigationIndexUnfiltered }),
@@ -1750,7 +1684,6 @@ const ProjectPage: FC = () => {
 		scope: shortcutScope,
 		navigationIndex,
 		openAbsorptionDialog,
-		operationMode,
 	});
 
 	// TODO: dedupe
@@ -1770,11 +1703,7 @@ const ProjectPage: FC = () => {
 			preview={
 				selectedItem && (
 					<Suspense fallback={<div>Loading preview…</div>}>
-						<Preview
-							operationMode={operationMode}
-							projectId={projectId}
-							selectedItem={selectedItem}
-						/>
+						<Preview projectId={projectId} selectedItem={selectedItem} />
 					</Suspense>
 				)
 			}
@@ -1782,7 +1711,6 @@ const ProjectPage: FC = () => {
 			<div className={styles.sections}>
 				<div className={styles.changesContainer}>
 					<Changes
-						operationMode={operationMode}
 						projectId={projectId}
 						onAbsorbChanges={openAbsorptionDialog}
 						navigationIndex={navigationIndex}
@@ -1799,7 +1727,6 @@ const ProjectPage: FC = () => {
 						key={stack.id}
 						inlineRenameBranchFormRef={inlineRenameBranchFormRef}
 						inlineRewordCommitFormRef={inlineRewordCommitFormRef}
-						operationMode={operationMode}
 						projectId={project.id}
 						stack={stack}
 						workspaceMode={workspaceMode}
@@ -1812,7 +1739,6 @@ const ProjectPage: FC = () => {
 						projectId={projectId}
 						commitId={getCommonBaseCommitId(headInfo)}
 						navigationIndex={navigationIndex}
-						operationMode={operationMode}
 					/>
 				</div>
 			</div>

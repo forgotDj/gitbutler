@@ -1,8 +1,11 @@
 import { getAction, type ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import { getOperation, useRunOperation } from "#ui/Operation.ts";
 import { getFocus, type ProjectLayoutState } from "#ui/routes/project/$id/state/layout.ts";
-import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
-import { useAppDispatch } from "#ui/state/hooks.ts";
+import {
+	projectActions,
+	selectProjectOperationModeState,
+} from "#ui/routes/project/$id/state/projectSlice.ts";
+import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import { Match } from "effect";
 import { RefObject, useEffect, useEffectEvent } from "react";
 import {
@@ -698,7 +701,6 @@ export const useWorkspaceShortcuts = ({
 	scope,
 	navigationIndex,
 	openAbsorptionDialog,
-	operationMode,
 }: {
 	inlineRenameBranchFormRef: RefObject<HTMLFormElement | null>;
 	inlineRewordCommitFormRef: RefObject<HTMLFormElement | null>;
@@ -706,9 +708,11 @@ export const useWorkspaceShortcuts = ({
 	scope: Scope | null;
 	navigationIndex: NavigationIndex;
 	openAbsorptionDialog: (target: AbsorptionTarget) => void;
-	operationMode: OperationMode | null;
 }) => {
 	const dispatch = useAppDispatch();
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
 	const queryClient = useQueryClient();
 	const runOperation = useRunOperation();
 

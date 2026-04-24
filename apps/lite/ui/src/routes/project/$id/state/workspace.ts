@@ -10,6 +10,7 @@ import {
 import {
 	defaultWorkspaceMode,
 	dragAndDropOperationMode,
+	getOperationMode,
 	isValidWorkspaceModeForSelectedItem,
 	moveOperationMode,
 	operationWorkspaceMode,
@@ -137,6 +138,8 @@ export const selectSelectedItem = (state: WorkspaceState): Item | null =>
 	selectSelection(state).item;
 
 export const selectMode = (state: WorkspaceState): WorkspaceMode => state.mode;
+
+export const selectOperationMode = (state: WorkspaceState) => getOperationMode(state.mode);
 
 export const selectExpandedCommitId = (state: WorkspaceState): string | null =>
 	state.expandedCommitId;
