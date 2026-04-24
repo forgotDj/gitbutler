@@ -50,7 +50,7 @@ impl Toasts {
 }
 
 pub(super) fn render_toasts(frame: &mut Frame, area: Rect, toasts: &Toasts, theme: &'static Theme) {
-    let mut bottom_margin = 0;
+    let mut bottom_margin = 1;
     for toast in &toasts.toasts {
         if bottom_margin >= area.height {
             break;
