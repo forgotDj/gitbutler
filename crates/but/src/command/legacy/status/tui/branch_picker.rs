@@ -15,7 +15,11 @@ use ratatui::{
 use ratatui_textarea::TextArea;
 use unicode_width::UnicodeWidthStr;
 
-use crate::{command::legacy::status::tui::Message, theme::Theme, utils::DebugAsType};
+use crate::{
+    command::legacy::status::tui::Message,
+    theme::{PatchStyle as _, Theme},
+    utils::DebugAsType,
+};
 
 #[derive(Debug)]
 pub(super) struct BranchPicker {
@@ -193,7 +197,7 @@ impl BranchPicker {
                     }
                 };
                 if idx == self.cursor {
-                    item.style(self.theme.selection_highlight)
+                    item.patch_style(self.theme.selection_highlight)
                 } else {
                     item
                 }
