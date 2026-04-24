@@ -20,12 +20,15 @@ import { classes } from "#ui/classes.ts";
 import { DependencyIcon, ExpandCollapseIcon, MenuTriggerIcon, PushIcon } from "#ui/icons.tsx";
 import { changeFileParent, commitFileParent, type FileParent } from "#ui/domain/FileParent.ts";
 import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
-import { ProjectPreviewLayout } from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
+import {
+	ProjectPreviewLayout,
+	useFocusedProjectPanel,
+	useProjectPanelFocusManager,
+} from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
 import {
 	projectActions,
 	selectProjectExpandedCommitId,
 	selectProjectHighlightedCommitIds,
-	selectProjectLayoutState,
 	selectProjectOperationModeState,
 	selectProjectSelectedItem,
 	selectProjectWorkspaceModeState,
@@ -1678,10 +1681,11 @@ const ProjectPage: FC = () => {
 	const expandedCommitId = useAppSelector((state) =>
 		selectProjectExpandedCommitId(state, projectId),
 	);
-	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
+	const { focusAdjacentPanel, panelElementRef } = useProjectPanelFocusManager();
+	const focusedPanel = useFocusedProjectPanel();
 
 	const workspaceOutline = useWorkspaceOutline({ projectId, expandedCommitId });
 
@@ -1709,7 +1713,7 @@ const ProjectPage: FC = () => {
 				)
 			: navigationIndexUnfiltered;
 
-	const shortcutScope = getScope({ selectedItem, layoutState, workspaceMode });
+	const shortcutScope = getScope({ selectedItem, focusedPanel, workspaceMode });
 
 	const [absorptionTarget, setAbsorptionTarget] = useState<AbsorptionTarget | null>(null);
 
@@ -1735,6 +1739,7 @@ const ProjectPage: FC = () => {
 		navigationIndex,
 		openAbsorptionDialog,
 		openBranchPicker: () => setBranchPickerOpen(true),
+		focusAdjacentPanel,
 	});
 
 	const operationMode = useAppSelector((state) =>
@@ -1771,6 +1776,7 @@ const ProjectPage: FC = () => {
 		<>
 			<ProjectPreviewLayout
 				projectId={projectId}
+				panelElementRef={panelElementRef}
 				preview={
 					selectedItem && (
 						<Suspense fallback={<div>Loading preview…</div>}>

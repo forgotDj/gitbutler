@@ -1,6 +1,6 @@
 import { getAction, type ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
 import { getOperation, useRunOperation } from "#ui/Operation.ts";
-import { getFocus, type ProjectLayoutState } from "#ui/routes/project/$id/state/layout.ts";
+import { type Panel } from "#ui/routes/project/$id/state/layout.ts";
 import {
 	projectActions,
 	selectProjectOperationModeState,
@@ -661,20 +661,19 @@ const previewScope = ({ bindings }: PreviewScope): Scope => ({
 
 export const getScope = ({
 	selectedItem,
-	layoutState,
+	focusedPanel,
 	workspaceMode,
 }: {
 	selectedItem: Item | null;
-	layoutState: ProjectLayoutState;
+	focusedPanel: Panel | null;
 	workspaceMode: WorkspaceMode;
-}): Scope | null => {
-	if (getFocus(layoutState) === "preview")
-		return previewScope({
-			bindings: previewBindings,
-		});
-
-	return getModeScope({ selectedItem, workspaceMode });
-};
+}): Scope | null =>
+	Match.value(focusedPanel).pipe(
+		Match.when(null, () => null),
+		Match.when("preview", () => previewScope({ bindings: previewBindings })),
+		Match.when("primary", () => getModeScope({ selectedItem, workspaceMode })),
+		Match.exhaustive,
+	);
 
 export const getScopeBindings = (scope: Scope): Array<ShortcutBinding<ShortcutActionBase>> =>
 	Match.value(scope).pipe(
@@ -708,6 +707,7 @@ export const useWorkspaceShortcuts = ({
 	navigationIndex,
 	openAbsorptionDialog,
 	openBranchPicker,
+	focusAdjacentPanel,
 }: {
 	inlineRenameBranchFormRef: RefObject<HTMLFormElement | null>;
 	inlineRewordCommitFormRef: RefObject<HTMLFormElement | null>;
@@ -716,6 +716,7 @@ export const useWorkspaceShortcuts = ({
 	navigationIndex: NavigationIndex;
 	openAbsorptionDialog: (target: AbsorptionTarget) => void;
 	openBranchPicker: () => void;
+	focusAdjacentPanel: (offset: -1 | 1) => void;
 }) => {
 	const dispatch = useAppDispatch();
 	const operationMode = useAppSelector((state) =>
@@ -775,8 +776,8 @@ export const useWorkspaceShortcuts = ({
 	const handlePanelNavigationAction = (action: PanelNavigationAction) =>
 		Match.value(action).pipe(
 			Match.tagsExhaustive({
-				FocusNextPanel: () => dispatch(projectActions.focusNextPanel({ projectId })),
-				FocusPreviousPanel: () => dispatch(projectActions.focusPreviousPanel({ projectId })),
+				FocusNextPanel: () => focusAdjacentPanel(1),
+				FocusPreviousPanel: () => focusAdjacentPanel(-1),
 				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
 			}),
 		);
