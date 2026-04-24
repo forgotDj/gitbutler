@@ -13,7 +13,7 @@ commit-file initial-commit-file.txt
 setup_target_to_match_main
 
 git checkout -b large-file
-# POSIX-compliant way to do the equivalent of `seq 100 > large_file.txt`
+# simulating `seq 100 > large_file.txt`
 for i in {1..100}; do
   echo "$i" >> large_file.txt
 done
