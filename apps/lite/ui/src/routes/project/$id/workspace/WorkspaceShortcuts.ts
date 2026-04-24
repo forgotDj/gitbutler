@@ -158,11 +158,11 @@ const panelNavigationBindings: Array<ShortcutBinding<PanelNavigationAction>> = [
 type PrimaryPanelAction =
 	| ItemSelectionAction
 	| { _tag: "Commit" }
-	| { _tag: "SelectUnassignedChanges" }
+	| { _tag: "SelectChanges" }
 	| PanelNavigationAction;
 
 const commitAction: PrimaryPanelAction = { _tag: "Commit" };
-const selectUnassignedChangesAction: PrimaryPanelAction = { _tag: "SelectUnassignedChanges" };
+const SelectChangesAction: PrimaryPanelAction = { _tag: "SelectChanges" };
 
 const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 	...itemSelectionBindings,
@@ -174,10 +174,10 @@ const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 		repeat: false,
 	},
 	{
-		id: "primary-panel-select-unassigned-changes",
-		description: "Unassigned changes",
+		id: "primary-panel-select-changes",
+		description: "Changes",
 		keys: ["z"],
-		action: selectUnassignedChangesAction,
+		action: SelectChangesAction,
 		repeat: false,
 	},
 	...panelNavigationBindings,
@@ -774,7 +774,7 @@ export const useWorkspaceShortcuts = ({
 							source: changesSectionItem,
 						}),
 					),
-				SelectUnassignedChanges: () =>
+				SelectChanges: () =>
 					dispatch(projectActions.selectItem({ projectId, item: changesSectionItem })),
 			}),
 			Match.orElse((action) => {
