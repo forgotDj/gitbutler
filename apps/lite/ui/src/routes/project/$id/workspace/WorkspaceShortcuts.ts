@@ -157,10 +157,12 @@ const panelNavigationBindings: Array<ShortcutBinding<PanelNavigationAction>> = [
 type PrimaryPanelAction =
 	| ItemSelectionAction
 	| { _tag: "Commit" }
+	| { _tag: "SelectBranch" }
 	| { _tag: "SelectChanges" }
 	| PanelNavigationAction;
 
 const commitAction: PrimaryPanelAction = { _tag: "Commit" };
+const selectBranchAction: PrimaryPanelAction = { _tag: "SelectBranch" };
 const selectChangesAction: PrimaryPanelAction = { _tag: "SelectChanges" };
 
 const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
@@ -177,6 +179,13 @@ const primaryPanelBindings: Array<ShortcutBinding<PrimaryPanelAction>> = [
 		description: "Changes",
 		keys: ["z"],
 		action: selectChangesAction,
+		repeat: false,
+	},
+	{
+		id: "primary-panel-select-branch",
+		description: "Branch",
+		keys: ["t"],
+		action: selectBranchAction,
 		repeat: false,
 	},
 	...panelNavigationBindings,
@@ -429,7 +438,8 @@ const operationModeBindings: Array<ShortcutBinding<OperationModeAction>> = [
 		(binding) =>
 			binding.action._tag !== "Commit" &&
 			binding.action._tag !== "EnterRubMode" &&
-			binding.action._tag !== "EnterMoveMode",
+			binding.action._tag !== "EnterMoveMode" &&
+			binding.action._tag !== "SelectBranch",
 	),
 	{
 		id: "operation-mode-confirm",
@@ -697,6 +707,7 @@ export const useWorkspaceShortcuts = ({
 	scope,
 	navigationIndex,
 	openAbsorptionDialog,
+	openBranchPicker,
 }: {
 	inlineRenameBranchFormRef: RefObject<HTMLFormElement | null>;
 	inlineRewordCommitFormRef: RefObject<HTMLFormElement | null>;
@@ -704,6 +715,7 @@ export const useWorkspaceShortcuts = ({
 	scope: Scope | null;
 	navigationIndex: NavigationIndex;
 	openAbsorptionDialog: (target: AbsorptionTarget) => void;
+	openBranchPicker: () => void;
 }) => {
 	const dispatch = useAppDispatch();
 	const operationMode = useAppSelector((state) =>
@@ -779,6 +791,7 @@ export const useWorkspaceShortcuts = ({
 							source: changesSectionItem,
 						}),
 					),
+				SelectBranch: () => openBranchPicker(),
 				SelectChanges: () =>
 					dispatch(projectActions.selectItem({ projectId, item: changesSectionItem })),
 			}),
