@@ -11,7 +11,7 @@ import { centerUnderPointer } from "@atlaskit/pragmatic-drag-and-drop/element/ce
 import { setCustomNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview";
 import { mergeProps, useRender } from "@base-ui/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { FC, type ReactNode, useEffect, useEffectEvent, useRef, useState } from "react";
+import { FC, type ReactNode, useEffect, useEffectEvent, useRef } from "react";
 import { createRoot } from "react-dom/client";
 
 type DraggableParams = Parameters<typeof draggable>[0];
@@ -41,7 +41,6 @@ export const OperationSourceC: FC<
 
 	const dispatch = useAppDispatch();
 	const dragRef = useRef<HTMLElement>(null);
-	const [isDragging, setIsDragging] = useState(false);
 	const canDragEvent: NonNullable<DraggableParams["canDrag"]> = useEffectEvent(
 		() => canDrag?.() ?? true,
 	);
@@ -75,11 +74,9 @@ export const OperationSourceC: FC<
 			getInitialData: (): DragData => ({ source }),
 			onGenerateDragPreview,
 			onDragStart: () => {
-				setIsDragging(true);
 				dispatch(projectActions.enterDragAndDropMode({ projectId, source }));
 			},
 			onDrop: () => {
-				setIsDragging(false);
 				dispatch(projectActions.exitMode({ projectId }));
 			},
 		});
@@ -88,13 +85,11 @@ export const OperationSourceC: FC<
 	const isActiveOperationModeSource =
 		operationMode?.source && itemEquals(operationMode.source, source);
 
-	const isActive = isDragging || isActiveOperationModeSource;
-
 	return useRender({
 		render,
 		ref: dragRef,
 		props: mergeProps<"div">(props, {
-			className: classes(isActive && styles.activeSource),
+			className: classes(isActiveOperationModeSource && styles.activeSource),
 		}),
 	});
 };
