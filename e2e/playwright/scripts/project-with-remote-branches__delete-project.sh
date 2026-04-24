@@ -1,12 +1,12 @@
 #!/bin/bash
 
 echo "GIT CONFIG $GIT_CONFIG_GLOBAL"
-echo "DATA DIR $GITBUTLER_CLI_DATA_DIR"
+echo "DATA DIR $E2E_TEST_APP_DATA_DIR"
 echo "BUT $BUT"
 echo "PROJECT NAME: $1"
 
 project_path="$(cd "$1" && pwd)"
-projects_file="${GITBUTLER_CLI_DATA_DIR}/projects.json"
+projects_file="${E2E_TEST_APP_DATA_DIR}/com.gitbutler.app/projects.json"
 
 if [ -f "$projects_file" ]; then
   node - "$projects_file" "$project_path" <<'NODE'

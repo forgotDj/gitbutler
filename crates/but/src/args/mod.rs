@@ -26,7 +26,7 @@ pub struct Args {
     /// If the file does not exist it will be created. If it does exist it will be truncated.
     #[clap(long, hide = true)]
     pub log_file: Option<PathBuf>,
-    /// Run as if gitbutler-cli was started in PATH instead of the current working directory.
+    /// Run as if but was started in PATH instead of the current working directory.
     #[clap(short = 'C', long, default_value = ".", value_name = "PATH")]
     pub current_dir: PathBuf,
     /// Explicitly control how output should be formatted.

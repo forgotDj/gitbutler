@@ -9,8 +9,8 @@ git init remote
 )
 
 function init-virtual() {
-  $CLI project add --switch-to-workspace "$(git rev-parse --symbolic-full-name @{u})"
-  $CLI branch create virtual
+  $CLI setup
+  $CLI branch new virtual
 }
 
 function pack-refs() {
@@ -53,7 +53,7 @@ function unpack-packed-refs() {
 }
 
 
-export GITBUTLER_CLI_DATA_DIR=../user/gitbutler/app-data
+export E2E_TEST_APP_DATA_DIR=../user/gitbutler/app-data
 branch_count=300
 git clone remote many-local
 (cd many-local

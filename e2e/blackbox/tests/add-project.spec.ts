@@ -2,10 +2,7 @@ import { spawnAndLog, findAndClick, setElementValue } from "../utils.js";
 
 describe("Project", () => {
 	before(() => {
-		spawnAndLog("bash", [
-			"-c",
-			"./blackbox/scripts/init-repositories.sh ../target/debug/gitbutler-cli",
-		]);
+		spawnAndLog("bash", ["-c", "./blackbox/scripts/init-repositories.sh ../target/debug/but"]);
 	});
 
 	it("should add a local project", async () => {
