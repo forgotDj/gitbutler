@@ -31,11 +31,7 @@ import {
 	getPreviousSection,
 	type NavigationIndex,
 } from "./WorkspaceModel.ts";
-import {
-	operationModeToOperationType,
-	OperationMode,
-	type WorkspaceMode,
-} from "./WorkspaceMode.ts";
+import { operationModeToOperationType, type WorkspaceMode } from "./WorkspaceMode.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import { AbsorptionTarget } from "@gitbutler/but-sdk";
 import { changesInWorktreeQueryOptions } from "#ui/api/queries.ts";
