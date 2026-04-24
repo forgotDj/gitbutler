@@ -17,7 +17,7 @@ import { Match, pipe } from "effect";
 import { FC, useEffect, useEffectEvent, useRef, useState } from "react";
 
 type DropTargetParams = Parameters<typeof dropTargetForElements>[0];
-type GetDropDataArgs = Parameters<NonNullable<DropTargetParams["getData"]>>[0];
+type GetDataArgs = Parameters<NonNullable<DropTargetParams["getData"]>>[0];
 
 type DropData = {
 	operationType: OperationType;
@@ -80,22 +80,20 @@ export const OperationTarget: FC<
 	const dropRef = useRef<HTMLElement>(null);
 	const [isActiveDropTarget, setIsActiveDropTarget] = useState<boolean>(false);
 
-	const getDropData = useEffectEvent(
-		({ input, element, source }: GetDropDataArgs): DropData | null => {
-			const dragData = parseDragData(source.data);
-			if (!dragData) return null;
+	const getDropData = useEffectEvent(({ input, element, source }: GetDataArgs): DropData | null => {
+		const dragData = parseDragData(source.data);
+		if (!dragData) return null;
 
-			const operationType = getDropOperationType({
-				source: dragData.source,
-				target: item,
-				input,
-				element,
-			});
-			if (operationType === null) return null;
+		const operationType = getDropOperationType({
+			source: dragData.source,
+			target: item,
+			input,
+			element,
+		});
+		if (operationType === null) return null;
 
-			return { operationType, target: item };
-		},
-	);
+		return { operationType, target: item };
+	});
 
 	useEffect(() => {
 		const element = dropRef.current;
