@@ -28,14 +28,16 @@ fn no_conflicts() {
     let stacks = stack_details(ctx);
     assert!(stacks.is_empty());
 
-    let branch_id = gitbutler_branch_actions::create_virtual_branch_from_branch(
+    let mut guard = ctx.exclusive_worktree_access();
+    let branch_id = gitbutler_branch_actions::create_virtual_branch_from_branch_with_perm(
         ctx,
         &"refs/remotes/origin/branch".parse().unwrap(),
         None,
-        None,
+        guard.write_permission(),
     )
     .map(|o| o.0)
     .unwrap();
+    drop(guard);
 
     let stacks = stack_details(ctx);
     assert_eq!(stacks.len(), 1);
@@ -85,14 +87,16 @@ fn conflicts_with_uncommited() {
 
     // branch should be created unapplied, because of the conflict
 
-    let new_branch_id = gitbutler_branch_actions::create_virtual_branch_from_branch(
+    let mut guard = ctx.exclusive_worktree_access();
+    let new_branch_id = gitbutler_branch_actions::create_virtual_branch_from_branch_with_perm(
         ctx,
         &"refs/remotes/origin/branch".parse().unwrap(),
         None,
-        None,
+        guard.write_permission(),
     )
     .map(|o| o.0)
     .unwrap();
+    drop(guard);
     let (_, b) = stack_details(ctx)
         .into_iter()
         .find(|d| d.0 == new_branch_id)
@@ -143,14 +147,16 @@ fn conflicts_with_commited() {
 
     // branch should be created unapplied, because of the conflict
 
-    let new_branch_id = gitbutler_branch_actions::create_virtual_branch_from_branch(
+    let mut guard = ctx.exclusive_worktree_access();
+    let new_branch_id = gitbutler_branch_actions::create_virtual_branch_from_branch_with_perm(
         ctx,
         &"refs/remotes/origin/branch".parse().unwrap(),
         None,
-        None,
+        guard.write_permission(),
     )
     .map(|o| o.0)
     .unwrap();
+    drop(guard);
     let (_, b) = stack_details(ctx)
         .into_iter()
         .find(|d| d.0 == new_branch_id)
@@ -173,15 +179,19 @@ fn from_default_target() {
 
     // branch should be created unapplied, because of the conflict
 
+    let mut guard = ctx.exclusive_worktree_access();
+    let error = gitbutler_branch_actions::create_virtual_branch_from_branch_with_perm(
+        ctx,
+        &"refs/remotes/origin/master".parse().unwrap(),
+        None,
+        guard.write_permission(),
+    )
+    .unwrap_err()
+    .to_string();
+    drop(guard);
+
     assert_eq!(
-        gitbutler_branch_actions::create_virtual_branch_from_branch(
-            ctx,
-            &"refs/remotes/origin/master".parse().unwrap(),
-            None,
-            None,
-        )
-        .unwrap_err()
-        .to_string(),
+        error,
         "Cannot add the target 'refs/remotes/origin/master' branch to its own workspace"
     );
 }
@@ -201,15 +211,19 @@ fn from_non_existent_branch() {
 
     // branch should be created unapplied, because of the conflict
 
+    let mut guard = ctx.exclusive_worktree_access();
+    let error = gitbutler_branch_actions::create_virtual_branch_from_branch_with_perm(
+        ctx,
+        &"refs/remotes/origin/branch".parse().unwrap(),
+        None,
+        guard.write_permission(),
+    )
+    .unwrap_err()
+    .to_string();
+    drop(guard);
+
     assert_eq!(
-        gitbutler_branch_actions::create_virtual_branch_from_branch(
-            ctx,
-            &"refs/remotes/origin/branch".parse().unwrap(),
-            None,
-            None,
-        )
-        .unwrap_err()
-        .to_string(),
+        error,
         "The reference 'refs/remotes/origin/branch' did not exist"
     );
 }
@@ -242,13 +256,15 @@ fn from_state_remote_branch() {
     .unwrap();
     drop(guard);
 
-    let _ = gitbutler_branch_actions::create_virtual_branch_from_branch(
+    let mut guard = ctx.exclusive_worktree_access();
+    let _ = gitbutler_branch_actions::create_virtual_branch_from_branch_with_perm(
         ctx,
         &"refs/remotes/origin/branch".parse().unwrap(),
         None,
-        None,
+        guard.write_permission(),
     )
     .unwrap();
+    drop(guard);
 
     let stacks = stack_details(ctx);
     assert_eq!(stacks.len(), 1);
