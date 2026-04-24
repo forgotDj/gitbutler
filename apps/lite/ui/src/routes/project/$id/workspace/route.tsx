@@ -107,6 +107,7 @@ import {
 	type NavigationIndex,
 	useWorkspaceOutline,
 } from "./WorkspaceModel.ts";
+import { CommandPalette } from "./CommandPalette.tsx";
 import {
 	getScopeBindings,
 	getScopeLabel,
@@ -1610,6 +1611,40 @@ const StackC: FC<{
 	);
 };
 
+type BranchPickerOption = {
+	id: string;
+	label: string;
+	branch: BranchItem;
+};
+
+const branchPickerOptionToStringValue = (option: BranchPickerOption): string => option.label;
+
+const segmentToBranchPickerOption = ({
+	segment,
+	stackId,
+}: {
+	segment: Segment;
+	stackId: string;
+}): BranchPickerOption | null => {
+	const refName = segment.refName;
+	if (!refName) return null;
+
+	return {
+		id: JSON.stringify([stackId, refName.fullNameBytes]),
+		label: refName.displayName,
+		branch: { stackId, branchRef: refName.fullNameBytes },
+	};
+};
+
+const stackToBranchPickerOptions = (stack: Stack): Array<BranchPickerOption> => {
+	// oxlint-disable-next-line typescript/no-non-null-assertion -- [ref:stack-id-required]
+	const stackId = stack.id!;
+	return stack.segments.flatMap((segment): Array<BranchPickerOption> => {
+		const option = segmentToBranchPickerOption({ segment, stackId });
+		return option ? [option] : [];
+	});
+};
+
 const ProjectPage: FC = () => {
 	const dispatch = useAppDispatch();
 
@@ -1665,6 +1700,7 @@ const ProjectPage: FC = () => {
 
 	const inlineRenameBranchFormRef = useRef<HTMLFormElement | null>(null);
 	const inlineRewordCommitFormRef = useRef<HTMLFormElement | null>(null);
+	const [branchPickerOpen, setBranchPickerOpen] = useState(false);
 
 	useWorkspaceShortcuts({
 		inlineRenameBranchFormRef,
@@ -1673,6 +1709,7 @@ const ProjectPage: FC = () => {
 		scope: shortcutScope,
 		navigationIndex,
 		openAbsorptionDialog,
+		openBranchPicker: () => setBranchPickerOpen(true),
 	});
 
 	const operationMode = useAppSelector((state) =>
@@ -1686,6 +1723,16 @@ const ProjectPage: FC = () => {
 	const project = projects.find((project) => project.id === projectId);
 	// TODO: dedupe
 	if (!project) return <p>Project not found.</p>;
+
+	const selectBranch = (option: BranchPickerOption) => {
+		setBranchPickerOpen(false);
+		dispatch(
+			projectActions.selectItem({
+				projectId,
+				item: branchItem(option.branch),
+			}),
+		);
+	};
 
 	const commit = () =>
 		dispatch(
@@ -1763,6 +1810,26 @@ const ProjectPage: FC = () => {
 					}}
 				/>
 			)}
+
+			<CommandPalette
+				ariaLabel="Select branch"
+				closeLabel="Close branch picker"
+				emptyLabel="No results found."
+				getItemKey={(branch) => branch.id}
+				getItemLabel={(branch) => branch.label}
+				getItemType={() => "Branch"}
+				itemToStringValue={branchPickerOptionToStringValue}
+				items={[
+					{
+						value: "Branches",
+						items: headInfo.stacks.flatMap(stackToBranchPickerOptions),
+					},
+				]}
+				open={branchPickerOpen}
+				onOpenChange={setBranchPickerOpen}
+				onSelectItem={selectBranch}
+				placeholder="Search for branches…"
+			/>
 		</ProjectPreviewLayout>
 	);
 };
