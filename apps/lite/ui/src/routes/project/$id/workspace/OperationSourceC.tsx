@@ -1,5 +1,4 @@
 import { Item, itemEquals } from "./Item.ts";
-import { type DragData } from "./OperationDragAndDrop.tsx";
 import styles from "./OperationSourceC.module.css";
 import { OperationSourceLabel } from "./OperationSourceLabel.tsx";
 import { type OperationMode } from "./WorkspaceMode.ts";
@@ -16,6 +15,15 @@ import { FC, type ReactNode, useEffect, useEffectEvent, useRef, useState } from 
 import { createRoot } from "react-dom/client";
 
 type DraggableParams = Parameters<typeof draggable>[0];
+
+type DragData = {
+	source: Item;
+};
+
+export const parseDragData = (data: unknown): DragData | null => {
+	if (typeof data !== "object" || data === null || !("source" in data)) return null;
+	return data as DragData;
+};
 
 const DragPreview: FC<{ children: ReactNode }> = ({ children }) => (
 	<div className={styles.dragPreview}>{children}</div>

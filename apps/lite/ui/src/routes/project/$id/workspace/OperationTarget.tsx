@@ -1,5 +1,5 @@
 import { type Item } from "./Item.ts";
-import { DropData, parseDragData, parseDropData } from "./OperationDragAndDrop.tsx";
+import { parseDragData } from "./OperationSourceC.tsx";
 import styles from "./OperationTarget.module.css";
 import { OperationTooltip } from "./OperationTooltip.tsx";
 import { type OperationMode } from "./WorkspaceMode.ts";
@@ -18,6 +18,16 @@ import { FC, useEffect, useEffectEvent, useRef, useState } from "react";
 
 type DropTargetParams = Parameters<typeof dropTargetForElements>[0];
 type GetDropDataArgs = Parameters<NonNullable<DropTargetParams["getData"]>>[0];
+
+type DropData = {
+	operationType: OperationType;
+	target: Item;
+};
+
+const parseDropData = (data: unknown): DropData | null => {
+	if (typeof data !== "object" || data === null || !("operationType" in data)) return null;
+	return data as DropData;
+};
 
 const getDropOperationType = ({
 	source,
