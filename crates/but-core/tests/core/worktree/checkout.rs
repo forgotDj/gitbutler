@@ -1,3 +1,4 @@
+use bstr::ByteSlice;
 use but_core::worktree::{checkout, checkout::UncommitedWorktreeChanges, safe_checkout};
 use but_testsupport::{
     git_status, read_only_in_memory_scenario, visualize_commit_graph_all,
@@ -334,6 +335,68 @@ inserted in new tree
     AM file-renamed-in-index
     ?? file-renamed
     ");
+
+    Ok(())
+}
+
+#[test]
+fn worktree_snapshot_of_legacy_crlf_blob_conflicts_with_independent_target_change()
+-> anyhow::Result<()> {
+    let (repo, _tmp) = writable_scenario_slow("legacy-crlf-blob-with-gitattributes");
+    let file_path = repo.workdir_path("ImportOrdersJob.cs").unwrap();
+    let legacy_blob = repo
+        .find_object(repo.rev_parse_single("@:ImportOrdersJob.cs")?)?
+        .into_blob();
+    assert_eq!(
+        legacy_blob.data.as_bstr(),
+        "1\r\n2\r\n3\r\n",
+        "the tracked blob must start from digit-only CRLF content so the later spelled-out edits are clearly distinguishable"
+    );
+
+    // This write is with line-endings that are unchanged from the ones on disk, and from what's in Git (CRLF).
+    std::fs::write(&file_path, b"1\r\ntwo from worktree\r\n3\r\n")?;
+    assert_eq!(
+        git_status(&repo)?,
+        " M ImportOrdersJob.cs\n",
+        "the worktree edit must be visible before checkout"
+    );
+
+    let (head_commit, new_commit) = build_commit(
+        &repo,
+        |tree| {
+            // This commit also has the right light endings (CRLF)
+            let blob_id = repo.write_blob(b"1\r\n2\r\nthree from target\r\n")?;
+            tree.upsert("ImportOrdersJob.cs", EntryKind::Blob, blob_id)?;
+            Ok(())
+        },
+        "edit same legacy crlf file independently",
+    )?;
+
+    // A lot happens here, but the significant part is that the overlapping worktree changes are cherry-picked
+    // onto the `new_commit` to be transferred by merge. This means they are worktree-filtered and added to
+    // a tree.
+    // That filtering step is what in this case normalise line separators to \n, which is what Git should actually
+    // store as well.
+    // But because of that, the entire file changes, and is marked as conflicting even though the merge would be
+    // fine otherwise.
+    let err = safe_checkout(head_commit.id, new_commit.id, &repo, Default::default()).unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "Worktree changes would be overwritten by checkout: \"ImportOrdersJob.cs\"",
+        "status quo: snapshot filtering makes the legacy CRLF worktree change conflict
+        as its line separators are turned into \\n"
+    );
+
+    assert_eq!(
+        std::fs::read(&file_path)?.as_bstr(),
+        "1\r\ntwo from worktree\r\n3\r\n",
+        "checkout aborts before applying the target change"
+    );
+    assert_eq!(
+        repo.head_id()?,
+        head_commit.id,
+        "checkout aborts before updating HEAD"
+    );
 
     Ok(())
 }
