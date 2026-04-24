@@ -69,6 +69,8 @@ pub(super) enum DetailsMessage {
     SelectPrevSection,
     ScrollUp(usize),
     ScrollDown(usize),
+    GotoTop,
+    GotoBottom,
     StartRub,
     Unlock,
 }
@@ -207,6 +209,7 @@ impl Details {
             | Message::MoveCursorPreviousSection
             | Message::MoveCursorNextSection
             | Message::SelectUnassigned
+            | Message::SelectMergeBase
             | Message::Reload(_)
             | Message::NewBranch => true,
 
@@ -243,6 +246,8 @@ impl Details {
                 | DetailsMessage::SelectFirstSection
                 | DetailsMessage::SelectNextSection
                 | DetailsMessage::SelectPrevSection
+                | DetailsMessage::GotoTop
+                | DetailsMessage::GotoBottom
                 | DetailsMessage::StartRub
                 | DetailsMessage::ScrollUp(_)
                 | DetailsMessage::ScrollDown(_)
@@ -278,6 +283,16 @@ impl Details {
                 self.cursor
                     .move_selection_by(&self.renderer.sections, |i| i.saturating_sub(1));
 
+                self.ensure_selection_visible(viewport);
+            }
+            DetailsMessage::GotoTop => {
+                self.cursor
+                    .move_selection_by(&self.renderer.sections, |_| 0);
+                self.scroll_top = 0;
+            }
+            DetailsMessage::GotoBottom => {
+                self.cursor
+                    .move_selection_by(&self.renderer.sections, |_| usize::MAX);
                 self.ensure_selection_visible(viewport);
             }
             DetailsMessage::ToggleVisibility => {

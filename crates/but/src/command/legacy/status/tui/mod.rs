@@ -639,6 +639,20 @@ impl App {
                     self.cursor = new_cursor;
                 }
             }
+            Message::SelectMergeBase => {
+                let Some(new_cursor) = Cursor::select_merge_base(&self.status_lines) else {
+                    return Ok(());
+                };
+                if let Some(merge_base_line) = new_cursor.selected_line(&self.status_lines)
+                    && cursor::is_selectable_in_mode(
+                        merge_base_line,
+                        &self.mode,
+                        self.flags.show_files,
+                    )
+                {
+                    self.cursor = new_cursor;
+                }
+            }
             Message::Rub(rub_message) => match rub_message {
                 RubMessage::Start => self.handle_start_rub(),
                 RubMessage::StartWithSource {
@@ -3061,6 +3075,7 @@ enum Message {
     MoveCursorPreviousSection,
     MoveCursorNextSection,
     SelectUnassigned,
+    SelectMergeBase,
     PickAndGotoBranch,
     SelectBranch(FullName),
 
