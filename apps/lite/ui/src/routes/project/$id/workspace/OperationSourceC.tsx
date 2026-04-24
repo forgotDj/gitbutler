@@ -82,14 +82,13 @@ export const OperationSourceC: FC<
 		});
 	}, [dispatch, projectId, source]);
 
-	const isActiveOperationModeSource =
-		operationMode?.source && itemEquals(operationMode.source, source);
+	const isActiveSource = operationMode?.source && itemEquals(operationMode.source, source);
 
 	return useRender({
 		render,
 		ref: dragRef,
 		props: mergeProps<"div">(props, {
-			className: classes(isActiveOperationModeSource && styles.activeSource),
+			className: classes(isActiveSource && styles.activeSource),
 		}),
 	});
 };
