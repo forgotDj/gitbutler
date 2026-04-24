@@ -1071,9 +1071,10 @@ const ChangesSectionRow: FC<{
 	changes: Array<TreeChange>;
 	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
+	onCommit: () => void;
 	projectId: string;
 	workspaceMode: WorkspaceMode;
-}> = ({ changes, navigationIndex, onAbsorbChanges, projectId, workspaceMode }) => {
+}> = ({ changes, navigationIndex, onAbsorbChanges, onCommit, projectId, workspaceMode }) => {
 	const dispatch = useAppDispatch();
 	const item = changesSectionItem;
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
@@ -1104,16 +1105,21 @@ const ChangesSectionRow: FC<{
 				Changes
 			</button>
 			{workspaceMode._tag === "Default" && (
-				<button
-					type="button"
-					className={styles.itemRowAction}
-					aria-label="Changes menu"
-					onClick={(event) => {
-						void showNativeMenuFromTrigger(event.currentTarget, menuItems);
-					}}
-				>
-					<MenuTriggerIcon />
-				</button>
+				<>
+					<button type="button" className={styles.itemRowAction} onClick={onCommit}>
+						Commit
+					</button>
+					<button
+						type="button"
+						className={styles.itemRowAction}
+						aria-label="Changes menu"
+						onClick={(event) => {
+							void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+						}}
+					>
+						<MenuTriggerIcon />
+					</button>
+				</>
 			)}
 		</ItemRow>
 	);
@@ -1161,9 +1167,10 @@ const BaseCommitRow: FC<
 const Changes: FC<{
 	projectId: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
+	onCommit: () => void;
 	navigationIndex: NavigationIndex;
 	workspaceMode: WorkspaceMode;
-}> = ({ projectId, onAbsorbChanges, navigationIndex, workspaceMode }) => {
+}> = ({ projectId, onAbsorbChanges, onCommit, navigationIndex, workspaceMode }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
@@ -1184,6 +1191,7 @@ const Changes: FC<{
 				changes={worktreeChanges.changes}
 				navigationIndex={navigationIndex}
 				onAbsorbChanges={onAbsorbChanges}
+				onCommit={onCommit}
 				projectId={projectId}
 				workspaceMode={workspaceMode}
 			/>
@@ -1759,13 +1767,10 @@ const ProjectPage: FC = () => {
 					<Changes
 						projectId={projectId}
 						onAbsorbChanges={openAbsorptionDialog}
+						onCommit={commit}
 						navigationIndex={navigationIndex}
 						workspaceMode={workspaceMode}
 					/>
-
-					<button type="button" className={uiStyles.button} onClick={commit}>
-						Commit
-					</button>
 				</div>
 
 				{headInfo.stacks.map((stack) => (
