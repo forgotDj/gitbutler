@@ -1,3 +1,4 @@
+use bstr::ByteSlice;
 use but_core::worktree::{checkout, checkout::UncommitedWorktreeChanges, safe_checkout};
 use but_testsupport::{
     git_status, read_only_in_memory_scenario, visualize_commit_graph_all,
@@ -334,6 +335,68 @@ inserted in new tree
     AM file-renamed-in-index
     ?? file-renamed
     ");
+
+    Ok(())
+}
+
+#[test]
+fn worktree_snapshot_of_legacy_crlf_blob_merges_cleanly_with_independent_target_change()
+-> anyhow::Result<()> {
+    let (repo, _tmp) = writable_scenario_slow("legacy-crlf-blob-with-gitattributes");
+    let file_path = repo.workdir_path("ImportOrdersJob.cs").unwrap();
+    let legacy_blob = repo
+        .find_object(repo.rev_parse_single("@:ImportOrdersJob.cs")?)?
+        .into_blob();
+    assert_eq!(
+        legacy_blob.data.as_bstr(),
+        "1\r\n2\r\n3\r\n",
+        "the tracked blob must start from digit-only CRLF content so the later spelled-out edits are clearly distinguishable"
+    );
+
+    // This write is with line-endings that are unchanged from the ones on disk, and from what's in Git (CRLF).
+    std::fs::write(&file_path, b"1\r\ntwo from worktree\r\n3\r\n")?;
+    assert_eq!(
+        git_status(&repo)?,
+        " M ImportOrdersJob.cs\n",
+        "the worktree edit must be visible before checkout"
+    );
+
+    let (head_commit, new_commit) = build_commit(
+        &repo,
+        |tree| {
+            // This commit also has the right line endings (CRLF)
+            let blob_id = repo.write_blob(b"1\r\n2\r\nthree from target\r\n")?;
+            tree.upsert("ImportOrdersJob.cs", EntryKind::Blob, blob_id)?;
+            Ok(())
+        },
+        "edit same legacy crlf file independently",
+    )?;
+
+    // A lot happens here, but the significant part is that the overlapping worktree changes are cherry-picked
+    // onto the `new_commit` to be transferred by merge. That snapshot now normalizes line endings correctly,
+    // so the independent edits merge cleanly instead of being treated as a whole-file conflict.
+    let out = safe_checkout(head_commit.id, new_commit.id, &repo, Default::default())?;
+    insta::assert_debug_snapshot!(out, @r#"
+    Outcome {
+        snapshot_tree: Some(
+            Sha1(77d39e5c3dae5dde723f5be3c45e3525ef424447),
+        ),
+        num_deleted_files: 0,
+        num_added_or_updated_files: 1,
+        head_update: "Update refs/heads/main to Some(Object(Sha1(a530b145a2513ba5b2a4418bbb74920d3967f8fb)))",
+    }
+    "#);
+
+    assert_eq!(
+        std::fs::read(&file_path)?.as_bstr(),
+        "1\r\ntwo from worktree\r\nthree from target\r\n",
+        "checkout keeps the worktree edit and applies the independent target change"
+    );
+    assert_eq!(
+        repo.head_id()?,
+        new_commit.id,
+        "checkout updates HEAD to the target commit"
+    );
 
     Ok(())
 }
