@@ -318,6 +318,61 @@ fn from_selections() -> anyhow::Result<()> {
 }
 
 #[test]
+/// Regression test reproducing a bug where multiple DiffSpecs for the same file would be applied
+/// independently, making DiffSpecs with a net positive or negative amount of lines cause
+/// misalignment for subsequent DiffSpecs.
+fn handles_multiple_diffspecs_for_same_file() -> anyhow::Result<()> {
+    let (repo, _tmp) = writable_scenario("mixed-hunk-modifications");
+    let filename = "file-in-index";
+    let (change, hunks) = changed_file_in_worktree_with_hunks(&repo, filename, CONTEXT_LINES)?;
+    insta::assert_debug_snapshot!(hunks.iter().map(|h| &h.diff).collect::<Vec<_>>(), @r#"
+    [
+        "@@ -1,0 +1,4 @@\n+1\n+2\n+3\n+4\n",
+        "@@ -2,2 +6,1 @@\n-6\n-7\n+6-7\n",
+        "@@ -6,2 +9,2 @@\n-10\n-11\n+ten\n+eleven\n",
+        "@@ -9,2 +12,3 @@\n-13\n-14\n+20\n+21\n+22\n",
+        "@@ -13,2 +17,0 @@\n-17\n-18\n",
+    ]
+    "#);
+
+    // First spec contains a hunk that displaces all lines in the rest of the file. With the bug in
+    // place where the specs are applied independently, this causes the second spec's hunk to not
+    // align with the worktree hunk that's resolved after the first spec's application.
+    let first_spec = DiffSpec {
+        previous_path: None,
+        path: change.path.clone(),
+        hunk_headers: vec![hunk_header("-1,0", "+1,4")],
+    };
+    let second_spec = DiffSpec {
+        previous_path: None,
+        path: change.path.clone(),
+        hunk_headers: vec![hunk_header("-13,2", "+17,0")],
+    };
+    let dropped = discard_workspace_changes(&repo, vec![first_spec, second_spec], CONTEXT_LINES)?;
+    assert_eq!(dropped, [], "all sub-hunks could be associated");
+
+    let file_content: BString = std::fs::read(repo.workdir().unwrap().join(filename))?.into();
+    insta::assert_snapshot!(file_content, @"
+    5
+    6-7
+    8
+    9
+    ten
+    eleven
+    12
+    20
+    21
+    22
+    15
+    16
+    17
+    18
+    ");
+
+    Ok(())
+}
+
+#[test]
 fn from_selections_with_context() -> anyhow::Result<()> {
     let (repo, _tmp) = writable_scenario("mixed-hunk-modifications");
     let filename = "file-in-index";
