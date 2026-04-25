@@ -157,15 +157,15 @@ pub fn push_stack(
     let virtual_branches = ctx.virtual_branches();
     let stack = virtual_branches.get_stack(stack_id)?;
     let (target_ref_name, target_base_oid, target_push_remote_name, target_branch_name) = {
-        let (repo, workspace, _db) = ctx.workspace_and_db_with_perm(guard.read_permission())?;
-        let target_ref_name = workspace
+        let (repo, ws, _db) = ctx.workspace_and_db_with_perm(guard.read_permission())?;
+        let target_ref_name = ws
             .target_ref_name()
             .context("failed to get target reference name")?
             .to_owned();
         let remote_names = repo.remote_names();
         let target_branch_name =
             target_branch_name_from_ref_name(target_ref_name.as_ref(), &remote_names)?;
-        let target_push_remote_name = match workspace
+        let target_push_remote_name = match ws
             .metadata
             .as_ref()
             .and_then(|metadata| metadata.push_remote.clone())
@@ -177,8 +177,7 @@ pub fn push_stack(
         };
         (
             target_ref_name,
-            workspace
-                .target_base_oid()
+            ws.target_base_commit_id()
                 .context("failed to get target base oid")?,
             target_push_remote_name,
             target_branch_name.to_string(),

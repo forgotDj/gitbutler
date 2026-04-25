@@ -562,7 +562,7 @@ pub fn local_and_remote_commits(
     stack: &Stack,
 ) -> anyhow::Result<Vec<ui::Commit>> {
     let (target_ref_name, target_base_oid) = {
-        let meta = ctx.legacy_meta()?;
+        let meta = ctx.meta()?;
         let workspace =
             default_workspace_metadata(&meta)?.context("failed to get workspace metadata")?;
         (

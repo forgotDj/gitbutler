@@ -9,7 +9,7 @@ use but_meta::VirtualBranchesTomlMetadata;
 /// TODO: Ensure that this is the bottom most common ancestor of all the stacks
 pub fn workspace_base(ctx: &Context, _perm: &RepoShared) -> Result<gix::ObjectId> {
     let repo = ctx.clone_repo_for_merging()?;
-    let meta = legacy_meta(ctx)?;
+    let meta = ctx.legacy_meta()?;
     let target_base_oid = legacy_target_base_oid_from_meta(&meta)?;
     let stack_heads = legacy_workspace_stack_heads_from_meta(&meta, &repo, target_base_oid)?;
     workspace_base_from_heads_and_target(&repo, &stack_heads, target_base_oid)
@@ -21,7 +21,7 @@ pub fn workspace_base_from_heads(
     heads: &[gix::ObjectId],
 ) -> Result<gix::ObjectId> {
     let repo = ctx.clone_repo_for_merging()?;
-    let meta = legacy_meta(ctx)?;
+    let meta = ctx.legacy_meta()?;
     let target_base_oid = legacy_target_base_oid_from_meta(&meta)?;
     workspace_base_from_heads_and_target(&repo, heads, target_base_oid)
 }
@@ -31,7 +31,7 @@ pub(crate) fn legacy_workspace_stack_heads(
     repo: &gix::Repository,
     target_base_oid: gix::ObjectId,
 ) -> Result<Vec<gix::ObjectId>> {
-    let meta = legacy_meta(ctx)?;
+    let meta = ctx.legacy_meta()?;
     legacy_workspace_stack_heads_from_meta(&meta, repo, target_base_oid)
 }
 
@@ -61,7 +61,7 @@ fn legacy_workspace_stack_heads_from_meta(
 }
 
 pub(crate) fn legacy_target_base_oid(ctx: &Context) -> Result<gix::ObjectId> {
-    let meta = legacy_meta(ctx)?;
+    let meta = ctx.legacy_meta()?;
     legacy_target_base_oid_from_meta(&meta)
 }
 
@@ -73,10 +73,6 @@ fn legacy_target_base_oid_from_meta(meta: &VirtualBranchesTomlMetadata) -> Resul
         .ok_or_else(|| {
             anyhow::anyhow!("there is no default target").context(Code::DefaultTargetNotFound)
         })
-}
-
-fn legacy_meta(ctx: &Context) -> Result<VirtualBranchesTomlMetadata> {
-    VirtualBranchesTomlMetadata::from_path(ctx.project_data_dir().join("virtual_branches.toml"))
 }
 
 pub(crate) fn workspace_base_from_heads_and_target(

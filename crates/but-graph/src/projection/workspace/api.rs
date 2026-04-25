@@ -66,6 +66,64 @@ impl Workspace {
     }
 }
 
+/// At the time this module was created, all of the functions in it were used by legacy crates.
+/// Feel free to promote them to non-legacy if the need arises, but mind the notes.
+#[cfg(feature = "legacy")]
+mod legacy {
+    use crate::projection::Workspace;
+
+    impl Workspace {
+        /// Return the target reference name if this workspace has a branch-backed target.
+        ///
+        /// ## Before Promoting this to non-legacy
+        ///
+        /// To me this looks like an 'unsure' way of getting the target-ref name.
+        /// I'd trust that `but-graph` knows how to 'see' the target ref during traversal
+        /// so the `target_ref` field is populated. I would *not* read it from `self.metadata`,
+        /// which means it might also not exist at all.
+        /// If promoted as is, these exact semantics should be documented, along with its intended use.
+        pub fn target_ref_name(&self) -> Option<&gix::refs::FullNameRef> {
+            self.target_ref
+                .as_ref()
+                .map(|target| target.ref_name.as_ref())
+                .or_else(|| {
+                    self.metadata
+                        .as_ref()
+                        .and_then(|metadata| metadata.target_ref.as_ref().map(|name| name.as_ref()))
+                })
+        }
+
+        /// Return the remembered target commit id that anchors this workspace to its target.
+        ///
+        /// This is the projection equivalent of the legacy `Target::sha` field. It intentionally
+        /// differs from [`Self::target_ref_tip_commit_id()`], which returns the current tip of the target
+        /// branch.
+        ///
+        /// ## Before Promoting this to non-legacy
+        ///
+        /// I'd expect this to not be useful unless maybe for display purposes.
+        /// What I don't like about this function is that it resorts prefers `metadata` over
+        /// the resolved and validated `target_commit` on this instance, without making clear why
+        /// in the docs.
+        /// I think it's important to nail this semantically, and if in doubt, I'd rather make `metadata`
+        /// inaccessible to provide only a single-source of truth and remove ambiguity.
+        pub fn target_base_commit_id(&self) -> Option<gix::ObjectId> {
+            self.metadata
+                .as_ref()
+                .and_then(|metadata| metadata.target_commit_id)
+                .or_else(|| self.target_commit.as_ref().map(|target| target.commit_id))
+        }
+
+        /// Return the current tip commit id of the target reference if it is available in the graph.
+        pub fn target_ref_tip_commit_id(&self) -> Option<gix::ObjectId> {
+            self.target_ref
+                .as_ref()
+                .and_then(|target| self.graph.tip_skip_empty(target.segment_index))
+                .map(|commit| commit.id)
+        }
+    }
+}
+
 /// Utilities
 impl Workspace {
     /// Return the name of the remote most closely associated with this workspace.
@@ -91,38 +149,6 @@ impl Workspace {
         } else {
             None
         }
-    }
-
-    /// Return the target reference name if this workspace has a branch-backed target.
-    pub fn target_ref_name(&self) -> Option<&gix::refs::FullNameRef> {
-        self.target_ref
-            .as_ref()
-            .map(|target| target.ref_name.as_ref())
-            .or_else(|| {
-                self.metadata
-                    .as_ref()
-                    .and_then(|metadata| metadata.target_ref.as_ref().map(|name| name.as_ref()))
-            })
-    }
-
-    /// Return the remembered target commit id that anchors this workspace to its target.
-    ///
-    /// This is the projection equivalent of the legacy `Target::sha` field. It intentionally
-    /// differs from [`Self::target_ref_tip_oid()`], which returns the current tip of the target
-    /// branch.
-    pub fn target_base_oid(&self) -> Option<gix::ObjectId> {
-        self.metadata
-            .as_ref()
-            .and_then(|metadata| metadata.target_commit_id)
-            .or_else(|| self.target_commit.as_ref().map(|target| target.commit_id))
-    }
-
-    /// Return the current tip commit id of the target reference if it is available in the graph.
-    pub fn target_ref_tip_oid(&self) -> Option<gix::ObjectId> {
-        self.target_ref
-            .as_ref()
-            .and_then(|target| self.graph.tip_skip_empty(target.segment_index))
-            .map(|commit| commit.id)
     }
 
     /// Return the `(merge-base, target-commit-id)` of the merge-base between the `commit_to_merge`

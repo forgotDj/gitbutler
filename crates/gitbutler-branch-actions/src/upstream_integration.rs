@@ -235,15 +235,12 @@ impl<'a> UpstreamIntegrationContext<'a> {
         }
 
         let (target_ref_name, old_target_id) = {
-            let (_repo, workspace, _db) =
-                ctx.workspace_and_db_with_perm(permission.read_permission())?;
+            let (_repo, ws, _db) = ctx.workspace_and_db_with_perm(permission.read_permission())?;
             (
-                workspace
-                    .target_ref_name()
+                ws.target_ref_name()
                     .context("failed to get target reference name")?
                     .to_owned(),
-                workspace
-                    .target_base_oid()
+                ws.target_base_commit_id()
                     .context("failed to get target base oid")?,
             )
         };

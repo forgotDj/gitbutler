@@ -552,7 +552,7 @@ impl VirtualBranchesTomlMetadata {
         Ok(())
     }
 
-    /// Set the legacy default target and write it immediately.
+    /// Set the legacy default target and materialize the change immediately.
     ///
     /// This exists for transitional callers that still have to initialize the old
     /// `default_target` shape, which stores fields that don't exist in workspace metadata.

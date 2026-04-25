@@ -199,6 +199,11 @@ fn open_workspace_ref<'repo>(repo: &'repo gix::Repository) -> Result<gix::Refere
         })
 }
 
+/// TODO: This function must go away as it recreates an artificial traversal from the workspace,
+/// probably because at some point the surrounding workspace couldn't be found anymore and was strictly required.
+/// By now, edit-mode won't fully detach the commit-to-edit anymore, so the surrounding workspace should still be
+/// found.
+#[deprecated = "extra traversals must not be done and shouldn't be needed here."]
 fn workspace_from_workspace_ref(ctx: &Context) -> Result<but_graph::projection::Workspace> {
     let repo = ctx.repo.get()?;
     let meta = ctx.meta()?;
@@ -213,6 +218,7 @@ fn workspace_from_workspace_ref(ctx: &Context) -> Result<but_graph::projection::
 }
 
 fn ensure_stack_in_workspace(ctx: &Context, stack_id: StackId) -> Result<()> {
+    #[allow(deprecated)]
     workspace_from_workspace_ref(ctx)?.try_find_stack_by_id(stack_id)?;
     Ok(())
 }
@@ -273,9 +279,10 @@ pub(crate) fn save_and_return_to_workspace(ctx: &Context, perm: &mut RepoExclusi
     let git2_repo = &*ctx.git2_repo.get()?;
     let repo = &*ctx.repo.get()?;
 
+    #[allow(deprecated)]
     let old_workspace_projection = workspace_from_workspace_ref(ctx)?;
     let old_target_base_oid = old_workspace_projection
-        .target_base_oid()
+        .target_base_commit_id()
         .context("failed to get target base oid")?;
     let old_head_oids = old_workspace_projection
         .stacks

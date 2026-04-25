@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::{Context as _, Result, anyhow};
 use but_core::worktree::checkout::UncommitedWorktreeChanges;
 use but_ctx::{Context, access::RepoExclusive};
-use but_error::{Code, Marker};
+use but_error::Marker;
 use but_oxidize::{ObjectIdExt, OidExt};
 use gitbutler_branch::{self, BranchCreateRequest, GITBUTLER_WORKSPACE_REFERENCE};
 use gitbutler_operating_modes::is_well_known_workspace_ref;
@@ -76,15 +76,7 @@ pub fn update_workspace_commit_with_vb_state(
     ctx: &Context,
     checkout_new_worktree: bool,
 ) -> Result<gix::ObjectId> {
-    let target_base_oid = ctx
-        .legacy_meta()?
-        .data()
-        .default_target
-        .as_ref()
-        .map(|target| target.sha)
-        .ok_or_else(|| {
-            anyhow!("there is no default target").context(Code::DefaultTargetNotFound)
-        })?;
+    let target_base_oid = ctx.persisted_default_target()?.sha;
 
     #[expect(deprecated, reason = "workspace checkout/index boundary")]
     let repo = &*ctx.git2_repo.get()?;

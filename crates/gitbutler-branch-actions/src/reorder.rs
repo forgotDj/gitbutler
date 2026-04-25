@@ -35,7 +35,7 @@ pub fn reorder_stack(
     let target_branch_tip = {
         let (_repo, workspace, _db) = ctx.workspace_and_db_with_perm(perm.read_permission())?;
         workspace
-            .target_ref_tip_oid()
+            .target_ref_tip_commit_id()
             .context("failed to get target branch tip")?
     };
     let repo = ctx.repo.get()?;
