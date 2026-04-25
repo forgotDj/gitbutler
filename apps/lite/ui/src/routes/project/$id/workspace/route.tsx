@@ -49,6 +49,7 @@ import {
 } from "#ui/native-menu.ts";
 import uiStyles from "#ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
+import { Toolbar } from "@base-ui/react/toolbar";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import {
 	AbsorptionTarget,
@@ -201,12 +202,10 @@ const HunkDiff: FC<{
 const hunkKey = (hunk: HunkHeader): string =>
 	`${hunk.oldStart}:${hunk.oldLines}:${hunk.newStart}:${hunk.newLines}`;
 
-const FileButton: FC<
-	{
-		change: TreeChange;
-	} & ComponentProps<"button">
-> = ({ change, className, ...restProps }) => (
-	<button {...restProps} type="button" className={classes(className, styles.itemRowButton)}>
+const FileButton: FC<{
+	change: TreeChange;
+}> = ({ change }) => (
+	<>
 		{Match.value(change.status).pipe(
 			Match.when({ type: "Addition" }, () => "A"),
 			Match.when({ type: "Deletion" }, () => "D"),
@@ -215,7 +214,7 @@ const FileButton: FC<
 			Match.exhaustive,
 		)}{" "}
 		{change.path}
-	</button>
+	</>
 );
 
 const CommitFiles: FC<{
@@ -289,12 +288,14 @@ const ItemRow: FC<
 	);
 };
 
-const DependencyIndicatorButton: FC<{
-	projectId: string;
-	commitIds: NonEmptyArray<string>;
-	className?: string;
-	children: ReactNode;
-}> = ({ projectId, commitIds, className, children }) => {
+const DependencyIndicatorButton: FC<
+	{
+		projectId: string;
+		commitIds: NonEmptyArray<string>;
+	} & useRender.ComponentProps<"button">
+> = ({ projectId, commitIds, ...restProps }) => {
+	// We use a controlled tooltip as a workaround for https://github.com/mui/base-ui/issues/4499.
+	const [isTooltipOpen, setIsTooltipOpen] = useState(false);
 	const dispatch = useAppDispatch();
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	// TODO: expensive
@@ -306,30 +307,35 @@ const DependencyIndicatorButton: FC<{
 	);
 	const tooltip =
 		branchNames.length > 0 ? `Depends on ${branchNames.join(", ")}` : "Unknown dependencies";
+	const highlightCommitIds = () => {
+		setIsTooltipOpen(true);
+		dispatch(
+			projectActions.setHighlightedCommitIds({
+				projectId,
+				commitIds,
+			}),
+		);
+	};
+	const clearHighlightedCommitIds = () => {
+		setIsTooltipOpen(false);
+		dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds: null }));
+	};
 
 	return (
 		<Tooltip.Root
+			open={isTooltipOpen}
 			// [ref:tooltip-disable-hoverable-popup]
 			disableHoverablePopup
 		>
 			<Tooltip.Trigger
+				{...restProps}
 				type="button"
-				className={className}
-				onMouseEnter={() => {
-					dispatch(
-						projectActions.setHighlightedCommitIds({
-							projectId,
-							commitIds,
-						}),
-					);
-				}}
-				onMouseLeave={() => {
-					dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds: null }));
-				}}
+				onMouseEnter={highlightCommitIds}
+				onMouseLeave={clearHighlightedCommitIds}
+				onFocus={highlightCommitIds}
+				onBlur={clearHighlightedCommitIds}
 				aria-label={tooltip}
-			>
-				{children}
-			</Tooltip.Trigger>
+			/>
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
@@ -727,6 +733,8 @@ const CommitRow: FC<
 		(_currentMessage, nextMessage: string) => nextMessage,
 	);
 	const [isCommitMessagePending, startCommitMessageTransition] = useTransition();
+	// We use a controlled tooltip as a workaround for https://github.com/mui/base-ui/issues/4499.
+	const [isExpandCollapseTooltipOpen, setIsExpandCollapseTooltipOpen] = useState(false);
 
 	const commitWithOptimisticMessage: Commit = {
 		...commit,
@@ -836,10 +844,7 @@ const CommitRow: FC<
 				<>
 					<button
 						type="button"
-						className={classes(
-							styles.itemRowButton,
-							isCommitMessagePending && styles.commitButtonPending,
-						)}
+						className={styles.itemRowButton}
 						onClick={() => {
 							dispatch(projectActions.selectItem({ projectId, item }));
 						}}
@@ -854,18 +859,22 @@ const CommitRow: FC<
 						<CommitLabel commit={commitWithOptimisticMessage} />
 					</button>
 					{workspaceMode._tag === "Default" && (
-						<>
+						<Toolbar.Root aria-label="Commit actions" className={styles.itemRowToolbar}>
 							<Tooltip.Root
+								open={isExpandCollapseTooltipOpen}
 								// Prevent tooltip from lingering while moving between nearby controls.
 								// [tag:tooltip-disable-hoverable-popup]
 								disableHoverablePopup
 							>
 								<Tooltip.Trigger
-									className={styles.itemRowAction}
-									type="button"
+									render={<Toolbar.Button type="button" className={styles.itemRowToolbarButton} />}
 									onClick={() =>
 										dispatch(projectActions.toggleCommitFiles({ projectId, item: commitItemV }))
 									}
+									onMouseEnter={() => setIsExpandCollapseTooltipOpen(true)}
+									onMouseLeave={() => setIsExpandCollapseTooltipOpen(false)}
+									onFocus={() => setIsExpandCollapseTooltipOpen(true)}
+									onBlur={() => setIsExpandCollapseTooltipOpen(false)}
 									aria-expanded={isExpanded}
 									aria-label={isExpanded ? "Hide commit files" : "Show commit files"}
 								>
@@ -879,17 +888,17 @@ const CommitRow: FC<
 									</Tooltip.Positioner>
 								</Tooltip.Portal>
 							</Tooltip.Root>
-							<button
+							<Toolbar.Button
 								type="button"
-								className={styles.itemRowAction}
+								className={styles.itemRowToolbarButton}
 								aria-label="Commit menu"
 								onClick={(event) => {
 									void showNativeMenuFromTrigger(event.currentTarget, menuItems);
 								}}
 							>
 								<MenuTriggerIcon />
-							</button>
-						</>
+							</Toolbar.Button>
+						</Toolbar.Root>
 					)}
 				</>
 			)}
@@ -919,12 +928,15 @@ const CommitFileRow: FC<{
 				/>
 			}
 		>
-			<FileButton
-				change={change}
+			<button
+				type="button"
+				className={styles.itemRowButton}
 				onClick={() => {
 					dispatch(projectActions.selectItem({ projectId, item }));
 				}}
-			/>
+			>
+				<FileButton change={change} />
+			</button>
 		</OperationSourceC>
 	);
 };
@@ -1030,37 +1042,40 @@ const ChangeFileRow: FC<{
 				<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected} />
 			}
 		>
-			<FileButton
-				change={change}
+			<button
+				type="button"
+				className={styles.itemRowButton}
 				onClick={() => {
 					dispatch(projectActions.selectItem({ projectId, item }));
 				}}
 				onContextMenu={(event) => {
 					void showNativeContextMenu(event, menuItems);
 				}}
-			/>
+			>
+				<FileButton change={change} />
+			</button>
 			{workspaceMode._tag === "Default" && (
-				<>
+				<Toolbar.Root aria-label="File actions" className={styles.itemRowToolbar}>
 					{dependencyCommitIds && (
 						<DependencyIndicatorButton
 							projectId={projectId}
 							commitIds={dependencyCommitIds}
-							className={styles.itemRowAction}
+							render={<Toolbar.Button type="button" className={styles.itemRowToolbarButton} />}
 						>
 							<DependencyIcon />
 						</DependencyIndicatorButton>
 					)}
-					<button
+					<Toolbar.Button
 						type="button"
-						className={styles.itemRowAction}
+						className={styles.itemRowToolbarButton}
 						aria-label="File menu"
 						onClick={(event) => {
 							void showNativeMenuFromTrigger(event.currentTarget, menuItems);
 						}}
 					>
 						<MenuTriggerIcon />
-					</button>
-				</>
+					</Toolbar.Button>
+				</Toolbar.Root>
 			)}
 		</OperationSourceC>
 	);
@@ -1070,9 +1085,10 @@ const ChangesSectionRow: FC<{
 	changes: Array<TreeChange>;
 	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
+	onCommit: () => void;
 	projectId: string;
 	workspaceMode: WorkspaceMode;
-}> = ({ changes, navigationIndex, onAbsorbChanges, projectId, workspaceMode }) => {
+}> = ({ changes, navigationIndex, onAbsorbChanges, onCommit, projectId, workspaceMode }) => {
 	const dispatch = useAppDispatch();
 	const item = changesSectionItem;
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
@@ -1103,16 +1119,21 @@ const ChangesSectionRow: FC<{
 				Changes
 			</button>
 			{workspaceMode._tag === "Default" && (
-				<button
-					type="button"
-					className={styles.itemRowAction}
-					aria-label="Changes menu"
-					onClick={(event) => {
-						void showNativeMenuFromTrigger(event.currentTarget, menuItems);
-					}}
-				>
-					<MenuTriggerIcon />
-				</button>
+				<Toolbar.Root aria-label="Changes actions" className={styles.itemRowToolbar}>
+					<Toolbar.Button type="button" className={styles.itemRowToolbarButton} onClick={onCommit}>
+						Commit
+					</Toolbar.Button>
+					<Toolbar.Button
+						type="button"
+						className={styles.itemRowToolbarButton}
+						aria-label="Changes menu"
+						onClick={(event) => {
+							void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+						}}
+					>
+						<MenuTriggerIcon />
+					</Toolbar.Button>
+				</Toolbar.Root>
 			)}
 		</ItemRow>
 	);
@@ -1142,7 +1163,7 @@ const BaseCommitRow: FC<
 				>
 					<button
 						type="button"
-						className={styles.commonBaseCommit}
+						className={classes(styles.itemRowButton, styles.sectionButton)}
 						onClick={() => {
 							dispatch(projectActions.selectItem({ projectId, item }));
 						}}
@@ -1160,9 +1181,10 @@ const BaseCommitRow: FC<
 const Changes: FC<{
 	projectId: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
+	onCommit: () => void;
 	navigationIndex: NavigationIndex;
 	workspaceMode: WorkspaceMode;
-}> = ({ projectId, onAbsorbChanges, navigationIndex, workspaceMode }) => {
+}> = ({ projectId, onAbsorbChanges, onCommit, navigationIndex, workspaceMode }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
@@ -1183,6 +1205,7 @@ const Changes: FC<{
 				changes={worktreeChanges.changes}
 				navigationIndex={navigationIndex}
 				onAbsorbChanges={onAbsorbChanges}
+				onCommit={onCommit}
 				projectId={projectId}
 				workspaceMode={workspaceMode}
 			/>
@@ -1363,26 +1386,26 @@ const BranchRow: FC<
 								{optimisticBranchName}
 							</button>
 							{workspaceMode._tag === "Default" && (
-								<>
-									<button
+								<Toolbar.Root aria-label="Branch actions" className={styles.itemRowToolbar}>
+									<Toolbar.Button
 										type="button"
-										className={styles.itemRowAction}
+										className={styles.itemRowToolbarButton}
 										aria-label="Push branch"
 										disabled
 									>
 										<PushIcon />
-									</button>
-									<button
+									</Toolbar.Button>
+									<Toolbar.Button
 										type="button"
-										className={styles.itemRowAction}
+										className={styles.itemRowToolbarButton}
 										aria-label="Branch menu"
 										onClick={(event) => {
 											void showNativeMenuFromTrigger(event.currentTarget, menuItems);
 										}}
 									>
 										<MenuTriggerIcon />
-									</button>
-								</>
+									</Toolbar.Button>
+								</Toolbar.Root>
 							)}
 						</>
 					)}
@@ -1443,16 +1466,18 @@ const StackRow: FC<
 				Stack
 			</button>
 			{workspaceMode._tag === "Default" && (
-				<button
-					type="button"
-					className={styles.itemRowAction}
-					aria-label="Stack menu"
-					onClick={(event) => {
-						void showNativeMenuFromTrigger(event.currentTarget, menuItems);
-					}}
-				>
-					<MenuTriggerIcon />
-				</button>
+				<Toolbar.Root aria-label="Stack actions" className={styles.itemRowToolbar}>
+					<Toolbar.Button
+						type="button"
+						className={styles.itemRowToolbarButton}
+						aria-label="Stack menu"
+						onClick={(event) => {
+							void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+						}}
+					>
+						<MenuTriggerIcon />
+					</Toolbar.Button>
+				</Toolbar.Root>
 			)}
 		</ItemRow>
 	);
@@ -1743,62 +1768,65 @@ const ProjectPage: FC = () => {
 		);
 
 	return (
-		<ProjectPreviewLayout
-			projectId={projectId}
-			preview={
-				selectedItem && (
-					<Suspense fallback={<div>Loading preview…</div>}>
-						<Preview projectId={projectId} selectedItem={selectedItem} />
-					</Suspense>
-				)
-			}
-		>
-			<div className={styles.sections}>
-				<div className={styles.changesContainer}>
-					<Changes
-						projectId={projectId}
-						onAbsorbChanges={openAbsorptionDialog}
-						navigationIndex={navigationIndex}
-						workspaceMode={workspaceMode}
-					/>
+		<>
+			<ProjectPreviewLayout
+				projectId={projectId}
+				preview={
+					selectedItem && (
+						<Suspense fallback={<div>Loading preview…</div>}>
+							<Preview projectId={projectId} selectedItem={selectedItem} />
+						</Suspense>
+					)
+				}
+			>
+				<div className={styles.sections}>
+					<div className={styles.changesContainer}>
+						<Changes
+							projectId={projectId}
+							onAbsorbChanges={openAbsorptionDialog}
+							onCommit={commit}
+							navigationIndex={navigationIndex}
+							workspaceMode={workspaceMode}
+						/>
+					</div>
 
-					<button type="button" className={uiStyles.button} onClick={commit}>
-						Commit
-					</button>
+					{headInfo.stacks.map((stack) => (
+						<StackC
+							key={stack.id}
+							inlineRenameBranchFormRef={inlineRenameBranchFormRef}
+							inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+							projectId={project.id}
+							stack={stack}
+							workspaceMode={workspaceMode}
+							navigationIndex={navigationIndex}
+						/>
+					))}
+
+					<div className={styles.section}>
+						<BaseCommitRow
+							projectId={projectId}
+							commitId={getCommonBaseCommitId(headInfo)}
+							navigationIndex={navigationIndex}
+						/>
+					</div>
 				</div>
 
-				{headInfo.stacks.map((stack) => (
-					<StackC
-						key={stack.id}
-						inlineRenameBranchFormRef={inlineRenameBranchFormRef}
-						inlineRewordCommitFormRef={inlineRewordCommitFormRef}
-						projectId={project.id}
-						stack={stack}
-						workspaceMode={workspaceMode}
-						navigationIndex={navigationIndex}
-					/>
-				))}
-
-				<div className={styles.section}>
-					<BaseCommitRow
-						projectId={projectId}
-						commitId={getCommonBaseCommitId(headInfo)}
-						navigationIndex={navigationIndex}
-					/>
-				</div>
-			</div>
+				{Match.value(operationMode).pipe(
+					Match.when(null, () => null),
+					Match.tag("DragAndDrop", () => null),
+					Match.orElse(({ source }) => (
+						<div className={styles.operationModePreview}>
+							<OperationSourceLabel headInfo={headInfo} source={source} />
+						</div>
+					)),
+				)}
+			</ProjectPreviewLayout>
 
 			{shortcutScope && (
 				<PositionedShortcutsBar
 					label={getScopeLabel(shortcutScope)}
 					items={getScopeBindings(shortcutScope)}
 				/>
-			)}
-
-			{operationMode && (
-				<div className={styles.operationModePreview}>
-					<OperationSourceLabel headInfo={headInfo} source={operationMode.source} />
-				</div>
 			)}
 
 			{absorptionTarget && (
@@ -1830,7 +1858,7 @@ const ProjectPage: FC = () => {
 				onSelectItem={selectBranch}
 				placeholder="Search for branches…"
 			/>
-		</ProjectPreviewLayout>
+		</>
 	);
 };
 
