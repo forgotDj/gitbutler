@@ -88,7 +88,7 @@
 	white-space: pre-wrap;
 }
 
-.itemRowButton {
+.itemRowLabel {
 	flex-grow: 1;
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
@@ -98,7 +98,7 @@
 	white-space: nowrap;
 }
 
-.sectionButton {
+.sectionLabel {
 	font-weight: bold;
 }
 

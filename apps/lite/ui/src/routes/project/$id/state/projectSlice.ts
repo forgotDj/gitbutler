@@ -61,10 +61,10 @@ const projectSlice = createSlice({
 			const projectState = ensureProjectState(state, projectId);
 			workspace.openCommitFiles(projectState.workspace, item);
 		},
-		closeCommitFiles: (state, action: PayloadAction<{ projectId: string; item: CommitItem }>) => {
-			const { projectId, item } = action.payload;
+		closeCommitFiles: (state, action: PayloadAction<{ projectId: string }>) => {
+			const { projectId } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
-			workspace.closeCommitFiles(projectState.workspace, item);
+			workspace.closeCommitFiles(projectState.workspace);
 		},
 		toggleCommitFiles: (state, action: PayloadAction<{ projectId: string; item: CommitItem }>) => {
 			const { projectId, item } = action.payload;

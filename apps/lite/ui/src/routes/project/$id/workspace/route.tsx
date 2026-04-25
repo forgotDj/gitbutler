@@ -206,7 +206,7 @@ const HunkDiff: FC<{
 const hunkKey = (hunk: HunkHeader): string =>
 	`${hunk.oldStart}:${hunk.oldLines}:${hunk.newStart}:${hunk.newLines}`;
 
-const FileButton: FC<{
+const FileRowLabel: FC<{
 	change: TreeChange;
 }> = ({ change }) => (
 	<>
@@ -839,6 +839,9 @@ const CommitRow: FC<
 			inert={!navigationIndexIncludes(navigationIndex, item)}
 			isSelected={isSelected}
 			className={classes(restProps.className, isHighlighted && styles.itemRowHighlighted)}
+			onClick={() => {
+				dispatch(projectActions.selectItem({ projectId, item }));
+			}}
 		>
 			{isRewording ? (
 				<InlineRewordCommit
@@ -849,12 +852,8 @@ const CommitRow: FC<
 				/>
 			) : (
 				<>
-					<button
-						type="button"
-						className={styles.itemRowButton}
-						onClick={() => {
-							dispatch(projectActions.selectItem({ projectId, item }));
-						}}
+					<div
+						className={styles.itemRowLabel}
 						onContextMenu={
 							workspaceMode._tag === "Default"
 								? (event) => {
@@ -864,7 +863,7 @@ const CommitRow: FC<
 						}
 					>
 						<CommitLabel commit={commitWithOptimisticMessage} />
-					</button>
+					</div>
 					{workspaceMode._tag === "Default" && (
 						<Toolbar.Root aria-label="Commit actions" className={styles.itemRowToolbar}>
 							<Tooltip.Root
@@ -932,18 +931,15 @@ const CommitFileRow: FC<{
 					inert={!navigationIndexIncludes(navigationIndex, item)}
 					isSelected={isSelected}
 					className={styles.fileRow}
+					onClick={() => {
+						dispatch(projectActions.selectItem({ projectId, item }));
+					}}
 				/>
 			}
 		>
-			<button
-				type="button"
-				className={styles.itemRowButton}
-				onClick={() => {
-					dispatch(projectActions.selectItem({ projectId, item }));
-				}}
-			>
-				<FileButton change={change} />
-			</button>
+			<div className={styles.itemRowLabel}>
+				<FileRowLabel change={change} />
+			</div>
 		</OperationSourceC>
 	);
 };
@@ -1049,21 +1045,23 @@ const ChangeFileRow: FC<{
 			projectId={projectId}
 			source={item}
 			render={
-				<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected} />
+				<ItemRow
+					inert={!navigationIndexIncludes(navigationIndex, item)}
+					isSelected={isSelected}
+					onClick={() => {
+						dispatch(projectActions.selectItem({ projectId, item }));
+					}}
+				/>
 			}
 		>
-			<button
-				type="button"
-				className={styles.itemRowButton}
-				onClick={() => {
-					dispatch(projectActions.selectItem({ projectId, item }));
-				}}
+			<div
+				className={styles.itemRowLabel}
 				onContextMenu={(event) => {
 					void showNativeContextMenu(event, menuItems);
 				}}
 			>
-				<FileButton change={change} />
-			</button>
+				<FileRowLabel change={change} />
+			</div>
 			{workspaceMode._tag === "Default" && (
 				<Toolbar.Root aria-label="File actions" className={styles.itemRowToolbar}>
 					{dependencyCommitIds && (
@@ -1115,19 +1113,21 @@ const ChangesSectionRow: FC<{
 	];
 
 	return (
-		<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected}>
-			<button
-				type="button"
-				className={classes(styles.itemRowButton, styles.sectionButton)}
-				onClick={() => {
-					dispatch(projectActions.selectItem({ projectId, item }));
-				}}
+		<ItemRow
+			inert={!navigationIndexIncludes(navigationIndex, item)}
+			isSelected={isSelected}
+			onClick={() => {
+				dispatch(projectActions.selectItem({ projectId, item }));
+			}}
+		>
+			<div
+				className={classes(styles.itemRowLabel, styles.sectionLabel)}
 				onContextMenu={(event) => {
 					void showNativeContextMenu(event, menuItems);
 				}}
 			>
 				Changes
-			</button>
+			</div>
 			{workspaceMode._tag === "Default" && (
 				<Toolbar.Root aria-label="Changes actions" className={styles.itemRowToolbar}>
 					<Toolbar.Button type="button" className={styles.itemRowToolbarButton} onClick={onCommit}>
@@ -1165,18 +1165,18 @@ const BaseCommit: FC<{
 				item={item}
 				isSelected={isSelected}
 				render={
-					<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected}>
-						<button
-							type="button"
-							className={classes(styles.itemRowButton, styles.sectionButton)}
-							onClick={() => {
-								dispatch(projectActions.selectItem({ projectId, item }));
-							}}
-						>
+					<ItemRow
+						inert={!navigationIndexIncludes(navigationIndex, item)}
+						isSelected={isSelected}
+						onClick={() => {
+							dispatch(projectActions.selectItem({ projectId, item }));
+						}}
+					>
+						<div className={classes(styles.itemRowLabel, styles.sectionLabel)}>
 							{commitId !== undefined
 								? `${shortCommitId(commitId)} (common base commit)`
 								: "(base commit)"}
-						</button>
+						</div>
 					</ItemRow>
 				}
 			/>
@@ -1370,7 +1370,11 @@ const BranchRow: FC<
 			projectId={projectId}
 			source={item}
 			render={
-				<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected}>
+				<ItemRow
+					inert={!navigationIndexIncludes(navigationIndex, item)}
+					isSelected={isSelected}
+					onClick={() => dispatch(projectActions.selectItem({ projectId, item }))}
+				>
 					{isRenaming ? (
 						<InlineRenameBranch
 							branchName={optimisticBranchName}
@@ -1380,10 +1384,8 @@ const BranchRow: FC<
 						/>
 					) : (
 						<>
-							<button
-								type="button"
-								className={classes(styles.itemRowButton, styles.sectionButton)}
-								onClick={() => dispatch(projectActions.selectItem({ projectId, item }))}
+							<div
+								className={classes(styles.itemRowLabel, styles.sectionLabel)}
 								onContextMenu={
 									workspaceMode._tag === "Default"
 										? (event) => {
@@ -1393,7 +1395,7 @@ const BranchRow: FC<
 								}
 							>
 								{optimisticBranchName}
-							</button>
+							</div>
 							{workspaceMode._tag === "Default" && (
 								<Toolbar.Root aria-label="Branch actions" className={styles.itemRowToolbar}>
 									<Toolbar.Button
@@ -1457,13 +1459,12 @@ const StackRow: FC<
 			{...restProps}
 			isSelected={isSelected}
 			inert={!navigationIndexIncludes(navigationIndex, item)}
+			onClick={() => {
+				dispatch(projectActions.selectItem({ projectId, item }));
+			}}
 		>
-			<button
-				type="button"
-				className={classes(styles.itemRowButton, styles.sectionButton)}
-				onClick={() => {
-					dispatch(projectActions.selectItem({ projectId, item }));
-				}}
+			<div
+				className={classes(styles.itemRowLabel, styles.sectionLabel)}
 				onContextMenu={
 					workspaceMode._tag === "Default"
 						? (event) => {
@@ -1473,7 +1474,7 @@ const StackRow: FC<
 				}
 			>
 				Stack
-			</button>
+			</div>
 			{workspaceMode._tag === "Default" && (
 				<Toolbar.Root aria-label="Stack actions" className={styles.itemRowToolbar}>
 					<Toolbar.Button
