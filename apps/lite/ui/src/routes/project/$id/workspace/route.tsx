@@ -202,12 +202,10 @@ const HunkDiff: FC<{
 const hunkKey = (hunk: HunkHeader): string =>
 	`${hunk.oldStart}:${hunk.oldLines}:${hunk.newStart}:${hunk.newLines}`;
 
-const FileButton: FC<
-	{
-		change: TreeChange;
-	} & ComponentProps<"button">
-> = ({ change, className, ...restProps }) => (
-	<button {...restProps} type="button" className={classes(className, styles.itemRowButton)}>
+const FileButton: FC<{
+	change: TreeChange;
+}> = ({ change }) => (
+	<>
 		{Match.value(change.status).pipe(
 			Match.when({ type: "Addition" }, () => "A"),
 			Match.when({ type: "Deletion" }, () => "D"),
@@ -216,7 +214,7 @@ const FileButton: FC<
 			Match.exhaustive,
 		)}{" "}
 		{change.path}
-	</button>
+	</>
 );
 
 const CommitFiles: FC<{
@@ -930,12 +928,15 @@ const CommitFileRow: FC<{
 				/>
 			}
 		>
-			<FileButton
-				change={change}
+			<button
+				type="button"
+				className={styles.itemRowButton}
 				onClick={() => {
 					dispatch(projectActions.selectItem({ projectId, item }));
 				}}
-			/>
+			>
+				<FileButton change={change} />
+			</button>
 		</OperationSourceC>
 	);
 };
@@ -1041,15 +1042,18 @@ const ChangeFileRow: FC<{
 				<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected} />
 			}
 		>
-			<FileButton
-				change={change}
+			<button
+				type="button"
+				className={styles.itemRowButton}
 				onClick={() => {
 					dispatch(projectActions.selectItem({ projectId, item }));
 				}}
 				onContextMenu={(event) => {
 					void showNativeContextMenu(event, menuItems);
 				}}
-			/>
+			>
+				<FileButton change={change} />
+			</button>
 			{workspaceMode._tag === "Default" && (
 				<Toolbar.Root aria-label="File actions" className={styles.itemRowToolbar}>
 					{dependencyCommitIds && (
