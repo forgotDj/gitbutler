@@ -923,7 +923,14 @@ export const useWorkspaceShortcuts = ({
 	const handlePreviewScopeAction = (action: PreviewAction) =>
 		Match.value(action).pipe(
 			Match.tags({
-				ClosePreview: () => dispatch(projectActions.closePreview({ projectId })),
+				ClosePreview: () => {
+					dispatch(projectActions.closePreview({ projectId }));
+					focusPanel("primary");
+				},
+				TogglePreview: () => {
+					dispatch(projectActions.togglePreview({ projectId }));
+					focusPanel("primary");
+				},
 			}),
 			Match.orElse((action) => handlePanelNavigationAction(action)),
 		);
