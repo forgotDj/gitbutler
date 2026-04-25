@@ -296,6 +296,8 @@ const DependencyIndicatorButton: FC<
 		commitIds: NonEmptyArray<string>;
 	} & useRender.ComponentProps<"button">
 > = ({ projectId, commitIds, ...restProps }) => {
+	// We use a controlled tooltip as a workaround for https://github.com/mui/base-ui/issues/4499.
+	const [isTooltipOpen, setIsTooltipOpen] = useState(false);
 	const dispatch = useAppDispatch();
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	// TODO: expensive
@@ -308,6 +310,7 @@ const DependencyIndicatorButton: FC<
 	const tooltip =
 		branchNames.length > 0 ? `Depends on ${branchNames.join(", ")}` : "Unknown dependencies";
 	const highlightCommitIds = () => {
+		setIsTooltipOpen(true);
 		dispatch(
 			projectActions.setHighlightedCommitIds({
 				projectId,
@@ -316,11 +319,13 @@ const DependencyIndicatorButton: FC<
 		);
 	};
 	const clearHighlightedCommitIds = () => {
+		setIsTooltipOpen(false);
 		dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds: null }));
 	};
 
 	return (
 		<Tooltip.Root
+			open={isTooltipOpen}
 			// [ref:tooltip-disable-hoverable-popup]
 			disableHoverablePopup
 		>
@@ -730,6 +735,8 @@ const CommitRow: FC<
 		(_currentMessage, nextMessage: string) => nextMessage,
 	);
 	const [isCommitMessagePending, startCommitMessageTransition] = useTransition();
+	// We use a controlled tooltip as a workaround for https://github.com/mui/base-ui/issues/4499.
+	const [isExpandCollapseTooltipOpen, setIsExpandCollapseTooltipOpen] = useState(false);
 
 	const commitWithOptimisticMessage: Commit = {
 		...commit,
@@ -856,6 +863,7 @@ const CommitRow: FC<
 					{workspaceMode._tag === "Default" && (
 						<Toolbar.Root aria-label="Commit actions" className={styles.itemRowToolbar}>
 							<Tooltip.Root
+								open={isExpandCollapseTooltipOpen}
 								// Prevent tooltip from lingering while moving between nearby controls.
 								// [tag:tooltip-disable-hoverable-popup]
 								disableHoverablePopup
@@ -865,6 +873,10 @@ const CommitRow: FC<
 									onClick={() =>
 										dispatch(projectActions.toggleCommitFiles({ projectId, item: commitItemV }))
 									}
+									onMouseEnter={() => setIsExpandCollapseTooltipOpen(true)}
+									onMouseLeave={() => setIsExpandCollapseTooltipOpen(false)}
+									onFocus={() => setIsExpandCollapseTooltipOpen(true)}
+									onBlur={() => setIsExpandCollapseTooltipOpen(false)}
 									aria-expanded={isExpanded}
 									aria-label={isExpanded ? "Hide commit files" : "Show commit files"}
 								>
