@@ -40,7 +40,7 @@
 	background-color: var(--color-item-row-selected-unfocused-bg);
 	color: var(--color-item-row-selected-fg);
 
-	[data-panel]:focus-within & {
+	:where([data-panel]:focus-within) & {
 		background-color: var(--color-item-row-selected-focused-bg);
 	}
 }
