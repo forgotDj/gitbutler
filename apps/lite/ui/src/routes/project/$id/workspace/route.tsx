@@ -306,6 +306,17 @@ const DependencyIndicatorButton: FC<{
 	);
 	const tooltip =
 		branchNames.length > 0 ? `Depends on ${branchNames.join(", ")}` : "Unknown dependencies";
+	const highlightCommitIds = () => {
+		dispatch(
+			projectActions.setHighlightedCommitIds({
+				projectId,
+				commitIds,
+			}),
+		);
+	};
+	const clearHighlightedCommitIds = () => {
+		dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds: null }));
+	};
 
 	return (
 		<Tooltip.Root
@@ -315,17 +326,8 @@ const DependencyIndicatorButton: FC<{
 			<Tooltip.Trigger
 				type="button"
 				className={className}
-				onMouseEnter={() => {
-					dispatch(
-						projectActions.setHighlightedCommitIds({
-							projectId,
-							commitIds,
-						}),
-					);
-				}}
-				onMouseLeave={() => {
-					dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds: null }));
-				}}
+				onMouseEnter={highlightCommitIds}
+				onMouseLeave={clearHighlightedCommitIds}
 				aria-label={tooltip}
 			>
 				{children}
