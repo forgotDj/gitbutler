@@ -328,6 +328,8 @@ const DependencyIndicatorButton: FC<{
 				className={className}
 				onMouseEnter={highlightCommitIds}
 				onMouseLeave={clearHighlightedCommitIds}
+				onFocus={highlightCommitIds}
+				onBlur={clearHighlightedCommitIds}
 				aria-label={tooltip}
 			>
 				{children}
