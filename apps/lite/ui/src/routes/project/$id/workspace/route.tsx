@@ -267,7 +267,7 @@ const CommitFiles: FC<{
 	);
 };
 
-const ItemRow: FC<
+const ItemRowPresentational: FC<
 	{
 		isSelected?: boolean;
 	} & ComponentProps<"div">
@@ -288,6 +288,29 @@ const ItemRow: FC<
 			{...props}
 			ref={mergedRef}
 			className={classes(className, styles.itemRow, isSelected && styles.itemRowSelected)}
+		/>
+	);
+};
+
+const ItemRow: FC<
+	{
+		projectId: string;
+		item: Item;
+		navigationIndex: NavigationIndex;
+	} & Omit<ComponentProps<typeof ItemRowPresentational>, "inert" | "isSelected">
+> = ({ projectId, item, navigationIndex, onClick, ...props }) => {
+	const dispatch = useAppDispatch();
+	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
+
+	return (
+		<ItemRowPresentational
+			{...props}
+			inert={!navigationIndexIncludes(navigationIndex, item)}
+			isSelected={isSelected}
+			onClick={(event) => {
+				onClick?.(event);
+				if (!event.defaultPrevented) dispatch(projectActions.selectItem({ projectId, item }));
+			}}
 		/>
 	);
 };
@@ -836,12 +859,10 @@ const CommitRow: FC<
 	return (
 		<ItemRow
 			{...restProps}
-			inert={!navigationIndexIncludes(navigationIndex, item)}
-			isSelected={isSelected}
+			projectId={projectId}
+			item={item}
+			navigationIndex={navigationIndex}
 			className={classes(restProps.className, isHighlighted && styles.itemRowHighlighted)}
-			onClick={() => {
-				dispatch(projectActions.selectItem({ projectId, item }));
-			}}
 		>
 			{isRewording ? (
 				<InlineRewordCommit
@@ -918,9 +939,7 @@ const CommitFileRow: FC<{
 	navigationIndex: NavigationIndex;
 	projectId: string;
 }> = ({ change, parentCommitItem, navigationIndex, projectId }) => {
-	const dispatch = useAppDispatch();
 	const item = commitFileItem({ ...parentCommitItem, path: change.path });
-	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	return (
 		<OperationSourceC
@@ -928,12 +947,10 @@ const CommitFileRow: FC<{
 			source={item}
 			render={
 				<ItemRow
-					inert={!navigationIndexIncludes(navigationIndex, item)}
-					isSelected={isSelected}
+					projectId={projectId}
+					item={item}
+					navigationIndex={navigationIndex}
 					className={styles.fileRow}
-					onClick={() => {
-						dispatch(projectActions.selectItem({ projectId, item }));
-					}}
 				/>
 			}
 		>
@@ -1020,9 +1037,7 @@ const ChangeFileRow: FC<{
 	workspaceMode,
 	projectId,
 }) => {
-	const dispatch = useAppDispatch();
 	const item = changeFileItem({ path: change.path });
-	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	const menuItems: Array<NativeMenuItem> = [
 		{
@@ -1044,15 +1059,7 @@ const ChangeFileRow: FC<{
 		<OperationSourceC
 			projectId={projectId}
 			source={item}
-			render={
-				<ItemRow
-					inert={!navigationIndexIncludes(navigationIndex, item)}
-					isSelected={isSelected}
-					onClick={() => {
-						dispatch(projectActions.selectItem({ projectId, item }));
-					}}
-				/>
-			}
+			render={<ItemRow projectId={projectId} item={item} navigationIndex={navigationIndex} />}
 		>
 			<div
 				className={styles.itemRowLabel}
@@ -1097,9 +1104,7 @@ const ChangesSectionRow: FC<{
 	projectId: string;
 	workspaceMode: WorkspaceMode;
 }> = ({ changes, navigationIndex, onAbsorbChanges, onCommit, projectId, workspaceMode }) => {
-	const dispatch = useAppDispatch();
 	const item = changesSectionItem;
-	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	const menuItems: Array<NativeMenuItem> = [
 		{
@@ -1113,13 +1118,7 @@ const ChangesSectionRow: FC<{
 	];
 
 	return (
-		<ItemRow
-			inert={!navigationIndexIncludes(navigationIndex, item)}
-			isSelected={isSelected}
-			onClick={() => {
-				dispatch(projectActions.selectItem({ projectId, item }));
-			}}
-		>
+		<ItemRow projectId={projectId} item={item} navigationIndex={navigationIndex}>
 			<div
 				className={classes(styles.itemRowLabel, styles.sectionLabel)}
 				onContextMenu={(event) => {
@@ -1154,7 +1153,6 @@ const BaseCommit: FC<{
 	commitId?: string;
 	navigationIndex: NavigationIndex;
 }> = ({ projectId, commitId, navigationIndex }) => {
-	const dispatch = useAppDispatch();
 	const item = baseCommitItem;
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
@@ -1165,13 +1163,7 @@ const BaseCommit: FC<{
 				item={item}
 				isSelected={isSelected}
 				render={
-					<ItemRow
-						inert={!navigationIndexIncludes(navigationIndex, item)}
-						isSelected={isSelected}
-						onClick={() => {
-							dispatch(projectActions.selectItem({ projectId, item }));
-						}}
-					>
+					<ItemRow projectId={projectId} item={item} navigationIndex={navigationIndex}>
 						<div className={classes(styles.itemRowLabel, styles.sectionLabel)}>
 							{commitId !== undefined
 								? `${shortCommitId(commitId)} (common base commit)`
@@ -1300,7 +1292,6 @@ const BranchRow: FC<
 		branchRef,
 	};
 	const item = branchItem(branchItemV);
-	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 	const isRenaming =
 		workspaceMode._tag === "RenameBranch" &&
 		itemEquals(
@@ -1370,11 +1361,7 @@ const BranchRow: FC<
 			projectId={projectId}
 			source={item}
 			render={
-				<ItemRow
-					inert={!navigationIndexIncludes(navigationIndex, item)}
-					isSelected={isSelected}
-					onClick={() => dispatch(projectActions.selectItem({ projectId, item }))}
-				>
+				<ItemRow projectId={projectId} item={item} navigationIndex={navigationIndex}>
 					{isRenaming ? (
 						<InlineRenameBranch
 							branchName={optimisticBranchName}
@@ -1434,9 +1421,7 @@ const StackRow: FC<
 		workspaceMode: WorkspaceMode;
 	} & ComponentProps<"div">
 > = ({ navigationIndex, projectId, stackId, workspaceMode, ...restProps }) => {
-	const dispatch = useAppDispatch();
 	const item = stackItem({ stackId });
-	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	const unapplyStack = useMutation(unapplyStackMutationOptions);
 
@@ -1455,14 +1440,7 @@ const StackRow: FC<
 	];
 
 	return (
-		<ItemRow
-			{...restProps}
-			isSelected={isSelected}
-			inert={!navigationIndexIncludes(navigationIndex, item)}
-			onClick={() => {
-				dispatch(projectActions.selectItem({ projectId, item }));
-			}}
-		>
+		<ItemRow {...restProps} projectId={projectId} item={item} navigationIndex={navigationIndex}>
 			<div
 				className={classes(styles.itemRowLabel, styles.sectionLabel)}
 				onContextMenu={
