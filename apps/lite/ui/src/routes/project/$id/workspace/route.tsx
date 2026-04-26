@@ -899,7 +899,6 @@ const CommitRow: FC<
 									onMouseLeave={() => setIsExpandCollapseTooltipOpen(false)}
 									onFocus={() => setIsExpandCollapseTooltipOpen(true)}
 									onBlur={() => setIsExpandCollapseTooltipOpen(false)}
-									aria-expanded={isExpanded}
 									aria-label={isExpanded ? "Hide commit files" : "Show commit files"}
 								>
 									<ExpandCollapseIcon isExpanded={isExpanded} />
