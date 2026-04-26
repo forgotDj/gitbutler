@@ -206,20 +206,17 @@ const HunkDiff: FC<{
 const hunkKey = (hunk: HunkHeader): string =>
 	`${hunk.oldStart}:${hunk.oldLines}:${hunk.newStart}:${hunk.newLines}`;
 
-const FileRowLabel: FC<{
-	change: TreeChange;
-}> = ({ change }) => (
-	<>
-		{Match.value(change.status).pipe(
-			Match.when({ type: "Addition" }, () => "A"),
-			Match.when({ type: "Deletion" }, () => "D"),
-			Match.when({ type: "Modification" }, () => "M"),
-			Match.when({ type: "Rename" }, () => "R"),
-			Match.exhaustive,
-		)}{" "}
-		{change.path}
-	</>
-);
+const fileRowLabel = (change: TreeChange) => {
+	const status = Match.value(change.status).pipe(
+		Match.when({ type: "Addition" }, () => "A"),
+		Match.when({ type: "Deletion" }, () => "D"),
+		Match.when({ type: "Modification" }, () => "M"),
+		Match.when({ type: "Rename" }, () => "R"),
+		Match.exhaustive,
+	);
+
+	return `${status} ${change.path}`;
+};
 
 const CommitFiles: FC<{
 	projectId: string;
@@ -954,9 +951,7 @@ const CommitFileRow: FC<{
 				/>
 			}
 		>
-			<div className={styles.itemRowLabel}>
-				<FileRowLabel change={change} />
-			</div>
+			<div className={styles.itemRowLabel}>{fileRowLabel(change)}</div>
 		</OperationSourceC>
 	);
 };
@@ -1067,7 +1062,7 @@ const ChangeFileRow: FC<{
 					void showNativeContextMenu(event, menuItems);
 				}}
 			>
-				<FileRowLabel change={change} />
+				{fileRowLabel(change)}
 			</div>
 			{workspaceMode._tag === "Default" && (
 				<Toolbar.Root aria-label="File actions" className={styles.itemRowToolbar}>
