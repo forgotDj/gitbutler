@@ -1149,42 +1149,40 @@ const ChangesSectionRow: FC<{
 	);
 };
 
-const BaseCommitRow: FC<
+const BaseCommit: FC<
 	{
 		projectId: string;
 		commitId?: string;
 		navigationIndex: NavigationIndex;
 	} & ComponentProps<"div">
-> = ({ projectId, commitId, navigationIndex, ...props }) => {
+> = ({ projectId, commitId, navigationIndex, className, ...props }) => {
 	const dispatch = useAppDispatch();
 	const item = baseCommitItem;
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	return (
-		<OperationTarget
-			projectId={projectId}
-			item={item}
-			isSelected={isSelected}
-			render={
-				<ItemRow
-					{...props}
-					inert={!navigationIndexIncludes(navigationIndex, item)}
-					isSelected={isSelected}
-				>
-					<button
-						type="button"
-						className={classes(styles.itemRowButton, styles.sectionButton)}
-						onClick={() => {
-							dispatch(projectActions.selectItem({ projectId, item }));
-						}}
-					>
-						{commitId !== undefined
-							? `${shortCommitId(commitId)} (common base commit)`
-							: "(base commit)"}
-					</button>
-				</ItemRow>
-			}
-		/>
+		<div {...props} className={classes(styles.section, className)}>
+			<OperationTarget
+				projectId={projectId}
+				item={item}
+				isSelected={isSelected}
+				render={
+					<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected}>
+						<button
+							type="button"
+							className={classes(styles.itemRowButton, styles.sectionButton)}
+							onClick={() => {
+								dispatch(projectActions.selectItem({ projectId, item }));
+							}}
+						>
+							{commitId !== undefined
+								? `${shortCommitId(commitId)} (common base commit)`
+								: "(base commit)"}
+						</button>
+					</ItemRow>
+				}
+			/>
+		</div>
 	);
 };
 
@@ -1830,13 +1828,11 @@ const ProjectPage: FC = () => {
 						/>
 					))}
 
-					<div className={styles.section}>
-						<BaseCommitRow
-							projectId={projectId}
-							commitId={getCommonBaseCommitId(headInfo)}
-							navigationIndex={navigationIndex}
-						/>
-					</div>
+					<BaseCommit
+						projectId={projectId}
+						commitId={getCommonBaseCommitId(headInfo)}
+						navigationIndex={navigationIndex}
+					/>
 				</div>
 
 				{Match.value(operationMode).pipe(
