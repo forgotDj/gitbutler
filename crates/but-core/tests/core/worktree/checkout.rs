@@ -83,6 +83,57 @@ fn no_op_trees_never_touch_worktree() -> anyhow::Result<()> {
 }
 
 #[test]
+fn pure_deletion_checkout_does_not_restore_unrelated_worktree_deletions() -> anyhow::Result<()> {
+    let (repo, _tmp) = writable_scenario_slow("all-file-types-renamed-and-modified");
+    insta::assert_snapshot!(git_status(&repo)?, @r"
+     D executable
+     D file
+     D link
+    ?? executable-renamed
+    ?? file-renamed
+    ?? link-renamed
+    ");
+
+    insta::assert_snapshot!(visualize_index(&*repo.index()?), @"
+    100755:01e79c3 executable
+    100644:3aac70f file
+    120000:c4c364c link
+    ");
+
+    let (head_commit, new_commit) = build_commit(
+        &repo,
+        |tree| {
+            tree.remove("executable")?;
+            Ok(())
+        },
+        "delete executable",
+    )?;
+
+    let out = safe_checkout(head_commit.id, new_commit.id, &repo, Default::default())?;
+    insta::assert_debug_snapshot!(out, @r#"
+    Outcome {
+        snapshot_tree: None,
+        num_deleted_files: 1,
+        num_added_or_updated_files: 0,
+        head_update: "Update refs/heads/main to Some(Object(Sha1(5eedd314adfb480212989a303c7651717062a9b2)))",
+    }
+    "#);
+    insta::assert_snapshot!(visualize_index(&*repo.index()?), @r"
+    100644:3aac70f file
+    120000:c4c364c link
+    ");
+    insta::assert_snapshot!(git_status(&repo)?, @r"
+     D file
+     D link
+    ?? executable-renamed
+    ?? file-renamed
+    ?? link-renamed
+    ");
+
+    Ok(())
+}
+
+#[test]
 fn worktree_and_index_deletions_are_ignored_in_snapshots() -> anyhow::Result<()> {
     let (repo, _tmp) = writable_scenario("deletion-addition-untracked");
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"* 226d5ea (HEAD -> main) init");
