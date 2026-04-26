@@ -1327,6 +1327,64 @@ Amended the only hunk in rename-target-single.txt in the unassigned area → [..
 }
 
 #[test]
+fn rub_unassigned_deleted_file_to_commit_keeps_unrelated_deleted_file() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
+    env.setup_metadata(&["A", "B"])?;
+
+    env.file("a.txt", "a\n");
+    env.file("b.txt", "b\n");
+    env.file("c.txt", "c\n");
+    env.but("commit A -m 'Add a.txt, b.txt, and c.txt'")
+        .assert()
+        .success();
+
+    std::fs::remove_file(env.projects_root().join("a.txt"))?;
+    std::fs::remove_file(env.projects_root().join("b.txt"))?;
+
+    let before = status_json(&env)?;
+    let source_file_id = unassigned_cli_id_for_file(&before, "a.txt")
+        .expect("a.txt deletion should be present in the unassigned area");
+    let target_commit = branch_commit_ids(&before, "A")[0].clone();
+    assert!(
+        unassigned_contains_file(&before, "b.txt"),
+        "b.txt deletion should start in the unassigned area"
+    );
+
+    env.but(format!("rub {source_file_id} {target_commit}"))
+        .assert()
+        .success()
+        .stdout_eq(str![[r#"
+Amended the only hunk in a.txt in the unassigned area → [..]
+
+"#]])
+        .stderr_eq(str![""]);
+
+    let after = status_json(&env)?;
+    assert!(
+        !unassigned_contains_file(&after, "a.txt"),
+        "selected a.txt deletion should be amended into the target commit"
+    );
+    assert!(
+        unassigned_contains_file(&after, "b.txt"),
+        "unrelated b.txt deletion should remain unassigned"
+    );
+    assert!(
+        !env.projects_root().join("a.txt").exists(),
+        "selected a.txt deletion should stay applied to the worktree"
+    );
+    assert!(
+        !env.projects_root().join("b.txt").exists(),
+        "unrelated b.txt deletion should stay applied to the worktree"
+    );
+    assert!(
+        env.projects_root().join("c.txt").exists(),
+        "untouched c.txt should stay in the worktree"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn rub_matrix_unassigned_to_stack_smoke() -> anyhow::Result<()> {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
     env.setup_metadata(&["A", "B"])?;
