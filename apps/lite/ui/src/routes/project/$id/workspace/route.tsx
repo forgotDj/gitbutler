@@ -1809,15 +1809,13 @@ const ProjectPage: FC = () => {
 				}
 			>
 				<div className={styles.sections}>
-					<div className={styles.changesContainer}>
-						<Changes
-							projectId={projectId}
-							onAbsorbChanges={openAbsorptionDialog}
-							onCommit={commit}
-							navigationIndex={navigationIndex}
-							workspaceMode={workspaceMode}
-						/>
-					</div>
+					<Changes
+						projectId={projectId}
+						onAbsorbChanges={openAbsorptionDialog}
+						onCommit={commit}
+						navigationIndex={navigationIndex}
+						workspaceMode={workspaceMode}
+					/>
 
 					{headInfo.stacks.map((stack) => (
 						<StackC
