@@ -1466,7 +1466,7 @@ const StackRow: FC<
 	);
 };
 
-const SegmentC: FC<{
+const BranchSegment: FC<{
 	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
 	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
 	navigationIndex: NavigationIndex;
@@ -1485,77 +1485,86 @@ const SegmentC: FC<{
 	workspaceMode,
 	focusPanel,
 }) => {
-	const section = (
-		<div className={classes(styles.section, styles.segment)}>
-			{segment.refName && (
-				<BranchRow
-					inlineRenameBranchFormRef={inlineRenameBranchFormRef}
-					workspaceMode={workspaceMode}
-					projectId={projectId}
-					branchName={segment.refName.displayName}
-					branchRef={segment.refName.fullNameBytes}
-					stackId={stackId}
-					navigationIndex={navigationIndex}
-					focusPanel={focusPanel}
-				/>
-			)}
-
-			{segment.commits.length === 0 ? (
-				<div className={styles.itemRowEmpty}>No commits.</div>
-			) : (
-				<ul>
-					{segment.commits.map((commit) => (
-						<li key={commit.id}>
-							<CommitC
-								commit={commit}
-								inlineRewordCommitFormRef={inlineRewordCommitFormRef}
-								workspaceMode={workspaceMode}
-								projectId={projectId}
-								stackId={stackId}
-								navigationIndex={navigationIndex}
-								focusPanel={focusPanel}
-							/>
-						</li>
-					))}
-				</ul>
-			)}
-		</div>
-	);
-
-	return segment.refName ? (
-		<BranchOperationTarget
-			projectId={projectId}
-			branchRef={segment.refName.fullNameBytes}
-			stackId={stackId}
-			navigationIndex={navigationIndex}
-			render={section}
-		/>
-	) : (
-		section
-	);
-};
-
-const BranchOperationTarget: FC<
-	{
-		projectId: string;
-		branchRef: Array<number>;
-		stackId: string;
-		navigationIndex: NavigationIndex;
-	} & useRender.ComponentProps<"div">
-> = ({ projectId, branchRef, stackId, navigationIndex, render, ...restProps }) => {
-	const item = branchItem({ stackId, branchRef });
+	const refName = assert(segment.refName);
+	const item = branchItem({ stackId, branchRef: refName.fullNameBytes });
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	return (
 		<OperationTarget
-			{...restProps}
 			projectId={projectId}
 			item={item}
 			isSelected={isSelected}
-			render={render}
+			render={
+				<div className={classes(styles.section, styles.segment)}>
+					<BranchRow
+						inlineRenameBranchFormRef={inlineRenameBranchFormRef}
+						workspaceMode={workspaceMode}
+						projectId={projectId}
+						branchName={refName.displayName}
+						branchRef={refName.fullNameBytes}
+						stackId={stackId}
+						navigationIndex={navigationIndex}
+						focusPanel={focusPanel}
+					/>
+
+					{segment.commits.length === 0 ? (
+						<div className={styles.itemRowEmpty}>No commits.</div>
+					) : (
+						<ul>
+							{segment.commits.map((commit) => (
+								<li key={commit.id}>
+									<CommitC
+										commit={commit}
+										inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+										workspaceMode={workspaceMode}
+										projectId={projectId}
+										stackId={stackId}
+										navigationIndex={navigationIndex}
+										focusPanel={focusPanel}
+									/>
+								</li>
+							))}
+						</ul>
+					)}
+				</div>
+			}
 		/>
 	);
 };
+
+const BranchlessSegment: FC<{
+	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
+	navigationIndex: NavigationIndex;
+	projectId: string;
+	segment: Segment;
+	stackId: string;
+	workspaceMode: WorkspaceMode;
+	focusPanel: (panel: Panel) => void;
+}> = ({
+	inlineRewordCommitFormRef,
+	navigationIndex,
+	projectId,
+	segment,
+	stackId,
+	workspaceMode,
+	focusPanel,
+}) => (
+	<ul className={classes(styles.section, styles.segment)}>
+		{segment.commits.map((commit) => (
+			<li key={commit.id}>
+				<CommitC
+					commit={commit}
+					inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+					workspaceMode={workspaceMode}
+					projectId={projectId}
+					stackId={stackId}
+					navigationIndex={navigationIndex}
+					focusPanel={focusPanel}
+				/>
+			</li>
+		))}
+	</ul>
+);
 
 const StackC: FC<{
 	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
@@ -1608,16 +1617,28 @@ const StackC: FC<{
 
 					return (
 						<li key={segmentKey}>
-							<SegmentC
-								inlineRenameBranchFormRef={inlineRenameBranchFormRef}
-								inlineRewordCommitFormRef={inlineRewordCommitFormRef}
-								navigationIndex={navigationIndex}
-								projectId={projectId}
-								segment={segment}
-								stackId={stackId}
-								workspaceMode={workspaceMode}
-								focusPanel={focusPanel}
-							/>
+							{branchRef ? (
+								<BranchSegment
+									inlineRenameBranchFormRef={inlineRenameBranchFormRef}
+									inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+									navigationIndex={navigationIndex}
+									projectId={projectId}
+									segment={segment}
+									stackId={stackId}
+									workspaceMode={workspaceMode}
+									focusPanel={focusPanel}
+								/>
+							) : (
+								<BranchlessSegment
+									inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+									navigationIndex={navigationIndex}
+									projectId={projectId}
+									segment={segment}
+									stackId={stackId}
+									workspaceMode={workspaceMode}
+									focusPanel={focusPanel}
+								/>
+							)}
 						</li>
 					);
 				})}
