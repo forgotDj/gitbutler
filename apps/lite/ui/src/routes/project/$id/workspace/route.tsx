@@ -1725,6 +1725,9 @@ const ProjectPage: FC = () => {
 			? filterNavigationIndex(
 					navigationIndexUnfiltered,
 					(item) =>
+						// When entering operation mode, the selected item must still be
+						// selectable otherwise the preview will suddenly appear to change
+						// and the user may lose sight of their source item (e.g. hunk).
 						(selectedItem && itemEquals(selectedItem, item)) ||
 						includeItemForWorkspaceMode({ mode: workspaceMode, item }),
 				)
