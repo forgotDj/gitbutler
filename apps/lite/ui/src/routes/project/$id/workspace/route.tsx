@@ -904,14 +904,14 @@ const CommitRow: FC<
 									onMouseLeave={() => setIsExpandCollapseTooltipOpen(false)}
 									onFocus={() => setIsExpandCollapseTooltipOpen(true)}
 									onBlur={() => setIsExpandCollapseTooltipOpen(false)}
-									aria-label={isExpanded ? "Hide commit files" : "Show commit files"}
+									aria-label={"Toggle commit files"}
 								>
 									<ExpandCollapseIcon isExpanded={isExpanded} />
 								</Tooltip.Trigger>
 								<Tooltip.Portal>
 									<Tooltip.Positioner sideOffset={8}>
 										<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
-											{isExpanded ? "Hide commit files" : "Show commit files"}
+											Toggle commit files
 										</Tooltip.Popup>
 									</Tooltip.Positioner>
 								</Tooltip.Portal>
