@@ -19,7 +19,7 @@ pub use uncommit_changes::{UncommitChangesOutcome, uncommit_changes};
 pub mod move_commit;
 pub use move_commit::move_commit;
 pub mod discard_commit;
-pub use discard_commit::discard_commit;
+pub use discard_commit::discard_commits;
 pub mod squash_commits;
 pub use squash_commits::{SquashCommitsOutcome, squash_commits};
 
