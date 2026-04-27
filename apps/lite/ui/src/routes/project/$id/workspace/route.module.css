@@ -13,6 +13,7 @@
 	display: flex;
 	align-items: start;
 	border-radius: 8px;
+	cursor: default;
 
 	&:where(:hover) {
 		background-color: var(--color-row-hover-bg);
@@ -88,7 +89,7 @@
 	white-space: pre-wrap;
 }
 
-.itemRowButton {
+.itemRowLabel {
 	flex-grow: 1;
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
@@ -98,7 +99,7 @@
 	white-space: nowrap;
 }
 
-.sectionButton {
+.sectionLabel {
 	font-weight: bold;
 }
 

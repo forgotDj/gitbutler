@@ -850,8 +850,7 @@ export const useWorkspaceShortcuts = ({
 	const handleCommitFileScopeAction = (action: CommitFileAction, selectedItem: CommitFileItem) =>
 		Match.value(action).pipe(
 			Match.tags({
-				CloseFiles: () =>
-					dispatch(projectActions.closeCommitFiles({ projectId, item: selectedItem })),
+				CloseFiles: () => dispatch(projectActions.closeCommitFiles({ projectId })),
 				ToggleFiles: () =>
 					dispatch(projectActions.toggleCommitFiles({ projectId, item: selectedItem })),
 			}),
