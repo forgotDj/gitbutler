@@ -1149,42 +1149,38 @@ const ChangesSectionRow: FC<{
 	);
 };
 
-const BaseCommitRow: FC<
-	{
-		projectId: string;
-		commitId?: string;
-		navigationIndex: NavigationIndex;
-	} & ComponentProps<"div">
-> = ({ projectId, commitId, navigationIndex, ...props }) => {
+const BaseCommit: FC<{
+	projectId: string;
+	commitId?: string;
+	navigationIndex: NavigationIndex;
+}> = ({ projectId, commitId, navigationIndex }) => {
 	const dispatch = useAppDispatch();
 	const item = baseCommitItem;
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	return (
-		<OperationTarget
-			projectId={projectId}
-			item={item}
-			isSelected={isSelected}
-			render={
-				<ItemRow
-					{...props}
-					inert={!navigationIndexIncludes(navigationIndex, item)}
-					isSelected={isSelected}
-				>
-					<button
-						type="button"
-						className={classes(styles.itemRowButton, styles.sectionButton)}
-						onClick={() => {
-							dispatch(projectActions.selectItem({ projectId, item }));
-						}}
-					>
-						{commitId !== undefined
-							? `${shortCommitId(commitId)} (common base commit)`
-							: "(base commit)"}
-					</button>
-				</ItemRow>
-			}
-		/>
+		<div className={styles.section}>
+			<OperationTarget
+				projectId={projectId}
+				item={item}
+				isSelected={isSelected}
+				render={
+					<ItemRow inert={!navigationIndexIncludes(navigationIndex, item)} isSelected={isSelected}>
+						<button
+							type="button"
+							className={classes(styles.itemRowButton, styles.sectionButton)}
+							onClick={() => {
+								dispatch(projectActions.selectItem({ projectId, item }));
+							}}
+						>
+							{commitId !== undefined
+								? `${shortCommitId(commitId)} (common base commit)`
+								: "(base commit)"}
+						</button>
+					</ItemRow>
+				}
+			/>
+		</div>
 	);
 };
 
@@ -1720,12 +1716,21 @@ const ProjectPage: FC = () => {
 		selectNormalizedSelectedItem(state, { projectId, navigationIndex: navigationIndexUnfiltered }),
 	);
 
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
+
 	const navigationIndex =
 		workspaceMode._tag !== "Default"
 			? filterNavigationIndex(
 					navigationIndexUnfiltered,
 					(item) =>
+						// When entering operation mode, the selected item must still be
+						// selectable otherwise the preview will suddenly appear to change
+						// and the user may lose sight of their source item (e.g. hunk).
 						(selectedItem && itemEquals(selectedItem, item)) ||
+						// After selection moves, allow returning selection to the source item.
+						(operationMode?.source && itemEquals(operationMode.source, item)) ||
 						includeItemForWorkspaceMode({ mode: workspaceMode, item }),
 				)
 			: navigationIndexUnfiltered;
@@ -1759,10 +1764,6 @@ const ProjectPage: FC = () => {
 		focusPanel,
 		focusAdjacentPanel,
 	});
-
-	const operationMode = useAppSelector((state) =>
-		selectProjectOperationModeState(state, projectId),
-	);
 
 	// TODO: handle project not found error. or only run when project is not null? waterfall.
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
@@ -1804,15 +1805,13 @@ const ProjectPage: FC = () => {
 				}
 			>
 				<div className={styles.sections}>
-					<div className={styles.changesContainer}>
-						<Changes
-							projectId={projectId}
-							onAbsorbChanges={openAbsorptionDialog}
-							onCommit={commit}
-							navigationIndex={navigationIndex}
-							workspaceMode={workspaceMode}
-						/>
-					</div>
+					<Changes
+						projectId={projectId}
+						onAbsorbChanges={openAbsorptionDialog}
+						onCommit={commit}
+						navigationIndex={navigationIndex}
+						workspaceMode={workspaceMode}
+					/>
 
 					{headInfo.stacks.map((stack) => (
 						<StackC
@@ -1827,13 +1826,11 @@ const ProjectPage: FC = () => {
 						/>
 					))}
 
-					<div className={styles.section}>
-						<BaseCommitRow
-							projectId={projectId}
-							commitId={getCommonBaseCommitId(headInfo)}
-							navigationIndex={navigationIndex}
-						/>
-					</div>
+					<BaseCommit
+						projectId={projectId}
+						commitId={getCommonBaseCommitId(headInfo)}
+						navigationIndex={navigationIndex}
+					/>
 				</div>
 
 				{Match.value(operationMode).pipe(
