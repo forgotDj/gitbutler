@@ -1,10 +1,14 @@
-use bstr::BStr;
+use std::path::Path;
 
+use bstr::{BStr, ByteSlice};
+
+/// Insert or update an index entry at `rela_path`.
+///
+/// If `md` is `None`, a null-stat is written that forces Git to recheck the content each time.
+/// If `md` is `Some()`, Git will assume the worktree file matches the index entry.
 // TODO(gix): this could be a platform in Gix which supports these kinds of edits while assuring
 //       consistency. It could use some tricks to not have worst-case performance like this has.
 //       It really is index-add that we need.
-// If `md` is `None`, we will write a null-stat that will trigger Git to recheck the content each time, i.e. the index isn't considered fresh.
-// Otherwise, if `md` is `Some()`, Git will always be made to think that the worktree file matches the state in the index, so that better be the case.
 pub fn upsert_index_entry(
     index: &mut gix::index::State,
     rela_path: &BStr,
@@ -50,6 +54,87 @@ pub fn upsert_index_entry(
         true
     };
     Ok(needs_sort)
+}
+
+/// Update `index` so that it matches `tree`, leaving entries intact as much as possible.
+/// Note that conflicting entries will be replaced by an addition or edit automatically.
+pub fn sync_index_to_tree(
+    workdir: &Path,
+    tree: &gix::index::State,
+    index: &mut gix::index::State,
+) -> anyhow::Result<()> {
+    let mut num_sorted_entries = index.entries().len();
+    let mut needs_sorting = false;
+
+    let mut changes = Vec::new();
+    gix::diff::index(
+        tree,
+        index,
+        |change| -> Result<_, std::convert::Infallible> {
+            changes.push(change.into_owned());
+            Ok(std::ops::ControlFlow::Continue(()))
+        },
+        None::<gix::diff::index::RewriteOptions<'_, gix::Repository>>,
+        &mut gix::pathspec::Search::from_specs(None, None, workdir)?,
+        &mut |_, _, _, _| unreachable!("no pathspec is used"),
+    )?;
+
+    use gix::diff::index::Change;
+    for change in changes {
+        match change {
+            Change::Addition { location, .. } => {
+                delete_entry_by_path_bounded(index, location.as_bstr(), &mut num_sorted_entries);
+            }
+            Change::Deletion {
+                location,
+                entry_mode,
+                id,
+                ..
+            }
+            | Change::Modification {
+                location,
+                previous_entry_mode: entry_mode,
+                previous_id: id,
+                ..
+            } => {
+                // We cannot be sure that the index is representing the worktree, so Git has to be forced to recalculate the hashes.
+                let assume_index_does_not_match_worktree = None;
+                needs_sorting |= upsert_index_entry(
+                    index,
+                    location.as_bstr(),
+                    assume_index_does_not_match_worktree,
+                    id.into_owned(),
+                    entry_mode,
+                    gix::index::entry::Flags::empty(),
+                    &mut num_sorted_entries,
+                )?;
+            }
+            Change::Rewrite { .. } => {
+                unreachable!("rewrites tracking was disabled")
+            }
+        }
+    }
+
+    if needs_sorting {
+        index.sort_entries();
+    }
+    index.remove_tree();
+    index.remove_resolve_undo();
+    Ok(())
+}
+
+fn delete_entry_by_path_bounded(
+    index: &mut gix::index::State,
+    rela_path: &BStr,
+    num_sorted_entries: &mut usize,
+) {
+    use gix::index::entry::Stage;
+    delete_entry_by_path_bounded_stages(
+        index,
+        rela_path,
+        num_sorted_entries,
+        &[Stage::Unconflicted, Stage::Base, Stage::Ours, Stage::Theirs],
+    );
 }
 
 // TODO(gix)

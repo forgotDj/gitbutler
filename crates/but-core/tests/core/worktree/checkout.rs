@@ -913,6 +913,73 @@ fn unrelated_additions_do_not_affect_worktree_changes() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn partial_commit_with_adjacent_lines_conflicts_on_checkout() -> anyhow::Result<()> {
+    let (repo, _tmp) = writable_scenario("adjacent-line-additions");
+    // Worktree has two added lines (added-a, added-b) between line1 and line2.
+    let file_path = repo.workdir_path("file").unwrap();
+    let worktree_content = std::fs::read_to_string(&file_path)?;
+    assert_eq!(worktree_content, "line1\nadded-a\nadded-b\nline2\nline3\n");
+
+    // Simulate a partial commit: the new tree has only one of the two added lines.
+    let (head_commit, new_commit) = build_commit(
+        &repo,
+        |tree| {
+            let blob_id = repo.write_blob(b"line1\nadded-a\nline2\nline3\n")?;
+            tree.upsert("file", EntryKind::Blob, blob_id)?;
+            Ok(())
+        },
+        "commit only one added line",
+    )?;
+
+    // The remaining worktree change (added-b) conflicts with the committed change
+    // (added-a) because both add at the same position. This is the underlying
+    // reason commit_create uses materialize_without_checkout instead of a full
+    // checkout — it avoids this conflict entirely by not touching the worktree.
+    let err = safe_checkout(head_commit.id, new_commit.id, &repo, Default::default()).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("Worktree changes would be overwritten"),
+        "checkout must abort on partial-commit conflict: {err}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn partial_commit_with_deletion_plus_insertion_conflicts_on_checkout() -> anyhow::Result<()> {
+    let (repo, _tmp) = writable_scenario("adjacent-line-additions");
+    // Worktree replaced old-line with new-line.
+    let file_path = repo.workdir_path("file2").unwrap();
+    assert_eq!(
+        std::fs::read_to_string(&file_path)?,
+        "line1\nnew-line\nline3\n"
+    );
+
+    // Commit only the deletion of old-line, not the insertion of new-line.
+    let (head_commit, new_commit) = build_commit(
+        &repo,
+        |tree| {
+            let blob_id = repo.write_blob(b"line1\nline3\n")?;
+            tree.upsert("file2", EntryKind::Blob, blob_id)?;
+            Ok(())
+        },
+        "commit only the deletion",
+    )?;
+
+    // The three-way merge sees ours deleting old-line and theirs replacing it
+    // with new-line — both modify the same region. Same class of bug as the
+    // adjacent-line case: commit_create avoids this by skipping checkout entirely.
+    let err = safe_checkout(head_commit.id, new_commit.id, &repo, Default::default()).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("Worktree changes would be overwritten"),
+        "checkout must abort on partial-commit conflict: {err}"
+    );
+
+    Ok(())
+}
+
 fn overwrite_options() -> checkout::Options {
     checkout::Options {
         uncommitted_changes: UncommitedWorktreeChanges::KeepConflictingInSnapshotAndOverwrite,
