@@ -50,6 +50,8 @@ export type CreateCommitRequest = {
 	message: string;
 	/** Undefined means that the backend will infer the parent to be the current head of stackBranchName */
 	parentId: string | undefined;
+	/** When true, insert below `parentId` instead of above it. */
+	insertBelow?: boolean;
 	stackBranchName: string;
 	worktreeChanges: DiffSpec[];
 	dryRun: boolean;
@@ -151,7 +153,7 @@ export function toCommitCreatePlacement(args: CreateCommitRequest): {
 				type: "commit",
 				subject: args.parentId,
 			},
-			side: "above",
+			side: args.insertBelow ? "below" : "above",
 		};
 	}
 

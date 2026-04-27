@@ -201,7 +201,6 @@
 						type: "commit",
 						stackId: args.stackId,
 						branchName,
-						parentCommitId: args.baseCommit,
 					});
 				}}
 				iconName={args.iconName}

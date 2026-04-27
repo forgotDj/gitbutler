@@ -343,6 +343,7 @@
 								{commitId}
 								selected={(commitAction?.parentCommitId === commitId ||
 									(first && commitAction?.parentCommitId === undefined)) &&
+									!commitAction?.insertBelow &&
 									commitAction?.branchName === branchName}
 								{first}
 								last={false}
@@ -526,18 +527,20 @@
 						)}
 						{#if controller.isCommitting && last}
 							<CommitPositionIndicator
-								commitId={branchDetails.baseCommit}
+								commitId={commit.id}
 								{first}
 								{last}
 								selected={exclusiveAction?.type === "commit" &&
-									exclusiveAction.parentCommitId === branchDetails.baseCommit &&
+									exclusiveAction.parentCommitId === commit.id &&
+									exclusiveAction.insertBelow === true &&
 									commitAction?.branchName === branchName}
 								onclick={() => {
 									controller.projectState.exclusiveAction.set({
 										type: "commit",
 										stackId,
 										branchName,
-										parentCommitId: branchDetails.baseCommit,
+										parentCommitId: commit.id,
+										insertBelow: true,
 									});
 								}}
 							/>
