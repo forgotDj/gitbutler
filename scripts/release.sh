@@ -198,9 +198,9 @@ else
 	exit 1
 fi
 
-# Enable IRC collaboration feature for dev and nightly, but not release.
+# Enable IRC collaboration and remote features for dev and nightly, but not release.
 if [ "$CHANNEL" != "release" ]; then
-	FEATURES="$FEATURES irc"
+	FEATURES="$FEATURES irc remote"
 fi
 
 # update the version in the tauri release config
