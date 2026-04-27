@@ -36,12 +36,6 @@ pub mod ui;
 /// High level Stack functions that use primitives from this crate (`but-workspace`)
 pub mod stack_ext;
 
-/// Returns the last-seen fork-point that the workspace has with the target branch with which it wants to integrate.
-// TODO: at some point this should be optional, integration branch doesn't have to be defined.
-pub fn common_merge_base_with_target_branch(gb_dir: &Path) -> anyhow::Result<gix::ObjectId> {
-    Ok(VirtualBranchesHandle::new(gb_dir).get_default_target()?.sha)
-}
-
 /// Return a list of commits on the target branch
 /// Starts either from the target branch or from the provided commit id, up to the limit provided.
 ///
@@ -60,10 +54,11 @@ pub fn log_target_first_parent(
             commit.parent_ids().next()
         }
         None => {
-            let state = state_handle(&ctx.project_data_dir());
-            let default_target = state.get_default_target()?;
+            let default_target = ctx.persisted_default_target()?;
+            let target_ref_name: gix::refs::FullName =
+                default_target.branch.to_string().try_into()?;
             Some(
-                repo.find_reference(&default_target.branch.to_string())?
+                repo.find_reference(target_ref_name.as_ref())?
                     .peel_to_commit()?
                     .id(),
             )

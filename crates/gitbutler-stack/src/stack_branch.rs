@@ -1,8 +1,3 @@
-#![expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-
 use anyhow::Result;
 use bstr::{BString, ByteSlice};
 use but_ctx::Context;
@@ -13,7 +8,7 @@ use gix::refs::{
     transaction::{Change, LogChange, PreviousValue, RefEdit, RefLog},
 };
 
-use crate::{Stack, VirtualBranchesHandle};
+use crate::{Stack, target::default_target_push_remote_name};
 
 /// A GitButler-specific reference type that points to a commit or a patch (change).
 /// The principal difference between a `PatchReference` and a regular git reference is that a `PatchReference` can point to a change (patch) that is mutable.
@@ -37,6 +32,10 @@ pub struct StackBranch {
     pub review_id: Option<String>,
 }
 
+#[expect(
+    deprecated,
+    reason = "the legacy head value is still serialized and restored from snapshots"
+)]
 impl From<virtual_branches_legacy_types::StackBranch> for StackBranch {
     fn from(
         virtual_branches_legacy_types::StackBranch {
@@ -57,6 +56,10 @@ impl From<virtual_branches_legacy_types::StackBranch> for StackBranch {
     }
 }
 
+#[expect(
+    deprecated,
+    reason = "the legacy head value is still serialized and restored from snapshots"
+)]
 impl From<StackBranch> for virtual_branches_legacy_types::StackBranch {
     fn from(
         StackBranch {
@@ -77,6 +80,10 @@ impl From<StackBranch> for virtual_branches_legacy_types::StackBranch {
     }
 }
 
+#[expect(
+    deprecated,
+    reason = "the legacy head value is still needed to restore and synchronize git references"
+)]
 impl StackBranch {
     pub fn new(head: gix::ObjectId, name: String, repo: &gix::Repository) -> Result<Self> {
         let branch = StackBranch {
@@ -292,15 +299,14 @@ impl StackBranch {
         let mut local_patches = first_parent_commit_ids_until(repo, head_commit, previous_head)?;
         local_patches.reverse();
 
-        let virtual_branch_state = VirtualBranchesHandle::new(ctx.project_data_dir());
-        let default_target = virtual_branch_state.get_default_target()?;
+        let push_remote_name = default_target_push_remote_name(ctx)?;
 
         // Use remote from upstream if available, otherwise default to push remote.
         let remote = stack
             .upstream
             .clone()
             .map(|ref_name| ref_name.remote().to_owned())
-            .unwrap_or(default_target.push_remote_name());
+            .unwrap_or(push_remote_name);
 
         let mut remote_patches = vec![];
         let mut upstream_only = vec![];

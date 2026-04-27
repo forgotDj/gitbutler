@@ -48,7 +48,7 @@ impl BranchManager<'_> {
         perm: &mut RepoExclusive,
     ) -> Result<Stack> {
         let mut vb_state = self.ctx.virtual_branches();
-        let default_target = vb_state.get_default_target()?;
+        let target_base_oid = self.ctx.persisted_default_target()?.sha;
 
         let mut all_stacks = vb_state
             .list_stacks_in_workspace()
@@ -77,7 +77,7 @@ impl BranchManager<'_> {
             }
         }
 
-        let branch = Stack::new_empty(self.ctx, name, default_target.sha, order)?;
+        let branch = Stack::new_empty(self.ctx, name, target_base_oid, order)?;
 
         vb_state.set_stack(branch.clone())?;
         self.ctx.add_branch_reference(&branch)?;

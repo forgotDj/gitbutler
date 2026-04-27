@@ -1,7 +1,7 @@
 use std::{io::Write, ops::DerefMut, path::Path};
 
 use but_core::{
-    RefMetadata, RepositoryExt,
+    RefMetadata, RepositoryExt, WORKSPACE_REF_NAME,
     ref_metadata::{StackId, WorkspaceCommitRelation},
 };
 use but_meta::VirtualBranchesTomlMetadata;
@@ -409,7 +409,7 @@ impl Sandbox {
     /// Create stack metadata for `branch_names` and return its StackIds, one per item in the input slice, in order.
     pub fn setup_metadata(&self, branch_names: &[&str]) -> anyhow::Result<Vec<StackId>> {
         let mut meta = self.meta()?;
-        let mut ws = meta.workspace(r("refs/heads/gitbutler/workspace"))?;
+        let mut ws = meta.workspace(r(WORKSPACE_REF_NAME))?;
         let ws_data: &mut but_core::ref_metadata::Workspace = ws.deref_mut();
         for (stable_id, branch_name) in (0_u128..).zip(branch_names.iter()) {
             ws_data.add_or_insert_new_stack_if_not_present(

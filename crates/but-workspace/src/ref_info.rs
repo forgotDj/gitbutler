@@ -8,7 +8,7 @@ use std::{
 };
 
 use bstr::BString;
-use but_core::ref_metadata;
+use but_core::{WORKSPACE_REF_NAME, ref_metadata};
 use but_graph::{SegmentIndex, projection::StackCommitFlags};
 use gix::Repository;
 
@@ -657,8 +657,6 @@ pub(crate) fn workspace_data_of_default_workspace_branch(
 ) -> anyhow::Result<Option<but_core::ref_metadata::Workspace>> {
     workspace_data_of_workspace_branch(
         meta,
-        "refs/heads/gitbutler/workspace"
-            .try_into()
-            .expect("statically known"),
+        WORKSPACE_REF_NAME.try_into().expect("statically known"),
     )
 }

@@ -7,6 +7,7 @@ mod commit_engine;
 mod flatten_diff_specs;
 mod ref_info;
 mod shallow_clone;
+mod target_history;
 mod tree_manipulation;
 mod ui;
 

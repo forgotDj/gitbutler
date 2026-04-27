@@ -272,7 +272,8 @@ fn bootstrap_missing_target_preserves_existing_workspace_ref() -> anyhow::Result
     let mut reopened: Context = project_id.clone().try_into()?;
     assert!(
         gitbutler_stack::VirtualBranchesHandle::new(reopened.project_data_dir())
-            .maybe_get_default_target()?
+            .read_file()?
+            .default_target
             .is_none()
     );
 

@@ -1,4 +1,6 @@
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Result, anyhow};
+use but_ctx::Context;
+use but_error::Code;
 use but_meta::virtual_branches_legacy_types;
 use gitbutler_reference::RemoteRefname;
 
@@ -76,4 +78,30 @@ impl From<Target> for virtual_branches_legacy_types::Target {
             push_remote_name,
         }
     }
+}
+
+pub(crate) fn default_target_base_oid(ctx: &Context) -> Result<gix::ObjectId> {
+    ctx.legacy_meta()?
+        .data()
+        .default_target
+        .as_ref()
+        .map(|target| target.sha)
+        .ok_or_else(|| anyhow!("there is no default target").context(Code::DefaultTargetNotFound))
+}
+
+pub(crate) fn default_target_push_remote_name(ctx: &Context) -> Result<String> {
+    default_target_push_remote_name_from_state(ctx.legacy_meta()?.data().default_target.as_ref())
+}
+
+fn default_target_push_remote_name_from_state(
+    target: Option<&virtual_branches_legacy_types::Target>,
+) -> Result<String> {
+    target
+        .map(|target| {
+            target
+                .push_remote_name
+                .clone()
+                .unwrap_or_else(|| target.branch.remote().to_owned())
+        })
+        .ok_or_else(|| anyhow!("there is no default target").context(Code::DefaultTargetNotFound))
 }

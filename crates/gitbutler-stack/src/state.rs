@@ -125,34 +125,6 @@ impl VirtualBranchesHandle {
         Self { file_path }
     }
 
-    /// Persists the default target for the given repository.
-    ///
-    /// Errors if the file cannot be read or written.
-    pub fn set_default_target(&mut self, target: Target) -> Result<()> {
-        let mut virtual_branches = self.read_file()?;
-        virtual_branches.default_target = Some(target);
-        self.write_file(&virtual_branches)?;
-        Ok(())
-    }
-
-    /// Gets the default target for the given repository.
-    ///
-    /// Errors if the file cannot be read or written.
-    pub fn get_default_target(&self) -> Result<Target> {
-        let virtual_branches = self.read_file()?;
-        virtual_branches
-            .default_target
-            .ok_or(anyhow!("there is no default target").context(Code::DefaultTargetNotFound))
-    }
-
-    /// Gets the default target for the given repository.
-    ///
-    /// Errors if the file cannot be read or written.
-    pub fn maybe_get_default_target(&self) -> Result<Option<Target>> {
-        let virtual_branches = self.read_file()?;
-        Ok(virtual_branches.default_target)
-    }
-
     /// Sets the state of the given virtual branch.
     ///
     /// Errors if the file cannot be read or written.

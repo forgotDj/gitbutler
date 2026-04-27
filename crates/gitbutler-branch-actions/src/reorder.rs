@@ -32,12 +32,13 @@ pub fn reorder_stack(
     let current_order = commits_order(ctx, &stack)?;
     new_order.validate(current_order.clone())?;
 
+    let target_branch_tip = {
+        let (_repo, workspace, _db) = ctx.workspace_and_db_with_perm(perm.read_permission())?;
+        workspace
+            .target_ref_tip_commit_id()
+            .context("failed to get target branch tip")?
+    };
     let repo = ctx.repo.get()?;
-    let default_target = state.get_default_target()?;
-    let target_branch_tip = repo
-        .find_reference(&default_target.branch.to_string())?
-        .peel_to_commit()?
-        .id;
     let merge_base = repo
         .merge_base(target_branch_tip, stack.head_oid(ctx)?)?
         .detach();

@@ -76,9 +76,7 @@ pub fn update_workspace_commit_with_vb_state(
     ctx: &Context,
     checkout_new_worktree: bool,
 ) -> Result<gix::ObjectId> {
-    let target = vb_state
-        .get_default_target()
-        .context("failed to get target")?;
+    let target_base_oid = ctx.persisted_default_target()?.sha;
 
     #[expect(deprecated, reason = "workspace checkout/index boundary")]
     let repo = &*ctx.git2_repo.get()?;
@@ -136,7 +134,7 @@ pub fn update_workspace_commit_with_vb_state(
             message.push_str(format!(" ({})", &branch.refname()?).as_str());
             message.push('\n');
 
-            if branch.head_oid(ctx)? != target.sha {
+            if branch.head_oid(ctx)? != target_base_oid {
                 message.push_str("   branch head: ");
                 message.push_str(&branch.head_oid(ctx)?.to_string());
                 message.push('\n');
@@ -216,6 +214,8 @@ pub fn update_workspace_commit_with_vb_state(
         res?;
     }
 
+    ctx.invalidate_workspace_cache()?;
+
     Ok(final_commit)
 }
 
@@ -269,12 +269,9 @@ fn verify_head_is_clean(ctx: &Context, perm: &mut RepoExclusive) -> Result<()> {
     let gix_repo = ctx.repo.get()?.clone();
     let head_commit_id = gix_repo.head_id()?.detach();
 
-    let mut vb_handle = VirtualBranchesHandle::new(ctx.project_data_dir());
-    let default_target = vb_handle
-        .get_default_target()
-        .context("failed to get default target")?;
+    let target_base_oid = ctx.persisted_default_target()?.sha;
 
-    let commit_ids = first_parent_commit_ids_until(&gix_repo, head_commit_id, default_target.sha)
+    let commit_ids = first_parent_commit_ids_until(&gix_repo, head_commit_id, target_base_oid)
         .context("failed to get log")?;
     let workspace_index = commit_ids
         .iter()
@@ -304,6 +301,7 @@ fn verify_head_is_clean(ctx: &Context, perm: &mut RepoExclusive) -> Result<()> {
         .reset(workspace_commit.as_object(), git2::ResetType::Soft, None)
         .context("failed to reset to workspace commit")?;
 
+    let mut vb_handle = VirtualBranchesHandle::new(ctx.project_data_dir());
     let branch_manager = ctx.branch_manager();
     let mut new_branch = branch_manager
         .create_virtual_branch(

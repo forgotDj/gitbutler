@@ -6,9 +6,11 @@ use but_ctx::{
 };
 use but_oxidize::{ObjectIdExt, OidExt};
 use gitbutler_cherry_pick::GixRepositoryExt as _;
-use gitbutler_stack::VirtualBranchesHandle;
 
-use crate::{workspace_base, workspace_base_from_heads};
+use crate::{
+    legacy_target_base_oid, legacy_workspace_stack_heads, workspace_base_from_heads,
+    workspace_base_from_heads_and_target,
+};
 
 /// A snapshot of the workspace at a point in time.
 #[derive(Debug)]
@@ -20,22 +22,28 @@ pub struct WorkspaceState {
 }
 
 impl WorkspaceState {
-    pub fn create(ctx: &Context, perm: &RepoShared) -> Result<Self> {
-        let repo = &*ctx.repo.get()?;
-        let vb_state = VirtualBranchesHandle::new(ctx.project_data_dir());
+    pub fn create(ctx: &Context, _perm: &RepoShared) -> Result<Self> {
+        let repo = ctx.repo.get()?;
+        let target_base_oid = legacy_target_base_oid(ctx)?;
+        let head_oids = legacy_workspace_stack_heads(ctx, &repo, target_base_oid)?;
+        Self::create_from_heads_and_target(&repo, &head_oids, target_base_oid)
+    }
 
-        let heads = vb_state
-            .list_stacks_in_workspace()?
+    pub fn create_from_heads_and_target(
+        repo: &gix::Repository,
+        head_oids: &[gix::ObjectId],
+        target_base_oid: gix::ObjectId,
+    ) -> Result<Self> {
+        let heads = head_oids
             .iter()
-            .map(|stack| -> Result<gix::ObjectId> {
-                let head = stack.head_oid(ctx)?;
-                let commit = repo.find_commit(head)?;
+            .map(|head| -> Result<gix::ObjectId> {
+                let commit = repo.find_commit(*head)?;
                 let tree = repo.find_real_tree(&commit, Default::default())?;
                 Ok(tree.detach())
             })
             .collect::<Result<Vec<_>>>()?;
 
-        let base = workspace_base(ctx, perm)?;
+        let base = workspace_base_from_heads_and_target(repo, head_oids, target_base_oid)?;
         let base_tree_id = repo.find_commit(base)?.tree_id()?.detach();
 
         Ok(WorkspaceState {

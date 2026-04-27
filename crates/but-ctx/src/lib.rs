@@ -796,6 +796,15 @@ impl Context {
         _perm: &mut RepoExclusive,
     ) -> anyhow::Result<()> {
         self.repo.get_mut()?.reload()?;
+        self.invalidate_workspace_cache()
+    }
+
+    /// Drop the cached workspace projection so the next read re-projects from the current repository
+    /// and metadata state. *Use this when the metadata state changed*.
+    ///
+    /// Don't use this if you already know the new materialised state - instead, set the new workspace
+    /// directly into the mutable cache already present in scope.
+    pub fn invalidate_workspace_cache(&self) -> anyhow::Result<()> {
         *self.workspace.try_borrow_mut()? = None;
         Ok(())
     }

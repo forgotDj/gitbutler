@@ -12,7 +12,7 @@ use but_core::{
 };
 use but_ctx::Context;
 use but_db::DbHandle;
-use but_meta::virtual_branches_legacy_types as legacy_types;
+use but_meta::{VirtualBranchesTomlMetadata, virtual_branches_legacy_types as legacy_types};
 use but_testsupport::{gix_testtools, open_repo};
 use filetime::{FileTime, set_file_mtime};
 use gitbutler_git::GitContextExt as _;
@@ -423,10 +423,10 @@ fn push_series_success() -> Result<()> {
     let (ctx, _temp_dir) = command_ctx("multiple-commits")?;
     let test_ctx = test_ctx(&ctx)?;
 
-    let mut state = VirtualBranchesHandle::new(ctx.project_data_dir());
-    let mut target = state.get_default_target()?;
+    let state = VirtualBranchesHandle::new(ctx.project_data_dir());
+    let mut target = default_target(&state)?;
     target.push_remote_name = Some("origin".into());
-    state.set_default_target(target)?;
+    write_default_target(ctx.project_data_dir(), target)?;
 
     let result = test_ctx.stack.push_details(&ctx, "virtual".into());
     assert!(result.is_ok());
@@ -438,10 +438,10 @@ fn update_name_after_push() -> Result<()> {
     let (ctx, _temp_dir) = command_ctx("multiple-commits")?;
     let mut test_ctx = test_ctx(&ctx)?;
 
-    let mut state = VirtualBranchesHandle::new(ctx.project_data_dir());
-    let mut target = state.get_default_target()?;
+    let state = VirtualBranchesHandle::new(ctx.project_data_dir());
+    let mut target = default_target(&state)?;
     target.push_remote_name = Some("origin".into());
-    state.set_default_target(target)?;
+    write_default_target(ctx.project_data_dir(), target)?;
 
     let push_details = test_ctx.stack.push_details(&ctx, "virtual".into())?;
     let result = ctx.push(
@@ -762,7 +762,7 @@ fn seed_metadata(repo: &gix::Repository, name: &str) -> Result<()> {
         bail!("unsupported driverless stacking fixture: {name}");
     }
 
-    let mut meta = but_meta::VirtualBranchesTomlMetadata::from_path(
+    let mut meta = VirtualBranchesTomlMetadata::from_path(
         repo.gitbutler_storage_path()?.join("virtual_branches.toml"),
     )?;
     let mut ws = meta.workspace("refs/heads/gitbutler/workspace".try_into()?)?;
@@ -793,8 +793,7 @@ fn seed_metadata(repo: &gix::Repository, name: &str) -> Result<()> {
         sha: repo.rev_parse_single("refs/remotes/origin/main")?.detach(),
         push_remote_name: Some("origin".to_owned()),
     };
-    let mut handle = VirtualBranchesHandle::new(repo.gitbutler_storage_path()?);
-    handle.set_default_target(target)?;
+    write_default_target(repo.gitbutler_storage_path()?, target)?;
     Ok(())
 }
 
@@ -807,12 +806,29 @@ fn head_names(test_ctx: &TestContext) -> Vec<String> {
         .collect_vec()
 }
 
+fn default_target(handle: &VirtualBranchesHandle) -> Result<Target> {
+    handle
+        .read_file()?
+        .default_target
+        .context("expected default target")
+}
+
+fn write_default_target(
+    base_path: impl AsRef<Path>,
+    target: impl Into<legacy_types::Target>,
+) -> Result<()> {
+    let mut meta =
+        VirtualBranchesTomlMetadata::from_path(base_path.as_ref().join("virtual_branches.toml"))?;
+    meta.set_default_target(target)?;
+    Ok(())
+}
+
 fn test_ctx(ctx: &Context) -> Result<TestContext> {
     let handle = VirtualBranchesHandle::new(ctx.project_data_dir());
     let stacks = handle.list_all_stacks()?;
     let stack = stacks.iter().find(|b| b.name() == "virtual").unwrap();
     let other_stack = stacks.iter().find(|b| b.name() != "virtual").unwrap();
-    let target = handle.get_default_target()?;
+    let target = default_target(&handle)?;
     let repo = ctx.repo.get()?;
     let mut branch_commits = stack
         .commits(ctx)?
@@ -880,8 +896,13 @@ fn next_available_name_avoids_remote_tracking_branches() -> Result<()> {
     repo.reference(remote_branch, id, PreviousValue::Any, "test")?;
 
     // Request a unique name starting from my-test-branch
-    let unique =
-        Stack::next_available_name(&repo, &test_ctx.handle, "my-test-branch".to_string(), false)?;
+    let unique = Stack::next_available_name(
+        &repo,
+        &test_ctx.handle,
+        "origin",
+        "my-test-branch".to_string(),
+        false,
+    )?;
 
     assert_eq!(
         unique, "my-test-branch-1",
@@ -942,16 +963,16 @@ fn storage_sync_recreates_toml_when_missing() -> Result<()> {
 #[test]
 fn storage_sync_db_mutation_always_updates_toml_mirror() -> Result<()> {
     let tmp = tempfile::tempdir()?;
-    let mut handle = VirtualBranchesHandle::new(tmp.path());
+    let handle = VirtualBranchesHandle::new(tmp.path());
     let _ = handle.read_file()?;
     let toml_path = tmp.path().join("virtual_branches.toml");
     fs::remove_file(&toml_path)?;
     assert!(!toml_path.exists(), "sanity check");
 
-    handle.set_default_target(stack_target(
-        "mirror",
-        "5555555555555555555555555555555555555555",
-    )?)?;
+    write_default_target(
+        tmp.path(),
+        stack_target("mirror", "5555555555555555555555555555555555555555")?,
+    )?;
 
     assert!(
         toml_path.exists(),
@@ -972,12 +993,12 @@ fn storage_sync_db_mutation_always_updates_toml_mirror() -> Result<()> {
 #[test]
 fn storage_sync_newer_toml_overwrites_db() -> Result<()> {
     let tmp = tempfile::tempdir()?;
-    let mut handle = VirtualBranchesHandle::new(tmp.path());
+    let handle = VirtualBranchesHandle::new(tmp.path());
     let _ = handle.read_file()?;
-    handle.set_default_target(stack_target(
-        "main",
-        "1111111111111111111111111111111111111111",
-    )?)?;
+    write_default_target(
+        tmp.path(),
+        stack_target("main", "1111111111111111111111111111111111111111")?,
+    )?;
 
     thread::sleep(Duration::from_millis(5));
     let toml_path = tmp.path().join("virtual_branches.toml");
@@ -986,7 +1007,7 @@ fn storage_sync_newer_toml_overwrites_db() -> Result<()> {
         &legacy_with_target("next", "2222222222222222222222222222222222222222")?,
     )?;
 
-    let target = handle.get_default_target()?;
+    let target = default_target(&handle)?;
     assert_eq!(target.branch.branch(), "next");
     assert_eq!(
         target.sha.to_string(),
@@ -998,12 +1019,12 @@ fn storage_sync_newer_toml_overwrites_db() -> Result<()> {
 #[test]
 fn storage_sync_equal_mtime_and_changed_hash_overwrites_db() -> Result<()> {
     let tmp = tempfile::tempdir()?;
-    let mut handle = VirtualBranchesHandle::new(tmp.path());
+    let handle = VirtualBranchesHandle::new(tmp.path());
     let _ = handle.read_file()?;
-    handle.set_default_target(stack_target(
-        "main",
-        "1111111111111111111111111111111111111111",
-    )?)?;
+    write_default_target(
+        tmp.path(),
+        stack_target("main", "1111111111111111111111111111111111111111")?,
+    )?;
 
     let toml_path = tmp.path().join("virtual_branches.toml");
     let mtime_before = fs::metadata(&toml_path)?.modified()?;
@@ -1019,7 +1040,7 @@ fn storage_sync_equal_mtime_and_changed_hash_overwrites_db() -> Result<()> {
         FileTime::from_unix_time(duration.as_secs() as i64, duration.subsec_nanos()),
     )?;
 
-    let target = handle.get_default_target()?;
+    let target = default_target(&handle)?;
     assert_eq!(target.branch.branch(), "equal");
     assert_eq!(
         target.sha.to_string(),
@@ -1031,12 +1052,12 @@ fn storage_sync_equal_mtime_and_changed_hash_overwrites_db() -> Result<()> {
 #[test]
 fn storage_sync_older_toml_does_not_overwrite_db() -> Result<()> {
     let tmp = tempfile::tempdir()?;
-    let mut handle = VirtualBranchesHandle::new(tmp.path());
+    let handle = VirtualBranchesHandle::new(tmp.path());
     let _ = handle.read_file()?;
-    handle.set_default_target(stack_target(
-        "main",
-        "1111111111111111111111111111111111111111",
-    )?)?;
+    write_default_target(
+        tmp.path(),
+        stack_target("main", "1111111111111111111111111111111111111111")?,
+    )?;
 
     let toml_path = tmp.path().join("virtual_branches.toml");
     let mtime_before = fs::metadata(&toml_path)?.modified()?;
@@ -1053,7 +1074,7 @@ fn storage_sync_older_toml_does_not_overwrite_db() -> Result<()> {
         FileTime::from_unix_time(secs.saturating_sub(1), duration.subsec_nanos()),
     )?;
 
-    let target = handle.get_default_target()?;
+    let target = default_target(&handle)?;
     assert_eq!(target.branch.branch(), "main");
     assert_eq!(
         target.sha.to_string(),
@@ -1075,18 +1096,18 @@ fn storage_sync_older_toml_does_not_overwrite_db() -> Result<()> {
 #[test]
 fn storage_sync_invalid_newer_toml_is_rewritten_from_db() -> Result<()> {
     let tmp = tempfile::tempdir()?;
-    let mut handle = VirtualBranchesHandle::new(tmp.path());
+    let handle = VirtualBranchesHandle::new(tmp.path());
     let _ = handle.read_file()?;
-    handle.set_default_target(stack_target(
-        "main",
-        "1111111111111111111111111111111111111111",
-    )?)?;
+    write_default_target(
+        tmp.path(),
+        stack_target("main", "1111111111111111111111111111111111111111")?,
+    )?;
 
     thread::sleep(Duration::from_millis(5));
     let toml_path = tmp.path().join("virtual_branches.toml");
     fs::write(&toml_path, "this is not valid toml = [")?;
 
-    let target = handle.get_default_target()?;
+    let target = default_target(&handle)?;
     assert_eq!(target.branch.branch(), "main");
     assert_eq!(
         target.sha.to_string(),
@@ -1111,10 +1132,10 @@ fn storage_sync_restore_import_helper_imports_toml_into_db() -> Result<()> {
     let tmp = tempfile::tempdir()?;
     let mut handle = VirtualBranchesHandle::new(tmp.path());
     let _ = handle.read_file()?;
-    handle.set_default_target(stack_target(
-        "db-main",
-        "1111111111111111111111111111111111111111",
-    )?)?;
+    write_default_target(
+        tmp.path(),
+        stack_target("db-main", "1111111111111111111111111111111111111111")?,
+    )?;
 
     let toml_path = tmp.path().join("virtual_branches.toml");
     write_legacy_toml(
@@ -1123,7 +1144,7 @@ fn storage_sync_restore_import_helper_imports_toml_into_db() -> Result<()> {
     )?;
 
     handle.import_toml_into_db_for_restore()?;
-    let target = handle.get_default_target()?;
+    let target = default_target(&handle)?;
     assert_eq!(target.branch.branch(), "restored");
     assert_eq!(
         target.sha.to_string(),

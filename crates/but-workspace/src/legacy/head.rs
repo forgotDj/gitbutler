@@ -1,8 +1,9 @@
 //! Functions relate to the GitButler workspace head
 
-use anyhow::{Context as _, Result};
+use anyhow::Result;
 use but_core::RepositoryExt;
 use but_ctx::Context;
+use but_error::Code;
 use gitbutler_cherry_pick::GixRepositoryExt as _;
 use gitbutler_repo::{SignaturePurpose, commit_without_signature_gix, signature_gix};
 use gitbutler_stack::{Stack, VirtualBranchesHandle};
@@ -49,12 +50,18 @@ pub fn remerged_workspace_tree_v2(
     repo: &gix::Repository,
 ) -> Result<(gix::ObjectId, Vec<Stack>, gix::ObjectId)> {
     let mut vb_state = VirtualBranchesHandle::new(ctx.project_data_dir());
-    let target = vb_state
-        .get_default_target()
-        .context("failed to get target")?;
+    let target_base_oid = ctx
+        .legacy_meta()?
+        .data()
+        .default_target
+        .as_ref()
+        .map(|target| target.sha)
+        .ok_or_else(|| {
+            anyhow::anyhow!("there is no default target").context(Code::DefaultTargetNotFound)
+        })?;
     let mut stacks: Vec<Stack> = vb_state.list_stacks_in_workspace()?;
 
-    let target_commit = repo.find_commit(target.sha)?;
+    let target_commit = repo.find_commit(target_base_oid)?;
     let mut workspace_tree_id = repo
         .find_real_tree(&target_commit, Default::default())?
         .detach();
@@ -84,7 +91,7 @@ pub fn remerged_workspace_tree_v2(
             vb_state.set_stack(stack.clone())?;
         }
     }
-    Ok((workspace_tree_id, stacks, target.sha))
+    Ok((workspace_tree_id, stacks, target_base_oid))
 }
 
 /// Creates and returns a merge commit of all active branch heads.

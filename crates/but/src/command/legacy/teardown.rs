@@ -1,4 +1,5 @@
 use anyhow::Context as _;
+use but_core::WORKSPACE_REF_NAME;
 use but_ctx::Context;
 use but_workspace::legacy::StacksFilter;
 use gix::refs::transaction::PreviousValue;
@@ -245,7 +246,7 @@ fn try_stack_fixes(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result
         )?;
     }
 
-    let mut workspace_ref = repo.find_reference("refs/heads/gitbutler/workspace")?;
+    let mut workspace_ref = repo.find_reference(WORKSPACE_REF_NAME)?;
     let workspace_commit = workspace_ref.peel_to_commit()?;
 
     // Get all commits on workspace that are not workspace commits
@@ -290,7 +291,7 @@ fn try_stack_fixes(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result
             )?;
         }
         repo.reference(
-            "refs/heads/gitbutler/workspace",
+            WORKSPACE_REF_NAME,
             target_commit,
             PreviousValue::Any,
             "soft resetting to GitButler workspace",
