@@ -1149,19 +1149,17 @@ const ChangesSectionRow: FC<{
 	);
 };
 
-const BaseCommit: FC<
-	{
-		projectId: string;
-		commitId?: string;
-		navigationIndex: NavigationIndex;
-	} & ComponentProps<"div">
-> = ({ projectId, commitId, navigationIndex, className, ...props }) => {
+const BaseCommit: FC<{
+	projectId: string;
+	commitId?: string;
+	navigationIndex: NavigationIndex;
+}> = ({ projectId, commitId, navigationIndex }) => {
 	const dispatch = useAppDispatch();
 	const item = baseCommitItem;
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	return (
-		<div {...props} className={classes(styles.section, className)}>
+		<div className={styles.section}>
 			<OperationTarget
 				projectId={projectId}
 				item={item}
