@@ -105,7 +105,7 @@ export declare function commitDetailsWithLineStats(projectId: string, commitId: 
 /**
  * Discard `subject_commit_id`, removing it from the branch history.
  *
- * Unlike [`super::undo::commit_undo()`], the commit's changes are **not**
+ * Unlike [`super::uncommit::commit_uncommit()`], the commit's changes are **not**
  * reassigned to the workspace — they are permanently removed from the branch.
  *
  * When `dry_run` is enabled, the returned workspace previews the discard and
@@ -172,30 +172,27 @@ export declare function commitReword(projectId: string, commitId: string, messag
 export declare function commitSquash(projectId: string, subjectCommitId: string, targetCommitId: string, dryRun: boolean): Promise<CommitSquashResult>
 
 /**
- * Extract `changes` from `commit_id` and record the rewrite in the oplog.
- *
- * This acquires exclusive worktree access from `ctx` before extracting the
- * changes.
- *
- * When `dry_run` is enabled, the returned workspace previews the extracted
- * changes and no oplog entry is persisted. See
- * [`commit_uncommit_changes_with_perm()`] for details.
- */
-export declare function commitUncommitChanges(projectId: string, commitId: string, changes: Array<DiffSpec>, assignTo: string | null, dryRun: boolean): Promise<MoveChangesResult>
-
-/**
- * Undo one or more commits, removing them from branch history while
+ * Uncommit one or more commits, removing them from branch history while
  * **keeping their changes** in the workspace as uncommitted modifications.
  *
  * Unlike [`super::discard_commit::commit_discard()`], which permanently
  * removes the commit's changes, this operation reassigns the affected hunks
  * so they remain available for further editing or recommitting.
  *
- * When `dry_run` is enabled, the returned workspace previews the undo result
+ * When `dry_run` is enabled, the returned workspace previews the result
  * without materializing the rewrite or persisting an oplog entry.
- * See [`commit_undo_only_with_perm()`] for details.
+ * See [`commit_uncommit_only_with_perm()`] for details.
  */
-export declare function commitUndo(projectId: string, subjectCommitIds: Array<string>, assignTo: string | null, dryRun: boolean): Promise<CommitUndoResult>
+export declare function commitUncommit(projectId: string, subjectCommitIds: Array<string>, assignTo: string | null, dryRun: boolean): Promise<UncommitResult>
+
+/**
+ * Extract `changes` from `commit_id` and record the rewrite in the oplog.
+ *
+ * When `dry_run` is enabled, the returned workspace previews the extracted
+ * changes and no oplog entry is persisted. See
+ * [`commit_uncommit_changes_with_perm()`] for details.
+ */
+export declare function commitUncommitChanges(projectId: string, commitId: string, changes: Array<DiffSpec>, assignTo: string | null, dryRun: boolean): Promise<MoveChangesResult>
 
 /**
  * Get the forge provider name.
@@ -861,14 +858,6 @@ export type CommitState = {
   subject: string;
 } | {
   type: "Integrated";
-};
-
-/** JSON transport type for undoing one or more commits. */
-export type CommitUndoResult = {
-  /** The IDs of the commits that were undone. */
-  undoneCommits: Array<string>;
-  /** Workspace state after undoing the commits. */
-  workspace: WorkspaceState;
 };
 
 /** Represents what was causing a particular commit to conflict when rebased. */
@@ -1982,6 +1971,14 @@ export type UiSettings = {
    * New code should use `appUpdatesCheckIntervalSec` instead, which will control update checks for both CLI and GUI.
    */
   checkForUpdatesIntervalInSeconds: number;
+};
+
+/** JSON transport type for uncommitting one or more commits. */
+export type UncommitResult = {
+  /** The IDs of the commits that were uncommitted. */
+  uncommittedIds: Array<string>;
+  /** Workspace state after uncommitting. */
+  workspace: WorkspaceState;
 };
 
 /**

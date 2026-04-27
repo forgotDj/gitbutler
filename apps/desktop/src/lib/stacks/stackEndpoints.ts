@@ -35,7 +35,7 @@ import type {
 	CommitInsertBlankResult,
 	MoveBranchResult,
 	RejectionReason,
-	CommitUndoResult,
+	UncommitResult,
 	InsertSide,
 	RelativeTo,
 } from "@gitbutler/but-sdk";
@@ -459,11 +459,11 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			],
 		}),
 		uncommit: build.mutation<
-			CommitUndoResult,
+			UncommitResult,
 			{ projectId: string; stackId: string; commitIds: string[] }
 		>({
 			extraOptions: {
-				command: "commit_undo",
+				command: "commit_uncommit",
 				actionName: "Uncommit",
 			},
 			query: ({ projectId, stackId, commitIds }) => ({

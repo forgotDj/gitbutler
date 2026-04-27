@@ -11,12 +11,12 @@ function createEndpointBuilder(): BackendEndpointBuilder {
 }
 
 describe("buildStackEndpoints", () => {
-	test("maps uncommit to commit_undo with the new request shape", () => {
+	test("maps uncommit to commit_uncommit with the new request shape", () => {
 		const endpoints = buildStackEndpoints(createEndpointBuilder());
 		const query = endpoints.uncommit.query;
 
 		expect(endpoints.uncommit.extraOptions).toEqual({
-			command: "commit_undo",
+			command: "commit_uncommit",
 			actionName: "Uncommit",
 		});
 		expect(query).toBeDefined();

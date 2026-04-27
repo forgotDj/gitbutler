@@ -28,8 +28,6 @@ pub mod squash;
 /// Shared result and selector types for commit APIs.
 pub mod types;
 
-/// Functions for uncommitting changes from commits.
+/// Functions for uncommitting — either entire commits (changes kept in workspace)
+/// or specific changes from a commit.
 pub mod uncommit;
-
-/// Functions for undoing commits (changes are kept in the workspace).
-pub mod undo;

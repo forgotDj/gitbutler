@@ -30,7 +30,7 @@ function makeMockUiState(initialSelection: StackSelection | undefined): {
 describe("StackService.uncommit", () => {
 	test("clears the selected commit after a successful uncommit", async () => {
 		const mutate = vi.fn().mockResolvedValue({
-			undoneCommits: ["commit-1"],
+			uncommittedIds: ["commit-1"],
 			workspace: {
 				headInfo: {
 					reference: "refs/heads/branch",

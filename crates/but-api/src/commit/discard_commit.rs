@@ -9,7 +9,7 @@ use crate::commit::types::CommitDiscardResult;
 
 /// Discard `subject_commit_id`, removing it from the branch history.
 ///
-/// Unlike [`super::undo::commit_undo()`], the commit's changes are **not**
+/// Unlike [`super::uncommit::commit_uncommit()`], the commit's changes are **not**
 /// reassigned to the workspace — they are permanently removed from the branch.
 ///
 /// When `dry_run` is enabled, the returned workspace previews the discard
@@ -53,7 +53,7 @@ pub fn commit_discard_only_with_perm(
 
 /// Discard `subject_commit_id`, removing it from the branch history.
 ///
-/// Unlike [`super::undo::commit_undo()`], the commit's changes are **not**
+/// Unlike [`super::uncommit::commit_uncommit()`], the commit's changes are **not**
 /// reassigned to the workspace — they are permanently removed from the branch.
 ///
 /// When `dry_run` is enabled, the returned workspace previews the discard and
