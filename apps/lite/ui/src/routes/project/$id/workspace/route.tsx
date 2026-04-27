@@ -1258,18 +1258,16 @@ const InlineRenameBranch: FC<{
 	);
 };
 
-const BranchRow: FC<
-	{
-		inlineRenameBranchFormRef: Ref<HTMLFormElement>;
-		workspaceMode: WorkspaceMode;
-		projectId: string;
-		branchName: string;
-		branchRef: Array<number>;
-		stackId: string;
-		navigationIndex: NavigationIndex;
-		focusPanel: (panel: Panel) => void;
-	} & ComponentProps<"div">
-> = ({
+const BranchRow: FC<{
+	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
+	workspaceMode: WorkspaceMode;
+	projectId: string;
+	branchName: string;
+	branchRef: Array<number>;
+	stackId: string;
+	navigationIndex: NavigationIndex;
+	focusPanel: (panel: Panel) => void;
+}> = ({
 	inlineRenameBranchFormRef,
 	workspaceMode,
 	projectId,
@@ -1278,7 +1276,6 @@ const BranchRow: FC<
 	stackId,
 	navigationIndex,
 	focusPanel,
-	...restProps
 }) => {
 	const dispatch = useAppDispatch();
 	const branchItemV: BranchItem = {
@@ -1350,60 +1347,53 @@ const BranchRow: FC<
 	];
 
 	return (
-		<OperationSourceC
-			{...restProps}
-			projectId={projectId}
-			source={item}
-			render={
-				<ItemRow projectId={projectId} item={item} navigationIndex={navigationIndex}>
-					{isRenaming ? (
-						<InlineRenameBranch
-							branchName={optimisticBranchName}
-							formRef={inlineRenameBranchFormRef}
-							onSubmit={saveBranchName}
-							onExit={endEditing}
-						/>
-					) : (
-						<>
-							<div
-								className={classes(styles.itemRowLabel, styles.sectionLabel)}
-								onContextMenu={
-									workspaceMode._tag === "Default"
-										? (event) => {
-												void showNativeContextMenu(event, menuItems);
-											}
-										: undefined
-								}
+		<ItemRow projectId={projectId} item={item} navigationIndex={navigationIndex}>
+			{isRenaming ? (
+				<InlineRenameBranch
+					branchName={optimisticBranchName}
+					formRef={inlineRenameBranchFormRef}
+					onSubmit={saveBranchName}
+					onExit={endEditing}
+				/>
+			) : (
+				<>
+					<div
+						className={classes(styles.itemRowLabel, styles.sectionLabel)}
+						onContextMenu={
+							workspaceMode._tag === "Default"
+								? (event) => {
+										void showNativeContextMenu(event, menuItems);
+									}
+								: undefined
+						}
+					>
+						{optimisticBranchName}
+					</div>
+					{workspaceMode._tag === "Default" && (
+						<Toolbar.Root aria-label="Branch actions" className={styles.itemRowToolbar}>
+							<Toolbar.Button
+								type="button"
+								className={styles.itemRowToolbarButton}
+								aria-label="Push branch"
+								disabled
 							>
-								{optimisticBranchName}
-							</div>
-							{workspaceMode._tag === "Default" && (
-								<Toolbar.Root aria-label="Branch actions" className={styles.itemRowToolbar}>
-									<Toolbar.Button
-										type="button"
-										className={styles.itemRowToolbarButton}
-										aria-label="Push branch"
-										disabled
-									>
-										<PushIcon />
-									</Toolbar.Button>
-									<Toolbar.Button
-										type="button"
-										className={styles.itemRowToolbarButton}
-										aria-label="Branch menu"
-										onClick={(event) => {
-											void showNativeMenuFromTrigger(event.currentTarget, menuItems);
-										}}
-									>
-										<MenuTriggerIcon />
-									</Toolbar.Button>
-								</Toolbar.Root>
-							)}
-						</>
+								<PushIcon />
+							</Toolbar.Button>
+							<Toolbar.Button
+								type="button"
+								className={styles.itemRowToolbarButton}
+								aria-label="Branch menu"
+								onClick={(event) => {
+									void showNativeMenuFromTrigger(event.currentTarget, menuItems);
+								}}
+							>
+								<MenuTriggerIcon />
+							</Toolbar.Button>
+						</Toolbar.Root>
 					)}
-				</ItemRow>
-			}
-		/>
+				</>
+			)}
+		</ItemRow>
 	);
 };
 
@@ -1489,43 +1479,49 @@ const BranchSegment: FC<{
 	const isSelected = useIsItemSelected({ projectId, item, navigationIndex });
 
 	return (
-		<OperationTarget
+		<OperationSourceC
 			projectId={projectId}
-			item={item}
-			isSelected={isSelected}
+			source={item}
 			render={
-				<div className={classes(styles.section, styles.segment)}>
-					<BranchRow
-						inlineRenameBranchFormRef={inlineRenameBranchFormRef}
-						workspaceMode={workspaceMode}
-						projectId={projectId}
-						branchName={refName.displayName}
-						branchRef={refName.fullNameBytes}
-						stackId={stackId}
-						navigationIndex={navigationIndex}
-						focusPanel={focusPanel}
-					/>
+				<OperationTarget
+					projectId={projectId}
+					item={item}
+					isSelected={isSelected}
+					render={
+						<div className={classes(styles.section, styles.segment)}>
+							<BranchRow
+								inlineRenameBranchFormRef={inlineRenameBranchFormRef}
+								workspaceMode={workspaceMode}
+								projectId={projectId}
+								branchName={refName.displayName}
+								branchRef={refName.fullNameBytes}
+								stackId={stackId}
+								navigationIndex={navigationIndex}
+								focusPanel={focusPanel}
+							/>
 
-					{segment.commits.length === 0 ? (
-						<div className={styles.itemRowEmpty}>No commits.</div>
-					) : (
-						<ul>
-							{segment.commits.map((commit) => (
-								<li key={commit.id}>
-									<CommitC
-										commit={commit}
-										inlineRewordCommitFormRef={inlineRewordCommitFormRef}
-										workspaceMode={workspaceMode}
-										projectId={projectId}
-										stackId={stackId}
-										navigationIndex={navigationIndex}
-										focusPanel={focusPanel}
-									/>
-								</li>
-							))}
-						</ul>
-					)}
-				</div>
+							{segment.commits.length === 0 ? (
+								<div className={styles.itemRowEmpty}>No commits.</div>
+							) : (
+								<ul>
+									{segment.commits.map((commit) => (
+										<li key={commit.id}>
+											<CommitC
+												commit={commit}
+												inlineRewordCommitFormRef={inlineRewordCommitFormRef}
+												workspaceMode={workspaceMode}
+												projectId={projectId}
+												stackId={stackId}
+												navigationIndex={navigationIndex}
+												focusPanel={focusPanel}
+											/>
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+					}
+				/>
 			}
 		/>
 	);
