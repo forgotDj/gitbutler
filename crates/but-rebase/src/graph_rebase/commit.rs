@@ -19,6 +19,21 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
         &self.repo
     }
 
+    /// Set a merge-base override for checkout so that consumed worktree
+    /// changes don't reappear as uncommitted after materialization.
+    pub fn set_merge_base_override(&mut self, tree_id: gix::ObjectId) {
+        for checkout in &mut self.checkouts {
+            match checkout {
+                super::Checkout::Head {
+                    merge_base_override,
+                    ..
+                } => {
+                    *merge_base_override = Some(tree_id);
+                }
+            }
+        }
+    }
+
     /// Finds a commit from inside the editor's in memory repository.
     pub fn find_commit(&self, id: gix::ObjectId) -> Result<but_core::CommitOwned> {
         but_core::Commit::from_id(id.attach(&self.repo)).map(|c| c.detach())

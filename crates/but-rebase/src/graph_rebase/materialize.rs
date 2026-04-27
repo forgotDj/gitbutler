@@ -22,7 +22,10 @@ impl<'ws, 'graph, M: RefMetadata> SuccessfulRebase<'ws, 'graph, M> {
 
         for checkout in self.checkouts {
             match checkout {
-                Checkout::Head(selector) => {
+                Checkout::Head {
+                    selector,
+                    merge_base_override,
+                } => {
                     let selector = self.history.normalize_selector(selector)?;
                     let step = self.graph[selector.id].clone();
 
@@ -48,6 +51,7 @@ impl<'ws, 'graph, M: RefMetadata> SuccessfulRebase<'ws, 'graph, M> {
                         Options {
                             uncommitted_changes: UncommitedWorktreeChanges::KeepAndAbortOnConflict,
                             skip_head_update: true,
+                            merge_base_override,
                         },
                     )?;
                 }

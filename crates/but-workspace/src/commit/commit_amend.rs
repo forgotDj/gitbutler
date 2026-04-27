@@ -6,6 +6,8 @@ use but_rebase::graph_rebase::{Editor, Selector, Step, SuccessfulRebase, ToCommi
 
 use crate::commit_engine::{Destination, create_commit};
 
+use super::compute_merge_base_override;
+
 /// The result of amending a commit in the graph rebase editor.
 #[derive(Debug)]
 pub struct CommitAmendOutcome<'ws, 'meta, M: RefMetadata> {
@@ -50,6 +52,9 @@ pub fn commit_amend<'ws, 'meta, M: RefMetadata>(
         bail!("Cannot amend a conflicted commit")
     }
 
+    // Clone before `create_commit` consumes the vec — needed afterwards
+    // to determine which changes were consumed (not rejected).
+    let all_changes = changes.clone();
     let create_out = create_commit(
         editor.repo(),
         Destination::AmendCommit {
@@ -67,6 +72,22 @@ pub fn commit_amend<'ws, 'meta, M: RefMetadata>(
             rejected_specs: create_out.rejected_specs,
         });
     };
+
+    // Tell the editor which changes were consumed so the checkout's snapshot
+    // merge doesn't reintroduce them as uncommitted changes.
+    let rejected_paths: std::collections::BTreeSet<_> = create_out
+        .rejected_specs
+        .iter()
+        .map(|(_, spec)| &spec.path)
+        .collect();
+    let consumed: Vec<_> = all_changes
+        .into_iter()
+        .filter(|spec| !rejected_paths.contains(&spec.path))
+        .collect();
+    if !consumed.is_empty() {
+        let merge_base = compute_merge_base_override(editor.repo(), consumed, context_lines)?;
+        editor.set_merge_base_override(merge_base);
+    }
 
     editor.replace(target_selector, Step::new_pick(new_commit_id))?;
 

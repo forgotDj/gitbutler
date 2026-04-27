@@ -215,7 +215,14 @@ impl ToSelector for Selector {
 #[derive(Debug, Clone)]
 pub(crate) enum Checkout {
     /// The HEAD of the `repo` the editor was created for.
-    Head(Selector),
+    Head {
+        selector: Selector,
+        /// A pre-computed merge base tree (`HEAD^{tree}` + consumed changes,
+        /// additive-only) to pass through to `safe_checkout`. When set, the
+        /// 3-way snapshot merge uses this as the base so consumed hunks cancel
+        /// and don't reappear as uncommitted changes.
+        merge_base_override: Option<gix::ObjectId>,
+    },
 }
 
 /// Used to manipulate a set of picks.
@@ -291,7 +298,7 @@ impl<'ws, 'meta, M: RefMetadata> SuccessfulRebase<'ws, 'meta, M> {
             .checkouts
             .iter()
             .filter_map(|checkout| match checkout {
-                Checkout::Head(selector) => {
+                Checkout::Head { selector, .. } => {
                     let selector = self.history.normalize_selector(*selector).ok()?;
                     let step = &self.graph[selector.id];
 

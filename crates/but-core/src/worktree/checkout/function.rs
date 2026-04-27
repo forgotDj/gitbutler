@@ -53,6 +53,7 @@ pub fn safe_checkout(
     Options {
         uncommitted_changes: conflicting_worktree_changes_opts,
         skip_head_update,
+        merge_base_override,
     }: Options,
 ) -> anyhow::Result<Outcome> {
     let source_tree = current_head_id.attach(repo).object()?.peel_to_tree()?;
@@ -77,6 +78,7 @@ pub fn safe_checkout(
         destination_tree.id,
         &mut opts,
         conflicting_worktree_changes_opts,
+        merge_base_override,
     )?
     .map(|(snapshot_id, new_destination_id)| {
         if let Some(id) = new_destination_id {
