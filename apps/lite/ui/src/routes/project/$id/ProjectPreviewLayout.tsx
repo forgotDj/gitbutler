@@ -58,11 +58,11 @@ export const useProjectPanelFocusManager = () => {
 
 export const ProjectPreviewLayout: FC<{
 	projectId: string;
-	activeDescendantId?: string;
+	primaryActiveDescendantId?: string;
 	children: ReactNode;
 	preview: ReactNode | null;
 	panelElementRef: (panel: PanelType) => (element: HTMLDivElement | null) => void;
-}> = ({ activeDescendantId, children, panelElementRef, projectId, preview }) => {
+}> = ({ primaryActiveDescendantId, children, panelElementRef, projectId, preview }) => {
 	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
 	const panelIds = getVisiblePanels(layoutState);
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
@@ -84,7 +84,7 @@ export const ProjectPreviewLayout: FC<{
 				)}
 				tabIndex={0}
 				role="tree"
-				aria-activedescendant={activeDescendantId}
+				aria-activedescendant={primaryActiveDescendantId}
 				className={classes(styles.panel, styles.primaryPanel)}
 			>
 				{children}

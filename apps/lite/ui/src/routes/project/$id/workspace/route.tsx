@@ -1825,7 +1825,7 @@ const ProjectPage: FC = () => {
 		<>
 			<ProjectPreviewLayout
 				projectId={projectId}
-				activeDescendantId={selectedItem ? treeItemId(projectId, selectedItem) : undefined}
+				primaryActiveDescendantId={selectedItem ? treeItemId(projectId, selectedItem) : undefined}
 				panelElementRef={panelElementRef}
 				preview={
 					selectedItem && (
