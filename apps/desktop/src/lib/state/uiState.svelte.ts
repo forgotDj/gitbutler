@@ -70,6 +70,7 @@ export type ExclusiveAction =
 			stackId: string | undefined;
 			branchName: string | undefined;
 			parentCommitId?: string;
+			insertBelow?: boolean;
 	  }
 	| {
 			type: "edit-commit-message";

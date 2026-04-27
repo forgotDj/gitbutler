@@ -66,6 +66,7 @@
 				finalBranchName = await stackService.fetchNewBranchName(projectId);
 			}
 			const parentId = commitAction?.parentCommitId;
+			const insertBelow = commitAction?.insertBelow;
 
 			if (!finalStackId) {
 				const stack = await createNewStack({
@@ -120,6 +121,7 @@
 				{
 					projectId,
 					parentId,
+					insertBelow,
 					stackId: finalStackId,
 					message: finalMessage,
 					stackBranchName: finalBranchName,
