@@ -10,6 +10,15 @@ use crate::graphql::{
 
 const GITHUB_API_BASE_URL: &str = "https://api.github.com";
 
+/// An HTTP error with a status code, returned when the API responds with a non-success status.
+///
+/// This can be downcasted from `anyhow::Error` to distinguish auth failures (401/403) from other errors.
+#[derive(Debug, thiserror::Error)]
+#[error("HTTP {status}")]
+pub struct HttpStatusError {
+    pub status: reqwest::StatusCode,
+}
+
 pub struct GitHubClient {
     client: reqwest::Client,
     base_url: String,
@@ -109,7 +118,10 @@ impl GitHubClient {
         let response = self.client.get(&url).send().await?;
 
         if !response.status().is_success() {
-            bail!("Failed to get authenticated user: {}", response.status());
+            return Err(HttpStatusError {
+                status: response.status(),
+            }
+            .into());
         }
 
         let user: User = response.json().await?;
