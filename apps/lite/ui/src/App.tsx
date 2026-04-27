@@ -6,6 +6,7 @@ import { StrictMode } from "react";
 import { Provider } from "react-redux";
 import { store } from "#ui/state/store.ts";
 import { Toasts } from "./Toasts";
+import { Updater } from "./Updater";
 
 export const App: React.FC<{
 	queryClient: QueryClient;
@@ -18,6 +19,7 @@ export const App: React.FC<{
 				<Toast.Provider toastManager={toastManager}>
 					<Tooltip.Provider>
 						<RouterProvider router={router} />
+						<Updater />
 						<Toasts />
 					</Tooltip.Provider>
 				</Toast.Provider>

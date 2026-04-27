@@ -29,7 +29,7 @@
 			"provider": "s3",
 			"region": "us-east-1",
 			"bucket": "releases.gitbutler.com",
-			"path": "releases/lite/${os}/${arch}",
+			"path": "lite/${os}/${arch}",
 			"channel": "${env.CHANNEL}"
 		},
 		"directories": {
@@ -60,7 +60,8 @@
 		"win": {
 			"target": [
 				"portable"
-			]
+			],
+			"publish": []
 		},
 		"deb": {
 			"packageName": "gitbutler-lite",
