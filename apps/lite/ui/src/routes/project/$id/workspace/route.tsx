@@ -372,6 +372,18 @@ const useLogSelectionHotkeys = ({
 		dispatch(projectActions.selectItem({ projectId, item: changesSectionItem }));
 	};
 
+	const selectFirstItem = () => {
+		const newItem = navigationIndex.items[0];
+		if (!newItem) return;
+		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+	};
+
+	const selectLastItem = () => {
+		const newItem = navigationIndex.items.at(-1);
+		if (!newItem) return;
+		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+	};
+
 	useHotkeys(
 		[
 			{
@@ -448,6 +460,30 @@ const useLogSelectionHotkeys = ({
 				hotkey: "Z",
 				callback: selectChanges,
 				options: { meta: { group: "Log selection", name: "Changes" } },
+			},
+			{
+				hotkey: "Home",
+				callback: selectFirstItem,
+				options: {
+					meta: {
+						group: "Log selection",
+						name: "First item",
+						commandPalette: false,
+						shortcutsBar: false,
+					},
+				},
+			},
+			{
+				hotkey: "End",
+				callback: selectLastItem,
+				options: {
+					meta: {
+						group: "Log selection",
+						name: "Last item",
+						commandPalette: false,
+						shortcutsBar: false,
+					},
+				},
 			},
 		],
 		{ enabled },
