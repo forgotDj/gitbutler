@@ -26,6 +26,7 @@ import {
 } from "#ui/domain/FileParent.ts";
 import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
 import {
+	useEffectiveFocusedProjectPanel,
 	ProjectPreviewLayout,
 	useFocusedProjectPanel,
 	useProjectPanelFocusManager,
@@ -35,6 +36,7 @@ import {
 	selectProjectExpandedCommitId,
 	selectProjectHighlightedCommitIds,
 	selectProjectOperationModeState,
+	selectProjectPromptState,
 	selectProjectSelectedItem,
 	selectProjectWorkspaceModeState,
 } from "#ui/routes/project/$id/state/projectSlice.ts";
@@ -77,6 +79,14 @@ import {
 	useSuspenseQueries,
 	useSuspenseQuery,
 } from "@tanstack/react-query";
+import {
+	formatForDisplay,
+	getHotkeyManager,
+	useHotkey,
+	useHotkeyRegistrations,
+	useHotkeys,
+	type HotkeyRegistrationView,
+} from "@tanstack/react-hotkeys";
 import { createRoute } from "@tanstack/react-router";
 import { Array, Match, pipe } from "effect";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
@@ -85,7 +95,6 @@ import {
 	FC,
 	Fragment,
 	ReactNode,
-	Ref,
 	Suspense,
 	useEffect,
 	useLayoutEffect,
@@ -113,20 +122,14 @@ import {
 import {
 	buildNavigationIndex,
 	filterNavigationIndex,
+	getAdjacent,
+	getNextSection,
+	getPreviousSection,
 	navigationIndexIncludes,
 	type NavigationIndex,
 	useWorkspaceOutline,
 } from "./WorkspaceModel.ts";
-import {
-	getScopeBindings,
-	getScopeLabel,
-	getScope,
-	renameBranchBindings,
-	rewordCommitBindings,
-	useWorkspaceShortcuts,
-} from "./WorkspaceShortcuts.ts";
-import { PositionedShortcutsBar } from "../ShortcutsBar.tsx";
-import { formatShortcutKeys, ShortcutActionBase, type ShortcutBinding } from "#ui/shortcuts.ts";
+import { PickerDialog, type PickerDialogGroup } from "./PickerDialog.tsx";
 import styles from "./route.module.css";
 import {
 	includeItemForWorkspaceMode,
@@ -134,7 +137,43 @@ import {
 	type WorkspaceMode,
 } from "./WorkspaceMode.ts";
 import { Panel } from "#ui/routes/project/$id/state/layout.ts";
-import { PickerDialog } from "#ui/routes/project/$id/workspace/PickerDialog.tsx";
+
+type HotkeyGroup =
+	| "Branch"
+	| "Changes file"
+	| "Changes"
+	| "Commit file"
+	| "Commit"
+	| "Details"
+	| "Global"
+	| "Log selection"
+	| "Log"
+	| "Operation mode"
+	| "Panels"
+	| "Rename branch"
+	| "Reword commit"
+	| "Stack";
+
+declare module "@tanstack/react-hotkeys" {
+	interface HotkeyMeta {
+		/**
+		 * The component where the hotkey is registered.
+		 */
+		group: HotkeyGroup;
+		/**
+		 * @default true
+		 *
+		 * Whether or not to display the command and/or hotkey in the command palette.
+		 */
+		commandPalette?: boolean | "hideHotkey";
+		/**
+		 * @default true
+		 *
+		 * Whether or not to display the command and associated hotkey in the shortcuts bar.
+		 */
+		shortcutsBar?: boolean;
+	}
+}
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 
@@ -147,6 +186,153 @@ const useIsItemSelected = ({ projectId, item }: { projectId: string; item: Item 
 
 const treeItemId = (projectId: string, item: Item): string =>
 	`project-${encodeURIComponent(projectId)}-treeitem-${encodeURIComponent(itemIdentityKey(item))}`;
+
+const useLogSelectionHotkeys = ({
+	enabled,
+	navigationIndex,
+	projectId,
+}: {
+	enabled: boolean;
+	navigationIndex: NavigationIndex;
+	projectId: string;
+}) => {
+	const dispatch = useAppDispatch();
+	const selectedItem = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
+
+	const moveSelection = (offset: -1 | 1) => {
+		const newItem = getAdjacent({ navigationIndex, selectedItem, offset });
+		if (!newItem) return;
+		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+	};
+
+	const selectNextSection = () => {
+		const newItem = getNextSection({ navigationIndex, selectedItem });
+		if (!newItem) return;
+		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+	};
+
+	const selectPreviousSection = () => {
+		const newItem = getPreviousSection({ navigationIndex, selectedItem });
+		if (!newItem) return;
+		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+	};
+
+	const selectChanges = () => {
+		dispatch(projectActions.selectItem({ projectId, item: changesSectionItem }));
+	};
+
+	useHotkeys(
+		[
+			{
+				hotkey: "ArrowUp",
+				callback: () => moveSelection(-1),
+				options: { meta: { group: "Log selection", name: "Up", commandPalette: false } },
+			},
+			{
+				hotkey: "K",
+				callback: () => moveSelection(-1),
+				// Hidden until we can combine in shortcuts bar.
+				options: { meta: { group: "Log selection", shortcutsBar: false } },
+			},
+			{
+				hotkey: "ArrowDown",
+				callback: () => moveSelection(1),
+				options: { meta: { group: "Log selection", name: "Down", commandPalette: false } },
+			},
+			{
+				hotkey: "J",
+				callback: () => moveSelection(1),
+				// Hidden until we can combine in shortcuts bar.
+				options: { meta: { group: "Log selection", shortcutsBar: false } },
+			},
+			{
+				hotkey: "Shift+ArrowUp",
+				callback: selectPreviousSection,
+				options: {
+					meta: {
+						group: "Log selection",
+						name: "Previous section",
+						commandPalette: false,
+						shortcutsBar: false,
+					},
+				},
+			},
+			{
+				hotkey: "Shift+K",
+				callback: selectPreviousSection,
+				options: {
+					meta: {
+						group: "Log selection",
+						name: "Previous section",
+						commandPalette: false,
+						shortcutsBar: false,
+					},
+				},
+			},
+			{
+				hotkey: "Shift+ArrowDown",
+				callback: selectNextSection,
+				options: {
+					meta: {
+						group: "Log selection",
+						name: "Next section",
+						commandPalette: false,
+						shortcutsBar: false,
+					},
+				},
+			},
+			{
+				hotkey: "Shift+J",
+				callback: selectNextSection,
+				options: {
+					meta: {
+						group: "Log selection",
+						name: "Next section",
+						commandPalette: false,
+						shortcutsBar: false,
+					},
+				},
+			},
+			{
+				hotkey: "Z",
+				callback: selectChanges,
+				options: { meta: { group: "Log selection", name: "Changes" } },
+			},
+		],
+		{ enabled },
+	);
+
+	const workspaceMode = useAppSelector((state) =>
+		selectProjectWorkspaceModeState(state, projectId),
+	);
+
+	useHotkeys(
+		[
+			{
+				hotkey: "M",
+				callback: () => {
+					dispatch(projectActions.enterMoveMode({ projectId, source: selectedItem }));
+				},
+				options: { meta: { group: "Log selection", name: "Move" } },
+			},
+			{
+				hotkey: "R",
+				callback: () => {
+					dispatch(projectActions.enterRubMode({ projectId, source: selectedItem }));
+				},
+				options: { meta: { group: "Log selection", name: "Rub" } },
+			},
+			{
+				hotkey: "C",
+				callback: () => {
+					dispatch(projectActions.enterMoveMode({ projectId, source: changesSectionItem }));
+				},
+				options: { meta: { group: "Log selection", name: "Commit" } },
+			},
+		],
+		{ enabled: enabled && workspaceMode._tag === "Default" },
+	);
+};
 
 const lineEndingForDiff = (diff: string): string => (diff.includes("\r\n") ? "\r\n" : "\n");
 
@@ -718,29 +904,114 @@ const Show: FC<{
 	);
 
 const EditorHelp: FC<{
-	bindings: Array<ShortcutBinding<ShortcutActionBase>>;
-}> = ({ bindings }) => (
+	hotkeys: Array<{ hotkey: string; name: string }>;
+}> = ({ hotkeys }) => (
 	<div className={styles.editorHelp}>
-		{bindings.map((binding, index) => (
-			<Fragment key={binding.id}>
+		{hotkeys.map((hotkey, index) => (
+			<Fragment key={hotkey.hotkey}>
 				{index > 0 && " • "}
-				<span className={styles.editorShortcut}>{formatShortcutKeys(binding.keys)}</span> to{" "}
-				{binding.description}
+				<span className={styles.editorShortcut}>
+					{formatForDisplay(hotkey.hotkey, { useSymbols: false })}
+				</span>{" "}
+				to {hotkey.name}
 			</Fragment>
 		))}
 	</div>
 );
 
+type CommandPaletteItem = HotkeyRegistrationView & {
+	options: { meta: { group: HotkeyGroup; name: string } };
+};
+
+const groupCommandPaletteItems = (
+	commands: Array<CommandPaletteItem>,
+): Array<PickerDialogGroup<CommandPaletteItem>> => {
+	const groups = new Map<string, Array<CommandPaletteItem>>();
+
+	for (const command of commands) {
+		const groupName = command.options.meta.group;
+		const group = groups.get(groupName);
+		if (group) group.push(command);
+		else groups.set(groupName, [command]);
+	}
+
+	return globalThis.Array.from(groups.entries())
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([value, items]) => ({
+			value,
+			items: globalThis.Array.from(items).sort((a, b) =>
+				a.options.meta.name.localeCompare(b.options.meta.name),
+			),
+		}));
+};
+
+const CommandPalette: FC<{
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+}> = ({ open, onOpenChange }) => {
+	const { hotkeys } = useHotkeyRegistrations();
+	const items = pipe(
+		hotkeys
+			.filter(
+				(hotkey): hotkey is CommandPaletteItem =>
+					hotkey.options.enabled !== false &&
+					hotkey.options.meta?.name !== undefined &&
+					hotkey.options.meta.commandPalette !== false,
+			)
+			.sort((a, b) => a.options.meta.name.localeCompare(b.options.meta.name)),
+		groupCommandPaletteItems,
+	);
+
+	const runCommand = (hotkey: CommandPaletteItem) => {
+		onOpenChange(false);
+		getHotkeyManager().triggerRegistration(hotkey.id);
+	};
+
+	return (
+		<PickerDialog
+			ariaLabel="Command palette"
+			closeLabel="Close command palette"
+			emptyLabel="No commands found."
+			getItemKey={(x) => x.id}
+			getItemLabel={(x) => x.options.meta.name}
+			getItemType={(x) =>
+				x.options.meta.commandPalette !== "hideHotkey" ? formatForDisplay(x.hotkey) : undefined
+			}
+			items={items}
+			open={open}
+			onOpenChange={onOpenChange}
+			onSelectItem={runCommand}
+			placeholder="Search commands…"
+		/>
+	);
+};
+
 const InlineRewordCommit: FC<{
 	message: string;
 	onSubmit: (value: string) => void;
 	onExit: () => void;
-	formRef?: Ref<HTMLFormElement>;
-}> = ({ message, onSubmit, onExit, formRef }) => {
+	projectId: string;
+}> = ({ message, onSubmit, onExit, projectId }) => {
+	const formRef = useRef<HTMLFormElement | null>(null);
+	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
 	const submitAction = (formData: FormData) => {
 		onExit();
 		onSubmit(formData.get("message") as string);
 	};
+
+	useHotkey("Enter", () => formRef.current?.requestSubmit(), {
+		enabled: focusedPanel === "primary",
+		ignoreInputs: false,
+		meta: { group: "Reword commit", name: "Save", commandPalette: false },
+	});
+
+	useHotkey("Escape", onExit, {
+		conflictBehavior: "allow",
+		enabled: focusedPanel === "primary",
+		ignoreInputs: false,
+		meta: { group: "Reword commit", name: "Cancel", commandPalette: false },
+	});
+
 	return (
 		<form ref={formRef} className={styles.editorForm} action={submitAction}>
 			<textarea
@@ -755,7 +1026,12 @@ const InlineRewordCommit: FC<{
 				defaultValue={message.trim()}
 				className={classes(styles.editorInput, styles.rewordCommitInput)}
 			/>
-			<EditorHelp bindings={rewordCommitBindings} />
+			<EditorHelp
+				hotkeys={[
+					{ hotkey: "Enter", name: "Save" },
+					{ hotkey: "Escape", name: "Cancel" },
+				]}
+			/>
 		</form>
 	);
 };
@@ -763,7 +1039,6 @@ const InlineRewordCommit: FC<{
 const CommitRow: FC<
 	{
 		commit: Commit;
-		inlineRewordCommitFormRef: Ref<HTMLFormElement>;
 		workspaceMode: WorkspaceMode;
 		isExpanded: boolean;
 		projectId: string;
@@ -773,7 +1048,6 @@ const CommitRow: FC<
 	} & ComponentProps<"div">
 > = ({
 	commit,
-	inlineRewordCommitFormRef,
 	workspaceMode,
 	isExpanded,
 	projectId,
@@ -820,9 +1094,36 @@ const CommitRow: FC<
 	const commitDiscard = useMutation(commitDiscardMutationOptions);
 	const commitReword = useMutation(commitRewordMutationOptions);
 
+	const insertBlankCommitAbove = () => {
+		commitInsertBlank.mutate({
+			projectId,
+			relativeTo: { type: "commit", subject: commit.id },
+			side: "above",
+			dryRun: false,
+		});
+	};
+
+	const insertBlankCommitBelow = () => {
+		commitInsertBlank.mutate({
+			projectId,
+			relativeTo: { type: "commit", subject: commit.id },
+			side: "below",
+			dryRun: false,
+		});
+	};
+
+	const deleteCommit = () => {
+		commitDiscard.mutate({
+			projectId,
+			subjectCommitId: commit.id,
+			dryRun: false,
+		});
+	};
+
 	const startEditing = () => {
 		dispatch(projectActions.startRewordCommit({ projectId, item: commitItemV }));
 	};
+	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
 
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
@@ -865,26 +1166,12 @@ const CommitRow: FC<
 				{
 					_tag: "Item",
 					label: "Above",
-					onSelect: () => {
-						commitInsertBlank.mutate({
-							projectId,
-							relativeTo: { type: "commit", subject: commit.id },
-							side: "above",
-							dryRun: false,
-						});
-					},
+					onSelect: insertBlankCommitAbove,
 				},
 				{
 					_tag: "Item",
 					label: "Below",
-					onSelect: () => {
-						commitInsertBlank.mutate({
-							projectId,
-							relativeTo: { type: "commit", subject: commit.id },
-							side: "below",
-							dryRun: false,
-						});
-					},
+					onSelect: insertBlankCommitBelow,
 				},
 			],
 		},
@@ -892,15 +1179,68 @@ const CommitRow: FC<
 			_tag: "Item",
 			label: "Delete commit",
 			enabled: !commitDiscard.isPending,
-			onSelect: () => {
-				commitDiscard.mutate({
-					projectId,
-					subjectCommitId: commit.id,
-					dryRun: false,
-				});
-			},
+			onSelect: deleteCommit,
 		},
 	];
+
+	useHotkey("Enter", startEditing, {
+		conflictBehavior: "allow",
+		enabled:
+			!isCommitMessagePending &&
+			isSelected &&
+			focusedPanel === "primary" &&
+			workspaceMode._tag === "Default",
+		meta: { group: "Commit", name: "Reword" },
+	});
+
+	useHotkey(
+		"F",
+		() => {
+			dispatch(projectActions.toggleCommitFiles({ projectId, item: commitItemV }));
+		},
+		{
+			conflictBehavior: "allow",
+			enabled: isSelected && focusedPanel === "primary" && workspaceMode._tag === "Default",
+			meta: { group: "Commit", name: "Files" },
+		},
+	);
+
+	useHotkey({ key: "" }, insertBlankCommitAbove, {
+		conflictBehavior: "allow",
+		enabled: isSelected && focusedPanel === "primary" && workspaceMode._tag === "Default",
+		meta: {
+			group: "Commit",
+			name: "Add empty commit above",
+			commandPalette: "hideHotkey",
+			shortcutsBar: false,
+		},
+	});
+
+	useHotkey({ key: "" }, insertBlankCommitBelow, {
+		conflictBehavior: "allow",
+		enabled: isSelected && focusedPanel === "primary" && workspaceMode._tag === "Default",
+		meta: {
+			group: "Commit",
+			name: "Add empty commit below",
+			commandPalette: "hideHotkey",
+			shortcutsBar: false,
+		},
+	});
+
+	useHotkey({ key: "" }, deleteCommit, {
+		conflictBehavior: "allow",
+		enabled:
+			!commitDiscard.isPending &&
+			isSelected &&
+			focusedPanel === "primary" &&
+			workspaceMode._tag === "Default",
+		meta: {
+			group: "Commit",
+			name: "Delete commit",
+			commandPalette: "hideHotkey",
+			shortcutsBar: false,
+		},
+	});
 
 	return (
 		<ItemRow
@@ -912,10 +1252,10 @@ const CommitRow: FC<
 		>
 			{isRewording ? (
 				<InlineRewordCommit
-					formRef={inlineRewordCommitFormRef}
 					message={optimisticMessage}
 					onSubmit={saveNewMessage}
 					onExit={endEditing}
+					projectId={projectId}
 				/>
 			) : (
 				<>
@@ -984,10 +1324,37 @@ const CommitFileRow: FC<{
 	navigationIndex: NavigationIndex;
 	projectId: string;
 }> = ({ change, parentCommitItem, navigationIndex, projectId }) => {
+	const dispatch = useAppDispatch();
 	const item = fileItem({
 		parent: commitFileParent(parentCommitItem),
 		path: change.path,
 	});
+	const isSelected = useIsItemSelected({ projectId, item });
+	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+
+	useHotkey(
+		"F",
+		() => {
+			dispatch(projectActions.toggleCommitFiles({ projectId, item: parentCommitItem }));
+		},
+		{
+			conflictBehavior: "allow",
+			enabled: isSelected && focusedPanel === "primary",
+			meta: { group: "Commit file", name: "Files" },
+		},
+	);
+
+	useHotkey(
+		"Escape",
+		() => {
+			dispatch(projectActions.closeCommitFiles({ projectId }));
+		},
+		{
+			conflictBehavior: "allow",
+			enabled: isSelected && focusedPanel === "primary",
+			meta: { group: "Commit file", name: "Close" },
+		},
+	);
 
 	return (
 		<TreeItem
@@ -1016,21 +1383,12 @@ const CommitFileRow: FC<{
 
 const CommitC: FC<{
 	commit: Commit;
-	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
 	workspaceMode: WorkspaceMode;
 	projectId: string;
 	stackId: string;
 	navigationIndex: NavigationIndex;
 	focusPanel: (panel: Panel) => void;
-}> = ({
-	commit,
-	inlineRewordCommitFormRef,
-	workspaceMode,
-	projectId,
-	stackId,
-	navigationIndex,
-	focusPanel,
-}) => {
+}> = ({ commit, workspaceMode, projectId, stackId, navigationIndex, focusPanel }) => {
 	const isExpanded = useAppSelector(
 		(state) => selectProjectExpandedCommitId(state, projectId) === commit.id,
 	);
@@ -1047,7 +1405,6 @@ const CommitC: FC<{
 		>
 			<CommitRow
 				commit={commit}
-				inlineRewordCommitFormRef={inlineRewordCommitFormRef}
 				workspaceMode={workspaceMode}
 				isExpanded={isExpanded}
 				projectId={projectId}
@@ -1091,6 +1448,26 @@ const ChangesFileRow: FC<{
 	projectId,
 }) => {
 	const item = fileItem({ parent: changesFileParent, path: change.path });
+	const isSelected = useIsItemSelected({ projectId, item });
+	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+
+	useHotkey(
+		"A",
+		() => {
+			onAbsorbChanges({
+				type: "treeChanges",
+				subject: {
+					changes: [change],
+					assignedStackId: null,
+				},
+			});
+		},
+		{
+			conflictBehavior: "allow",
+			enabled: isSelected && focusedPanel === "primary" && workspaceMode._tag === "Default",
+			meta: { group: "Changes file", name: "Absorb" },
+		},
+	);
 
 	const menuItems: Array<NativeMenuItem> = [
 		{
@@ -1165,6 +1542,24 @@ const ChangesSectionRow: FC<{
 	workspaceMode: WorkspaceMode;
 }> = ({ changes, navigationIndex, onAbsorbChanges, onCommit, projectId, workspaceMode }) => {
 	const item = changesSectionItem;
+	const isSelected = useIsItemSelected({ projectId, item });
+	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+
+	useHotkey(
+		"A",
+		() => {
+			onAbsorbChanges({ type: "all" });
+		},
+		{
+			conflictBehavior: "allow",
+			enabled:
+				changes.length > 0 &&
+				isSelected &&
+				focusedPanel === "primary" &&
+				workspaceMode._tag === "Default",
+			meta: { group: "Changes", name: "Absorb" },
+		},
+	);
 
 	const menuItems: Array<NativeMenuItem> = [
 		{
@@ -1303,12 +1698,28 @@ const InlineRenameBranch: FC<{
 	branchName: string;
 	onSubmit: (value: string) => void;
 	onExit: () => void;
-	formRef?: Ref<HTMLFormElement>;
-}> = ({ branchName, onSubmit, onExit, formRef }) => {
+	projectId: string;
+}> = ({ branchName, onSubmit, onExit, projectId }) => {
+	const formRef = useRef<HTMLFormElement | null>(null);
+	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
 	const submitAction = (formData: FormData) => {
 		onExit();
 		onSubmit(formData.get("branchName") as string);
 	};
+
+	useHotkey("Enter", () => formRef.current?.requestSubmit(), {
+		enabled: focusedPanel === "primary",
+		ignoreInputs: false,
+		meta: { group: "Rename branch", name: "Save", commandPalette: false },
+	});
+
+	useHotkey("Escape", onExit, {
+		conflictBehavior: "allow",
+		enabled: focusedPanel === "primary",
+		ignoreInputs: false,
+		meta: { group: "Rename branch", name: "Cancel", commandPalette: false },
+	});
+
 	return (
 		<form ref={formRef} className={styles.editorForm} action={submitAction}>
 			<input
@@ -1322,14 +1733,18 @@ const InlineRenameBranch: FC<{
 				defaultValue={branchName}
 				className={classes(styles.editorInput, styles.renameBranchInput)}
 			/>
-			<EditorHelp bindings={renameBranchBindings} />
+			<EditorHelp
+				hotkeys={[
+					{ hotkey: "Enter", name: "Save" },
+					{ hotkey: "Escape", name: "Cancel" },
+				]}
+			/>
 		</form>
 	);
 };
 
 const BranchRow: FC<
 	{
-		inlineRenameBranchFormRef: Ref<HTMLFormElement>;
 		workspaceMode: WorkspaceMode;
 		projectId: string;
 		branchName: string;
@@ -1339,7 +1754,6 @@ const BranchRow: FC<
 		focusPanel: (panel: Panel) => void;
 	} & ComponentProps<"div">
 > = ({
-	inlineRenameBranchFormRef,
 	workspaceMode,
 	projectId,
 	branchName,
@@ -1375,6 +1789,8 @@ const BranchRow: FC<
 	const startEditing = () => {
 		dispatch(projectActions.startRenameBranch({ projectId, item: branchItemV }));
 	};
+	const isSelected = useIsItemSelected({ projectId, item });
+	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
 
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
@@ -1418,14 +1834,20 @@ const BranchRow: FC<
 		},
 	];
 
+	useHotkey("Enter", startEditing, {
+		conflictBehavior: "allow",
+		enabled: isSelected && focusedPanel === "primary" && workspaceMode._tag === "Default",
+		meta: { group: "Branch", name: "Rename" },
+	});
+
 	return (
 		<ItemRow {...restProps} projectId={projectId} item={item} navigationIndex={navigationIndex}>
 			{isRenaming ? (
 				<InlineRenameBranch
 					branchName={optimisticBranchName}
-					formRef={inlineRenameBranchFormRef}
 					onSubmit={saveBranchName}
 					onExit={endEditing}
+					projectId={projectId}
 				/>
 			) : (
 				<>
@@ -1478,8 +1900,13 @@ const StackRow: FC<
 	} & ComponentProps<"div">
 > = ({ navigationIndex, projectId, stackId, workspaceMode, ...restProps }) => {
 	const item = stackItem({ stackId });
+	const isSelected = useIsItemSelected({ projectId, item });
+	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
 
 	const unapplyStack = useMutation(unapplyStackMutationOptions);
+	const unapply = () => {
+		unapplyStack.mutate({ projectId, stackId });
+	};
 
 	const menuItems: Array<NativeMenuItem> = [
 		{ _tag: "Item", label: "Move up", enabled: false },
@@ -1489,11 +1916,24 @@ const StackRow: FC<
 			_tag: "Item",
 			label: "Unapply stack",
 			enabled: !unapplyStack.isPending,
-			onSelect: () => {
-				unapplyStack.mutate({ projectId, stackId });
-			},
+			onSelect: unapply,
 		},
 	];
+
+	useHotkey({ key: "" }, unapply, {
+		conflictBehavior: "allow",
+		enabled:
+			isSelected &&
+			focusedPanel === "primary" &&
+			workspaceMode._tag === "Default" &&
+			!unapplyStack.isPending,
+		meta: {
+			group: "Stack",
+			name: "Unapply stack",
+			commandPalette: "hideHotkey",
+			shortcutsBar: false,
+		},
+	});
 
 	return (
 		<ItemRow {...restProps} projectId={projectId} item={item} navigationIndex={navigationIndex}>
@@ -1528,24 +1968,13 @@ const StackRow: FC<
 };
 
 const BranchSegment: FC<{
-	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
-	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
 	navigationIndex: NavigationIndex;
 	projectId: string;
 	segment: Segment;
 	stackId: string;
 	workspaceMode: WorkspaceMode;
 	focusPanel: (panel: Panel) => void;
-}> = ({
-	inlineRenameBranchFormRef,
-	inlineRewordCommitFormRef,
-	navigationIndex,
-	projectId,
-	segment,
-	stackId,
-	workspaceMode,
-	focusPanel,
-}) => {
+}> = ({ navigationIndex, projectId, segment, stackId, workspaceMode, focusPanel }) => {
 	const refName = assert(segment.refName);
 	const item = branchItem({ stackId, branchRef: refName.fullNameBytes });
 
@@ -1562,7 +1991,6 @@ const BranchSegment: FC<{
 				item={item}
 				render={
 					<BranchRow
-						inlineRenameBranchFormRef={inlineRenameBranchFormRef}
 						workspaceMode={workspaceMode}
 						projectId={projectId}
 						branchName={refName.displayName}
@@ -1582,7 +2010,6 @@ const BranchSegment: FC<{
 						<CommitC
 							key={commit.id}
 							commit={commit}
-							inlineRewordCommitFormRef={inlineRewordCommitFormRef}
 							workspaceMode={workspaceMode}
 							projectId={projectId}
 							stackId={stackId}
@@ -1597,28 +2024,18 @@ const BranchSegment: FC<{
 };
 
 const BranchlessSegment: FC<{
-	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
 	navigationIndex: NavigationIndex;
 	projectId: string;
 	segment: Segment;
 	stackId: string;
 	workspaceMode: WorkspaceMode;
 	focusPanel: (panel: Panel) => void;
-}> = ({
-	inlineRewordCommitFormRef,
-	navigationIndex,
-	projectId,
-	segment,
-	stackId,
-	workspaceMode,
-	focusPanel,
-}) => (
+}> = ({ navigationIndex, projectId, segment, stackId, workspaceMode, focusPanel }) => (
 	<div className={classes(styles.section, styles.segment)}>
 		{segment.commits.map((commit) => (
 			<CommitC
 				key={commit.id}
 				commit={commit}
-				inlineRewordCommitFormRef={inlineRewordCommitFormRef}
 				workspaceMode={workspaceMode}
 				projectId={projectId}
 				stackId={stackId}
@@ -1630,22 +2047,12 @@ const BranchlessSegment: FC<{
 );
 
 const StackC: FC<{
-	inlineRenameBranchFormRef: Ref<HTMLFormElement>;
-	inlineRewordCommitFormRef: Ref<HTMLFormElement>;
 	projectId: string;
 	stack: Stack;
 	workspaceMode: WorkspaceMode;
 	navigationIndex: NavigationIndex;
 	focusPanel: (panel: Panel) => void;
-}> = ({
-	inlineRenameBranchFormRef,
-	inlineRewordCommitFormRef,
-	projectId,
-	stack,
-	workspaceMode,
-	navigationIndex,
-	focusPanel,
-}) => {
+}> = ({ projectId, stack, workspaceMode, navigationIndex, focusPanel }) => {
 	// From Caleb:
 	// > There shouldn't be a way within GitButler to end up with a stack without a
 	//   StackId. Users can disrupt our matching against our metadata by playing
@@ -1689,8 +2096,6 @@ const StackC: FC<{
 					return branchRef ? (
 						<BranchSegment
 							key={segmentKey}
-							inlineRenameBranchFormRef={inlineRenameBranchFormRef}
-							inlineRewordCommitFormRef={inlineRewordCommitFormRef}
 							navigationIndex={navigationIndex}
 							projectId={projectId}
 							segment={segment}
@@ -1701,7 +2106,6 @@ const StackC: FC<{
 					) : (
 						<BranchlessSegment
 							key={segmentKey}
-							inlineRewordCommitFormRef={inlineRewordCommitFormRef}
 							navigationIndex={navigationIndex}
 							projectId={projectId}
 							segment={segment}
@@ -1790,11 +2194,13 @@ const ProjectPage: FC = () => {
 	const expandedCommitId = useAppSelector((state) =>
 		selectProjectExpandedCommitId(state, projectId),
 	);
+	const prompt = useAppSelector((state) => selectProjectPromptState(state, projectId));
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
 	const { focusAdjacentPanel, focusPanel, panelElementRef } = useProjectPanelFocusManager();
 	const focusedPanel = useFocusedProjectPanel();
+	const effectiveFocusedPanel = useEffectiveFocusedProjectPanel(projectId);
 
 	const workspaceOutline = useWorkspaceOutline({ projectId, expandedCommitId });
 
@@ -1845,8 +2251,6 @@ const ProjectPage: FC = () => {
 				)
 			: navigationIndexUnfiltered;
 
-	const shortcutScope = getScope({ selectedItem, focusedPanel, workspaceMode });
-
 	const [absorptionTarget, setAbsorptionTarget] = useState<AbsorptionTarget | null>(null);
 
 	const queryClient = useQueryClient();
@@ -1859,21 +2263,69 @@ const ProjectPage: FC = () => {
 		});
 	};
 
-	const inlineRenameBranchFormRef = useRef<HTMLFormElement | null>(null);
-	const inlineRewordCommitFormRef = useRef<HTMLFormElement | null>(null);
-	const [branchPickerOpen, setBranchPickerOpen] = useState(false);
+	useHotkey(
+		"Mod+K",
+		() => {
+			if (prompt._tag === "CommandPalette") dispatch(projectActions.closePrompt({ projectId }));
+			else dispatch(projectActions.openCommandPalette({ projectId, focusedPanel }));
+		},
+		{
+			conflictBehavior: "allow",
+			meta: { group: "Global", name: "Command palette", commandPalette: false },
+		},
+	);
 
-	useWorkspaceShortcuts({
-		inlineRenameBranchFormRef,
-		inlineRewordCommitFormRef,
-		projectId,
-		scope: shortcutScope,
+	useLogSelectionHotkeys({
+		enabled: effectiveFocusedPanel === "primary",
 		navigationIndex,
-		openAbsorptionDialog,
-		openBranchPicker: () => setBranchPickerOpen(true),
-		focusPanel,
-		focusAdjacentPanel,
+		projectId,
 	});
+
+	useHotkey(
+		"T",
+		() => {
+			dispatch(projectActions.openBranchPicker({ projectId }));
+		},
+		{
+			enabled: workspaceMode._tag === "Default",
+			meta: { group: "Log", name: "Branch" },
+		},
+	);
+
+	useHotkey(
+		"H",
+		() => {
+			focusAdjacentPanel(-1);
+		},
+		{
+			enabled: effectiveFocusedPanel !== null,
+			meta: { group: "Panels", name: "Focus previous panel", commandPalette: false },
+		},
+	);
+
+	useHotkey(
+		"L",
+		() => {
+			focusAdjacentPanel(1);
+		},
+		{
+			enabled: effectiveFocusedPanel !== null,
+			meta: { group: "Panels", name: "Focus next panel", commandPalette: false },
+		},
+	);
+
+	useHotkey(
+		"Escape",
+		() => {
+			dispatch(projectActions.hidePanel({ projectId, panel: "show" }));
+			focusPanel("primary");
+		},
+		{
+			conflictBehavior: "allow",
+			enabled: effectiveFocusedPanel === "show",
+			meta: { group: "Details", name: "Close" },
+		},
+	);
 
 	// TODO: handle project not found error. or only run when project is not null? waterfall.
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
@@ -1890,6 +2342,17 @@ const ProjectPage: FC = () => {
 				item: branchItem(branch),
 			}),
 		);
+		focusPanel("primary");
+	};
+
+	const setBranchPickerOpen = (open: boolean) => {
+		if (open) dispatch(projectActions.openBranchPicker({ projectId }));
+		else dispatch(projectActions.closePrompt({ projectId }));
+	};
+
+	const setCommandPaletteOpen = (open: boolean) => {
+		if (open) dispatch(projectActions.openCommandPalette({ projectId, focusedPanel }));
+		else dispatch(projectActions.closePrompt({ projectId }));
 	};
 
 	const commit = () =>
@@ -1924,8 +2387,6 @@ const ProjectPage: FC = () => {
 					{headInfo.stacks.map((stack) => (
 						<StackC
 							key={stack.id}
-							inlineRenameBranchFormRef={inlineRenameBranchFormRef}
-							inlineRewordCommitFormRef={inlineRewordCommitFormRef}
 							projectId={project.id}
 							stack={stack}
 							workspaceMode={workspaceMode}
@@ -1952,13 +2413,6 @@ const ProjectPage: FC = () => {
 				)}
 			</ProjectPreviewLayout>
 
-			{shortcutScope && (
-				<PositionedShortcutsBar
-					label={getScopeLabel(shortcutScope)}
-					items={getScopeBindings(shortcutScope)}
-				/>
-			)}
-
 			{absorptionTarget && (
 				<AbsorptionDialog
 					projectId={projectId}
@@ -1969,12 +2423,20 @@ const ProjectPage: FC = () => {
 				/>
 			)}
 
-			<BranchPicker
-				open={branchPickerOpen}
-				onOpenChange={setBranchPickerOpen}
-				onSelectBranch={selectBranch}
-				stacks={headInfo.stacks}
-			/>
+			{Match.value(prompt).pipe(
+				Match.tagsExhaustive({
+					None: () => null,
+					BranchPicker: () => (
+						<BranchPicker
+							open
+							onOpenChange={setBranchPickerOpen}
+							onSelectBranch={selectBranch}
+							stacks={headInfo.stacks}
+						/>
+					),
+					CommandPalette: () => <CommandPalette open onOpenChange={setCommandPaletteOpen} />,
+				}),
+			)}
 		</>
 	);
 };

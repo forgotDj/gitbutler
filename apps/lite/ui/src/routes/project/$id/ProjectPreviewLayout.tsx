@@ -5,7 +5,10 @@ import {
 	orderedPanels,
 	Panel as PanelType,
 } from "#ui/routes/project/$id/state/layout.ts";
-import { selectProjectLayoutState } from "#ui/routes/project/$id/state/projectSlice.ts";
+import {
+	selectProjectLayoutState,
+	selectProjectPromptState,
+} from "#ui/routes/project/$id/state/projectSlice.ts";
 import { useAppSelector } from "#ui/state/hooks.ts";
 import styles from "./ProjectPreviewLayout.module.css";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
@@ -18,6 +21,12 @@ const getFocusedProjectPanel = (activeElement: Element | null) =>
 export const useFocusedProjectPanel = (): PanelType | null => {
 	const activeElement = useActiveElement();
 	return getFocusedProjectPanel(activeElement);
+};
+
+export const useEffectiveFocusedProjectPanel = (projectId: string): PanelType | null => {
+	const focusedPanel = useFocusedProjectPanel();
+	const prompt = useAppSelector((state) => selectProjectPromptState(state, projectId));
+	return prompt._tag === "CommandPalette" ? prompt.focusedPanel : focusedPanel;
 };
 
 export const useProjectPanelFocusManager = () => {

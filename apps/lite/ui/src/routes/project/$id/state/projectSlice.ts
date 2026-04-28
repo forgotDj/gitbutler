@@ -5,8 +5,14 @@ import * as layout from "./layout.ts";
 import * as workspace from "./workspace.ts";
 import { OperationType } from "#ui/Operation.ts";
 
+type Prompt =
+	| { _tag: "None" }
+	| { _tag: "BranchPicker" }
+	| { _tag: "CommandPalette"; focusedPanel: layout.Panel | null };
+
 type ProjectState = {
 	layout: layout.ProjectLayoutState;
+	prompt: Prompt;
 	workspace: workspace.WorkspaceState;
 };
 
@@ -16,6 +22,7 @@ type ProjectSliceState = {
 
 const initialProjectState: ProjectState = {
 	layout: layout.initialState,
+	prompt: { _tag: "None" },
 	workspace: workspace.initialState,
 };
 
@@ -25,6 +32,7 @@ const initialState: ProjectSliceState = {
 
 const createProjectState = (): ProjectState => ({
 	layout: layout.createInitialState(),
+	prompt: { _tag: "None" },
 	workspace: workspace.createInitialState(),
 });
 
@@ -138,6 +146,27 @@ const projectSlice = createSlice({
 				action.payload.panel,
 			);
 		},
+		openCommandPalette: (
+			state,
+			action: PayloadAction<{
+				projectId: string;
+				focusedPanel: layout.Panel | null;
+			}>,
+		) => {
+			const { projectId, focusedPanel } = action.payload;
+			ensureProjectState(state, projectId).prompt = {
+				_tag: "CommandPalette",
+				focusedPanel,
+			};
+		},
+		openBranchPicker: (state, action: PayloadAction<{ projectId: string }>) => {
+			ensureProjectState(state, action.payload.projectId).prompt = {
+				_tag: "BranchPicker",
+			};
+		},
+		closePrompt: (state, action: PayloadAction<{ projectId: string }>) => {
+			ensureProjectState(state, action.payload.projectId).prompt = { _tag: "None" };
+		},
 	},
 });
 
@@ -149,6 +178,9 @@ const selectProjectState = (state: RootState, projectId: string): ProjectState =
 
 export const selectProjectLayoutState = (state: RootState, projectId: string) =>
 	selectProjectState(state, projectId).layout;
+
+export const selectProjectPromptState = (state: RootState, projectId: string) =>
+	selectProjectState(state, projectId).prompt;
 
 const selectProjectWorkspaceState = (state: RootState, projectId: string) =>
 	selectProjectState(state, projectId).workspace;
