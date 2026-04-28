@@ -33,8 +33,8 @@ export const CommandPalette = <Item,>({
 	emptyLabel: string;
 	getItemKey: (item: Item) => string;
 	getItemLabel: (item: Item) => string;
-	getItemType: (item: Item, group: CommandPaletteGroup<Item>) => string;
-	itemToStringValue: (item: Item) => string;
+	getItemType: (item: Item, group: CommandPaletteGroup<Item>) => string | undefined;
+	itemToStringValue?: (item: Item) => string;
 	items: Array<CommandPaletteGroup<Item>>;
 	onOpenChange: (open: boolean) => void;
 	onSelectItem: (item: Item) => void;
@@ -55,7 +55,7 @@ export const CommandPalette = <Item,>({
 							open
 							autoHighlight="always"
 							keepHighlight
-							itemToStringValue={itemToStringValue}
+							itemToStringValue={itemToStringValue ?? getItemLabel}
 						>
 							<Autocomplete.Input
 								ref={inputRef}
@@ -83,17 +83,22 @@ export const CommandPalette = <Item,>({
 														{group.value}
 													</Autocomplete.GroupLabel>
 													<Autocomplete.Collection>
-														{(item: Item) => (
-															<Autocomplete.Item
-																key={getItemKey(item)}
-																className={styles.item}
-																value={item}
-																onClick={() => onSelectItem(item)}
-															>
-																<span className={styles.itemLabel}>{getItemLabel(item)}</span>
-																<span className={styles.itemType}>{getItemType(item, group)}</span>
-															</Autocomplete.Item>
-														)}
+														{(item: Item) => {
+															const itemType = getItemType(item, group);
+															return (
+																<Autocomplete.Item
+																	key={getItemKey(item)}
+																	className={styles.item}
+																	value={item}
+																	onClick={() => onSelectItem(item)}
+																>
+																	<span className={styles.itemLabel}>{getItemLabel(item)}</span>
+																	{itemType !== undefined && (
+																		<span className={styles.itemType}>{itemType}</span>
+																	)}
+																</Autocomplete.Item>
+															);
+														}}
 													</Autocomplete.Collection>
 												</Autocomplete.Group>
 											)}
