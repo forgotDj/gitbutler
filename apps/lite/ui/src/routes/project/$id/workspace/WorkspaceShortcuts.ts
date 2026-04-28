@@ -11,15 +11,13 @@ import { RefObject, useEffect, useEffectEvent } from "react";
 import {
 	branchItem,
 	baseCommitItem,
-	changeFileItem,
-	commitFileItem,
 	commitItem,
+	fileItem,
 	itemEquals,
 	type BranchItem,
-	type ChangeItem,
 	changesSectionItem,
-	type CommitFileItem,
 	type CommitItem,
+	type FileItem,
 	type Item,
 	StackItem,
 	stackItem,
@@ -117,22 +115,22 @@ const itemSelectionBindings: Array<ShortcutBinding<ItemSelectionAction>> = [
 type PanelNavigationAction =
 	| { _tag: "FocusPreviousPanel" }
 	| { _tag: "FocusNextPanel" }
-	| { _tag: "TogglePreview" };
+	| { _tag: "ToggleShow" };
 
 const isPanelNavigationAction = (action: { _tag: string }): action is PanelNavigationAction =>
 	action._tag === "FocusPreviousPanel" ||
 	action._tag === "FocusNextPanel" ||
-	action._tag === "TogglePreview";
+	action._tag === "ToggleShow";
 
 const focusPreviousPanelAction: PanelNavigationAction = { _tag: "FocusPreviousPanel" };
 const focusNextPanelAction: PanelNavigationAction = { _tag: "FocusNextPanel" };
-const togglePreviewAction: PanelNavigationAction = { _tag: "TogglePreview" };
+const toggleShowAction: PanelNavigationAction = { _tag: "ToggleShow" };
 
-export const togglePreviewBinding: ShortcutBinding<PanelNavigationAction> = {
-	id: "primary-panel-toggle-preview",
-	description: "Preview",
+export const toggleShowBinding: ShortcutBinding<PanelNavigationAction> = {
+	id: "primary-panel-toggle-show",
+	description: "Show",
 	keys: ["p"],
-	action: togglePreviewAction,
+	action: toggleShowAction,
 	repeat: false,
 };
 
@@ -151,7 +149,7 @@ const panelNavigationBindings: Array<ShortcutBinding<PanelNavigationAction>> = [
 		action: focusNextPanelAction,
 		repeat: false,
 	},
-	togglePreviewBinding,
+	toggleShowBinding,
 ];
 
 type PrimaryPanelAction =
@@ -272,9 +270,9 @@ type BranchDefaultModeScope = {
 	bindings: Array<ShortcutBinding<BranchAction>>;
 	context: BranchItem;
 };
-type ChangeDefaultModeScope = {
+type ChangesFileDefaultModeScope = {
 	bindings: Array<ShortcutBinding<ChangesAction>>;
-	context: ChangeItem;
+	context: FileItem;
 };
 type ChangesSectionDefaultModeScope = {
 	bindings: Array<ShortcutBinding<ChangesAction>>;
@@ -285,7 +283,7 @@ type CommitDefaultModeScope = {
 };
 type CommitFileDefaultModeScope = {
 	bindings: Array<ShortcutBinding<CommitFileAction>>;
-	context: CommitFileItem;
+	context: FileItem;
 };
 
 type StackDefaultModeScope = {
@@ -296,7 +294,7 @@ type StackDefaultModeScope = {
 type DefaultModeScope =
 	| ({ _tag: "BaseCommit" } & BaseCommitDefaultModeScope)
 	| ({ _tag: "Branch" } & BranchDefaultModeScope)
-	| ({ _tag: "ChangeFile" } & ChangeDefaultModeScope)
+	| ({ _tag: "ChangesFile" } & ChangesFileDefaultModeScope)
 	| ({ _tag: "ChangesSection" } & ChangesSectionDefaultModeScope)
 	| ({ _tag: "Commit" } & CommitDefaultModeScope)
 	| ({ _tag: "CommitFile" } & CommitFileDefaultModeScope)
@@ -318,11 +316,11 @@ const branchDefaultModeScope = ({
 	context,
 });
 
-const changeDefaultModeScope = ({
+const changesFileDefaultModeScope = ({
 	bindings,
 	context,
-}: ChangeDefaultModeScope): DefaultModeScope => ({
-	_tag: "ChangeFile",
+}: ChangesFileDefaultModeScope): DefaultModeScope => ({
+	_tag: "ChangesFile",
 	bindings,
 	context,
 });
@@ -365,11 +363,22 @@ const getDefaultModeScope = (selectedItem: Item): DefaultModeScope | null =>
 				baseCommitDefaultModeScope({
 					bindings: primaryPanelBindings,
 				}),
-			ChangeFile: (selectedItem) =>
-				changeDefaultModeScope({
-					bindings: changesBindings,
-					context: selectedItem,
-				}),
+			File: (selectedItem) =>
+				Match.value(selectedItem.parent).pipe(
+					Match.tagsExhaustive({
+						Changes: () =>
+							changesFileDefaultModeScope({
+								bindings: changesBindings,
+								context: selectedItem,
+							}),
+						Commit: () =>
+							commitFileDefaultModeScope({
+								bindings: commitFilesBindings,
+								context: selectedItem,
+							}),
+						Branch: () => null,
+					}),
+				),
 			ChangesSection: () =>
 				changesSectionDefaultModeScope({
 					bindings: changesBindings,
@@ -377,11 +386,6 @@ const getDefaultModeScope = (selectedItem: Item): DefaultModeScope | null =>
 			Commit: (selectedItem) =>
 				commitDefaultModeScope({
 					bindings: commitDefaultBindings,
-					context: selectedItem,
-				}),
-			CommitFile: (selectedItem) =>
-				commitFileDefaultModeScope({
-					bindings: commitFilesBindings,
 					context: selectedItem,
 				}),
 			Stack: (selectedItem) =>
@@ -403,7 +407,7 @@ const getDefaultModeScopeLabel = (scope: DefaultModeScope): string =>
 		Match.tagsExhaustive({
 			BaseCommit: () => "Base commit",
 			Branch: () => "Branch",
-			ChangeFile: () => "Change",
+			ChangesFile: () => "Change",
 			ChangesSection: () => "Changes",
 			Commit: () => "Commit",
 			CommitFile: () => "Commit file",
@@ -411,20 +415,20 @@ const getDefaultModeScopeLabel = (scope: DefaultModeScope): string =>
 		}),
 	);
 
-type PreviewAction = { _tag: "ClosePreview" } | PanelNavigationAction;
+type ShowAction = { _tag: "CloseShow" } | PanelNavigationAction;
 
-const closePreviewAction: PreviewAction = { _tag: "ClosePreview" };
+const closeShowAction: ShowAction = { _tag: "CloseShow" };
 
-const closePreviewBinding: ShortcutBinding<PreviewAction> = {
-	id: "preview-close",
+const closeShowBinding: ShortcutBinding<ShowAction> = {
+	id: "show-close",
 	description: "Close",
 	keys: ["Escape"],
-	action: closePreviewAction,
+	action: closeShowAction,
 	repeat: false,
 };
 
-const previewBindings: Array<ShortcutBinding<PreviewAction>> = [
-	closePreviewBinding,
+const showBindings: Array<ShortcutBinding<ShowAction>> = [
+	closeShowBinding,
 	...panelNavigationBindings,
 ];
 
@@ -577,13 +581,13 @@ const getModeScope = ({
 	selectedItem,
 	workspaceMode,
 }: {
-	selectedItem: Item | null;
+	selectedItem: Item;
 	workspaceMode: WorkspaceMode;
 }): ModeScope | null =>
 	Match.value(workspaceMode).pipe(
 		Match.tagsExhaustive({
 			Default: () => {
-				const scope = selectedItem && getDefaultModeScope(selectedItem);
+				const scope = getDefaultModeScope(selectedItem);
 				if (!scope) return null;
 				return defaultModeScope({
 					scope,
@@ -606,7 +610,7 @@ const getModeScope = ({
 					}),
 				),
 			RenameBranch: (workspaceMode) =>
-				selectedItem?._tag === "Branch" &&
+				selectedItem._tag === "Branch" &&
 				itemEquals(
 					selectedItem,
 					branchItem({
@@ -620,7 +624,7 @@ const getModeScope = ({
 						})
 					: null,
 			RewordCommit: (workspaceMode) =>
-				selectedItem?._tag === "Commit" &&
+				selectedItem._tag === "Commit" &&
 				itemEquals(
 					selectedItem,
 					commitItem({
@@ -636,11 +640,11 @@ const getModeScope = ({
 		}),
 	);
 
-type PreviewScope = {
-	bindings: Array<ShortcutBinding<PreviewAction>>;
+type ShowScope = {
+	bindings: Array<ShortcutBinding<ShowAction>>;
 };
 
-type Scope = ModeScope | ({ _tag: "Preview" } & PreviewScope);
+type Scope = ModeScope | ({ _tag: "Show" } & ShowScope);
 
 const isOperationModeScope = (scope: Scope): scope is OperationModeScope =>
 	Match.value(scope).pipe(
@@ -650,12 +654,12 @@ const isOperationModeScope = (scope: Scope): scope is OperationModeScope =>
 			Default: () => false,
 			RenameBranch: () => false,
 			RewordCommit: () => false,
-			Preview: () => false,
+			Show: () => false,
 		}),
 	);
 
-const previewScope = ({ bindings }: PreviewScope): Scope => ({
-	_tag: "Preview",
+const showScope = ({ bindings }: ShowScope): Scope => ({
+	_tag: "Show",
 	bindings,
 });
 
@@ -664,13 +668,13 @@ export const getScope = ({
 	focusedPanel,
 	workspaceMode,
 }: {
-	selectedItem: Item | null;
+	selectedItem: Item;
 	focusedPanel: Panel | null;
 	workspaceMode: WorkspaceMode;
 }): Scope | null =>
 	Match.value(focusedPanel).pipe(
 		Match.when(null, () => null),
-		Match.when("preview", () => previewScope({ bindings: previewBindings })),
+		Match.when("show", () => showScope({ bindings: showBindings })),
 		Match.when("primary", () => getModeScope({ selectedItem, workspaceMode })),
 		Match.exhaustive,
 	);
@@ -680,7 +684,7 @@ export const getScopeBindings = (scope: Scope): Array<ShortcutBinding<ShortcutAc
 		Match.tagsExhaustive({
 			Default: ({ scope }) => scope.bindings,
 			Move: ({ bindings }) => bindings,
-			Preview: ({ bindings }) => bindings,
+			Show: ({ bindings }) => bindings,
 			RenameBranch: ({ bindings }) => bindings,
 			RewordCommit: ({ bindings }) => bindings,
 			Rub: ({ bindings }) => bindings,
@@ -692,7 +696,7 @@ export const getScopeLabel = (scope: Scope): string =>
 		Match.tagsExhaustive({
 			Default: ({ scope }) => getDefaultModeScopeLabel(scope),
 			Move: (scope) => getOperationModeScopeLabel(scope),
-			Preview: () => "Preview",
+			Show: () => "Preview (show)",
 			RenameBranch: () => "Rename branch",
 			RewordCommit: () => "Reword commit",
 			Rub: (scope) => getOperationModeScopeLabel(scope),
@@ -780,7 +784,7 @@ export const useWorkspaceShortcuts = ({
 			Match.tagsExhaustive({
 				FocusNextPanel: () => focusAdjacentPanel(1),
 				FocusPreviousPanel: () => focusAdjacentPanel(-1),
-				TogglePreview: () => dispatch(projectActions.togglePreview({ projectId })),
+				ToggleShow: () => dispatch(projectActions.togglePanel({ projectId, panel: "show" })),
 			}),
 		);
 
@@ -847,14 +851,21 @@ export const useWorkspaceShortcuts = ({
 			Match.orElse((action) => handlePrimaryPanelAction(action, commitItem(selectedItem))),
 		);
 
-	const handleCommitFileScopeAction = (action: CommitFileAction, selectedItem: CommitFileItem) =>
+	const handleCommitFileScopeAction = (action: CommitFileAction, selectedItem: FileItem) =>
 		Match.value(action).pipe(
 			Match.tags({
 				CloseFiles: () => dispatch(projectActions.closeCommitFiles({ projectId })),
-				ToggleFiles: () =>
-					dispatch(projectActions.toggleCommitFiles({ projectId, item: selectedItem })),
+				ToggleFiles: () => {
+					if (selectedItem.parent._tag !== "Commit") return;
+					dispatch(
+						projectActions.toggleCommitFiles({
+							projectId,
+							item: selectedItem.parent,
+						}),
+					);
+				},
 			}),
-			Match.orElse((action) => handlePrimaryPanelAction(action, commitFileItem(selectedItem))),
+			Match.orElse((action) => handlePrimaryPanelAction(action, fileItem(selectedItem))),
 		);
 
 	const handleBranchScopeAction = (action: BranchAction, selectedItem: BranchItem) =>
@@ -886,11 +897,11 @@ export const useWorkspaceShortcuts = ({
 					event.preventDefault();
 					handleBranchScopeAction(action, scope.context);
 				},
-				ChangeFile: (scope) => {
+				ChangesFile: (scope) => {
 					const action = getAction(scope.bindings, event);
 					if (!action) return;
 					event.preventDefault();
-					handleChangesScopeAction(action, changeFileItem(scope.context));
+					handleChangesScopeAction(action, fileItem(scope.context));
 				},
 				ChangesSection: (scope) => {
 					const action = getAction(scope.bindings, event);
@@ -919,15 +930,15 @@ export const useWorkspaceShortcuts = ({
 			}),
 		);
 
-	const handlePreviewScopeAction = (action: PreviewAction) =>
+	const handleShowScopeAction = (action: ShowAction) =>
 		Match.value(action).pipe(
 			Match.tags({
-				ClosePreview: () => {
-					dispatch(projectActions.closePreview({ projectId }));
+				CloseShow: () => {
+					dispatch(projectActions.hidePanel({ projectId, panel: "show" }));
 					focusPanel("primary");
 				},
-				TogglePreview: () => {
-					dispatch(projectActions.togglePreview({ projectId }));
+				ToggleShow: () => {
+					dispatch(projectActions.togglePanel({ projectId, panel: "show" }));
 					focusPanel("primary");
 				},
 			}),
@@ -999,11 +1010,11 @@ export const useWorkspaceShortcuts = ({
 			: Match.value(scope).pipe(
 					Match.tagsExhaustive({
 						Default: ({ scope }) => handleDefaultScopeKeyDown(scope, event),
-						Preview: (scope) => {
+						Show: (scope) => {
 							const action = getAction(scope.bindings, event);
 							if (!action) return;
 							event.preventDefault();
-							handlePreviewScopeAction(action);
+							handleShowScopeAction(action);
 						},
 						RenameBranch: (scope) => {
 							const action = getAction(scope.bindings, event);

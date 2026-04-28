@@ -1,4 +1,4 @@
-.pageWithPreview {
+.page {
 	flex-grow: 1;
 }
 
@@ -11,14 +11,11 @@
 	display: flex;
 	flex-direction: column;
 	min-height: 100%;
-	padding: var(--panel-padding);
-}
-
-.previewPanel {
-	padding: var(--panel-padding);
 }
 
 .panel {
+	padding: var(--panel-padding);
+
 	border-top: 2px solid transparent;
 
 	[data-panel]:focus-within & {
@@ -26,7 +23,7 @@
 	}
 }
 
-.previewResizeHandle {
+.panelResizeHandle {
 	width: 1px;
 	background-color: var(--color-separator);
 }

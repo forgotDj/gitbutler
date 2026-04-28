@@ -1,8 +1,7 @@
 import { FC, ReactNode, useRef, useSyncExternalStore } from "react";
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import {
-	getVisiblePanels,
-	isPreviewPanelVisible,
+	isPanelVisible,
 	orderedPanels,
 	Panel as PanelType,
 } from "#ui/routes/project/$id/state/layout.ts";
@@ -58,24 +57,19 @@ export const useProjectPanelFocusManager = () => {
 
 export const ProjectPreviewLayout: FC<{
 	projectId: string;
-	activeDescendantId?: string;
+	primaryActiveDescendantId?: string;
 	children: ReactNode;
-	preview: ReactNode | null;
+	show: ReactNode | null;
 	panelElementRef: (panel: PanelType) => (element: HTMLDivElement | null) => void;
-}> = ({ activeDescendantId, children, panelElementRef, projectId, preview }) => {
+}> = ({ primaryActiveDescendantId, children, panelElementRef, projectId, show }) => {
 	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
-	const panelIds = getVisiblePanels(layoutState);
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
 		id: `project:${projectId}:layout`,
-		panelIds,
+		panelIds: layoutState.visiblePanels,
 	});
 
 	return (
-		<Group
-			className={styles.pageWithPreview}
-			defaultLayout={defaultLayout}
-			onLayoutChange={onLayoutChanged}
-		>
+		<Group className={styles.page} defaultLayout={defaultLayout} onLayoutChange={onLayoutChanged}>
 			<Panel
 				id={"primary" satisfies PanelType}
 				minSize={400}
@@ -84,23 +78,23 @@ export const ProjectPreviewLayout: FC<{
 				)}
 				tabIndex={0}
 				role="tree"
-				aria-activedescendant={activeDescendantId}
+				aria-activedescendant={primaryActiveDescendantId}
 				className={classes(styles.panel, styles.primaryPanel)}
 			>
 				{children}
 			</Panel>
-			{isPreviewPanelVisible(layoutState) && (
+			{isPanelVisible(layoutState, "show") && (
 				<>
-					<Separator className={styles.previewResizeHandle} />
+					<Separator className={styles.panelResizeHandle} />
 					<Panel
-						id={"preview" satisfies PanelType}
+						id={"show" satisfies PanelType}
 						minSize={300}
 						defaultSize="70%"
-						elementRef={panelElementRef("preview")}
+						elementRef={panelElementRef("show")}
 						tabIndex={0}
-						className={classes(styles.panel, styles.previewPanel)}
+						className={styles.panel}
 					>
-						{preview}
+						{show}
 					</Panel>
 				</>
 			)}

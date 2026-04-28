@@ -393,7 +393,7 @@ const rubOperation = ({ source, target }: { source: Item; target: Item }): Opera
 		),
 		Match.when(
 			{
-				sourceFileParent: { _tag: "Change" },
+				sourceFileParent: { _tag: "Changes" },
 				target: { _tag: "Commit" },
 			},
 			({ source, target }) =>
@@ -490,7 +490,7 @@ const moveOperation = ({
 				side,
 			}),
 		),
-		Match.when({ sourceFileParent: { _tag: "Change" } }, ({ source }) =>
+		Match.when({ sourceFileParent: { _tag: "Changes" } }, ({ source }) =>
 			commitCreateOperation({
 				relativeTo,
 				side,
@@ -512,11 +512,17 @@ const moveOperation = ({
 
 export type OperationType = "rub" | "moveAbove" | "moveBelow";
 
+const isOperationSourceEnabled = (source: Item): boolean =>
+	Match.value(source).pipe(
+		Match.when({ _tag: "Hunk", isResultOfBinaryToTextConversion: true }, () => false),
+		Match.orElse(() => true),
+	);
+
 export const getOperations = (
 	source: Item,
 	target: Item,
 ): Record<OperationType, Operation | null> => {
-	if (itemEquals(source, target))
+	if (itemEquals(source, target) || !isOperationSourceEnabled(source))
 		return {
 			rub: null,
 			moveAbove: null,

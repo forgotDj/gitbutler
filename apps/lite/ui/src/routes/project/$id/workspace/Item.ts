@@ -1,9 +1,6 @@
 import { Match } from "effect";
-import { changeFileParent, commitFileParent, type FileParent } from "#ui/domain/FileParent.ts";
+import { changesFileParent, type FileParent } from "#ui/domain/FileParent.ts";
 import { type HunkHeader } from "@gitbutler/but-sdk";
-
-/** @public */
-export type ChangeItem = { path: string };
 
 /** @public */
 export type StackItem = {
@@ -14,34 +11,37 @@ export type StackItem = {
 export type BranchItem = StackItem & {
 	branchRef: Array<number>;
 };
-/** @public */
-export type CommitItem = StackItem & { commitId: string };
-/** @public */
-export type CommitFileItem = CommitItem & { path: string };
 
 /** @public */
-export type HunkItem = { parent: FileParent; path: string; hunkHeader: HunkHeader };
+export type CommitItem = StackItem & {
+	commitId: string;
+};
+
+/** @public */
+export type FileItem = {
+	parent: FileParent;
+	path: string;
+};
+
+/** @public */
+export type HunkItem = FileItem & {
+	hunkHeader: HunkHeader;
+	isResultOfBinaryToTextConversion: boolean;
+};
 
 export type Item =
 	| { _tag: "ChangesSection" }
-	| ({ _tag: "ChangeFile" } & ChangeItem)
 	| ({ _tag: "Stack" } & StackItem)
 	| ({ _tag: "Branch" } & BranchItem)
 	| ({ _tag: "Commit" } & CommitItem)
-	| ({ _tag: "CommitFile" } & CommitFileItem)
-	| { _tag: "BaseCommit" }
-	| ({ _tag: "Hunk" } & HunkItem);
+	| ({ _tag: "File" } & FileItem)
+	| ({ _tag: "Hunk" } & HunkItem)
+	| { _tag: "BaseCommit" };
 
 /** @public */
 export const changesSectionItem: Item = {
 	_tag: "ChangesSection",
 };
-
-/** @public */
-export const changeFileItem = ({ path }: ChangeItem): Item => ({
-	_tag: "ChangeFile",
-	path,
-});
 
 /** @public */
 export const stackItem = ({ stackId }: StackItem): Item => ({
@@ -64,19 +64,24 @@ export const commitItem = ({ stackId, commitId }: CommitItem): Item => ({
 });
 
 /** @public */
-export const commitFileItem = ({ stackId, commitId, path }: CommitFileItem): Item => ({
-	_tag: "CommitFile",
-	stackId,
-	commitId,
+export const fileItem = ({ parent, path }: FileItem): Item => ({
+	_tag: "File",
+	parent,
 	path,
 });
 
 /** @public */
-export const hunkItem = ({ parent, path, hunkHeader }: HunkItem): Item => ({
+export const hunkItem = ({
+	parent,
+	path,
+	hunkHeader,
+	isResultOfBinaryToTextConversion,
+}: HunkItem): Item => ({
 	_tag: "Hunk",
 	parent,
 	path,
 	hunkHeader,
+	isResultOfBinaryToTextConversion,
 });
 
 /** @public */
@@ -88,13 +93,19 @@ export const itemIdentityKey = (item: Item): string =>
 	Match.value(item).pipe(
 		Match.tagsExhaustive({
 			ChangesSection: () => JSON.stringify(["ChangesSection"]),
-			ChangeFile: (item) => JSON.stringify(["ChangeFile", item.path]),
+			File: (item) => JSON.stringify(["File", item.parent, item.path]),
 			Stack: (item) => JSON.stringify(["Stack", item.stackId]),
 			Branch: (item) => JSON.stringify(["Branch", item.stackId, item.branchRef]),
 			Commit: (item) => JSON.stringify(["Commit", item.stackId, item.commitId]),
-			CommitFile: (item) => JSON.stringify(["CommitFile", item.stackId, item.commitId, item.path]),
 			BaseCommit: () => JSON.stringify(["BaseCommit"]),
-			Hunk: (item) => JSON.stringify(["Hunk", item.parent, item.path, item.hunkHeader]),
+			Hunk: (item) =>
+				JSON.stringify([
+					"Hunk",
+					item.parent,
+					item.path,
+					item.hunkHeader,
+					item.isResultOfBinaryToTextConversion,
+				]),
 		}),
 	);
 
@@ -104,9 +115,8 @@ export const itemFileParent = (item: Item): FileParent | null =>
 	Match.value(item).pipe(
 		Match.withReturnType<FileParent | null>(),
 		Match.tags({
-			ChangeFile: () => changeFileParent,
-			ChangesSection: () => changeFileParent,
-			CommitFile: ({ commitId }) => commitFileParent({ commitId }),
+			File: ({ parent }) => parent,
+			ChangesSection: () => changesFileParent,
 			Hunk: ({ parent }) => parent,
 		}),
 		Match.orElse(() => null),
