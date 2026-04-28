@@ -1,3 +1,33 @@
+.page {
+	flex-grow: 1;
+}
+
+[data-panel] {
+	/* `operationModePreview` is relative to this. */
+	position: relative;
+}
+
+.logPanel {
+	display: flex;
+	flex-direction: column;
+	min-height: 100%;
+}
+
+.panel {
+	padding: var(--panel-padding);
+
+	border-top: 2px solid transparent;
+
+	[data-panel]:focus-within & {
+		border-top-color: var(--color-black);
+	}
+}
+
+.panelResizeHandle {
+	width: 1px;
+	background-color: var(--color-separator);
+}
+
 .sections {
 	display: flex;
 	row-gap: 24px;

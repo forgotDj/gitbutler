@@ -4,7 +4,6 @@ import { Outlet, useMatch, useNavigate } from "@tanstack/react-router";
 import { FC } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext } from "@tanstack/react-router";
-import { useFocusedProjectPanel } from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
 import { ShortcutsBar } from "#ui/routes/project/$id/ShortcutsBar.tsx";
 import { isPanelVisible } from "#ui/routes/project/$id/state/layout.ts";
 import { ShortcutButton } from "#ui/ShortcutButton.tsx";
@@ -16,6 +15,7 @@ import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import uiStyles from "#ui/ui.module.css";
 import styles from "./__root.module.css";
 import { listProjectsQueryOptions } from "#ui/api/queries.ts";
+import { useFocusedProjectPanel } from "#ui/routes/project/$id/workspace/route.tsx";
 
 export const lastOpenedProjectKey = "lastProject";
 
