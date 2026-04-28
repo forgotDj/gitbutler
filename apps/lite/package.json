@@ -35,6 +35,16 @@
 			"path": "lite/${os}/${arch}",
 			"channel": "${env.CHANNEL}"
 		},
+		"extraFiles": [
+			{
+				"from": "resources/bin",
+				"to": ".",
+				"filter": [
+					"but",
+					"but.exe"
+				]
+			}
+		],
 		"directories": {
 			"output": "release"
 		},
