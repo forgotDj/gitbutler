@@ -6,6 +6,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"main": "dist/electron/main.js",
+	"copyright": "Copyright 2026 GitButler Inc",
 	"imports": {
 		"#ui/*": "./ui/src/*",
 		"#ui/hooks/*": "./ui/src/hooks/*",
@@ -24,6 +25,13 @@
 	},
 	"build": {
 		"appId": "com.gitbutler.lite",
+		"publish": {
+			"provider": "s3",
+			"region": "us-east-1",
+			"bucket": "releases.gitbutler.com",
+			"path": "lite/${os}/${arch}",
+			"channel": "${env.CHANNEL}"
+		},
 		"directories": {
 			"output": "release"
 		},
@@ -33,7 +41,10 @@
 			"package.json"
 		],
 		"mac": {
-			"target": "dmg",
+			"target": [
+				"dmg",
+				"zip"
+			],
 			"hardenedRuntime": true,
 			"gatekeeperAssess": false,
 			"entitlements": "resources/entitlements.mac.plist",
@@ -49,7 +60,8 @@
 		"win": {
 			"target": [
 				"portable"
-			]
+			],
+			"publish": []
 		},
 		"deb": {
 			"packageName": "gitbutler-lite",
@@ -78,6 +90,7 @@
 		"@tanstack/react-router": "^1.167.4",
 		"effect": "^3.20.0",
 		"electron-devtools-installer": "^4.0.0",
+		"electron-updater": "^6.8.4",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
 		"react-error-boundary": "^6.0.0",
@@ -95,7 +108,7 @@
 		"concurrently": "^9.2.1",
 		"cross-env": "^10.1.0",
 		"electron": "^41.1.0",
-		"electron-builder": "^26.8.1",
+		"electron-builder": "^26.9.0",
 		"jsdom": "28.1.0",
 		"vite": "catalog:",
 		"vitest": "catalog:",

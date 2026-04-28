@@ -27,6 +27,7 @@ import type {
 	WatcherEvent,
 	WorktreeChanges,
 } from "@gitbutler/but-sdk";
+import type { UpdateDownloadedEvent } from "electron-updater";
 
 export interface AssignHunkParams {
 	projectId: string;
@@ -237,6 +238,8 @@ export interface LiteElectronApi {
 	watcherSubscribe: (projectId: string, callback: (event: WatcherEvent) => void) => Promise<string>;
 	watcherUnsubscribe: (subscriptionId: string) => Promise<boolean>;
 	watcherStopAll: () => Promise<number>;
+	onUpdateDownloaded: (callback: (info: UpdateDownloadedEvent) => void) => () => void;
+	quitAndInstallUpdate: () => Promise<void>;
 }
 
 export const liteIpcChannels = {
@@ -272,4 +275,6 @@ export const liteIpcChannels = {
 	watcherSubscribe: "workspace:watcher-subscribe",
 	watcherUnsubscribe: "workspace:watcher-unsubscribe",
 	watcherStopAll: "workspace:watcher-stop-all",
+	updaterUpdateDownloaded: "updater:update-downloaded",
+	updaterQuitAndInstall: "updater:quit-and-install",
 } as const;
