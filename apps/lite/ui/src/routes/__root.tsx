@@ -65,7 +65,7 @@ const TopBarActions: FC = () => {
 		from: "/project/$id",
 	}).params.id;
 	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
-	const focusedPanel = useFocusedProjectPanel();
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const toggleDetails = () => {
 		if (focusedPanel === "details" && isPanelVisible(layoutState, "details")) {
 			const detailsPanelIndex = layoutState.visiblePanels.indexOf("details");

@@ -140,13 +140,9 @@ import {
 const getFocusedProjectPanel = (activeElement: Element | null) =>
 	(activeElement?.closest("[data-panel]")?.id as PanelType | undefined) ?? null;
 
-export const useFocusedProjectPanel = (): PanelType | null => {
+export const useFocusedProjectPanel = (projectId: string): PanelType | null => {
 	const activeElement = useActiveElement();
-	return getFocusedProjectPanel(activeElement);
-};
-
-export const useEffectiveFocusedProjectPanel = (projectId: string): PanelType | null => {
-	const focusedPanel = useFocusedProjectPanel();
+	const focusedPanel = getFocusedProjectPanel(activeElement);
 	const pickerDialog = useAppSelector((state) => selectProjectPickerDialogState(state, projectId));
 	return pickerDialog._tag === "CommandPalette" ? pickerDialog.focusedPanel : focusedPanel;
 };
@@ -187,7 +183,7 @@ const LogPanel: FC<{
 	const { id: projectId } = Route.useParams();
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	const selectedItem = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const operationMode = useAppSelector((state) =>
 		selectProjectOperationModeState(state, projectId),
 	);
@@ -260,7 +256,7 @@ const DetailsPanel: FC<{
 	const dispatch = useAppDispatch();
 	const { id: projectId } = Route.useParams();
 	const selectedItem = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	useHotkey(
 		"Escape",
@@ -1211,7 +1207,7 @@ const InlineRewordCommit: FC<{
 	projectId: string;
 }> = ({ message, onSubmit, onExit, projectId }) => {
 	const formRef = useRef<HTMLFormElement | null>(null);
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const submitAction = (formData: FormData) => {
 		onExit();
 		onSubmit(formData.get("message") as string);
@@ -1334,7 +1330,7 @@ const CommitRow: FC<
 	const startEditing = () => {
 		dispatch(projectActions.startRewordCommit({ projectId, item: commitItemV }));
 	};
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
@@ -1555,7 +1551,7 @@ const CommitFileRow: FC<{
 		path: change.path,
 	});
 	const isSelected = useIsItemSelected({ projectId, item });
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	useHotkey(
 		"F",
@@ -1664,7 +1660,7 @@ const ChangesFileRow: FC<{
 }> = ({ change, dependencyCommitIds, navigationIndex, onAbsorbChanges, projectId }) => {
 	const item = fileItem({ parent: changesFileParent, path: change.path });
 	const isSelected = useIsItemSelected({ projectId, item });
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
@@ -1760,7 +1756,7 @@ const ChangesSectionRow: FC<{
 }> = ({ changes, navigationIndex, onAbsorbChanges, onCommit, projectId }) => {
 	const item = changesSectionItem;
 	const isSelected = useIsItemSelected({ projectId, item });
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
@@ -1918,7 +1914,7 @@ const InlineRenameBranch: FC<{
 	projectId: string;
 }> = ({ branchName, onSubmit, onExit, projectId }) => {
 	const formRef = useRef<HTMLFormElement | null>(null);
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const submitAction = (formData: FormData) => {
 		onExit();
 		onSubmit(formData.get("branchName") as string);
@@ -2000,7 +1996,7 @@ const BranchRow: FC<
 		dispatch(projectActions.startRenameBranch({ projectId, item: branchItemV }));
 	};
 	const isSelected = useIsItemSelected({ projectId, item });
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
@@ -2110,7 +2106,7 @@ const StackRow: FC<
 > = ({ navigationIndex, projectId, stackId, ...restProps }) => {
 	const item = stackItem({ stackId });
 	const isSelected = useIsItemSelected({ projectId, item });
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
@@ -2403,8 +2399,7 @@ const ProjectPage: FC = () => {
 		selectProjectWorkspaceModeState(state, projectId),
 	);
 	const { focusAdjacentPanel, focusPanel, panelElementRef } = useProjectPanelFocusManager();
-	const focusedPanel = useFocusedProjectPanel();
-	const effectiveFocusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	const workspaceOutline = useWorkspaceOutline({ projectId, expandedCommitId });
 
@@ -2487,7 +2482,7 @@ const ProjectPage: FC = () => {
 			focusAdjacentPanel(-1);
 		},
 		{
-			enabled: effectiveFocusedPanel !== null,
+			enabled: focusedPanel !== null,
 			meta: { group: "Panels", name: "Focus previous panel", commandPalette: false },
 		},
 	);
@@ -2498,7 +2493,7 @@ const ProjectPage: FC = () => {
 			focusAdjacentPanel(1);
 		},
 		{
-			enabled: effectiveFocusedPanel !== null,
+			enabled: focusedPanel !== null,
 			meta: { group: "Panels", name: "Focus next panel", commandPalette: false },
 		},
 	);
