@@ -1,5 +1,6 @@
 import { classes } from "#ui/classes.ts";
 import { getOperation, operationLabel, useRunOperation, type Operation } from "#ui/Operation.ts";
+import { ShortcutButton } from "#ui/ShortcutButton.tsx";
 import uiStyles from "#ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
 import { useHotkeys } from "@tanstack/react-hotkeys";
@@ -57,13 +58,13 @@ const OperationModeControls: FC<{
 	return (
 		<>
 			{operation && (
-				<button type="button" className={uiStyles.button} onClick={confirm}>
+				<ShortcutButton hotkey="Enter" onClick={confirm}>
 					Confirm
-				</button>
+				</ShortcutButton>
 			)}
-			<button type="button" className={uiStyles.button} onClick={cancel}>
+			<ShortcutButton hotkey="Escape" onClick={cancel}>
 				Cancel
-			</button>
+			</ShortcutButton>
 		</>
 	);
 };
