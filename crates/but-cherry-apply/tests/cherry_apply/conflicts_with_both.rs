@@ -27,16 +27,10 @@ fn cannot_apply_to_foo_stack() -> anyhow::Result<()> {
         .rev_parse_single("refs/gitbutler/both-conflict")?
         .detach();
 
-    let foo_id = test_ctx
-        .handle
-        .list_stacks_in_workspace()?
-        .iter()
-        .find(|s| s.name() == "foo")
-        .unwrap()
-        .id;
+    drop(repo);
+    let foo_id = test_ctx.stack_id("foo")?;
 
     // Apply should fail
-    drop(repo);
     let result = test_ctx.apply(commit_id, foo_id);
     assert!(result.is_err());
     assert!(
@@ -58,16 +52,10 @@ fn cannot_apply_to_bar_stack() -> anyhow::Result<()> {
         .rev_parse_single("refs/gitbutler/both-conflict")?
         .detach();
 
-    let bar_id = test_ctx
-        .handle
-        .list_stacks_in_workspace()?
-        .iter()
-        .find(|s| s.name() == "bar")
-        .unwrap()
-        .id;
+    drop(repo);
+    let bar_id = test_ctx.stack_id("bar")?;
 
     // Apply should fail
-    drop(repo);
     let result = test_ctx.apply(commit_id, bar_id);
     assert!(result.is_err());
     assert!(

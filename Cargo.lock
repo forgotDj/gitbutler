@@ -1061,7 +1061,6 @@ dependencies = [
  "but-testsupport",
  "but-workspace",
  "gitbutler-branch-actions",
- "gitbutler-stack",
  "gitbutler-workspace",
  "gix",
  "serde",

@@ -29,16 +29,10 @@ fn can_apply_to_foo_stack() -> anyhow::Result<()> {
         .rev_parse_single("refs/gitbutler/clean-commit")?
         .detach();
 
-    let foo_id = test_ctx
-        .handle
-        .list_stacks_in_workspace()?
-        .iter()
-        .find(|s| s.name() == "foo")
-        .unwrap()
-        .id;
+    drop(repo);
+    let foo_id = test_ctx.stack_id("foo")?;
 
     // Apply should succeed
-    drop(repo);
     test_ctx.apply(commit_id, foo_id)?;
 
     // Verify the commit is now in the foo stack by checking for its message
@@ -79,16 +73,10 @@ fn can_apply_to_bar_stack() -> anyhow::Result<()> {
         .rev_parse_single("refs/gitbutler/clean-commit")?
         .detach();
 
-    let bar_id = test_ctx
-        .handle
-        .list_stacks_in_workspace()?
-        .iter()
-        .find(|s| s.name() == "bar")
-        .unwrap()
-        .id;
+    drop(repo);
+    let bar_id = test_ctx.stack_id("bar")?;
 
     // Apply should succeed
-    drop(repo);
     test_ctx.apply(commit_id, bar_id)?;
 
     // Verify the commit is now in the bar stack by checking for its message

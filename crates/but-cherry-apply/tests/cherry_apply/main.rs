@@ -1,14 +1,18 @@
 #![expect(
     deprecated,
-    reason = "imports but_workspace::legacy::stack_details_v3; VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
+    reason = "imports but_workspace::legacy::stack_details_v3; this should be replaced with ctx.workspace_* helpers"
 )]
 
 /// Tests for cherry-apply functionality
 mod util {
+    use anyhow::Context as _;
     use but_cherry_apply::{CherryApplyStatus, cherry_apply, cherry_apply_status};
+    use but_core::{
+        RefMetadata as _, WORKSPACE_REF_NAME,
+        ref_metadata::{StackId, StackKind},
+    };
     use but_ctx::Context;
     use but_testsupport::gix_testtools::tempfile::TempDir;
-    use gitbutler_stack::VirtualBranchesHandle;
 
     pub fn test_ctx(name: &str) -> anyhow::Result<TestContext> {
         let (repo, tmpdir) = but_testsupport::writable_scenario(name);
@@ -21,22 +25,32 @@ mod util {
             let meta = ctx.legacy_meta()?;
             meta.write_reconciled(&*ctx.repo.get()?)?;
         }
-        let handle = VirtualBranchesHandle::new(ctx.project_data_dir());
-
         Ok(TestContext {
             ctx,
-            handle,
             _tmpdir: tmpdir,
         })
     }
 
     pub struct TestContext {
         pub ctx: Context,
-        pub handle: VirtualBranchesHandle,
         pub _tmpdir: TempDir,
     }
 
     impl TestContext {
+        pub fn stack_id(&self, name: &str) -> anyhow::Result<StackId> {
+            let meta = self.ctx.legacy_meta()?;
+            let workspace_ref = WORKSPACE_REF_NAME.try_into()?;
+            meta.workspace(workspace_ref)?
+                .stacks(StackKind::Applied)
+                .find(|stack| {
+                    stack
+                        .name()
+                        .is_some_and(|stack_name| stack_name.shorten() == name)
+                })
+                .map(|stack| stack.id)
+                .with_context(|| format!("Expected to find stack named {name}"))
+        }
+
         pub fn get_status(
             &mut self,
             commit_id: gix::ObjectId,
