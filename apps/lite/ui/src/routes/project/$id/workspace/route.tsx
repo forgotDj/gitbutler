@@ -1722,8 +1722,6 @@ type BranchPickerOption = {
 	branch: BranchItem;
 };
 
-const branchPickerOptionToStringValue = (option: BranchPickerOption): string => option.label;
-
 const segmentToBranchPickerOption = ({
 	segment,
 	stackId,
@@ -1945,7 +1943,7 @@ const ProjectPage: FC = () => {
 				getItemKey={(branch) => branch.id}
 				getItemLabel={(branch) => branch.label}
 				getItemType={() => "Branch"}
-				itemToStringValue={branchPickerOptionToStringValue}
+				itemToStringValue={(x) => x.label}
 				items={[
 					{
 						value: "Branches",
