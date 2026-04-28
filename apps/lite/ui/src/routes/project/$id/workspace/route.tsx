@@ -1748,6 +1748,40 @@ const stackToBranchPickerOptions = (stack: Stack): Array<BranchPickerOption> => 
 	});
 };
 
+const BranchPicker: FC<{
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onSelectBranch: (branch: BranchItem) => void;
+	stacks: Array<Stack>;
+}> = ({ open, onOpenChange, onSelectBranch, stacks }) => {
+	const selectBranch = (option: BranchPickerOption) => {
+		onOpenChange(false);
+		onSelectBranch(option.branch);
+	};
+
+	return (
+		<CommandPalette
+			ariaLabel="Select branch"
+			closeLabel="Close branch picker"
+			emptyLabel="No results found."
+			getItemKey={(x) => x.id}
+			getItemLabel={(x) => x.label}
+			getItemType={() => "Branch"}
+			itemToStringValue={(x) => x.label}
+			items={[
+				{
+					value: "Branches",
+					items: stacks.flatMap(stackToBranchPickerOptions),
+				},
+			]}
+			open={open}
+			onOpenChange={onOpenChange}
+			onSelectItem={selectBranch}
+			placeholder="Search for branches…"
+		/>
+	);
+};
+
 const ProjectPage: FC = () => {
 	const dispatch = useAppDispatch();
 
@@ -1849,12 +1883,11 @@ const ProjectPage: FC = () => {
 	// TODO: dedupe
 	if (!project) return <p>Project not found.</p>;
 
-	const selectBranch = (option: BranchPickerOption) => {
-		setBranchPickerOpen(false);
+	const selectBranch = (branch: BranchItem) => {
 		dispatch(
 			projectActions.selectItem({
 				projectId,
-				item: branchItem(option.branch),
+				item: branchItem(branch),
 			}),
 		);
 	};
@@ -1936,24 +1969,11 @@ const ProjectPage: FC = () => {
 				/>
 			)}
 
-			<CommandPalette
-				ariaLabel="Select branch"
-				closeLabel="Close branch picker"
-				emptyLabel="No results found."
-				getItemKey={(x) => x.id}
-				getItemLabel={(x) => x.label}
-				getItemType={() => "Branch"}
-				itemToStringValue={(x) => x.label}
-				items={[
-					{
-						value: "Branches",
-						items: headInfo.stacks.flatMap(stackToBranchPickerOptions),
-					},
-				]}
+			<BranchPicker
 				open={branchPickerOpen}
 				onOpenChange={setBranchPickerOpen}
-				onSelectItem={selectBranch}
-				placeholder="Search for branches…"
+				onSelectBranch={selectBranch}
+				stacks={headInfo.stacks}
 			/>
 		</>
 	);
