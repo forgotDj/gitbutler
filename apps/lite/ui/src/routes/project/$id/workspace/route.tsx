@@ -81,6 +81,7 @@ import {
 	getHotkeyManager,
 	useHotkey,
 	useHotkeyRegistrations,
+	useHotkeySequence,
 	useHotkeys,
 	type HotkeyRegistrationView,
 } from "@tanstack/react-hotkeys";
@@ -485,9 +486,31 @@ const useLogSelectionHotkeys = ({
 					},
 				},
 			},
+			{
+				hotkey: "Shift+G",
+				callback: selectLastItem,
+				options: {
+					meta: {
+						group: "Log selection",
+						name: "Last item",
+						commandPalette: false,
+						shortcutsBar: false,
+					},
+				},
+			},
 		],
 		{ enabled },
 	);
+
+	useHotkeySequence(["G", "G"], selectFirstItem, {
+		enabled,
+		meta: {
+			group: "Log selection",
+			name: "First item",
+			commandPalette: false,
+			shortcutsBar: false,
+		},
+	});
 
 	useHotkey(
 		"T",
