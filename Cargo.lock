@@ -3940,7 +3940,6 @@ dependencies = [
  "git2",
  "git2-hooks",
  "gitbutler-branch",
- "gitbutler-cherry-pick",
  "gitbutler-commit",
  "gitbutler-git",
  "gitbutler-operating-modes",
