@@ -1124,10 +1124,8 @@ const EditorHelp: FC<{
 		{hotkeys.map((hotkey, index) => (
 			<Fragment key={hotkey.hotkey}>
 				{index > 0 && " • "}
-				<span className={styles.editorShortcut}>
-					{formatForDisplay(hotkey.hotkey, { useSymbols: false })}
-				</span>{" "}
-				to {hotkey.name}
+				<span className={styles.editorShortcut}>{formatForDisplay(hotkey.hotkey)}</span> to{" "}
+				{hotkey.name}
 			</Fragment>
 		))}
 	</div>
