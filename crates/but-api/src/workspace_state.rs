@@ -88,7 +88,7 @@ impl WorkspaceState {
 
         let materialized = rebase.materialize_without_checkout()?;
         let tree_index = repo.index_from_tree(&repo.head_tree_id()?)?;
-        let mut disk_index = repo.open_index()?;
+        let mut disk_index = repo.index()?.into_owned_or_cloned();
         but_workspace::commit_engine::index::sync_index_to_tree(
             repo.workdir().expect("non-bare"),
             &tree_index,

@@ -367,7 +367,7 @@ pub fn create_commit_and_update_refs(
         // Assume an index to be present and adjust it to match the new tree.
 
         let tree_index = repo.index_from_tree(&repo.head_tree_id()?)?;
-        let mut disk_index = repo.open_index()?;
+        let mut disk_index = repo.index()?.into_owned_or_cloned();
         crate::commit_engine::index::sync_index_to_tree(
             repo.workdir().expect("non-bare"),
             &tree_index,

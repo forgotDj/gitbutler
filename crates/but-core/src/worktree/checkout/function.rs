@@ -144,7 +144,7 @@ pub fn safe_checkout(
         )?;
 
         if num_deleted_files > 0
-            && let Ok(mut index) = repo.open_index()
+            && let Ok(mut index) = repo.index().map(|index| index.into_owned_or_cloned())
         {
             for (kind, path_to_alter) in &changed_files {
                 if matches!(kind, ChangeKind::Deletion)
