@@ -1940,8 +1940,8 @@ const ProjectPage: FC = () => {
 				ariaLabel="Select branch"
 				closeLabel="Close branch picker"
 				emptyLabel="No results found."
-				getItemKey={(branch) => branch.id}
-				getItemLabel={(branch) => branch.label}
+				getItemKey={(x) => x.id}
+				getItemLabel={(x) => x.label}
 				getItemType={() => "Branch"}
 				itemToStringValue={(x) => x.label}
 				items={[
