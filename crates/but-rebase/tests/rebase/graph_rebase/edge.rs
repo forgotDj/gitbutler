@@ -1,4 +1,4 @@
-//! These tests exercise the add_edge operation.
+//! These tests exercise the add_edge and remove_edge operations.
 
 use anyhow::Result;
 use but_graph::Graph;
@@ -84,6 +84,52 @@ fn adding_a_valid_edge_is_successful() -> Result<()> {
     ◎ refs/heads/main
     ◎ refs/tags/base
     ● 8f0d338 base
+    ╵
+    ");
+
+    Ok(())
+}
+
+#[test]
+fn remove_edge_returns_no_orders_when_no_edges_found() -> Result<()> {
+    let (repo, mut meta) = fixture("four-commits")?;
+
+    let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+    let mut ws = graph.into_workspace()?;
+    let mut editor = Editor::create(&mut ws, &mut *meta, &repo)?;
+
+    let c = repo.rev_parse_single("HEAD")?.detach();
+    let a = repo.rev_parse_single("HEAD~2")?.detach();
+    let c_selector = editor.select_commit(c)?;
+    let a_selector = editor.select_commit(a)?;
+
+    editor.remove_edges(c_selector, a_selector)?;
+
+    Ok(())
+}
+
+#[test]
+fn removing_an_existing_edge_returns_its_order_and_allows_readding_it() -> Result<()> {
+    let (repo, mut meta) = fixture("four-commits")?;
+
+    let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+    let mut ws = graph.into_workspace()?;
+    let mut editor = Editor::create(&mut ws, &mut *meta, &repo)?;
+
+    let b = repo.rev_parse_single("HEAD~")?.detach();
+    let a = repo.rev_parse_single("HEAD~2")?.detach();
+    let b_selector = editor.select_commit(b)?;
+    let a_selector = editor.select_commit(a)?;
+
+    assert_eq!(editor.remove_edges(b_selector, a_selector)?, vec![0]);
+    editor.add_edge(b_selector, a_selector, 0)?;
+
+    insta::assert_snapshot!(editor.steps_ascii(), @"
+    ◎ refs/heads/main
+    ● 120e3a9 c
+    ● a96434e b
+    ● d591dfe a
+    ● 35b8235 base
     ╵
     ");
 

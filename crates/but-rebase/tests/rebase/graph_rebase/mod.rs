@@ -5,10 +5,10 @@ use but_meta::{
 };
 use but_testsupport::StackState;
 
-mod add_edge;
 mod cherry_pick;
 mod conflictable_restriction;
 mod disconnect;
+mod edge;
 mod editor_creation;
 mod insert;
 mod insert_segment;
