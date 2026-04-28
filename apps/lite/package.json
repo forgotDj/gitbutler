@@ -1,7 +1,7 @@
 {
 	"name": "@gitbutler/lite",
 	"description": "A Git-compatible version control client - now with fewer calories.",
-	"productName": "gitbutler-lite",
+	"productName": "GitButler Lite",
 	"author": "GitButler Inc. <gitbutler@gitbutler.com> (https://gitbutler.com)",
 	"license": "FSL-1.1-MIT",
 	"homepage": "https://gitbutler.com",
