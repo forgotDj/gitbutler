@@ -53,6 +53,10 @@ use crate::{
 ///   - `destination_tree_id` has a tree at that path and preserved worktree content exists underneath
 ///     it, so checkout should materialize the destination subtree.
 ///
+///   If none of those cases adds a pathspec for a pure-deletion checkout, this function adds one
+///   checkout-deletion path as a guardrail so `git2` does not interpret an empty pathspec as a request
+///   to checkout the whole destination tree.
+///
 ///   Normal added or modified checkout paths are still added by the caller.
 /// * `uncommitted_changes` - Policy for preserved worktree changes that do not apply cleanly to
 ///   `destination_tree_id`: either abort before checkout, or keep the conflicting content in the
@@ -107,6 +111,7 @@ pub fn merge_worktree_changes_into_destination_or_keep_snapshot(
             change_lut.track_file(ignored.path.as_ref());
         }
 
+        let mut added_deleted_worktree_pathspec = false;
         for wt_change in &worktree_changes.changes {
             match wt_change.status {
                 TreeStatus::Deletion { .. } => {
@@ -143,6 +148,7 @@ pub fn merge_worktree_changes_into_destination_or_keep_snapshot(
                     // checks out a destination subtree with preserved worktree content underneath.
                     if !checkout_deletion_intersections.is_empty() || destination_needs_checkout {
                         checkout_opts.path(wt_change.path.as_bytes());
+                        added_deleted_worktree_pathspec = true;
                     }
                 }
                 TreeStatus::Addition { .. } | TreeStatus::Modification { .. } => {}
@@ -150,6 +156,16 @@ pub fn merge_worktree_changes_into_destination_or_keep_snapshot(
                     unreachable!("rename tracking was disabled")
                 }
             }
+        }
+        if !added_deleted_worktree_pathspec
+            && files_to_checkout
+                .iter()
+                .all(|(kind, _)| matches!(kind, ChangeKind::Deletion))
+            && let Some((_, path)) = files_to_checkout.first()
+        {
+            // Keep pure-deletion checkouts from reaching `git2` with an empty pathspec, which
+            // would apply the destination tree broadly and restore unrelated worktree deletions.
+            checkout_opts.path(path.as_bytes());
         }
 
         let mut selection_of_changes_checkout_would_affect = BTreeSet::new();

@@ -134,6 +134,49 @@ fn pure_deletion_checkout_does_not_restore_unrelated_worktree_deletions() -> any
 }
 
 #[test]
+fn pure_deletion_checkout_keeps_non_intersecting_worktree_deletion() -> anyhow::Result<()> {
+    let (repo, _tmp) = writable_scenario("unborn-empty");
+
+    let blob_id = repo.write_blob(b"content")?;
+    let mut editor = repo.empty_tree().edit()?;
+    editor.upsert("a.txt", EntryKind::Blob, blob_id)?;
+    editor.upsert("b.txt", EntryKind::Blob, blob_id)?;
+    editor.upsert("c.txt", EntryKind::Blob, blob_id)?;
+    let initial_tree_id = editor.write()?.detach();
+    let initial_commit = repo.new_commit("init", initial_tree_id, None::<gix::ObjectId>)?;
+    safe_checkout(
+        repo.empty_tree().id,
+        initial_commit.id,
+        &repo,
+        Default::default(),
+    )?;
+
+    std::fs::remove_file(repo.workdir_path("b.txt").expect("non-bare repository"))?;
+    insta::assert_snapshot!(git_status(&repo)?, @" D b.txt");
+
+    let (head_commit, new_commit) = build_commit(
+        &repo,
+        |tree| {
+            tree.remove("a.txt")?;
+            Ok(())
+        },
+        "delete a.txt",
+    )?;
+    let out = safe_checkout(head_commit.id, new_commit.id, &repo, Default::default())?;
+    assert!(out.snapshot_tree.is_none());
+    assert_eq!(out.num_deleted_files, 1);
+    assert_eq!(out.num_added_or_updated_files, 0);
+    assert!(out.head_update.is_some());
+
+    assert!(!repo.workdir_path("a.txt").unwrap().exists());
+    assert!(!repo.workdir_path("b.txt").unwrap().exists());
+    assert!(repo.workdir_path("c.txt").unwrap().exists());
+    insta::assert_snapshot!(git_status(&repo)?, @" D b.txt");
+
+    Ok(())
+}
+
+#[test]
 fn worktree_and_index_deletions_are_ignored_in_snapshots() -> anyhow::Result<()> {
     let (repo, _tmp) = writable_scenario("deletion-addition-untracked");
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"* 226d5ea (HEAD -> main) init");
