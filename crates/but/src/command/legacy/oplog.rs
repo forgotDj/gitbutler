@@ -246,10 +246,11 @@ pub(crate) fn undo_last_operation(
     ctx: &mut but_ctx::Context,
     out: &mut OutputChannel,
 ) -> anyhow::Result<()> {
-    // Get the last two snapshots - restore to the second one back
-    let snapshots = but_api::legacy::oplog::list_snapshots(ctx, 2, None, None, None)?;
+    // As we snapshot before mutation, undoing the last operation is equivalent to restoring the
+    // latest snapshot.
+    let snapshots = but_api::legacy::oplog::list_snapshots(ctx, 1, None, None, None)?;
 
-    if snapshots.len() < 2 {
+    if snapshots.is_empty() {
         if let Some(out) = out.for_human() {
             let t = theme::get();
             writeln!(
@@ -261,8 +262,7 @@ pub(crate) fn undo_last_operation(
         return Ok(());
     }
 
-    // TODO: Why the second most recent one, and not use the most recent one?
-    let target_snapshot = &snapshots[1];
+    let target_snapshot = &snapshots[0];
 
     let target_operation = target_snapshot
         .details
