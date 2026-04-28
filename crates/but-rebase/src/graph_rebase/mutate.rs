@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context as _, Result, anyhow, bail};
 use but_core::RefMetadata;
 use petgraph::{Direction, visit::EdgeRef};
 use serde::{Deserialize, Serialize};
@@ -795,6 +795,34 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
         );
 
         Ok(())
+    }
+
+    /// Removes all edges between a child and parent, returning the orders of the removed edges.
+    pub fn remove_edges(
+        &mut self,
+        child: impl ToSelector,
+        parent: impl ToSelector,
+    ) -> Result<Vec<usize>> {
+        let child = self.history.normalize_selector(child.to_selector(self)?)?;
+        let parent = self.history.normalize_selector(parent.to_selector(self)?)?;
+
+        let edges = self
+            .graph
+            .edges_directed(child.id, Direction::Outgoing)
+            .filter_map(|e| (e.target() == parent.id).then_some(e.id()))
+            .collect::<Vec<_>>();
+
+        let mut orders = vec![];
+        for edge in edges {
+            let weight = self
+                .graph
+                .remove_edge(edge)
+                .context("BUG: Failed to remove edge")?;
+
+            orders.push(weight.order);
+        }
+
+        Ok(orders)
     }
 }
 
