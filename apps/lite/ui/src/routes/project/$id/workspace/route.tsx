@@ -98,6 +98,7 @@ import {
 	FC,
 	Fragment,
 	ReactNode,
+	Ref,
 	Suspense,
 	useEffect,
 	useLayoutEffect,
@@ -173,6 +174,134 @@ const useProjectPanelFocusManager = () => {
 		focusPanel,
 		panelElementRef,
 	};
+};
+
+const LogPanel: FC<{
+	elementRef: Ref<HTMLDivElement | null>;
+	focusPanel: (panel: PanelType) => void;
+	navigationIndex: NavigationIndex;
+	onAbsorbChanges: (target: AbsorptionTarget) => void;
+}> = ({ elementRef, focusPanel, navigationIndex, onAbsorbChanges }) => {
+	const dispatch = useAppDispatch();
+	const { id: projectId } = Route.useParams();
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+	const selectedItem = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
+	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
+	const workspaceMode = useAppSelector((state) =>
+		selectProjectWorkspaceModeState(state, projectId),
+	);
+	const commit = () =>
+		dispatch(
+			projectActions.enterMoveMode({
+				projectId,
+				source: changesSectionItem,
+			}),
+		);
+
+	useLogSelectionHotkeys({
+		enabled: focusedPanel === "log",
+		navigationIndex,
+		projectId,
+	});
+
+	useHotkey(
+		"T",
+		() => {
+			dispatch(projectActions.openBranchPicker({ projectId }));
+		},
+		{
+			enabled: workspaceMode._tag === "Default",
+			meta: { group: "Log", name: "Branch" },
+		},
+	);
+
+	return (
+		<Panel
+			id={"log" satisfies PanelType}
+			minSize={400}
+			elementRef={elementRef}
+			tabIndex={0}
+			role="tree"
+			aria-activedescendant={treeItemId(projectId, selectedItem)}
+			className={classes(styles.panel, styles.logPanel)}
+		>
+			<div className={styles.sections}>
+				<Changes
+					projectId={projectId}
+					onAbsorbChanges={onAbsorbChanges}
+					onCommit={commit}
+					navigationIndex={navigationIndex}
+				/>
+
+				{headInfo.stacks.map((stack) => (
+					<StackC
+						key={stack.id}
+						projectId={projectId}
+						stack={stack}
+						navigationIndex={navigationIndex}
+						focusPanel={focusPanel}
+					/>
+				))}
+
+				<BaseCommit
+					projectId={projectId}
+					commitId={getCommonBaseCommitId(headInfo)}
+					navigationIndex={navigationIndex}
+				/>
+			</div>
+
+			{Match.value(operationMode).pipe(
+				Match.when(null, () => null),
+				Match.tag("DragAndDrop", () => null),
+				Match.orElse(({ source }) => (
+					<div className={styles.operationModePreview}>
+						<OperationSourceLabel headInfo={headInfo} source={source} />
+					</div>
+				)),
+			)}
+		</Panel>
+	);
+};
+
+const DetailsPanel: FC<{
+	elementRef: Ref<HTMLDivElement | null>;
+	focusPanel: (panel: PanelType) => void;
+}> = ({ elementRef, focusPanel }) => {
+	const dispatch = useAppDispatch();
+	const { id: projectId } = Route.useParams();
+	const selectedItem = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
+	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+
+	useHotkey(
+		"Escape",
+		() => {
+			dispatch(projectActions.hidePanel({ projectId, panel: "details" }));
+			focusPanel("log");
+		},
+		{
+			conflictBehavior: "allow",
+			enabled: focusedPanel === "details",
+			meta: { group: "Details", name: "Close" },
+		},
+	);
+
+	return (
+		<Panel
+			id={"details" satisfies PanelType}
+			minSize={300}
+			defaultSize="70%"
+			elementRef={elementRef}
+			tabIndex={0}
+			className={styles.panel}
+		>
+			<Suspense fallback={<div>Loading details…</div>}>
+				<Details projectId={projectId} selectedItem={selectedItem} />
+			</Suspense>
+		</Panel>
+	);
 };
 
 type HotkeyGroup =
@@ -2286,23 +2415,6 @@ const ProjectPage: FC = () => {
 		},
 	);
 
-	useLogSelectionHotkeys({
-		enabled: effectiveFocusedPanel === "log",
-		navigationIndex,
-		projectId,
-	});
-
-	useHotkey(
-		"T",
-		() => {
-			dispatch(projectActions.openBranchPicker({ projectId }));
-		},
-		{
-			enabled: workspaceMode._tag === "Default",
-			meta: { group: "Log", name: "Branch" },
-		},
-	);
-
 	useHotkey(
 		"H",
 		() => {
@@ -2322,19 +2434,6 @@ const ProjectPage: FC = () => {
 		{
 			enabled: effectiveFocusedPanel !== null,
 			meta: { group: "Panels", name: "Focus next panel", commandPalette: false },
-		},
-	);
-
-	useHotkey(
-		"Escape",
-		() => {
-			dispatch(projectActions.hidePanel({ projectId, panel: "details" }));
-			focusPanel("log");
-		},
-		{
-			conflictBehavior: "allow",
-			enabled: effectiveFocusedPanel === "details",
-			meta: { group: "Details", name: "Close" },
 		},
 	);
 
@@ -2374,76 +2473,19 @@ const ProjectPage: FC = () => {
 		else dispatch(projectActions.closePickerDialog({ projectId }));
 	};
 
-	const commit = () =>
-		dispatch(
-			projectActions.enterMoveMode({
-				projectId,
-				source: changesSectionItem,
-			}),
-		);
-
 	return (
 		<>
 			<Group className={styles.page} defaultLayout={defaultLayout} onLayoutChange={onLayoutChanged}>
-				<Panel
-					id={"log" satisfies PanelType}
-					minSize={400}
+				<LogPanel
 					elementRef={logPanelElementRef}
-					tabIndex={0}
-					role="tree"
-					aria-activedescendant={treeItemId(projectId, selectedItem)}
-					className={classes(styles.panel, styles.logPanel)}
-				>
-					<div className={styles.sections}>
-						<Changes
-							projectId={projectId}
-							onAbsorbChanges={openAbsorptionDialog}
-							onCommit={commit}
-							navigationIndex={navigationIndex}
-						/>
-
-						{headInfo.stacks.map((stack) => (
-							<StackC
-								key={stack.id}
-								projectId={project.id}
-								stack={stack}
-								navigationIndex={navigationIndex}
-								focusPanel={focusPanel}
-							/>
-						))}
-
-						<BaseCommit
-							projectId={projectId}
-							commitId={getCommonBaseCommitId(headInfo)}
-							navigationIndex={navigationIndex}
-						/>
-					</div>
-
-					{Match.value(operationMode).pipe(
-						Match.when(null, () => null),
-						Match.tag("DragAndDrop", () => null),
-						Match.orElse(({ source }) => (
-							<div className={styles.operationModePreview}>
-								<OperationSourceLabel headInfo={headInfo} source={source} />
-							</div>
-						)),
-					)}
-				</Panel>
+					focusPanel={focusPanel}
+					navigationIndex={navigationIndex}
+					onAbsorbChanges={openAbsorptionDialog}
+				/>
 				{isPanelVisible(layoutState, "details") && (
 					<>
 						<Separator className={styles.panelResizeHandle} />
-						<Panel
-							id={"details" satisfies PanelType}
-							minSize={300}
-							defaultSize="70%"
-							elementRef={panelElementRef("details")}
-							tabIndex={0}
-							className={styles.panel}
-						>
-							<Suspense fallback={<div>Loading details…</div>}>
-								<Details projectId={projectId} selectedItem={selectedItem} />
-							</Suspense>
-						</Panel>
+						<DetailsPanel elementRef={panelElementRef("details")} focusPanel={focusPanel} />
 					</>
 				)}
 			</Group>
