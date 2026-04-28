@@ -376,7 +376,7 @@ git clone remote complex-branch-checkout
 (cd complex-branch-checkout
   git switch -c my_stack
   echo "this is a" > a
-  git add a && git commit -m "add a" --trailer ""
+  git add a && git commit -m "add a"
   set_change_id "$(git rev-parse HEAD)" "change-id-1" "my_stack"
 
   echo "this is b" > b

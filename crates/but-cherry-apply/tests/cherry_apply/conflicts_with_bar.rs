@@ -15,13 +15,7 @@ fn status_is_locked_to_bar() -> anyhow::Result<()> {
     drop(repo);
     let status = test_ctx.get_status(commit_id)?;
 
-    let bar_id = test_ctx
-        .handle
-        .list_stacks_in_workspace()?
-        .iter()
-        .find(|s| s.name() == "bar")
-        .unwrap()
-        .id;
+    let bar_id = test_ctx.stack_id("bar")?;
 
     assert_eq!(status, CherryApplyStatus::LockedToStack(bar_id));
 
@@ -37,16 +31,10 @@ fn can_only_apply_to_bar_stack() -> anyhow::Result<()> {
         .rev_parse_single("refs/gitbutler/bar-conflict")?
         .detach();
 
-    let bar_id = test_ctx
-        .handle
-        .list_stacks_in_workspace()?
-        .iter()
-        .find(|s| s.name() == "bar")
-        .unwrap()
-        .id;
+    drop(repo);
+    let bar_id = test_ctx.stack_id("bar")?;
 
     // Apply to bar should succeed
-    drop(repo);
     test_ctx.apply(commit_id, bar_id)?;
 
     // Verify the commit is now in the bar stack by checking for its message
