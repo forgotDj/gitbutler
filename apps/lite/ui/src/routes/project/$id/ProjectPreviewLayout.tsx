@@ -1,32 +1,32 @@
-import { FC, ReactNode, useRef, useSyncExternalStore } from "react";
+import { FC, ReactNode, useRef } from "react";
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import {
 	isPanelVisible,
 	orderedPanels,
 	Panel as PanelType,
 } from "#ui/routes/project/$id/state/layout.ts";
-import { selectProjectLayoutState } from "#ui/routes/project/$id/state/projectSlice.ts";
+import {
+	selectProjectLayoutState,
+	selectProjectPromptState,
+} from "#ui/routes/project/$id/state/projectSlice.ts";
 import { useAppSelector } from "#ui/state/hooks.ts";
 import styles from "./ProjectPreviewLayout.module.css";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import { classes } from "#ui/classes.ts";
+import { useActiveElement } from "#ui/focus.ts";
 
-const subscribeToFocus = (onStoreChange: () => void) => {
-	window.addEventListener("focusin", onStoreChange);
-	window.addEventListener("focusout", onStoreChange);
-
-	return () => {
-		window.removeEventListener("focusin", onStoreChange);
-		window.removeEventListener("focusout", onStoreChange);
-	};
-};
-
-const getFocusedProjectPanel = () =>
-	(document.activeElement?.closest("[data-panel]")?.id as PanelType | undefined) ?? null;
+const getFocusedProjectPanel = (activeElement: Element | null) =>
+	(activeElement?.closest("[data-panel]")?.id as PanelType | undefined) ?? null;
 
 export const useFocusedProjectPanel = (): PanelType | null => {
-	const getSnapshot = () => getFocusedProjectPanel();
-	return useSyncExternalStore(subscribeToFocus, getSnapshot, () => null);
+	const activeElement = useActiveElement();
+	return getFocusedProjectPanel(activeElement);
+};
+
+export const useEffectiveFocusedProjectPanel = (projectId: string): PanelType | null => {
+	const focusedPanel = useFocusedProjectPanel();
+	const prompt = useAppSelector((state) => selectProjectPromptState(state, projectId));
+	return prompt._tag === "CommandPalette" ? prompt.focusedPanel : focusedPanel;
 };
 
 export const useProjectPanelFocusManager = () => {
@@ -41,7 +41,7 @@ export const useProjectPanelFocusManager = () => {
 		panelElementsRef.current.get(panel)?.focus({ focusVisible: false });
 	};
 	const focusAdjacentPanel = (offset: -1 | 1) => {
-		const currentPanel = getFocusedProjectPanel();
+		const currentPanel = getFocusedProjectPanel(document.activeElement);
 		if (currentPanel === null) return;
 		const nextPanel = orderedPanels[orderedPanels.indexOf(currentPanel) + offset];
 		if (nextPanel === undefined) return;
@@ -57,11 +57,11 @@ export const useProjectPanelFocusManager = () => {
 
 export const ProjectPreviewLayout: FC<{
 	projectId: string;
-	primaryActiveDescendantId?: string;
+	logActiveDescendantId?: string;
 	children: ReactNode;
-	show: ReactNode | null;
+	details: ReactNode | null;
 	panelElementRef: (panel: PanelType) => (element: HTMLDivElement | null) => void;
-}> = ({ primaryActiveDescendantId, children, panelElementRef, projectId, show }) => {
+}> = ({ logActiveDescendantId, children, details, panelElementRef, projectId }) => {
 	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
 		id: `project:${projectId}:layout`,
@@ -71,30 +71,30 @@ export const ProjectPreviewLayout: FC<{
 	return (
 		<Group className={styles.page} defaultLayout={defaultLayout} onLayoutChange={onLayoutChanged}>
 			<Panel
-				id={"primary" satisfies PanelType}
+				id={"log" satisfies PanelType}
 				minSize={400}
-				elementRef={useMergedRefs(panelElementRef("primary"), (el) =>
+				elementRef={useMergedRefs(panelElementRef("log"), (el) =>
 					el?.focus({ focusVisible: false }),
 				)}
 				tabIndex={0}
 				role="tree"
-				aria-activedescendant={primaryActiveDescendantId}
-				className={classes(styles.panel, styles.primaryPanel)}
+				aria-activedescendant={logActiveDescendantId}
+				className={classes(styles.panel, styles.logPanel)}
 			>
 				{children}
 			</Panel>
-			{isPanelVisible(layoutState, "show") && (
+			{isPanelVisible(layoutState, "details") && (
 				<>
 					<Separator className={styles.panelResizeHandle} />
 					<Panel
-						id={"show" satisfies PanelType}
+						id={"details" satisfies PanelType}
 						minSize={300}
 						defaultSize="70%"
-						elementRef={panelElementRef("show")}
+						elementRef={panelElementRef("details")}
 						tabIndex={0}
 						className={styles.panel}
 					>
-						{show}
+						{details}
 					</Panel>
 				</>
 			)}

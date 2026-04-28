@@ -1,7 +1,9 @@
 import { classes } from "#ui/classes.ts";
 import { getOperation, operationLabel, useRunOperation, type Operation } from "#ui/Operation.ts";
+import { ShortcutButton } from "#ui/ShortcutButton.tsx";
 import uiStyles from "#ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
+import { useHotkeys } from "@tanstack/react-hotkeys";
 import { FC } from "react";
 import styles from "./OperationTooltip.module.css";
 import { Item, itemEquals } from "./Item";
@@ -16,7 +18,8 @@ import { Match } from "effect";
 const OperationModeControls: FC<{
 	projectId: string;
 	operation: Operation | null;
-}> = ({ projectId, operation }) => {
+	isActive: boolean;
+}> = ({ projectId, operation, isActive }) => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
 
@@ -30,16 +33,38 @@ const OperationModeControls: FC<{
 
 	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
 
+	useHotkeys(
+		[
+			{
+				hotkey: "Enter",
+				callback: confirm,
+				options: {
+					enabled: operation !== null,
+					meta: { group: "Operation mode", name: "Confirm" },
+				},
+			},
+			{
+				hotkey: "Escape",
+				callback: cancel,
+				options: { meta: { group: "Operation mode", name: "Cancel" } },
+			},
+		],
+		{
+			conflictBehavior: "allow",
+			enabled: isActive,
+		},
+	);
+
 	return (
 		<>
 			{operation && (
-				<button type="button" className={uiStyles.button} onClick={confirm}>
+				<ShortcutButton hotkey="Enter" onClick={confirm}>
 					Confirm
-				</button>
+				</ShortcutButton>
 			)}
-			<button type="button" className={uiStyles.button} onClick={cancel}>
+			<ShortcutButton hotkey="Escape" onClick={cancel}>
 				Cancel
-			</button>
+			</ShortcutButton>
 		</>
 	);
 };
@@ -71,6 +96,7 @@ export const OperationTooltip: FC<
 	const trigger = useRender({ render, props });
 
 	const showControls =
+		isActive &&
 		!!operationMode &&
 		Match.value(operationMode).pipe(
 			Match.tagsExhaustive({
@@ -82,7 +108,7 @@ export const OperationTooltip: FC<
 
 	return (
 		<Tooltip.Root
-			open={!!tooltipLabel}
+			open={!!tooltipLabel || showControls}
 			disableHoverablePopup={!showControls}
 			onOpenChange={(_open, eventDetails) => {
 				eventDetails.allowPropagation();
@@ -93,7 +119,13 @@ export const OperationTooltip: FC<
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip, styles.popup)}>
 						{tooltipLabel}
-						{showControls && <OperationModeControls projectId={projectId} operation={operation} />}
+						{showControls && (
+							<OperationModeControls
+								projectId={projectId}
+								operation={operation}
+								isActive={isActive}
+							/>
+						)}
 					</Tooltip.Popup>
 				</Tooltip.Positioner>
 			</Tooltip.Portal>

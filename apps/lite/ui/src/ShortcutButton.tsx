@@ -1,29 +1,26 @@
 import { classes } from "#ui/classes.ts";
-import { mergeProps, Tooltip, useRender } from "@base-ui/react";
-import { FC } from "react";
-import { bindingButtonLabel, ShortcutActionBase, ShortcutBinding } from "#ui/shortcuts.ts";
 import uiStyles from "#ui/ui.module.css";
+import { Tooltip } from "@base-ui/react";
+import { formatForDisplay } from "@tanstack/react-hotkeys";
+import { ComponentPropsWithoutRef, FC } from "react";
 
-type ShortcutButtonProps = {
-	binding: ShortcutBinding<ShortcutActionBase>;
-} & useRender.ComponentProps<"button">;
-
-export const ShortcutButton: FC<ShortcutButtonProps> = ({ binding, render, ...props }) => {
-	const tooltip = bindingButtonLabel(binding);
-	const trigger = useRender({
-		render,
-		defaultTagName: "button",
-		props: mergeProps<"button">({ "aria-label": tooltip }, props),
-	});
+export const ShortcutButton: FC<
+	Omit<ComponentPropsWithoutRef<"button">, "children"> & {
+		children: string;
+		hotkey: string;
+	}
+> = ({ children, hotkey, ...props }) => {
+	const tooltip = `${children} (${formatForDisplay(hotkey)})`;
 
 	return (
-		<Tooltip.Root
-			// Prevent tooltip from continuing to show when mouse moves from one
-			// selected item to another.
-			// [tag:tooltip-disable-hoverable-popup]
-			disableHoverablePopup
-		>
-			<Tooltip.Trigger render={trigger} />
+		<Tooltip.Root>
+			<Tooltip.Trigger
+				{...props}
+				className={classes(uiStyles.button, props.className)}
+				aria-label={props["aria-label"] ?? tooltip}
+			>
+				{children}
+			</Tooltip.Trigger>
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>

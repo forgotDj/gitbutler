@@ -1,17 +1,18 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { HotkeysProvider, useHotkey } from "@tanstack/react-hotkeys";
 import { Outlet, useMatch, useNavigate } from "@tanstack/react-router";
-import { FC, useState } from "react";
+import { FC } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext } from "@tanstack/react-router";
-import { ShortcutButton } from "#ui/ShortcutButton.tsx";
-import { ShortcutsBarPortalContext } from "#ui/routes/project/$id/ShortcutsBar.tsx";
+import { useFocusedProjectPanel } from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
+import { ShortcutsBar } from "#ui/routes/project/$id/ShortcutsBar.tsx";
 import { isPanelVisible } from "#ui/routes/project/$id/state/layout.ts";
+import { ShortcutButton } from "#ui/ShortcutButton.tsx";
 import {
 	projectActions,
 	selectProjectLayoutState,
 } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
-import { toggleShowBinding } from "#ui/routes/project/$id/workspace/WorkspaceShortcuts.ts";
 import uiStyles from "#ui/ui.module.css";
 import styles from "./__root.module.css";
 import { listProjectsQueryOptions } from "#ui/api/queries.ts";
@@ -64,17 +65,32 @@ const TopBarActions: FC = () => {
 		from: "/project/$id",
 	}).params.id;
 	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
+	const focusedPanel = useFocusedProjectPanel();
+	const toggleDetails = () => {
+		if (focusedPanel === "details" && isPanelVisible(layoutState, "details")) {
+			const detailsPanelIndex = layoutState.visiblePanels.indexOf("details");
+			const nextPanel = layoutState.visiblePanels[detailsPanelIndex - 1];
+			if (nextPanel !== undefined)
+				document.getElementById(nextPanel)?.focus({ focusVisible: false });
+		}
+
+		dispatch(projectActions.togglePanel({ projectId, panel: "details" }));
+	};
+
+	const toggleDetailsHotkey = "P";
+
+	useHotkey(toggleDetailsHotkey, toggleDetails, {
+		meta: { group: "Details", name: isPanelVisible(layoutState, "details") ? "Close" : "Open" },
+	});
 
 	return (
 		<div className={styles.topBarActions}>
 			<ShortcutButton
-				binding={toggleShowBinding}
-				type="button"
-				className={uiStyles.button}
-				aria-pressed={isPanelVisible(layoutState, "show")}
-				onClick={() => dispatch(projectActions.togglePanel({ projectId, panel: "show" }))}
+				hotkey={toggleDetailsHotkey}
+				aria-pressed={isPanelVisible(layoutState, "details")}
+				onClick={toggleDetails}
 			>
-				{toggleShowBinding.description}
+				Details
 			</ShortcutButton>
 		</div>
 	);
@@ -94,21 +110,19 @@ const TopBar: FC = () => {
 	);
 };
 
-const RootLayout: FC = () => {
-	const [shortcutsBarPortalNode, setShortcutsBarPortalNode] = useState<HTMLElement | null>(null);
-
-	return (
-		<ShortcutsBarPortalContext value={shortcutsBarPortalNode}>
-			<main className={styles.layout}>
-				<TopBar />
-				<section className={styles.content}>
-					<Outlet />
-				</section>
-				<footer className={styles.shortcutsBarFooter} ref={setShortcutsBarPortalNode} />
-			</main>
-		</ShortcutsBarPortalContext>
-	);
-};
+const RootLayout: FC = () => (
+	<HotkeysProvider>
+		<main className={styles.layout}>
+			<TopBar />
+			<section className={styles.content}>
+				<Outlet />
+			</section>
+			<footer className={styles.shortcutsBarFooter}>
+				<ShortcutsBar />
+			</footer>
+		</main>
+	</HotkeysProvider>
+);
 
 export const Route = createRootRouteWithContext<RouteContext>()({
 	component: RootLayout,
