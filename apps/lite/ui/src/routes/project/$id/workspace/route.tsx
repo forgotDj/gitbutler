@@ -175,53 +175,6 @@ const useProjectPanelFocusManager = () => {
 	};
 };
 
-const ProjectPreviewLayout: FC<{
-	projectId: string;
-	logActiveDescendantId?: string;
-	children: ReactNode;
-	details: ReactNode | null;
-	panelElementRef: (panel: PanelType) => (element: HTMLDivElement | null) => void;
-}> = ({ logActiveDescendantId, children, details, panelElementRef, projectId }) => {
-	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
-	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
-		id: `project:${projectId}:layout`,
-		panelIds: layoutState.visiblePanels,
-	});
-
-	return (
-		<Group className={styles.page} defaultLayout={defaultLayout} onLayoutChange={onLayoutChanged}>
-			<Panel
-				id={"log" satisfies PanelType}
-				minSize={400}
-				elementRef={useMergedRefs(panelElementRef("log"), (el) =>
-					el?.focus({ focusVisible: false }),
-				)}
-				tabIndex={0}
-				role="tree"
-				aria-activedescendant={logActiveDescendantId}
-				className={classes(styles.panel, styles.logPanel)}
-			>
-				{children}
-			</Panel>
-			{isPanelVisible(layoutState, "details") && (
-				<>
-					<Separator className={styles.panelResizeHandle} />
-					<Panel
-						id={"details" satisfies PanelType}
-						minSize={300}
-						defaultSize="70%"
-						elementRef={panelElementRef("details")}
-						tabIndex={0}
-						className={styles.panel}
-					>
-						{details}
-					</Panel>
-				</>
-			)}
-		</Group>
-	);
-};
-
 type HotkeyGroup =
 	| "Branch"
 	| "Changes file"
@@ -2250,6 +2203,7 @@ const ProjectPage: FC = () => {
 		selectProjectExpandedCommitId(state, projectId),
 	);
 	const pickerDialog = useAppSelector((state) => selectProjectPickerDialogState(state, projectId));
+	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
@@ -2384,6 +2338,14 @@ const ProjectPage: FC = () => {
 		},
 	);
 
+	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+		id: `project:${projectId}:layout`,
+		panelIds: layoutState.visiblePanels,
+	});
+	const logPanelElementRef = useMergedRefs(panelElementRef("log"), (el) =>
+		el?.focus({ focusVisible: false }),
+	);
+
 	// TODO: handle project not found error. or only run when project is not null? waterfall.
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 
@@ -2422,51 +2384,69 @@ const ProjectPage: FC = () => {
 
 	return (
 		<>
-			<ProjectPreviewLayout
-				projectId={projectId}
-				logActiveDescendantId={treeItemId(projectId, selectedItem)}
-				panelElementRef={panelElementRef}
-				details={
-					<Suspense fallback={<div>Loading details…</div>}>
-						<Details projectId={projectId} selectedItem={selectedItem} />
-					</Suspense>
-				}
-			>
-				<div className={styles.sections}>
-					<Changes
-						projectId={projectId}
-						onAbsorbChanges={openAbsorptionDialog}
-						onCommit={commit}
-						navigationIndex={navigationIndex}
-					/>
-
-					{headInfo.stacks.map((stack) => (
-						<StackC
-							key={stack.id}
-							projectId={project.id}
-							stack={stack}
+			<Group className={styles.page} defaultLayout={defaultLayout} onLayoutChange={onLayoutChanged}>
+				<Panel
+					id={"log" satisfies PanelType}
+					minSize={400}
+					elementRef={logPanelElementRef}
+					tabIndex={0}
+					role="tree"
+					aria-activedescendant={treeItemId(projectId, selectedItem)}
+					className={classes(styles.panel, styles.logPanel)}
+				>
+					<div className={styles.sections}>
+						<Changes
+							projectId={projectId}
+							onAbsorbChanges={openAbsorptionDialog}
+							onCommit={commit}
 							navigationIndex={navigationIndex}
-							focusPanel={focusPanel}
 						/>
-					))}
 
-					<BaseCommit
-						projectId={projectId}
-						commitId={getCommonBaseCommitId(headInfo)}
-						navigationIndex={navigationIndex}
-					/>
-				</div>
+						{headInfo.stacks.map((stack) => (
+							<StackC
+								key={stack.id}
+								projectId={project.id}
+								stack={stack}
+								navigationIndex={navigationIndex}
+								focusPanel={focusPanel}
+							/>
+						))}
 
-				{Match.value(operationMode).pipe(
-					Match.when(null, () => null),
-					Match.tag("DragAndDrop", () => null),
-					Match.orElse(({ source }) => (
-						<div className={styles.operationModePreview}>
-							<OperationSourceLabel headInfo={headInfo} source={source} />
-						</div>
-					)),
+						<BaseCommit
+							projectId={projectId}
+							commitId={getCommonBaseCommitId(headInfo)}
+							navigationIndex={navigationIndex}
+						/>
+					</div>
+
+					{Match.value(operationMode).pipe(
+						Match.when(null, () => null),
+						Match.tag("DragAndDrop", () => null),
+						Match.orElse(({ source }) => (
+							<div className={styles.operationModePreview}>
+								<OperationSourceLabel headInfo={headInfo} source={source} />
+							</div>
+						)),
+					)}
+				</Panel>
+				{isPanelVisible(layoutState, "details") && (
+					<>
+						<Separator className={styles.panelResizeHandle} />
+						<Panel
+							id={"details" satisfies PanelType}
+							minSize={300}
+							defaultSize="70%"
+							elementRef={panelElementRef("details")}
+							tabIndex={0}
+							className={styles.panel}
+						>
+							<Suspense fallback={<div>Loading details…</div>}>
+								<Details projectId={projectId} selectedItem={selectedItem} />
+							</Suspense>
+						</Panel>
+					</>
 				)}
-			</ProjectPreviewLayout>
+			</Group>
 
 			{absorptionTarget && (
 				<AbsorptionDialog
