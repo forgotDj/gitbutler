@@ -1,10 +1,9 @@
-import { PatchDiff } from "@pierre/diffs/react";
 import {
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
 	commitRewordMutationOptions,
-	updateBranchNameMutationOptions,
 	unapplyStackMutationOptions,
+	updateBranchNameMutationOptions,
 } from "#ui/api/mutations.ts";
 import {
 	absorptionPlanQueryOptions,
@@ -17,7 +16,6 @@ import {
 	treeChangeDiffsQueryOptions,
 } from "#ui/api/queries.ts";
 import { classes } from "#ui/classes.ts";
-import { DependencyIcon, ExpandCollapseIcon, MenuTriggerIcon, PushIcon } from "#ui/icons.tsx";
 import {
 	branchFileParent,
 	changesFileParent,
@@ -25,12 +23,29 @@ import {
 	type FileParent,
 } from "#ui/domain/FileParent.ts";
 import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
+import { DependencyIcon, ExpandCollapseIcon, MenuTriggerIcon, PushIcon } from "#ui/icons.tsx";
 import {
-	useEffectiveFocusedProjectPanel,
+	showNativeContextMenu,
+	showNativeMenuFromTrigger,
+	type NativeMenuItem,
+} from "#ui/native-menu.ts";
+import {
 	ProjectPreviewLayout,
+	useEffectiveFocusedProjectPanel,
 	useFocusedProjectPanel,
 	useProjectPanelFocusManager,
 } from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
+import { Route as projectRoute } from "#ui/routes/project/$id/route.tsx";
+import {
+	assert,
+	CommitLabel,
+	commitTitle,
+	decodeRefName,
+	encodeRefName,
+	formatHunkHeader,
+	shortCommitId,
+} from "#ui/routes/project/$id/shared.tsx";
+import { Panel } from "#ui/routes/project/$id/state/layout.ts";
 import {
 	projectActions,
 	selectProjectExpandedCommitId,
@@ -42,22 +57,9 @@ import {
 } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/Absorption.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
-import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
-import {
-	formatHunkHeader,
-	CommitLabel,
-	shortCommitId,
-	decodeRefName,
-	encodeRefName,
-	assert,
-	commitTitle,
-} from "#ui/routes/project/$id/shared.tsx";
-import {
-	type NativeMenuItem,
-	showNativeContextMenu,
-	showNativeMenuFromTrigger,
-} from "#ui/native-menu.ts";
+import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
+import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import uiStyles from "#ui/ui.module.css";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
@@ -73,12 +75,7 @@ import {
 	TreeChange,
 	UnifiedPatch,
 } from "@gitbutler/but-sdk";
-import {
-	useMutation,
-	useQueryClient,
-	useSuspenseQueries,
-	useSuspenseQuery,
-} from "@tanstack/react-query";
+import { PatchDiff } from "@pierre/diffs/react";
 import {
 	formatForDisplay,
 	getHotkeyManager,
@@ -87,6 +84,12 @@ import {
 	useHotkeys,
 	type HotkeyRegistrationView,
 } from "@tanstack/react-hotkeys";
+import {
+	useMutation,
+	useQueryClient,
+	useSuspenseQueries,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
 import { createRoute } from "@tanstack/react-router";
 import { Array, Match, pipe } from "effect";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
@@ -103,22 +106,23 @@ import {
 	useState,
 	useTransition,
 } from "react";
-import { Route as projectRoute } from "#ui/routes/project/$id/route.tsx";
-import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import {
-	branchItem,
 	baseCommitItem,
+	branchItem,
 	changesSectionItem,
-	type BranchItem,
-	type CommitItem,
 	commitItem,
 	fileItem,
+	hunkItem,
 	itemEquals,
 	itemIdentityKey,
-	type Item,
 	stackItem,
-	hunkItem,
+	type BranchItem,
+	type CommitItem,
+	type Item,
 } from "./Item.ts";
+import { PickerDialog, type PickerDialogGroup } from "./PickerDialog.tsx";
+import styles from "./route.module.css";
+import { includeItemForWorkspaceMode, isValidWorkspaceMode } from "./WorkspaceMode.ts";
 import {
 	buildNavigationIndex,
 	filterNavigationIndex,
@@ -126,13 +130,9 @@ import {
 	getNextSection,
 	getPreviousSection,
 	navigationIndexIncludes,
-	type NavigationIndex,
 	useWorkspaceOutline,
+	type NavigationIndex,
 } from "./WorkspaceModel.ts";
-import { PickerDialog, type PickerDialogGroup } from "./PickerDialog.tsx";
-import styles from "./route.module.css";
-import { includeItemForWorkspaceMode, isValidWorkspaceMode } from "./WorkspaceMode.ts";
-import { Panel } from "#ui/routes/project/$id/state/layout.ts";
 
 type HotkeyGroup =
 	| "Branch"
