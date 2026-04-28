@@ -6,15 +6,15 @@ import { Autocomplete } from "@base-ui/react/autocomplete";
 import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
 import { useRef } from "react";
-import styles from "./CommandPalette.module.css";
+import styles from "./PickerDialog.module.css";
 
 /** @public */
-export type CommandPaletteGroup<Item> = {
+export type PickerDialogGroup<Item> = {
 	value: string;
 	items: Array<Item>;
 };
 
-export const CommandPalette = <Item,>({
+export const PickerDialog = <Item,>({
 	ariaLabel,
 	closeLabel,
 	emptyLabel,
@@ -33,9 +33,9 @@ export const CommandPalette = <Item,>({
 	emptyLabel: string;
 	getItemKey: (item: Item) => string;
 	getItemLabel: (item: Item) => string;
-	getItemType: (item: Item, group: CommandPaletteGroup<Item>) => string | undefined;
+	getItemType: (item: Item, group: PickerDialogGroup<Item>) => string | undefined;
 	itemToStringValue?: (item: Item) => string;
-	items: Array<CommandPaletteGroup<Item>>;
+	items: Array<PickerDialogGroup<Item>>;
 	onOpenChange: (open: boolean) => void;
 	onSelectItem: (item: Item) => void;
 	open: boolean;
@@ -73,7 +73,7 @@ export const CommandPalette = <Item,>({
 										</Autocomplete.Empty>
 
 										<Autocomplete.List className={styles.list}>
-											{(group: CommandPaletteGroup<Item>) => (
+											{(group: PickerDialogGroup<Item>) => (
 												<Autocomplete.Group
 													key={group.value}
 													items={group.items}

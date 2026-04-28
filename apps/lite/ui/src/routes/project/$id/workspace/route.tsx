@@ -117,7 +117,6 @@ import {
 	type NavigationIndex,
 	useWorkspaceOutline,
 } from "./WorkspaceModel.ts";
-import { CommandPalette } from "./CommandPalette.tsx";
 import {
 	getScopeBindings,
 	getScopeLabel,
@@ -135,6 +134,7 @@ import {
 	type WorkspaceMode,
 } from "./WorkspaceMode.ts";
 import { Panel } from "#ui/routes/project/$id/state/layout.ts";
+import { PickerDialog } from "#ui/routes/project/$id/workspace/PickerDialog.tsx";
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 
@@ -1760,7 +1760,7 @@ const BranchPicker: FC<{
 	};
 
 	return (
-		<CommandPalette
+		<PickerDialog
 			ariaLabel="Select branch"
 			closeLabel="Close branch picker"
 			emptyLabel="No results found."
