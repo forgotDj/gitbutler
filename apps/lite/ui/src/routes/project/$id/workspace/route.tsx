@@ -36,7 +36,7 @@ import {
 	selectProjectExpandedCommitId,
 	selectProjectHighlightedCommitIds,
 	selectProjectOperationModeState,
-	selectProjectPromptState,
+	selectProjectPickerDialogState,
 	selectProjectSelectedItem,
 	selectProjectWorkspaceModeState,
 } from "#ui/routes/project/$id/state/projectSlice.ts";
@@ -2161,7 +2161,7 @@ const ProjectPage: FC = () => {
 	const expandedCommitId = useAppSelector((state) =>
 		selectProjectExpandedCommitId(state, projectId),
 	);
-	const prompt = useAppSelector((state) => selectProjectPromptState(state, projectId));
+	const pickerDialog = useAppSelector((state) => selectProjectPickerDialogState(state, projectId));
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
@@ -2234,7 +2234,8 @@ const ProjectPage: FC = () => {
 	useHotkey(
 		"Mod+K",
 		() => {
-			if (prompt._tag === "CommandPalette") dispatch(projectActions.closePrompt({ projectId }));
+			if (pickerDialog._tag === "CommandPalette")
+				dispatch(projectActions.closePickerDialog({ projectId }));
 			else dispatch(projectActions.openCommandPalette({ projectId, focusedPanel }));
 		},
 		{
@@ -2315,12 +2316,12 @@ const ProjectPage: FC = () => {
 
 	const setBranchPickerOpen = (open: boolean) => {
 		if (open) dispatch(projectActions.openBranchPicker({ projectId }));
-		else dispatch(projectActions.closePrompt({ projectId }));
+		else dispatch(projectActions.closePickerDialog({ projectId }));
 	};
 
 	const setCommandPaletteOpen = (open: boolean) => {
 		if (open) dispatch(projectActions.openCommandPalette({ projectId, focusedPanel }));
-		else dispatch(projectActions.closePrompt({ projectId }));
+		else dispatch(projectActions.closePickerDialog({ projectId }));
 	};
 
 	const commit = () =>
@@ -2389,7 +2390,7 @@ const ProjectPage: FC = () => {
 				/>
 			)}
 
-			{Match.value(prompt).pipe(
+			{Match.value(pickerDialog).pipe(
 				Match.tagsExhaustive({
 					None: () => null,
 					BranchPicker: () => (

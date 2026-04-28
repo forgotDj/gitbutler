@@ -5,14 +5,14 @@ import * as layout from "./layout.ts";
 import * as workspace from "./workspace.ts";
 import { OperationType } from "#ui/Operation.ts";
 
-type Prompt =
+type PickerDialog =
 	| { _tag: "None" }
 	| { _tag: "BranchPicker" }
 	| { _tag: "CommandPalette"; focusedPanel: layout.Panel | null };
 
 type ProjectState = {
 	layout: layout.ProjectLayoutState;
-	prompt: Prompt;
+	pickerDialog: PickerDialog;
 	workspace: workspace.WorkspaceState;
 };
 
@@ -22,7 +22,7 @@ type ProjectSliceState = {
 
 const initialProjectState: ProjectState = {
 	layout: layout.initialState,
-	prompt: { _tag: "None" },
+	pickerDialog: { _tag: "None" },
 	workspace: workspace.initialState,
 };
 
@@ -32,7 +32,7 @@ const initialState: ProjectSliceState = {
 
 const createProjectState = (): ProjectState => ({
 	layout: layout.createInitialState(),
-	prompt: { _tag: "None" },
+	pickerDialog: { _tag: "None" },
 	workspace: workspace.createInitialState(),
 });
 
@@ -154,18 +154,18 @@ const projectSlice = createSlice({
 			}>,
 		) => {
 			const { projectId, focusedPanel } = action.payload;
-			ensureProjectState(state, projectId).prompt = {
+			ensureProjectState(state, projectId).pickerDialog = {
 				_tag: "CommandPalette",
 				focusedPanel,
 			};
 		},
 		openBranchPicker: (state, action: PayloadAction<{ projectId: string }>) => {
-			ensureProjectState(state, action.payload.projectId).prompt = {
+			ensureProjectState(state, action.payload.projectId).pickerDialog = {
 				_tag: "BranchPicker",
 			};
 		},
-		closePrompt: (state, action: PayloadAction<{ projectId: string }>) => {
-			ensureProjectState(state, action.payload.projectId).prompt = { _tag: "None" };
+		closePickerDialog: (state, action: PayloadAction<{ projectId: string }>) => {
+			ensureProjectState(state, action.payload.projectId).pickerDialog = { _tag: "None" };
 		},
 	},
 });
@@ -179,8 +179,8 @@ const selectProjectState = (state: RootState, projectId: string): ProjectState =
 export const selectProjectLayoutState = (state: RootState, projectId: string) =>
 	selectProjectState(state, projectId).layout;
 
-export const selectProjectPromptState = (state: RootState, projectId: string) =>
-	selectProjectState(state, projectId).prompt;
+export const selectProjectPickerDialogState = (state: RootState, projectId: string) =>
+	selectProjectState(state, projectId).pickerDialog;
 
 const selectProjectWorkspaceState = (state: RootState, projectId: string) =>
 	selectProjectState(state, projectId).workspace;
