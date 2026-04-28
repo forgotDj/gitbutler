@@ -71,6 +71,7 @@ export const OperationTooltip: FC<
 	const trigger = useRender({ render, props });
 
 	const showControls =
+		isActive &&
 		!!operationMode &&
 		Match.value(operationMode).pipe(
 			Match.tagsExhaustive({
@@ -82,7 +83,7 @@ export const OperationTooltip: FC<
 
 	return (
 		<Tooltip.Root
-			open={!!tooltipLabel}
+			open={!!tooltipLabel || showControls}
 			disableHoverablePopup={!showControls}
 			onOpenChange={(_open, eventDetails) => {
 				eventDetails.allowPropagation();
