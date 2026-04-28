@@ -190,9 +190,6 @@ const LogPanel: FC<{
 	const operationMode = useAppSelector((state) =>
 		selectProjectOperationModeState(state, projectId),
 	);
-	const workspaceMode = useAppSelector((state) =>
-		selectProjectWorkspaceModeState(state, projectId),
-	);
 	const commit = () =>
 		dispatch(
 			projectActions.enterMoveMode({
@@ -206,17 +203,6 @@ const LogPanel: FC<{
 		navigationIndex,
 		projectId,
 	});
-
-	useHotkey(
-		"T",
-		() => {
-			dispatch(projectActions.openBranchPicker({ projectId }));
-		},
-		{
-			enabled: workspaceMode._tag === "Default",
-			meta: { group: "Log", name: "Branch" },
-		},
-	);
 
 	return (
 		<Panel
@@ -313,7 +299,6 @@ type HotkeyGroup =
 	| "Details"
 	| "Global"
 	| "Log selection"
-	| "Log"
 	| "Operation mode"
 	| "Panels"
 	| "Rename branch"
@@ -470,6 +455,17 @@ const useLogSelectionHotkeys = ({
 
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
+	);
+
+	useHotkey(
+		"T",
+		() => {
+			dispatch(projectActions.openBranchPicker({ projectId }));
+		},
+		{
+			enabled: workspaceMode._tag === "Default",
+			meta: { group: "Log selection", name: "Branch" },
+		},
 	);
 
 	useHotkeys(
