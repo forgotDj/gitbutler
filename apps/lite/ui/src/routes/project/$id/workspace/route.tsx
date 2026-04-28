@@ -131,11 +131,7 @@ import {
 } from "./WorkspaceModel.ts";
 import { PickerDialog, type PickerDialogGroup } from "./PickerDialog.tsx";
 import styles from "./route.module.css";
-import {
-	includeItemForWorkspaceMode,
-	isValidWorkspaceMode,
-	type WorkspaceMode,
-} from "./WorkspaceMode.ts";
+import { includeItemForWorkspaceMode, isValidWorkspaceMode } from "./WorkspaceMode.ts";
 import { Panel } from "#ui/routes/project/$id/state/layout.ts";
 
 type HotkeyGroup =
@@ -1039,25 +1035,18 @@ const InlineRewordCommit: FC<{
 const CommitRow: FC<
 	{
 		commit: Commit;
-		workspaceMode: WorkspaceMode;
 		isExpanded: boolean;
 		projectId: string;
 		stackId: string;
 		navigationIndex: NavigationIndex;
 		focusPanel: (panel: Panel) => void;
 	} & ComponentProps<"div">
-> = ({
-	commit,
-	workspaceMode,
-	isExpanded,
-	projectId,
-	stackId,
-	navigationIndex,
-	focusPanel,
-	...restProps
-}) => {
+> = ({ commit, isExpanded, projectId, stackId, navigationIndex, focusPanel, ...restProps }) => {
 	const isHighlighted = useAppSelector((state) =>
 		selectProjectHighlightedCommitIds(state, projectId).includes(commit.id),
+	);
+	const workspaceMode = useAppSelector((state) =>
+		selectProjectWorkspaceModeState(state, projectId),
 	);
 
 	const dispatch = useAppDispatch();
@@ -1383,12 +1372,11 @@ const CommitFileRow: FC<{
 
 const CommitC: FC<{
 	commit: Commit;
-	workspaceMode: WorkspaceMode;
 	projectId: string;
 	stackId: string;
 	navigationIndex: NavigationIndex;
 	focusPanel: (panel: Panel) => void;
-}> = ({ commit, workspaceMode, projectId, stackId, navigationIndex, focusPanel }) => {
+}> = ({ commit, projectId, stackId, navigationIndex, focusPanel }) => {
 	const isExpanded = useAppSelector(
 		(state) => selectProjectExpandedCommitId(state, projectId) === commit.id,
 	);
@@ -1405,7 +1393,6 @@ const CommitC: FC<{
 		>
 			<CommitRow
 				commit={commit}
-				workspaceMode={workspaceMode}
 				isExpanded={isExpanded}
 				projectId={projectId}
 				stackId={stackId}
@@ -1437,19 +1424,14 @@ const ChangesFileRow: FC<{
 	dependencyCommitIds: NonEmptyArray<string> | undefined;
 	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	workspaceMode: WorkspaceMode;
 	projectId: string;
-}> = ({
-	change,
-	dependencyCommitIds,
-	navigationIndex,
-	onAbsorbChanges,
-	workspaceMode,
-	projectId,
-}) => {
+}> = ({ change, dependencyCommitIds, navigationIndex, onAbsorbChanges, projectId }) => {
 	const item = fileItem({ parent: changesFileParent, path: change.path });
 	const isSelected = useIsItemSelected({ projectId, item });
 	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const workspaceMode = useAppSelector((state) =>
+		selectProjectWorkspaceModeState(state, projectId),
+	);
 
 	useHotkey(
 		"A",
@@ -1539,11 +1521,13 @@ const ChangesSectionRow: FC<{
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	onCommit: () => void;
 	projectId: string;
-	workspaceMode: WorkspaceMode;
-}> = ({ changes, navigationIndex, onAbsorbChanges, onCommit, projectId, workspaceMode }) => {
+}> = ({ changes, navigationIndex, onAbsorbChanges, onCommit, projectId }) => {
 	const item = changesSectionItem;
 	const isSelected = useIsItemSelected({ projectId, item });
 	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const workspaceMode = useAppSelector((state) =>
+		selectProjectWorkspaceModeState(state, projectId),
+	);
 
 	useHotkey(
 		"A",
@@ -1639,8 +1623,7 @@ const Changes: FC<{
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	onCommit: () => void;
 	navigationIndex: NavigationIndex;
-	workspaceMode: WorkspaceMode;
-}> = ({ projectId, onAbsorbChanges, onCommit, navigationIndex, workspaceMode }) => {
+}> = ({ projectId, onAbsorbChanges, onCommit, navigationIndex }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
@@ -1664,7 +1647,6 @@ const Changes: FC<{
 				onAbsorbChanges={onAbsorbChanges}
 				onCommit={onCommit}
 				projectId={projectId}
-				workspaceMode={workspaceMode}
 			/>
 			{worktreeChanges.changes.length === 0 ? (
 				<div className={styles.itemRowEmpty}>No changes.</div>
@@ -1683,7 +1665,6 @@ const Changes: FC<{
 								dependencyCommitIds={dependencyCommitIds}
 								navigationIndex={navigationIndex}
 								onAbsorbChanges={onAbsorbChanges}
-								workspaceMode={workspaceMode}
 								projectId={projectId}
 							/>
 						);
@@ -1745,7 +1726,6 @@ const InlineRenameBranch: FC<{
 
 const BranchRow: FC<
 	{
-		workspaceMode: WorkspaceMode;
 		projectId: string;
 		branchName: string;
 		branchRef: Array<number>;
@@ -1753,16 +1733,10 @@ const BranchRow: FC<
 		navigationIndex: NavigationIndex;
 		focusPanel: (panel: Panel) => void;
 	} & ComponentProps<"div">
-> = ({
-	workspaceMode,
-	projectId,
-	branchName,
-	branchRef,
-	stackId,
-	navigationIndex,
-	focusPanel,
-	...restProps
-}) => {
+> = ({ projectId, branchName, branchRef, stackId, navigationIndex, focusPanel, ...restProps }) => {
+	const workspaceMode = useAppSelector((state) =>
+		selectProjectWorkspaceModeState(state, projectId),
+	);
 	const dispatch = useAppDispatch();
 	const branchItemV: BranchItem = {
 		stackId,
@@ -1896,12 +1870,14 @@ const StackRow: FC<
 		navigationIndex: NavigationIndex;
 		projectId: string;
 		stackId: string;
-		workspaceMode: WorkspaceMode;
 	} & ComponentProps<"div">
-> = ({ navigationIndex, projectId, stackId, workspaceMode, ...restProps }) => {
+> = ({ navigationIndex, projectId, stackId, ...restProps }) => {
 	const item = stackItem({ stackId });
 	const isSelected = useIsItemSelected({ projectId, item });
 	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const workspaceMode = useAppSelector((state) =>
+		selectProjectWorkspaceModeState(state, projectId),
+	);
 
 	const unapplyStack = useMutation(unapplyStackMutationOptions);
 	const unapply = () => {
@@ -1972,9 +1948,8 @@ const BranchSegment: FC<{
 	projectId: string;
 	segment: Segment;
 	stackId: string;
-	workspaceMode: WorkspaceMode;
 	focusPanel: (panel: Panel) => void;
-}> = ({ navigationIndex, projectId, segment, stackId, workspaceMode, focusPanel }) => {
+}> = ({ navigationIndex, projectId, segment, stackId, focusPanel }) => {
 	const refName = assert(segment.refName);
 	const item = branchItem({ stackId, branchRef: refName.fullNameBytes });
 
@@ -1991,7 +1966,6 @@ const BranchSegment: FC<{
 				item={item}
 				render={
 					<BranchRow
-						workspaceMode={workspaceMode}
 						projectId={projectId}
 						branchName={refName.displayName}
 						branchRef={refName.fullNameBytes}
@@ -2010,7 +1984,6 @@ const BranchSegment: FC<{
 						<CommitC
 							key={commit.id}
 							commit={commit}
-							workspaceMode={workspaceMode}
 							projectId={projectId}
 							stackId={stackId}
 							navigationIndex={navigationIndex}
@@ -2028,15 +2001,13 @@ const BranchlessSegment: FC<{
 	projectId: string;
 	segment: Segment;
 	stackId: string;
-	workspaceMode: WorkspaceMode;
 	focusPanel: (panel: Panel) => void;
-}> = ({ navigationIndex, projectId, segment, stackId, workspaceMode, focusPanel }) => (
+}> = ({ navigationIndex, projectId, segment, stackId, focusPanel }) => (
 	<div className={classes(styles.section, styles.segment)}>
 		{segment.commits.map((commit) => (
 			<CommitC
 				key={commit.id}
 				commit={commit}
-				workspaceMode={workspaceMode}
 				projectId={projectId}
 				stackId={stackId}
 				navigationIndex={navigationIndex}
@@ -2049,10 +2020,9 @@ const BranchlessSegment: FC<{
 const StackC: FC<{
 	projectId: string;
 	stack: Stack;
-	workspaceMode: WorkspaceMode;
 	navigationIndex: NavigationIndex;
 	focusPanel: (panel: Panel) => void;
-}> = ({ projectId, stack, workspaceMode, navigationIndex, focusPanel }) => {
+}> = ({ projectId, stack, navigationIndex, focusPanel }) => {
 	// From Caleb:
 	// > There shouldn't be a way within GitButler to end up with a stack without a
 	//   StackId. Users can disrupt our matching against our metadata by playing
@@ -2074,7 +2044,6 @@ const StackC: FC<{
 			render={<OperationItem projectId={projectId} item={item} />}
 		>
 			<StackRow
-				workspaceMode={workspaceMode}
 				projectId={projectId}
 				stackId={stackId}
 				navigationIndex={navigationIndex}
@@ -2100,7 +2069,6 @@ const StackC: FC<{
 							projectId={projectId}
 							segment={segment}
 							stackId={stackId}
-							workspaceMode={workspaceMode}
 							focusPanel={focusPanel}
 						/>
 					) : (
@@ -2110,7 +2078,6 @@ const StackC: FC<{
 							projectId={projectId}
 							segment={segment}
 							stackId={stackId}
-							workspaceMode={workspaceMode}
 							focusPanel={focusPanel}
 						/>
 					);
@@ -2382,7 +2349,6 @@ const ProjectPage: FC = () => {
 						onAbsorbChanges={openAbsorptionDialog}
 						onCommit={commit}
 						navigationIndex={navigationIndex}
-						workspaceMode={workspaceMode}
 					/>
 
 					{headInfo.stacks.map((stack) => (
@@ -2390,7 +2356,6 @@ const ProjectPage: FC = () => {
 							key={stack.id}
 							projectId={project.id}
 							stack={stack}
-							workspaceMode={workspaceMode}
 							navigationIndex={navigationIndex}
 							focusPanel={focusPanel}
 						/>
