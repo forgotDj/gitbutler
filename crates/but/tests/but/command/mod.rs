@@ -47,6 +47,8 @@ mod squash;
 mod status;
 #[cfg(feature = "legacy")]
 mod teardown;
+#[cfg(feature = "legacy")]
+mod undo;
 
 #[cfg(feature = "legacy")]
 mod util {
