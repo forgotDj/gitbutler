@@ -1,6 +1,9 @@
 {
 	"name": "@gitbutler/lite",
-	"productName": "gitbutler-lite",
+	"description": "A Git-compatible version control client - now with fewer calories.",
+	"productName": "GitButler Lite",
+	"author": "GitButler Inc. <gitbutler@gitbutler.com> (https://gitbutler.com)",
+	"license": "FSL-1.1-MIT",
 	"homepage": "https://gitbutler.com",
 	"private": true,
 	"version": "0.0.1",
@@ -32,6 +35,16 @@
 			"path": "lite/${os}/${arch}",
 			"channel": "${env.CHANNEL}"
 		},
+		"extraFiles": [
+			{
+				"from": "resources/bin",
+				"to": ".",
+				"filter": [
+					"but",
+					"but.exe"
+				]
+			}
+		],
 		"directories": {
 			"output": "release"
 		},
@@ -41,21 +54,31 @@
 			"package.json"
 		],
 		"mac": {
-			"target": [
-				"dmg",
-				"zip"
-			],
+			"category": "public.app-category.developer-tools",
+			"darkModeSupport": true,
 			"hardenedRuntime": true,
 			"gatekeeperAssess": false,
 			"entitlements": "resources/entitlements.mac.plist",
-			"entitlementsInherit": "resources/entitlements.mac.inherit.plist"
+			"entitlementsInherit": "resources/entitlements.mac.inherit.plist",
+			"target": [
+				"dmg",
+				"zip"
+			]
 		},
 		"linux": {
+			"category": "Development",
 			"target": [
 				"deb",
 				"appimage"
 			],
-			"maintainer": "GitButler <gitbutler@gitbutler.com>"
+			"desktop": {
+				"entry": {
+					"Name": "GitButler Lite",
+					"Type": "Application",
+					"GenericName": "Version Control System"
+				}
+			},
+			"executableName": "gitbutler-lite"
 		},
 		"win": {
 			"target": [
