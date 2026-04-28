@@ -141,17 +141,13 @@ impl Graph {
 
         let mut out = Vec::new();
 
-        // Continue while there are non-stale segments in the queue
-        while queue.iter().any(|(_, sidx)| {
-            !flags
-                .get(sidx)
-                .is_some_and(|f| f.contains(SegmentFlags::STALE))
-        }) {
-            let Some((Reverse(generation), segment_id)) = queue.pop() else {
-                break;
-            };
+        // Process the priority queue until exhausted, skipping stale entries on pop.
+        while let Some((Reverse(generation), segment_id)) = queue.pop() {
+            let segment_flags = flags.get(&segment_id).copied().unwrap_or_default();
+            if segment_flags.contains(SegmentFlags::STALE) {
+                continue;
+            }
 
-            let segment_flags = *flags.get(&segment_id).unwrap_or(&SegmentFlags::empty());
             let mut flags_without_result = segment_flags
                 & (SegmentFlags::SEGMENT1 | SegmentFlags::SEGMENT2 | SegmentFlags::STALE);
 
