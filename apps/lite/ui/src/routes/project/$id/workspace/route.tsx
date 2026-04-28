@@ -453,19 +453,16 @@ const useLogSelectionHotkeys = ({
 		{ enabled },
 	);
 
-	const workspaceMode = useAppSelector((state) =>
-		selectProjectWorkspaceModeState(state, projectId),
-	);
-
 	useHotkey(
 		"T",
 		() => {
 			dispatch(projectActions.openBranchPicker({ projectId }));
 		},
-		{
-			enabled: workspaceMode._tag === "Default",
-			meta: { group: "Log selection", name: "Branch" },
-		},
+		{ meta: { group: "Log selection", name: "Branch" } },
+	);
+
+	const workspaceMode = useAppSelector((state) =>
+		selectProjectWorkspaceModeState(state, projectId),
 	);
 
 	useHotkeys(
