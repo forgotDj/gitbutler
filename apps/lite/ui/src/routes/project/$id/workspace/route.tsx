@@ -45,7 +45,7 @@ import {
 	formatHunkHeader,
 	shortCommitId,
 } from "#ui/routes/project/$id/shared.tsx";
-import { Panel } from "#ui/routes/project/$id/state/layout.ts";
+import { Panel as PanelType } from "#ui/routes/project/$id/state/layout.ts";
 import {
 	projectActions,
 	selectProjectExpandedCommitId,
@@ -1039,7 +1039,7 @@ const CommitRow: FC<
 		projectId: string;
 		stackId: string;
 		navigationIndex: NavigationIndex;
-		focusPanel: (panel: Panel) => void;
+		focusPanel: (panel: PanelType) => void;
 	} & ComponentProps<"div">
 > = ({ commit, isExpanded, projectId, stackId, navigationIndex, focusPanel, ...restProps }) => {
 	const isHighlighted = useAppSelector((state) =>
@@ -1375,7 +1375,7 @@ const CommitC: FC<{
 	projectId: string;
 	stackId: string;
 	navigationIndex: NavigationIndex;
-	focusPanel: (panel: Panel) => void;
+	focusPanel: (panel: PanelType) => void;
 }> = ({ commit, projectId, stackId, navigationIndex, focusPanel }) => {
 	const isExpanded = useAppSelector(
 		(state) => selectProjectExpandedCommitId(state, projectId) === commit.id,
@@ -1731,7 +1731,7 @@ const BranchRow: FC<
 		branchRef: Array<number>;
 		stackId: string;
 		navigationIndex: NavigationIndex;
-		focusPanel: (panel: Panel) => void;
+		focusPanel: (panel: PanelType) => void;
 	} & ComponentProps<"div">
 > = ({ projectId, branchName, branchRef, stackId, navigationIndex, focusPanel, ...restProps }) => {
 	const workspaceMode = useAppSelector((state) =>
@@ -1948,7 +1948,7 @@ const BranchSegment: FC<{
 	projectId: string;
 	segment: Segment;
 	stackId: string;
-	focusPanel: (panel: Panel) => void;
+	focusPanel: (panel: PanelType) => void;
 }> = ({ navigationIndex, projectId, segment, stackId, focusPanel }) => {
 	const refName = assert(segment.refName);
 	const item = branchItem({ stackId, branchRef: refName.fullNameBytes });
@@ -2001,7 +2001,7 @@ const BranchlessSegment: FC<{
 	projectId: string;
 	segment: Segment;
 	stackId: string;
-	focusPanel: (panel: Panel) => void;
+	focusPanel: (panel: PanelType) => void;
 }> = ({ navigationIndex, projectId, segment, stackId, focusPanel }) => (
 	<div className={classes(styles.section, styles.segment)}>
 		{segment.commits.map((commit) => (
@@ -2021,7 +2021,7 @@ const StackC: FC<{
 	projectId: string;
 	stack: Stack;
 	navigationIndex: NavigationIndex;
-	focusPanel: (panel: Panel) => void;
+	focusPanel: (panel: PanelType) => void;
 }> = ({ projectId, stack, navigationIndex, focusPanel }) => {
 	// From Caleb:
 	// > There shouldn't be a way within GitButler to end up with a stack without a
