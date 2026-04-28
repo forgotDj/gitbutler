@@ -57,11 +57,11 @@ export const useProjectPanelFocusManager = () => {
 
 export const ProjectPreviewLayout: FC<{
 	projectId: string;
-	primaryActiveDescendantId?: string;
+	logActiveDescendantId?: string;
 	children: ReactNode;
 	details: ReactNode | null;
 	panelElementRef: (panel: PanelType) => (element: HTMLDivElement | null) => void;
-}> = ({ primaryActiveDescendantId, children, details, panelElementRef, projectId }) => {
+}> = ({ logActiveDescendantId, children, details, panelElementRef, projectId }) => {
 	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
 		id: `project:${projectId}:layout`,
@@ -71,15 +71,15 @@ export const ProjectPreviewLayout: FC<{
 	return (
 		<Group className={styles.page} defaultLayout={defaultLayout} onLayoutChange={onLayoutChanged}>
 			<Panel
-				id={"primary" satisfies PanelType}
+				id={"log" satisfies PanelType}
 				minSize={400}
-				elementRef={useMergedRefs(panelElementRef("primary"), (el) =>
+				elementRef={useMergedRefs(panelElementRef("log"), (el) =>
 					el?.focus({ focusVisible: false }),
 				)}
 				tabIndex={0}
 				role="tree"
-				aria-activedescendant={primaryActiveDescendantId}
-				className={classes(styles.panel, styles.primaryPanel)}
+				aria-activedescendant={logActiveDescendantId}
+				className={classes(styles.panel, styles.logPanel)}
 			>
 				{children}
 			</Panel>

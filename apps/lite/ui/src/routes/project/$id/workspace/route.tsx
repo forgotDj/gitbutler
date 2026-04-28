@@ -1000,14 +1000,14 @@ const InlineRewordCommit: FC<{
 	};
 
 	useHotkey("Enter", () => formRef.current?.requestSubmit(), {
-		enabled: focusedPanel === "primary",
+		enabled: focusedPanel === "log",
 		ignoreInputs: false,
 		meta: { group: "Reword commit", name: "Save", commandPalette: false },
 	});
 
 	useHotkey("Escape", onExit, {
 		conflictBehavior: "allow",
-		enabled: focusedPanel === "primary",
+		enabled: focusedPanel === "log",
 		ignoreInputs: false,
 		meta: { group: "Reword commit", name: "Cancel", commandPalette: false },
 	});
@@ -1128,7 +1128,7 @@ const CommitRow: FC<
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
 		dispatch(projectActions.selectItem({ projectId, item }));
-		focusPanel("primary");
+		focusPanel("log");
 	};
 
 	const saveNewMessage = (newMessage: string) => {
@@ -1188,7 +1188,7 @@ const CommitRow: FC<
 		enabled:
 			!isCommitMessagePending &&
 			isSelected &&
-			focusedPanel === "primary" &&
+			focusedPanel === "log" &&
 			workspaceMode._tag === "Default",
 		meta: { group: "Commit", name: "Reword" },
 	});
@@ -1200,14 +1200,14 @@ const CommitRow: FC<
 		},
 		{
 			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "primary" && workspaceMode._tag === "Default",
+			enabled: isSelected && focusedPanel === "log" && workspaceMode._tag === "Default",
 			meta: { group: "Commit", name: "Files" },
 		},
 	);
 
 	useHotkey({ key: "" }, insertBlankCommitAbove, {
 		conflictBehavior: "allow",
-		enabled: isSelected && focusedPanel === "primary" && workspaceMode._tag === "Default",
+		enabled: isSelected && focusedPanel === "log" && workspaceMode._tag === "Default",
 		meta: {
 			group: "Commit",
 			name: "Add empty commit above",
@@ -1218,7 +1218,7 @@ const CommitRow: FC<
 
 	useHotkey({ key: "" }, insertBlankCommitBelow, {
 		conflictBehavior: "allow",
-		enabled: isSelected && focusedPanel === "primary" && workspaceMode._tag === "Default",
+		enabled: isSelected && focusedPanel === "log" && workspaceMode._tag === "Default",
 		meta: {
 			group: "Commit",
 			name: "Add empty commit below",
@@ -1232,7 +1232,7 @@ const CommitRow: FC<
 		enabled:
 			!commitDiscard.isPending &&
 			isSelected &&
-			focusedPanel === "primary" &&
+			focusedPanel === "log" &&
 			workspaceMode._tag === "Default",
 		meta: {
 			group: "Commit",
@@ -1339,7 +1339,7 @@ const CommitFileRow: FC<{
 		},
 		{
 			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "primary",
+			enabled: isSelected && focusedPanel === "log",
 			meta: { group: "Commit file", name: "Files" },
 		},
 	);
@@ -1351,7 +1351,7 @@ const CommitFileRow: FC<{
 		},
 		{
 			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "primary",
+			enabled: isSelected && focusedPanel === "log",
 			meta: { group: "Commit file", name: "Close" },
 		},
 	);
@@ -1464,7 +1464,7 @@ const ChangesFileRow: FC<{
 		},
 		{
 			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "primary" && workspaceMode._tag === "Default",
+			enabled: isSelected && focusedPanel === "log" && workspaceMode._tag === "Default",
 			meta: { group: "Changes file", name: "Absorb" },
 		},
 	);
@@ -1555,7 +1555,7 @@ const ChangesSectionRow: FC<{
 			enabled:
 				changes.length > 0 &&
 				isSelected &&
-				focusedPanel === "primary" &&
+				focusedPanel === "log" &&
 				workspaceMode._tag === "Default",
 			meta: { group: "Changes", name: "Absorb" },
 		},
@@ -1708,14 +1708,14 @@ const InlineRenameBranch: FC<{
 	};
 
 	useHotkey("Enter", () => formRef.current?.requestSubmit(), {
-		enabled: focusedPanel === "primary",
+		enabled: focusedPanel === "log",
 		ignoreInputs: false,
 		meta: { group: "Rename branch", name: "Save", commandPalette: false },
 	});
 
 	useHotkey("Escape", onExit, {
 		conflictBehavior: "allow",
-		enabled: focusedPanel === "primary",
+		enabled: focusedPanel === "log",
 		ignoreInputs: false,
 		meta: { group: "Rename branch", name: "Cancel", commandPalette: false },
 	});
@@ -1795,7 +1795,7 @@ const BranchRow: FC<
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
 		dispatch(projectActions.selectItem({ projectId, item }));
-		focusPanel("primary");
+		focusPanel("log");
 	};
 
 	const saveBranchName = (newBranchName: string) => {
@@ -1836,7 +1836,7 @@ const BranchRow: FC<
 
 	useHotkey("Enter", startEditing, {
 		conflictBehavior: "allow",
-		enabled: isSelected && focusedPanel === "primary" && workspaceMode._tag === "Default",
+		enabled: isSelected && focusedPanel === "log" && workspaceMode._tag === "Default",
 		meta: { group: "Branch", name: "Rename" },
 	});
 
@@ -1924,7 +1924,7 @@ const StackRow: FC<
 		conflictBehavior: "allow",
 		enabled:
 			isSelected &&
-			focusedPanel === "primary" &&
+			focusedPanel === "log" &&
 			workspaceMode._tag === "Default" &&
 			!unapplyStack.isPending,
 		meta: {
@@ -2277,7 +2277,7 @@ const ProjectPage: FC = () => {
 	);
 
 	useLogSelectionHotkeys({
-		enabled: effectiveFocusedPanel === "primary",
+		enabled: effectiveFocusedPanel === "log",
 		navigationIndex,
 		projectId,
 	});
@@ -2319,7 +2319,7 @@ const ProjectPage: FC = () => {
 		"Escape",
 		() => {
 			dispatch(projectActions.hidePanel({ projectId, panel: "details" }));
-			focusPanel("primary");
+			focusPanel("log");
 		},
 		{
 			conflictBehavior: "allow",
@@ -2343,7 +2343,7 @@ const ProjectPage: FC = () => {
 				item: branchItem(branch),
 			}),
 		);
-		focusPanel("primary");
+		focusPanel("log");
 	};
 
 	const setBranchPickerOpen = (open: boolean) => {
@@ -2368,7 +2368,7 @@ const ProjectPage: FC = () => {
 		<>
 			<ProjectPreviewLayout
 				projectId={projectId}
-				primaryActiveDescendantId={treeItemId(projectId, selectedItem)}
+				logActiveDescendantId={treeItemId(projectId, selectedItem)}
 				panelElementRef={panelElementRef}
 				details={
 					<Suspense fallback={<div>Loading details…</div>}>
