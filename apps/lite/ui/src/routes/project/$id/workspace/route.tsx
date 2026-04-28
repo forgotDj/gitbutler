@@ -1346,14 +1346,28 @@ const CommitRow: FC<
 	});
 
 	useHotkey(
-		"F",
+		"ArrowRight",
 		() => {
-			dispatch(projectActions.toggleCommitFiles({ projectId, item: commitItemV }));
+			dispatch(projectActions.openCommitFiles({ projectId, item: commitItemV }));
 		},
 		{
 			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "log" && workspaceMode._tag === "Default",
-			meta: { group: "Commit", name: "Files" },
+			enabled:
+				isSelected && focusedPanel === "log" && workspaceMode._tag === "Default" && !isExpanded,
+			meta: { group: "Commit", name: "Expand files" },
+		},
+	);
+
+	useHotkey(
+		"ArrowLeft",
+		() => {
+			dispatch(projectActions.closeCommitFiles({ projectId }));
+		},
+		{
+			conflictBehavior: "allow",
+			enabled:
+				isSelected && focusedPanel === "log" && workspaceMode._tag === "Default" && isExpanded,
+			meta: { group: "Commit", name: "Collapse files" },
 		},
 	);
 
