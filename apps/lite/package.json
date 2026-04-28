@@ -1,7 +1,7 @@
 {
 	"name": "@gitbutler/lite",
 	"description": "A Git-compatible version control client - now with fewer calories.",
-	"productName": "gitbutler-lite",
+	"productName": "GitButler Lite",
 	"author": "GitButler Inc. <gitbutler@gitbutler.com> (https://gitbutler.com)",
 	"license": "FSL-1.1-MIT",
 	"homepage": "https://gitbutler.com",
@@ -35,6 +35,16 @@
 			"path": "lite/${os}/${arch}",
 			"channel": "${env.CHANNEL}"
 		},
+		"extraFiles": [
+			{
+				"from": "resources/bin",
+				"to": ".",
+				"filter": [
+					"but",
+					"but.exe"
+				]
+			}
+		],
 		"directories": {
 			"output": "release"
 		},

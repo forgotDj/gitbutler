@@ -42,6 +42,7 @@ jobs:
         working-directory: apps/lite
         run: pnpm version "0.0.${{ github.run_number }}" --no-git-tag-version
       - name: Build
+        shell: bash
         env:
           CHANNEL: nightly
           VERSION: "0.0.${{ github.run_number }}"
@@ -52,10 +53,27 @@ jobs:
           APPLE_TEAM_ID: ${{ runner.os == 'macOS' && secrets.APPLE_PROVIDER_SHORT_NAME || '' }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          CARGO_PROFILE_RELEASE_LTO: fat
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: 1
+          CARGO_PROFILE_RELEASE_OPT_LEVEL: s
         run: |
+          cargo build --release -p but --features "packaged-but-distribution"
+
+          but_path=`find ./target/release -name but | head -n 1`
+          if [ -z "$but_path" ]; then
+            but_path=`find ./target/release -name but.exe | head -n 1`
+          fi
+
+          if [ -z "$but_path" ]; then
+            echo "Failed to find but binary in ./target/release"
+            exit 1
+          fi
+
+          mkdir ./apps/lite/resources/bin
+          cp "$but_path" ./apps/lite/resources/bin/
+
           pnpm --filter @gitbutler/but-sdk build
           pnpm --filter @gitbutler/lite bundle --publish always
-
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         name: Upload artifacts
         with:
