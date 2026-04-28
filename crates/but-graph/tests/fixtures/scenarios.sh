@@ -1557,4 +1557,65 @@ EOF
     git checkout -b gitbutler/workspace
     git commit --allow-empty -m "GitButler Workspace Commit"
   )
+
+  # A stack where the bottom commit is a local merge that's already integrated
+  # into origin/main. The merge commit is kept because it is above the fork
+  # point — it's part of the branch's history.
+  #
+  # History:
+  #   ws ─ D ─ C ─ local-merge ─ init
+  #                     │            │
+  #                     └── fix ─────┘
+  #   origin/main: upstream-merge ─ fix ─ init
+  #
+  # "local-merge" and "upstream-merge" merge the same branch ("fix") but are
+  # different commits (different committer, like GitHub vs local).
+  git init integrated-merge-at-bottom
+  (cd integrated-merge-at-bottom
+     commit init
+
+     # Create the fix branch
+     git checkout -b fix
+       commit fix
+
+     # Simulate GitHub merging the PR into main (upstream merge)
+     git checkout main
+       GIT_COMMITTER_NAME="GitHub" GIT_COMMITTER_EMAIL="noreply@github.com" \
+         git merge --no-ff -m "Merge pull request #1 from fix" fix
+       setup_target_to_match_main
+
+     # Create a local merge of the same branch (as if the user had merged locally)
+     git checkout -b local-stack main~1
+       git merge --no-ff -m "Merge pull request #1 from fix" fix
+
+     # Add two real commits on top
+       commit C
+       commit D
+
+     create_workspace_commit_once local-stack
+  )
+
+  # A branch with a commit, then a merge from main, then another commit.
+  # The merge-from-main moves the merge base up past the first commit,
+  # so merge-base-counting pruning should still show both real commits.
+  git init merge-from-main-in-branch
+  (cd merge-from-main-in-branch
+     commit init
+
+     # Create the branch from init
+     git checkout -b my-branch
+       commit branch-commit-1
+
+     # Advance main with a commit after the branch was created
+     git checkout main
+       commit main-advance
+       setup_target_to_match_main
+
+     # Back to the branch: merge main into it, then add another commit
+     git checkout my-branch
+       git merge --no-ff -m "Merge main into my-branch" main
+       commit branch-commit-2
+
+     create_workspace_commit_once my-branch
+  )
 )

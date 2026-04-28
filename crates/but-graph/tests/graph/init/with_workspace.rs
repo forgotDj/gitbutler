@@ -59,7 +59,7 @@ fn workspace_with_stack_and_local_target() -> anyhow::Result<()> {
     // It's perfectly valid to have the local tracking branch of our target in the workspace,
     // and the low-bound computation works as well.
     let ws = &graph.into_workspace()?;
-    insta::assert_snapshot!(graph_workspace(ws), @r"
+    insta::assert_snapshot!(graph_workspace(ws), @"
     📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main⇣1 on fafd9d0
     ├── ≡:3:A on fafd9d0
     │   └── :3:A
@@ -68,8 +68,7 @@ fn workspace_with_stack_and_local_target() -> anyhow::Result<()> {
     └── ≡:2:main <> origin/main →:1:⇡1⇣1 on fafd9d0
         └── :2:main <> origin/main →:1:⇡1⇣1
             ├── 🟣1f5c47b (✓)
-            ├── ·0a415d8 (🏘️)
-            └── ❄️73ba99d (🏘️|✓)
+            └── ·0a415d8 (🏘️)
     ");
 
     Ok(())
@@ -226,7 +225,7 @@ fn no_overzealous_stacks_due_to_workspace_metadata() -> anyhow::Result<()> {
     add_stack_with_segments(&mut meta, 2, "feat-2", StackState::InWorkspace, &[]);
 
     let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
-    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @r"
+    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @"
     📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main on 3183e43
     ├── ≡📙:3:X <> origin/X →:5:⇡1 on 3183e43 {1}
     │   └── 📙:3:X <> origin/X →:5:⇡1
@@ -592,7 +591,7 @@ fn single_stack_ws_insertions() -> anyhow::Result<()> {
 
     // We can also summon new empty stacks from branches resting on the base, and set them
     // as entrypoint, to have two more stacks.
-    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @r"
+    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @"
     📕🏘️:1:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main on fafd9d0
     ├── ≡📙:8:new-B on fafd9d0 {3}
     │   └── 📙:8:new-B
@@ -5523,7 +5522,7 @@ fn applied_stack_below_explicit_lower_bound() -> anyhow::Result<()> {
             └── ·938e6f2 (⌂|✓|10)
                 └── →:5:
     ");
-    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @r"
+    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @"
     📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main⇣1 on bce0c5e
     ├── ≡📙:4:B on bce0c5e {1}
     │   └── 📙:4:B
@@ -6509,6 +6508,98 @@ fn reproduce_12146() -> anyhow::Result<()> {
     └── ≡📙:5:A on e32cf47 {0}
         └── 📙:5:A
             └── ·81d4e38 (🏘️)
+    ");
+
+    Ok(())
+}
+
+/// A stack where a local merge commit at the bottom is already integrated into
+/// origin/main (the same PR was merged upstream). The merge commit is kept
+/// because it is above the fork point — it's part of the branch's history
+/// even though an equivalent merge exists on main.
+#[test]
+fn integrated_merge_at_bottom_is_kept() -> anyhow::Result<()> {
+    let (repo, mut meta) = read_only_in_memory_scenario("ws/integrated-merge-at-bottom")?;
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
+    * 732604f (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    * 66ea651 (local-stack) D
+    * e5a88a7 C
+    *   0b3ccaf Merge pull request #1 from fix
+    |\  
+    | | * f46830d (origin/main, main) Merge pull request #1 from fix
+    | |/| 
+    |/|/  
+    | * f5f42e0 (fix) fix
+    |/  
+    * fafd9d0 init
+    ");
+
+    add_stack_with_segments(&mut meta, 0, "local-stack", StackState::InWorkspace, &[]);
+    let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+
+    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @"
+    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main⇣1 on f5f42e0
+    └── ≡📙:3:local-stack {0}
+        └── 📙:3:local-stack
+            ├── ·66ea651 (🏘️)
+            ├── ·e5a88a7 (🏘️)
+            ├── ·0b3ccaf (🏘️)
+            └── ·fafd9d0 (🏘️|✓)
+    ");
+
+    Ok(())
+}
+
+/// A branch that has a commit, merges main into itself, then has another commit.
+/// The fork-point approach finds the original divergence point, so all branch
+/// commits (including those below the merge-from-main) remain visible.
+#[test]
+fn merge_from_main_keeps_all_branch_commits() -> anyhow::Result<()> {
+    let (repo, mut meta) = read_only_in_memory_scenario("ws/merge-from-main-in-branch")?;
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
+    * 891e228 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    * cd76046 (my-branch) branch-commit-2
+    *   f8ff9a3 Merge main into my-branch
+    |\  
+    | * ef56fab (origin/main, main) main-advance
+    * | 6f65768 branch-commit-1
+    |/  
+    * fafd9d0 init
+    ");
+
+    add_stack_with_segments(&mut meta, 0, "my-branch", StackState::InWorkspace, &[]);
+    let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+    insta::assert_snapshot!(graph_tree(&graph), @r"
+
+    ├── 👉📕►►►:0[0]:gitbutler/workspace[🌳]
+    │   └── ·891e228 (⌂|🏘|01)
+    │       └── 📙►:3[1]:my-branch
+    │           └── ·cd76046 (⌂|🏘|01)
+    │               └── ►:4[2]:anon:
+    │                   └── ·f8ff9a3 (⌂|🏘|01)
+    │                       ├── ►:5[3]:anon:
+    │                       │   └── ·6f65768 (⌂|🏘|01)
+    │                       │       └── ►:6[4]:anon:
+    │                       │           └── ·fafd9d0 (⌂|🏘|✓|11)
+    │                       └── ►:2[3]:main <> origin/main →:1:
+    │                           └── ·ef56fab (⌂|🏘|✓|11)
+    │                               └── →:6:
+    └── ►:1[0]:origin/main →:2:
+        └── →:2: (main →:1:)
+    ");
+
+    // The fork-point approach correctly finds the original divergence point (fafd9d0)
+    // instead of the moved merge base (ef56fab), so all 3 branch commits are visible:
+    // branch-commit-2, the merge commit, and branch-commit-1.
+    let ws = graph.into_workspace()?;
+    insta::assert_snapshot!(graph_workspace(&ws), @"
+    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main on ef56fab
+    └── ≡📙:3:my-branch {0}
+        └── 📙:3:my-branch
+            ├── ·cd76046 (🏘️)
+            ├── ·f8ff9a3 (🏘️)
+            ├── ·6f65768 (🏘️)
+            └── ·fafd9d0 (🏘️|✓)
     ");
 
     Ok(())
