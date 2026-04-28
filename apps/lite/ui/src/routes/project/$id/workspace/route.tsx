@@ -761,7 +761,7 @@ const ChangesFileDiffList: FC<{
 	);
 };
 
-const ChangesShow: FC<{
+const ChangesDetails: FC<{
 	projectId: string;
 	selectedPath?: string;
 }> = ({ projectId, selectedPath }) => {
@@ -787,7 +787,7 @@ const ChangesShow: FC<{
 	);
 };
 
-const CommitShow: FC<{
+const CommitDetails: FC<{
 	projectId: string;
 	commitId: string;
 	selectedPath?: string | null;
@@ -824,7 +824,7 @@ const CommitShow: FC<{
 	);
 };
 
-const BranchShow: FC<{
+const BranchDetails: FC<{
 	projectId: string;
 	branchRef: Array<number>;
 	selectedPath?: string;
@@ -862,7 +862,7 @@ const BranchShow: FC<{
 	);
 };
 
-const Show: FC<{
+const Details: FC<{
 	projectId: string;
 	selectedItem: Item;
 }> = ({ projectId, selectedItem }) =>
@@ -870,15 +870,15 @@ const Show: FC<{
 		Match.tagsExhaustive({
 			Stack: () => null,
 			Branch: ({ branchRef, stackId }) => (
-				<BranchShow projectId={projectId} branchRef={branchRef} stackId={stackId} />
+				<BranchDetails projectId={projectId} branchRef={branchRef} stackId={stackId} />
 			),
-			ChangesSection: () => <ChangesShow projectId={projectId} />,
+			ChangesSection: () => <ChangesDetails projectId={projectId} />,
 			File: ({ parent, path }) =>
 				Match.value(parent).pipe(
 					Match.tagsExhaustive({
-						Changes: () => <ChangesShow projectId={projectId} selectedPath={path} />,
+						Changes: () => <ChangesDetails projectId={projectId} selectedPath={path} />,
 						Branch: ({ branchRef, stackId }) => (
-							<BranchShow
+							<BranchDetails
 								projectId={projectId}
 								branchRef={branchRef}
 								selectedPath={path}
@@ -886,7 +886,7 @@ const Show: FC<{
 							/>
 						),
 						Commit: ({ commitId, stackId }) => (
-							<CommitShow
+							<CommitDetails
 								projectId={projectId}
 								commitId={commitId}
 								stackId={stackId}
@@ -896,7 +896,7 @@ const Show: FC<{
 					}),
 				),
 			Commit: ({ commitId, stackId }) => (
-				<CommitShow projectId={projectId} commitId={commitId} stackId={stackId} />
+				<CommitDetails projectId={projectId} commitId={commitId} stackId={stackId} />
 			),
 			BaseCommit: () => null,
 			Hunk: () => null,
@@ -2242,8 +2242,9 @@ const ProjectPage: FC = () => {
 					navigationIndexUnfiltered,
 					(item) =>
 						// When entering operation mode, the selected item must still be
-						// selectable otherwise the preview will suddenly appear to change
-						// and the user may lose sight of their source item (e.g. hunk).
+						// selectable otherwise the details panel will suddenly appear to
+						// change and the user may lose sight of their source item (e.g.
+						// hunk).
 						itemEquals(selectedItem, item) ||
 						// After selection moves, allow returning selection to the source item.
 						(operationMode?.source && itemEquals(operationMode.source, item)) ||
@@ -2317,12 +2318,12 @@ const ProjectPage: FC = () => {
 	useHotkey(
 		"Escape",
 		() => {
-			dispatch(projectActions.hidePanel({ projectId, panel: "show" }));
+			dispatch(projectActions.hidePanel({ projectId, panel: "details" }));
 			focusPanel("primary");
 		},
 		{
 			conflictBehavior: "allow",
-			enabled: effectiveFocusedPanel === "show",
+			enabled: effectiveFocusedPanel === "details",
 			meta: { group: "Details", name: "Close" },
 		},
 	);
@@ -2369,9 +2370,9 @@ const ProjectPage: FC = () => {
 				projectId={projectId}
 				primaryActiveDescendantId={treeItemId(projectId, selectedItem)}
 				panelElementRef={panelElementRef}
-				show={
-					<Suspense fallback={<div>Loading preview (show)…</div>}>
-						<Show projectId={projectId} selectedItem={selectedItem} />
+				details={
+					<Suspense fallback={<div>Loading details…</div>}>
+						<Details projectId={projectId} selectedItem={selectedItem} />
 					</Suspense>
 				}
 			>

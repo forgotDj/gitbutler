@@ -66,29 +66,29 @@ const TopBarActions: FC = () => {
 	}).params.id;
 	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
 	const focusedPanel = useFocusedProjectPanel();
-	const toggleShow = () => {
-		if (focusedPanel === "show" && isPanelVisible(layoutState, "show")) {
-			const showPanelIndex = layoutState.visiblePanels.indexOf("show");
-			const nextPanel = layoutState.visiblePanels[showPanelIndex - 1];
+	const toggleDetails = () => {
+		if (focusedPanel === "details" && isPanelVisible(layoutState, "details")) {
+			const detailsPanelIndex = layoutState.visiblePanels.indexOf("details");
+			const nextPanel = layoutState.visiblePanels[detailsPanelIndex - 1];
 			if (nextPanel !== undefined)
 				document.getElementById(nextPanel)?.focus({ focusVisible: false });
 		}
 
-		dispatch(projectActions.togglePanel({ projectId, panel: "show" }));
+		dispatch(projectActions.togglePanel({ projectId, panel: "details" }));
 	};
 
-	const toggleShowHotkey = "P";
+	const toggleDetailsHotkey = "P";
 
-	useHotkey(toggleShowHotkey, toggleShow, {
-		meta: { group: "Details", name: isPanelVisible(layoutState, "show") ? "Close" : "Open" },
+	useHotkey(toggleDetailsHotkey, toggleDetails, {
+		meta: { group: "Details", name: isPanelVisible(layoutState, "details") ? "Close" : "Open" },
 	});
 
 	return (
 		<div className={styles.topBarActions}>
 			<ShortcutButton
-				hotkey={toggleShowHotkey}
-				aria-pressed={isPanelVisible(layoutState, "show")}
-				onClick={toggleShow}
+				hotkey={toggleDetailsHotkey}
+				aria-pressed={isPanelVisible(layoutState, "details")}
+				onClick={toggleDetails}
 			>
 				Details
 			</ShortcutButton>
