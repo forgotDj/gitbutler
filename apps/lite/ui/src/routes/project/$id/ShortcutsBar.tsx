@@ -4,11 +4,11 @@ import {
 	type HotkeyRegistrationView,
 } from "@tanstack/react-hotkeys";
 import { useMatch } from "@tanstack/react-router";
-import { useEffectiveFocusedProjectPanel } from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
 import { FC } from "react";
 import styles from "./ShortcutsBar.module.css";
 import { useActiveElement } from "#ui/focus.ts";
 import { isInputElement } from "#ui/TanStackHotkeys.ts";
+import { useFocusedProjectPanel } from "#ui/routes/project/$id/workspace/route.tsx";
 
 export const ShortcutsBar: FC = () => {
 	const projectMatch = useMatch({
@@ -32,7 +32,7 @@ const isInputIgnoredHotkey = ({
 	activeElement !== hotkey.target;
 
 const ProjectShortcutsBar: FC<{ projectId: string }> = ({ projectId }) => {
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const activeElement = useActiveElement();
 	const { hotkeys } = useHotkeyRegistrations();
 	const visibleHotkeys = hotkeys.filter(

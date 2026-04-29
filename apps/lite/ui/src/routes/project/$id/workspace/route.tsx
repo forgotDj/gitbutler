@@ -1,10 +1,9 @@
-import { PatchDiff } from "@pierre/diffs/react";
 import {
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
 	commitRewordMutationOptions,
-	updateBranchNameMutationOptions,
 	unapplyStackMutationOptions,
+	updateBranchNameMutationOptions,
 } from "#ui/api/mutations.ts";
 import {
 	absorptionPlanQueryOptions,
@@ -17,7 +16,6 @@ import {
 	treeChangeDiffsQueryOptions,
 } from "#ui/api/queries.ts";
 import { classes } from "#ui/classes.ts";
-import { DependencyIcon, ExpandCollapseIcon, MenuTriggerIcon, PushIcon } from "#ui/icons.tsx";
 import {
 	branchFileParent,
 	changesFileParent,
@@ -25,39 +23,43 @@ import {
 	type FileParent,
 } from "#ui/domain/FileParent.ts";
 import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
+import { useActiveElement } from "#ui/focus.ts";
+import { DependencyIcon, ExpandCollapseIcon, MenuTriggerIcon, PushIcon } from "#ui/icons.tsx";
 import {
-	useEffectiveFocusedProjectPanel,
-	ProjectPreviewLayout,
-	useFocusedProjectPanel,
-	useProjectPanelFocusManager,
-} from "#ui/routes/project/$id/ProjectPreviewLayout.tsx";
+	showNativeContextMenu,
+	showNativeMenuFromTrigger,
+	type NativeMenuItem,
+} from "#ui/native-menu.ts";
+import { Route as projectRoute } from "#ui/routes/project/$id/route.tsx";
+import {
+	assert,
+	CommitLabel,
+	commitTitle,
+	decodeRefName,
+	encodeRefName,
+	formatHunkHeader,
+	shortCommitId,
+} from "#ui/routes/project/$id/shared.tsx";
+import {
+	isPanelVisible,
+	orderedPanels,
+	Panel as PanelType,
+} from "#ui/routes/project/$id/state/layout.ts";
 import {
 	projectActions,
 	selectProjectExpandedCommitId,
 	selectProjectHighlightedCommitIds,
+	selectProjectLayoutState,
 	selectProjectOperationModeState,
-	selectProjectPromptState,
+	selectProjectPickerDialogState,
 	selectProjectSelectedItem,
 	selectProjectWorkspaceModeState,
 } from "#ui/routes/project/$id/state/projectSlice.ts";
 import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/Absorption.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
-import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
-import {
-	formatHunkHeader,
-	CommitLabel,
-	shortCommitId,
-	decodeRefName,
-	encodeRefName,
-	assert,
-	commitTitle,
-} from "#ui/routes/project/$id/shared.tsx";
-import {
-	type NativeMenuItem,
-	showNativeContextMenu,
-	showNativeMenuFromTrigger,
-} from "#ui/native-menu.ts";
+import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
+import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
 import uiStyles from "#ui/ui.module.css";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
@@ -73,20 +75,22 @@ import {
 	TreeChange,
 	UnifiedPatch,
 } from "@gitbutler/but-sdk";
+import { PatchDiff } from "@pierre/diffs/react";
+import {
+	formatForDisplay,
+	getHotkeyManager,
+	useHotkey,
+	useHotkeyRegistrations,
+	useHotkeySequence,
+	useHotkeys,
+	type HotkeyRegistrationView,
+} from "@tanstack/react-hotkeys";
 import {
 	useMutation,
 	useQueryClient,
 	useSuspenseQueries,
 	useSuspenseQuery,
 } from "@tanstack/react-query";
-import {
-	formatForDisplay,
-	getHotkeyManager,
-	useHotkey,
-	useHotkeyRegistrations,
-	useHotkeys,
-	type HotkeyRegistrationView,
-} from "@tanstack/react-hotkeys";
 import { createRoute } from "@tanstack/react-router";
 import { Array, Match, pipe } from "effect";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
@@ -95,6 +99,7 @@ import {
 	FC,
 	Fragment,
 	ReactNode,
+	Ref,
 	Suspense,
 	useEffect,
 	useLayoutEffect,
@@ -103,22 +108,24 @@ import {
 	useState,
 	useTransition,
 } from "react";
-import { Route as projectRoute } from "#ui/routes/project/$id/route.tsx";
-import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
+import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import {
-	branchItem,
 	baseCommitItem,
+	branchItem,
 	changesSectionItem,
-	type BranchItem,
-	type CommitItem,
 	commitItem,
 	fileItem,
+	hunkItem,
 	itemEquals,
 	itemIdentityKey,
-	type Item,
 	stackItem,
-	hunkItem,
+	type BranchItem,
+	type CommitItem,
+	type Item,
 } from "./Item.ts";
+import { PickerDialog, type PickerDialogGroup } from "./PickerDialog.tsx";
+import styles from "./route.module.css";
+import { includeItemForWorkspaceMode, isValidWorkspaceMode } from "./WorkspaceMode.ts";
 import {
 	buildNavigationIndex,
 	filterNavigationIndex,
@@ -126,13 +133,159 @@ import {
 	getNextSection,
 	getPreviousSection,
 	navigationIndexIncludes,
-	type NavigationIndex,
 	useWorkspaceOutline,
+	type NavigationIndex,
 } from "./WorkspaceModel.ts";
-import { PickerDialog, type PickerDialogGroup } from "./PickerDialog.tsx";
-import styles from "./route.module.css";
-import { includeItemForWorkspaceMode, isValidWorkspaceMode } from "./WorkspaceMode.ts";
-import { Panel } from "#ui/routes/project/$id/state/layout.ts";
+
+const getFocusedProjectPanel = (activeElement: Element | null) =>
+	(activeElement?.closest("[data-panel]")?.id as PanelType | undefined) ?? null;
+
+export const useFocusedProjectPanel = (projectId: string): PanelType | null => {
+	const activeElement = useActiveElement();
+	const focusedPanel = getFocusedProjectPanel(activeElement);
+	const pickerDialog = useAppSelector((state) => selectProjectPickerDialogState(state, projectId));
+	return pickerDialog._tag === "CommandPalette" ? pickerDialog.focusedPanel : focusedPanel;
+};
+
+const useProjectPanelFocusManager = () => {
+	const panelElementsRef = useRef(new Map<PanelType, HTMLDivElement>());
+	const panelElementRef =
+		(panel: PanelType) =>
+		(element: HTMLDivElement | null): void => {
+			if (element) panelElementsRef.current.set(panel, element);
+			else panelElementsRef.current.delete(panel);
+		};
+	const focusPanel = (panel: PanelType) => {
+		panelElementsRef.current.get(panel)?.focus({ focusVisible: false });
+	};
+	const focusAdjacentPanel = (offset: -1 | 1) => {
+		const currentPanel = getFocusedProjectPanel(document.activeElement);
+		if (currentPanel === null) return;
+		const nextPanel = orderedPanels[orderedPanels.indexOf(currentPanel) + offset];
+		if (nextPanel === undefined) return;
+		focusPanel(nextPanel);
+	};
+
+	return {
+		focusAdjacentPanel,
+		focusPanel,
+		panelElementRef,
+	};
+};
+
+const LogPanel: FC<{
+	elementRef: Ref<HTMLDivElement | null>;
+	focusPanel: (panel: PanelType) => void;
+	navigationIndex: NavigationIndex;
+	onAbsorbChanges: (target: AbsorptionTarget) => void;
+}> = ({ elementRef, focusPanel, navigationIndex, onAbsorbChanges }) => {
+	const dispatch = useAppDispatch();
+	const { id: projectId } = Route.useParams();
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+	const selectedItem = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
+	const focusedPanel = useFocusedProjectPanel(projectId);
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
+	const commit = () =>
+		dispatch(
+			projectActions.enterMoveMode({
+				projectId,
+				source: changesSectionItem,
+			}),
+		);
+
+	useLogSelectionHotkeys({
+		enabled: focusedPanel === "log",
+		navigationIndex,
+		projectId,
+	});
+
+	return (
+		<Panel
+			id={"log" satisfies PanelType}
+			minSize={400}
+			elementRef={elementRef}
+			tabIndex={0}
+			role="tree"
+			aria-activedescendant={treeItemId(projectId, selectedItem)}
+			className={classes(styles.panel, styles.logPanel)}
+		>
+			<div className={styles.sections}>
+				<Changes
+					projectId={projectId}
+					onAbsorbChanges={onAbsorbChanges}
+					onCommit={commit}
+					navigationIndex={navigationIndex}
+				/>
+
+				{headInfo.stacks.map((stack) => (
+					<StackC
+						key={stack.id}
+						projectId={projectId}
+						stack={stack}
+						navigationIndex={navigationIndex}
+						focusPanel={focusPanel}
+					/>
+				))}
+
+				<BaseCommit
+					projectId={projectId}
+					commitId={getCommonBaseCommitId(headInfo)}
+					navigationIndex={navigationIndex}
+				/>
+			</div>
+
+			{Match.value(operationMode).pipe(
+				Match.when(null, () => null),
+				Match.tag("DragAndDrop", () => null),
+				Match.orElse(({ source }) => (
+					<div className={styles.operationModePreview}>
+						<OperationSourceLabel headInfo={headInfo} source={source} />
+					</div>
+				)),
+			)}
+		</Panel>
+	);
+};
+
+const DetailsPanel: FC<{
+	elementRef: Ref<HTMLDivElement | null>;
+	focusPanel: (panel: PanelType) => void;
+}> = ({ elementRef, focusPanel }) => {
+	const dispatch = useAppDispatch();
+	const { id: projectId } = Route.useParams();
+	const selectedItem = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
+	const focusedPanel = useFocusedProjectPanel(projectId);
+
+	useHotkey(
+		"Escape",
+		() => {
+			dispatch(projectActions.hidePanel({ projectId, panel: "details" }));
+			focusPanel("log");
+		},
+		{
+			conflictBehavior: "allow",
+			enabled: focusedPanel === "details",
+			meta: { group: "Details", name: "Close" },
+		},
+	);
+
+	return (
+		<Panel
+			id={"details" satisfies PanelType}
+			minSize={300}
+			defaultSize="70%"
+			elementRef={elementRef}
+			tabIndex={0}
+			className={styles.panel}
+		>
+			<Suspense fallback={<div>Loading details…</div>}>
+				<Details projectId={projectId} selectedItem={selectedItem} />
+			</Suspense>
+		</Panel>
+	);
+};
 
 type HotkeyGroup =
 	| "Branch"
@@ -143,7 +296,6 @@ type HotkeyGroup =
 	| "Details"
 	| "Global"
 	| "Log selection"
-	| "Log"
 	| "Operation mode"
 	| "Panels"
 	| "Rename branch"
@@ -215,6 +367,18 @@ const useLogSelectionHotkeys = ({
 
 	const selectChanges = () => {
 		dispatch(projectActions.selectItem({ projectId, item: changesSectionItem }));
+	};
+
+	const selectFirstItem = () => {
+		const newItem = navigationIndex.items[0];
+		if (!newItem) return;
+		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+	};
+
+	const selectLastItem = () => {
+		const newItem = navigationIndex.items.at(-1);
+		if (!newItem) return;
+		dispatch(projectActions.selectItem({ projectId, item: newItem }));
 	};
 
 	useHotkeys(
@@ -294,8 +458,62 @@ const useLogSelectionHotkeys = ({
 				callback: selectChanges,
 				options: { meta: { group: "Log selection", name: "Changes" } },
 			},
+			{
+				hotkey: "Home",
+				callback: selectFirstItem,
+				options: {
+					meta: {
+						group: "Log selection",
+						name: "First item",
+						commandPalette: false,
+						shortcutsBar: false,
+					},
+				},
+			},
+			{
+				hotkey: "End",
+				callback: selectLastItem,
+				options: {
+					meta: {
+						group: "Log selection",
+						name: "Last item",
+						commandPalette: false,
+						shortcutsBar: false,
+					},
+				},
+			},
+			{
+				hotkey: "Shift+G",
+				callback: selectLastItem,
+				options: {
+					meta: {
+						group: "Log selection",
+						name: "Last item",
+						commandPalette: false,
+						shortcutsBar: false,
+					},
+				},
+			},
 		],
 		{ enabled },
+	);
+
+	useHotkeySequence(["G", "G"], selectFirstItem, {
+		enabled,
+		meta: {
+			group: "Log selection",
+			name: "First item",
+			commandPalette: false,
+			shortcutsBar: false,
+		},
+	});
+
+	useHotkey(
+		"T",
+		() => {
+			dispatch(projectActions.openBranchPicker({ projectId }));
+		},
+		{ meta: { group: "Log selection", name: "Branch" } },
 	);
 
 	const workspaceMode = useAppSelector((state) =>
@@ -906,10 +1124,8 @@ const EditorHelp: FC<{
 		{hotkeys.map((hotkey, index) => (
 			<Fragment key={hotkey.hotkey}>
 				{index > 0 && " • "}
-				<span className={styles.editorShortcut}>
-					{formatForDisplay(hotkey.hotkey, { useSymbols: false })}
-				</span>{" "}
-				to {hotkey.name}
+				<span className={styles.editorShortcut}>{formatForDisplay(hotkey.hotkey)}</span> to{" "}
+				{hotkey.name}
 			</Fragment>
 		))}
 	</div>
@@ -989,7 +1205,7 @@ const InlineRewordCommit: FC<{
 	projectId: string;
 }> = ({ message, onSubmit, onExit, projectId }) => {
 	const formRef = useRef<HTMLFormElement | null>(null);
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const submitAction = (formData: FormData) => {
 		onExit();
 		onSubmit(formData.get("message") as string);
@@ -1039,7 +1255,7 @@ const CommitRow: FC<
 		projectId: string;
 		stackId: string;
 		navigationIndex: NavigationIndex;
-		focusPanel: (panel: Panel) => void;
+		focusPanel: (panel: PanelType) => void;
 	} & ComponentProps<"div">
 > = ({ commit, isExpanded, projectId, stackId, navigationIndex, focusPanel, ...restProps }) => {
 	const isHighlighted = useAppSelector((state) =>
@@ -1112,7 +1328,7 @@ const CommitRow: FC<
 	const startEditing = () => {
 		dispatch(projectActions.startRewordCommit({ projectId, item: commitItemV }));
 	};
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
@@ -1183,14 +1399,28 @@ const CommitRow: FC<
 	});
 
 	useHotkey(
-		"F",
+		"ArrowRight",
 		() => {
-			dispatch(projectActions.toggleCommitFiles({ projectId, item: commitItemV }));
+			dispatch(projectActions.openCommitFiles({ projectId, item: commitItemV }));
 		},
 		{
 			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "log" && workspaceMode._tag === "Default",
-			meta: { group: "Commit", name: "Files" },
+			enabled:
+				isSelected && focusedPanel === "log" && workspaceMode._tag === "Default" && !isExpanded,
+			meta: { group: "Commit", name: "Expand files" },
+		},
+	);
+
+	useHotkey(
+		"ArrowLeft",
+		() => {
+			dispatch(projectActions.closeCommitFiles({ projectId }));
+		},
+		{
+			conflictBehavior: "allow",
+			enabled:
+				isSelected && focusedPanel === "log" && workspaceMode._tag === "Default" && isExpanded,
+			meta: { group: "Commit", name: "Collapse files" },
 		},
 	);
 
@@ -1319,7 +1549,7 @@ const CommitFileRow: FC<{
 		path: change.path,
 	});
 	const isSelected = useIsItemSelected({ projectId, item });
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	useHotkey(
 		"F",
@@ -1375,7 +1605,7 @@ const CommitC: FC<{
 	projectId: string;
 	stackId: string;
 	navigationIndex: NavigationIndex;
-	focusPanel: (panel: Panel) => void;
+	focusPanel: (panel: PanelType) => void;
 }> = ({ commit, projectId, stackId, navigationIndex, focusPanel }) => {
 	const isExpanded = useAppSelector(
 		(state) => selectProjectExpandedCommitId(state, projectId) === commit.id,
@@ -1428,7 +1658,7 @@ const ChangesFileRow: FC<{
 }> = ({ change, dependencyCommitIds, navigationIndex, onAbsorbChanges, projectId }) => {
 	const item = fileItem({ parent: changesFileParent, path: change.path });
 	const isSelected = useIsItemSelected({ projectId, item });
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
@@ -1524,7 +1754,7 @@ const ChangesSectionRow: FC<{
 }> = ({ changes, navigationIndex, onAbsorbChanges, onCommit, projectId }) => {
 	const item = changesSectionItem;
 	const isSelected = useIsItemSelected({ projectId, item });
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
@@ -1682,7 +1912,7 @@ const InlineRenameBranch: FC<{
 	projectId: string;
 }> = ({ branchName, onSubmit, onExit, projectId }) => {
 	const formRef = useRef<HTMLFormElement | null>(null);
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const submitAction = (formData: FormData) => {
 		onExit();
 		onSubmit(formData.get("branchName") as string);
@@ -1731,7 +1961,7 @@ const BranchRow: FC<
 		branchRef: Array<number>;
 		stackId: string;
 		navigationIndex: NavigationIndex;
-		focusPanel: (panel: Panel) => void;
+		focusPanel: (panel: PanelType) => void;
 	} & ComponentProps<"div">
 > = ({ projectId, branchName, branchRef, stackId, navigationIndex, focusPanel, ...restProps }) => {
 	const workspaceMode = useAppSelector((state) =>
@@ -1764,7 +1994,7 @@ const BranchRow: FC<
 		dispatch(projectActions.startRenameBranch({ projectId, item: branchItemV }));
 	};
 	const isSelected = useIsItemSelected({ projectId, item });
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
@@ -1874,7 +2104,7 @@ const StackRow: FC<
 > = ({ navigationIndex, projectId, stackId, ...restProps }) => {
 	const item = stackItem({ stackId });
 	const isSelected = useIsItemSelected({ projectId, item });
-	const focusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
@@ -1948,7 +2178,7 @@ const BranchSegment: FC<{
 	projectId: string;
 	segment: Segment;
 	stackId: string;
-	focusPanel: (panel: Panel) => void;
+	focusPanel: (panel: PanelType) => void;
 }> = ({ navigationIndex, projectId, segment, stackId, focusPanel }) => {
 	const refName = assert(segment.refName);
 	const item = branchItem({ stackId, branchRef: refName.fullNameBytes });
@@ -2001,7 +2231,7 @@ const BranchlessSegment: FC<{
 	projectId: string;
 	segment: Segment;
 	stackId: string;
-	focusPanel: (panel: Panel) => void;
+	focusPanel: (panel: PanelType) => void;
 }> = ({ navigationIndex, projectId, segment, stackId, focusPanel }) => (
 	<div className={classes(styles.section, styles.segment)}>
 		{segment.commits.map((commit) => (
@@ -2021,7 +2251,7 @@ const StackC: FC<{
 	projectId: string;
 	stack: Stack;
 	navigationIndex: NavigationIndex;
-	focusPanel: (panel: Panel) => void;
+	focusPanel: (panel: PanelType) => void;
 }> = ({ projectId, stack, navigationIndex, focusPanel }) => {
 	// From Caleb:
 	// > There shouldn't be a way within GitButler to end up with a stack without a
@@ -2161,13 +2391,13 @@ const ProjectPage: FC = () => {
 	const expandedCommitId = useAppSelector((state) =>
 		selectProjectExpandedCommitId(state, projectId),
 	);
-	const prompt = useAppSelector((state) => selectProjectPromptState(state, projectId));
+	const pickerDialog = useAppSelector((state) => selectProjectPickerDialogState(state, projectId));
+	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
 	const { focusAdjacentPanel, focusPanel, panelElementRef } = useProjectPanelFocusManager();
-	const focusedPanel = useFocusedProjectPanel();
-	const effectiveFocusedPanel = useEffectiveFocusedProjectPanel(projectId);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	const workspaceOutline = useWorkspaceOutline({ projectId, expandedCommitId });
 
@@ -2234,29 +2464,13 @@ const ProjectPage: FC = () => {
 	useHotkey(
 		"Mod+K",
 		() => {
-			if (prompt._tag === "CommandPalette") dispatch(projectActions.closePrompt({ projectId }));
+			if (pickerDialog._tag === "CommandPalette")
+				dispatch(projectActions.closePickerDialog({ projectId }));
 			else dispatch(projectActions.openCommandPalette({ projectId, focusedPanel }));
 		},
 		{
 			conflictBehavior: "allow",
 			meta: { group: "Global", name: "Command palette", commandPalette: false },
-		},
-	);
-
-	useLogSelectionHotkeys({
-		enabled: effectiveFocusedPanel === "log",
-		navigationIndex,
-		projectId,
-	});
-
-	useHotkey(
-		"T",
-		() => {
-			dispatch(projectActions.openBranchPicker({ projectId }));
-		},
-		{
-			enabled: workspaceMode._tag === "Default",
-			meta: { group: "Log", name: "Branch" },
 		},
 	);
 
@@ -2266,7 +2480,7 @@ const ProjectPage: FC = () => {
 			focusAdjacentPanel(-1);
 		},
 		{
-			enabled: effectiveFocusedPanel !== null,
+			enabled: focusedPanel !== null,
 			meta: { group: "Panels", name: "Focus previous panel", commandPalette: false },
 		},
 	);
@@ -2277,22 +2491,17 @@ const ProjectPage: FC = () => {
 			focusAdjacentPanel(1);
 		},
 		{
-			enabled: effectiveFocusedPanel !== null,
+			enabled: focusedPanel !== null,
 			meta: { group: "Panels", name: "Focus next panel", commandPalette: false },
 		},
 	);
 
-	useHotkey(
-		"Escape",
-		() => {
-			dispatch(projectActions.hidePanel({ projectId, panel: "details" }));
-			focusPanel("log");
-		},
-		{
-			conflictBehavior: "allow",
-			enabled: effectiveFocusedPanel === "details",
-			meta: { group: "Details", name: "Close" },
-		},
+	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+		id: `project:${projectId}:layout`,
+		panelIds: layoutState.visiblePanels,
+	});
+	const logPanelElementRef = useMergedRefs(panelElementRef("log"), (el) =>
+		el?.focus({ focusVisible: false }),
 	);
 
 	// TODO: handle project not found error. or only run when project is not null? waterfall.
@@ -2315,69 +2524,30 @@ const ProjectPage: FC = () => {
 
 	const setBranchPickerOpen = (open: boolean) => {
 		if (open) dispatch(projectActions.openBranchPicker({ projectId }));
-		else dispatch(projectActions.closePrompt({ projectId }));
+		else dispatch(projectActions.closePickerDialog({ projectId }));
 	};
 
 	const setCommandPaletteOpen = (open: boolean) => {
 		if (open) dispatch(projectActions.openCommandPalette({ projectId, focusedPanel }));
-		else dispatch(projectActions.closePrompt({ projectId }));
+		else dispatch(projectActions.closePickerDialog({ projectId }));
 	};
-
-	const commit = () =>
-		dispatch(
-			projectActions.enterMoveMode({
-				projectId,
-				source: changesSectionItem,
-			}),
-		);
 
 	return (
 		<>
-			<ProjectPreviewLayout
-				projectId={projectId}
-				logActiveDescendantId={treeItemId(projectId, selectedItem)}
-				panelElementRef={panelElementRef}
-				details={
-					<Suspense fallback={<div>Loading details…</div>}>
-						<Details projectId={projectId} selectedItem={selectedItem} />
-					</Suspense>
-				}
-			>
-				<div className={styles.sections}>
-					<Changes
-						projectId={projectId}
-						onAbsorbChanges={openAbsorptionDialog}
-						onCommit={commit}
-						navigationIndex={navigationIndex}
-					/>
-
-					{headInfo.stacks.map((stack) => (
-						<StackC
-							key={stack.id}
-							projectId={project.id}
-							stack={stack}
-							navigationIndex={navigationIndex}
-							focusPanel={focusPanel}
-						/>
-					))}
-
-					<BaseCommit
-						projectId={projectId}
-						commitId={getCommonBaseCommitId(headInfo)}
-						navigationIndex={navigationIndex}
-					/>
-				</div>
-
-				{Match.value(operationMode).pipe(
-					Match.when(null, () => null),
-					Match.tag("DragAndDrop", () => null),
-					Match.orElse(({ source }) => (
-						<div className={styles.operationModePreview}>
-							<OperationSourceLabel headInfo={headInfo} source={source} />
-						</div>
-					)),
+			<Group className={styles.page} defaultLayout={defaultLayout} onLayoutChange={onLayoutChanged}>
+				<LogPanel
+					elementRef={logPanelElementRef}
+					focusPanel={focusPanel}
+					navigationIndex={navigationIndex}
+					onAbsorbChanges={openAbsorptionDialog}
+				/>
+				{isPanelVisible(layoutState, "details") && (
+					<>
+						<Separator className={styles.panelResizeHandle} />
+						<DetailsPanel elementRef={panelElementRef("details")} focusPanel={focusPanel} />
+					</>
 				)}
-			</ProjectPreviewLayout>
+			</Group>
 
 			{absorptionTarget && (
 				<AbsorptionDialog
@@ -2389,7 +2559,7 @@ const ProjectPage: FC = () => {
 				/>
 			)}
 
-			{Match.value(prompt).pipe(
+			{Match.value(pickerDialog).pipe(
 				Match.tagsExhaustive({
 					None: () => null,
 					BranchPicker: () => (
