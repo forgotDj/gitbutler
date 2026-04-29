@@ -77,7 +77,7 @@ const TopBarActions: FC = () => {
 		dispatch(projectActions.togglePanel({ projectId, panel: "details" }));
 	};
 
-	const toggleDetailsHotkey = "P";
+	const toggleDetailsHotkey = "D";
 
 	useHotkey(toggleDetailsHotkey, toggleDetails, {
 		meta: { group: "Details", name: isPanelVisible(layoutState, "details") ? "Close" : "Open" },
