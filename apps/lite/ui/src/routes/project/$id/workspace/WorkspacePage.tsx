@@ -126,7 +126,7 @@ import {
 	type Item,
 } from "./Item.ts";
 import { PickerDialog, type PickerDialogGroup } from "./PickerDialog.tsx";
-import styles from "./ProjectPage.module.css";
+import styles from "./WorkspacePage.module.css";
 import { includeItemForWorkspaceMode, isValidWorkspaceMode } from "./WorkspaceMode.ts";
 import {
 	buildNavigationIndex,
@@ -2473,7 +2473,7 @@ const ShortcutsBar: FC = () => {
 	);
 };
 
-export const ProjectPage: FC = () => {
+export const WorkspacePage: FC = () => {
 	const dispatch = useAppDispatch();
 
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
