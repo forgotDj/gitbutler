@@ -1,88 +1,10 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { HotkeysProvider } from "@tanstack/react-hotkeys";
-import { Outlet, useMatch, useNavigate } from "@tanstack/react-router";
-import { FC, useState } from "react";
 import { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext } from "@tanstack/react-router";
-import {
-	ShortcutsBarElementContext,
-	TopBarActionsElementContext,
-} from "#ui/routes/LayoutPortals.tsx";
-import uiStyles from "#ui/ui.module.css";
-import styles from "./__root.module.css";
-import { listProjectsQueryOptions } from "#ui/api/queries.ts";
-
-export const lastOpenedProjectKey = "lastProject";
+import { RootLayout } from "./RootLayout.tsx";
 
 interface RouteContext {
 	queryClient: QueryClient;
 }
-
-const ProjectSelect: FC = () => {
-	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
-	const navigate = useNavigate();
-	const projectMatch = useMatch({
-		from: "/project/$id",
-		shouldThrow: false,
-	});
-	const selectedProjectId = projectMatch?.params.id;
-
-	return (
-		<select
-			name="projectId"
-			disabled={projects.length === 0}
-			value={selectedProjectId ?? ""}
-			onChange={(event) => {
-				const nextProjectId = event.currentTarget.value;
-				void navigate({
-					to: "/project/$id/workspace",
-					params: { id: nextProjectId },
-				});
-				window.localStorage.setItem(lastOpenedProjectKey, nextProjectId);
-			}}
-			className={uiStyles.button}
-		>
-			<option value="" disabled>
-				Select a project
-			</option>
-			{projects.map((project) => (
-				<option key={project.id} value={project.id}>
-					{project.title}
-				</option>
-			))}
-		</select>
-	);
-};
-
-const TopBar: FC<{
-	setTopBarActionsElement: (element: HTMLDivElement | null) => void;
-}> = ({ setTopBarActionsElement }) => (
-	<header className={styles.topBar}>
-		<ProjectSelect />
-		<div ref={setTopBarActionsElement} className={styles.topBarActions} />
-	</header>
-);
-
-const RootLayout: FC = () => {
-	const [topBarActionsElement, setTopBarActionsElement] = useState<HTMLDivElement | null>(null);
-	const [shortcutsBarElement, setShortcutsBarElement] = useState<HTMLElement | null>(null);
-
-	return (
-		<HotkeysProvider>
-			<TopBarActionsElementContext.Provider value={topBarActionsElement}>
-				<ShortcutsBarElementContext.Provider value={shortcutsBarElement}>
-					<main className={styles.layout}>
-						<TopBar setTopBarActionsElement={setTopBarActionsElement} />
-						<section className={styles.content}>
-							<Outlet />
-						</section>
-						<footer ref={setShortcutsBarElement} className={styles.shortcutsBarFooter} />
-					</main>
-				</ShortcutsBarElementContext.Provider>
-			</TopBarActionsElementContext.Provider>
-		</HotkeysProvider>
-	);
-};
 
 export const Route = createRootRouteWithContext<RouteContext>()({
 	component: RootLayout,

@@ -1,7 +1,8 @@
 import { createRoute, redirect } from "@tanstack/react-router";
 import { FC } from "react";
 
-import { lastOpenedProjectKey, Route as rootRoute } from "#ui/routes/__root.tsx";
+import { Route as rootRoute } from "#ui/routes/__root.tsx";
+import { lastOpenedProjectKey } from "#ui/routes/project/constants.ts";
 
 const IndexPage: FC = () => <p>Select a project.</p>;
 
