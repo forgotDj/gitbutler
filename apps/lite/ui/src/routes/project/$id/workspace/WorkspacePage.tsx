@@ -91,7 +91,6 @@ import {
 	ComponentProps,
 	FC,
 	Fragment,
-	ReactNode,
 	Ref,
 	Suspense,
 	useEffect,
@@ -634,8 +633,9 @@ const fileRowLabel = (change: TreeChange) => {
 const CommitFiles: FC<{
 	projectId: string;
 	commitId: string;
-	renderFile: (change: TreeChange) => ReactNode;
-}> = ({ projectId, commitId, renderFile }) => {
+	parentCommitOperand: CommitOperand;
+	navigationIndex: NavigationIndex;
+}> = ({ projectId, commitId, parentCommitOperand, navigationIndex }) => {
 	const { data } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
@@ -669,7 +669,13 @@ const CommitFiles: FC<{
 			{data.changes.length > 0 && (
 				<div role="group">
 					{data.changes.map((file) => (
-						<Fragment key={file.path}>{renderFile(file)}</Fragment>
+						<CommitFileRow
+							key={file.path}
+							change={file}
+							parentCommitOperand={parentCommitOperand}
+							navigationIndex={navigationIndex}
+							projectId={projectId}
+						/>
 					))}
 				</div>
 			)}
@@ -1670,14 +1676,8 @@ const CommitC: FC<{
 					<CommitFiles
 						projectId={projectId}
 						commitId={commit.id}
-						renderFile={(change) => (
-							<CommitFileRow
-								change={change}
-								parentCommitOperand={commitOperandV}
-								navigationIndex={navigationIndex}
-								projectId={projectId}
-							/>
-						)}
+						parentCommitOperand={commitOperandV}
+						navigationIndex={navigationIndex}
 					/>
 				</Suspense>
 			)}
