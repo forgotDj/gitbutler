@@ -557,7 +557,10 @@ const useLogSelectionHotkeys = ({
 				callback: () => {
 					dispatch(projectActions.enterMoveMode({ projectId, source: selection }));
 				},
-				options: { meta: { group: "Log selection", name: "Cut" } },
+				options: {
+					ignoreInputs: true,
+					meta: { group: "Log selection", name: "Cut" },
+				},
 			},
 			{
 				hotkey: "R",
