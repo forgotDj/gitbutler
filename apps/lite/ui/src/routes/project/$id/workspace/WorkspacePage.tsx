@@ -42,29 +42,14 @@ import { PickerDialog, type PickerDialogGroup } from "#ui/ui/PickerDialog/Picker
 import { DetailsPanel } from "./DetailsPanel.tsx";
 import { OutlinePanel } from "./OutlinePanel.tsx";
 import styles from "./WorkspacePage.module.css";
-
-type HotkeyGroup =
-	| "Branch"
-	| "Branches"
-	| "Changes file"
-	| "Changes"
-	| "Commit file"
-	| "Commit"
-	| "Details"
-	| "Global"
-	| "Outline selection"
-	| "Operation mode"
-	| "Panels"
-	| "Rename branch"
-	| "Reword commit"
-	| "Stack";
+import type { CommandGroup } from "#ui/commands/groups.ts";
 
 declare module "@tanstack/react-hotkeys" {
 	interface HotkeyMeta {
 		/**
 		 * The component where the hotkey is registered.
 		 */
-		group: HotkeyGroup;
+		group: CommandGroup;
 		/**
 		 * @default true
 		 *
@@ -81,7 +66,7 @@ declare module "@tanstack/react-hotkeys" {
 }
 
 type CommandPaletteItem = HotkeyRegistrationView & {
-	options: { meta: { group: HotkeyGroup; name: string } };
+	options: { meta: { group: CommandGroup; name: string } };
 };
 
 const groupCommandPaletteItems = (
