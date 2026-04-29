@@ -1,8 +1,8 @@
 import { absorbMutationOptions } from "#ui/api/mutations.ts";
 import { absorptionPlanQueryOptions } from "#ui/api/queries.ts";
-import { classes } from "#ui/classes.ts";
-import { commitTitle, shortCommitId } from "#ui/routes/project/$id/shared.tsx";
-import uiStyles from "#ui/ui.module.css";
+import { classes } from "#ui/ui/classes.ts";
+import { commitTitle, shortCommitId } from "#ui/commit.ts";
+import uiStyles from "#ui/ui/ui.module.css";
 import { AlertDialog, Toast } from "@base-ui/react";
 import { AbsorptionReason, AbsorptionTarget } from "@gitbutler/but-sdk";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";

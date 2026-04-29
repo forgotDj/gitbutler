@@ -1,13 +1,10 @@
-import { Item, itemEquals } from "./Item.ts";
+import { Operand, operandEquals } from "#ui/operands.ts";
 import styles from "./OperationSourceC.module.css";
 import { OperationSourceLabel } from "./OperationSourceLabel.tsx";
 import { headInfoQueryOptions } from "#ui/api/queries.ts";
-import { classes } from "#ui/classes.ts";
-import {
-	projectActions,
-	selectProjectOperationModeState,
-} from "#ui/routes/project/$id/state/projectSlice.ts";
-import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
+import { classes } from "#ui/ui/classes.ts";
+import { projectActions, selectProjectOperationModeState } from "#ui/projects/state.ts";
+import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { centerUnderPointer } from "@atlaskit/pragmatic-drag-and-drop/element/center-under-pointer";
 import { setCustomNativeDragPreview } from "@atlaskit/pragmatic-drag-and-drop/element/set-custom-native-drag-preview";
@@ -17,7 +14,7 @@ import { FC, type ReactNode, useEffect, useEffectEvent, useRef } from "react";
 import { createRoot } from "react-dom/client";
 
 type DragData = {
-	source: Item;
+	source: Operand;
 };
 
 export const parseDragData = (data: unknown): DragData | null => {
@@ -32,7 +29,7 @@ const DragPreview: FC<{ children: ReactNode }> = ({ children }) => (
 export const OperationSourceC: FC<
 	{
 		projectId: string;
-		source: Item;
+		source: Operand;
 	} & useRender.ComponentProps<"div">
 > = ({ projectId, source, render, ...props }) => {
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
@@ -79,7 +76,7 @@ export const OperationSourceC: FC<
 		});
 	}, [dispatch, projectId, source]);
 
-	const isActiveSource = operationMode?.source && itemEquals(operationMode.source, source);
+	const isActiveSource = operationMode?.source && operandEquals(operationMode.source, source);
 
 	return useRender({
 		render,

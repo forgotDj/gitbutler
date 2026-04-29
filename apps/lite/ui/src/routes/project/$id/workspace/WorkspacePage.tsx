@@ -15,54 +15,45 @@ import {
 	listProjectsQueryOptions,
 	treeChangeDiffsQueryOptions,
 } from "#ui/api/queries.ts";
-import { classes } from "#ui/classes.ts";
+import { classes } from "#ui/ui/classes.ts";
 import {
 	branchFileParent,
 	changesFileParent,
 	commitFileParent,
 	type FileParent,
-} from "#ui/domain/FileParent.ts";
-import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/domain/RefInfo.ts";
+} from "#ui/operands.ts";
+import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/api/ref-info.ts";
 import { useActiveElement } from "#ui/focus.ts";
-import { DependencyIcon, ExpandCollapseIcon, MenuTriggerIcon, PushIcon } from "#ui/icons.tsx";
+import { DependencyIcon, ExpandCollapseIcon, MenuTriggerIcon, PushIcon } from "#ui/ui/icons.tsx";
 import {
 	showNativeContextMenu,
 	showNativeMenuFromTrigger,
 	type NativeMenuItem,
 } from "#ui/native-menu.ts";
-import {
-	assert,
-	CommitLabel,
-	commitTitle,
-	decodeRefName,
-	encodeRefName,
-	formatHunkHeader,
-	shortCommitId,
-} from "#ui/routes/project/$id/shared.tsx";
-import {
-	isPanelVisible,
-	orderedPanels,
-	Panel as PanelType,
-} from "#ui/routes/project/$id/state/layout.ts";
+import { CommitLabel } from "#ui/routes/project/$id/CommitLabel.tsx";
+import { commitTitle, shortCommitId } from "#ui/commit.ts";
+import { decodeRefName, encodeRefName } from "#ui/api/ref-name.ts";
+import { orderedPanels, Panel as PanelType } from "#ui/panels.ts";
+import { isPanelVisible } from "#ui/panels/state.ts";
 import {
 	projectActions,
 	selectProjectExpandedCommitId,
 	selectProjectHighlightedCommitIds,
-	selectProjectLayoutState,
+	selectProjectPanelsState,
 	selectProjectOperationModeState,
 	selectProjectPickerDialogState,
-	selectProjectSelectedItem,
+	selectProjectSelection,
 	selectProjectWorkspaceModeState,
-} from "#ui/routes/project/$id/state/projectSlice.ts";
+} from "#ui/projects/state.ts";
 import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/Absorption.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
-import { ShortcutsBarPortal, TopBarActionsPortal } from "#ui/routes/LayoutPortals.tsx";
-import { ShortcutButton } from "#ui/ShortcutButton.tsx";
-import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
-import { isInputElement } from "#ui/TanStackHotkeys.ts";
-import uiStyles from "#ui/ui.module.css";
+import { ShortcutsBarPortal, TopBarActionsPortal } from "#ui/portals.tsx";
+import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
+import { useAppDispatch, useAppSelector } from "#ui/store.ts";
+import { isInputElement } from "#ui/commands/hotkeys.ts";
+import uiStyles from "#ui/ui/ui.module.css";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
@@ -112,22 +103,23 @@ import {
 } from "react";
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import {
-	baseCommitItem,
-	branchItem,
-	changesSectionItem,
-	commitItem,
-	fileItem,
-	hunkItem,
-	itemEquals,
-	itemIdentityKey,
-	stackItem,
-	type BranchItem,
-	type CommitItem,
-	type Item,
-} from "./Item.ts";
-import { PickerDialog, type PickerDialogGroup } from "./PickerDialog.tsx";
+	baseCommitOperand,
+	branchOperand,
+	changesSectionOperand,
+	commitOperand,
+	fileOperand,
+	hunkOperand,
+	operandEquals,
+	operandIdentityKey,
+	stackOperand,
+	type BranchOperand,
+	type CommitOperand,
+	type Operand,
+} from "#ui/operands.ts";
+import { formatHunkHeader } from "#ui/hunk.ts";
+import { PickerDialog, type PickerDialogGroup } from "#ui/ui/PickerDialog/PickerDialog.tsx";
 import styles from "./WorkspacePage.module.css";
-import { includeItemForWorkspaceMode, isValidWorkspaceMode } from "./WorkspaceMode.ts";
+import { includeOperandForWorkspaceMode, isValidWorkspaceMode } from "#ui/workspace/mode.ts";
 import {
 	buildNavigationIndex,
 	filterNavigationIndex,
@@ -135,9 +127,14 @@ import {
 	getNextSection,
 	getPreviousSection,
 	navigationIndexIncludes,
-	useWorkspaceOutline,
 	type NavigationIndex,
-} from "./WorkspaceModel.ts";
+} from "#ui/workspace/navigation-index.ts";
+import { useWorkspaceOutline } from "#ui/workspace/outline.ts";
+
+const assert = <T,>(t: T | null | undefined): T => {
+	if (t == null) throw new Error("Expected value to be non-null and defined");
+	return t;
+};
 
 const getFocusedProjectPanel = (activeElement: Element | null) =>
 	(activeElement?.closest("[data-panel]")?.id as PanelType | undefined) ?? null;
@@ -184,7 +181,7 @@ const LogPanel: FC<{
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-	const selectedItem = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
+	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
 	const focusedPanel = useFocusedProjectPanel(projectId);
 	const operationMode = useAppSelector((state) =>
 		selectProjectOperationModeState(state, projectId),
@@ -193,7 +190,7 @@ const LogPanel: FC<{
 		dispatch(
 			projectActions.enterMoveMode({
 				projectId,
-				source: changesSectionItem,
+				source: changesSectionOperand,
 			}),
 		);
 
@@ -210,7 +207,7 @@ const LogPanel: FC<{
 			elementRef={elementRef}
 			tabIndex={0}
 			role="tree"
-			aria-activedescendant={treeItemId(projectId, selectedItem)}
+			aria-activedescendant={treeItemId(projectId, selection)}
 			className={classes(styles.panel, styles.logPanel)}
 		>
 			<div className={styles.sections}>
@@ -257,7 +254,7 @@ const DetailsPanel: FC<{
 }> = ({ elementRef, focusPanel }) => {
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
-	const selectedItem = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
+	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	useHotkey(
@@ -283,7 +280,7 @@ const DetailsPanel: FC<{
 			className={styles.panel}
 		>
 			<Suspense fallback={<div>Loading details…</div>}>
-				<Details projectId={projectId} selectedItem={selectedItem} />
+				<Details projectId={projectId} selection={selection} />
 			</Suspense>
 		</Panel>
 	);
@@ -327,15 +324,15 @@ declare module "@tanstack/react-hotkeys" {
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];
 
-const useIsItemSelected = ({ projectId, item }: { projectId: string; item: Item }): boolean =>
+const useIsSelected = ({ projectId, operand }: { projectId: string; operand: Operand }): boolean =>
 	useAppSelector((state) => {
-		const selectedItem = selectProjectSelectedItem(state, projectId);
+		const selection = selectProjectSelection(state, projectId);
 
-		return itemEquals(selectedItem, item);
+		return operandEquals(selection, operand);
 	});
 
-const treeItemId = (projectId: string, item: Item): string =>
-	`project-${encodeURIComponent(projectId)}-treeitem-${encodeURIComponent(itemIdentityKey(item))}`;
+const treeItemId = (projectId: string, operand: Operand): string =>
+	`project-${encodeURIComponent(projectId)}-treeitem-${encodeURIComponent(operandIdentityKey(operand))}`;
 
 const useLogSelectionHotkeys = ({
 	enabled,
@@ -347,40 +344,40 @@ const useLogSelectionHotkeys = ({
 	projectId: string;
 }) => {
 	const dispatch = useAppDispatch();
-	const selectedItem = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
+	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
 
 	const moveSelection = (offset: -1 | 1) => {
-		const newItem = getAdjacent({ navigationIndex, selectedItem, offset });
+		const newItem = getAdjacent({ navigationIndex, selection, offset });
 		if (!newItem) return;
-		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+		dispatch(projectActions.select({ projectId, selection: newItem }));
 	};
 
 	const selectNextSection = () => {
-		const newItem = getNextSection({ navigationIndex, selectedItem });
+		const newItem = getNextSection({ navigationIndex, selection });
 		if (!newItem) return;
-		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+		dispatch(projectActions.select({ projectId, selection: newItem }));
 	};
 
 	const selectPreviousSection = () => {
-		const newItem = getPreviousSection({ navigationIndex, selectedItem });
+		const newItem = getPreviousSection({ navigationIndex, selection });
 		if (!newItem) return;
-		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+		dispatch(projectActions.select({ projectId, selection: newItem }));
 	};
 
 	const selectChanges = () => {
-		dispatch(projectActions.selectItem({ projectId, item: changesSectionItem }));
+		dispatch(projectActions.select({ projectId, selection: changesSectionOperand }));
 	};
 
 	const selectFirstItem = () => {
 		const newItem = navigationIndex.items[0];
 		if (!newItem) return;
-		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+		dispatch(projectActions.select({ projectId, selection: newItem }));
 	};
 
 	const selectLastItem = () => {
 		const newItem = navigationIndex.items.at(-1);
 		if (!newItem) return;
-		dispatch(projectActions.selectItem({ projectId, item: newItem }));
+		dispatch(projectActions.select({ projectId, selection: newItem }));
 	};
 
 	useHotkeys(
@@ -527,28 +524,28 @@ const useLogSelectionHotkeys = ({
 			{
 				hotkey: "M",
 				callback: () => {
-					dispatch(projectActions.enterMoveMode({ projectId, source: selectedItem }));
+					dispatch(projectActions.enterMoveMode({ projectId, source: selection }));
 				},
 				options: { meta: { group: "Log selection", name: "Move" } },
 			},
 			{
 				hotkey: "Mod+X",
 				callback: () => {
-					dispatch(projectActions.enterMoveMode({ projectId, source: selectedItem }));
+					dispatch(projectActions.enterMoveMode({ projectId, source: selection }));
 				},
 				options: { meta: { group: "Log selection", name: "Cut" } },
 			},
 			{
 				hotkey: "R",
 				callback: () => {
-					dispatch(projectActions.enterRubMode({ projectId, source: selectedItem }));
+					dispatch(projectActions.enterRubMode({ projectId, source: selection }));
 				},
 				options: { meta: { group: "Log selection", name: "Rub" } },
 			},
 			{
 				hotkey: "C",
 				callback: () => {
-					dispatch(projectActions.enterMoveMode({ projectId, source: changesSectionItem }));
+					dispatch(projectActions.enterMoveMode({ projectId, source: changesSectionOperand }));
 				},
 				options: { meta: { group: "Log selection", name: "Commit" } },
 			},
@@ -683,21 +680,22 @@ const ItemRowPresentational: FC<
 const ItemRow: FC<
 	{
 		projectId: string;
-		item: Item;
+		operand: Operand;
 		navigationIndex: NavigationIndex;
 	} & Omit<ComponentProps<typeof ItemRowPresentational>, "inert" | "isSelected">
-> = ({ projectId, item, navigationIndex, onClick, ...props }) => {
+> = ({ projectId, operand, navigationIndex, onClick, ...props }) => {
 	const dispatch = useAppDispatch();
-	const isSelected = useIsItemSelected({ projectId, item });
+	const isSelected = useIsSelected({ projectId, operand });
 
 	return (
 		<ItemRowPresentational
 			{...props}
-			inert={!navigationIndexIncludes(navigationIndex, item)}
+			inert={!navigationIndexIncludes(navigationIndex, operand)}
 			isSelected={isSelected}
 			onClick={(event) => {
 				onClick?.(event);
-				if (!event.defaultPrevented) dispatch(projectActions.selectItem({ projectId, item }));
+				if (!event.defaultPrevented)
+					dispatch(projectActions.select({ projectId, selection: operand }));
 			}}
 		/>
 	);
@@ -720,18 +718,18 @@ const ItemRowToolbar: FC<Omit<ComponentProps<typeof Toolbar.Root>, "className">>
 const TreeItem: FC<
 	{
 		projectId: string;
-		item: Item;
+		operand: Operand;
 		label: string;
 		expanded?: boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ projectId, item, label, expanded, render, ...props }) => {
-	const isSelected = useIsItemSelected({ projectId, item });
+> = ({ projectId, operand, label, expanded, render, ...props }) => {
+	const isSelected = useIsSelected({ projectId, operand });
 
 	return useRender({
 		render,
 		defaultTagName: "div",
 		props: mergeProps<"div">(props, {
-			id: treeItemId(projectId, item),
+			id: treeItemId(projectId, operand),
 			role: "treeitem",
 			"aria-label": label,
 			"aria-selected": isSelected,
@@ -740,23 +738,23 @@ const TreeItem: FC<
 	});
 };
 
-const OperationItem: FC<
+const OperandC: FC<
 	{
 		projectId: string;
-		item: Item;
+		operand: Operand;
 	} & useRender.ComponentProps<"div">
-> = ({ projectId, item, render, ...props }) => {
-	const isSelected = useIsItemSelected({ projectId, item });
+> = ({ projectId, operand, render, ...props }) => {
+	const isSelected = useIsSelected({ projectId, operand });
 
 	return useRender({
 		render: (
 			<OperationSourceC
 				projectId={projectId}
-				source={item}
+				source={operand}
 				render={
 					<OperationTarget
 						projectId={projectId}
-						item={item}
+						operand={operand}
 						isSelected={isSelected}
 						render={render}
 					/>
@@ -886,7 +884,7 @@ const Hunk: FC<{
 			? getDependencyCommitIds({ hunk, hunkDependencyDiffs })
 			: undefined;
 
-	const item = hunkItem({
+	const operand = hunkOperand({
 		parent: fileParent,
 		path: change.path,
 		hunkHeader: hunk,
@@ -895,7 +893,7 @@ const Hunk: FC<{
 
 	return (
 		<div>
-			<OperationSourceC projectId={projectId} source={item}>
+			<OperationSourceC projectId={projectId} source={operand}>
 				<div className={styles.hunkHeaderRow}>
 					{dependencyCommitIds && (
 						<DependencyIndicatorButton projectId={projectId} commitIds={dependencyCommitIds}>
@@ -963,7 +961,7 @@ const ChangesFileDiffList: FC<{
 	) : (
 		<ul>
 			{changesWithDiffs.map(([change, diff]) => {
-				const source = fileItem({ parent: fileParent, path: change.path });
+				const source = fileOperand({ parent: fileParent, path: change.path });
 
 				return (
 					<li key={change.path}>
@@ -1087,9 +1085,9 @@ const BranchDetails: FC<{
 
 const Details: FC<{
 	projectId: string;
-	selectedItem: Item;
-}> = ({ projectId, selectedItem }) =>
-	Match.value(selectedItem).pipe(
+	selection: Operand;
+}> = ({ projectId, selection }) =>
+	Match.value(selection).pipe(
 		Match.tagsExhaustive({
 			Stack: () => null,
 			Branch: ({ branchRef, stackId }) => (
@@ -1275,18 +1273,18 @@ const CommitRow: FC<
 	);
 
 	const dispatch = useAppDispatch();
-	const commitItemV: CommitItem = {
+	const commitOperandV: CommitOperand = {
 		stackId,
 		commitId: commit.id,
 	};
-	const item = commitItem(commitItemV);
-	const isSelected = useIsItemSelected({ projectId, item });
+	const operand = commitOperand(commitOperandV);
+	const isSelected = useIsSelected({ projectId, operand });
 	const isRewording =
 		isSelected &&
 		workspaceMode._tag === "RewordCommit" &&
-		itemEquals(
-			item,
-			commitItem({
+		operandEquals(
+			operand,
+			commitOperand({
 				stackId: workspaceMode.stackId,
 				commitId: workspaceMode.commitId,
 			}),
@@ -1335,17 +1333,17 @@ const CommitRow: FC<
 	};
 
 	const cutCommit = () => {
-		dispatch(projectActions.enterMoveMode({ projectId, source: item }));
+		dispatch(projectActions.enterMoveMode({ projectId, source: operand }));
 	};
 
 	const startEditing = () => {
-		dispatch(projectActions.startRewordCommit({ projectId, item: commitItemV }));
+		dispatch(projectActions.startRewordCommit({ projectId, commit: commitOperandV }));
 	};
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
-		dispatch(projectActions.selectItem({ projectId, item }));
+		dispatch(projectActions.select({ projectId, selection: operand }));
 		focusPanel("log");
 	};
 
@@ -1419,7 +1417,7 @@ const CommitRow: FC<
 	useHotkey(
 		"ArrowRight",
 		() => {
-			dispatch(projectActions.openCommitFiles({ projectId, item: commitItemV }));
+			dispatch(projectActions.openCommitFiles({ projectId, commit: commitOperandV }));
 		},
 		{
 			conflictBehavior: "allow",
@@ -1483,7 +1481,7 @@ const CommitRow: FC<
 		<ItemRow
 			{...restProps}
 			projectId={projectId}
-			item={item}
+			operand={operand}
 			navigationIndex={navigationIndex}
 			className={classes(restProps.className, isHighlighted && styles.itemRowHighlighted)}
 		>
@@ -1519,7 +1517,9 @@ const CommitRow: FC<
 								<Tooltip.Trigger
 									render={<Toolbar.Button type="button" className={styles.itemRowToolbarButton} />}
 									onClick={() =>
-										dispatch(projectActions.toggleCommitFiles({ projectId, item: commitItemV }))
+										dispatch(
+											projectActions.toggleCommitFiles({ projectId, commit: commitOperandV }),
+										)
 									}
 									onMouseEnter={() => setIsExpandCollapseTooltipOpen(true)}
 									onMouseLeave={() => setIsExpandCollapseTooltipOpen(false)}
@@ -1557,22 +1557,22 @@ const CommitRow: FC<
 
 const CommitFileRow: FC<{
 	change: TreeChange;
-	parentCommitItem: CommitItem;
+	parentCommitOperand: CommitOperand;
 	navigationIndex: NavigationIndex;
 	projectId: string;
-}> = ({ change, parentCommitItem, navigationIndex, projectId }) => {
+}> = ({ change, parentCommitOperand, navigationIndex, projectId }) => {
 	const dispatch = useAppDispatch();
-	const item = fileItem({
-		parent: commitFileParent(parentCommitItem),
+	const operand = fileOperand({
+		parent: commitFileParent(parentCommitOperand),
 		path: change.path,
 	});
-	const isSelected = useIsItemSelected({ projectId, item });
+	const isSelected = useIsSelected({ projectId, operand });
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	useHotkey(
 		"F",
 		() => {
-			dispatch(projectActions.toggleCommitFiles({ projectId, item: parentCommitItem }));
+			dispatch(projectActions.toggleCommitFiles({ projectId, commit: parentCommitOperand }));
 		},
 		{
 			conflictBehavior: "allow",
@@ -1596,16 +1596,16 @@ const CommitFileRow: FC<{
 	return (
 		<TreeItem
 			projectId={projectId}
-			item={item}
+			operand={operand}
 			label={fileRowLabel(change)}
 			render={
-				<OperationItem
+				<OperandC
 					projectId={projectId}
-					item={item}
+					operand={operand}
 					render={
 						<ItemRow
 							projectId={projectId}
-							item={item}
+							operand={operand}
 							navigationIndex={navigationIndex}
 							className={styles.fileRow}
 						/>
@@ -1628,16 +1628,16 @@ const CommitC: FC<{
 	const isExpanded = useAppSelector(
 		(state) => selectProjectExpandedCommitId(state, projectId) === commit.id,
 	);
-	const commitItemV: CommitItem = { stackId, commitId: commit.id };
-	const item = commitItem(commitItemV);
+	const commitOperandV: CommitOperand = { stackId, commitId: commit.id };
+	const operand = commitOperand(commitOperandV);
 
 	return (
 		<TreeItem
 			projectId={projectId}
-			item={item}
+			operand={operand}
 			label={commitTitle(commit.message)}
 			expanded={isExpanded}
-			render={<OperationItem projectId={projectId} item={item} />}
+			render={<OperandC projectId={projectId} operand={operand} />}
 		>
 			<CommitRow
 				commit={commit}
@@ -1655,7 +1655,7 @@ const CommitC: FC<{
 						renderFile={(change) => (
 							<CommitFileRow
 								change={change}
-								parentCommitItem={commitItemV}
+								parentCommitOperand={commitOperandV}
 								navigationIndex={navigationIndex}
 								projectId={projectId}
 							/>
@@ -1674,8 +1674,8 @@ const ChangesFileRow: FC<{
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	projectId: string;
 }> = ({ change, dependencyCommitIds, navigationIndex, onAbsorbChanges, projectId }) => {
-	const item = fileItem({ parent: changesFileParent, path: change.path });
-	const isSelected = useIsItemSelected({ projectId, item });
+	const operand = fileOperand({ parent: changesFileParent, path: change.path });
+	const isSelected = useIsSelected({ projectId, operand });
 	const focusedPanel = useFocusedProjectPanel(projectId);
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
@@ -1718,13 +1718,15 @@ const ChangesFileRow: FC<{
 	return (
 		<TreeItem
 			projectId={projectId}
-			item={item}
+			operand={operand}
 			label={fileRowLabel(change)}
 			render={
-				<OperationItem
+				<OperandC
 					projectId={projectId}
-					item={item}
-					render={<ItemRow projectId={projectId} item={item} navigationIndex={navigationIndex} />}
+					operand={operand}
+					render={
+						<ItemRow projectId={projectId} operand={operand} navigationIndex={navigationIndex} />
+					}
 				/>
 			}
 		>
@@ -1770,8 +1772,8 @@ const ChangesSectionRow: FC<{
 	onCommit: () => void;
 	projectId: string;
 }> = ({ changes, navigationIndex, onAbsorbChanges, onCommit, projectId }) => {
-	const item = changesSectionItem;
-	const isSelected = useIsItemSelected({ projectId, item });
+	const operand = changesSectionOperand;
+	const isSelected = useIsSelected({ projectId, operand });
 	const focusedPanel = useFocusedProjectPanel(projectId);
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
@@ -1805,7 +1807,7 @@ const ChangesSectionRow: FC<{
 	];
 
 	return (
-		<ItemRow projectId={projectId} item={item} navigationIndex={navigationIndex}>
+		<ItemRow projectId={projectId} operand={operand} navigationIndex={navigationIndex}>
 			<div
 				className={classes(styles.itemRowLabel, styles.sectionLabel)}
 				onContextMenu={(event) => {
@@ -1840,19 +1842,21 @@ const BaseCommit: FC<{
 	commitId?: string;
 	navigationIndex: NavigationIndex;
 }> = ({ projectId, commitId, navigationIndex }) => {
-	const item = baseCommitItem;
+	const operand = baseCommitOperand;
 
 	return (
 		<div className={styles.section}>
 			<TreeItem
 				projectId={projectId}
-				item={item}
+				operand={operand}
 				label="Base commit"
 				render={
-					<OperationItem
+					<OperandC
 						projectId={projectId}
-						item={item}
-						render={<ItemRow projectId={projectId} item={item} navigationIndex={navigationIndex} />}
+						operand={operand}
+						render={
+							<ItemRow projectId={projectId} operand={operand} navigationIndex={navigationIndex} />
+						}
 					/>
 				}
 			>
@@ -1878,16 +1882,16 @@ const Changes: FC<{
 		worktreeChanges.dependencies?.diffs ?? [],
 	);
 
-	const item = changesSectionItem;
+	const operand = changesSectionOperand;
 
 	return (
 		<TreeItem
 			projectId={projectId}
-			item={item}
+			operand={operand}
 			label={`Changes (${worktreeChanges.changes.length})`}
 			expanded
 			className={styles.section}
-			render={<OperationItem projectId={projectId} item={item} />}
+			render={<OperandC projectId={projectId} operand={operand} />}
 		>
 			<ChangesSectionRow
 				changes={worktreeChanges.changes}
@@ -1986,16 +1990,16 @@ const BranchRow: FC<
 		selectProjectWorkspaceModeState(state, projectId),
 	);
 	const dispatch = useAppDispatch();
-	const branchItemV: BranchItem = {
+	const branchOperandV: BranchOperand = {
 		stackId,
 		branchRef,
 	};
-	const item = branchItem(branchItemV);
+	const operand = branchOperand(branchOperandV);
 	const isRenaming =
 		workspaceMode._tag === "RenameBranch" &&
-		itemEquals(
-			item,
-			branchItem({
+		operandEquals(
+			operand,
+			branchOperand({
 				stackId: workspaceMode.stackId,
 				branchRef: workspaceMode.branchRef,
 			}),
@@ -2009,14 +2013,14 @@ const BranchRow: FC<
 	const updateBranchName = useMutation(updateBranchNameMutationOptions);
 
 	const startEditing = () => {
-		dispatch(projectActions.startRenameBranch({ projectId, item: branchItemV }));
+		dispatch(projectActions.startRenameBranch({ projectId, branch: branchOperandV }));
 	};
-	const isSelected = useIsItemSelected({ projectId, item });
+	const isSelected = useIsSelected({ projectId, operand });
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
-		dispatch(projectActions.selectItem({ projectId, item }));
+		dispatch(projectActions.select({ projectId, selection: operand }));
 		focusPanel("log");
 	};
 
@@ -2037,12 +2041,12 @@ const BranchRow: FC<
 				// error boundaries.
 				return;
 			}
-			const newItem = branchItem({
+			const newItem = branchOperand({
 				stackId,
 				// TODO: ideally the API would return the new ref?
 				branchRef: encodeRefName(`refs/heads/${trimmed}`),
 			});
-			dispatch(projectActions.selectItem({ projectId, item: newItem }));
+			dispatch(projectActions.select({ projectId, selection: newItem }));
 			dispatch(projectActions.exitMode({ projectId }));
 		});
 	};
@@ -2063,7 +2067,12 @@ const BranchRow: FC<
 	});
 
 	return (
-		<ItemRow {...restProps} projectId={projectId} item={item} navigationIndex={navigationIndex}>
+		<ItemRow
+			{...restProps}
+			projectId={projectId}
+			operand={operand}
+			navigationIndex={navigationIndex}
+		>
 			{isRenaming ? (
 				<InlineRenameBranch
 					branchName={optimisticBranchName}
@@ -2120,8 +2129,8 @@ const StackRow: FC<
 		stackId: string;
 	} & ComponentProps<"div">
 > = ({ navigationIndex, projectId, stackId, ...restProps }) => {
-	const item = stackItem({ stackId });
-	const isSelected = useIsItemSelected({ projectId, item });
+	const operand = stackOperand({ stackId });
+	const isSelected = useIsSelected({ projectId, operand });
 	const focusedPanel = useFocusedProjectPanel(projectId);
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
@@ -2160,7 +2169,12 @@ const StackRow: FC<
 	});
 
 	return (
-		<ItemRow {...restProps} projectId={projectId} item={item} navigationIndex={navigationIndex}>
+		<ItemRow
+			{...restProps}
+			projectId={projectId}
+			operand={operand}
+			navigationIndex={navigationIndex}
+		>
 			<div
 				className={classes(styles.itemRowLabel, styles.sectionLabel)}
 				onContextMenu={
@@ -2199,19 +2213,19 @@ const BranchSegment: FC<{
 	focusPanel: (panel: PanelType) => void;
 }> = ({ navigationIndex, projectId, segment, stackId, focusPanel }) => {
 	const refName = assert(segment.refName);
-	const item = branchItem({ stackId, branchRef: refName.fullNameBytes });
+	const operand = branchOperand({ stackId, branchRef: refName.fullNameBytes });
 
 	return (
 		<TreeItem
 			projectId={projectId}
-			item={item}
+			operand={operand}
 			label={refName.displayName}
 			expanded
 			className={classes(styles.section, styles.segment)}
 		>
-			<OperationItem
+			<OperandC
 				projectId={projectId}
-				item={item}
+				operand={operand}
 				render={
 					<BranchRow
 						projectId={projectId}
@@ -2280,16 +2294,16 @@ const StackC: FC<{
 	// could genuinely be null (assuming backend correctness).
 	// oxlint-disable-next-line typescript/no-non-null-assertion -- [tag:stack-id-required]
 	const stackId = stack.id!;
-	const item = stackItem({ stackId });
+	const operand = stackOperand({ stackId });
 
 	return (
 		<TreeItem
 			projectId={projectId}
-			item={item}
+			operand={operand}
 			label="Stack"
 			expanded
 			className={classes(styles.stack, styles.section)}
-			render={<OperationItem projectId={projectId} item={item} />}
+			render={<OperandC projectId={projectId} operand={operand} />}
 		>
 			<StackRow
 				projectId={projectId}
@@ -2338,7 +2352,7 @@ const StackC: FC<{
 type BranchPickerOption = {
 	id: string;
 	label: string;
-	branch: BranchItem;
+	branch: BranchOperand;
 };
 
 const segmentToBranchPickerOption = ({
@@ -2370,7 +2384,7 @@ const stackToBranchPickerOptions = (stack: Stack): Array<BranchPickerOption> => 
 const BranchPicker: FC<{
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	onSelectBranch: (branch: BranchItem) => void;
+	onSelectBranch: (branch: BranchOperand) => void;
 	stacks: Array<Stack>;
 }> = ({ open, onOpenChange, onSelectBranch, stacks }) => {
 	const selectBranch = (option: BranchPickerOption) => {
@@ -2404,12 +2418,12 @@ const BranchPicker: FC<{
 const TopBarActions: FC = () => {
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
-	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
+	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
 	const focusedPanel = useFocusedProjectPanel(projectId);
 	const toggleDetails = () => {
-		if (focusedPanel === "details" && isPanelVisible(layoutState, "details")) {
-			const detailsPanelIndex = layoutState.visiblePanels.indexOf("details");
-			const nextPanel = layoutState.visiblePanels[detailsPanelIndex - 1];
+		if (focusedPanel === "details" && isPanelVisible(panelsState, "details")) {
+			const detailsPanelIndex = panelsState.visiblePanels.indexOf("details");
+			const nextPanel = panelsState.visiblePanels[detailsPanelIndex - 1];
 			if (nextPanel !== undefined)
 				document.getElementById(nextPanel)?.focus({ focusVisible: false });
 		}
@@ -2420,13 +2434,13 @@ const TopBarActions: FC = () => {
 	const toggleDetailsHotkey = "D";
 
 	useHotkey(toggleDetailsHotkey, toggleDetails, {
-		meta: { group: "Details", name: isPanelVisible(layoutState, "details") ? "Close" : "Open" },
+		meta: { group: "Details", name: isPanelVisible(panelsState, "details") ? "Close" : "Open" },
 	});
 
 	return (
 		<ShortcutButton
 			hotkey={toggleDetailsHotkey}
-			aria-pressed={isPanelVisible(layoutState, "details")}
+			aria-pressed={isPanelVisible(panelsState, "details")}
 			onClick={toggleDetails}
 		>
 			Details
@@ -2482,7 +2496,7 @@ export const WorkspacePage: FC = () => {
 		selectProjectExpandedCommitId(state, projectId),
 	);
 	const pickerDialog = useAppSelector((state) => selectProjectPickerDialogState(state, projectId));
-	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
+	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
 	);
@@ -2505,19 +2519,19 @@ export const WorkspacePage: FC = () => {
 			dispatch(projectActions.exitMode({ projectId }));
 	}, [workspaceMode, navigationIndexUnfiltered, projectId, dispatch]);
 
-	const selectedItem = useAppSelector((state) => selectProjectSelectedItem(state, projectId));
+	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
 
 	// React allows state updates on render, but not for external stores.
 	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
 	useEffect(() => {
-		if (!navigationIndexIncludes(navigationIndexUnfiltered, selectedItem))
+		if (!navigationIndexIncludes(navigationIndexUnfiltered, selection))
 			dispatch(
-				projectActions.selectItem({
+				projectActions.select({
 					projectId,
-					item: changesSectionItem,
+					selection: changesSectionOperand,
 				}),
 			);
-	}, [navigationIndexUnfiltered, selectedItem, projectId, dispatch]);
+	}, [navigationIndexUnfiltered, selection, projectId, dispatch]);
 
 	const operationMode = useAppSelector((state) =>
 		selectProjectOperationModeState(state, projectId),
@@ -2527,15 +2541,15 @@ export const WorkspacePage: FC = () => {
 		workspaceMode._tag !== "Default"
 			? filterNavigationIndex(
 					navigationIndexUnfiltered,
-					(item) =>
-						// When entering operation mode, the selected item must still be
+					(operand) =>
+						// When entering operation mode, the selection must still be
 						// selectable otherwise the details panel will suddenly appear to
-						// change and the user may lose sight of their source item (e.g.
+						// change and the user may lose sight of their source operand (e.g.
 						// hunk).
-						itemEquals(selectedItem, item) ||
-						// After selection moves, allow returning selection to the source item.
-						(operationMode?.source && itemEquals(operationMode.source, item)) ||
-						includeItemForWorkspaceMode({ mode: workspaceMode, item }),
+						operandEquals(selection, operand) ||
+						// After selection moves, allow returning selection to the source operand.
+						(operationMode?.source && operandEquals(operationMode.source, operand)) ||
+						includeOperandForWorkspaceMode({ mode: workspaceMode, operand }),
 				)
 			: navigationIndexUnfiltered;
 
@@ -2588,7 +2602,7 @@ export const WorkspacePage: FC = () => {
 
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
 		id: `project:${projectId}:layout`,
-		panelIds: layoutState.visiblePanels,
+		panelIds: panelsState.visiblePanels,
 	});
 	const logPanelElementRef = useMergedRefs(panelElementRef("log"), (el) =>
 		el?.focus({ focusVisible: false }),
@@ -2602,11 +2616,11 @@ export const WorkspacePage: FC = () => {
 	// TODO: dedupe
 	if (!project) return <p>Project not found.</p>;
 
-	const selectBranch = (branch: BranchItem) => {
+	const selectBranch = (branch: BranchOperand) => {
 		dispatch(
-			projectActions.selectItem({
+			projectActions.select({
 				projectId,
-				item: branchItem(branch),
+				selection: branchOperand(branch),
 			}),
 		);
 		focusPanel("log");
@@ -2639,7 +2653,7 @@ export const WorkspacePage: FC = () => {
 					navigationIndex={navigationIndex}
 					onAbsorbChanges={openAbsorptionDialog}
 				/>
-				{isPanelVisible(layoutState, "details") && (
+				{isPanelVisible(panelsState, "details") && (
 					<>
 						<Separator className={styles.panelResizeHandle} />
 						<DetailsPanel elementRef={panelElementRef("details")} focusPanel={focusPanel} />

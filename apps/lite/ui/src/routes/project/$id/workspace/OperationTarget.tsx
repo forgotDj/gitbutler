@@ -1,14 +1,16 @@
-import { type Item } from "./Item.ts";
+import { type Operand } from "#ui/operands.ts";
 import { parseDragData } from "./OperationSourceC.tsx";
 import styles from "./OperationTarget.module.css";
 import { OperationTooltip } from "./OperationTooltip.tsx";
-import { getOperation, getOperations, OperationType, useRunOperation } from "#ui/Operation.ts";
-import { classes } from "#ui/classes.ts";
 import {
-	projectActions,
-	selectProjectOperationModeState,
-} from "#ui/routes/project/$id/state/projectSlice.ts";
-import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
+	getOperation,
+	getOperations,
+	OperationType,
+	useRunOperation,
+} from "#ui/operations/operation.ts";
+import { classes } from "#ui/ui/classes.ts";
+import { projectActions, selectProjectOperationModeState } from "#ui/projects/state.ts";
+import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import {
 	attachInstruction,
@@ -23,7 +25,7 @@ type GetDataArgs = Parameters<NonNullable<DropTargetParams["getData"]>>[0];
 
 type DropData = {
 	operationType: OperationType;
-	target: Item;
+	target: Operand;
 };
 
 const parseDropData = (data: unknown): DropData | null => {
@@ -37,8 +39,8 @@ const getDropOperationType = ({
 	input,
 	element,
 }: {
-	source: Item;
-	target: Item;
+	source: Operand;
+	target: Operand;
 	input: Parameters<typeof attachInstruction>[1]["input"];
 	element: Parameters<typeof attachInstruction>[1]["element"];
 }): OperationType | null => {
@@ -69,7 +71,13 @@ const getDropOperationType = ({
 	);
 };
 
-const useOperationDropTarget = ({ item, projectId }: { item: Item; projectId: string }) => {
+const useOperationDropTarget = ({
+	operand,
+	projectId,
+}: {
+	operand: Operand;
+	projectId: string;
+}) => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
 	const dropRef = useRef<HTMLElement>(null);
@@ -81,13 +89,13 @@ const useOperationDropTarget = ({ item, projectId }: { item: Item; projectId: st
 
 		const operationType = getDropOperationType({
 			source: dragData.source,
-			target: item,
+			target: operand,
 			input,
 			element,
 		});
 		if (operationType === null) return null;
 
-		return { operationType, target: item };
+		return { operationType, target: operand };
 	});
 
 	useEffect(() => {
@@ -149,12 +157,12 @@ const useOperationDropTarget = ({ item, projectId }: { item: Item; projectId: st
 
 export const OperationTarget: FC<
 	{
-		item: Item;
+		operand: Operand;
 		projectId: string;
 		isSelected: boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ item, projectId, isSelected, render, ...props }) => {
-	const { dropRef, isActiveDropTarget } = useOperationDropTarget({ item, projectId });
+> = ({ operand, projectId, isSelected, render, ...props }) => {
+	const { dropRef, isActiveDropTarget } = useOperationDropTarget({ operand, projectId });
 	const operationMode = useAppSelector((state) =>
 		selectProjectOperationModeState(state, projectId),
 	);
@@ -194,7 +202,7 @@ export const OperationTarget: FC<
 		<div className={styles.target}>
 			<OperationTooltip
 				projectId={projectId}
-				item={item}
+				operand={operand}
 				isActive={isMainTargetActive}
 				operationMode={operationMode}
 				render={target}
@@ -203,7 +211,7 @@ export const OperationTarget: FC<
 			{insertTargetOperationType !== null && (
 				<OperationTooltip
 					projectId={projectId}
-					item={item}
+					operand={operand}
 					isActive
 					operationMode={operationMode}
 					className={classes(

@@ -1,18 +1,20 @@
-import { classes } from "#ui/classes.ts";
-import { getOperation, operationLabel, useRunOperation, type Operation } from "#ui/Operation.ts";
-import { ShortcutButton } from "#ui/ShortcutButton.tsx";
-import uiStyles from "#ui/ui.module.css";
+import { classes } from "#ui/ui/classes.ts";
+import {
+	getOperation,
+	operationLabel,
+	useRunOperation,
+	type Operation,
+} from "#ui/operations/operation.ts";
+import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
+import uiStyles from "#ui/ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
 import { useHotkeys } from "@tanstack/react-hotkeys";
 import { FC } from "react";
 import styles from "./OperationTooltip.module.css";
-import { Item, itemEquals } from "./Item";
-import { useAppDispatch } from "#ui/state/hooks.ts";
-import { projectActions } from "#ui/routes/project/$id/state/projectSlice.ts";
-import {
-	operationModeToOperationType,
-	OperationMode,
-} from "#ui/routes/project/$id/workspace/WorkspaceMode.ts";
+import { Operand, operandEquals } from "#ui/operands.ts";
+import { useAppDispatch } from "#ui/store.ts";
+import { projectActions } from "#ui/projects/state.ts";
+import { operationModeToOperationType, OperationMode } from "#ui/workspace/mode.ts";
 import { Match } from "effect";
 
 const OperationModeControls: FC<{
@@ -81,15 +83,15 @@ const OperationModeControls: FC<{
 export const OperationTooltip: FC<
 	{
 		projectId: string;
-		item: Item;
+		operand: Operand;
 		operationMode: OperationMode | null;
 		isActive: boolean;
 	} & useRender.ComponentProps<"div">
-> = ({ projectId, item, operationMode, isActive, render, ...props }) => {
+> = ({ projectId, operand, operationMode, isActive, render, ...props }) => {
 	const operation = operationMode?.source
 		? getOperation({
 				source: operationMode.source,
-				target: item,
+				target: operand,
 				operationType: operationModeToOperationType(operationMode),
 			})
 		: null;
@@ -97,7 +99,7 @@ export const OperationTooltip: FC<
 	const tooltipLabel = isActive ? (
 		operation ? (
 			<>{operationLabel(operation)}</>
-		) : !!operationMode?.source && itemEquals(operationMode.source, item) ? (
+		) : !!operationMode?.source && operandEquals(operationMode.source, operand) ? (
 			<>Select a target</>
 		) : null
 	) : null;

@@ -1,5 +1,5 @@
-import { classes } from "#ui/classes.ts";
-import uiStyles from "#ui/ui.module.css";
+import { classes } from "#ui/ui/classes.ts";
+import uiStyles from "#ui/ui/ui.module.css";
 import { Tooltip } from "@base-ui/react";
 import { formatForDisplay } from "@tanstack/react-hotkeys";
 import { ComponentPropsWithoutRef, FC } from "react";

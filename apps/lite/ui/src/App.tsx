@@ -4,9 +4,9 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RegisteredRouter, RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { Provider } from "react-redux";
-import { store } from "#ui/state/store.ts";
-import { Toasts } from "./Toasts";
-import { Updater } from "./Updater";
+import { store } from "#ui/store.ts";
+import { Toasts } from "#ui/ui/Toasts/Toasts.tsx";
+import { Updater } from "#ui/Updater.tsx";
 
 export const App: React.FC<{
 	queryClient: QueryClient;

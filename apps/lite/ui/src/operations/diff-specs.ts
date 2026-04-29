@@ -2,7 +2,7 @@ import {
 	changesInWorktreeQueryOptions,
 	commitDetailsWithLineStatsQueryOptions,
 } from "#ui/api/queries.ts";
-import { Item } from "#ui/routes/project/$id/workspace/Item.ts";
+import { Operand } from "#ui/operands.ts";
 import { QueryClient } from "@tanstack/react-query";
 import {
 	CommitDetails,
@@ -21,16 +21,16 @@ const createDiffSpec = (change: TreeChange, hunkHeaders: Array<HunkHeader>): Dif
 		change.status.type === "Addition" || change.status.type === "Deletion" ? [] : hunkHeaders,
 });
 
-const resolvedDiffSpecsFromItem = ({
-	item,
+const resolvedDiffSpecsFromOperand = ({
+	operand,
 	worktreeChanges,
 	getCommitDetails,
 }: {
-	item: Item;
+	operand: Operand;
 	worktreeChanges: WorktreeChanges | undefined;
 	getCommitDetails: (commitId: string) => CommitDetails | undefined;
 }) =>
-	Match.value(item).pipe(
+	Match.value(operand).pipe(
 		Match.withReturnType<Array<DiffSpec> | null>(),
 		Match.tags({
 			File: ({ parent, path }) =>
@@ -84,12 +84,12 @@ export const resolveDiffSpecs = ({
 	queryClient,
 	projectId,
 }: {
-	source: Item;
+	source: Operand;
 	queryClient: QueryClient;
 	projectId: string;
 }) =>
-	resolvedDiffSpecsFromItem({
-		item: source,
+	resolvedDiffSpecsFromOperand({
+		operand: source,
 		worktreeChanges: queryClient.getQueryData(changesInWorktreeQueryOptions(projectId).queryKey),
 		getCommitDetails: (commitId) =>
 			queryClient.getQueryData(
