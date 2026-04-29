@@ -6,7 +6,7 @@ import uiStyles from "#ui/ui/ui.module.css";
 import { AlertDialog, Toast } from "@base-ui/react";
 import { AbsorptionReason, AbsorptionTarget } from "@gitbutler/but-sdk";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
-import { dedupe } from "effect/Array";
+import { Array } from "effect";
 import { FC, Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import styles from "./AbsorptionDialog.module.css";
@@ -87,7 +87,7 @@ const AbsorptionDialogContent: FC<{
 								<dt>Paths</dt>
 								<dd>
 									<ul>
-										{dedupe(commitAbsorption.files.map((file) => file.path)).map((path) => (
+										{Array.dedupe(commitAbsorption.files.map((file) => file.path)).map((path) => (
 											<li key={path}>{path}</li>
 										))}
 									</ul>
