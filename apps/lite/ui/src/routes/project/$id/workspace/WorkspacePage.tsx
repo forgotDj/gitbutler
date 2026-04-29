@@ -45,7 +45,7 @@ import {
 	selectProjectSelection,
 	selectProjectWorkspaceModeState,
 } from "#ui/projects/state.ts";
-import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/Absorption.tsx";
+import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/AbsorptionDialog.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
