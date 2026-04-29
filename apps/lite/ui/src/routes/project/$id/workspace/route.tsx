@@ -59,7 +59,10 @@ import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/Absorption.ts
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
+import { ShortcutsBarPortal, TopBarActionsPortal } from "#ui/routes/LayoutPortals.tsx";
+import { ShortcutButton } from "#ui/ShortcutButton.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/state/hooks.ts";
+import { isInputElement } from "#ui/TanStackHotkeys.ts";
 import uiStyles from "#ui/ui.module.css";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
@@ -140,7 +143,7 @@ import {
 const getFocusedProjectPanel = (activeElement: Element | null) =>
 	(activeElement?.closest("[data-panel]")?.id as PanelType | undefined) ?? null;
 
-export const useFocusedProjectPanel = (projectId: string): PanelType | null => {
+const useFocusedProjectPanel = (projectId: string): PanelType | null => {
 	const activeElement = useActiveElement();
 	const focusedPanel = getFocusedProjectPanel(activeElement);
 	const pickerDialog = useAppSelector((state) => selectProjectPickerDialogState(state, projectId));
@@ -2399,6 +2402,78 @@ const BranchPicker: FC<{
 	);
 };
 
+const TopBarActions: FC = () => {
+	const dispatch = useAppDispatch();
+	const { id: projectId } = Route.useParams();
+	const layoutState = useAppSelector((state) => selectProjectLayoutState(state, projectId));
+	const focusedPanel = useFocusedProjectPanel(projectId);
+	const toggleDetails = () => {
+		if (focusedPanel === "details" && isPanelVisible(layoutState, "details")) {
+			const detailsPanelIndex = layoutState.visiblePanels.indexOf("details");
+			const nextPanel = layoutState.visiblePanels[detailsPanelIndex - 1];
+			if (nextPanel !== undefined)
+				document.getElementById(nextPanel)?.focus({ focusVisible: false });
+		}
+
+		dispatch(projectActions.togglePanel({ projectId, panel: "details" }));
+	};
+
+	const toggleDetailsHotkey = "D";
+
+	useHotkey(toggleDetailsHotkey, toggleDetails, {
+		meta: { group: "Details", name: isPanelVisible(layoutState, "details") ? "Close" : "Open" },
+	});
+
+	return (
+		<ShortcutButton
+			hotkey={toggleDetailsHotkey}
+			aria-pressed={isPanelVisible(layoutState, "details")}
+			onClick={toggleDetails}
+		>
+			Details
+		</ShortcutButton>
+	);
+};
+
+const isInputIgnoredHotkey = ({
+	activeElement,
+	hotkey,
+}: {
+	activeElement: Element | null;
+	hotkey: HotkeyRegistrationView;
+}): boolean =>
+	hotkey.options.ignoreInputs !== false &&
+	isInputElement(activeElement) &&
+	activeElement !== hotkey.target;
+
+const ShortcutsBar: FC = () => {
+	const { id: projectId } = Route.useParams();
+	const focusedPanel = useFocusedProjectPanel(projectId);
+	const activeElement = useActiveElement();
+	const { hotkeys } = useHotkeyRegistrations();
+	const visibleHotkeys = hotkeys.filter(
+		(hotkey) =>
+			hotkey.options.enabled !== false &&
+			!isInputIgnoredHotkey({ activeElement, hotkey }) &&
+			hotkey.options.meta?.name !== undefined &&
+			hotkey.options.meta.shortcutsBar !== false,
+	);
+
+	if (visibleHotkeys.length === 0) return null;
+
+	return (
+		<div className={styles.shortcutsBarContainer}>
+			<span className={styles.shortcutsBarScope}>{focusedPanel ?? "Shortcuts"}</span>
+			{visibleHotkeys.map((hotkey) => (
+				<div key={hotkey.id} className={styles.shortcutsBarItem}>
+					<span className={styles.shortcutsBarKeys}>{formatForDisplay(hotkey.hotkey)}</span>
+					<span>{hotkey.options.meta?.name}</span>
+				</div>
+			))}
+		</div>
+	);
+};
+
 const ProjectPage: FC = () => {
 	const dispatch = useAppDispatch();
 
@@ -2550,6 +2625,14 @@ const ProjectPage: FC = () => {
 
 	return (
 		<>
+			<TopBarActionsPortal>
+				<TopBarActions />
+			</TopBarActionsPortal>
+
+			<ShortcutsBarPortal>
+				<ShortcutsBar />
+			</ShortcutsBarPortal>
+
 			<Group className={styles.page} defaultLayout={defaultLayout} onLayoutChange={onLayoutChanged}>
 				<LogPanel
 					elementRef={logPanelElementRef}
