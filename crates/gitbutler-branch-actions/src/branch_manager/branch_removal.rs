@@ -2,10 +2,8 @@ use anyhow::{Context as _, Result};
 use but_core::{DiffSpec, RepositoryExt};
 use but_ctx::access::RepoExclusive;
 use but_oxidize::ObjectIdExt;
-use gitbutler_cherry_pick::GixRepositoryExt as _;
 use gitbutler_repo_actions::RepoActionsExt;
 use gitbutler_stack::StackId;
-use gitbutler_workspace::workspace_base;
 use tracing::instrument;
 
 use super::{BranchManager, checkout_remerged_head};
@@ -67,21 +65,20 @@ impl BranchManager<'_> {
             }
             res?
         } else {
-            // On v3 we want to take the `current_wd_tree` and try to extract
-            // whatever branch we want to unapply. There are a handful of ways
-            // to achieve this, including calculating the inverse diff and
-            // applying that.
+            // We want to transition the worktree from its current state (all
+            // stacks merged + uncommitted edits) to the new state (remaining
+            // stacks only), while preserving any uncommitted worktree changes.
             //
-            // We can however do more or less what `git revert` does, and
-            // perform a three-way merge where the `ours` side is the cwdt, the
-            // `theirs` side is the workspace root, and the `base` is the head
-            // of the branch we want to unapply.
+            // The correct 3-way merge for this is:
+            //   base  = current workspace commit tree (all stacks merged)
+            //   ours  = cwdt (workspace + uncommitted changes)
+            //   theirs = remerged tree (target + remaining stacks only)
             //
-            // In order to handle locked files, I'm going to choose to
-            // resolve conflicts in the favor of `ours` (the cwdt) which will
-            // keep any locked changes in the cwdt.
+            // For files with no uncommitted edits: base==ours, so theirs wins
+            // → cleanly transitions to the new workspace state.
+            // For files with uncommitted edits: base≠ours, and on conflict
+            // FileFavor::Ours preserves the user's uncommitted work.
 
-            // dump current assignments into a WIP commit
             let merge_options = repo
                 .tree_merge_options()?
                 .with_file_favor(Some(gix::merge::tree::FileFavor::Ours))
@@ -89,16 +86,21 @@ impl BranchManager<'_> {
 
             #[expect(deprecated)]
             let cwdt = repo.create_wd_tree(0)?;
-            let workspace_base = repo
-                .find_commit(workspace_base(self.ctx, perm.read_permission())?)?
-                .tree_id()?;
-            let commit = repo.find_commit(stack.head_oid(self.ctx)?)?;
-            let stack_head = repo.find_real_tree(&commit, Default::default())?;
+            let (remerged_tree_id, _, _) =
+                but_workspace::legacy::remerged_workspace_tree_v2(self.ctx, &repo)?;
+
+            // The current workspace commit tree represents the committed state
+            // with all stacks merged (before this unapply). Using it as the
+            // merge base means only uncommitted changes show up as "ours" diffs.
+            let current_workspace_tree = {
+                let mut head = repo.head()?;
+                head.peel_to_commit()?.tree_id()?.detach()
+            };
 
             let mut merge = repo.merge_trees(
-                stack_head,
+                current_workspace_tree,
                 cwdt,
-                workspace_base,
+                remerged_tree_id,
                 repo.default_merge_labels(),
                 merge_options,
             )?;
