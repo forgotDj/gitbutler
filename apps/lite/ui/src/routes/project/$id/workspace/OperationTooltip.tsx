@@ -18,8 +18,9 @@ import { Match } from "effect";
 const OperationModeControls: FC<{
 	projectId: string;
 	operation: Operation | null;
+	operationMode: OperationMode;
 	isActive: boolean;
-}> = ({ projectId, operation, isActive }) => {
+}> = ({ projectId, operation, operationMode, isActive }) => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
 
@@ -41,6 +42,14 @@ const OperationModeControls: FC<{
 				options: {
 					enabled: operation !== null,
 					meta: { group: "Operation mode", name: "Confirm" },
+				},
+			},
+			{
+				hotkey: "Mod+V",
+				callback: confirm,
+				options: {
+					enabled: operation !== null && operationMode._tag === "Move",
+					meta: { group: "Operation mode", name: "Paste" },
 				},
 			},
 			{
@@ -123,6 +132,7 @@ export const OperationTooltip: FC<
 							<OperationModeControls
 								projectId={projectId}
 								operation={operation}
+								operationMode={operationMode}
 								isActive={isActive}
 							/>
 						)}

@@ -530,6 +530,13 @@ const useLogSelectionHotkeys = ({
 				options: { meta: { group: "Log selection", name: "Move" } },
 			},
 			{
+				hotkey: "Mod+X",
+				callback: () => {
+					dispatch(projectActions.enterMoveMode({ projectId, source: selectedItem }));
+				},
+				options: { meta: { group: "Log selection", name: "Cut" } },
+			},
+			{
 				hotkey: "R",
 				callback: () => {
 					dispatch(projectActions.enterRubMode({ projectId, source: selectedItem }));
@@ -1325,6 +1332,10 @@ const CommitRow: FC<
 		});
 	};
 
+	const cutCommit = () => {
+		dispatch(projectActions.enterMoveMode({ projectId, source: item }));
+	};
+
 	const startEditing = () => {
 		dispatch(projectActions.startRewordCommit({ projectId, item: commitItemV }));
 	};
@@ -1358,6 +1369,11 @@ const CommitRow: FC<
 	};
 
 	const menuItems: Array<NativeMenuItem> = [
+		{
+			_tag: "Item",
+			label: "Cut commit",
+			onSelect: cutCommit,
+		},
 		{
 			_tag: "Item",
 			label: "Reword commit",
