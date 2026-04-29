@@ -1618,6 +1618,23 @@ const CommitFileRow: FC<{
 		},
 	);
 
+	useHotkey(
+		"ArrowLeft",
+		() => {
+			dispatch(projectActions.select({ projectId, selection: commitOperand(parentCommitOperand) }));
+		},
+		{
+			conflictBehavior: "allow",
+			enabled: isSelected && focusedPanel === "log",
+			meta: {
+				group: "Commit file",
+				name: "Select commit",
+				commandPalette: false,
+				shortcutsBar: false,
+			},
+		},
+	);
+
 	return (
 		<TreeItem
 			projectId={projectId}
