@@ -1,17 +1,18 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { RootState } from "#ui/state/store.ts";
-import { type BranchItem, type CommitItem, type Item } from "../workspace/Item.ts";
-import * as layout from "./layout.ts";
-import * as workspace from "./workspace.ts";
-import { OperationType } from "#ui/Operation.ts";
+import type { RootState } from "#ui/store.ts";
+import { type BranchOperand, type CommitOperand, type Operand } from "#ui/operands.ts";
+import { type Panel } from "#ui/panels.ts";
+import * as panels from "#ui/panels/state.ts";
+import * as workspace from "#ui/projects/workspace/state.ts";
+import { OperationType } from "#ui/operations/operation.ts";
 
 type PickerDialog =
 	| { _tag: "None" }
 	| { _tag: "BranchPicker" }
-	| { _tag: "CommandPalette"; focusedPanel: layout.Panel | null };
+	| { _tag: "CommandPalette"; focusedPanel: Panel | null };
 
 type ProjectState = {
-	layout: layout.ProjectLayoutState;
+	panels: panels.PanelsState;
 	pickerDialog: PickerDialog;
 	workspace: workspace.WorkspaceState;
 };
@@ -21,7 +22,7 @@ type ProjectSliceState = {
 };
 
 const initialProjectState: ProjectState = {
-	layout: layout.initialState,
+	panels: panels.initialState,
 	pickerDialog: { _tag: "None" },
 	workspace: workspace.initialState,
 };
@@ -31,7 +32,7 @@ const initialState: ProjectSliceState = {
 };
 
 const createProjectState = (): ProjectState => ({
-	layout: layout.createInitialState(),
+	panels: panels.createInitialState(),
 	pickerDialog: { _tag: "None" },
 	workspace: workspace.createInitialState(),
 });
@@ -49,42 +50,54 @@ const projectSlice = createSlice({
 	name: "project",
 	initialState,
 	reducers: {
-		selectItem: (state, action: PayloadAction<{ projectId: string; item: Item }>) => {
-			const { projectId, item } = action.payload;
+		select: (state, action: PayloadAction<{ projectId: string; selection: Operand }>) => {
+			const { projectId, selection } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
-			workspace.selectItem(projectState.workspace, item);
+			workspace.select(projectState.workspace, selection);
 		},
-		startRewordCommit: (state, action: PayloadAction<{ projectId: string; item: CommitItem }>) => {
-			const { projectId, item } = action.payload;
+		startRewordCommit: (
+			state,
+			action: PayloadAction<{ projectId: string; commit: CommitOperand }>,
+		) => {
+			const { projectId, commit } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
-			workspace.startRewordCommit(projectState.workspace, item);
+			workspace.startRewordCommit(projectState.workspace, commit);
 		},
-		startRenameBranch: (state, action: PayloadAction<{ projectId: string; item: BranchItem }>) => {
-			const { projectId, item } = action.payload;
+		startRenameBranch: (
+			state,
+			action: PayloadAction<{ projectId: string; branch: BranchOperand }>,
+		) => {
+			const { projectId, branch } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
-			workspace.startRenameBranch(projectState.workspace, item);
+			workspace.startRenameBranch(projectState.workspace, branch);
 		},
-		openCommitFiles: (state, action: PayloadAction<{ projectId: string; item: CommitItem }>) => {
-			const { projectId, item } = action.payload;
+		openCommitFiles: (
+			state,
+			action: PayloadAction<{ projectId: string; commit: CommitOperand }>,
+		) => {
+			const { projectId, commit } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
-			workspace.openCommitFiles(projectState.workspace, item);
+			workspace.openCommitFiles(projectState.workspace, commit);
 		},
 		closeCommitFiles: (state, action: PayloadAction<{ projectId: string }>) => {
 			const { projectId } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
 			workspace.closeCommitFiles(projectState.workspace);
 		},
-		toggleCommitFiles: (state, action: PayloadAction<{ projectId: string; item: CommitItem }>) => {
-			const { projectId, item } = action.payload;
+		toggleCommitFiles: (
+			state,
+			action: PayloadAction<{ projectId: string; commit: CommitOperand }>,
+		) => {
+			const { projectId, commit } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
-			workspace.toggleCommitFiles(projectState.workspace, item);
+			workspace.toggleCommitFiles(projectState.workspace, commit);
 		},
-		enterRubMode: (state, action: PayloadAction<{ projectId: string; source: Item }>) => {
+		enterRubMode: (state, action: PayloadAction<{ projectId: string; source: Operand }>) => {
 			const { projectId, source } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
 			workspace.enterRubMode(projectState.workspace, source);
 		},
-		enterMoveMode: (state, action: PayloadAction<{ projectId: string; source: Item }>) => {
+		enterMoveMode: (state, action: PayloadAction<{ projectId: string; source: Operand }>) => {
 			const { projectId, source } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
 			workspace.enterMoveMode(projectState.workspace, source);
@@ -93,7 +106,7 @@ const projectSlice = createSlice({
 			state,
 			action: PayloadAction<{
 				projectId: string;
-				source: Item;
+				source: Operand;
 			}>,
 		) => {
 			const { projectId, source } = action.payload;
@@ -128,21 +141,21 @@ const projectSlice = createSlice({
 			const { projectId, commitIds } = action.payload;
 			workspace.setHighlightedCommitIds(ensureProjectState(state, projectId).workspace, commitIds);
 		},
-		showPanel: (state, action: PayloadAction<{ projectId: string; panel: layout.Panel }>) => {
-			layout.showPanel(
-				ensureProjectState(state, action.payload.projectId).layout,
+		showPanel: (state, action: PayloadAction<{ projectId: string; panel: Panel }>) => {
+			panels.showPanel(
+				ensureProjectState(state, action.payload.projectId).panels,
 				action.payload.panel,
 			);
 		},
-		hidePanel: (state, action: PayloadAction<{ projectId: string; panel: layout.Panel }>) => {
-			layout.hidePanel(
-				ensureProjectState(state, action.payload.projectId).layout,
+		hidePanel: (state, action: PayloadAction<{ projectId: string; panel: Panel }>) => {
+			panels.hidePanel(
+				ensureProjectState(state, action.payload.projectId).panels,
 				action.payload.panel,
 			);
 		},
-		togglePanel: (state, action: PayloadAction<{ projectId: string; panel: layout.Panel }>) => {
-			layout.togglePanel(
-				ensureProjectState(state, action.payload.projectId).layout,
+		togglePanel: (state, action: PayloadAction<{ projectId: string; panel: Panel }>) => {
+			panels.togglePanel(
+				ensureProjectState(state, action.payload.projectId).panels,
 				action.payload.panel,
 			);
 		},
@@ -150,7 +163,7 @@ const projectSlice = createSlice({
 			state,
 			action: PayloadAction<{
 				projectId: string;
-				focusedPanel: layout.Panel | null;
+				focusedPanel: Panel | null;
 			}>,
 		) => {
 			const { projectId, focusedPanel } = action.payload;
@@ -176,8 +189,8 @@ export const projectReducer = projectSlice.reducer;
 const selectProjectState = (state: RootState, projectId: string): ProjectState =>
 	state.project.byProjectId[projectId] ?? initialProjectState;
 
-export const selectProjectLayoutState = (state: RootState, projectId: string) =>
-	selectProjectState(state, projectId).layout;
+export const selectProjectPanelsState = (state: RootState, projectId: string) =>
+	selectProjectState(state, projectId).panels;
 
 export const selectProjectPickerDialogState = (state: RootState, projectId: string) =>
 	selectProjectState(state, projectId).pickerDialog;
@@ -185,8 +198,8 @@ export const selectProjectPickerDialogState = (state: RootState, projectId: stri
 const selectProjectWorkspaceState = (state: RootState, projectId: string) =>
 	selectProjectState(state, projectId).workspace;
 
-export const selectProjectSelectedItem = (state: RootState, projectId: string) =>
-	workspace.selectSelectedItem(selectProjectWorkspaceState(state, projectId));
+export const selectProjectSelection = (state: RootState, projectId: string) =>
+	workspace.selectSelectionState(selectProjectWorkspaceState(state, projectId));
 
 export const selectProjectWorkspaceModeState = (state: RootState, projectId: string) =>
 	workspace.selectMode(selectProjectWorkspaceState(state, projectId));

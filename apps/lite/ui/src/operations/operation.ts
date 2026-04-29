@@ -12,7 +12,7 @@ import {
 	type TearOffBranchParams,
 	CommitSquashParams,
 } from "#electron/ipc.ts";
-import { rejectedChangesToastOptions } from "#ui/RejectedChanges.tsx";
+import { rejectedChangesToastOptions } from "#ui/operations/rejectedChangesToastOptions.tsx";
 import {
 	commitAmendMutationOptions,
 	commitCreateMutationOptions,
@@ -27,17 +27,17 @@ import {
 	CommitUncommitParams,
 } from "#ui/api/mutations.ts";
 import { InsertSide, RelativeTo } from "@gitbutler/but-sdk";
-import { Item, itemEquals, itemFileParent } from "#ui/routes/project/$id/workspace/Item.ts";
-import { resolveDiffSpecs } from "#ui/routes/project/$id/workspace/resolveDiffSpecs.ts";
-import { decodeRefName } from "#ui/routes/project/$id/shared.tsx";
+import { Operand, operandEquals, operandFileParent } from "#ui/operands.ts";
+import { resolveDiffSpecs } from "#ui/operations/diff-specs.ts";
+import { decodeRefName } from "#ui/api/ref-name.ts";
 
 /** @public */
 export type CommitAmendOperation = Omit<CommitAmendParams, "dryRun" | "projectId" | "changes"> & {
-	source: Item;
+	source: Operand;
 };
 /** @public */
 export type CommitCreateOperation = Omit<CommitCreateParams, "dryRun" | "projectId" | "changes"> & {
-	source: Item;
+	source: Operand;
 };
 /** @public */
 export type CommitCreateFromCommittedChangesOperation = Omit<
@@ -45,7 +45,7 @@ export type CommitCreateFromCommittedChangesOperation = Omit<
 	"dryRun" | "projectId"
 > &
 	Pick<CommitMoveChangesBetweenParams, "sourceCommitId"> & {
-		source: Item;
+		source: Operand;
 	};
 /** @public */
 export type CommitMoveOperation = Omit<CommitMoveParams, "dryRun" | "projectId">;
@@ -53,7 +53,7 @@ export type CommitMoveOperation = Omit<CommitMoveParams, "dryRun" | "projectId">
 export type CommitMoveChangesBetweenOperation = Omit<
 	CommitMoveChangesBetweenParams,
 	"dryRun" | "projectId" | "changes"
-> & { source: Item };
+> & { source: Operand };
 /** @public */
 export type CommitSquashOperation = Omit<CommitSquashParams, "dryRun" | "projectId">;
 /** @public */
@@ -62,7 +62,7 @@ export type CommitUncommitOperation = Omit<CommitUncommitParams, "dryRun" | "pro
 export type CommitUncommitChangesOperation = Omit<
 	CommitUncommitChangesParams,
 	"dryRun" | "projectId" | "changes"
-> & { source: Item };
+> & { source: Operand };
 /** @public */
 export type MoveBranchOperation = Omit<MoveBranchParams, "dryRun" | "projectId">;
 /** @public */
@@ -367,8 +367,8 @@ export const useRunOperation = () => {
  * which also includes move operations.
  * https://linear.app/gitbutler/issue/GB-1160/what-should-rubbing-a-branch-into-another-branch-do#comment-db2abdb7
  */
-const rubOperation = ({ source, target }: { source: Item; target: Item }): Operation | null =>
-	Match.value({ source, sourceFileParent: itemFileParent(source), target }).pipe(
+const rubOperation = ({ source, target }: { source: Operand; target: Operand }): Operation | null =>
+	Match.value({ source, sourceFileParent: operandFileParent(source), target }).pipe(
 		Match.when(
 			{
 				source: { _tag: "Commit" },
@@ -434,8 +434,8 @@ const moveOperation = ({
 	target,
 	side,
 }: {
-	source: Item;
-	target: Item;
+	source: Operand;
+	target: Operand;
 	side: InsertSide;
 }) => {
 	const branchMoveOperation = Match.value({ source, target, side }).pipe(
@@ -482,7 +482,7 @@ const moveOperation = ({
 
 	if (!relativeTo) return null;
 
-	return Match.value({ source, sourceFileParent: itemFileParent(source) }).pipe(
+	return Match.value({ source, sourceFileParent: operandFileParent(source) }).pipe(
 		Match.when({ source: { _tag: "Commit" } }, ({ source }) =>
 			commitMoveOperation({
 				subjectCommitIds: [source.commitId],
@@ -512,17 +512,17 @@ const moveOperation = ({
 
 export type OperationType = "rub" | "moveAbove" | "moveBelow";
 
-const isOperationSourceEnabled = (source: Item): boolean =>
+const isOperationSourceEnabled = (source: Operand): boolean =>
 	Match.value(source).pipe(
 		Match.when({ _tag: "Hunk", isResultOfBinaryToTextConversion: true }, () => false),
 		Match.orElse(() => true),
 	);
 
 export const getOperations = (
-	source: Item,
-	target: Item,
+	source: Operand,
+	target: Operand,
 ): Record<OperationType, Operation | null> => {
-	if (itemEquals(source, target) || !isOperationSourceEnabled(source))
+	if (operandEquals(source, target) || !isOperationSourceEnabled(source))
 		return {
 			rub: null,
 			moveAbove: null,
@@ -536,8 +536,8 @@ export const getOperations = (
 };
 
 export const getOperation = (x: {
-	source: Item;
-	target: Item;
+	source: Operand;
+	target: Operand;
 	operationType: OperationType | null;
 }): Operation | null => {
 	const { rub, moveAbove, moveBelow } = getOperations(x.source, x.target);

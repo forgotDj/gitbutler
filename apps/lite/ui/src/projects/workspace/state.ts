@@ -1,39 +1,33 @@
-import { OperationType } from "#ui/Operation.ts";
+import { OperationType } from "#ui/operations/operation.ts";
 import { Match } from "effect";
 import {
-	branchItem,
-	changesSectionItem,
-	commitItem,
-	type BranchItem,
-	type CommitItem,
-	type Item,
-} from "../workspace/Item.ts";
+	branchOperand,
+	changesSectionOperand,
+	commitOperand,
+	type BranchOperand,
+	type CommitOperand,
+	type Operand,
+} from "#ui/operands.ts";
 import {
 	defaultWorkspaceMode,
 	dragAndDropOperationMode,
 	getOperationMode,
-	isValidWorkspaceModeForSelectedItem,
+	isValidWorkspaceModeForSelection,
 	moveOperationMode,
 	operationWorkspaceMode,
 	renameBranchWorkspaceMode,
 	rewordCommitWorkspaceMode,
 	rubOperationMode,
 	type WorkspaceMode,
-} from "../workspace/WorkspaceMode.ts";
+} from "#ui/workspace/mode.ts";
 
-export type WorkspaceSelectionState = {
-	item: Item;
-};
-
-const createInitialWorkspaceSelectionState = (): WorkspaceSelectionState => ({
-	item: changesSectionItem,
-});
+const createInitialWorkspaceSelectionState = (): Operand => changesSectionOperand;
 
 export type WorkspaceState = {
 	expandedCommitId: string | null;
 	highlightedCommitIds: Array<string>;
 	mode: WorkspaceMode;
-	selection: WorkspaceSelectionState;
+	selection: Operand;
 };
 
 export const createInitialState = (): WorkspaceState => ({
@@ -49,15 +43,15 @@ export const closeCommitFiles = (state: WorkspaceState) => {
 	state.expandedCommitId = null;
 };
 
-export const enterMoveMode = (state: WorkspaceState, source: Item) => {
+export const enterMoveMode = (state: WorkspaceState, source: Operand) => {
 	state.mode = operationWorkspaceMode(moveOperationMode({ source }));
 };
 
-export const enterRubMode = (state: WorkspaceState, source: Item) => {
+export const enterRubMode = (state: WorkspaceState, source: Operand) => {
 	state.mode = operationWorkspaceMode(rubOperationMode({ source }));
 };
 
-export const enterDragAndDropMode = (state: WorkspaceState, source: Item) => {
+export const enterDragAndDropMode = (state: WorkspaceState, source: Operand) => {
 	state.mode = operationWorkspaceMode(dragAndDropOperationMode({ source, operationType: null }));
 };
 
@@ -88,13 +82,13 @@ export const exitMode = (state: WorkspaceState) => {
 	state.mode = defaultWorkspaceMode;
 };
 
-export const openCommitFiles = (state: WorkspaceState, item: CommitItem) => {
-	state.expandedCommitId = item.commitId;
+export const openCommitFiles = (state: WorkspaceState, commit: CommitOperand) => {
+	state.expandedCommitId = commit.commitId;
 };
 
-export const selectItem = (state: WorkspaceState, item: Item) => {
-	state.selection.item = item;
-	if (!isValidWorkspaceModeForSelectedItem({ mode: state.mode, selectedItem: item }))
+export const select = (state: WorkspaceState, selection: Operand) => {
+	state.selection = selection;
+	if (!isValidWorkspaceModeForSelection({ mode: state.mode, selection }))
 		state.mode = defaultWorkspaceMode;
 };
 
@@ -106,34 +100,32 @@ export const setHighlightedCommitIds = (state: WorkspaceState, commitIds: Array<
 	state.highlightedCommitIds = commitIds ?? [];
 };
 
-export const startRenameBranch = (state: WorkspaceState, item: BranchItem) => {
-	selectItem(state, branchItem(item));
+export const startRenameBranch = (state: WorkspaceState, branch: BranchOperand) => {
+	select(state, branchOperand(branch));
 	state.mode = renameBranchWorkspaceMode({
-		stackId: item.stackId,
-		branchRef: item.branchRef,
+		stackId: branch.stackId,
+		branchRef: branch.branchRef,
 	});
 };
 
-export const startRewordCommit = (state: WorkspaceState, item: CommitItem) => {
-	selectItem(state, commitItem(item));
+export const startRewordCommit = (state: WorkspaceState, commit: CommitOperand) => {
+	select(state, commitOperand(commit));
 	state.mode = rewordCommitWorkspaceMode({
-		stackId: item.stackId,
-		commitId: item.commitId,
+		stackId: commit.stackId,
+		commitId: commit.commitId,
 	});
 };
 
-export const toggleCommitFiles = (state: WorkspaceState, item: CommitItem) => {
-	if (state.expandedCommitId === item.commitId) {
+export const toggleCommitFiles = (state: WorkspaceState, commit: CommitOperand) => {
+	if (state.expandedCommitId === commit.commitId) {
 		closeCommitFiles(state);
 		return;
 	}
 
-	openCommitFiles(state, item);
+	openCommitFiles(state, commit);
 };
 
-const selectSelection = (state: WorkspaceState): WorkspaceSelectionState => state.selection;
-
-export const selectSelectedItem = (state: WorkspaceState): Item => selectSelection(state).item;
+export const selectSelectionState = (state: WorkspaceState): Operand => state.selection;
 
 export const selectMode = (state: WorkspaceState): WorkspaceMode => state.mode;
 

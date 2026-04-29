@@ -1,0 +1,152 @@
+import { Match } from "effect";
+import { type HunkHeader } from "@gitbutler/but-sdk";
+
+/** @public */
+export type BranchFileParent = { stackId: string; branchRef: Array<number> };
+/** @public */
+export type CommitFileParent = { stackId: string; commitId: string };
+
+export type FileParent =
+	| { _tag: "Changes" }
+	| ({ _tag: "Branch" } & BranchFileParent)
+	| ({ _tag: "Commit" } & CommitFileParent);
+
+/** @public */
+export const branchFileParent = ({ stackId, branchRef }: BranchFileParent): FileParent => ({
+	_tag: "Branch",
+	stackId,
+	branchRef,
+});
+
+/** @public */
+export const commitFileParent = ({ stackId, commitId }: CommitFileParent): FileParent => ({
+	_tag: "Commit",
+	stackId,
+	commitId,
+});
+
+/** @public */
+export const changesFileParent: FileParent = {
+	_tag: "Changes",
+};
+
+/** @public */
+export type StackOperand = {
+	stackId: string;
+};
+
+/** @public */
+export type BranchOperand = StackOperand & {
+	branchRef: Array<number>;
+};
+
+/** @public */
+export type CommitOperand = StackOperand & {
+	commitId: string;
+};
+
+/** @public */
+export type FileOperand = {
+	parent: FileParent;
+	path: string;
+};
+
+/** @public */
+export type HunkOperand = FileOperand & {
+	hunkHeader: HunkHeader;
+	isResultOfBinaryToTextConversion: boolean;
+};
+
+export type Operand =
+	| { _tag: "ChangesSection" }
+	| ({ _tag: "Stack" } & StackOperand)
+	| ({ _tag: "Branch" } & BranchOperand)
+	| ({ _tag: "Commit" } & CommitOperand)
+	| ({ _tag: "File" } & FileOperand)
+	| ({ _tag: "Hunk" } & HunkOperand)
+	| { _tag: "BaseCommit" };
+
+/** @public */
+export const changesSectionOperand: Operand = {
+	_tag: "ChangesSection",
+};
+
+/** @public */
+export const stackOperand = ({ stackId }: StackOperand): Operand => ({
+	_tag: "Stack",
+	stackId,
+});
+
+/** @public */
+export const branchOperand = ({ stackId, branchRef }: BranchOperand): Operand => ({
+	_tag: "Branch",
+	stackId,
+	branchRef,
+});
+
+/** @public */
+export const commitOperand = ({ stackId, commitId }: CommitOperand): Operand => ({
+	_tag: "Commit",
+	stackId,
+	commitId,
+});
+
+/** @public */
+export const fileOperand = ({ parent, path }: FileOperand): Operand => ({
+	_tag: "File",
+	parent,
+	path,
+});
+
+/** @public */
+export const hunkOperand = ({
+	parent,
+	path,
+	hunkHeader,
+	isResultOfBinaryToTextConversion,
+}: HunkOperand): Operand => ({
+	_tag: "Hunk",
+	parent,
+	path,
+	hunkHeader,
+	isResultOfBinaryToTextConversion,
+});
+
+/** @public */
+export const baseCommitOperand: Operand = {
+	_tag: "BaseCommit",
+};
+
+export const operandIdentityKey = (operand: Operand): string =>
+	Match.value(operand).pipe(
+		Match.tagsExhaustive({
+			ChangesSection: () => JSON.stringify(["ChangesSection"]),
+			File: (x) => JSON.stringify(["File", x.parent, x.path]),
+			Stack: (x) => JSON.stringify(["Stack", x.stackId]),
+			Branch: (x) => JSON.stringify(["Branch", x.stackId, x.branchRef]),
+			Commit: (x) => JSON.stringify(["Commit", x.stackId, x.commitId]),
+			BaseCommit: () => JSON.stringify(["BaseCommit"]),
+			Hunk: (x) =>
+				JSON.stringify([
+					"Hunk",
+					x.parent,
+					x.path,
+					x.hunkHeader,
+					x.isResultOfBinaryToTextConversion,
+				]),
+		}),
+	);
+
+export const operandEquals = (a: Operand, b: Operand): boolean =>
+	operandIdentityKey(a) === operandIdentityKey(b);
+
+export const operandFileParent = (operand: Operand): FileParent | null =>
+	Match.value(operand).pipe(
+		Match.withReturnType<FileParent | null>(),
+		Match.tags({
+			File: ({ parent }) => parent,
+			ChangesSection: () => changesFileParent,
+			Hunk: ({ parent }) => parent,
+		}),
+		Match.orElse(() => null),
+	);

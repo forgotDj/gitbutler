@@ -1,10 +1,7 @@
 import { listProjectsQueryOptions } from "#ui/api/queries.ts";
-import { lastOpenedProjectKey } from "#ui/routes/project/constants.ts";
-import {
-	ShortcutsBarElementContext,
-	TopBarActionsElementContext,
-} from "#ui/routes/LayoutPortals.tsx";
-import uiStyles from "#ui/ui.module.css";
+import { lastOpenedProjectKey } from "#ui/projects/last-opened.ts";
+import { ShortcutsBarElementContext, TopBarActionsElementContext } from "#ui/portals.tsx";
+import uiStyles from "#ui/ui/ui.module.css";
 import { HotkeysProvider } from "@tanstack/react-hotkeys";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Outlet, useMatch, useNavigate } from "@tanstack/react-router";

@@ -1,8 +1,8 @@
 import { Toast } from "@base-ui/react";
 import { FC } from "react";
-import { classes } from "./classes";
+import { classes } from "#ui/ui/classes.ts";
 import styles from "./Toasts.module.css";
-import uiStyles from "./ui.module.css";
+import uiStyles from "#ui/ui/ui.module.css";
 
 export const Toasts: FC = () => {
 	const { toasts } = Toast.useToastManager();

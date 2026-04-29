@@ -1,14 +1,14 @@
 import { Match } from "effect";
-import { branchItem, commitItem, itemEquals, type Item } from "./Item.ts";
-import { navigationIndexIncludes, type NavigationIndex } from "./WorkspaceModel.ts";
-import { getOperation, getOperations, OperationType } from "#ui/Operation.ts";
+import { branchOperand, commitOperand, operandEquals, type Operand } from "#ui/operands.ts";
+import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
+import { getOperation, getOperations, OperationType } from "#ui/operations/operation.ts";
 
 /** @public */
-export type RubOperationMode = { source: Item };
+export type RubOperationMode = { source: Operand };
 /** @public */
-export type MoveOperationMode = { source: Item };
+export type MoveOperationMode = { source: Operand };
 /** @public */
-export type DragAndDropOperationMode = { source: Item; operationType: OperationType | null };
+export type DragAndDropOperationMode = { source: Operand; operationType: OperationType | null };
 export type OperationMode =
 	| ({ _tag: "Rub" } & RubOperationMode)
 	| ({ _tag: "Move" } & MoveOperationMode)
@@ -119,7 +119,7 @@ export const isValidWorkspaceMode = ({
 			RewordCommit: (mode) =>
 				navigationIndexIncludes(
 					navigationIndex,
-					commitItem({
+					commitOperand({
 						stackId: mode.stackId,
 						commitId: mode.commitId,
 					}),
@@ -127,7 +127,7 @@ export const isValidWorkspaceMode = ({
 			RenameBranch: (mode) =>
 				navigationIndexIncludes(
 					navigationIndex,
-					branchItem({
+					branchOperand({
 						stackId: mode.stackId,
 						branchRef: mode.branchRef,
 					}),
@@ -135,29 +135,29 @@ export const isValidWorkspaceMode = ({
 		}),
 	);
 
-export const isValidWorkspaceModeForSelectedItem = ({
+export const isValidWorkspaceModeForSelection = ({
 	mode,
-	selectedItem,
+	selection,
 }: {
 	mode: WorkspaceMode;
-	selectedItem: Item;
+	selection: Operand;
 }): boolean =>
 	Match.value(mode).pipe(
 		Match.tagsExhaustive({
 			Default: () => true,
 			Operation: () => true,
 			RewordCommit: (mode) =>
-				itemEquals(
-					selectedItem,
-					commitItem({
+				operandEquals(
+					selection,
+					commitOperand({
 						stackId: mode.stackId,
 						commitId: mode.commitId,
 					}),
 				),
 			RenameBranch: (mode) =>
-				itemEquals(
-					selectedItem,
-					branchItem({
+				operandEquals(
+					selection,
+					branchOperand({
 						stackId: mode.stackId,
 						branchRef: mode.branchRef,
 					}),
@@ -165,12 +165,12 @@ export const isValidWorkspaceModeForSelectedItem = ({
 		}),
 	);
 
-export const includeItemForWorkspaceMode = ({
+export const includeOperandForWorkspaceMode = ({
 	mode,
-	item,
+	operand,
 }: {
 	mode: WorkspaceMode;
-	item: Item;
+	operand: Operand;
 }): boolean =>
 	Match.value(mode).pipe(
 		Match.tagsExhaustive({
@@ -179,35 +179,35 @@ export const includeItemForWorkspaceMode = ({
 				Match.value(value).pipe(
 					Match.tagsExhaustive({
 						DragAndDrop: ({ source }) => {
-							const operations = getOperations(source, item);
+							const operations = getOperations(source, operand);
 							return !!operations.rub || !!operations.moveAbove || !!operations.moveBelow;
 						},
 						Move: (mode) =>
 							!!getOperation({
 								source: mode.source,
-								target: item,
+								target: operand,
 								operationType: operationModeToOperationType(mode),
 							}),
 						Rub: (mode) =>
 							!!getOperation({
 								source: mode.source,
-								target: item,
+								target: operand,
 								operationType: operationModeToOperationType(mode),
 							}),
 					}),
 				),
 			RenameBranch: (mode) =>
-				itemEquals(
-					item,
-					branchItem({
+				operandEquals(
+					operand,
+					branchOperand({
 						stackId: mode.stackId,
 						branchRef: mode.branchRef,
 					}),
 				),
 			RewordCommit: (mode) =>
-				itemEquals(
-					item,
-					commitItem({
+				operandEquals(
+					operand,
+					commitOperand({
 						stackId: mode.stackId,
 						commitId: mode.commitId,
 					}),
