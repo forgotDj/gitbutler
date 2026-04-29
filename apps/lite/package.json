@@ -53,6 +53,7 @@
 			"package.json"
 		],
 		"mac": {
+			"icon": "resources/icons/macos/icon.icon",
 			"category": "public.app-category.developer-tools",
 			"darkModeSupport": true,
 			"hardenedRuntime": true,
@@ -65,6 +66,7 @@
 			]
 		},
 		"linux": {
+			"icon": "resources/icons/linux/icons",
 			"category": "Development",
 			"target": [
 				"deb",
@@ -80,6 +82,7 @@
 			"executableName": "gitbutler-lite"
 		},
 		"win": {
+			"icon": "resources/icons/windows/icon.ico",
 			"target": [
 				"portable"
 			],

@@ -60,11 +60,45 @@ import {
 } from "@gitbutler/but-sdk";
 import { app, BrowserWindow, ipcMain, Menu, type MenuItemConstructorOptions } from "electron";
 import { REACT_DEVELOPER_TOOLS, installExtension } from "electron-devtools-installer";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = path.dirname(currentFilePath);
+
+// Dev-only runtime icons path (packaged builds rely on electron-builder icons).
+const iconsPath = path.join(currentDirPath, "../../resources/icons");
+
+function getWindowIcon(): string | undefined {
+	if (app.isPackaged) return undefined;
+
+	let iconPath: string;
+
+	switch (os.platform()) {
+		case "win32":
+			iconPath = path.join(iconsPath, "windows/icon.ico");
+			break;
+		case "darwin":
+			return undefined;
+		default:
+			iconPath = path.join(iconsPath, "linux/icons/256x256.png");
+			break;
+	}
+
+	return fs.existsSync(iconPath) ? iconPath : undefined;
+}
+
+function getMacDockIcon(): string | undefined {
+	const candidates = [
+		path.join(iconsPath, "macos/1024x1024.png"),
+		path.join(iconsPath, "macos/512x512.png"),
+		path.join(iconsPath, "macos/256x256.png"),
+	];
+
+	return candidates.find((c) => fs.existsSync(c));
+}
 
 const buildNativeMenuTemplate = (
 	items: Array<NativeMenuPopupItem>,
@@ -243,9 +277,11 @@ const registerIpcHandlers = (): void => {
 };
 
 const createMainWindow = async (): Promise<void> => {
+	const icon = getWindowIcon();
 	const mainWindow = new BrowserWindow({
 		width: 1024,
 		height: 768,
+		icon,
 		webPreferences: {
 			contextIsolation: true,
 			nodeIntegration: false,
@@ -267,6 +303,10 @@ const createMainWindow = async (): Promise<void> => {
 
 void app.whenReady().then(async () => {
 	if (!app.isPackaged) await installExtension(REACT_DEVELOPER_TOOLS);
+	if (process.platform === "darwin" && !app.isPackaged) {
+		const dockIcon = getMacDockIcon();
+		if (dockIcon !== undefined && app.dock) app.dock.setIcon(dockIcon);
+	}
 	registerIpcHandlers();
 	await createMainWindow();
 
