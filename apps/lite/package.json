@@ -12,7 +12,6 @@
 	"copyright": "Copyright 2026 GitButler Inc",
 	"imports": {
 		"#ui/*": "./ui/src/*",
-		"#ui/hooks/*": "./ui/src/hooks/*",
 		"#electron/*": "./electron/src/*"
 	},
 	"scripts": {
