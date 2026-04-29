@@ -1595,30 +1595,6 @@ const CommitFileRow: FC<{
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	useHotkey(
-		"F",
-		() => {
-			dispatch(projectActions.toggleCommitFiles({ projectId, commit: parentCommitOperand }));
-		},
-		{
-			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "log",
-			meta: { group: "Commit file", name: "Files" },
-		},
-	);
-
-	useHotkey(
-		"Escape",
-		() => {
-			dispatch(projectActions.closeCommitFiles({ projectId }));
-		},
-		{
-			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "log",
-			meta: { group: "Commit file", name: "Close" },
-		},
-	);
-
-	useHotkey(
 		"ArrowLeft",
 		() => {
 			dispatch(projectActions.select({ projectId, selection: commitOperand(parentCommitOperand) }));
