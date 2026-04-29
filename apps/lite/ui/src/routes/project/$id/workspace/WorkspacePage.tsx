@@ -210,30 +210,28 @@ const LogPanel: FC<{
 			aria-activedescendant={treeItemId(projectId, selection)}
 			className={classes(styles.panel, styles.logPanel)}
 		>
-			<div className={styles.sections}>
-				<Changes
-					projectId={projectId}
-					onAbsorbChanges={onAbsorbChanges}
-					onCommit={commit}
-					navigationIndex={navigationIndex}
-				/>
+			<Changes
+				projectId={projectId}
+				onAbsorbChanges={onAbsorbChanges}
+				onCommit={commit}
+				navigationIndex={navigationIndex}
+			/>
 
-				{headInfo.stacks.map((stack) => (
-					<StackC
-						key={stack.id}
-						projectId={projectId}
-						stack={stack}
-						navigationIndex={navigationIndex}
-						focusPanel={focusPanel}
-					/>
-				))}
-
-				<BaseCommit
+			{headInfo.stacks.map((stack) => (
+				<StackC
+					key={stack.id}
 					projectId={projectId}
-					commitId={getCommonBaseCommitId(headInfo)}
+					stack={stack}
 					navigationIndex={navigationIndex}
+					focusPanel={focusPanel}
 				/>
-			</div>
+			))}
+
+			<BaseCommit
+				projectId={projectId}
+				commitId={getCommonBaseCommitId(headInfo)}
+				navigationIndex={navigationIndex}
+			/>
 
 			{Match.value(operationMode).pipe(
 				Match.when(null, () => null),
