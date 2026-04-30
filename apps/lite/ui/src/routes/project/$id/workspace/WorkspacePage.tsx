@@ -2731,7 +2731,6 @@ export const WorkspacePage: FC = () => {
 
 	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
 	const project = projects.find((project) => project.id === projectId);
-	// TODO: dedupe
 	if (!project) return <p>Project not found.</p>;
 
 	const selectBranch = (branch: BranchOperand) => {
