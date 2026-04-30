@@ -59,7 +59,8 @@
 	background-color: var(--color-item-row-selected-unfocused-bg);
 	color: var(--color-item-row-selected-fg);
 
-	:where([data-panel]:focus-within) & {
+	&:has(:where(textarea, input):focus),
+	:where([data-panel]:focus) & {
 		background-color: var(--color-item-row-selected-focused-bg);
 	}
 }
