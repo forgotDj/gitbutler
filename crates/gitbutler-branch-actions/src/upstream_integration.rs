@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context as _, Result, bail};
 use bstr::ByteSlice;
@@ -638,9 +638,37 @@ pub(crate) fn integrate_upstream(
                 continue;
             };
 
-            // Update the branch heads
+            let delete_local_refs = resolutions
+                .iter()
+                .find(|r| r.stack_id == *stack_id)
+                .map(|r| r.delete_integrated_branches)
+                .unwrap_or(false);
+
+            // Archive integrated heads before updating branch heads.
+            // `for_archival` captures branches that lost all commits during
+            // integrated-commit filtering. We must archive these before
+            // calling `set_heads_from_rebase_output`, which validates that
+            // rebase references match exactly the non-archived heads.
+            let stack_branches_deleted =
+                stack.archive_integrated_heads(ctx, &repo, for_archival, delete_local_refs)?;
+            deleted_branches.extend(stack_branches_deleted);
+
+            // Update the branch heads, filtering out references for archived
+            // heads so the validation in `set_all_heads` sees a consistent set.
             if let Some(output) = rebase_output {
-                stack.set_heads_from_rebase_output(ctx, output.references.clone())?;
+                let archived_names: HashSet<&str> = stack
+                    .heads
+                    .iter()
+                    .filter(|h| h.archived)
+                    .map(|h| h.name().as_str())
+                    .collect();
+                let active_references: Vec<_> = output
+                    .references
+                    .iter()
+                    .filter(|r| !archived_names.contains(r.reference.to_string().as_str()))
+                    .cloned()
+                    .collect();
+                stack.set_heads_from_rebase_output(ctx, active_references)?;
             }
 
             // Dissociate closed reviews
@@ -654,16 +682,6 @@ pub(crate) fn integrate_upstream(
             }
 
             stack.set_stack_head(&mut virtual_branches_state, &repo, *head)?;
-
-            let delete_local_refs = resolutions
-                .iter()
-                .find(|r| r.stack_id == *stack_id)
-                .map(|r| r.delete_integrated_branches)
-                .unwrap_or(false);
-
-            let stack_branches_deleted =
-                stack.archive_integrated_heads(ctx, &repo, for_archival, delete_local_refs)?;
-            deleted_branches.extend(stack_branches_deleted);
         }
 
         {
