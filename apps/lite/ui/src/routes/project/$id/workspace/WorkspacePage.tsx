@@ -197,6 +197,7 @@ const LogPanel: FC<{
 		enabled: focusedPanel === "log",
 		navigationIndex,
 		projectId,
+		focusPanel,
 	});
 
 	return (
@@ -335,46 +336,53 @@ const useLogSelectionHotkeys = ({
 	enabled,
 	navigationIndex,
 	projectId,
+	focusPanel,
 }: {
 	enabled: boolean;
 	navigationIndex: NavigationIndex;
 	projectId: string;
+	focusPanel: (panel: PanelType) => void;
 }) => {
 	const dispatch = useAppDispatch();
 	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
 
+	const selectAndFocus = (newItem: Operand) => {
+		dispatch(projectActions.select({ projectId, selection: newItem }));
+		focusPanel("log");
+	};
+
 	const moveSelection = (offset: -1 | 1) => {
 		const newItem = getAdjacent({ navigationIndex, selection, offset });
 		if (!newItem) return;
-		dispatch(projectActions.select({ projectId, selection: newItem }));
+		selectAndFocus(newItem);
 	};
 
 	const selectNextSection = () => {
 		const newItem = getNextSection({ navigationIndex, selection });
 		if (!newItem) return;
-		dispatch(projectActions.select({ projectId, selection: newItem }));
+		selectAndFocus(newItem);
 	};
 
 	const selectPreviousSection = () => {
 		const newItem = getPreviousSection({ navigationIndex, selection });
 		if (!newItem) return;
-		dispatch(projectActions.select({ projectId, selection: newItem }));
+		selectAndFocus(newItem);
 	};
 
 	const selectChanges = () => {
-		dispatch(projectActions.select({ projectId, selection: changesSectionOperand }));
+		selectAndFocus(changesSectionOperand);
 	};
 
 	const selectFirstItem = () => {
 		const newItem = navigationIndex.items[0];
 		if (!newItem) return;
-		dispatch(projectActions.select({ projectId, selection: newItem }));
+		selectAndFocus(newItem);
 	};
 
 	const selectLastItem = () => {
 		const newItem = navigationIndex.items.at(-1);
 		if (!newItem) return;
-		dispatch(projectActions.select({ projectId, selection: newItem }));
+		selectAndFocus(newItem);
 	};
 
 	useHotkeys(
