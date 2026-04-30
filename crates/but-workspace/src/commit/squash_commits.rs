@@ -105,7 +105,8 @@ but_schemars::register_sdk_type!(MessageCombinationStrategy);
 /// After any reordering, one of the two original commit positions (either the subject or
 /// the target) is replaced by a single squashed commit that has:
 /// - The tree of the commit that was top-most after reordering (subject or target)
-/// - The combined message `subject\n\ntarget`
+/// - A message determined by `how_to_combine_messages`: either the subject message, the
+///   target message, or both messages as `target\n\nsubject`
 ///
 /// The other original commit (subject or target, depending on the chosen ordering) is
 /// removed from history.
@@ -160,12 +161,12 @@ pub fn squash_commits<'ws, 'meta, M: RefMetadata>(
                 }
                 (false, false) => {
                     // both commits have messages, keep both
-                    combined_message.extend_from_slice(subject.message.as_ref());
+                    combined_message.extend_from_slice(target.message.as_ref());
                     if !combined_message.ends_with(b"\n") {
                         combined_message.push(b'\n');
                     }
                     combined_message.push(b'\n');
-                    combined_message.extend_from_slice(target.message.as_ref());
+                    combined_message.extend_from_slice(subject.message.as_ref());
                 }
             }
         }

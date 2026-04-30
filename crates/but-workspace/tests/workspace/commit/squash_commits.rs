@@ -39,8 +39,8 @@ fn squash_top_commit_into_parent() -> Result<()> {
     let squashed_commit = repo.find_commit(squashed_id)?;
     assert_eq!(
         squashed_commit.message_raw()?,
-        "commit three\n\ncommit two\n",
-        "combined message should be subject followed by target with one blank line"
+        "commit two\n\ncommit three\n",
+        "combined message should be target followed by subject with one blank line"
     );
     assert_eq!(
         squashed_commit.tree_id()?.detach(),
@@ -60,7 +60,7 @@ fn squash_top_commit_into_parent() -> Result<()> {
     );
 
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
-    * 6426178 (HEAD -> three, two) commit three
+    * 655b033 (HEAD -> three, two) commit two
     | * 16fd221 (origin/two) commit two
     |/  
     * 8b426d0 (one) commit one
@@ -82,7 +82,6 @@ fn squash_top_commit_into_parent_keeping_target_message() -> Result<()> {
 
     let subject_id = repo.rev_parse_single("three")?.detach();
     let target_id = repo.rev_parse_single("two")?.detach();
-    let subject_tree = repo.find_commit(subject_id)?.tree_id()?.detach();
 
     let mut ws = graph.into_workspace()?;
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
@@ -119,7 +118,6 @@ fn squash_top_commit_into_parent_keeping_subject_message() -> Result<()> {
 
     let subject_id = repo.rev_parse_single("three")?.detach();
     let target_id = repo.rev_parse_single("two")?.detach();
-    let subject_tree = repo.find_commit(subject_id)?.tree_id()?.detach();
 
     let mut ws = graph.into_workspace()?;
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
@@ -174,8 +172,8 @@ fn squash_reorders_when_subject_is_not_on_top() -> Result<()> {
     let squashed_commit = repo.find_commit(squashed_id)?;
     assert_eq!(
         squashed_commit.message_raw()?,
-        "commit two\n\ncommit three\n",
-        "combined message should respect subject-then-target order"
+        "commit three\n\ncommit two\n",
+        "combined message should respect target-then-subject order"
     );
     assert_eq!(
         squashed_commit.tree_id()?.detach(),
@@ -184,7 +182,7 @@ fn squash_reorders_when_subject_is_not_on_top() -> Result<()> {
     );
 
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
-    * 655b033 (HEAD -> three, two) commit two
+    * 6426178 (HEAD -> three, two) commit three
     | * 16fd221 (origin/two) commit two
     |/  
     * 8b426d0 (one) commit one
@@ -262,7 +260,7 @@ fn squash_down_keeps_topmost_tree_for_shared_file_lineage() -> Result<()> {
     assert_eq!(object.data.as_bstr(), "v3\n");
 
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
-    * 4fbac4b (HEAD -> three, two) commit three
+    * 69e6e54 (HEAD -> three, two) commit two
     * 8df0fa3 (one) commit one
     ");
 
@@ -302,11 +300,11 @@ fn squash_up_reorders_subject_below_target_for_shared_file_lineage() -> Result<(
     let squashed_commit = repo.find_commit(squashed_id)?;
     assert_eq!(
         squashed_commit.message_raw()?,
-        "commit two\n\ncommit three\n"
+        "commit three\n\ncommit two\n"
     );
 
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
-    * 69e6e54 (HEAD -> three, two) commit two
+    * 4fbac4b (HEAD -> three, two) commit three
     * 8df0fa3 (one) commit one
     ");
 
@@ -346,12 +344,12 @@ fn squash_down_out_of_order_reorders_subject_below_target_for_shared_file_lineag
     let squashed_commit = repo.find_commit(squashed_id)?;
     assert_eq!(
         squashed_commit.message_raw()?,
-        "commit three\n\ncommit one\n"
+        "commit one\n\ncommit three\n"
     );
 
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
-    * 1450203 (HEAD -> three, two) [conflict] commit two
-    * f297a08 (one) commit three
+    * 85f51d5 (HEAD -> three, two) [conflict] commit two
+    * f3ac68e (one) commit one
     ");
 
     Ok(())
@@ -400,13 +398,13 @@ fn squash_across_stacks_subject_into_target() -> Result<()> {
     let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
 
     let squashed_commit = repo.find_commit(squashed_id)?;
-    assert_eq!(squashed_commit.message_raw()?, "A\n\nB\n");
+    assert_eq!(squashed_commit.message_raw()?, "B\n\nA\n");
     assert_eq!(squashed_commit.tree_id()?.detach(), subject_tree);
 
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
-    *   f0f9abb (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    *   d6e2c4d (HEAD -> gitbutler/workspace) GitButler Workspace Commit
     |\  
-    | * 17e27b0 (B) A
+    | * 82d6f41 (B) B
     |/  
     * 85efbe4 (origin/main, main, A) M
     ");
@@ -414,7 +412,7 @@ fn squash_across_stacks_subject_into_target() -> Result<()> {
     📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main on 85efbe4
     ├── ≡📙:3:B on 85efbe4 {2}
     │   └── 📙:3:B
-    │       └── ·17e27b0 (🏘️)
+    │       └── ·82d6f41 (🏘️)
     └── ≡📙:4:A on 85efbe4 {1}
         └── 📙:4:A
     ");
@@ -467,13 +465,13 @@ fn squash_across_stacks_target_into_subject() -> Result<()> {
     let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
 
     let squashed_commit = repo.find_commit(squashed_id)?;
-    assert_eq!(squashed_commit.message_raw()?, "B\n\nA\n");
+    assert_eq!(squashed_commit.message_raw()?, "A\n\nB\n");
     assert_eq!(squashed_commit.tree_id()?.detach(), subject_tree);
 
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
-    *   3d10054 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    *   e33c9cc (HEAD -> gitbutler/workspace) GitButler Workspace Commit
     |\  
-    * | 82d6f41 (A) B
+    * | 17e27b0 (A) A
     |/  
     * 85efbe4 (origin/main, main, B) M
     ");
@@ -483,7 +481,7 @@ fn squash_across_stacks_target_into_subject() -> Result<()> {
     │   └── 📙:4:B
     └── ≡📙:3:A on 85efbe4 {1}
         └── 📙:3:A
-            └── ·82d6f41 (🏘️)
+            └── ·17e27b0 (🏘️)
     ");
 
     Ok(())
