@@ -5,6 +5,11 @@
 [data-panel] {
 	/* `operationModePreview` is relative to this. */
 	position: relative;
+
+	&:focus {
+		/* The focus state is displayed on the item row instead. */
+		outline: none;
+	}
 }
 
 .logPanel {
