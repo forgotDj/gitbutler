@@ -14,7 +14,7 @@ import styles from "./OperationTooltip.module.css";
 import { Operand, operandEquals } from "#ui/operands.ts";
 import { useAppDispatch } from "#ui/store.ts";
 import { projectActions } from "#ui/projects/state.ts";
-import { operationModeToOperationType, OperationMode } from "#ui/workspace/mode.ts";
+import { operationModeToOperationType, OperationMode } from "#ui/outline/mode.ts";
 import { Match } from "effect";
 
 const OperationModeControls: FC<{

@@ -45,7 +45,7 @@ import {
 	selectProjectOperationModeState,
 	selectProjectPickerDialogState,
 	selectProjectSelection,
-	selectProjectWorkspaceModeState,
+	selectProjectOutlineModeState,
 } from "#ui/projects/state.ts";
 import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/AbsorptionDialog.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
@@ -122,7 +122,7 @@ import {
 import { formatHunkHeader } from "#ui/hunk.ts";
 import { PickerDialog, type PickerDialogGroup } from "#ui/ui/PickerDialog/PickerDialog.tsx";
 import styles from "./WorkspacePage.module.css";
-import { includeOperandForWorkspaceMode, isValidWorkspaceMode } from "#ui/workspace/mode.ts";
+import { includeOperandForOutlineMode, isValidOutlineMode } from "#ui/outline/mode.ts";
 import {
 	buildNavigationIndex,
 	filterNavigationIndex,
@@ -175,7 +175,7 @@ const useProjectPanelFocusManager = () => {
 	};
 };
 
-const LogPanel: FC<{
+const OutlinePanel: FC<{
 	elementRef: Ref<HTMLDivElement | null>;
 	focusPanel: (panel: PanelType) => void;
 	navigationIndex: NavigationIndex;
@@ -197,7 +197,7 @@ const LogPanel: FC<{
 			}),
 		);
 
-	useLogSelectionHotkeys({
+	useOutlineSelectionHotkeys({
 		focusedPanel,
 		navigationIndex,
 		projectId,
@@ -206,13 +206,13 @@ const LogPanel: FC<{
 
 	return (
 		<Panel
-			id={"log" satisfies PanelType}
+			id={"outline" satisfies PanelType}
 			minSize={400}
 			elementRef={elementRef}
 			tabIndex={0}
 			role="tree"
 			aria-activedescendant={treeItemId(projectId, selection)}
-			className={classes(styles.panel, styles.logPanel)}
+			className={classes(styles.panel, styles.outlinePanel)}
 		>
 			<Changes
 				projectId={projectId}
@@ -263,7 +263,7 @@ const DetailsPanel: FC<{
 		"Escape",
 		() => {
 			dispatch(projectActions.hidePanel({ projectId, panel: "details" }));
-			focusPanel("log");
+			focusPanel("outline");
 		},
 		{
 			conflictBehavior: "allow",
@@ -297,7 +297,7 @@ type HotkeyGroup =
 	| "Commit"
 	| "Details"
 	| "Global"
-	| "Log selection"
+	| "Outline selection"
 	| "Operation mode"
 	| "Panels"
 	| "Rename branch"
@@ -337,7 +337,7 @@ const useIsSelected = ({ projectId, operand }: { projectId: string; operand: Ope
 const treeItemId = (projectId: string, operand: Operand): string =>
 	`project-${encodeURIComponent(projectId)}-treeitem-${encodeURIComponent(operandIdentityKey(operand))}`;
 
-const useLogSelectionHotkeys = ({
+const useOutlineSelectionHotkeys = ({
 	focusedPanel,
 	navigationIndex,
 	projectId,
@@ -353,7 +353,7 @@ const useLogSelectionHotkeys = ({
 
 	const selectAndFocus = (newItem: Operand) => {
 		dispatch(projectActions.select({ projectId, selection: newItem }));
-		focusPanel("log");
+		focusPanel("outline");
 	};
 
 	const moveSelection = (offset: -1 | 1) => {
@@ -419,31 +419,31 @@ const useLogSelectionHotkeys = ({
 			{
 				hotkey: "ArrowUp",
 				callback: selectPreviousItem,
-				options: { meta: { group: "Log selection", name: "Up", commandPalette: false } },
+				options: { meta: { group: "Outline selection", name: "Up", commandPalette: false } },
 			},
 			{
 				hotkey: "K",
 				callback: selectPreviousItem,
 				// Hidden until we can combine in shortcuts bar.
-				options: { meta: { group: "Log selection", shortcutsBar: false } },
+				options: { meta: { group: "Outline selection", shortcutsBar: false } },
 			},
 			{
 				hotkey: "ArrowDown",
 				callback: selectNextItem,
-				options: { meta: { group: "Log selection", name: "Down", commandPalette: false } },
+				options: { meta: { group: "Outline selection", name: "Down", commandPalette: false } },
 			},
 			{
 				hotkey: "J",
 				callback: selectNextItem,
 				// Hidden until we can combine in shortcuts bar.
-				options: { meta: { group: "Log selection", shortcutsBar: false } },
+				options: { meta: { group: "Outline selection", shortcutsBar: false } },
 			},
 			{
 				hotkey: "Shift+ArrowUp",
 				callback: selectPreviousSection,
 				options: {
 					meta: {
-						group: "Log selection",
+						group: "Outline selection",
 						name: "Previous section",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -455,7 +455,7 @@ const useLogSelectionHotkeys = ({
 				callback: selectPreviousSection,
 				options: {
 					meta: {
-						group: "Log selection",
+						group: "Outline selection",
 						name: "Previous section",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -467,7 +467,7 @@ const useLogSelectionHotkeys = ({
 				callback: selectNextSection,
 				options: {
 					meta: {
-						group: "Log selection",
+						group: "Outline selection",
 						name: "Next section",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -479,7 +479,7 @@ const useLogSelectionHotkeys = ({
 				callback: selectNextSection,
 				options: {
 					meta: {
-						group: "Log selection",
+						group: "Outline selection",
 						name: "Next section",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -491,7 +491,7 @@ const useLogSelectionHotkeys = ({
 				callback: selectFirstItem,
 				options: {
 					meta: {
-						group: "Log selection",
+						group: "Outline selection",
 						name: "First item",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -503,7 +503,7 @@ const useLogSelectionHotkeys = ({
 				callback: selectFirstItem,
 				options: {
 					meta: {
-						group: "Log selection",
+						group: "Outline selection",
 						name: "First item",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -515,7 +515,7 @@ const useLogSelectionHotkeys = ({
 				callback: selectLastItem,
 				options: {
 					meta: {
-						group: "Log selection",
+						group: "Outline selection",
 						name: "Last item",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -527,7 +527,7 @@ const useLogSelectionHotkeys = ({
 				callback: selectLastItem,
 				options: {
 					meta: {
-						group: "Log selection",
+						group: "Outline selection",
 						name: "Last item",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -539,7 +539,7 @@ const useLogSelectionHotkeys = ({
 				callback: selectLastItem,
 				options: {
 					meta: {
-						group: "Log selection",
+						group: "Outline selection",
 						name: "Last item",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -547,13 +547,13 @@ const useLogSelectionHotkeys = ({
 				},
 			},
 		],
-		{ enabled: focusedPanel === "log" },
+		{ enabled: focusedPanel === "outline" },
 	);
 
 	useHotkeySequence(["G", "G"], selectFirstItem, {
-		enabled: focusedPanel === "log",
+		enabled: focusedPanel === "outline",
 		meta: {
-			group: "Log selection",
+			group: "Outline selection",
 			name: "First item",
 			commandPalette: false,
 			shortcutsBar: false,
@@ -564,46 +564,44 @@ const useLogSelectionHotkeys = ({
 		{
 			hotkey: "T",
 			callback: openBranchPicker,
-			options: { meta: { group: "Log selection", name: "Branch" } },
+			options: { meta: { group: "Outline selection", name: "Branch" } },
 		},
 		{
 			hotkey: "Z",
 			callback: selectChanges,
-			options: { meta: { group: "Log selection", name: "Changes" } },
+			options: { meta: { group: "Outline selection", name: "Changes" } },
 		},
 	]);
 
-	const workspaceMode = useAppSelector((state) =>
-		selectProjectWorkspaceModeState(state, projectId),
-	);
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
 	useHotkeys(
 		[
 			{
 				hotkey: "M",
 				callback: enterMoveMode,
-				options: { meta: { group: "Log selection", name: "Move" } },
+				options: { meta: { group: "Outline selection", name: "Move" } },
 			},
 			{
 				hotkey: "Mod+X",
 				callback: enterMoveMode,
 				options: {
 					ignoreInputs: true,
-					meta: { group: "Log selection", name: "Cut" },
+					meta: { group: "Outline selection", name: "Cut" },
 				},
 			},
 			{
 				hotkey: "R",
 				callback: enterRubMode,
-				options: { meta: { group: "Log selection", name: "Rub" } },
+				options: { meta: { group: "Outline selection", name: "Rub" } },
 			},
 			{
 				hotkey: "C",
 				callback: enterCommitMode,
-				options: { meta: { group: "Log selection", name: "Commit" } },
+				options: { meta: { group: "Outline selection", name: "Commit" } },
 			},
 		],
-		{ enabled: focusedPanel === "log" && workspaceMode._tag === "Default" },
+		{ enabled: focusedPanel === "outline" && outlineMode._tag === "Default" },
 	);
 };
 
@@ -1280,14 +1278,14 @@ const InlineRewordCommit: FC<{
 
 	useHotkey("Enter", () => formRef.current?.requestSubmit(), {
 		conflictBehavior: "allow",
-		enabled: focusedPanel === "log",
+		enabled: focusedPanel === "outline",
 		ignoreInputs: false,
 		meta: { group: "Reword commit", name: "Save", commandPalette: false },
 	});
 
 	useHotkey("Escape", onExit, {
 		conflictBehavior: "allow",
-		enabled: focusedPanel === "log",
+		enabled: focusedPanel === "outline",
 		ignoreInputs: false,
 		meta: { group: "Reword commit", name: "Cancel", commandPalette: false },
 	});
@@ -1329,9 +1327,7 @@ const CommitRow: FC<
 	const isHighlighted = useAppSelector((state) =>
 		selectProjectHighlightedCommitIds(state, projectId).includes(commit.id),
 	);
-	const workspaceMode = useAppSelector((state) =>
-		selectProjectWorkspaceModeState(state, projectId),
-	);
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
 	const dispatch = useAppDispatch();
 	const commitOperandV: CommitOperand = {
@@ -1342,12 +1338,12 @@ const CommitRow: FC<
 	const isSelected = useIsSelected({ projectId, operand });
 	const isRewording =
 		isSelected &&
-		workspaceMode._tag === "RewordCommit" &&
+		outlineMode._tag === "RewordCommit" &&
 		operandEquals(
 			operand,
 			commitOperand({
-				stackId: workspaceMode.stackId,
-				commitId: workspaceMode.commitId,
+				stackId: outlineMode.stackId,
+				commitId: outlineMode.commitId,
 			}),
 		);
 	const [optimisticMessage, setOptimisticMessage] = useOptimistic(
@@ -1405,7 +1401,7 @@ const CommitRow: FC<
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
 		dispatch(projectActions.select({ projectId, selection: operand }));
-		focusPanel("log");
+		focusPanel("outline");
 	};
 
 	const saveNewMessage = (newMessage: string) => {
@@ -1470,8 +1466,8 @@ const CommitRow: FC<
 		enabled:
 			!isCommitMessagePending &&
 			isSelected &&
-			focusedPanel === "log" &&
-			workspaceMode._tag === "Default",
+			focusedPanel === "outline" &&
+			outlineMode._tag === "Default",
 		meta: { group: "Commit", name: "Reword" },
 	});
 
@@ -1483,7 +1479,7 @@ const CommitRow: FC<
 		{
 			conflictBehavior: "allow",
 			enabled:
-				isSelected && focusedPanel === "log" && workspaceMode._tag === "Default" && !isExpanded,
+				isSelected && focusedPanel === "outline" && outlineMode._tag === "Default" && !isExpanded,
 			meta: { group: "Commit", name: "Expand files" },
 		},
 	);
@@ -1496,14 +1492,14 @@ const CommitRow: FC<
 		{
 			conflictBehavior: "allow",
 			enabled:
-				isSelected && focusedPanel === "log" && workspaceMode._tag === "Default" && isExpanded,
+				isSelected && focusedPanel === "outline" && outlineMode._tag === "Default" && isExpanded,
 			meta: { group: "Commit", name: "Collapse files" },
 		},
 	);
 
 	useHotkey({ key: "" }, insertBlankCommitAbove, {
 		conflictBehavior: "allow",
-		enabled: isSelected && focusedPanel === "log" && workspaceMode._tag === "Default",
+		enabled: isSelected && focusedPanel === "outline" && outlineMode._tag === "Default",
 		meta: {
 			group: "Commit",
 			name: "Add empty commit above",
@@ -1514,7 +1510,7 @@ const CommitRow: FC<
 
 	useHotkey({ key: "" }, insertBlankCommitBelow, {
 		conflictBehavior: "allow",
-		enabled: isSelected && focusedPanel === "log" && workspaceMode._tag === "Default",
+		enabled: isSelected && focusedPanel === "outline" && outlineMode._tag === "Default",
 		meta: {
 			group: "Commit",
 			name: "Add empty commit below",
@@ -1528,8 +1524,8 @@ const CommitRow: FC<
 		enabled:
 			!commitDiscard.isPending &&
 			isSelected &&
-			focusedPanel === "log" &&
-			workspaceMode._tag === "Default",
+			focusedPanel === "outline" &&
+			outlineMode._tag === "Default",
 		meta: {
 			group: "Commit",
 			name: "Delete commit",
@@ -1558,7 +1554,7 @@ const CommitRow: FC<
 					<div
 						className={styles.itemRowLabel}
 						onContextMenu={
-							workspaceMode._tag === "Default"
+							outlineMode._tag === "Default"
 								? (event) => {
 										void showNativeContextMenu(event, menuItems);
 									}
@@ -1567,7 +1563,7 @@ const CommitRow: FC<
 					>
 						<CommitLabel commit={commitWithOptimisticMessage} />
 					</div>
-					{workspaceMode._tag === "Default" && (
+					{outlineMode._tag === "Default" && (
 						<ItemRowToolbar aria-label="Commit actions">
 							<Tooltip.Root
 								open={isExpandCollapseTooltipOpen}
@@ -1637,7 +1633,7 @@ const CommitFileRow: FC<{
 		},
 		{
 			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "log",
+			enabled: isSelected && focusedPanel === "outline",
 			meta: {
 				group: "Commit file",
 				name: "Select commit",
@@ -1725,9 +1721,7 @@ const ChangesFileRow: FC<{
 	const operand = fileOperand({ parent: changesFileParent, path: change.path });
 	const isSelected = useIsSelected({ projectId, operand });
 	const focusedPanel = useFocusedProjectPanel(projectId);
-	const workspaceMode = useAppSelector((state) =>
-		selectProjectWorkspaceModeState(state, projectId),
-	);
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
 	useHotkey(
 		"A",
@@ -1742,7 +1736,7 @@ const ChangesFileRow: FC<{
 		},
 		{
 			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "log" && workspaceMode._tag === "Default",
+			enabled: isSelected && focusedPanel === "outline" && outlineMode._tag === "Default",
 			meta: { group: "Changes file", name: "Absorb" },
 		},
 	);
@@ -1786,7 +1780,7 @@ const ChangesFileRow: FC<{
 			>
 				{fileRowLabel(change)}
 			</div>
-			{workspaceMode._tag === "Default" && (
+			{outlineMode._tag === "Default" && (
 				<ItemRowToolbar aria-label="File actions">
 					{dependencyCommitIds && (
 						<DependencyIndicatorButton
@@ -1823,9 +1817,7 @@ const ChangesSectionRow: FC<{
 	const operand = changesSectionOperand;
 	const isSelected = useIsSelected({ projectId, operand });
 	const focusedPanel = useFocusedProjectPanel(projectId);
-	const workspaceMode = useAppSelector((state) =>
-		selectProjectWorkspaceModeState(state, projectId),
-	);
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
 	useHotkey(
 		"A",
@@ -1837,8 +1829,8 @@ const ChangesSectionRow: FC<{
 			enabled:
 				changes.length > 0 &&
 				isSelected &&
-				focusedPanel === "log" &&
-				workspaceMode._tag === "Default",
+				focusedPanel === "outline" &&
+				outlineMode._tag === "Default",
 			meta: { group: "Changes", name: "Absorb" },
 		},
 	);
@@ -1864,7 +1856,7 @@ const ChangesSectionRow: FC<{
 			>
 				Changes ({changes.length})
 			</div>
-			{workspaceMode._tag === "Default" && (
+			{outlineMode._tag === "Default" && (
 				<ItemRowToolbar aria-label="Changes actions">
 					<Toolbar.Button type="button" className={styles.itemRowToolbarButton} onClick={onCommit}>
 						Commit
@@ -1990,14 +1982,14 @@ const InlineRenameBranch: FC<{
 
 	useHotkey("Enter", () => formRef.current?.requestSubmit(), {
 		conflictBehavior: "allow",
-		enabled: focusedPanel === "log",
+		enabled: focusedPanel === "outline",
 		ignoreInputs: false,
 		meta: { group: "Rename branch", name: "Save", commandPalette: false },
 	});
 
 	useHotkey("Escape", onExit, {
 		conflictBehavior: "allow",
-		enabled: focusedPanel === "log",
+		enabled: focusedPanel === "outline",
 		ignoreInputs: false,
 		meta: { group: "Rename branch", name: "Cancel", commandPalette: false },
 	});
@@ -2035,9 +2027,7 @@ const BranchRow: FC<
 		focusPanel: (panel: PanelType) => void;
 	} & ComponentProps<"div">
 > = ({ projectId, branchName, branchRef, stackId, navigationIndex, focusPanel, ...restProps }) => {
-	const workspaceMode = useAppSelector((state) =>
-		selectProjectWorkspaceModeState(state, projectId),
-	);
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 	const dispatch = useAppDispatch();
 	const branchOperandV: BranchOperand = {
 		stackId,
@@ -2045,12 +2035,12 @@ const BranchRow: FC<
 	};
 	const operand = branchOperand(branchOperandV);
 	const isRenaming =
-		workspaceMode._tag === "RenameBranch" &&
+		outlineMode._tag === "RenameBranch" &&
 		operandEquals(
 			operand,
 			branchOperand({
-				stackId: workspaceMode.stackId,
-				branchRef: workspaceMode.branchRef,
+				stackId: outlineMode.stackId,
+				branchRef: outlineMode.branchRef,
 			}),
 		);
 	const [optimisticBranchName, setOptimisticBranchName] = useOptimistic(
@@ -2070,7 +2060,7 @@ const BranchRow: FC<
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
 		dispatch(projectActions.select({ projectId, selection: operand }));
-		focusPanel("log");
+		focusPanel("outline");
 	};
 
 	const saveBranchName = (newBranchName: string) => {
@@ -2111,7 +2101,7 @@ const BranchRow: FC<
 
 	useHotkey("Enter", startEditing, {
 		conflictBehavior: "allow",
-		enabled: isSelected && focusedPanel === "log" && workspaceMode._tag === "Default",
+		enabled: isSelected && focusedPanel === "outline" && outlineMode._tag === "Default",
 		meta: { group: "Branch", name: "Rename" },
 	});
 
@@ -2134,7 +2124,7 @@ const BranchRow: FC<
 					<div
 						className={classes(styles.itemRowLabel, styles.sectionLabel)}
 						onContextMenu={
-							workspaceMode._tag === "Default"
+							outlineMode._tag === "Default"
 								? (event) => {
 										void showNativeContextMenu(event, menuItems);
 									}
@@ -2143,7 +2133,7 @@ const BranchRow: FC<
 					>
 						{optimisticBranchName}
 					</div>
-					{workspaceMode._tag === "Default" && (
+					{outlineMode._tag === "Default" && (
 						<ItemRowToolbar aria-label="Branch actions">
 							<Toolbar.Button
 								type="button"
@@ -2181,9 +2171,7 @@ const StackRow: FC<
 	const operand = stackOperand({ stackId });
 	const isSelected = useIsSelected({ projectId, operand });
 	const focusedPanel = useFocusedProjectPanel(projectId);
-	const workspaceMode = useAppSelector((state) =>
-		selectProjectWorkspaceModeState(state, projectId),
-	);
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
 	const unapplyStack = useMutation(unapplyStackMutationOptions);
 	const unapply = () => {
@@ -2206,8 +2194,8 @@ const StackRow: FC<
 		conflictBehavior: "allow",
 		enabled:
 			isSelected &&
-			focusedPanel === "log" &&
-			workspaceMode._tag === "Default" &&
+			focusedPanel === "outline" &&
+			outlineMode._tag === "Default" &&
 			!unapplyStack.isPending,
 		meta: {
 			group: "Stack",
@@ -2227,7 +2215,7 @@ const StackRow: FC<
 			<div
 				className={classes(styles.itemRowLabel, styles.sectionLabel)}
 				onContextMenu={
-					workspaceMode._tag === "Default"
+					outlineMode._tag === "Default"
 						? (event) => {
 								void showNativeContextMenu(event, menuItems);
 							}
@@ -2236,7 +2224,7 @@ const StackRow: FC<
 			>
 				Stack
 			</div>
-			{workspaceMode._tag === "Default" && (
+			{outlineMode._tag === "Default" && (
 				<ItemRowToolbar aria-label="Stack actions">
 					<Toolbar.Button
 						type="button"
@@ -2632,9 +2620,7 @@ export const WorkspacePage: FC = () => {
 	);
 	const pickerDialog = useAppSelector((state) => selectProjectPickerDialogState(state, projectId));
 	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
-	const workspaceMode = useAppSelector((state) =>
-		selectProjectWorkspaceModeState(state, projectId),
-	);
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 	const { focusAdjacentPanel, focusPanel, panelElementRef } = useProjectPanelFocusManager();
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
@@ -2646,13 +2632,13 @@ export const WorkspacePage: FC = () => {
 	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
 	useEffect(() => {
 		if (
-			!isValidWorkspaceMode({
-				mode: workspaceMode,
+			!isValidOutlineMode({
+				mode: outlineMode,
 				navigationIndex: navigationIndexUnfiltered,
 			})
 		)
 			dispatch(projectActions.exitMode({ projectId }));
-	}, [workspaceMode, navigationIndexUnfiltered, projectId, dispatch]);
+	}, [outlineMode, navigationIndexUnfiltered, projectId, dispatch]);
 
 	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
 
@@ -2673,7 +2659,7 @@ export const WorkspacePage: FC = () => {
 	);
 
 	const navigationIndex =
-		workspaceMode._tag !== "Default"
+		outlineMode._tag !== "Default"
 			? filterNavigationIndex(
 					navigationIndexUnfiltered,
 					(operand) =>
@@ -2684,7 +2670,7 @@ export const WorkspacePage: FC = () => {
 						operandEquals(selection, operand) ||
 						// After selection moves, allow returning selection to the source operand.
 						(operationMode?.source && operandEquals(operationMode.source, operand)) ||
-						includeOperandForWorkspaceMode({ mode: workspaceMode, operand }),
+						includeOperandForOutlineMode({ mode: outlineMode, operand }),
 				)
 			: navigationIndexUnfiltered;
 
@@ -2739,7 +2725,7 @@ export const WorkspacePage: FC = () => {
 		id: `project:${projectId}:layout`,
 		panelIds: panelsState.visiblePanels,
 	});
-	const logPanelElementRef = useMergedRefs(panelElementRef("log"), (el) =>
+	const outlinePanelElementRef = useMergedRefs(panelElementRef("outline"), (el) =>
 		el?.focus({ focusVisible: false }),
 	);
 
@@ -2758,7 +2744,7 @@ export const WorkspacePage: FC = () => {
 				selection: branchOperand(branch),
 			}),
 		);
-		focusPanel("log");
+		focusPanel("outline");
 	};
 
 	const setBranchPickerOpen = (open: boolean) => {
@@ -2787,8 +2773,8 @@ export const WorkspacePage: FC = () => {
 			</ShortcutsBarPortal>
 
 			<Group className={styles.page} defaultLayout={defaultLayout} onLayoutChange={onLayoutChanged}>
-				<LogPanel
-					elementRef={logPanelElementRef}
+				<OutlinePanel
+					elementRef={outlinePanelElementRef}
 					focusPanel={focusPanel}
 					navigationIndex={navigationIndex}
 					onAbsorbChanges={openAbsorptionDialog}

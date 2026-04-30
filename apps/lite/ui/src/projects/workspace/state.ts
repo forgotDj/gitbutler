@@ -9,31 +9,31 @@ import {
 	type Operand,
 } from "#ui/operands.ts";
 import {
-	defaultWorkspaceMode,
+	defaultOutlineMode,
 	dragAndDropOperationMode,
 	getOperationMode,
-	isValidWorkspaceModeForSelection,
+	isValidOutlineModeForSelection,
 	moveOperationMode,
-	operationWorkspaceMode,
-	renameBranchWorkspaceMode,
-	rewordCommitWorkspaceMode,
+	operationOutlineMode,
+	renameBranchOutlineMode,
+	rewordCommitOutlineMode,
 	rubOperationMode,
-	type WorkspaceMode,
-} from "#ui/workspace/mode.ts";
+	type OutlineMode,
+} from "#ui/outline/mode.ts";
 
 const createInitialWorkspaceSelectionState = (): Operand => changesSectionOperand;
 
 export type WorkspaceState = {
 	expandedCommitId: string | null;
 	highlightedCommitIds: Array<string>;
-	mode: WorkspaceMode;
+	mode: OutlineMode;
 	selection: Operand;
 };
 
 export const createInitialState = (): WorkspaceState => ({
 	expandedCommitId: null,
 	highlightedCommitIds: [],
-	mode: defaultWorkspaceMode,
+	mode: defaultOutlineMode,
 	selection: createInitialWorkspaceSelectionState(),
 });
 
@@ -44,15 +44,15 @@ export const closeCommitFiles = (state: WorkspaceState) => {
 };
 
 export const enterMoveMode = (state: WorkspaceState, source: Operand) => {
-	state.mode = operationWorkspaceMode(moveOperationMode({ source }));
+	state.mode = operationOutlineMode(moveOperationMode({ source }));
 };
 
 export const enterRubMode = (state: WorkspaceState, source: Operand) => {
-	state.mode = operationWorkspaceMode(rubOperationMode({ source }));
+	state.mode = operationOutlineMode(rubOperationMode({ source }));
 };
 
 export const enterDragAndDropMode = (state: WorkspaceState, source: Operand) => {
-	state.mode = operationWorkspaceMode(dragAndDropOperationMode({ source, operationType: null }));
+	state.mode = operationOutlineMode(dragAndDropOperationMode({ source, operationType: null }));
 };
 
 export const updateDragAndDropMode = (
@@ -65,7 +65,7 @@ export const updateDragAndDropMode = (
 				Match.value(value).pipe(
 					Match.tags({
 						DragAndDrop: (mode) => {
-							state.mode = operationWorkspaceMode(
+							state.mode = operationOutlineMode(
 								dragAndDropOperationMode({ source: mode.source, operationType }),
 							);
 						},
@@ -79,7 +79,7 @@ export const updateDragAndDropMode = (
 };
 
 export const exitMode = (state: WorkspaceState) => {
-	state.mode = defaultWorkspaceMode;
+	state.mode = defaultOutlineMode;
 };
 
 export const openCommitFiles = (state: WorkspaceState, commit: CommitOperand) => {
@@ -88,8 +88,8 @@ export const openCommitFiles = (state: WorkspaceState, commit: CommitOperand) =>
 
 export const select = (state: WorkspaceState, selection: Operand) => {
 	state.selection = selection;
-	if (!isValidWorkspaceModeForSelection({ mode: state.mode, selection }))
-		state.mode = defaultWorkspaceMode;
+	if (!isValidOutlineModeForSelection({ mode: state.mode, selection }))
+		state.mode = defaultOutlineMode;
 };
 
 export const setExpandedCommitId = (state: WorkspaceState, commitId: string | null) => {
@@ -102,7 +102,7 @@ export const setHighlightedCommitIds = (state: WorkspaceState, commitIds: Array<
 
 export const startRenameBranch = (state: WorkspaceState, branch: BranchOperand) => {
 	select(state, branchOperand(branch));
-	state.mode = renameBranchWorkspaceMode({
+	state.mode = renameBranchOutlineMode({
 		stackId: branch.stackId,
 		branchRef: branch.branchRef,
 	});
@@ -110,7 +110,7 @@ export const startRenameBranch = (state: WorkspaceState, branch: BranchOperand) 
 
 export const startRewordCommit = (state: WorkspaceState, commit: CommitOperand) => {
 	select(state, commitOperand(commit));
-	state.mode = rewordCommitWorkspaceMode({
+	state.mode = rewordCommitOutlineMode({
 		stackId: commit.stackId,
 		commitId: commit.commitId,
 	});
@@ -127,7 +127,7 @@ export const toggleCommitFiles = (state: WorkspaceState, commit: CommitOperand) 
 
 export const selectSelectionState = (state: WorkspaceState): Operand => state.selection;
 
-export const selectMode = (state: WorkspaceState): WorkspaceMode => state.mode;
+export const selectMode = (state: WorkspaceState): OutlineMode => state.mode;
 
 export const selectOperationMode = (state: WorkspaceState) => getOperationMode(state.mode);
 
