@@ -207,7 +207,7 @@ const selectProjectWorkspaceState = (state: RootState, projectId: string) =>
 export const selectProjectSelection = (state: RootState, projectId: string) =>
 	workspace.selectSelectionState(selectProjectWorkspaceState(state, projectId));
 
-export const selectProjectWorkspaceModeState = (state: RootState, projectId: string) =>
+export const selectProjectOutlineModeState = (state: RootState, projectId: string) =>
 	workspace.selectMode(selectProjectWorkspaceState(state, projectId));
 
 export const selectProjectOperationModeState = (state: RootState, projectId: string) =>

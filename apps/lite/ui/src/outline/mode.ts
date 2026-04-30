@@ -37,47 +37,47 @@ export const dragAndDropOperationMode = ({
 });
 
 /** @public */
-export type RewordCommitWorkspaceMode = { stackId: string; commitId: string };
+export type RewordCommitOutlineMode = { stackId: string; commitId: string };
 /** @public */
-export type RenameBranchWorkspaceMode = { stackId: string; branchRef: Array<number> };
-export type WorkspaceMode =
+export type RenameBranchOutlineMode = { stackId: string; branchRef: Array<number> };
+export type OutlineMode =
 	| { _tag: "Default" }
-	| ({ _tag: "RewordCommit" } & RewordCommitWorkspaceMode)
-	| ({ _tag: "RenameBranch" } & RenameBranchWorkspaceMode)
+	| ({ _tag: "RewordCommit" } & RewordCommitOutlineMode)
+	| ({ _tag: "RenameBranch" } & RenameBranchOutlineMode)
 	| { _tag: "Operation"; value: OperationMode };
 
 /** @public */
-export const defaultWorkspaceMode: WorkspaceMode = {
+export const defaultOutlineMode: OutlineMode = {
 	_tag: "Default",
 };
 
 /** @public */
-export const operationWorkspaceMode = (value: OperationMode): WorkspaceMode => ({
+export const operationOutlineMode = (value: OperationMode): OutlineMode => ({
 	_tag: "Operation",
 	value,
 });
 
 /** @public */
-export const rewordCommitWorkspaceMode = ({
+export const rewordCommitOutlineMode = ({
 	stackId,
 	commitId,
-}: RewordCommitWorkspaceMode): WorkspaceMode => ({
+}: RewordCommitOutlineMode): OutlineMode => ({
 	_tag: "RewordCommit",
 	stackId,
 	commitId,
 });
 
 /** @public */
-export const renameBranchWorkspaceMode = ({
+export const renameBranchOutlineMode = ({
 	stackId,
 	branchRef,
-}: RenameBranchWorkspaceMode): WorkspaceMode => ({
+}: RenameBranchOutlineMode): OutlineMode => ({
 	_tag: "RenameBranch",
 	stackId,
 	branchRef,
 });
 
-export const getOperationMode = (mode: WorkspaceMode): OperationMode | null =>
+export const getOperationMode = (mode: OutlineMode): OperationMode | null =>
 	Match.value(mode).pipe(
 		Match.withReturnType<OperationMode | null>(),
 		Match.tags({ Operation: ({ value }) => value }),
@@ -96,11 +96,11 @@ export const operationModeToOperationType = (operationMode: OperationMode): Oper
 		Match.exhaustive,
 	);
 
-export const isValidWorkspaceMode = ({
+export const isValidOutlineMode = ({
 	mode,
 	navigationIndex,
 }: {
-	mode: WorkspaceMode;
+	mode: OutlineMode;
 	navigationIndex: NavigationIndex;
 }): boolean =>
 	Match.value(mode).pipe(
@@ -135,11 +135,11 @@ export const isValidWorkspaceMode = ({
 		}),
 	);
 
-export const isValidWorkspaceModeForSelection = ({
+export const isValidOutlineModeForSelection = ({
 	mode,
 	selection,
 }: {
-	mode: WorkspaceMode;
+	mode: OutlineMode;
 	selection: Operand;
 }): boolean =>
 	Match.value(mode).pipe(
@@ -165,11 +165,11 @@ export const isValidWorkspaceModeForSelection = ({
 		}),
 	);
 
-export const includeOperandForWorkspaceMode = ({
+export const includeOperandForOutlineMode = ({
 	mode,
 	operand,
 }: {
-	mode: WorkspaceMode;
+	mode: OutlineMode;
 	operand: Operand;
 }): boolean =>
 	Match.value(mode).pipe(
