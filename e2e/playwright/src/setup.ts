@@ -1,5 +1,6 @@
 import { setConfig } from "./config.ts";
 import { BUT, BUT_SERVER, BUT_SERVER_PORT, DESKTOP_PORT, GIT_CONFIG_GLOBAL } from "./env.ts";
+import { serverLogSink } from "./test.ts";
 import { type BrowserContext } from "@playwright/test";
 import { ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
@@ -60,7 +61,7 @@ class GitButlerManager implements GitButler {
 			E2E_TEST_APP_DATA_DIR: this.configDir,
 			BUTLER_PORT: getButlerPort(),
 			GIT_CONFIG_GLOBAL,
-			RUST_LOG: "error",
+			RUST_LOG: "info",
 			...this.env,
 		};
 
@@ -164,15 +165,11 @@ function createButServerProcess(rootDir: string, serverEnv: Record<string, strin
 		},
 	});
 
-	// Reprint stdout in green
-	child.stdout?.on("data", (data) => {
-		process.stdout.write(`BUT-SERVER: ${colors.green}${data}${colors.reset}`);
-	});
+	// Reprint stdout in green and buffer for artifact capture
+	child.stdout?.on("data", serverLogSink.push);
 
-	// Reprint stderr in green
-	child.stderr?.on("data", (data) => {
-		process.stderr.write(`BUT-SERVER: ${colors.red}${data}${colors.reset}`);
-	});
+	// Reprint stderr in red and buffer for artifact capture
+	child.stderr?.on("data", serverLogSink.push);
 
 	return child;
 }
