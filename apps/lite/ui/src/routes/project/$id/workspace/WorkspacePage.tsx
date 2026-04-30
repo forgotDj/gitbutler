@@ -2722,9 +2722,6 @@ const WorkspacePage: FC = () => {
 		id: `project:${projectId}:layout`,
 		panelIds: panelsState.visiblePanels,
 	});
-	const outlinePanelElementRef = useMergedRefs(panelElementRef("outline"), (el) =>
-		el?.focus({ focusVisible: false }),
-	);
 
 	// TODO: handle project not found error. or only run when project is not null? waterfall.
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
@@ -2766,7 +2763,9 @@ const WorkspacePage: FC = () => {
 
 			<Group className={styles.page} defaultLayout={defaultLayout} onLayoutChange={onLayoutChanged}>
 				<OutlinePanel
-					elementRef={outlinePanelElementRef}
+					elementRef={useMergedRefs(panelElementRef("outline"), (el) =>
+						el?.focus({ focusVisible: false }),
+					)}
 					focusPanel={focusPanel}
 					onAbsorbChanges={openAbsorptionDialog}
 				/>
