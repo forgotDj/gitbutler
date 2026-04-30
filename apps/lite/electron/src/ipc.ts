@@ -29,14 +29,24 @@ import type {
 } from "@gitbutler/but-sdk";
 import type { UpdateDownloadedEvent } from "electron-updater";
 
-export interface AssignHunkParams {
+export interface AbsorbParams {
 	projectId: string;
-	assignments: Array<HunkAssignmentRequest>;
+	absorptionPlan: Array<CommitAbsorption>;
+}
+
+export interface AbsorptionPlanParams {
+	projectId: string;
+	target: AbsorptionTarget;
 }
 
 export interface ApplyParams {
 	projectId: string;
 	existingBranch: string;
+}
+
+export interface AssignHunkParams {
+	projectId: string;
+	assignments: Array<HunkAssignmentRequest>;
 }
 
 export interface BranchDetailsParams {
@@ -50,36 +60,11 @@ export interface BranchDiffParams {
 	branch: string;
 }
 
-export interface MoveBranchParams {
-	projectId: string;
-	subjectBranch: string;
-	targetBranch: string;
-	dryRun: boolean;
-}
-
-export interface UpdateBranchNameParams {
-	projectId: string;
-	stackId: string;
-	branchName: string;
-	newName: string;
-}
-
-export interface TearOffBranchParams {
-	projectId: string;
-	subjectBranch: string;
-	dryRun: boolean;
-}
-
 export interface CommitAmendParams {
 	projectId: string;
 	commitId: string;
 	changes: Array<DiffSpec>;
 	dryRun: boolean;
-}
-
-export interface CommitDetailsWithLineStatsParams {
-	projectId: string;
-	commitId: string;
 }
 
 export interface CommitCreateParams {
@@ -91,24 +76,21 @@ export interface CommitCreateParams {
 	dryRun: boolean;
 }
 
+export interface CommitDetailsWithLineStatsParams {
+	projectId: string;
+	commitId: string;
+}
+
 export interface CommitDiscardParams {
 	projectId: string;
 	subjectCommitId: string;
 	dryRun: boolean;
 }
 
-export interface CommitMoveChangesBetweenParams {
+export interface CommitInsertBlankParams {
 	projectId: string;
-	sourceCommitId: string;
-	destinationCommitId: string;
-	changes: Array<DiffSpec>;
-	dryRun: boolean;
-}
-
-export interface CommitSquashParams {
-	projectId: string;
-	sourceCommitId: string;
-	destinationCommitId: string;
+	relativeTo: RelativeTo;
+	side: InsertSide;
 	dryRun: boolean;
 }
 
@@ -120,10 +102,11 @@ export interface CommitMoveParams {
 	dryRun: boolean;
 }
 
-export interface CommitInsertBlankParams {
+export interface CommitMoveChangesBetweenParams {
 	projectId: string;
-	relativeTo: RelativeTo;
-	side: InsertSide;
+	sourceCommitId: string;
+	destinationCommitId: string;
+	changes: Array<DiffSpec>;
 	dryRun: boolean;
 }
 
@@ -131,6 +114,13 @@ export interface CommitRewordParams {
 	projectId: string;
 	commitId: string;
 	message: string;
+	dryRun: boolean;
+}
+
+export interface CommitSquashParams {
+	projectId: string;
+	sourceCommitId: string;
+	destinationCommitId: string;
 	dryRun: boolean;
 }
 
@@ -142,14 +132,28 @@ export interface CommitUncommitChangesParams {
 	dryRun: boolean;
 }
 
-export interface AbsorptionPlanParams {
+export interface ListBranchesParams {
 	projectId: string;
-	target: AbsorptionTarget;
+	filter: BranchListingFilter | null;
 }
 
-export interface AbsorbParams {
+export interface MoveBranchParams {
 	projectId: string;
-	absorptionPlan: Array<CommitAbsorption>;
+	subjectBranch: string;
+	targetBranch: string;
+	dryRun: boolean;
+}
+
+export interface PushStackLegacyParams {
+	projectId: string;
+	stackId: string;
+	branch: string;
+}
+
+export interface TearOffBranchParams {
+	projectId: string;
+	subjectBranch: string;
+	dryRun: boolean;
 }
 
 export interface TreeChangeDiffParams {
@@ -162,23 +166,24 @@ export interface UnapplyStackParams {
 	stackId: string;
 }
 
-export interface PushStackLegacyParams {
+export interface UpdateBranchNameParams {
 	projectId: string;
 	stackId: string;
-	branch: string;
+	branchName: string;
+	newName: string;
 }
 
 export interface WatcherSubscribeParams {
 	projectId: string;
 }
 
-export interface WatcherUnsubscribeParams {
-	subscriptionId: string;
-}
-
 export interface WatcherSubscribeResult {
 	subscriptionId: string;
 	eventChannel: string;
+}
+
+export interface WatcherUnsubscribeParams {
+	subscriptionId: string;
 }
 
 export interface NativeMenuPosition {

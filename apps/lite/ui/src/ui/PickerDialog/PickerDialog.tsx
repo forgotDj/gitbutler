@@ -27,6 +27,7 @@ export const PickerDialog = <Item,>({
 	onSelectItem,
 	open,
 	placeholder,
+	statusLabel,
 }: {
 	ariaLabel: string;
 	closeLabel: string;
@@ -40,6 +41,7 @@ export const PickerDialog = <Item,>({
 	onSelectItem: (item: Item) => void;
 	open: boolean;
 	placeholder: string;
+	statusLabel?: string;
 }) => {
 	const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -68,8 +70,15 @@ export const PickerDialog = <Item,>({
 							<ScrollArea.Root className={styles.listArea}>
 								<ScrollArea.Viewport className={styles.listViewport}>
 									<ScrollArea.Content className={styles.listContent}>
+										<Autocomplete.Status>
+											{statusLabel !== undefined ? (
+												<div className={styles.empty}>{statusLabel}</div>
+											) : null}
+										</Autocomplete.Status>
 										<Autocomplete.Empty>
-											<div className={styles.empty}>{emptyLabel}</div>
+											{statusLabel === undefined ? (
+												<div className={styles.empty}>{emptyLabel}</div>
+											) : null}
 										</Autocomplete.Empty>
 
 										<Autocomplete.List className={styles.list}>
