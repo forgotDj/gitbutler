@@ -692,6 +692,7 @@ const HunkDiff: FC<{
 			diffStyle: "unified",
 			themeType: "system",
 			disableFileHeader: true,
+			preferredHighlighter: "shiki-wasm",
 		}}
 	/>
 );
