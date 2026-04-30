@@ -1,6 +1,6 @@
 import { getBaseURL, type GitButler, startGitButler } from "../src/setup.ts";
 import { test } from "../src/test.ts";
-import { dragAndDropByLocator, sleep, waitForTestId } from "../src/util.ts";
+import { dragAndDropByLocator, waitForTestId } from "../src/util.ts";
 import { expect } from "@playwright/test";
 
 let gitbutler: GitButler;
@@ -114,8 +114,6 @@ test("move branch to the middle of other stack", async ({ page, context }, testI
 	});
 	stacks = page.getByTestId("stack");
 	await expect(stacks).toHaveCount(2);
-
-	await sleep(500); // It seems that we need to wait a bit for the DOM to stabilize
 
 	branchHeaders = page.getByTestId("branch-header");
 	await expect(branchHeaders).toHaveCount(3);
