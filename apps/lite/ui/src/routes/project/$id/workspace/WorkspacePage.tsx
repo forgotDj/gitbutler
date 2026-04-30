@@ -85,10 +85,10 @@ const groupCommandPaletteItems = (
 	}
 
 	return globalThis.Array.from(groups.entries())
-		.sort(([a], [b]) => a.localeCompare(b))
+		.toSorted(([a], [b]) => a.localeCompare(b))
 		.map(([value, items]) => ({
 			value,
-			items: globalThis.Array.from(items).sort((a, b) => a.name.localeCompare(b.name)),
+			items: items.toSorted((a, b) => a.name.localeCompare(b.name)),
 		}));
 };
 
@@ -112,7 +112,7 @@ const CommandPalette: FC<{
 						}
 					: [],
 			)
-			.sort((a, b) => a.name.localeCompare(b.name)),
+			.toSorted((a, b) => a.name.localeCompare(b.name)),
 		groupCommandPaletteItems,
 	);
 

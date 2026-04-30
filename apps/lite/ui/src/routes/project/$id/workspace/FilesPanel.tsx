@@ -161,7 +161,7 @@ const CommitFiles: FC<{
 					...data.conflictEntries.ourEntries,
 					...data.conflictEntries.theirEntries,
 				]),
-			).sort((a: string, b: string) => a.localeCompare(b))
+			).toSorted((a, b) => a.localeCompare(b))
 		: [];
 
 	if (conflictedPaths.length === 0 && data.changes.length === 0)
