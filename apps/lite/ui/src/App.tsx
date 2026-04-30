@@ -1,4 +1,5 @@
 import { Toast, ToastManager, Tooltip } from "@base-ui/react";
+import { WorkerPoolContextProvider } from "@pierre/diffs/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RegisteredRouter, RouterProvider } from "@tanstack/react-router";
@@ -7,6 +8,11 @@ import { Provider } from "react-redux";
 import { store } from "#ui/store.ts";
 import { Toasts } from "#ui/ui/Toasts/Toasts.tsx";
 import { Updater } from "#ui/Updater.tsx";
+
+const workerFactory = (): Worker =>
+	new Worker(new URL("@pierre/diffs/worker/worker.js", import.meta.url), {
+		type: "module",
+	});
 
 export const App: React.FC<{
 	queryClient: QueryClient;
@@ -18,9 +24,14 @@ export const App: React.FC<{
 			<QueryClientProvider client={queryClient}>
 				<Toast.Provider toastManager={toastManager}>
 					<Tooltip.Provider>
-						<RouterProvider router={router} />
-						<Updater />
-						<Toasts />
+						<WorkerPoolContextProvider
+							poolOptions={{ workerFactory }}
+							highlighterOptions={{ preferredHighlighter: "shiki-wasm" }}
+						>
+							<RouterProvider router={router} />
+							<Updater />
+							<Toasts />
+						</WorkerPoolContextProvider>
 					</Tooltip.Provider>
 				</Toast.Provider>
 				<ReactQueryDevtools />

@@ -71,7 +71,7 @@ import {
 	TreeChange,
 	UnifiedPatch,
 } from "@gitbutler/but-sdk";
-import { PatchDiff } from "@pierre/diffs/react";
+import { PatchDiff, Virtualizer } from "@pierre/diffs/react";
 import {
 	formatForDisplay,
 	getHotkeyManager,
@@ -97,6 +97,7 @@ import {
 	Fragment,
 	Ref,
 	Suspense,
+	useDeferredValue,
 	useEffect,
 	useLayoutEffect,
 	useOptimistic,
@@ -307,7 +308,8 @@ const DetailsPanel: FC<{
 }> = ({ elementRef, focusPanel }) => {
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
-	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
+	const urgentSelection = useAppSelector((state) => selectProjectSelection(state, projectId));
+	const selection = useDeferredValue(urgentSelection);
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	useHotkey(
@@ -330,11 +332,13 @@ const DetailsPanel: FC<{
 			defaultSize="70%"
 			elementRef={elementRef}
 			tabIndex={0}
-			className={styles.panel}
+			style={{ opacity: urgentSelection !== selection ? 0.5 : 1 }}
 		>
-			<Suspense fallback={<div>Loading details…</div>}>
-				<Details projectId={projectId} selection={selection} />
-			</Suspense>
+			<Virtualizer className={classes(styles.panel, styles.detailsVirtualizer)}>
+				<Suspense fallback={<div>Loading details…</div>}>
+					<Details projectId={projectId} selection={selection} />
+				</Suspense>
+			</Virtualizer>
 		</Panel>
 	);
 };
@@ -689,6 +693,7 @@ const HunkDiff: FC<{
 			diffStyle: "unified",
 			themeType: "system",
 			disableFileHeader: true,
+			preferredHighlighter: "shiki-wasm",
 		}}
 	/>
 );
