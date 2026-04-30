@@ -2661,6 +2661,36 @@ const ShortcutsBar: FC = () => {
 	);
 };
 
+const usePanelsHotkeys = ({
+	focusedPanel,
+	focusAdjacentPanel,
+}: {
+	focusedPanel: PanelType | null;
+	focusAdjacentPanel: (offset: -1 | 1) => void;
+}) => {
+	useHotkey(
+		"H",
+		() => {
+			focusAdjacentPanel(-1);
+		},
+		{
+			enabled: focusedPanel !== null,
+			meta: { group: "Panels", name: "Focus previous panel", commandPalette: false },
+		},
+	);
+
+	useHotkey(
+		"L",
+		() => {
+			focusAdjacentPanel(1);
+		},
+		{
+			enabled: focusedPanel !== null,
+			meta: { group: "Panels", name: "Focus next panel", commandPalette: false },
+		},
+	);
+};
+
 const WorkspacePage: FC = () => {
 	const dispatch = useAppDispatch();
 
@@ -2696,27 +2726,7 @@ const WorkspacePage: FC = () => {
 		},
 	);
 
-	useHotkey(
-		"H",
-		() => {
-			focusAdjacentPanel(-1);
-		},
-		{
-			enabled: focusedPanel !== null,
-			meta: { group: "Panels", name: "Focus previous panel", commandPalette: false },
-		},
-	);
-
-	useHotkey(
-		"L",
-		() => {
-			focusAdjacentPanel(1);
-		},
-		{
-			enabled: focusedPanel !== null,
-			meta: { group: "Panels", name: "Focus next panel", commandPalette: false },
-		},
-	);
+	usePanelsHotkeys({ focusedPanel, focusAdjacentPanel });
 
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
 		id: `project:${projectId}:layout`,
