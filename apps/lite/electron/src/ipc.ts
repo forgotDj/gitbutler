@@ -29,14 +29,24 @@ import type {
 } from "@gitbutler/but-sdk";
 import type { UpdateDownloadedEvent } from "electron-updater";
 
-export interface AssignHunkParams {
+export interface AbsorbParams {
 	projectId: string;
-	assignments: Array<HunkAssignmentRequest>;
+	absorptionPlan: Array<CommitAbsorption>;
+}
+
+export interface AbsorptionPlanParams {
+	projectId: string;
+	target: AbsorptionTarget;
 }
 
 export interface ApplyParams {
 	projectId: string;
 	existingBranch: string;
+}
+
+export interface AssignHunkParams {
+	projectId: string;
+	assignments: Array<HunkAssignmentRequest>;
 }
 
 export interface BranchDetailsParams {
@@ -48,6 +58,78 @@ export interface BranchDetailsParams {
 export interface BranchDiffParams {
 	projectId: string;
 	branch: string;
+}
+
+export interface CommitAmendParams {
+	projectId: string;
+	commitId: string;
+	changes: Array<DiffSpec>;
+	dryRun: boolean;
+}
+
+export interface CommitCreateParams {
+	projectId: string;
+	relativeTo: RelativeTo;
+	side: InsertSide;
+	changes: Array<DiffSpec>;
+	message: string;
+	dryRun: boolean;
+}
+
+export interface CommitDetailsWithLineStatsParams {
+	projectId: string;
+	commitId: string;
+}
+
+export interface CommitDiscardParams {
+	projectId: string;
+	subjectCommitId: string;
+	dryRun: boolean;
+}
+
+export interface CommitInsertBlankParams {
+	projectId: string;
+	relativeTo: RelativeTo;
+	side: InsertSide;
+	dryRun: boolean;
+}
+
+export interface CommitMoveParams {
+	projectId: string;
+	subjectCommitIds: Array<string>;
+	relativeTo: RelativeTo;
+	side: InsertSide;
+	dryRun: boolean;
+}
+
+export interface CommitMoveChangesBetweenParams {
+	projectId: string;
+	sourceCommitId: string;
+	destinationCommitId: string;
+	changes: Array<DiffSpec>;
+	dryRun: boolean;
+}
+
+export interface CommitRewordParams {
+	projectId: string;
+	commitId: string;
+	message: string;
+	dryRun: boolean;
+}
+
+export interface CommitSquashParams {
+	projectId: string;
+	sourceCommitId: string;
+	destinationCommitId: string;
+	dryRun: boolean;
+}
+
+export interface CommitUncommitChangesParams {
+	projectId: string;
+	commitId: string;
+	changes: Array<DiffSpec>;
+	assignTo: string | null;
+	dryRun: boolean;
 }
 
 export interface ListBranchesParams {
@@ -62,99 +144,16 @@ export interface MoveBranchParams {
 	dryRun: boolean;
 }
 
-export interface UpdateBranchNameParams {
+export interface PushStackLegacyParams {
 	projectId: string;
 	stackId: string;
-	branchName: string;
-	newName: string;
+	branch: string;
 }
 
 export interface TearOffBranchParams {
 	projectId: string;
 	subjectBranch: string;
 	dryRun: boolean;
-}
-
-export interface CommitAmendParams {
-	projectId: string;
-	commitId: string;
-	changes: Array<DiffSpec>;
-	dryRun: boolean;
-}
-
-export interface CommitDetailsWithLineStatsParams {
-	projectId: string;
-	commitId: string;
-}
-
-export interface CommitCreateParams {
-	projectId: string;
-	relativeTo: RelativeTo;
-	side: InsertSide;
-	changes: Array<DiffSpec>;
-	message: string;
-	dryRun: boolean;
-}
-
-export interface CommitDiscardParams {
-	projectId: string;
-	subjectCommitId: string;
-	dryRun: boolean;
-}
-
-export interface CommitMoveChangesBetweenParams {
-	projectId: string;
-	sourceCommitId: string;
-	destinationCommitId: string;
-	changes: Array<DiffSpec>;
-	dryRun: boolean;
-}
-
-export interface CommitSquashParams {
-	projectId: string;
-	sourceCommitId: string;
-	destinationCommitId: string;
-	dryRun: boolean;
-}
-
-export interface CommitMoveParams {
-	projectId: string;
-	subjectCommitIds: Array<string>;
-	relativeTo: RelativeTo;
-	side: InsertSide;
-	dryRun: boolean;
-}
-
-export interface CommitInsertBlankParams {
-	projectId: string;
-	relativeTo: RelativeTo;
-	side: InsertSide;
-	dryRun: boolean;
-}
-
-export interface CommitRewordParams {
-	projectId: string;
-	commitId: string;
-	message: string;
-	dryRun: boolean;
-}
-
-export interface CommitUncommitChangesParams {
-	projectId: string;
-	commitId: string;
-	changes: Array<DiffSpec>;
-	assignTo: string | null;
-	dryRun: boolean;
-}
-
-export interface AbsorptionPlanParams {
-	projectId: string;
-	target: AbsorptionTarget;
-}
-
-export interface AbsorbParams {
-	projectId: string;
-	absorptionPlan: Array<CommitAbsorption>;
 }
 
 export interface TreeChangeDiffParams {
@@ -167,23 +166,24 @@ export interface UnapplyStackParams {
 	stackId: string;
 }
 
-export interface PushStackLegacyParams {
+export interface UpdateBranchNameParams {
 	projectId: string;
 	stackId: string;
-	branch: string;
+	branchName: string;
+	newName: string;
 }
 
 export interface WatcherSubscribeParams {
 	projectId: string;
 }
 
-export interface WatcherUnsubscribeParams {
-	subscriptionId: string;
-}
-
 export interface WatcherSubscribeResult {
 	subscriptionId: string;
 	eventChannel: string;
+}
+
+export interface WatcherUnsubscribeParams {
+	subscriptionId: string;
 }
 
 export interface NativeMenuPosition {
