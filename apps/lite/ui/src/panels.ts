@@ -1,2 +1,2 @@
-export type Panel = "log" | "details";
-export const orderedPanels: Array<Panel> = ["log", "details"];
+export type Panel = "outline" | "details";
+export const orderedPanels: Array<Panel> = ["outline", "details"];
