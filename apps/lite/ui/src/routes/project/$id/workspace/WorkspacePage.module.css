@@ -30,6 +30,11 @@
 	}
 }
 
+.detailsVirtualizer {
+	height: 100%;
+	overflow: auto;
+}
+
 .panelResizeHandle {
 	width: 1px;
 	background-color: var(--color-separator);

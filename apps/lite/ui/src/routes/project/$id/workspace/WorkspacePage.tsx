@@ -71,7 +71,7 @@ import {
 	TreeChange,
 	UnifiedPatch,
 } from "@gitbutler/but-sdk";
-import { PatchDiff } from "@pierre/diffs/react";
+import { PatchDiff, Virtualizer } from "@pierre/diffs/react";
 import {
 	formatForDisplay,
 	getHotkeyManager,
@@ -332,12 +332,13 @@ const DetailsPanel: FC<{
 			defaultSize="70%"
 			elementRef={elementRef}
 			tabIndex={0}
-			className={styles.panel}
 			style={{ opacity: urgentSelection !== selection ? 0.5 : 1 }}
 		>
-			<Suspense fallback={<div>Loading details…</div>}>
-				<Details projectId={projectId} selection={selection} />
-			</Suspense>
+			<Virtualizer className={classes(styles.panel, styles.detailsVirtualizer)}>
+				<Suspense fallback={<div>Loading details…</div>}>
+					<Details projectId={projectId} selection={selection} />
+				</Suspense>
+			</Virtualizer>
 		</Panel>
 	);
 };
