@@ -97,6 +97,7 @@ import {
 	Fragment,
 	Ref,
 	Suspense,
+	useDeferredValue,
 	useEffect,
 	useLayoutEffect,
 	useOptimistic,
@@ -307,7 +308,8 @@ const DetailsPanel: FC<{
 }> = ({ elementRef, focusPanel }) => {
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
-	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
+	const urgentSelection = useAppSelector((state) => selectProjectSelection(state, projectId));
+	const selection = useDeferredValue(urgentSelection);
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	useHotkey(
@@ -331,6 +333,7 @@ const DetailsPanel: FC<{
 			elementRef={elementRef}
 			tabIndex={0}
 			className={styles.panel}
+			style={{ opacity: urgentSelection !== selection ? 0.5 : 1 }}
 		>
 			<Suspense fallback={<div>Loading details…</div>}>
 				<Details projectId={projectId} selection={selection} />
