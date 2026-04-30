@@ -202,7 +202,6 @@
 
 .editorShortcut {
 	color: var(--color-item-row-selected-fg);
-	font-family: monospace;
 }
 
 .rewordCommitInput {
@@ -255,5 +254,4 @@
 
 .shortcutsBarKeys {
 	color: var(--color-text);
-	font-family: monospace;
 }

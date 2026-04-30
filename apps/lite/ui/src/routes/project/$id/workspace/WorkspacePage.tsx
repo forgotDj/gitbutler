@@ -1172,7 +1172,7 @@ const EditorHelp: FC<{
 		{hotkeys.map((hotkey, index) => (
 			<Fragment key={hotkey.hotkey}>
 				{index > 0 && " • "}
-				<span className={styles.editorShortcut}>{formatForDisplay(hotkey.hotkey)}</span> to{" "}
+				<kbd className={styles.editorShortcut}>{formatForDisplay(hotkey.hotkey)}</kbd> to{" "}
 				{hotkey.name}
 			</Fragment>
 		))}
@@ -2509,7 +2509,7 @@ const ShortcutsBar: FC = () => {
 			<span className={styles.shortcutsBarScope}>{focusedPanel ?? "Shortcuts"}</span>
 			{visibleHotkeys.map((hotkey) => (
 				<div key={hotkey.id} className={styles.shortcutsBarItem}>
-					<span className={styles.shortcutsBarKeys}>{formatForDisplay(hotkey.hotkey)}</span>
+					<kbd className={styles.shortcutsBarKeys}>{formatForDisplay(hotkey.hotkey)}</kbd>
 					<span>{hotkey.options.meta?.name}</span>
 				</div>
 			))}
