@@ -30,6 +30,9 @@ export default defineConfig({
 	/* Per-test timeout. The default 30s is too tight for tests that perform
 	   multiple commits in CI, where backend operations are slower. */
 	timeout: 60_000,
+	/* Assertion timeout. The default 5s is too tight for CI where backend
+	   operations (commits, rebases, upstream integration) are slower. */
+	expect: { timeout: 15_000 },
 	/* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
 	use: {
 		/* Base URL to use in actions like `await page.goto('/')`. */

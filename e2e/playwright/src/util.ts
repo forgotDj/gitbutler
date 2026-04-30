@@ -1,5 +1,5 @@
 import { TestId } from "@gitbutler/ui/utils/testIds";
-import { expect, type Locator, type Page } from "@playwright/test";
+import { type Locator, type Page } from "@playwright/test";
 
 type TestIdValues = `${TestId}`;
 
@@ -117,19 +117,6 @@ export async function textEditorFillByTestId(page: Page, testId: TestIdValues, v
 	await element.click();
 	await element.pressSequentially(value);
 	return element;
-}
-
-/**
- * Wait for a locator to become visible with a generous timeout.
- * Use this when an async backend operation (commit, rebase, push, etc.)
- * must complete before the element appears.
- */
-export async function expectVisible(locator: Locator, timeout = 10_000) {
-	await expect(locator).toBeVisible({ timeout });
-}
-
-export async function sleep(ms: number): Promise<void> {
-	return await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**

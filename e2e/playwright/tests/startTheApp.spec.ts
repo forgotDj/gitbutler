@@ -7,7 +7,6 @@ import {
 	fillByTestId,
 	getByTestId,
 	mockPickDirectory,
-	sleep,
 	textEditorFillByTestId,
 	waitForTestId,
 } from "../src/util.ts";
@@ -122,7 +121,7 @@ test("no author setup - should start the application and be able to commit", asy
 	await waitForTestId(page, "global-modal-author-missing");
 	// WebKit needs extra time for the modal inputs to become interactive.
 	// Without this, fill() silently fails and the values don't persist.
-	await sleep(200);
+	await page.waitForTimeout(200);
 	await fillByTestId(page, "global-modal-author-missing-name-input", "Test User");
 	await fillByTestId(page, "global-modal-author-missing-email-input", "test@example.com");
 	await clickByTestId(page, "global-modal-author-missing-action-button", true);

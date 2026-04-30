@@ -1,6 +1,6 @@
 import { getBaseURL, type GitButler, startGitButler } from "../src/setup.ts";
 import { test } from "../src/test.ts";
-import { clickByTestId, sleep, waitForTestId, waitForTestIdToNotExist } from "../src/util.ts";
+import { clickByTestId, waitForTestId, waitForTestIdToNotExist } from "../src/util.ts";
 
 let gitbutler: GitButler;
 
@@ -81,6 +81,4 @@ test("should be able to delete a project when multiple exist", async ({
 
 	// Should still be in the workspace
 	await waitForTestId(page, "workspace-view");
-
-	await sleep(10000); // Wait for the project list to update
 });
