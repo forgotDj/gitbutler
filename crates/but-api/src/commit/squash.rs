@@ -57,19 +57,20 @@ pub fn commit_squash_only_with_perm(
     let mut meta = ctx.meta()?;
     let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
-
-    let outcome = but_workspace::commit::squash_commits(
+    let SquashCommitsOutcome {
+        rebase,
+        commit_selector,
+    } = but_workspace::commit::squash_commits(
         editor,
-        subject_commit_id,
+        subject_commit_ids,
         target_commit_id,
         how_to_combine_messages,
     )?;
-
-    let new_commit = outcome.rebase.lookup_pick(outcome.commit_selector)?;
-    let workspace = WorkspaceState::from_successful_rebase(outcome.rebase, &repo, dry_run)?;
+    let new_commit = rebase.lookup_pick(commit_selector)?;
+    let workspace = WorkspaceState::from_successful_rebase(rebase, &repo, dry_run)?;
 
     Ok(CommitSquashResult {
-        new_commit: outcome.new_commit,
+        new_commit,
         workspace,
     })
 }
