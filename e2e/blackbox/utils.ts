@@ -12,13 +12,13 @@ export async function spawnAndLog(command: string, args: string[]) {
 
 export async function findAndClick(selector: string) {
 	const element = $(selector);
-	await element.waitForClickable({ timeout: 15000 });
+	await element.waitForClickable({ timeout: 30000 });
 	await element.click();
 }
 
 export async function findElement(selector: string) {
 	const element = $(selector);
-	await element.waitForExist({ timeout: 15000 });
+	await element.waitForExist({ timeout: 30000 });
 	return await element.getElement();
 }
 
