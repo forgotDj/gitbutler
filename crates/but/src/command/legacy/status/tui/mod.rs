@@ -47,15 +47,17 @@ use crate::{
                 event_polling::{CrosstermEventPolling, EventPolling, NoopEventPolling},
                 fps::FpsCounter,
                 graph_extension::{ExtensionDirection, extend_connector_spans},
+                help::{Help, HelpMessage},
                 highlight::{Highlights, with_highlight},
                 key_bind::{
                     KeyBinds, branch_picker_key_binds, confirm_key_binds, default_key_binds,
+                    help_key_binds,
                 },
                 message_on_drop::MessageOnDrop,
                 mode::{
                     CommandMode, CommandModeKind, CommitMessageComposer, CommitMode, CommitSource,
-                    InlineRewordMode, Mode, MoveMode, MoveSource, RubMode, RubSource,
-                    StackCommitSource, UnassignedCommitSource,
+                    InlineRewordMode, Mode, ModeDiscriminant, MoveMode, MoveSource, RubMode,
+                    RubSource, StackCommitSource, UnassignedCommitSource,
                 },
                 operations::stack_has_assigned_changes,
                 toast::{ToastKind, Toasts},
@@ -80,6 +82,7 @@ mod details;
 mod event_polling;
 mod fps;
 mod graph_extension;
+mod help;
 mod highlight;
 mod key_bind;
 mod message_on_drop;
@@ -367,6 +370,7 @@ struct App {
     key_binds: KeyBinds,
     confirm_key_binds: KeyBinds,
     branch_picker_key_binds: KeyBinds,
+    help_key_binds: KeyBinds,
     toasts: Toasts,
     renders: u64,
     updates: u64,
@@ -381,6 +385,7 @@ struct App {
     status_width_percentage: u16,
     branch_picker: Option<BranchPicker>,
     theme: &'static Theme,
+    help: Option<Help>,
 }
 
 impl App {
@@ -412,9 +417,11 @@ impl App {
             should_quit: false,
             should_render: true,
             mode: Mode::default(),
+            help: None,
             key_binds: default_key_binds(),
             confirm_key_binds: confirm_key_binds(),
             branch_picker_key_binds: branch_picker_key_binds(),
+            help_key_binds: help_key_binds(),
             toasts: Default::default(),
             renders: 0,
             updates: 0,
@@ -437,6 +444,8 @@ impl App {
             &self.confirm_key_binds
         } else if self.branch_picker.is_some() {
             &self.branch_picker_key_binds
+        } else if self.help.is_some() {
+            &self.help_key_binds
         } else {
             &self.key_binds
         }
@@ -749,6 +758,13 @@ impl App {
                     })
                     .transpose()?;
             }
+            Message::Help(help_message) => {
+                self.help = self
+                    .help
+                    .take()
+                    .and_then(|help| help.handle_message(help_message, terminal_area).transpose())
+                    .transpose()?;
+            }
             Message::Details(details_message) => {
                 let details_viewport = self.details_viewport(terminal_area);
                 self.details
@@ -794,6 +810,9 @@ impl App {
             }
             Message::PickAndGotoBranch => {
                 self.handle_pick_and_goto_branch(ctx)?;
+            }
+            Message::ToggleHelp => {
+                self.handle_toggle_help();
             }
         }
 
@@ -2253,7 +2272,7 @@ impl App {
         if let Some(details_area) = status_layout.details_area {
             let inner_area = details_block.inner(details_area);
             frame.render_widget(details_block, details_area);
-            self.details.render(inner_area, frame);
+            self.details.render(self.help.is_some(), inner_area, frame);
         }
 
         if let Some(debug_area) = debug_area {
@@ -2281,6 +2300,10 @@ impl App {
 
         if let Some(branch_picker) = &self.branch_picker {
             branch_picker.render(frame.area(), frame);
+        }
+
+        if let Some(help) = &self.help {
+            help.render(frame.area(), frame);
         }
     }
 
@@ -2600,7 +2623,7 @@ impl App {
             }
         }
 
-        if is_selected {
+        if is_selected && self.help.is_none() {
             line = line.style(self.theme.selection_highlight);
         }
 
@@ -2720,15 +2743,7 @@ impl App {
     fn render_hotbar(&self, area: Rect, frame: &mut Frame) {
         let mode_span = Span::raw(format!(
             "  {}  ",
-            match self.mode {
-                Mode::Normal => "normal",
-                Mode::Rub(..) => "rub",
-                Mode::InlineReword(..) => "reword",
-                Mode::Command(..) => "command",
-                Mode::Commit(..) => "commit",
-                Mode::Move(..) => "move",
-                Mode::Details => "details",
-            }
+            ModeDiscriminant::from(&self.mode).hotbar_string()
         ))
         .mode_colors(&self.mode, self.theme);
 
@@ -2753,7 +2768,7 @@ impl App {
                 let mut line = Line::default();
                 let mut key_binds_iter = self
                     .active_key_binds()
-                    .iter_key_binds_available_in_mode(&self.mode)
+                    .iter_key_binds_available_in_mode(ModeDiscriminant::from(&self.mode))
                     .filter(|key_bind| !key_bind.hide_from_hotbar())
                     .peekable();
                 while let Some(key_bind) = key_binds_iter.next() {
@@ -2990,6 +3005,14 @@ impl App {
 
         Ok(())
     }
+
+    fn handle_toggle_help(&mut self) {
+        if self.help.is_some() {
+            self.help = None;
+        } else {
+            self.help = Some(Help::new([&self.key_binds], self.theme));
+        }
+    }
 }
 
 fn event_to_messages(
@@ -3002,7 +3025,8 @@ fn event_to_messages(
     match ev {
         Event::Key(key) => {
             let mut handled = false;
-            for key_bind in key_binds.iter_key_binds_available_in_mode(mode) {
+            for key_bind in key_binds.iter_key_binds_available_in_mode(ModeDiscriminant::from(mode))
+            {
                 if key_bind.matches(&key) {
                     messages.push(key_bind.message());
                     handled = true;
@@ -3088,9 +3112,11 @@ enum Message {
     Move(MoveMessage),
     Details(DetailsMessage),
     BranchPicker(BranchPickerMessage),
+    Help(HelpMessage),
     EnterDetailsMode,
     LeaveDetailsMode,
     NewBranch,
+    ToggleHelp,
 
     // Utilities
     CopySelection,
@@ -3310,12 +3336,18 @@ fn source_span(theme: &'static Theme) -> Span<'static> {
     Span::raw("<< source >>").mode_colors(&Mode::Normal, theme)
 }
 
-trait SpanExt {
-    fn mode_colors(self, mode: &Mode, theme: &'static Theme) -> Self;
+trait SpanExt<M> {
+    fn mode_colors(self, mode: M, theme: &'static Theme) -> Self;
 }
 
-impl SpanExt for Span<'_> {
+impl SpanExt<&Mode> for Span<'_> {
     fn mode_colors(self, mode: &Mode, theme: &'static Theme) -> Self {
+        self.mode_colors(ModeDiscriminant::from(mode), theme)
+    }
+}
+
+impl SpanExt<ModeDiscriminant> for Span<'_> {
+    fn mode_colors(self, mode: ModeDiscriminant, theme: &'static Theme) -> Self {
         self.fg(mode.fg(theme)).bg(mode.bg(theme))
     }
 }

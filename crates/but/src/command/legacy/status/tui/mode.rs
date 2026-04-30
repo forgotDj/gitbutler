@@ -29,29 +29,52 @@ pub(super) enum Mode {
 
 impl Mode {
     pub(super) fn bg(&self, theme: &'static Theme) -> Color {
+        ModeDiscriminant::from(self).bg(theme)
+    }
+
+    #[expect(dead_code)]
+    pub(super) fn fg(&self, theme: &'static Theme) -> Color {
+        ModeDiscriminant::from(self).fg(theme)
+    }
+}
+
+impl ModeDiscriminant {
+    pub(super) fn bg(self, theme: &'static Theme) -> Color {
         match self {
-            Mode::Normal => theme.tui_mode_normal.bg.unwrap_or(Color::DarkGray),
-            Mode::Commit(_) => theme.tui_mode_commit.bg.unwrap_or(Color::Green),
-            Mode::Rub(_) => theme.tui_mode_rub.bg.unwrap_or(Color::Blue),
-            Mode::InlineReword(_) => theme.tui_mode_inline_reword.bg.unwrap_or(Color::Magenta),
-            Mode::Command(_) => theme.tui_mode_command.bg.unwrap_or(Color::Yellow),
-            Mode::Move(..) => theme.tui_mode_move.bg.unwrap_or(Color::Cyan),
-            Mode::Details => theme
+            Self::Normal => theme.tui_mode_normal.bg.unwrap_or(Color::DarkGray),
+            Self::Commit => theme.tui_mode_commit.bg.unwrap_or(Color::Green),
+            Self::Rub => theme.tui_mode_rub.bg.unwrap_or(Color::Blue),
+            Self::InlineReword => theme.tui_mode_inline_reword.bg.unwrap_or(Color::Magenta),
+            Self::Command => theme.tui_mode_command.bg.unwrap_or(Color::Yellow),
+            Self::Move => theme.tui_mode_move.bg.unwrap_or(Color::Cyan),
+            Self::Details => theme
                 .tui_mode_details
                 .bg
                 .unwrap_or(Color::Rgb(255, 165, 0) /* orange */),
         }
     }
 
-    pub(super) fn fg(&self, theme: &'static Theme) -> Color {
+    pub(super) fn fg(self, theme: &'static Theme) -> Color {
         match self {
-            Mode::Normal => theme.tui_mode_normal.fg.unwrap_or(Color::White),
-            Mode::Commit(_) => theme.tui_mode_commit.fg.unwrap_or(Color::Black),
-            Mode::Rub(_) => theme.tui_mode_rub.fg.unwrap_or(Color::Black),
-            Mode::InlineReword(_) => theme.tui_mode_inline_reword.fg.unwrap_or(Color::Black),
-            Mode::Command(_) => theme.tui_mode_command.fg.unwrap_or(Color::Black),
-            Mode::Move(..) => theme.tui_mode_move.fg.unwrap_or(Color::Black),
-            Mode::Details => theme.tui_mode_details.fg.unwrap_or(Color::Black),
+            Self::Normal => theme.tui_mode_normal.fg.unwrap_or(Color::White),
+            Self::Commit => theme.tui_mode_commit.fg.unwrap_or(Color::Black),
+            Self::Rub => theme.tui_mode_rub.fg.unwrap_or(Color::Black),
+            Self::InlineReword => theme.tui_mode_inline_reword.fg.unwrap_or(Color::Black),
+            Self::Command => theme.tui_mode_command.fg.unwrap_or(Color::Black),
+            Self::Move => theme.tui_mode_move.fg.unwrap_or(Color::Black),
+            Self::Details => theme.tui_mode_details.fg.unwrap_or(Color::Black),
+        }
+    }
+
+    pub(super) fn hotbar_string(self) -> &'static str {
+        match self {
+            ModeDiscriminant::Normal => "normal",
+            ModeDiscriminant::Rub => "rub",
+            ModeDiscriminant::InlineReword => "reword",
+            ModeDiscriminant::Command => "command",
+            ModeDiscriminant::Commit => "commit",
+            ModeDiscriminant::Move => "move",
+            ModeDiscriminant::Details => "details",
         }
     }
 }

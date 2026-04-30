@@ -857,6 +857,7 @@ dependencies = [
  "gitbutler-repo",
  "gitbutler-stack",
  "gix",
+ "indexmap 2.13.0",
  "insta",
  "itertools",
  "machine-uid",
