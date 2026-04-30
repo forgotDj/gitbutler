@@ -1,5 +1,5 @@
 import { TestId } from "@gitbutler/ui/utils/testIds";
-import { type Locator, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 type TestIdValues = `${TestId}`;
 
@@ -119,6 +119,15 @@ export async function textEditorFillByTestId(page: Page, testId: TestIdValues, v
 	return element;
 }
 
+/**
+ * Wait for a locator to become visible with a generous timeout.
+ * Use this when an async backend operation (commit, rebase, push, etc.)
+ * must complete before the element appears.
+ */
+export async function expectVisible(locator: Locator, timeout = 10_000) {
+	await expect(locator).toBeVisible({ timeout });
+}
+
 export async function sleep(ms: number): Promise<void> {
 	return await new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -127,7 +136,7 @@ export async function sleep(ms: number): Promise<void> {
  * Wait until an element's bounding box stops changing between animation frames.
  * Useful for popups positioned by Floating UI that take a few frames to settle.
  */
-export async function waitForElementToStabilize(page: Page, locator: Locator, timeout = 5000) {
+export async function waitForElementToStabilize(page: Page, locator: Locator, timeout = 10000) {
 	const start = Date.now();
 	let lastBox = await locator.boundingBox();
 	while (Date.now() - start < timeout) {

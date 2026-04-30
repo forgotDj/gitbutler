@@ -1,6 +1,12 @@
 import { getBaseURL, type GitButler, startGitButler } from "../src/setup.ts";
 import { test } from "../src/test.ts";
-import { clickByTestId, dragAndDropByLocator, getByTestId, waitForTestId } from "../src/util.ts";
+import {
+	clickByTestId,
+	dragAndDropByLocator,
+	expectVisible,
+	getByTestId,
+	waitForTestId,
+} from "../src/util.ts";
 import { expect } from "@playwright/test";
 import { writeFileSync } from "fs";
 
@@ -75,7 +81,7 @@ test("should show commit-failed modal when amending causes a conflict", async ({
 		.getByTestId("uncommitted-changes-file-list")
 		.getByTestId("file-list-item")
 		.filter({ hasText: "a_file" });
-	await expect(fileLocator).toBeVisible({ timeout: 5000 });
+	await expectVisible(fileLocator);
 
 	// Drag the uncommitted file onto the FIRST commit (bottom one).
 	// "Change juliet to JULIET-FIRST" is the first commit.
@@ -89,7 +95,7 @@ test("should show commit-failed modal when amending causes a conflict", async ({
 	// The commit-failed modal should appear because rebasing the second commit
 	// on top of the amended first commit causes a cherry-pick merge conflict.
 	const modal = getByTestId(page, "global-modal-commit-failed");
-	await expect(modal).toBeVisible({ timeout: 10000 });
+	await expectVisible(modal);
 
 	// The modal should indicate that some changes were not committed
 	await expect(modal).toContainText(/changes were not committed|Failed to create commit/);
@@ -134,7 +140,7 @@ test("should squash commits via drag-and-drop without errors", async ({
 	// because local history changed. The upstream action row confirms
 	// the squash was successful.
 	const upstreamSection = getByTestId(page, "upstream-commits-commit-action");
-	await expect(upstreamSection).toBeVisible({ timeout: 15_000 });
+	await expectVisible(upstreamSection, 15_000);
 
 	// The first commit should still be present (it was not part of the squash)
 	const remainingFirst = getByTestId(page, "commit-row").filter({

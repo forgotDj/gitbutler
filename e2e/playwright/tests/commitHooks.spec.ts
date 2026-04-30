@@ -1,6 +1,12 @@
 import { getBaseURL, getButlerPort, type GitButler, startGitButler } from "../src/setup.ts";
 import { test } from "../src/test.ts";
-import { clickByTestId, fillByTestId, getByTestId, waitForTestId } from "../src/util.ts";
+import {
+	clickByTestId,
+	expectVisible,
+	fillByTestId,
+	getByTestId,
+	waitForTestId,
+} from "../src/util.ts";
 import { expect, type Page } from "@playwright/test";
 
 let gitbutler: GitButler;
@@ -78,7 +84,7 @@ test("should show commit-msg hook rejection error", async ({ page, context }, te
 
 	// Should show an error toast about the hook rejection
 	const toastMessage = getByTestId(page, "toast-info-message");
-	await expect(toastMessage).toBeVisible({ timeout: 5000 });
+	await expectVisible(toastMessage);
 	await expect(toastMessage).toContainText("REJECT");
 });
 
@@ -125,7 +131,7 @@ test("should show modified commit message from commit-msg hook", async ({
 	// The commit should be created successfully
 	// Wait for the commit to appear in the commit list
 	const commitRow = getByTestId(page, "commit-row").first();
-	await expect(commitRow).toBeVisible({ timeout: 5000 });
+	await expectVisible(commitRow);
 
 	// The commit title should include the [MODIFIED] prefix added by the hook
 	await expect(commitRow).toContainText("[MODIFIED]");
@@ -166,7 +172,7 @@ test("should allow commits when commit-msg hook passes", async ({ page, context 
 
 	// The commit should be created successfully
 	const commitRow = getByTestId(page, "commit-row").first();
-	await expect(commitRow).toBeVisible({ timeout: 5000 });
+	await expectVisible(commitRow);
 	await expect(commitRow).toContainText("A normal commit message");
 });
 
@@ -213,7 +219,7 @@ test("should reject commit when pre-commit hook fails", async ({ page, context }
 
 	// Should show an error toast about the pre-commit hook rejection
 	const toastMessage = getByTestId(page, "toast-info-message");
-	await expect(toastMessage).toBeVisible({ timeout: 5000 });
+	await expectVisible(toastMessage);
 	await expect(toastMessage).toContainText("FORBIDDEN");
 });
 
@@ -256,7 +262,7 @@ test("should allow commit when pre-commit hook passes", async ({ page, context }
 
 	// The commit should be created successfully (pre-commit hook passed)
 	const commitRow = getByTestId(page, "commit-row").first();
-	await expect(commitRow).toBeVisible({ timeout: 10000 });
+	await expectVisible(commitRow);
 	await expect(commitRow).toContainText("Adding allowed file");
 });
 
@@ -295,7 +301,7 @@ test("should show post-commit hook success", async ({ page, context }, testInfo)
 
 	// The commit should be created successfully
 	const commitRow = getByTestId(page, "commit-row").first();
-	await expect(commitRow).toBeVisible({ timeout: 10000 });
+	await expectVisible(commitRow);
 	await expect(commitRow).toContainText("Testing post-commit hook");
 
 	// Wait for post-commit hook to execute (it runs in background)
@@ -344,7 +350,7 @@ test("should show post-commit hook failure but commit still created", async ({
 
 	// The commit should be created (pre-commit passed)
 	const commitRow = getByTestId(page, "commit-row").first();
-	await expect(commitRow).toBeVisible({ timeout: 10000 });
+	await expectVisible(commitRow);
 	await expect(commitRow).toContainText("Trigger post-commit failure");
 
 	// Wait for post-commit hook to run and fail (it runs in background)

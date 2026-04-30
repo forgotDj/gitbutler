@@ -1,6 +1,11 @@
 import { getBaseURL, type GitButler, startGitButler } from "../src/setup.ts";
 import { test } from "../src/test.ts";
-import { getByTestId, waitForElementToStabilize, waitForTestId } from "../src/util.ts";
+import {
+	expectVisible,
+	getByTestId,
+	waitForElementToStabilize,
+	waitForTestId,
+} from "../src/util.ts";
 import { expect, type Page } from "@playwright/test";
 
 let gitbutler: GitButler;
@@ -228,7 +233,7 @@ test("should squash 3 selected commits via context menu", async ({ page, context
 	// because local history changed. The "Upstream has new commits" indicator confirms
 	// the squash was successful.
 	const upstreamSection = page.locator("text=Upstream has new commits");
-	await expect(upstreamSection).toBeVisible({ timeout: 15_000 });
+	await expectVisible(upstreamSection, 15_000);
 
 	// The first commit should still be present (it was not part of the squash)
 	const remainingFirst = getByTestId(page, "commit-row").filter({
@@ -268,7 +273,7 @@ test("should uncommit 3 selected commits via context menu", async ({ page, conte
 
 	// After uncommitting, the uncommitted changes should contain the files
 	const uncommittedHeader = getByTestId(page, "uncommitted-changes-header");
-	await expect(uncommittedHeader).toBeVisible({ timeout: 15_000 });
+	await expectVisible(uncommittedHeader, 15_000);
 
 	// The first commit should still exist (it was not selected)
 	const remainingFirst = getByTestId(page, "commit-row").filter({
