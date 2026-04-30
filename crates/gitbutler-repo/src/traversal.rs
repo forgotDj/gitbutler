@@ -26,40 +26,6 @@ pub fn first_parent_commit_ids_until(
         .collect()
 }
 
-/// Like [`first_parent_commit_ids_until()`], but reuses `graph` across repeated ancestry queries.
-///
-/// The implementation is `merge_base` based.
-pub fn first_parent_commit_ids_until_with_graph(
-    repo: &gix::Repository,
-    from: gix::ObjectId,
-    stop_before: gix::ObjectId,
-    graph: &mut Graph<'_, '_, graph::Commit<Flags>>,
-) -> Result<Vec<gix::ObjectId>> {
-    let mut commit_ids = Vec::new();
-    let mut current = Some(from);
-
-    while let Some(commit_id) = current {
-        let reaches_hidden_history = match repo.merge_base_with_graph(commit_id, stop_before, graph)
-        {
-            Ok(merge_base) => merge_base.detach() == commit_id,
-            Err(gix::repository::merge_base_with_graph::Error::NotFound { .. }) => false,
-            Err(err) => return Err(err.into()),
-        };
-        if reaches_hidden_history {
-            break;
-        }
-
-        commit_ids.push(commit_id);
-        current = repo
-            .find_commit(commit_id)?
-            .parent_ids()
-            .next()
-            .map(|parent_id| parent_id.detach());
-    }
-
-    Ok(commit_ids)
-}
-
 /// Return commits reachable from `from` that are not reachable from `stop_before`.
 ///
 /// This matches the semantics of walking `from` with `stop_before` hidden.

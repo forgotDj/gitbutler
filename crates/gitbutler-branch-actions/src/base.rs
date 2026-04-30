@@ -12,7 +12,7 @@ use but_oxidize::ObjectIdExt;
 use gitbutler_git::GitContextExt as _;
 use gitbutler_project::FetchResult;
 use gitbutler_reference::{Refname, RemoteRefname};
-use gitbutler_repo::first_parent_commit_ids_until_with_graph;
+use gitbutler_repo::first_parent_commit_ids_until;
 use gitbutler_stack::{Stack, Target, canned_branch_name};
 use serde::Serialize;
 use tracing::instrument;
@@ -365,26 +365,23 @@ pub(crate) fn target_to_base_branch(ctx: &Context, target: &Target) -> Result<Ba
         .merge_base_with_graph(target.sha, target_commit_id, &mut graph)?
         .detach();
 
-    let diverged_ahead =
-        first_parent_commit_ids_until_with_graph(repo, target.sha, merge_base, &mut graph)
-            .context("failed to get fork point")?;
-    let diverged_behind =
-        first_parent_commit_ids_until_with_graph(repo, target_commit_id, merge_base, &mut graph)
-            .context("failed to get fork point")?;
+    let diverged_ahead = first_parent_commit_ids_until(repo, target.sha, merge_base)
+        .context("failed to get fork point")?;
+    let diverged_behind = first_parent_commit_ids_until(repo, target_commit_id, merge_base)
+        .context("failed to get fork point")?;
 
     // if there are commits ahead of the base branch consider it diverged
     let diverged = !diverged_ahead.is_empty();
 
     // gather a list of commits between oid and target.sha
-    let upstream_commits =
-        first_parent_commit_ids_until_with_graph(repo, target_commit_id, target.sha, &mut graph)
-            .context("failed to get upstream commits")?
-            .iter()
-            .map(|id| {
-                let commit = repo.find_commit(*id)?;
-                commit_to_remote_commit(&commit)
-            })
-            .collect::<Result<Vec<_>>>()?;
+    let upstream_commits = first_parent_commit_ids_until(repo, target_commit_id, target.sha)
+        .context("failed to get upstream commits")?
+        .iter()
+        .map(|id| {
+            let commit = repo.find_commit(*id)?;
+            commit_to_remote_commit(&commit)
+        })
+        .collect::<Result<Vec<_>>>()?;
 
     // get some recent commits
     let recent_commits = first_parent_commit_ids_with_limit(repo, target.sha, 20)

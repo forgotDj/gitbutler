@@ -5,7 +5,6 @@ mod traversal;
 
 pub use traversal::{
     commit_ids_excluding_reachable_from_with_graph, first_parent_commit_ids_until,
-    first_parent_commit_ids_until_with_graph,
 };
 
 pub use commands::{FileInfo, RepoCommands};
