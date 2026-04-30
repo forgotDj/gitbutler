@@ -78,6 +78,25 @@ pub struct SquashCommitsOutcome<'ws, 'meta, M: RefMetadata> {
     pub commit_selector: Selector,
 }
 
+/// How to combine messages of commits being squashed.
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
+pub enum MessageCombinationStrategy {
+    /// Keep both messages.
+    KeepBoth,
+    /// Only keep the message of the subject.
+    ///
+    /// Target message will be discarded.
+    KeepSubject,
+    /// Only keep the message of the target.
+    ///
+    /// Subject message will be discarded.
+    KeepTarget,
+}
+
+#[cfg(feature = "export-schema")]
+but_schemars::register_sdk_type!(MessageCombinationStrategy);
+
 /// Squash `subject_commit` into `target_commit`.
 ///
 /// Depending on the ancestry relationship between the two commits, this operation may
@@ -86,7 +105,8 @@ pub struct SquashCommitsOutcome<'ws, 'meta, M: RefMetadata> {
 /// After any reordering, one of the two original commit positions (either the subject or
 /// the target) is replaced by a single squashed commit that has:
 /// - The tree of the commit that was top-most after reordering (subject or target)
-/// - The combined message `subject\n\ntarget`
+/// - A message determined by `how_to_combine_messages`: either the subject message, the
+///   target message, or both messages as `target\n\nsubject`
 ///
 /// The other original commit (subject or target, depending on the chosen ordering) is
 /// removed from history.
@@ -94,6 +114,7 @@ pub fn squash_commits<'ws, 'meta, M: RefMetadata>(
     editor: Editor<'ws, 'meta, M>,
     subject_commit: impl ToCommitSelector,
     target_commit: impl ToCommitSelector,
+    how_to_combine_messages: MessageCombinationStrategy,
 ) -> Result<SquashCommitsOutcome<'ws, 'meta, M>> {
     let repo = editor.repo().clone();
     let successful_rebase = editor.rebase()?;
@@ -118,23 +139,36 @@ pub fn squash_commits<'ws, 'meta, M: RefMetadata>(
     let direction = determine_reorder_direction(&workspace, &repo, &subject, &target)?;
 
     let mut combined_message = Vec::new();
-    match (subject.message.is_empty(), target.message.is_empty()) {
-        (true, true) => {
-            // both messages are empty, leave combined message as empty
+    match how_to_combine_messages {
+        MessageCombinationStrategy::KeepSubject => {
+            combined_message.extend_from_slice(subject.message.as_ref());
         }
-        (true, false) => {
+        MessageCombinationStrategy::KeepTarget => {
             combined_message.extend_from_slice(target.message.as_ref());
         }
-        (false, true) => {
-            combined_message.extend_from_slice(subject.message.as_ref());
-        }
-        (false, false) => {
-            combined_message.extend_from_slice(subject.message.as_ref());
-            if !combined_message.ends_with(b"\n") {
-                combined_message.push(b'\n');
+        MessageCombinationStrategy::KeepBoth => {
+            match (subject.message.is_empty(), target.message.is_empty()) {
+                (true, true) => {
+                    // both messages are empty, leave combined message as empty
+                }
+                (true, false) => {
+                    // subject has no message, target does
+                    combined_message.extend_from_slice(target.message.as_ref());
+                }
+                (false, true) => {
+                    // subject has message, target doesn't
+                    combined_message.extend_from_slice(subject.message.as_ref());
+                }
+                (false, false) => {
+                    // both commits have messages, keep both
+                    combined_message.extend_from_slice(target.message.as_ref());
+                    if !combined_message.ends_with(b"\n") {
+                        combined_message.push(b'\n');
+                    }
+                    combined_message.push(b'\n');
+                    combined_message.extend_from_slice(subject.message.as_ref());
+                }
             }
-            combined_message.push(b'\n');
-            combined_message.extend_from_slice(target.message.as_ref());
         }
     }
 

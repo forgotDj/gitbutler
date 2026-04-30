@@ -169,7 +169,7 @@ export declare function commitReword(projectId: string, commitId: string, messag
  * When `dry_run` is enabled, the returned workspace previews the squashed
  * result and no oplog entry is persisted. For details, see [`commit_squash_with_perm()`].
  */
-export declare function commitSquash(projectId: string, subjectCommitId: string, targetCommitId: string, dryRun: boolean): Promise<CommitSquashResult>
+export declare function commitSquash(projectId: string, subjectCommitId: string, targetCommitId: string, howToCombineMessages: MessageCombinationStrategy, dryRun: boolean): Promise<CommitSquashResult>
 
 /**
  * Uncommit one or more commits, removing them from branch history while
@@ -1445,6 +1445,9 @@ export type LineStats = {
   /** The number of files that contributed to these statistics as they were added, removed or modified. */
   filesChanged: number;
 };
+
+/** How to combine messages of commits being squashed. */
+export type MessageCombinationStrategy = "KeepBoth" | "KeepSubject" | "KeepTarget";
 
 /**
  * Basic information to know about a reference we store with the metadata system.

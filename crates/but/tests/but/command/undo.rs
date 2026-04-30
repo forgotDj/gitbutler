@@ -91,7 +91,7 @@ fn can_undo_rubbing_commits() -> anyhow::Result<()> {
             .arg("fe")
             .assert()
             .success()
-            .stdout_eq("Squashed 9ac4652 → 9c8e613\n")
+            .stdout_eq("Squashed 9ac4652 → f66c907\n")
             .stderr_eq("");
 
         Ok(())
