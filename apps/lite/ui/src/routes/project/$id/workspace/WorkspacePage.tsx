@@ -45,7 +45,7 @@ import {
 	selectProjectSelection,
 	selectProjectWorkspaceModeState,
 } from "#ui/projects/state.ts";
-import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/Absorption.tsx";
+import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/AbsorptionDialog.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
@@ -91,7 +91,6 @@ import {
 	ComponentProps,
 	FC,
 	Fragment,
-	ReactNode,
 	Ref,
 	Suspense,
 	useEffect,
@@ -195,9 +194,10 @@ const LogPanel: FC<{
 		);
 
 	useLogSelectionHotkeys({
-		enabled: focusedPanel === "log",
+		focusedPanel,
 		navigationIndex,
 		projectId,
+		focusPanel,
 	});
 
 	return (
@@ -210,30 +210,28 @@ const LogPanel: FC<{
 			aria-activedescendant={treeItemId(projectId, selection)}
 			className={classes(styles.panel, styles.logPanel)}
 		>
-			<div className={styles.sections}>
-				<Changes
-					projectId={projectId}
-					onAbsorbChanges={onAbsorbChanges}
-					onCommit={commit}
-					navigationIndex={navigationIndex}
-				/>
+			<Changes
+				projectId={projectId}
+				onAbsorbChanges={onAbsorbChanges}
+				onCommit={commit}
+				navigationIndex={navigationIndex}
+			/>
 
-				{headInfo.stacks.map((stack) => (
-					<StackC
-						key={stack.id}
-						projectId={projectId}
-						stack={stack}
-						navigationIndex={navigationIndex}
-						focusPanel={focusPanel}
-					/>
-				))}
-
-				<BaseCommit
+			{headInfo.stacks.map((stack) => (
+				<StackC
+					key={stack.id}
 					projectId={projectId}
-					commitId={getCommonBaseCommitId(headInfo)}
+					stack={stack}
 					navigationIndex={navigationIndex}
+					focusPanel={focusPanel}
 				/>
-			</div>
+			))}
+
+			<BaseCommit
+				projectId={projectId}
+				commitId={getCommonBaseCommitId(headInfo)}
+				navigationIndex={navigationIndex}
+			/>
 
 			{Match.value(operationMode).pipe(
 				Match.when(null, () => null),
@@ -335,72 +333,103 @@ const treeItemId = (projectId: string, operand: Operand): string =>
 	`project-${encodeURIComponent(projectId)}-treeitem-${encodeURIComponent(operandIdentityKey(operand))}`;
 
 const useLogSelectionHotkeys = ({
-	enabled,
+	focusedPanel,
 	navigationIndex,
 	projectId,
+	focusPanel,
 }: {
-	enabled: boolean;
+	focusedPanel: PanelType | null;
 	navigationIndex: NavigationIndex;
 	projectId: string;
+	focusPanel: (panel: PanelType) => void;
 }) => {
 	const dispatch = useAppDispatch();
 	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
 
+	const selectAndFocus = (newItem: Operand) => {
+		dispatch(projectActions.select({ projectId, selection: newItem }));
+		focusPanel("log");
+	};
+
 	const moveSelection = (offset: -1 | 1) => {
 		const newItem = getAdjacent({ navigationIndex, selection, offset });
 		if (!newItem) return;
-		dispatch(projectActions.select({ projectId, selection: newItem }));
+		selectAndFocus(newItem);
+	};
+
+	const selectPreviousItem = () => {
+		moveSelection(-1);
+	};
+
+	const selectNextItem = () => {
+		moveSelection(1);
 	};
 
 	const selectNextSection = () => {
 		const newItem = getNextSection({ navigationIndex, selection });
 		if (!newItem) return;
-		dispatch(projectActions.select({ projectId, selection: newItem }));
+		selectAndFocus(newItem);
 	};
 
 	const selectPreviousSection = () => {
 		const newItem = getPreviousSection({ navigationIndex, selection });
 		if (!newItem) return;
-		dispatch(projectActions.select({ projectId, selection: newItem }));
+		selectAndFocus(newItem);
 	};
 
 	const selectChanges = () => {
-		dispatch(projectActions.select({ projectId, selection: changesSectionOperand }));
+		selectAndFocus(changesSectionOperand);
 	};
 
 	const selectFirstItem = () => {
 		const newItem = navigationIndex.items[0];
 		if (!newItem) return;
-		dispatch(projectActions.select({ projectId, selection: newItem }));
+		selectAndFocus(newItem);
 	};
 
 	const selectLastItem = () => {
 		const newItem = navigationIndex.items.at(-1);
 		if (!newItem) return;
-		dispatch(projectActions.select({ projectId, selection: newItem }));
+		selectAndFocus(newItem);
+	};
+
+	const openBranchPicker = () => {
+		dispatch(projectActions.openBranchPicker({ projectId }));
+	};
+
+	const enterMoveMode = () => {
+		dispatch(projectActions.enterMoveMode({ projectId, source: selection }));
+	};
+
+	const enterRubMode = () => {
+		dispatch(projectActions.enterRubMode({ projectId, source: selection }));
+	};
+
+	const enterCommitMode = () => {
+		dispatch(projectActions.enterMoveMode({ projectId, source: changesSectionOperand }));
 	};
 
 	useHotkeys(
 		[
 			{
 				hotkey: "ArrowUp",
-				callback: () => moveSelection(-1),
+				callback: selectPreviousItem,
 				options: { meta: { group: "Log selection", name: "Up", commandPalette: false } },
 			},
 			{
 				hotkey: "K",
-				callback: () => moveSelection(-1),
+				callback: selectPreviousItem,
 				// Hidden until we can combine in shortcuts bar.
 				options: { meta: { group: "Log selection", shortcutsBar: false } },
 			},
 			{
 				hotkey: "ArrowDown",
-				callback: () => moveSelection(1),
+				callback: selectNextItem,
 				options: { meta: { group: "Log selection", name: "Down", commandPalette: false } },
 			},
 			{
 				hotkey: "J",
-				callback: () => moveSelection(1),
+				callback: selectNextItem,
 				// Hidden until we can combine in shortcuts bar.
 				options: { meta: { group: "Log selection", shortcutsBar: false } },
 			},
@@ -451,11 +480,6 @@ const useLogSelectionHotkeys = ({
 						shortcutsBar: false,
 					},
 				},
-			},
-			{
-				hotkey: "Z",
-				callback: selectChanges,
-				options: { meta: { group: "Log selection", name: "Changes" } },
 			},
 			{
 				hotkey: "Home",
@@ -518,11 +542,11 @@ const useLogSelectionHotkeys = ({
 				},
 			},
 		],
-		{ enabled },
+		{ enabled: focusedPanel === "log" },
 	);
 
 	useHotkeySequence(["G", "G"], selectFirstItem, {
-		enabled,
+		enabled: focusedPanel === "log",
 		meta: {
 			group: "Log selection",
 			name: "First item",
@@ -531,13 +555,18 @@ const useLogSelectionHotkeys = ({
 		},
 	});
 
-	useHotkey(
-		"T",
-		() => {
-			dispatch(projectActions.openBranchPicker({ projectId }));
+	useHotkeys([
+		{
+			hotkey: "T",
+			callback: openBranchPicker,
+			options: { meta: { group: "Log selection", name: "Branch" } },
 		},
-		{ meta: { group: "Log selection", name: "Branch" } },
-	);
+		{
+			hotkey: "Z",
+			callback: selectChanges,
+			options: { meta: { group: "Log selection", name: "Changes" } },
+		},
+	]);
 
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
@@ -547,34 +576,29 @@ const useLogSelectionHotkeys = ({
 		[
 			{
 				hotkey: "M",
-				callback: () => {
-					dispatch(projectActions.enterMoveMode({ projectId, source: selection }));
-				},
+				callback: enterMoveMode,
 				options: { meta: { group: "Log selection", name: "Move" } },
 			},
 			{
 				hotkey: "Mod+X",
-				callback: () => {
-					dispatch(projectActions.enterMoveMode({ projectId, source: selection }));
+				callback: enterMoveMode,
+				options: {
+					ignoreInputs: true,
+					meta: { group: "Log selection", name: "Cut" },
 				},
-				options: { meta: { group: "Log selection", name: "Cut" } },
 			},
 			{
 				hotkey: "R",
-				callback: () => {
-					dispatch(projectActions.enterRubMode({ projectId, source: selection }));
-				},
+				callback: enterRubMode,
 				options: { meta: { group: "Log selection", name: "Rub" } },
 			},
 			{
 				hotkey: "C",
-				callback: () => {
-					dispatch(projectActions.enterMoveMode({ projectId, source: changesSectionOperand }));
-				},
+				callback: enterCommitMode,
 				options: { meta: { group: "Log selection", name: "Commit" } },
 			},
 		],
-		{ enabled: enabled && workspaceMode._tag === "Default" },
+		{ enabled: focusedPanel === "log" && workspaceMode._tag === "Default" },
 	);
 };
 
@@ -633,8 +657,9 @@ const fileRowLabel = (change: TreeChange) => {
 const CommitFiles: FC<{
 	projectId: string;
 	commitId: string;
-	renderFile: (change: TreeChange) => ReactNode;
-}> = ({ projectId, commitId, renderFile }) => {
+	parentCommitOperand: CommitOperand;
+	navigationIndex: NavigationIndex;
+}> = ({ projectId, commitId, parentCommitOperand, navigationIndex }) => {
 	const { data } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
@@ -668,7 +693,13 @@ const CommitFiles: FC<{
 			{data.changes.length > 0 && (
 				<div role="group">
 					{data.changes.map((file) => (
-						<Fragment key={file.path}>{renderFile(file)}</Fragment>
+						<CommitFileRow
+							key={file.path}
+							change={file}
+							parentCommitOperand={parentCommitOperand}
+							navigationIndex={navigationIndex}
+							projectId={projectId}
+						/>
 					))}
 				</div>
 			)}
@@ -1155,7 +1186,7 @@ const EditorHelp: FC<{
 		{hotkeys.map((hotkey, index) => (
 			<Fragment key={hotkey.hotkey}>
 				{index > 0 && " • "}
-				<span className={styles.editorShortcut}>{formatForDisplay(hotkey.hotkey)}</span> to{" "}
+				<kbd className={styles.editorShortcut}>{formatForDisplay(hotkey.hotkey)}</kbd> to{" "}
 				{hotkey.name}
 			</Fragment>
 		))}
@@ -1243,6 +1274,7 @@ const InlineRewordCommit: FC<{
 	};
 
 	useHotkey("Enter", () => formRef.current?.requestSubmit(), {
+		conflictBehavior: "allow",
 		enabled: focusedPanel === "log",
 		ignoreInputs: false,
 		meta: { group: "Reword commit", name: "Save", commandPalette: false },
@@ -1594,26 +1626,19 @@ const CommitFileRow: FC<{
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	useHotkey(
-		"F",
+		"ArrowLeft",
 		() => {
-			dispatch(projectActions.toggleCommitFiles({ projectId, commit: parentCommitOperand }));
+			dispatch(projectActions.select({ projectId, selection: commitOperand(parentCommitOperand) }));
 		},
 		{
 			conflictBehavior: "allow",
 			enabled: isSelected && focusedPanel === "log",
-			meta: { group: "Commit file", name: "Files" },
-		},
-	);
-
-	useHotkey(
-		"Escape",
-		() => {
-			dispatch(projectActions.closeCommitFiles({ projectId }));
-		},
-		{
-			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "log",
-			meta: { group: "Commit file", name: "Close" },
+			meta: {
+				group: "Commit file",
+				name: "Select commit",
+				commandPalette: false,
+				shortcutsBar: false,
+			},
 		},
 	);
 
@@ -1676,14 +1701,8 @@ const CommitC: FC<{
 					<CommitFiles
 						projectId={projectId}
 						commitId={commit.id}
-						renderFile={(change) => (
-							<CommitFileRow
-								change={change}
-								parentCommitOperand={commitOperandV}
-								navigationIndex={navigationIndex}
-								projectId={projectId}
-							/>
-						)}
+						parentCommitOperand={commitOperandV}
+						navigationIndex={navigationIndex}
 					/>
 				</Suspense>
 			)}
@@ -1965,6 +1984,7 @@ const InlineRenameBranch: FC<{
 	};
 
 	useHotkey("Enter", () => formRef.current?.requestSubmit(), {
+		conflictBehavior: "allow",
 		enabled: focusedPanel === "log",
 		ignoreInputs: false,
 		meta: { group: "Rename branch", name: "Save", commandPalette: false },
@@ -2503,7 +2523,7 @@ const ShortcutsBar: FC = () => {
 			<span className={styles.shortcutsBarScope}>{focusedPanel ?? "Shortcuts"}</span>
 			{visibleHotkeys.map((hotkey) => (
 				<div key={hotkey.id} className={styles.shortcutsBarItem}>
-					<span className={styles.shortcutsBarKeys}>{formatForDisplay(hotkey.hotkey)}</span>
+					<kbd className={styles.shortcutsBarKeys}>{formatForDisplay(hotkey.hotkey)}</kbd>
 					<span>{hotkey.options.meta?.name}</span>
 				</div>
 			))}

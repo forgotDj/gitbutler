@@ -51,6 +51,7 @@ const OperationModeControls: FC<{
 				callback: confirm,
 				options: {
 					enabled: operation !== null && operationMode._tag === "Move",
+					ignoreInputs: true,
 					meta: { group: "Operation mode", name: "Paste" },
 				},
 			},

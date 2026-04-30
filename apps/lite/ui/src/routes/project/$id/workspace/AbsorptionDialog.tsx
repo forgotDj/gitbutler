@@ -9,7 +9,7 @@ import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { dedupe } from "effect/Array";
 import { FC, Suspense } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import styles from "./Absorption.module.css";
+import styles from "./AbsorptionDialog.module.css";
 
 const describeAbsorptionReason = (reason: AbsorptionReason): string | null => {
 	switch (reason) {
