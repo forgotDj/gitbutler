@@ -1250,6 +1250,7 @@ const InlineRewordCommit: FC<{
 	};
 
 	useHotkey("Enter", () => formRef.current?.requestSubmit(), {
+		conflictBehavior: "allow",
 		enabled: focusedPanel === "log",
 		ignoreInputs: false,
 		meta: { group: "Reword commit", name: "Save", commandPalette: false },
@@ -1959,6 +1960,7 @@ const InlineRenameBranch: FC<{
 	};
 
 	useHotkey("Enter", () => formRef.current?.requestSubmit(), {
+		conflictBehavior: "allow",
 		enabled: focusedPanel === "log",
 		ignoreInputs: false,
 		meta: { group: "Rename branch", name: "Save", commandPalette: false },
