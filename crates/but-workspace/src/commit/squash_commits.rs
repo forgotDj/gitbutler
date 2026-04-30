@@ -1,73 +1,13 @@
-//! An action to squash one commit into another.
+//! An action to squash multiple commits into a target commit.
 
 use anyhow::{Result, bail};
 use but_core::RefMetadata;
-use but_graph::{SegmentRelation, projection::Workspace};
 use but_rebase::{
     commit::DateMode,
     graph_rebase::{
-        Editor, Selector, Step, SuccessfulRebase, ToCommitSelector,
-        mutate::{SegmentDelimiter, SelectorSet},
+        Editor, Selector, Step, SuccessfulRebase, ToCommitSelector, mutate::InsertSide,
     },
 };
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-enum ReorderDirection {
-    MoveSubjectAboveTarget,
-    MoveSubjectBelowTarget,
-}
-
-fn determine_reorder_direction(
-    workspace: &Workspace,
-    repo: &gix::Repository,
-    subject: &but_core::CommitOwned,
-    target: &but_core::CommitOwned,
-) -> Result<ReorderDirection> {
-    let subject_segment = workspace
-        .find_commit_segment_index(subject.id)
-        .ok_or_else(|| anyhow::anyhow!("Couldn't resolve subject commit segment"))?;
-    let target_segment = workspace
-        .find_commit_segment_index(target.id)
-        .ok_or_else(|| anyhow::anyhow!("Couldn't resolve target commit segment"))?;
-
-    match workspace
-        .graph
-        .relation_between(subject_segment, target_segment)
-    {
-        SegmentRelation::Descendant => return Ok(ReorderDirection::MoveSubjectAboveTarget),
-        SegmentRelation::Ancestor => return Ok(ReorderDirection::MoveSubjectBelowTarget),
-        SegmentRelation::Disjoint | SegmentRelation::Diverged => {
-            return Ok(ReorderDirection::MoveSubjectAboveTarget);
-        }
-        SegmentRelation::Identity => {
-            // Commits can differ while still belonging to the same segment, so use commit-level
-            // ancestry in this case.
-        }
-    }
-
-    let merge_base = match repo.merge_base(subject.id, target.id) {
-        Ok(base) => base,
-        // If commits don't have a merge-base (or merge-base resolution fails),
-        // we still allow squashing by using a deterministic default ordering.
-        Err(error) => match error {
-            gix::repository::merge_base::Error::FindMergeBase(_)
-            | gix::repository::merge_base::Error::NotFound { .. } => {
-                return Ok(ReorderDirection::MoveSubjectAboveTarget);
-            }
-            _ => return Err(error.into()),
-        },
-    };
-
-    if merge_base == target.id {
-        return Ok(ReorderDirection::MoveSubjectAboveTarget);
-    }
-
-    if merge_base == subject.id {
-        return Ok(ReorderDirection::MoveSubjectBelowTarget);
-    }
-
-    Ok(ReorderDirection::MoveSubjectAboveTarget)
-}
 
 /// The result of a squash_commits operation.
 #[derive(Debug)]
@@ -78,13 +18,107 @@ pub struct SquashCommitsOutcome<'ws, 'meta, M: RefMetadata> {
     pub commit_selector: Selector,
 }
 
+/// Append `message` to `combined`, inserting enough newlines so there are at
+/// least two `\n` bytes between existing and appended non-empty blocks.
+///
+/// Empty `message` values are ignored.
+fn push_message_with_spacing(combined: &mut Vec<u8>, message: &[u8]) {
+    if message.is_empty() {
+        return;
+    }
+
+    if !combined.is_empty() {
+        let trailing_newlines = combined
+            .iter()
+            .rev()
+            .take_while(|byte| **byte == b'\n')
+            .count();
+        if trailing_newlines < 2 {
+            for _ in trailing_newlines..2 {
+                combined.push(b'\n');
+            }
+        }
+    }
+
+    combined.extend_from_slice(message);
+}
+
+/// Reorder commits around `target_commit` so all selected commits become
+/// adjacent around the target in parentage order.
+///
+/// Returns the rewritten editor together with the original below/above anchor
+/// commit IDs used for remapping after the first rebase.
+fn reorder_commits_around_target<'ws, 'meta, M: RefMetadata>(
+    mut editor: Editor<'ws, 'meta, M>,
+    ordered_all_commits: &[Selector],
+    target_commit: Selector,
+) -> Result<(Editor<'ws, 'meta, M>, Selector, Selector)> {
+    let target_pos = ordered_all_commits
+        .iter()
+        .position(|id| *id == target_commit)
+        .expect("target commit must be in ordered commit list");
+
+    let (below_commits, target_and_above_commits) = ordered_all_commits.split_at(target_pos);
+
+    let mut below_anchor = target_commit;
+    for source_id in below_commits.iter().rev().copied() {
+        editor = crate::commit::move_commit_no_rebase(
+            editor,
+            source_id,
+            below_anchor,
+            InsertSide::Below,
+        )?;
+        below_anchor = source_id;
+    }
+
+    let mut above_anchor = target_commit;
+    for source_id in target_and_above_commits.iter().skip(1).copied() {
+        editor = crate::commit::move_commit_no_rebase(
+            editor,
+            source_id,
+            above_anchor,
+            InsertSide::Above,
+        )?;
+        above_anchor = source_id;
+    }
+
+    Ok((editor, below_anchor, above_anchor))
+}
+
+/// Build the squashed commit from the mapped top/bottom commits and replace the
+/// bottom selector with the newly created commit.
+///
+/// Returns the updated editor and the selector that now points to the squashed
+/// commit.
+fn construct_new_squashed_commit<'ws, 'meta, M: RefMetadata>(
+    mut editor: Editor<'ws, 'meta, M>,
+    top_most_commit_id: Selector,
+    bottom_most_commit_id: Selector,
+    combined_message: Vec<u8>,
+) -> Result<(Editor<'ws, 'meta, M>, Selector)> {
+    let (_, top_most_commit) = editor.find_selectable_commit(top_most_commit_id)?;
+    let (bottom_most_selector, bottom_most_commit) =
+        editor.find_selectable_commit(bottom_most_commit_id)?;
+
+    let new_commit = {
+        let mut squashed_commit = bottom_most_commit.clone();
+        squashed_commit.tree = top_most_commit.tree;
+        squashed_commit.message = combined_message.into();
+        editor.new_commit(squashed_commit, DateMode::CommitterUpdateAuthorKeep)?
+    };
+
+    editor.replace(bottom_most_selector, Step::new_pick(new_commit))?;
+
+    Ok((editor, bottom_most_selector))
+}
+
 /// How to combine messages of commits being squashed.
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 pub enum MessageCombinationStrategy {
     /// Keep both messages.
     KeepBoth,
-    /// Only keep the message of the subject.
+    /// Only keep the messages of subject commits.
     ///
     /// Target message will be discarded.
     KeepSubject,
@@ -97,113 +131,160 @@ pub enum MessageCombinationStrategy {
 #[cfg(feature = "export-schema")]
 but_schemars::register_sdk_type!(MessageCombinationStrategy);
 
-/// Squash `subject_commit` into `target_commit`.
+/// Squash `subjects` into `target_commit`.
 ///
-/// Depending on the ancestry relationship between the two commits, this operation may
-/// reorder them so that the subject ends up either above or below the target.
+/// `subjects` may be provided in any order. They are ordered by
+/// parentage internally together with `target_commit` before reordering and
+/// squashing.
 ///
-/// After any reordering, one of the two original commit positions (either the subject or
-/// the target) is replaced by a single squashed commit that has:
-/// - The tree of the commit that was top-most after reordering (subject or target)
-/// - A message determined by `how_to_combine_messages`: either the subject message, the
-///   target message, or both messages as `target\n\nsubject`
+/// The `target_commit` must not also appear in `subjects`.
 ///
-/// The other original commit (subject or target, depending on the chosen ordering) is
-/// removed from history.
-pub fn squash_commits<'ws, 'meta, M: RefMetadata>(
+/// After reordering and squashing, the resulting squashed commit has:
+/// - The tree of the commit that is top-most after reordering.
+/// - A message determined by `how_to_combine_messages`:
+///   - `KeepTarget`: target message only.
+///   - `KeepSubject`: subject messages only.
+///   - `KeepBoth`: target message followed by subject messages.
+///
+/// Subject messages are appended in squash order (top-most first after
+/// reordering), with at least one blank line between non-empty message blocks.
+///
+pub fn squash_commits<'ws, 'meta, M: RefMetadata, S: ToCommitSelector, T: ToCommitSelector>(
     editor: Editor<'ws, 'meta, M>,
-    subject_commit: impl ToCommitSelector,
-    target_commit: impl ToCommitSelector,
+    subjects: Vec<S>,
+    target_commit: T,
     how_to_combine_messages: MessageCombinationStrategy,
 ) -> Result<SquashCommitsOutcome<'ws, 'meta, M>> {
-    let repo = editor.repo().clone();
-    let successful_rebase = editor.rebase()?;
-    let workspace = successful_rebase.overlayed_graph()?.into_workspace()?;
-    let mut editor = successful_rebase.into_editor();
-
-    let (subject_selector, subject) = editor.find_selectable_commit(subject_commit)?;
-    let (target_selector, target) = editor.find_selectable_commit(target_commit)?;
-
-    if subject.id == target.id {
-        bail!("Cannot squash a commit into itself")
+    if subjects.is_empty() {
+        bail!("Need at least 2 commits to squash")
     }
 
-    if subject.clone().attach(editor.repo()).is_conflicted() {
-        bail!("Subject commit must not be conflicted")
+    let (target_commit_selector, target_commit_obj) =
+        editor.find_selectable_commit(target_commit)?;
+
+    let mut all_commits = Vec::with_capacity(subjects.len() + 1);
+    all_commits.push(target_commit_selector);
+    for subject_commit in subjects {
+        let (subject_commit_selector, _) = editor.find_selectable_commit(subject_commit)?;
+        if subject_commit_selector == target_commit_selector {
+            bail!("Cannot squash a commit into itself")
+        }
+        all_commits.push(subject_commit_selector);
     }
 
-    if target.clone().attach(editor.repo()).is_conflicted() {
-        bail!("Target commit must not be conflicted")
-    }
+    let ordered_selectors = editor.order_commit_selectors_by_parentage(all_commits)?;
 
-    let direction = determine_reorder_direction(&workspace, &repo, &subject, &target)?;
+    let (editor, below_anchor, above_anchor) =
+        reorder_commits_around_target(editor, &ordered_selectors, target_commit_selector)?;
+
+    let rebase = editor.rebase()?;
+    let editor = rebase.into_editor();
+
+    for commit_selector in &ordered_selectors {
+        let (_, commit) = editor.find_selectable_commit(*commit_selector)?;
+        if commit.clone().attach(editor.repo()).is_conflicted() {
+            bail!(
+                "Commit {} became conflicted after reordering. Can't continue with squash.",
+                commit.id
+            );
+        }
+    }
 
     let mut combined_message = Vec::new();
     match how_to_combine_messages {
         MessageCombinationStrategy::KeepSubject => {
-            combined_message.extend_from_slice(subject.message.as_ref());
+            for source_id in ordered_selectors
+                .iter()
+                .rev()
+                .copied()
+                .filter(|commit_selector| *commit_selector != target_commit_selector)
+            {
+                let (_, source_commit) = editor.find_selectable_commit(source_id)?;
+                push_message_with_spacing(&mut combined_message, source_commit.message.as_ref());
+            }
         }
         MessageCombinationStrategy::KeepTarget => {
-            combined_message.extend_from_slice(target.message.as_ref());
+            push_message_with_spacing(&mut combined_message, target_commit_obj.message.as_ref());
         }
         MessageCombinationStrategy::KeepBoth => {
-            match (subject.message.is_empty(), target.message.is_empty()) {
-                (true, true) => {
-                    // both messages are empty, leave combined message as empty
-                }
-                (true, false) => {
-                    // subject has no message, target does
-                    combined_message.extend_from_slice(target.message.as_ref());
-                }
-                (false, true) => {
-                    // subject has message, target doesn't
-                    combined_message.extend_from_slice(subject.message.as_ref());
-                }
-                (false, false) => {
-                    // both commits have messages, keep both
-                    combined_message.extend_from_slice(target.message.as_ref());
-                    if !combined_message.ends_with(b"\n") {
-                        combined_message.push(b'\n');
-                    }
-                    combined_message.push(b'\n');
-                    combined_message.extend_from_slice(subject.message.as_ref());
-                }
+            push_message_with_spacing(&mut combined_message, target_commit_obj.message.as_ref());
+            for source_id in ordered_selectors
+                .iter()
+                .rev()
+                .copied()
+                .filter(|commit_selector| *commit_selector != target_commit_selector)
+            {
+                let (_, source_commit) = editor.find_selectable_commit(source_id)?;
+                push_message_with_spacing(&mut combined_message, source_commit.message.as_ref());
             }
         }
     }
 
-    let (replace_selector, dropped_selector, mut commit_to_replace, top_tree_id) = match direction {
-        ReorderDirection::MoveSubjectAboveTarget => (
-            target_selector,
-            subject_selector,
-            target.clone(),
-            subject.tree,
-        ),
-        ReorderDirection::MoveSubjectBelowTarget => (
-            subject_selector,
-            target_selector,
-            subject.clone(),
-            target.tree,
-        ),
-    };
+    let (editor, bottom_most_selector) =
+        construct_new_squashed_commit(editor, above_anchor, below_anchor, combined_message)?;
 
-    let new_commit_id = {
-        commit_to_replace.tree = top_tree_id;
-        commit_to_replace.message = combined_message.into();
-        editor.new_commit(commit_to_replace, DateMode::CommitterUpdateAuthorKeep)?
-    };
+    let rebase = editor.rebase()?;
+    let mut editor = rebase.into_editor();
 
-    let dropped_delimiter = SegmentDelimiter {
-        child: dropped_selector,
-        parent: dropped_selector,
-    };
-    editor.disconnect_segment_from(dropped_delimiter, SelectorSet::All, SelectorSet::All, false)?;
-
-    editor.replace(replace_selector, Step::new_pick(new_commit_id))?;
-    editor.replace(dropped_selector, Step::None)?;
+    for commit_selector in ordered_selectors {
+        if commit_selector == below_anchor {
+            continue;
+        }
+        let Ok((selector, _)) = editor.find_selectable_commit(commit_selector) else {
+            continue;
+        };
+        editor.replace(selector, Step::None)?;
+    }
 
     Ok(SquashCommitsOutcome {
         rebase: editor.rebase()?,
-        commit_selector: replace_selector,
+        commit_selector: bottom_most_selector,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::push_message_with_spacing;
+
+    #[test]
+    fn push_message_with_spacing_adds_first_message_without_padding() {
+        let mut combined = Vec::new();
+        push_message_with_spacing(&mut combined, b"target");
+        assert_eq!(combined, b"target");
+    }
+
+    #[test]
+    fn push_message_with_spacing_ignores_empty_message() {
+        let mut combined = b"target".to_vec();
+        push_message_with_spacing(&mut combined, b"");
+        assert_eq!(combined, b"target");
+    }
+
+    #[test]
+    fn push_message_with_spacing_inserts_two_newlines_when_none_present() {
+        let mut combined = b"target".to_vec();
+        push_message_with_spacing(&mut combined, b"source");
+        assert_eq!(combined, b"target\n\nsource");
+    }
+
+    #[test]
+    fn push_message_with_spacing_inserts_one_newline_when_one_present() {
+        let mut combined = b"target\n".to_vec();
+        push_message_with_spacing(&mut combined, b"source");
+        assert_eq!(combined, b"target\n\nsource");
+    }
+
+    #[test]
+    fn push_message_with_spacing_keeps_existing_two_newlines() {
+        let mut combined = b"target\n\n".to_vec();
+        push_message_with_spacing(&mut combined, b"source");
+        assert_eq!(combined, b"target\n\nsource");
+    }
+
+    #[test]
+    fn push_message_with_spacing_keeps_existing_three_newlines() {
+        let mut combined = b"target\n\n\n".to_vec();
+        push_message_with_spacing(&mut combined, b"source");
+        assert_eq!(combined, b"target\n\n\nsource");
+    }
 }
