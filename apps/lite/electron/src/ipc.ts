@@ -50,6 +50,11 @@ export interface BranchDiffParams {
 	branch: string;
 }
 
+export interface ListBranchesParams {
+	projectId: string;
+	filter: BranchListingFilter | null;
+}
+
 export interface MoveBranchParams {
 	projectId: string;
 	subjectBranch: string;

@@ -3,6 +3,7 @@ import type {
 	BranchDetailsParams,
 	BranchDiffParams,
 	CommitDetailsWithLineStatsParams,
+	ListBranchesParams,
 	TreeChangeDiffParams,
 } from "#electron/ipc.ts";
 import { queryOptions } from "@tanstack/react-query";
@@ -50,10 +51,10 @@ export const headInfoQueryOptions = (projectId: string) =>
 	});
 
 /** @public */
-export const listBranchesQueryOptions = (projectId: string) =>
+export const listBranchesQueryOptions = (params: ListBranchesParams) =>
 	queryOptions({
-		queryKey: [QueryKey.Branches, projectId],
-		queryFn: () => window.lite.listBranches(projectId, null),
+		queryKey: [QueryKey.Branches, params],
+		queryFn: () => window.lite.listBranches(params.projectId, params.filter),
 	});
 
 export const listProjectsQueryOptions = queryOptions({

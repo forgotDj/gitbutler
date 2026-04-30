@@ -1,4 +1,5 @@
 import {
+	applyBranchMutationOptions,
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
 	commitRewordMutationOptions,
@@ -12,6 +13,7 @@ import {
 	changesInWorktreeQueryOptions,
 	commitDetailsWithLineStatsQueryOptions,
 	headInfoQueryOptions,
+	listBranchesQueryOptions,
 	listProjectsQueryOptions,
 	treeChangeDiffsQueryOptions,
 } from "#ui/api/queries.ts";
@@ -59,6 +61,7 @@ import { Toolbar } from "@base-ui/react/toolbar";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import {
 	AbsorptionTarget,
+	BranchListing,
 	Commit,
 	DiffHunk,
 	HunkDependencies,
@@ -80,6 +83,7 @@ import {
 } from "@tanstack/react-hotkeys";
 import {
 	useMutation,
+	useQuery,
 	useQueryClient,
 	useSuspenseQueries,
 	useSuspenseQuery,
@@ -286,6 +290,7 @@ const DetailsPanel: FC<{
 
 type HotkeyGroup =
 	| "Branch"
+	| "Branches"
 	| "Changes file"
 	| "Changes"
 	| "Commit file"
@@ -2459,11 +2464,87 @@ const BranchPicker: FC<{
 	);
 };
 
+type ApplyBranchPickerOption = {
+	branchRef: string;
+	label: string;
+	type: string;
+};
+
+const branchListingToApplyBranchPickerOptions = (
+	branch: BranchListing,
+): Array<ApplyBranchPickerOption> => {
+	if (branch.hasLocal)
+		return [
+			{
+				branchRef: `refs/heads/${branch.name}`,
+				label: branch.name,
+				type: "Local",
+			},
+		];
+
+	return branch.remotes.map((remote) => ({
+		branchRef: `refs/remotes/${remote}/${branch.name}`,
+		label: branch.name,
+		type: remote,
+	}));
+};
+
+const ApplyBranchPicker: FC<{
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	projectId: string;
+}> = ({ open, onOpenChange, projectId }) => {
+	const branchesQuery = useQuery(
+		listBranchesQueryOptions({ projectId, filter: { local: null, applied: false } }),
+	);
+	const items = (branchesQuery.data ?? []).flatMap(branchListingToApplyBranchPickerOptions);
+	const applyBranch = useMutation(applyBranchMutationOptions);
+	const statusLabel =
+		items.length === 0
+			? branchesQuery.isPending
+				? "Loading branches..."
+				: branchesQuery.isError
+					? "Unable to load branches."
+					: undefined
+			: undefined;
+
+	const selectBranch = (option: ApplyBranchPickerOption) => {
+		onOpenChange(false);
+		applyBranch.mutate({ projectId, existingBranch: option.branchRef });
+	};
+
+	return (
+		<PickerDialog
+			ariaLabel="Apply branch"
+			closeLabel="Close apply branch picker"
+			emptyLabel="No available branches found."
+			getItemKey={(x) => x.branchRef}
+			getItemLabel={(x) => x.label}
+			getItemType={(x) => x.type}
+			itemToStringValue={(x) => x.label}
+			items={[
+				{
+					value: "Available branches",
+					items: (branchesQuery.data ?? []).flatMap(branchListingToApplyBranchPickerOptions),
+				},
+			]}
+			open={open}
+			onOpenChange={onOpenChange}
+			onSelectItem={selectBranch}
+			placeholder="Search for branches to apply…"
+			statusLabel={statusLabel}
+		/>
+	);
+};
+
 const TopBarActions: FC = () => {
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
 	const focusedPanel = useFocusedProjectPanel(projectId);
+	const openApplyBranchPicker = () => {
+		dispatch(projectActions.openApplyBranchPicker({ projectId }));
+	};
 	const toggleDetails = () => {
 		if (focusedPanel === "details" && isPanelVisible(panelsState, "details")) {
 			const detailsPanelIndex = panelsState.visiblePanels.indexOf("details");
@@ -2476,19 +2557,29 @@ const TopBarActions: FC = () => {
 	};
 
 	const toggleDetailsHotkey = "D";
+	const applyBranchHotkey = "Shift+A";
+
+	useHotkey(applyBranchHotkey, openApplyBranchPicker, {
+		meta: { group: "Branches", name: "Apply" },
+	});
 
 	useHotkey(toggleDetailsHotkey, toggleDetails, {
 		meta: { group: "Details", name: isPanelVisible(panelsState, "details") ? "Close" : "Open" },
 	});
 
 	return (
-		<ShortcutButton
-			hotkey={toggleDetailsHotkey}
-			aria-pressed={isPanelVisible(panelsState, "details")}
-			onClick={toggleDetails}
-		>
-			Details
-		</ShortcutButton>
+		<>
+			<ShortcutButton hotkey={applyBranchHotkey} onClick={openApplyBranchPicker}>
+				Apply
+			</ShortcutButton>
+			<ShortcutButton
+				hotkey={toggleDetailsHotkey}
+				aria-pressed={isPanelVisible(panelsState, "details")}
+				onClick={toggleDetails}
+			>
+				Details
+			</ShortcutButton>
+		</>
 	);
 };
 
@@ -2675,6 +2766,11 @@ export const WorkspacePage: FC = () => {
 		else dispatch(projectActions.closePickerDialog({ projectId }));
 	};
 
+	const setApplyBranchPickerOpen = (open: boolean) => {
+		if (open) dispatch(projectActions.openApplyBranchPicker({ projectId }));
+		else dispatch(projectActions.closePickerDialog({ projectId }));
+	};
+
 	const setCommandPaletteOpen = (open: boolean) => {
 		if (open) dispatch(projectActions.openCommandPalette({ projectId, focusedPanel }));
 		else dispatch(projectActions.closePickerDialog({ projectId }));
@@ -2718,6 +2814,9 @@ export const WorkspacePage: FC = () => {
 			{Match.value(pickerDialog).pipe(
 				Match.tagsExhaustive({
 					None: () => null,
+					ApplyBranchPicker: () => (
+						<ApplyBranchPicker open onOpenChange={setApplyBranchPickerOpen} projectId={projectId} />
+					),
 					BranchPicker: () => (
 						<BranchPicker
 							open
