@@ -20,6 +20,9 @@ export default defineConfig({
 		outDir: "../dist/ui",
 		emptyOutDir: true,
 	},
+	worker: {
+		format: "es",
+	},
 	server: {
 		port: 5173,
 		strictPort: true,
