@@ -178,17 +178,68 @@ const useProjectPanelFocusManager = () => {
 const OutlinePanel: FC<{
 	elementRef: Ref<HTMLDivElement | null>;
 	focusPanel: (panel: PanelType) => void;
-	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-}> = ({ elementRef, focusPanel, navigationIndex, onAbsorbChanges }) => {
-	const dispatch = useAppDispatch();
+}> = ({ elementRef, focusPanel, onAbsorbChanges }) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
-	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+	const dispatch = useAppDispatch();
+
+	const expandedCommitId = useAppSelector((state) =>
+		selectProjectExpandedCommitId(state, projectId),
+	);
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+
+	const workspaceOutline = useWorkspaceOutline({ projectId, expandedCommitId });
+
+	const navigationIndexUnfiltered = buildNavigationIndex(workspaceOutline);
+
+	// React allows state updates on render, but not for external stores.
+	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+	useEffect(() => {
+		if (
+			!isValidOutlineMode({
+				mode: outlineMode,
+				navigationIndex: navigationIndexUnfiltered,
+			})
+		)
+			dispatch(projectActions.exitMode({ projectId }));
+	}, [outlineMode, navigationIndexUnfiltered, projectId, dispatch]);
+
 	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
-	const focusedPanel = useFocusedProjectPanel(projectId);
+
+	// React allows state updates on render, but not for external stores.
+	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+	useEffect(() => {
+		if (!navigationIndexIncludes(navigationIndexUnfiltered, selection))
+			dispatch(
+				projectActions.select({
+					projectId,
+					selection: changesSectionOperand,
+				}),
+			);
+	}, [navigationIndexUnfiltered, selection, projectId, dispatch]);
+
 	const operationMode = useAppSelector((state) =>
 		selectProjectOperationModeState(state, projectId),
 	);
+
+	const navigationIndex =
+		outlineMode._tag !== "Default"
+			? filterNavigationIndex(
+					navigationIndexUnfiltered,
+					(operand) =>
+						// When entering operation mode, the selection must still be
+						// selectable otherwise the details panel will suddenly appear to
+						// change and the user may lose sight of their source operand (e.g.
+						// hunk).
+						operandEquals(selection, operand) ||
+						// After selection moves, allow returning selection to the source operand.
+						(operationMode?.source && operandEquals(operationMode.source, operand)) ||
+						includeOperandForOutlineMode({ mode: outlineMode, operand }),
+				)
+			: navigationIndexUnfiltered;
+
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+	const focusedPanel = useFocusedProjectPanel(projectId);
 	const commit = () =>
 		dispatch(
 			projectActions.enterMoveMode({
@@ -2615,64 +2666,10 @@ export const WorkspacePage: FC = () => {
 
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 
-	const expandedCommitId = useAppSelector((state) =>
-		selectProjectExpandedCommitId(state, projectId),
-	);
 	const pickerDialog = useAppSelector((state) => selectProjectPickerDialogState(state, projectId));
 	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 	const { focusAdjacentPanel, focusPanel, panelElementRef } = useProjectPanelFocusManager();
 	const focusedPanel = useFocusedProjectPanel(projectId);
-
-	const workspaceOutline = useWorkspaceOutline({ projectId, expandedCommitId });
-
-	const navigationIndexUnfiltered = buildNavigationIndex(workspaceOutline);
-
-	// React allows state updates on render, but not for external stores.
-	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
-	useEffect(() => {
-		if (
-			!isValidOutlineMode({
-				mode: outlineMode,
-				navigationIndex: navigationIndexUnfiltered,
-			})
-		)
-			dispatch(projectActions.exitMode({ projectId }));
-	}, [outlineMode, navigationIndexUnfiltered, projectId, dispatch]);
-
-	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
-
-	// React allows state updates on render, but not for external stores.
-	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
-	useEffect(() => {
-		if (!navigationIndexIncludes(navigationIndexUnfiltered, selection))
-			dispatch(
-				projectActions.select({
-					projectId,
-					selection: changesSectionOperand,
-				}),
-			);
-	}, [navigationIndexUnfiltered, selection, projectId, dispatch]);
-
-	const operationMode = useAppSelector((state) =>
-		selectProjectOperationModeState(state, projectId),
-	);
-
-	const navigationIndex =
-		outlineMode._tag !== "Default"
-			? filterNavigationIndex(
-					navigationIndexUnfiltered,
-					(operand) =>
-						// When entering operation mode, the selection must still be
-						// selectable otherwise the details panel will suddenly appear to
-						// change and the user may lose sight of their source operand (e.g.
-						// hunk).
-						operandEquals(selection, operand) ||
-						// After selection moves, allow returning selection to the source operand.
-						(operationMode?.source && operandEquals(operationMode.source, operand)) ||
-						includeOperandForOutlineMode({ mode: outlineMode, operand }),
-				)
-			: navigationIndexUnfiltered;
 
 	const [absorptionTarget, setAbsorptionTarget] = useState<AbsorptionTarget | null>(null);
 
@@ -2776,7 +2773,6 @@ export const WorkspacePage: FC = () => {
 				<OutlinePanel
 					elementRef={outlinePanelElementRef}
 					focusPanel={focusPanel}
-					navigationIndex={navigationIndex}
 					onAbsorbChanges={openAbsorptionDialog}
 				/>
 				{isPanelVisible(panelsState, "details") && (
