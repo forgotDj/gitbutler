@@ -26,7 +26,12 @@ fn squash_top_commit_into_parent() -> Result<()> {
 
     let mut ws = graph.into_workspace()?;
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
-    let outcome = squash_commits(editor, subject_id, target_id)?;
+    let outcome = squash_commits(
+        editor,
+        subject_id,
+        target_id,
+        squash_commits::MessageCombinationStrategy::KeepBoth,
+    )?;
 
     let materialized = outcome.rebase.materialize()?;
     let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
@@ -65,6 +70,80 @@ fn squash_top_commit_into_parent() -> Result<()> {
 }
 
 #[test]
+fn squash_top_commit_into_parent_keeping_target_message() -> Result<()> {
+    let (_tmp, graph, repo, mut _meta, _description) =
+        writable_scenario("reword-three-commits", |_| {})?;
+
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
+    * c9f444c (HEAD -> three) commit three
+    * 16fd221 (origin/two, two) commit two
+    * 8b426d0 (one) commit one
+    ");
+
+    let subject_id = repo.rev_parse_single("three")?.detach();
+    let target_id = repo.rev_parse_single("two")?.detach();
+    let subject_tree = repo.find_commit(subject_id)?.tree_id()?.detach();
+
+    let mut ws = graph.into_workspace()?;
+    let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
+    let outcome = squash_commits(
+        editor,
+        subject_id,
+        target_id,
+        squash_commits::MessageCombinationStrategy::KeepTarget,
+    )?;
+
+    let materialized = outcome.rebase.materialize()?;
+    let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
+
+    let squashed_commit = repo.find_commit(squashed_id)?;
+    assert_eq!(
+        squashed_commit.message_raw()?,
+        "commit two\n",
+        "combined message should keep only the target message"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn squash_top_commit_into_parent_keeping_subject_message() -> Result<()> {
+    let (_tmp, graph, repo, mut _meta, _description) =
+        writable_scenario("reword-three-commits", |_| {})?;
+
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
+    * c9f444c (HEAD -> three) commit three
+    * 16fd221 (origin/two, two) commit two
+    * 8b426d0 (one) commit one
+    ");
+
+    let subject_id = repo.rev_parse_single("three")?.detach();
+    let target_id = repo.rev_parse_single("two")?.detach();
+    let subject_tree = repo.find_commit(subject_id)?.tree_id()?.detach();
+
+    let mut ws = graph.into_workspace()?;
+    let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
+    let outcome = squash_commits(
+        editor,
+        subject_id,
+        target_id,
+        squash_commits::MessageCombinationStrategy::KeepSubject,
+    )?;
+
+    let materialized = outcome.rebase.materialize()?;
+    let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
+
+    let squashed_commit = repo.find_commit(squashed_id)?;
+    assert_eq!(
+        squashed_commit.message_raw()?,
+        "commit three\n",
+        "combined message should keep only the subject message"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn squash_reorders_when_subject_is_not_on_top() -> Result<()> {
     let (_tmp, graph, repo, mut _meta, _description) =
         writable_scenario("reword-three-commits", |_| {})?;
@@ -82,7 +161,12 @@ fn squash_reorders_when_subject_is_not_on_top() -> Result<()> {
 
     let mut ws = graph.into_workspace()?;
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
-    let outcome = squash_commits(editor, subject_id, target_id)?;
+    let outcome = squash_commits(
+        editor,
+        subject_id,
+        target_id,
+        squash_commits::MessageCombinationStrategy::KeepBoth,
+    )?;
 
     let materialized = outcome.rebase.materialize()?;
     let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
@@ -125,7 +209,13 @@ fn squash_same_commit_is_rejected() -> Result<()> {
     let mut ws = graph.into_workspace()?;
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
 
-    let err = squash_commits(editor, commit_id, commit_id).expect_err("must fail");
+    let err = squash_commits(
+        editor,
+        commit_id,
+        commit_id,
+        squash_commits::MessageCombinationStrategy::KeepBoth,
+    )
+    .expect_err("must fail");
     assert!(
         err.to_string()
             .contains("Cannot squash a commit into itself"),
@@ -157,7 +247,12 @@ fn squash_down_keeps_topmost_tree_for_shared_file_lineage() -> Result<()> {
 
     let mut ws = graph.into_workspace()?;
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
-    let outcome = squash_commits(editor, subject_id, target_id)?;
+    let outcome = squash_commits(
+        editor,
+        subject_id,
+        target_id,
+        squash_commits::MessageCombinationStrategy::KeepBoth,
+    )?;
 
     let materialized = outcome.rebase.materialize()?;
     let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
@@ -190,7 +285,12 @@ fn squash_up_reorders_subject_below_target_for_shared_file_lineage() -> Result<(
 
     let mut ws = graph.into_workspace()?;
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
-    let outcome = squash_commits(editor, subject_id, target_id)?;
+    let outcome = squash_commits(
+        editor,
+        subject_id,
+        target_id,
+        squash_commits::MessageCombinationStrategy::KeepBoth,
+    )?;
 
     let materialized = outcome.rebase.materialize()?;
     let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
@@ -229,7 +329,12 @@ fn squash_down_out_of_order_reorders_subject_below_target_for_shared_file_lineag
 
     let mut ws = graph.into_workspace()?;
     let editor = Editor::create(&mut ws, &mut _meta, &repo)?;
-    let outcome = squash_commits(editor, subject_id, target_id)?;
+    let outcome = squash_commits(
+        editor,
+        subject_id,
+        target_id,
+        squash_commits::MessageCombinationStrategy::KeepBoth,
+    )?;
 
     let materialized = outcome.rebase.materialize()?;
     let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
@@ -284,7 +389,12 @@ fn squash_across_stacks_subject_into_target() -> Result<()> {
     let subject_tree = repo.find_commit(subject_id)?.tree_id()?.detach();
 
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
-    let outcome = squash_commits(editor, subject_id, target_id)?;
+    let outcome = squash_commits(
+        editor,
+        subject_id,
+        target_id,
+        squash_commits::MessageCombinationStrategy::KeepBoth,
+    )?;
 
     let materialized = outcome.rebase.materialize()?;
     let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;
@@ -346,7 +456,12 @@ fn squash_across_stacks_target_into_subject() -> Result<()> {
     let subject_tree = repo.find_commit(subject_id)?.tree_id()?.detach();
 
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
-    let outcome = squash_commits(editor, subject_id, target_id)?;
+    let outcome = squash_commits(
+        editor,
+        subject_id,
+        target_id,
+        squash_commits::MessageCombinationStrategy::KeepBoth,
+    )?;
 
     let materialized = outcome.rebase.materialize()?;
     let squashed_id = materialized.lookup_pick(outcome.commit_selector)?;

@@ -4,6 +4,7 @@ use anyhow::{Context as _, bail};
 use bstr::BString;
 use but_core::{DryRun, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
+use but_workspace::commit::squash_commits::MessageCombinationStrategy;
 use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
@@ -278,6 +279,7 @@ fn squash_commits_internal(
                 ctx,
                 remapped_source_oid,
                 new_commit_oid,
+                MessageCombinationStrategy::KeepBoth,
                 DryRun::No,
                 perm,
             )?;

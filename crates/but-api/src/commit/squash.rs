@@ -3,6 +3,7 @@ use but_api_macros::but_api;
 use but_core::{DryRun, sync::RepoExclusive};
 use but_oplog::legacy::{OperationKind, SnapshotDetails};
 use but_rebase::graph_rebase::{Editor, LookupStep as _};
+use but_workspace::commit::squash_commits::MessageCombinationStrategy;
 use tracing::instrument;
 
 use super::types::CommitSquashResult;
@@ -21,6 +22,7 @@ pub fn commit_squash_only(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
     target_commit_id: gix::ObjectId,
+    how_to_combine_messages: MessageCombinationStrategy,
     dry_run: DryRun,
 ) -> anyhow::Result<CommitSquashResult> {
     let mut guard = ctx.exclusive_worktree_access();
@@ -28,6 +30,7 @@ pub fn commit_squash_only(
         ctx,
         subject_commit_id,
         target_commit_id,
+        how_to_combine_messages,
         dry_run,
         guard.write_permission(),
     )
@@ -45,6 +48,7 @@ pub fn commit_squash_only_with_perm(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
     target_commit_id: gix::ObjectId,
+    how_to_combine_messages: MessageCombinationStrategy,
     dry_run: DryRun,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitSquashResult> {
@@ -52,8 +56,12 @@ pub fn commit_squash_only_with_perm(
     let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
 
-    let outcome =
-        but_workspace::commit::squash_commits(editor, subject_commit_id, target_commit_id)?;
+    let outcome = but_workspace::commit::squash_commits(
+        editor,
+        subject_commit_id,
+        target_commit_id,
+        how_to_combine_messages,
+    )?;
 
     let new_commit = outcome.rebase.lookup_pick(outcome.commit_selector)?;
     let workspace = WorkspaceState::from_successful_rebase(outcome.rebase, &repo, dry_run)?;
@@ -78,6 +86,7 @@ pub fn commit_squash(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
     target_commit_id: gix::ObjectId,
+    how_to_combine_messages: MessageCombinationStrategy,
     dry_run: DryRun,
 ) -> anyhow::Result<CommitSquashResult> {
     let mut guard = ctx.exclusive_worktree_access();
@@ -85,6 +94,7 @@ pub fn commit_squash(
         ctx,
         subject_commit_id,
         target_commit_id,
+        how_to_combine_messages,
         dry_run,
         guard.write_permission(),
     )
@@ -102,6 +112,7 @@ pub fn commit_squash_with_perm(
     ctx: &mut but_ctx::Context,
     subject_commit_id: gix::ObjectId,
     target_commit_id: gix::ObjectId,
+    how_to_combine_messages: MessageCombinationStrategy,
     dry_run: DryRun,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitSquashResult> {
@@ -112,7 +123,14 @@ pub fn commit_squash_with_perm(
         dry_run,
     );
 
-    let res = commit_squash_only_with_perm(ctx, subject_commit_id, target_commit_id, dry_run, perm);
+    let res = commit_squash_only_with_perm(
+        ctx,
+        subject_commit_id,
+        target_commit_id,
+        how_to_combine_messages,
+        dry_run,
+        perm,
+    );
     if let Some(snapshot) = maybe_oplog_entry
         && res.is_ok()
     {

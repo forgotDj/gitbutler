@@ -174,7 +174,7 @@ const registerIpcHandlers = (): void => {
 	ipcMain.handle(
 		liteIpcChannels.commitSquash,
 		(_e, { projectId, sourceCommitId, destinationCommitId, dryRun }: CommitSquashParams) =>
-			commitSquash(projectId, sourceCommitId, destinationCommitId, dryRun),
+			commitSquash(projectId, sourceCommitId, destinationCommitId, "KeepBoth", dryRun),
 	);
 	ipcMain.handle(
 		liteIpcChannels.commitReword,

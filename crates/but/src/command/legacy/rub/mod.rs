@@ -15,6 +15,7 @@ mod assign;
 pub(crate) mod squash;
 mod undo;
 pub(crate) use assign::branch_name_to_stack_id;
+use but_workspace::commit::squash_commits::MessageCombinationStrategy;
 use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
@@ -660,7 +661,13 @@ impl SquashCommitsOperation {
 
     /// Executes `SquashCommits` by squashing source into target.
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitSquashResult> {
-        but_api::commit::squash::commit_squash(ctx, self.source, self.destination, DryRun::No)
+        but_api::commit::squash::commit_squash(
+            ctx,
+            self.source,
+            self.destination,
+            MessageCombinationStrategy::KeepBoth,
+            DryRun::No,
+        )
     }
 }
 
