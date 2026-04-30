@@ -357,6 +357,14 @@ const useLogSelectionHotkeys = ({
 		selectAndFocus(newItem);
 	};
 
+	const selectPreviousItem = () => {
+		moveSelection(-1);
+	};
+
+	const selectNextItem = () => {
+		moveSelection(1);
+	};
+
 	const selectNextSection = () => {
 		const newItem = getNextSection({ navigationIndex, selection });
 		if (!newItem) return;
@@ -385,27 +393,43 @@ const useLogSelectionHotkeys = ({
 		selectAndFocus(newItem);
 	};
 
+	const openBranchPicker = () => {
+		dispatch(projectActions.openBranchPicker({ projectId }));
+	};
+
+	const enterMoveMode = () => {
+		dispatch(projectActions.enterMoveMode({ projectId, source: selection }));
+	};
+
+	const enterRubMode = () => {
+		dispatch(projectActions.enterRubMode({ projectId, source: selection }));
+	};
+
+	const enterCommitMode = () => {
+		dispatch(projectActions.enterMoveMode({ projectId, source: changesSectionOperand }));
+	};
+
 	useHotkeys(
 		[
 			{
 				hotkey: "ArrowUp",
-				callback: () => moveSelection(-1),
+				callback: selectPreviousItem,
 				options: { meta: { group: "Log selection", name: "Up", commandPalette: false } },
 			},
 			{
 				hotkey: "K",
-				callback: () => moveSelection(-1),
+				callback: selectPreviousItem,
 				// Hidden until we can combine in shortcuts bar.
 				options: { meta: { group: "Log selection", shortcutsBar: false } },
 			},
 			{
 				hotkey: "ArrowDown",
-				callback: () => moveSelection(1),
+				callback: selectNextItem,
 				options: { meta: { group: "Log selection", name: "Down", commandPalette: false } },
 			},
 			{
 				hotkey: "J",
-				callback: () => moveSelection(1),
+				callback: selectNextItem,
 				// Hidden until we can combine in shortcuts bar.
 				options: { meta: { group: "Log selection", shortcutsBar: false } },
 			},
@@ -534,9 +558,7 @@ const useLogSelectionHotkeys = ({
 	useHotkeys([
 		{
 			hotkey: "T",
-			callback: () => {
-				dispatch(projectActions.openBranchPicker({ projectId }));
-			},
+			callback: openBranchPicker,
 			options: { meta: { group: "Log selection", name: "Branch" } },
 		},
 		{
@@ -554,16 +576,12 @@ const useLogSelectionHotkeys = ({
 		[
 			{
 				hotkey: "M",
-				callback: () => {
-					dispatch(projectActions.enterMoveMode({ projectId, source: selection }));
-				},
+				callback: enterMoveMode,
 				options: { meta: { group: "Log selection", name: "Move" } },
 			},
 			{
 				hotkey: "Mod+X",
-				callback: () => {
-					dispatch(projectActions.enterMoveMode({ projectId, source: selection }));
-				},
+				callback: enterMoveMode,
 				options: {
 					ignoreInputs: true,
 					meta: { group: "Log selection", name: "Cut" },
@@ -571,16 +589,12 @@ const useLogSelectionHotkeys = ({
 			},
 			{
 				hotkey: "R",
-				callback: () => {
-					dispatch(projectActions.enterRubMode({ projectId, source: selection }));
-				},
+				callback: enterRubMode,
 				options: { meta: { group: "Log selection", name: "Rub" } },
 			},
 			{
 				hotkey: "C",
-				callback: () => {
-					dispatch(projectActions.enterMoveMode({ projectId, source: changesSectionOperand }));
-				},
+				callback: enterCommitMode,
 				options: { meta: { group: "Log selection", name: "Commit" } },
 			},
 		],
