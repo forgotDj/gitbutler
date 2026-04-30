@@ -458,11 +458,6 @@ const useLogSelectionHotkeys = ({
 				},
 			},
 			{
-				hotkey: "Z",
-				callback: selectChanges,
-				options: { meta: { group: "Log selection", name: "Changes" } },
-			},
-			{
 				hotkey: "Home",
 				callback: selectFirstItem,
 				options: {
@@ -536,13 +531,20 @@ const useLogSelectionHotkeys = ({
 		},
 	});
 
-	useHotkey(
-		"T",
-		() => {
-			dispatch(projectActions.openBranchPicker({ projectId }));
+	useHotkeys([
+		{
+			hotkey: "T",
+			callback: () => {
+				dispatch(projectActions.openBranchPicker({ projectId }));
+			},
+			options: { meta: { group: "Log selection", name: "Branch" } },
 		},
-		{ meta: { group: "Log selection", name: "Branch" } },
-	);
+		{
+			hotkey: "Z",
+			callback: selectChanges,
+			options: { meta: { group: "Log selection", name: "Changes" } },
+		},
+	]);
 
 	const workspaceMode = useAppSelector((state) =>
 		selectProjectWorkspaceModeState(state, projectId),
