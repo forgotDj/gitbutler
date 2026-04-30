@@ -2661,7 +2661,7 @@ const ShortcutsBar: FC = () => {
 	);
 };
 
-export const WorkspacePage: FC = () => {
+const WorkspacePage: FC = () => {
 	const dispatch = useAppDispatch();
 
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
@@ -2728,10 +2728,6 @@ export const WorkspacePage: FC = () => {
 
 	// TODO: handle project not found error. or only run when project is not null? waterfall.
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-
-	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
-	const project = projects.find((project) => project.id === projectId);
-	if (!project) return <p>Project not found.</p>;
 
 	const selectBranch = (branch: BranchOperand) => {
 		dispatch(
@@ -2811,4 +2807,14 @@ export const WorkspacePage: FC = () => {
 			)}
 		</>
 	);
+};
+
+export const Route: FC = () => {
+	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
+
+	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
+	const project = projects.find((project) => project.id === projectId);
+	if (!project) return <p>Project not found.</p>;
+
+	return <WorkspacePage />;
 };
