@@ -194,7 +194,7 @@ const LogPanel: FC<{
 		);
 
 	useLogSelectionHotkeys({
-		enabled: focusedPanel === "log",
+		focusedPanel,
 		navigationIndex,
 		projectId,
 		focusPanel,
@@ -333,12 +333,12 @@ const treeItemId = (projectId: string, operand: Operand): string =>
 	`project-${encodeURIComponent(projectId)}-treeitem-${encodeURIComponent(operandIdentityKey(operand))}`;
 
 const useLogSelectionHotkeys = ({
-	enabled,
+	focusedPanel,
 	navigationIndex,
 	projectId,
 	focusPanel,
 }: {
-	enabled: boolean;
+	focusedPanel: PanelType | null;
 	navigationIndex: NavigationIndex;
 	projectId: string;
 	focusPanel: (panel: PanelType) => void;
@@ -518,11 +518,11 @@ const useLogSelectionHotkeys = ({
 				},
 			},
 		],
-		{ enabled },
+		{ enabled: focusedPanel === "log" },
 	);
 
 	useHotkeySequence(["G", "G"], selectFirstItem, {
-		enabled,
+		enabled: focusedPanel === "log",
 		meta: {
 			group: "Log selection",
 			name: "First item",
@@ -584,7 +584,7 @@ const useLogSelectionHotkeys = ({
 				options: { meta: { group: "Log selection", name: "Commit" } },
 			},
 		],
-		{ enabled: enabled && workspaceMode._tag === "Default" },
+		{ enabled: focusedPanel === "log" && workspaceMode._tag === "Default" },
 	);
 };
 
