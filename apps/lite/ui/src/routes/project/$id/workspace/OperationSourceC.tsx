@@ -63,17 +63,18 @@ export const OperationSourceC: FC<
 			});
 		},
 	);
+	const canDrag = useEffectEvent(
+		() => outlineMode._tag !== "RenameBranch" && outlineMode._tag !== "RewordCommit",
+	);
 
 	useEffect(() => {
 		const element = dragRef.current;
 		if (!element) return;
 
-		// Disable in rename/reword mode to prevent false positives when users drag
-		// to select text in the input field.
-		if (outlineMode._tag === "RenameBranch" || outlineMode._tag === "RewordCommit") return;
-
 		return draggable({
 			element,
+			// Prevent false positives when users drag to select text in the input field.
+			canDrag,
 			getInitialData: (): DragData => ({ source }),
 			onGenerateDragPreview,
 			onDragStart: () => {
@@ -83,7 +84,7 @@ export const OperationSourceC: FC<
 				dispatch(projectActions.exitMode({ projectId }));
 			},
 		});
-	}, [dispatch, outlineMode._tag, projectId, source]);
+	}, [dispatch, projectId, source]);
 
 	const isActiveSource = operationMode?.source && operandEquals(operationMode.source, source);
 

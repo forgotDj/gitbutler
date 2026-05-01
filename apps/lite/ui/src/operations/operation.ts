@@ -180,8 +180,34 @@ export const operationLabel = (operation: Operation): string =>
 export const useRunOperation = () => {
 	const toastManager = Toast.useToastManager();
 	const queryClient = useQueryClient();
-	const commitAmend = useMutation(commitAmendMutationOptions);
-	const commitCreate = useMutation(commitCreateMutationOptions);
+	const commitAmend = useMutation({
+		...commitAmendMutationOptions,
+		onSuccess: async (response, input, context, mutation) => {
+			await commitAmendMutationOptions.onSuccess?.(response, input, context, mutation);
+
+			if (response.rejectedChanges.length > 0)
+				toastManager.add(
+					rejectedChangesToastOptions({
+						newCommit: response.newCommit,
+						rejectedChanges: response.rejectedChanges,
+					}),
+				);
+		},
+	});
+	const commitCreate = useMutation({
+		...commitCreateMutationOptions,
+		onSuccess: async (response, input, context, mutation) => {
+			await commitCreateMutationOptions.onSuccess?.(response, input, context, mutation);
+
+			if (response.rejectedChanges.length > 0)
+				toastManager.add(
+					rejectedChangesToastOptions({
+						newCommit: response.newCommit,
+						rejectedChanges: response.rejectedChanges,
+					}),
+				);
+		},
+	});
 	const commitInsertBlank = useMutation(commitInsertBlankMutationOptions);
 	const commitMove = useMutation(commitMoveMutationOptions);
 	const commitMoveChangesBetween = useMutation(commitMoveChangesBetweenMutationOptions);
@@ -202,25 +228,12 @@ export const useRunOperation = () => {
 					});
 					if (!changes) return;
 
-					commitAmend.mutate(
-						{
-							projectId,
-							commitId: operation.commitId,
-							changes,
-							dryRun: false,
-						},
-						{
-							onSuccess: (response) => {
-								if (response.rejectedChanges.length > 0)
-									toastManager.add(
-										rejectedChangesToastOptions({
-											newCommit: response.newCommit,
-											rejectedChanges: response.rejectedChanges,
-										}),
-									);
-							},
-						},
-					);
+					commitAmend.mutate({
+						projectId,
+						commitId: operation.commitId,
+						changes,
+						dryRun: false,
+					});
 				},
 				CommitMoveChangesBetween: (operation) => {
 					const changes = resolveDiffSpecs({
@@ -277,27 +290,14 @@ export const useRunOperation = () => {
 					});
 					if (!changes) return;
 
-					commitCreate.mutate(
-						{
-							projectId,
-							relativeTo: operation.relativeTo,
-							side: operation.side,
-							changes,
-							message: operation.message,
-							dryRun: false,
-						},
-						{
-							onSuccess: (response) => {
-								if (response.rejectedChanges.length > 0)
-									toastManager.add(
-										rejectedChangesToastOptions({
-											newCommit: response.newCommit,
-											rejectedChanges: response.rejectedChanges,
-										}),
-									);
-							},
-						},
-					);
+					commitCreate.mutate({
+						projectId,
+						relativeTo: operation.relativeTo,
+						side: operation.side,
+						changes,
+						message: operation.message,
+						dryRun: false,
+					});
 				},
 				CommitCreateFromCommittedChanges: (operation) => {
 					const changes = resolveDiffSpecs({
