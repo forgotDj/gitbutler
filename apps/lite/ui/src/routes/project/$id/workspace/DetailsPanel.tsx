@@ -38,7 +38,7 @@ import { Array, Match, pipe } from "effect";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
 import { FC, Ref, Suspense, useDeferredValue } from "react";
 import { Panel } from "react-resizable-panels";
-import { DependencyIndicatorButton } from "./OutlinePanel.tsx";
+import { DependencyIndicatorButton } from "./DependencyIndicatorButton.tsx";
 import styles from "./DetailsPanel.module.css";
 
 type HunkDependencyDiff = HunkDependencies["diffs"][number];

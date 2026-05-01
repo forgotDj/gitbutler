@@ -10,7 +10,7 @@ import {
 	commitDetailsWithLineStatsQueryOptions,
 	headInfoQueryOptions,
 } from "#ui/api/queries.ts";
-import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/api/ref-info.ts";
+import { getCommonBaseCommitId } from "#ui/api/ref-info.ts";
 import { encodeRefName } from "#ui/api/ref-name.ts";
 import { commitTitle, shortCommitId } from "#ui/commit.ts";
 import {
@@ -44,6 +44,7 @@ import {
 	selectProjectSelection,
 } from "#ui/projects/state.ts";
 import { CommitLabel } from "#ui/routes/project/$id/CommitLabel.tsx";
+import { DependencyIndicatorButton } from "#ui/routes/project/$id/workspace/DependencyIndicatorButton.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
@@ -82,7 +83,7 @@ import {
 } from "@tanstack/react-hotkeys";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { Array, Match, pipe } from "effect";
+import { Match } from "effect";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
 import {
 	ComponentProps,
@@ -689,65 +690,6 @@ const OperandC: FC<
 		defaultTagName: "div",
 		props,
 	});
-};
-
-export const DependencyIndicatorButton: FC<
-	{
-		projectId: string;
-		commitIds: NonEmptyArray<string>;
-	} & useRender.ComponentProps<"button">
-> = ({ projectId, commitIds, ...restProps }) => {
-	// We use a controlled tooltip as a workaround for https://github.com/mui/base-ui/issues/4499.
-	const [isTooltipOpen, setIsTooltipOpen] = useState(false);
-	const dispatch = useAppDispatch();
-	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-	// TODO: expensive
-	const branchNameByCommitId = getBranchNameByCommitId(headInfo);
-	const branchNames = pipe(
-		commitIds,
-		Array.flatMapNullable((commitId) => branchNameByCommitId.get(commitId)),
-		Array.dedupe,
-	);
-	const tooltip =
-		branchNames.length > 0 ? `Depends on ${branchNames.join(", ")}` : "Unknown dependencies";
-	const highlightCommitIds = () => {
-		setIsTooltipOpen(true);
-		dispatch(
-			projectActions.setHighlightedCommitIds({
-				projectId,
-				commitIds,
-			}),
-		);
-	};
-	const clearHighlightedCommitIds = () => {
-		setIsTooltipOpen(false);
-		dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds: null }));
-	};
-
-	return (
-		<Tooltip.Root
-			open={isTooltipOpen}
-			// [ref:tooltip-disable-hoverable-popup]
-			disableHoverablePopup
-		>
-			<Tooltip.Trigger
-				{...restProps}
-				type="button"
-				onMouseEnter={highlightCommitIds}
-				onMouseLeave={clearHighlightedCommitIds}
-				onFocus={highlightCommitIds}
-				onBlur={clearHighlightedCommitIds}
-				aria-label={tooltip}
-			/>
-			<Tooltip.Portal>
-				<Tooltip.Positioner sideOffset={8}>
-					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
-						{tooltip}
-					</Tooltip.Popup>
-				</Tooltip.Positioner>
-			</Tooltip.Portal>
-		</Tooltip.Root>
-	);
 };
 
 const hunkContainsHunk = (a: HunkHeader, b: HunkHeader): boolean =>
