@@ -1,5 +1,10 @@
 import { type Operand, operandIdentityKey } from "#ui/operands.ts";
-import { type WorkspaceOutline } from "#ui/workspace/outline.ts";
+import { Array } from "effect";
+
+export type Section = {
+	section: Operand | null;
+	children: Array<Operand>;
+};
 
 export type NavigationIndex = {
 	items: Array<Operand>;
@@ -15,13 +20,13 @@ const createNavigationIndex = (): NavigationIndex => ({
 	indexByKey: new Map<string, number>(),
 });
 
-export const buildNavigationIndex = (outline: WorkspaceOutline): NavigationIndex => {
+export const buildNavigationIndex = (sections: Array.NonEmptyArray<Section>): NavigationIndex => {
 	const index = createNavigationIndex();
 
-	for (const outlineSection of outline) {
-		const itemsInSection = outlineSection.section
-			? [outlineSection.section, ...outlineSection.children]
-			: outlineSection.children;
+	for (const section of sections) {
+		const itemsInSection = section.section
+			? [section.section, ...section.children]
+			: section.children;
 		if (itemsInSection.length === 0) continue;
 
 		const sectionIndex = index.sectionStartIndexes.length;

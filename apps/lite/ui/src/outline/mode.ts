@@ -1,7 +1,7 @@
 import { Match } from "effect";
 import { branchOperand, commitOperand, operandEquals, type Operand } from "#ui/operands.ts";
-import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import { getOperation, getOperations, OperationType } from "#ui/operations/operation.ts";
+import { filterNavigationIndex, NavigationIndex } from "#ui/workspace/navigation-index.ts";
 
 /** @public */
 export type RubOperationMode = { source: Operand };
@@ -96,45 +96,6 @@ export const operationModeToOperationType = (operationMode: OperationMode): Oper
 		Match.exhaustive,
 	);
 
-export const isValidOutlineMode = ({
-	mode,
-	navigationIndex,
-}: {
-	mode: OutlineMode;
-	navigationIndex: NavigationIndex;
-}): boolean =>
-	Match.value(mode).pipe(
-		Match.tagsExhaustive({
-			Default: () => true,
-			Operation: ({ value }) =>
-				Match.value(value).pipe(
-					Match.tagsExhaustive({
-						Rub: (mode) => navigationIndexIncludes(navigationIndex, mode.source),
-						Move: (mode) => navigationIndexIncludes(navigationIndex, mode.source),
-						// Once we have keyboard selectable hunks, this should check the
-						// navigation index(es).
-						DragAndDrop: () => true,
-					}),
-				),
-			RewordCommit: (mode) =>
-				navigationIndexIncludes(
-					navigationIndex,
-					commitOperand({
-						stackId: mode.stackId,
-						commitId: mode.commitId,
-					}),
-				),
-			RenameBranch: (mode) =>
-				navigationIndexIncludes(
-					navigationIndex,
-					branchOperand({
-						stackId: mode.stackId,
-						branchRef: mode.branchRef,
-					}),
-				),
-		}),
-	);
-
 export const isValidOutlineModeForSelection = ({
 	mode,
 	selection,
@@ -165,7 +126,7 @@ export const isValidOutlineModeForSelection = ({
 		}),
 	);
 
-export const includeOperandForOutlineMode = ({
+const includeOperandForOutlineMode = ({
 	mode,
 	operand,
 }: {
@@ -214,3 +175,29 @@ export const includeOperandForOutlineMode = ({
 				),
 		}),
 	);
+
+export const filterNavigationIndexForOperationMode = ({
+	navigationIndex: navigationIndexUnfiltered,
+	selection,
+	outlineMode,
+	operationMode,
+}: {
+	navigationIndex: NavigationIndex;
+	selection: Operand;
+	outlineMode: OutlineMode;
+	operationMode: OperationMode | null;
+}) =>
+	outlineMode._tag !== "Default"
+		? filterNavigationIndex(
+				navigationIndexUnfiltered,
+				(operand) =>
+					// When entering operation mode, the selection must still be
+					// selectable otherwise the details panel will suddenly appear to
+					// change and the user may lose sight of their source operand (e.g.
+					// hunk).
+					operandEquals(selection, operand) ||
+					// After selection moves, allow returning selection to the source operand.
+					(operationMode?.source && operandEquals(operationMode.source, operand)) ||
+					includeOperandForOutlineMode({ mode: outlineMode, operand }),
+			)
+		: navigationIndexUnfiltered;

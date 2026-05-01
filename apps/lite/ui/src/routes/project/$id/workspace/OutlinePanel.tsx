@@ -27,8 +27,12 @@ import {
 	type CommitOperand,
 	type Operand,
 } from "#ui/operands.ts";
-import { includeOperandForOutlineMode, isValidOutlineMode } from "#ui/outline/mode.ts";
-import { Panel as PanelType, useFocusedProjectPanel } from "#ui/panels.ts";
+import { filterNavigationIndexForOperationMode } from "#ui/outline/mode.ts";
+import {
+	Panel as PanelType,
+	useFocusedProjectPanel,
+	useNavigationIndexHotkeys,
+} from "#ui/panels.ts";
 import {
 	projectActions,
 	selectProjectHighlightedCommitIds,
@@ -45,23 +49,14 @@ import { classes } from "#ui/ui/classes.ts";
 import { MenuTriggerIcon, PushIcon } from "#ui/ui/icons.tsx";
 import {
 	buildNavigationIndex,
-	filterNavigationIndex,
-	getAdjacent,
-	getNextSection,
-	getPreviousSection,
 	navigationIndexIncludes,
+	Section,
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
-import { useWorkspaceOutline } from "#ui/workspace/outline.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
-import { AbsorptionTarget, Commit, Segment, Stack, TreeChange } from "@gitbutler/but-sdk";
-import {
-	formatForDisplay,
-	useHotkey,
-	useHotkeySequence,
-	useHotkeys,
-} from "@tanstack/react-hotkeys";
+import { AbsorptionTarget, Commit, RefInfo, Segment, Stack, TreeChange } from "@gitbutler/but-sdk";
+import { formatForDisplay, useHotkey, useHotkeys } from "@tanstack/react-hotkeys";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { Match } from "effect";
@@ -80,38 +75,67 @@ import styles from "./OutlinePanel.module.css";
 import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
 import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.tsx";
 import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
+import { NonEmptyArray } from "effect/Array";
 
 const assert = <T,>(t: T | null | undefined): T => {
 	if (t == null) throw new Error("Expected value to be non-null and defined");
 	return t;
 };
 
-export const OutlinePanel: FC<
-	{
-		focusPanel: (panel: PanelType) => void;
-		onAbsorbChanges: (target: AbsorptionTarget) => void;
-	} & PanelProps
-> = ({ focusPanel, onAbsorbChanges, ...panelProps }) => {
-	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
+const sections = (headInfo: RefInfo): NonEmptyArray<Section> => {
+	const changesSection: Section = {
+		section: changesSectionOperand,
+		children: [],
+	};
+
+	const segmentChildren = (stackId: string, segment: Segment): Array<Operand> =>
+		segment.commits.map((commit) => commitOperand({ stackId, commitId: commit.id }));
+
+	const segmentSection = (stackId: string, segment: Segment): Section | null => {
+		const children = segmentChildren(stackId, segment);
+		const branchRef = segment.refName?.fullNameBytes;
+		if (!branchRef && children.length === 0) return null;
+
+		return {
+			section: branchRef ? branchOperand({ stackId, branchRef }) : null,
+			children,
+		};
+	};
+
+	const baseCommitSection: Section = {
+		section: baseCommitOperand,
+		children: [],
+	};
+
+	return [
+		changesSection,
+
+		...headInfo.stacks.flatMap((stack) => {
+			// oxlint-disable-next-line typescript/no-non-null-assertion -- [ref:stack-id-required]
+			const stackId = stack.id!;
+			const stackOperandSection: Section = {
+				section: stackOperand({ stackId }),
+				children: [],
+			};
+			return [
+				stackOperandSection,
+				...stack.segments.flatMap((segment) => {
+					const section = segmentSection(stackId, segment);
+					return section ? [section] : [];
+				}),
+			];
+		}),
+
+		baseCommitSection,
+	];
+};
+
+const useNavigationIndex = (projectId: string, focusPanel: (panel: PanelType) => void) => {
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+
 	const dispatch = useAppDispatch();
 
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
-
-	const workspaceOutline = useWorkspaceOutline({ projectId });
-
-	const navigationIndexUnfiltered = buildNavigationIndex(workspaceOutline);
-
-	// React allows state updates on render, but not for external stores.
-	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
-	useEffect(() => {
-		if (
-			!isValidOutlineMode({
-				mode: outlineMode,
-				navigationIndex: navigationIndexUnfiltered,
-			})
-		)
-			dispatch(projectActions.exitMode({ projectId }));
-	}, [outlineMode, navigationIndexUnfiltered, projectId, dispatch]);
+	const navigationIndexUnfiltered = buildNavigationIndex(sections(headInfo));
 
 	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
 
@@ -127,28 +151,58 @@ export const OutlinePanel: FC<
 			);
 	}, [navigationIndexUnfiltered, selection, projectId, dispatch]);
 
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 	const operationMode = useAppSelector((state) =>
 		selectProjectOperationModeState(state, projectId),
 	);
 
-	const navigationIndex =
-		outlineMode._tag !== "Default"
-			? filterNavigationIndex(
-					navigationIndexUnfiltered,
-					(operand) =>
-						// When entering operation mode, the selection must still be
-						// selectable otherwise the details panel will suddenly appear to
-						// change and the user may lose sight of their source operand (e.g.
-						// hunk).
-						operandEquals(selection, operand) ||
-						// After selection moves, allow returning selection to the source operand.
-						(operationMode?.source && operandEquals(operationMode.source, operand)) ||
-						includeOperandForOutlineMode({ mode: outlineMode, operand }),
-				)
-			: navigationIndexUnfiltered;
+	const navigationIndex = filterNavigationIndexForOperationMode({
+		navigationIndex: navigationIndexUnfiltered,
+		selection,
+		outlineMode,
+		operationMode,
+	});
+
+	const focusedPanel = useFocusedProjectPanel(projectId);
+
+	const select = (newItem: Operand) =>
+		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
+
+	useNavigationIndexHotkeys({
+		focusedPanel,
+		navigationIndex,
+		projectId,
+		group: "Outline",
+		panel: "outline",
+		focusPanel,
+		select,
+		selection,
+	});
+
+	return navigationIndex;
+};
+
+export const OutlinePanel: FC<
+	{
+		focusPanel: (panel: PanelType) => void;
+		onAbsorbChanges: (target: AbsorptionTarget) => void;
+	} & PanelProps
+> = ({ focusPanel, onAbsorbChanges, ...panelProps }) => {
+	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
+	const dispatch = useAppDispatch();
+
+	const navigationIndex = useNavigationIndex(projectId, focusPanel);
+
+	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
+
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
+
+	const select = (newItem: Operand) =>
+		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
 
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-	const focusedPanel = useFocusedProjectPanel(projectId);
 	const commit = () =>
 		dispatch(
 			projectActions.enterMoveMode({
@@ -157,12 +211,27 @@ export const OutlinePanel: FC<
 			}),
 		);
 
-	useOutlineSelectionHotkeys({
-		focusedPanel,
-		navigationIndex,
-		projectId,
-		focusPanel,
-	});
+	const selectChanges = () => {
+		select(changesSectionOperand);
+		focusPanel("outline");
+	};
+
+	const openBranchPicker = () => {
+		dispatch(projectActions.openBranchPicker({ projectId }));
+	};
+
+	useHotkeys([
+		{
+			hotkey: "T",
+			callback: openBranchPicker,
+			options: { meta: { group: "Outline", name: "Branch" } },
+		},
+		{
+			hotkey: "Z",
+			callback: selectChanges,
+			options: { meta: { group: "Outline", name: "Changes" } },
+		},
+	]);
 
 	return (
 		<Panel
@@ -217,274 +286,6 @@ const useIsSelected = ({ projectId, operand }: { projectId: string; operand: Ope
 
 const treeItemId = (operand: Operand): string =>
 	`outline-treeitem-${encodeURIComponent(operandIdentityKey(operand))}`;
-
-const useOutlineSelectionHotkeys = ({
-	focusedPanel,
-	navigationIndex,
-	projectId,
-	focusPanel,
-}: {
-	focusedPanel: PanelType | null;
-	navigationIndex: NavigationIndex;
-	projectId: string;
-	focusPanel: (panel: PanelType) => void;
-}) => {
-	const dispatch = useAppDispatch();
-	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
-
-	const selectAndFocus = (newItem: Operand) => {
-		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
-		focusPanel("outline");
-	};
-
-	const moveSelection = (offset: -1 | 1) => {
-		const newItem = getAdjacent({ navigationIndex, selection, offset });
-		if (!newItem) return;
-		selectAndFocus(newItem);
-	};
-
-	const selectPreviousItem = () => {
-		moveSelection(-1);
-	};
-
-	const selectNextItem = () => {
-		moveSelection(1);
-	};
-
-	const selectNextSection = () => {
-		const newItem = getNextSection({ navigationIndex, selection });
-		if (!newItem) return;
-		selectAndFocus(newItem);
-	};
-
-	const selectPreviousSection = () => {
-		const newItem = getPreviousSection({ navigationIndex, selection });
-		if (!newItem) return;
-		selectAndFocus(newItem);
-	};
-
-	const selectChanges = () => {
-		selectAndFocus(changesSectionOperand);
-	};
-
-	const selectFirstItem = () => {
-		const newItem = navigationIndex.items[0];
-		if (!newItem) return;
-		selectAndFocus(newItem);
-	};
-
-	const selectLastItem = () => {
-		const newItem = navigationIndex.items.at(-1);
-		if (!newItem) return;
-		selectAndFocus(newItem);
-	};
-
-	const openBranchPicker = () => {
-		dispatch(projectActions.openBranchPicker({ projectId }));
-	};
-
-	const enterMoveMode = () => {
-		dispatch(projectActions.enterMoveMode({ projectId, source: selection }));
-	};
-
-	const enterRubMode = () => {
-		dispatch(projectActions.enterRubMode({ projectId, source: selection }));
-	};
-
-	const enterCommitMode = () => {
-		dispatch(projectActions.enterMoveMode({ projectId, source: changesSectionOperand }));
-	};
-
-	useHotkeys(
-		[
-			{
-				hotkey: "ArrowUp",
-				callback: selectPreviousItem,
-				options: { meta: { group: "Outline selection", name: "Up", commandPalette: false } },
-			},
-			{
-				hotkey: "K",
-				callback: selectPreviousItem,
-				// Hidden until we can combine in shortcuts bar.
-				options: { meta: { group: "Outline selection", shortcutsBar: false } },
-			},
-			{
-				hotkey: "ArrowDown",
-				callback: selectNextItem,
-				options: { meta: { group: "Outline selection", name: "Down", commandPalette: false } },
-			},
-			{
-				hotkey: "J",
-				callback: selectNextItem,
-				// Hidden until we can combine in shortcuts bar.
-				options: { meta: { group: "Outline selection", shortcutsBar: false } },
-			},
-			{
-				hotkey: "Shift+ArrowUp",
-				callback: selectPreviousSection,
-				options: {
-					meta: {
-						group: "Outline selection",
-						name: "Previous section",
-						commandPalette: false,
-						shortcutsBar: false,
-					},
-				},
-			},
-			{
-				hotkey: "Shift+K",
-				callback: selectPreviousSection,
-				options: {
-					meta: {
-						group: "Outline selection",
-						name: "Previous section",
-						commandPalette: false,
-						shortcutsBar: false,
-					},
-				},
-			},
-			{
-				hotkey: "Shift+ArrowDown",
-				callback: selectNextSection,
-				options: {
-					meta: {
-						group: "Outline selection",
-						name: "Next section",
-						commandPalette: false,
-						shortcutsBar: false,
-					},
-				},
-			},
-			{
-				hotkey: "Shift+J",
-				callback: selectNextSection,
-				options: {
-					meta: {
-						group: "Outline selection",
-						name: "Next section",
-						commandPalette: false,
-						shortcutsBar: false,
-					},
-				},
-			},
-			{
-				hotkey: "Home",
-				callback: selectFirstItem,
-				options: {
-					meta: {
-						group: "Outline selection",
-						name: "First item",
-						commandPalette: false,
-						shortcutsBar: false,
-					},
-				},
-			},
-			{
-				hotkey: "Meta+ArrowUp",
-				callback: selectFirstItem,
-				options: {
-					meta: {
-						group: "Outline selection",
-						name: "First item",
-						commandPalette: false,
-						shortcutsBar: false,
-					},
-				},
-			},
-			{
-				hotkey: "End",
-				callback: selectLastItem,
-				options: {
-					meta: {
-						group: "Outline selection",
-						name: "Last item",
-						commandPalette: false,
-						shortcutsBar: false,
-					},
-				},
-			},
-			{
-				hotkey: "Meta+ArrowDown",
-				callback: selectLastItem,
-				options: {
-					meta: {
-						group: "Outline selection",
-						name: "Last item",
-						commandPalette: false,
-						shortcutsBar: false,
-					},
-				},
-			},
-			{
-				hotkey: "Shift+G",
-				callback: selectLastItem,
-				options: {
-					meta: {
-						group: "Outline selection",
-						name: "Last item",
-						commandPalette: false,
-						shortcutsBar: false,
-					},
-				},
-			},
-		],
-		{ enabled: focusedPanel === "outline" },
-	);
-
-	useHotkeySequence(["G", "G"], selectFirstItem, {
-		enabled: focusedPanel === "outline",
-		meta: {
-			group: "Outline selection",
-			name: "First item",
-			commandPalette: false,
-			shortcutsBar: false,
-		},
-	});
-
-	useHotkeys([
-		{
-			hotkey: "T",
-			callback: openBranchPicker,
-			options: { meta: { group: "Outline selection", name: "Branch" } },
-		},
-		{
-			hotkey: "Z",
-			callback: selectChanges,
-			options: { meta: { group: "Outline selection", name: "Changes" } },
-		},
-	]);
-
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
-
-	useHotkeys(
-		[
-			{
-				hotkey: "M",
-				callback: enterMoveMode,
-				options: { meta: { group: "Outline selection", name: "Move" } },
-			},
-			{
-				hotkey: "Mod+X",
-				callback: enterMoveMode,
-				options: {
-					ignoreInputs: true,
-					meta: { group: "Outline selection", name: "Cut" },
-				},
-			},
-			{
-				hotkey: "R",
-				callback: enterRubMode,
-				options: { meta: { group: "Outline selection", name: "Rub" } },
-			},
-			{
-				hotkey: "C",
-				callback: enterCommitMode,
-				options: { meta: { group: "Outline selection", name: "Commit" } },
-			},
-		],
-		{ enabled: focusedPanel === "outline" && outlineMode._tag === "Default" },
-	);
-};
 
 const ItemRow: FC<
 	{
@@ -816,6 +617,7 @@ const CommitRow: FC<
 	});
 
 	useHotkey("Alt+ArrowUp", moveCommitUp, {
+		conflictBehavior: "allow",
 		enabled:
 			!commitMove.isPending &&
 			isSelected &&
@@ -830,6 +632,7 @@ const CommitRow: FC<
 	});
 
 	useHotkey("Alt+ArrowDown", moveCommitDown, {
+		conflictBehavior: "allow",
 		enabled:
 			!commitMove.isPending &&
 			isSelected &&
@@ -972,30 +775,26 @@ const ChangesSectionRow: FC<{
 	const focusedPanel = useFocusedProjectPanel(projectId);
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
-	useHotkey(
-		"A",
-		() => {
-			onAbsorbChanges({ type: "all" });
-		},
-		{
-			conflictBehavior: "allow",
-			enabled:
-				changes.length > 0 &&
-				isSelected &&
-				focusedPanel === "outline" &&
-				outlineMode._tag === "Default",
-			meta: { group: "Changes", name: "Absorb" },
-		},
-	);
+	const absorb = () => {
+		onAbsorbChanges({ type: "all" });
+	};
+
+	useHotkey("A", absorb, {
+		conflictBehavior: "allow",
+		enabled:
+			changes.length > 0 &&
+			isSelected &&
+			focusedPanel === "outline" &&
+			outlineMode._tag === "Default",
+		meta: { group: "Changes", name: "Absorb" },
+	});
 
 	const menuItems: Array<NativeMenuItem> = [
 		{
 			_tag: "Item",
 			label: "Absorb",
 			enabled: changes.length > 0,
-			onSelect: () => {
-				onAbsorbChanges({ type: "all" });
-			},
+			onSelect: absorb,
 		},
 	];
 
