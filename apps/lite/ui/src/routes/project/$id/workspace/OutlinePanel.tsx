@@ -53,7 +53,7 @@ import {
 	navigationIndexIncludes,
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
-import { useWorkspaceOutline, WorkspaceOutline } from "#ui/workspace/outline.ts";
+import { useWorkspaceOutline } from "#ui/workspace/outline.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { AbsorptionTarget, Commit, Segment, Stack, TreeChange } from "@gitbutler/but-sdk";
@@ -82,11 +82,9 @@ const assert = <T,>(t: T | null | undefined): T => {
 	return t;
 };
 
-const useNavigationIndex = (
-	projectId: string,
-	focusPanel: (panel: PanelType) => void,
-	outline: WorkspaceOutline,
-) => {
+const useNavigationIndex = (projectId: string, focusPanel: (panel: PanelType) => void) => {
+	const outline = useWorkspaceOutline({ projectId });
+
 	const dispatch = useAppDispatch();
 
 	const navigationIndexUnfiltered = buildNavigationIndex(outline);
@@ -139,9 +137,7 @@ export const OutlinePanel: FC<
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const dispatch = useAppDispatch();
 
-	const workspaceOutline = useWorkspaceOutline({ projectId });
-
-	const navigationIndex = useNavigationIndex(projectId, focusPanel, workspaceOutline);
+	const navigationIndex = useNavigationIndex(projectId, focusPanel);
 
 	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
 
