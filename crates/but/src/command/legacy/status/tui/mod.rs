@@ -663,17 +663,17 @@ impl App {
                 }
             }
             Message::Rub(rub_message) => match rub_message {
-                RubMessage::Start => self.handle_start_rub(),
+                RubMessage::Start => self.handle_rub_start(),
                 RubMessage::StartWithSource {
                     source,
                     unlock_details,
                 } => {
-                    self.handle_start_rub_with_source(source, unlock_details);
+                    self.handle_rub_start_with_source(source, unlock_details);
                 }
                 RubMessage::StartReverse => {
                     self.handle_rub_start_reverse(ctx)?;
                 }
-                RubMessage::Confirm => self.handle_confirm_rub(ctx, messages)?,
+                RubMessage::Confirm => self.handle_rub_confirm(ctx, messages)?,
             },
             Message::EnterNormalMode => {
                 self.handle_enter_normal_mode(messages);
@@ -686,10 +686,10 @@ impl App {
             }
             Message::Files(files_message) => match files_message {
                 FilesMessage::ToggleGlobalFilesList => {
-                    self.handle_toggle_global_files_list(messages)
+                    self.handle_files_toggle_global_files_list(messages)
                 }
                 FilesMessage::ToggleFilesForCommit => {
-                    self.handle_toggle_files_for_commit(ctx, messages)?
+                    self.handle_files_toggle_files_for_commit(ctx, messages)?
                 }
             },
             Message::Reload(select_after_reload) => {
@@ -709,18 +709,18 @@ impl App {
                 RewordMessage::WithEditor => {
                     self.handle_reword_with_editor(ctx, terminal_guard, messages)?;
                 }
-                RewordMessage::InlineStart => self.handle_start_reword_inline(ctx, messages)?,
+                RewordMessage::InlineStart => self.handle_reword_inline_start(ctx, messages)?,
                 RewordMessage::InlineInput(ev) => self.handle_reword_inline_input(ev),
-                RewordMessage::InlineConfirm => self.handle_confirm_inline_reword(ctx, messages)?,
+                RewordMessage::InlineConfirm => self.handle_reword_inline_confirm(ctx, messages)?,
                 RewordMessage::OpenEditor => {
-                    self.handle_inline_reword_open_editor(ctx, terminal_guard, messages)?;
+                    self.handle_reword_open_editor(ctx, terminal_guard, messages)?;
                 }
             },
             Message::Command(command_message) => match command_message {
-                CommandMessage::Start(kind) => self.handle_enter_command_mode(kind),
+                CommandMessage::Start(kind) => self.handle_command_start(kind),
                 CommandMessage::Input(ev) => self.handle_command_input(ev),
                 CommandMessage::Confirm => {
-                    self.handle_run_command(terminal_guard, out, messages)?
+                    self.handle_command_confirm(terminal_guard, out, messages)?
                 }
             },
             Message::Move(move_message) => match move_message {
@@ -901,14 +901,14 @@ impl App {
         }
     }
 
-    fn handle_start_rub(&mut self) {
+    fn handle_rub_start(&mut self) {
         let Some(selected_line) = self.cursor.selected_line(&self.status_lines) else {
             return;
         };
         let Some(cli_id) = selected_line.data.cli_id() else {
             return;
         };
-        self.handle_start_rub_with_source(RubSource::CliId(Arc::clone(cli_id)), None);
+        self.handle_rub_start_with_source(RubSource::CliId(Arc::clone(cli_id)), None);
     }
 
     fn available_targets_for_rub_mode(&self, source: &RubSource) -> Vec<Arc<CliId>> {
@@ -928,7 +928,7 @@ impl App {
             .collect::<Vec<_>>()
     }
 
-    fn handle_start_rub_with_source(
+    fn handle_rub_start_with_source(
         &mut self,
         source: RubSource,
         unlock_details: Option<MessageOnDrop>,
@@ -1029,7 +1029,7 @@ impl App {
     }
 
     /// Handles toggling file visibility and requests a status reload.
-    fn handle_toggle_global_files_list(&mut self, messages: &mut Vec<Message>) {
+    fn handle_files_toggle_global_files_list(&mut self, messages: &mut Vec<Message>) {
         self.flags.show_files = match self.flags.show_files {
             FilesStatusFlag::None => FilesStatusFlag::All,
             FilesStatusFlag::All | FilesStatusFlag::Commit(_) => FilesStatusFlag::None,
@@ -1037,7 +1037,7 @@ impl App {
         messages.push(Message::Reload(None));
     }
 
-    fn handle_toggle_files_for_commit(
+    fn handle_files_toggle_files_for_commit(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
@@ -1068,7 +1068,7 @@ impl App {
     }
 
     /// Handles confirming the currently selected rub operation.
-    fn handle_confirm_rub(
+    fn handle_rub_confirm(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
@@ -1927,7 +1927,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_start_reword_inline(
+    fn handle_reword_inline_start(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
@@ -2014,7 +2014,7 @@ impl App {
         }
     }
 
-    fn handle_confirm_inline_reword(
+    fn handle_reword_inline_confirm(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
@@ -2065,7 +2065,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_inline_reword_open_editor<T>(
+    fn handle_reword_open_editor<T>(
         &mut self,
         ctx: &mut Context,
         terminal_guard: &mut T,
@@ -2118,7 +2118,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_enter_command_mode(&mut self, kind: CommandModeKind) {
+    fn handle_command_start(&mut self, kind: CommandModeKind) {
         let mut textarea = TextArea::default();
         textarea.set_cursor_line_style(self.theme.default);
         textarea.move_cursor(CursorMove::End);
@@ -2135,7 +2135,7 @@ impl App {
         }
     }
 
-    fn handle_run_command<T>(
+    fn handle_command_confirm<T>(
         &mut self,
         terminal_guard: &mut T,
         out: &mut OutputChannel,
