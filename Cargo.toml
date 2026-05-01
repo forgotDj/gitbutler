@@ -220,12 +220,12 @@ gix = { version = "0.83.0", git = "https://github.com/GitoxideLabs/gitoxide", re
 gix-testtools = { version = "0.19.0", git = "https://github.com/GitoxideLabs/gitoxide", rev = "adb8328952478c443ead5f5a8c6851928b377b37" }
 
 
-insta = { version = "1.45.1", features = ["json"] }
+insta = { version = "1.47.2", features = ["json"] }
 git2 = { version = "0.20.4", features = [
     "vendored-openssl",
     "vendored-libgit2",
 ] }
-uuid = { version = "1.22", features = ["v4", "serde"] }
+uuid = { version = "1.23", features = ["v4", "serde"] }
 serde = { version = "1.0", features = ["derive", "std"] }
 serde_json = "1.0.148"
 thiserror = "2.0.17"
@@ -245,7 +245,7 @@ tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
 tempfile = "3.24"
 rand = "0.9.3"
-notify-rust = "4.11.7"
+notify-rust = "4.16.0"
 git2-hooks = { version = "0.5.0" }
 itertools = "0.14.0"
 dirs = "6.0.0"
@@ -268,7 +268,7 @@ indexmap = "2"
 md5 = "0.8.0"
 sha2 = "0.10"
 base64 = "0.22"
-bitflags = "2.9.4"
+bitflags = "2.11.1"
 notify = "8.2.0"
 snapbox = "0.6.23"
 url = "2.5.7"
@@ -287,12 +287,12 @@ async-openai = { version = "0.33.1", default-features = false, features = [
     "rustls",
     "chat-completion",
 ] }
-open = "5.3.2"
+open = "5.3.4"
 regex = { version = "1.11.3", default-features = false, features = [
     "std",
     "unicode",
 ] }
-clap = { version = "4.6.0", default-features = false, features = [
+clap = { version = "4.6.1", default-features = false, features = [
     "derive",
     "std",
     "help",
