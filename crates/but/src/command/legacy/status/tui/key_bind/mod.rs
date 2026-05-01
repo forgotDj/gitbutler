@@ -464,6 +464,7 @@ impl KeyBindsBuilder<'_> {
             Message::ToggleHelp,
         )
         .show_only_in_normal_mode_help_section()
+        .long_description("Show this help menu")
     }
 
     fn unassigned(&mut self) -> KeyBindsInModesBuilder<'_> {
@@ -494,6 +495,7 @@ impl KeyBindsBuilder<'_> {
         )
         .hide_from_hotbar()
         .show_only_in_normal_mode_help_section()
+        .long_description("Fuzzy search for branches")
     }
 
     fn rub(&mut self) -> KeyBindsInModesBuilder<'_> {
@@ -502,6 +504,7 @@ impl KeyBindsBuilder<'_> {
             press().code(KeyCode::Char('r')),
             Message::Rub(RubMessage::Start),
         )
+        .long_description("Squash or undo commits")
     }
 
     fn reverse_rub(&mut self) -> KeyBindsInModesBuilder<'_> {
@@ -520,15 +523,16 @@ impl KeyBindsBuilder<'_> {
             press().code(KeyCode::Char('c')),
             Message::Commit(CommitMessage::Start),
         )
+        .long_description("Create a new commit")
     }
 
     fn new_commit(&mut self) -> KeyBindsInModesBuilder<'_> {
         self.key_bind(
-            "new commit",
+            "empty commit",
             press().code(KeyCode::Char('n')),
             Message::Commit(CommitMessage::CreateEmpty),
         )
-        .long_description("Create a new empty commit")
+        .long_description("Insert empty commit")
         .hide_from_hotbar()
     }
 
@@ -538,6 +542,7 @@ impl KeyBindsBuilder<'_> {
             press().code(KeyCode::Char('m')),
             Message::Move(MoveMessage::Start),
         )
+        .long_description("Move selection somewhere else")
     }
 
     fn branch(&mut self) -> KeyBindsInModesBuilder<'_> {
@@ -563,7 +568,7 @@ impl KeyBindsBuilder<'_> {
             press().code(KeyCode::Enter),
             Message::Reword(RewordMessage::InlineStart),
         )
-        .long_description("Reword commit message inline")
+        .long_description("Reword commit or branch inline")
     }
 
     fn reword_editor(&mut self) -> KeyBindsInModesBuilder<'_> {
@@ -572,7 +577,7 @@ impl KeyBindsBuilder<'_> {
             press().shift().code(KeyCode::Char('M')),
             Message::Reword(RewordMessage::WithEditor),
         )
-        .long_description("Reword commit message with the configured editor")
+        .long_description("Reword commit with the configured editor")
     }
 
     fn files(&mut self) -> KeyBindsInModesBuilder<'_> {
@@ -717,6 +722,7 @@ impl KeyBindsBuilder<'_> {
                 CommitMessageComposer::Empty,
             )),
         )
+        .long_description("When creating commit, leave message empty")
     }
 
     fn commit_reword_inline(&mut self) -> KeyBindsInModesBuilder<'_> {
@@ -727,6 +733,7 @@ impl KeyBindsBuilder<'_> {
                 CommitMessageComposer::Inline,
             )),
         )
+        .long_description("When creating commit, reword it inline")
     }
 
     fn move_confirm(&mut self) -> KeyBindsInModesBuilder<'_> {
