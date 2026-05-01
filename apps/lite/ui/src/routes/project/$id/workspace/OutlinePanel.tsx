@@ -13,6 +13,7 @@ import {
 import { getCommonBaseCommitId } from "#ui/api/ref-info.ts";
 import { encodeRefName } from "#ui/api/ref-name.ts";
 import { commitTitle, shortCommitId } from "#ui/commit.ts";
+import { getDependencyCommitIds, getHunkDependencyDiffsByPath } from "#ui/hunk.ts";
 import {
 	showNativeContextMenu,
 	showNativeMenuFromTrigger,
@@ -65,16 +66,7 @@ import { useWorkspaceOutline } from "#ui/workspace/outline.ts";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
-import {
-	AbsorptionTarget,
-	Commit,
-	DiffHunk,
-	HunkDependencies,
-	HunkHeader,
-	Segment,
-	Stack,
-	TreeChange,
-} from "@gitbutler/but-sdk";
+import { AbsorptionTarget, Commit, Segment, Stack, TreeChange } from "@gitbutler/but-sdk";
 import {
 	formatForDisplay,
 	useHotkey,
@@ -84,7 +76,7 @@ import {
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { Match } from "effect";
-import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
+import { NonEmptyArray } from "effect/Array";
 import {
 	ComponentProps,
 	FC,
@@ -232,8 +224,6 @@ export const OutlinePanel: FC<{
 		</Panel>
 	);
 };
-
-type HunkDependencyDiff = HunkDependencies["diffs"][number];
 
 const useIsSelected = ({ projectId, operand }: { projectId: string; operand: Operand }): boolean =>
 	useAppSelector((state) => {
@@ -663,7 +653,6 @@ const TreeItem: FC<
 		}),
 	});
 };
-
 const OperandC: FC<
 	{
 		projectId: string;
@@ -690,45 +679,6 @@ const OperandC: FC<
 		defaultTagName: "div",
 		props,
 	});
-};
-
-const hunkContainsHunk = (a: HunkHeader, b: HunkHeader): boolean =>
-	a.oldStart <= b.oldStart &&
-	a.oldStart + a.oldLines - 1 >= b.oldStart + b.oldLines - 1 &&
-	a.newStart <= b.newStart &&
-	a.newStart + a.newLines - 1 >= b.newStart + b.newLines - 1;
-
-const getHunkDependencyDiffsByPath = (
-	hunkDependencyDiffs: Array<HunkDependencyDiff>,
-): Map<string, Array<HunkDependencyDiff>> => {
-	const byPath = new Map<string, Array<HunkDependencyDiff>>();
-
-	for (const hunkDependencyDiff of hunkDependencyDiffs) {
-		const [path] = hunkDependencyDiff;
-		const pathDependencyDiffs = byPath.get(path);
-		if (pathDependencyDiffs) pathDependencyDiffs.push(hunkDependencyDiff);
-		else byPath.set(path, [hunkDependencyDiff]);
-	}
-
-	return byPath;
-};
-
-const getDependencyCommitIds = ({
-	hunk,
-	hunkDependencyDiffs,
-}: {
-	hunk?: DiffHunk;
-	hunkDependencyDiffs: Array<HunkDependencyDiff>;
-}): NonEmptyArray<string> | undefined => {
-	const commitIds = new Set<string>();
-
-	for (const [, dependencyHunk, locks] of hunkDependencyDiffs) {
-		if (hunk && !hunkContainsHunk(hunk, dependencyHunk)) continue;
-		for (const dependency of locks) commitIds.add(dependency.commitId);
-	}
-
-	const dependencyCommitIds = globalThis.Array.from(commitIds);
-	return isNonEmptyArray(dependencyCommitIds) ? dependencyCommitIds : undefined;
 };
 
 const EditorHelp: FC<{

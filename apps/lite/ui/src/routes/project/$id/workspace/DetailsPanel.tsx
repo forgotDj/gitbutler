@@ -6,7 +6,12 @@ import {
 	treeChangeDiffsQueryOptions,
 } from "#ui/api/queries.ts";
 import { decodeRefName } from "#ui/api/ref-name.ts";
-import { formatHunkHeader } from "#ui/hunk.ts";
+import {
+	formatHunkHeader,
+	getDependencyCommitIds,
+	getHunkDependencyDiffsByPath,
+	type HunkDependencyDiff,
+} from "#ui/hunk.ts";
 import {
 	branchFileParent,
 	changesFileParent,
@@ -23,25 +28,16 @@ import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSour
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { classes } from "#ui/ui/classes.ts";
 import { DependencyIcon } from "#ui/ui/icons.tsx";
-import {
-	DiffHunk,
-	HunkDependencies,
-	HunkHeader,
-	TreeChange,
-	UnifiedPatch,
-} from "@gitbutler/but-sdk";
+import { DiffHunk, HunkHeader, TreeChange, UnifiedPatch } from "@gitbutler/but-sdk";
 import { PatchDiff, Virtualizer } from "@pierre/diffs/react";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { Array, Match, pipe } from "effect";
-import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
 import { FC, Ref, Suspense, useDeferredValue } from "react";
 import { Panel } from "react-resizable-panels";
 import { DependencyIndicatorButton } from "./DependencyIndicatorButton.tsx";
 import styles from "./DetailsPanel.module.css";
-
-type HunkDependencyDiff = HunkDependencies["diffs"][number];
 
 const lineEndingForDiff = (diff: string): string => (diff.includes("\r\n") ? "\r\n" : "\n");
 
@@ -82,45 +78,6 @@ const HunkDiff: FC<{
 
 const hunkKey = (hunk: HunkHeader): string =>
 	`${hunk.oldStart}:${hunk.oldLines}:${hunk.newStart}:${hunk.newLines}`;
-
-const hunkContainsHunk = (a: HunkHeader, b: HunkHeader): boolean =>
-	a.oldStart <= b.oldStart &&
-	a.oldStart + a.oldLines - 1 >= b.oldStart + b.oldLines - 1 &&
-	a.newStart <= b.newStart &&
-	a.newStart + a.newLines - 1 >= b.newStart + b.newLines - 1;
-
-const getHunkDependencyDiffsByPath = (
-	hunkDependencyDiffs: Array<HunkDependencyDiff>,
-): Map<string, Array<HunkDependencyDiff>> => {
-	const byPath = new Map<string, Array<HunkDependencyDiff>>();
-
-	for (const hunkDependencyDiff of hunkDependencyDiffs) {
-		const [path] = hunkDependencyDiff;
-		const pathDependencyDiffs = byPath.get(path);
-		if (pathDependencyDiffs) pathDependencyDiffs.push(hunkDependencyDiff);
-		else byPath.set(path, [hunkDependencyDiff]);
-	}
-
-	return byPath;
-};
-
-const getDependencyCommitIds = ({
-	hunk,
-	hunkDependencyDiffs,
-}: {
-	hunk?: DiffHunk;
-	hunkDependencyDiffs: Array<HunkDependencyDiff>;
-}): NonEmptyArray<string> | undefined => {
-	const commitIds = new Set<string>();
-
-	for (const [, dependencyHunk, locks] of hunkDependencyDiffs) {
-		if (hunk && !hunkContainsHunk(hunk, dependencyHunk)) continue;
-		for (const dependency of locks) commitIds.add(dependency.commitId);
-	}
-
-	const dependencyCommitIds = globalThis.Array.from(commitIds);
-	return isNonEmptyArray(dependencyCommitIds) ? dependencyCommitIds : undefined;
-};
 
 const Hunk: FC<{
 	isResultOfBinaryToTextConversion: boolean;
