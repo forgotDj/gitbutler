@@ -164,6 +164,32 @@ export const OutlinePanel: FC<
 		focusPanel,
 	});
 
+	const selectAndFocus = (newItem: Operand) => {
+		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
+		focusPanel("outline");
+	};
+
+	const selectChanges = () => {
+		selectAndFocus(changesSectionOperand);
+	};
+
+	const openBranchPicker = () => {
+		dispatch(projectActions.openBranchPicker({ projectId }));
+	};
+
+	useHotkeys([
+		{
+			hotkey: "T",
+			callback: openBranchPicker,
+			options: { meta: { group: "Outline", name: "Branch" } },
+		},
+		{
+			hotkey: "Z",
+			callback: selectChanges,
+			options: { meta: { group: "Outline", name: "Changes" } },
+		},
+	]);
+
 	return (
 		<Panel
 			{...panelProps}
@@ -263,10 +289,6 @@ const useOutlineSelectionHotkeys = ({
 		selectAndFocus(newItem);
 	};
 
-	const selectChanges = () => {
-		selectAndFocus(changesSectionOperand);
-	};
-
 	const selectFirstItem = () => {
 		const newItem = navigationIndex.items[0];
 		if (!newItem) return;
@@ -277,10 +299,6 @@ const useOutlineSelectionHotkeys = ({
 		const newItem = navigationIndex.items.at(-1);
 		if (!newItem) return;
 		selectAndFocus(newItem);
-	};
-
-	const openBranchPicker = () => {
-		dispatch(projectActions.openBranchPicker({ projectId }));
 	};
 
 	const enterMoveMode = () => {
@@ -440,19 +458,6 @@ const useOutlineSelectionHotkeys = ({
 			shortcutsBar: false,
 		},
 	});
-
-	useHotkeys([
-		{
-			hotkey: "T",
-			callback: openBranchPicker,
-			options: { meta: { group: "Outline", name: "Branch" } },
-		},
-		{
-			hotkey: "Z",
-			callback: selectChanges,
-			options: { meta: { group: "Outline", name: "Changes" } },
-		},
-	]);
 
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
