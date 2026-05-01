@@ -15,6 +15,7 @@ use but_api::diff::ComputeLineStats;
 use but_core::tree::create_tree::RejectionReason;
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::InsertSide;
+use but_workspace::commit::squash_commits::MessageCombinationStrategy;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use gitbutler_operating_modes::OperatingMode;
 use gitbutler_stack::StackId;
@@ -577,6 +578,12 @@ impl App {
                     self.handle_rub_start_reverse(ctx)?;
                 }
                 RubMessage::Confirm => self.handle_rub_confirm(ctx, messages)?,
+                RubMessage::UseTargetMessage => {
+                    self.handle_rub_use_target_message();
+                }
+                RubMessage::UseSourceMessage => {
+                    self.handle_rub_use_source_message();
+                }
             },
             Message::EnterNormalMode => {
                 self.handle_enter_normal_mode(messages);
@@ -821,7 +828,12 @@ impl App {
             .filter(|target| {
                 *source == ***target
                     || match &source {
-                        RubSource::CliId(source) => rub::route_operation(source, target).is_some(),
+                        RubSource::CliId(source) => rub::route_operation(
+                            source,
+                            target,
+                            MessageCombinationStrategy::KeepBoth,
+                        )
+                        .is_some(),
                         RubSource::CommittedHunk(hunk) => {
                             rub_from_detail_view::route_operation(hunk, target).is_some()
                         }
@@ -850,6 +862,7 @@ impl App {
         self.mode = Mode::Rub(RubMode {
             source,
             available_targets,
+            how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
             _unlock_details: unlock_details,
         });
 
@@ -925,6 +938,7 @@ impl App {
         self.mode = Mode::Rub(RubMode {
             source,
             available_targets,
+            how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
             _unlock_details: None,
         });
 
@@ -970,6 +984,38 @@ impl App {
         Ok(())
     }
 
+    fn handle_rub_use_target_message(&mut self) {
+        let Mode::Rub(RubMode {
+            how_to_combine_messages,
+            ..
+        }) = &mut self.mode
+        else {
+            return;
+        };
+        *how_to_combine_messages = match *how_to_combine_messages {
+            MessageCombinationStrategy::KeepBoth | MessageCombinationStrategy::KeepSubject => {
+                MessageCombinationStrategy::KeepTarget
+            }
+            MessageCombinationStrategy::KeepTarget => MessageCombinationStrategy::KeepBoth,
+        };
+    }
+
+    fn handle_rub_use_source_message(&mut self) {
+        let Mode::Rub(RubMode {
+            how_to_combine_messages,
+            ..
+        }) = &mut self.mode
+        else {
+            return;
+        };
+        *how_to_combine_messages = match *how_to_combine_messages {
+            MessageCombinationStrategy::KeepBoth | MessageCombinationStrategy::KeepTarget => {
+                MessageCombinationStrategy::KeepSubject
+            }
+            MessageCombinationStrategy::KeepSubject => MessageCombinationStrategy::KeepBoth,
+        };
+    }
+
     /// Handles confirming the currently selected rub operation.
     fn handle_rub_confirm(
         &mut self,
@@ -979,6 +1025,7 @@ impl App {
         let reload_message = match &self.mode {
             Mode::Rub(RubMode {
                 source,
+                how_to_combine_messages,
                 available_targets: _,
                 _unlock_details: _,
             }) => {
@@ -987,7 +1034,9 @@ impl App {
                 {
                     match source {
                         RubSource::CliId(source) => {
-                            if let Some(operation) = rub::route_operation(source, target) {
+                            if let Some(operation) =
+                                rub::route_operation(source, target, *how_to_combine_messages)
+                            {
                                 if let Some(what_to_select) = operations::rub(ctx, &operation)? {
                                     if self.options.debug {
                                         messages.push(Message::ShowToast {
@@ -2368,6 +2417,8 @@ enum RubMessage {
         unlock_details: Option<MessageOnDrop>,
     },
     StartReverse,
+    UseTargetMessage,
+    UseSourceMessage,
     Confirm,
 }
 

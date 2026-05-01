@@ -220,6 +220,81 @@ fn rub_api_squash_commits_operation() {
         .assert_current_line_eq(str!["┊●   << squash >> [..] add B"]);
 }
 
+#[test]
+fn rub_api_squash_commits_toggles_message_strategy_labels() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
+    env.setup_metadata(&["A", "B"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+        .assert_current_line_eq(str!["┊●   [..] add A"]);
+
+    tui.input_then_render('r')
+        .assert_current_line_eq(str!["┊●   << source >> << noop >> [..] add A"]);
+
+    tui.input_then_render([KeyCode::Down, KeyCode::Down, KeyCode::Down, KeyCode::Down])
+        .assert_current_line_eq(str!["┊●   << squash >> [..] add B"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('T')))
+        .assert_current_line_eq(str!["┊●   << squash (use this message) >> [..] add B"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('T')))
+        .assert_current_line_eq(str!["┊●   << squash >> [..] add B"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('S')))
+        .assert_current_line_eq(str!["┊●   << squash (discard this message) >> [..] add B"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('S')))
+        .assert_current_line_eq(str!["┊●   << squash >> [..] add B"]);
+}
+
+#[test]
+fn rub_api_squash_commits_can_keep_target_message() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
+    env.setup_metadata(&["A", "B"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+        .assert_current_line_eq(str!["┊●   [..] add A"]);
+
+    tui.input_then_render('r')
+        .assert_current_line_eq(str!["┊●   << source >> << noop >> [..] add A"]);
+
+    tui.input_then_render([KeyCode::Down, KeyCode::Down, KeyCode::Down, KeyCode::Down])
+        .assert_current_line_eq(str!["┊●   << squash >> [..] add B"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('T')))
+        .assert_current_line_eq(str!["┊●   << squash (use this message) >> [..] add B"]);
+
+    tui.input_then_render(KeyCode::Enter)
+        .assert_current_line_eq(str!["┊●   [..] add B"]);
+}
+
+#[test]
+fn rub_api_squash_commits_can_keep_source_message() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
+    env.setup_metadata(&["A", "B"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+        .assert_current_line_eq(str!["┊●   [..] add A"]);
+
+    tui.input_then_render('r')
+        .assert_current_line_eq(str!["┊●   << source >> << noop >> [..] add A"]);
+
+    tui.input_then_render([KeyCode::Down, KeyCode::Down, KeyCode::Down, KeyCode::Down])
+        .assert_current_line_eq(str!["┊●   << squash >> [..] add B"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('S')))
+        .assert_current_line_eq(str!["┊●   << squash (discard this message) >> [..] add B"]);
+
+    tui.input_then_render(KeyCode::Enter)
+        .assert_current_line_eq(str!["┊●   [..] add A"]);
+}
+
 // Tests RubOperation::CommittedFileToCommit.
 #[test]
 fn rub_api_committed_file_to_commit_operation() {

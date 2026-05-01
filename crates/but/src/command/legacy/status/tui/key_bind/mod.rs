@@ -51,6 +51,8 @@ pub(super) fn default_key_binds() -> KeyBinds {
             }
             ModeDiscriminant::Rub => {
                 builder.rub_confirm().register();
+                builder.rub_use_target_message().register();
+                builder.rub_use_source_message().register();
                 register_non_mode_specific_key_binds(&mut builder);
             }
             ModeDiscriminant::Commit => {
@@ -646,6 +648,24 @@ impl KeyBindsBuilder<'_> {
         self.key_bind("back", press().code(KeyCode::Esc), Message::EnterNormalMode)
             .hide_from_hotbar()
             .show_only_in_normal_mode_help_section()
+    }
+
+    fn rub_use_target_message(&mut self) -> KeyBindsInModesBuilder<'_> {
+        self.key_bind(
+            "use target message",
+            press().shift().code(KeyCode::Char('T')),
+            Message::Rub(RubMessage::UseTargetMessage),
+        )
+        .long_description("When squashing use target message and discard source message")
+    }
+
+    fn rub_use_source_message(&mut self) -> KeyBindsInModesBuilder<'_> {
+        self.key_bind(
+            "use source message",
+            press().shift().code(KeyCode::Char('S')),
+            Message::Rub(RubMessage::UseSourceMessage),
+        )
+        .long_description("When squashing use source message and discard target message")
     }
 
     fn rub_confirm(&mut self) -> KeyBindsInModesBuilder<'_> {

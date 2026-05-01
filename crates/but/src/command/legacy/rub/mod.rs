@@ -152,6 +152,7 @@ pub(crate) struct SquashCommitsOperation {
     pub(crate) source: gix::ObjectId,
     /// The destination commit id.
     pub(crate) destination: gix::ObjectId,
+    pub(crate) how_to_combine_messages: MessageCombinationStrategy,
 }
 
 /// Represents moving a commit to a branch.
@@ -665,7 +666,7 @@ impl SquashCommitsOperation {
             ctx,
             vec![self.source],
             self.destination,
-            MessageCombinationStrategy::KeepBoth,
+            self.how_to_combine_messages,
             DryRun::No,
         )
     }
@@ -941,6 +942,7 @@ impl<'a> RubOperation<'a> {
 pub(crate) fn route_operation<'a>(
     source: &'a CliId,
     target: &'a CliId,
+    how_to_combine_messages: MessageCombinationStrategy,
 ) -> Option<RubOperation<'a>> {
     use CliId::*;
 
@@ -1106,6 +1108,7 @@ pub(crate) fn route_operation<'a>(
         ) => Some(RubOperation::SquashCommits(SquashCommitsOperation {
             source: *source,
             destination: *destination,
+            how_to_combine_messages,
         })),
         (Commit { commit_id, .. }, Branch { name, .. }) => Some(RubOperation::MoveCommitToBranch(
             MoveCommitToBranchOperation {
@@ -1191,12 +1194,13 @@ pub(crate) fn handle(
     out: &mut OutputChannel,
     source_str: &str,
     target_str: &str,
+    how_to_combine_messages: MessageCombinationStrategy,
 ) -> anyhow::Result<()> {
     let id_map = IdMap::legacy_new_from_context(ctx, None)?;
     let (sources, target) = ids(ctx, &id_map, source_str, target_str, out)?;
 
     for source in sources {
-        let Some(operation) = route_operation(&source, &target) else {
+        let Some(operation) = route_operation(&source, &target, how_to_combine_messages) else {
             bail!(makes_no_sense_error(&source, &target))
         };
 
@@ -1241,9 +1245,10 @@ fn ids(
     let valid_targets: Vec<CliId> = target_result
         .into_iter()
         .filter(|target_candidate| {
-            sources
-                .iter()
-                .all(|src| route_operation(src, target_candidate).is_some())
+            sources.iter().all(|src| {
+                route_operation(src, target_candidate, MessageCombinationStrategy::KeepBoth)
+                    .is_some()
+            })
         })
         .collect();
 
@@ -1397,7 +1402,13 @@ pub(crate) fn handle_uncommit(
     }
 
     // Call the main rub handler with "zz" as target
-    handle(ctx, out, source_str, "zz")
+    handle(
+        ctx,
+        out,
+        source_str,
+        "zz",
+        MessageCombinationStrategy::KeepBoth,
+    )
 }
 
 /// Handler for `but amend <file> <commit>` - runs `but rub <file> <commit>`
@@ -1512,7 +1523,13 @@ pub(crate) fn handle_stage(
     }
 
     // Call the main rub handler
-    handle(ctx, out, file_or_hunk_str, branch_str)
+    handle(
+        ctx,
+        out,
+        file_or_hunk_str,
+        branch_str,
+        MessageCombinationStrategy::KeepBoth,
+    )
 }
 
 /// Handler for `but stage --tui` - interactive hunk selection TUI.
@@ -1673,7 +1690,13 @@ pub(crate) fn handle_unstage(
     }
 
     // Call the main rub handler with "zz" as target to unassign
-    handle(ctx, out, file_or_hunk_str, "zz")
+    handle(
+        ctx,
+        out,
+        file_or_hunk_str,
+        "zz",
+        MessageCombinationStrategy::KeepBoth,
+    )
 }
 
 /// Builds assignment requests for selected hunks and assigns them to `target_stack_id`.
@@ -1858,22 +1881,64 @@ mod tests {
         let uncommitted = uncommitted_id();
 
         // Valid: Uncommitted -> Unassigned
-        assert!(route_operation(&uncommitted, &unassigned_id()).is_some());
+        assert!(
+            route_operation(
+                &uncommitted,
+                &unassigned_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Valid: Uncommitted -> Commit
-        assert!(route_operation(&uncommitted, &commit_id()).is_some());
+        assert!(
+            route_operation(
+                &uncommitted,
+                &commit_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Valid: Uncommitted -> Branch
-        assert!(route_operation(&uncommitted, &branch_id()).is_some());
+        assert!(
+            route_operation(
+                &uncommitted,
+                &branch_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Valid: Uncommitted -> Stack
-        assert!(route_operation(&uncommitted, &stack_id()).is_some());
+        assert!(
+            route_operation(
+                &uncommitted,
+                &stack_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Invalid: Uncommitted -> Uncommitted
-        assert!(route_operation(&uncommitted, &uncommitted_id()).is_none());
+        assert!(
+            route_operation(
+                &uncommitted,
+                &uncommitted_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
 
         // Invalid: Uncommitted -> CommittedFile
-        assert!(route_operation(&uncommitted, &committed_file_id()).is_none());
+        assert!(
+            route_operation(
+                &uncommitted,
+                &committed_file_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -1881,22 +1946,49 @@ mod tests {
         let commit = commit_id();
 
         // Valid: Commit -> Unassigned
-        assert!(route_operation(&commit, &unassigned_id()).is_some());
+        assert!(
+            route_operation(
+                &commit,
+                &unassigned_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Valid: Commit -> Commit
-        assert!(route_operation(&commit, &commit_id()).is_some());
+        assert!(
+            route_operation(&commit, &commit_id(), MessageCombinationStrategy::KeepBoth).is_some()
+        );
 
         // Valid: Commit -> Branch
-        assert!(route_operation(&commit, &branch_id()).is_some());
+        assert!(
+            route_operation(&commit, &branch_id(), MessageCombinationStrategy::KeepBoth).is_some()
+        );
 
         // Valid: Commit -> Stack
-        assert!(route_operation(&commit, &stack_id()).is_some());
+        assert!(
+            route_operation(&commit, &stack_id(), MessageCombinationStrategy::KeepBoth).is_some()
+        );
 
         // Invalid: Commit -> Uncommitted
-        assert!(route_operation(&commit, &uncommitted_id()).is_none());
+        assert!(
+            route_operation(
+                &commit,
+                &uncommitted_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
 
         // Invalid: Commit -> CommittedFile
-        assert!(route_operation(&commit, &committed_file_id()).is_none());
+        assert!(
+            route_operation(
+                &commit,
+                &committed_file_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -1904,22 +1996,49 @@ mod tests {
         let branch = branch_id();
 
         // Valid: Branch -> Unassigned
-        assert!(route_operation(&branch, &unassigned_id()).is_some());
+        assert!(
+            route_operation(
+                &branch,
+                &unassigned_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Valid: Branch -> Stack
-        assert!(route_operation(&branch, &stack_id()).is_some());
+        assert!(
+            route_operation(&branch, &stack_id(), MessageCombinationStrategy::KeepBoth).is_some()
+        );
 
         // Valid: Branch -> Commit
-        assert!(route_operation(&branch, &commit_id()).is_some());
+        assert!(
+            route_operation(&branch, &commit_id(), MessageCombinationStrategy::KeepBoth).is_some()
+        );
 
         // Valid: Branch -> Branch
-        assert!(route_operation(&branch, &branch_id()).is_some());
+        assert!(
+            route_operation(&branch, &branch_id(), MessageCombinationStrategy::KeepBoth).is_some()
+        );
 
         // Invalid: Branch -> Uncommitted
-        assert!(route_operation(&branch, &uncommitted_id()).is_none());
+        assert!(
+            route_operation(
+                &branch,
+                &uncommitted_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
 
         // Invalid: Branch -> CommittedFile
-        assert!(route_operation(&branch, &committed_file_id()).is_none());
+        assert!(
+            route_operation(
+                &branch,
+                &committed_file_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -1927,22 +2046,49 @@ mod tests {
         let stack = stack_id();
 
         // Valid: Stack -> Unassigned
-        assert!(route_operation(&stack, &unassigned_id()).is_some());
+        assert!(
+            route_operation(
+                &stack,
+                &unassigned_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Valid: Stack -> Stack
-        assert!(route_operation(&stack, &stack_id()).is_some());
+        assert!(
+            route_operation(&stack, &stack_id(), MessageCombinationStrategy::KeepBoth).is_some()
+        );
 
         // Valid: Stack -> Branch
-        assert!(route_operation(&stack, &branch_id()).is_some());
+        assert!(
+            route_operation(&stack, &branch_id(), MessageCombinationStrategy::KeepBoth).is_some()
+        );
 
         // Valid: Stack -> Commit
-        assert!(route_operation(&stack, &commit_id()).is_some());
+        assert!(
+            route_operation(&stack, &commit_id(), MessageCombinationStrategy::KeepBoth).is_some()
+        );
 
         // Invalid: Stack -> Uncommitted
-        assert!(route_operation(&stack, &uncommitted_id()).is_none());
+        assert!(
+            route_operation(
+                &stack,
+                &uncommitted_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
 
         // Invalid: Stack -> CommittedFile
-        assert!(route_operation(&stack, &committed_file_id()).is_none());
+        assert!(
+            route_operation(
+                &stack,
+                &committed_file_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -1950,22 +2096,64 @@ mod tests {
         let unassigned = unassigned_id();
 
         // Valid: Unassigned -> Commit
-        assert!(route_operation(&unassigned, &commit_id()).is_some());
+        assert!(
+            route_operation(
+                &unassigned,
+                &commit_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Valid: Unassigned -> Branch
-        assert!(route_operation(&unassigned, &branch_id()).is_some());
+        assert!(
+            route_operation(
+                &unassigned,
+                &branch_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Valid: Unassigned -> Stack
-        assert!(route_operation(&unassigned, &stack_id()).is_some());
+        assert!(
+            route_operation(
+                &unassigned,
+                &stack_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Invalid: Unassigned -> Uncommitted
-        assert!(route_operation(&unassigned, &uncommitted_id()).is_none());
+        assert!(
+            route_operation(
+                &unassigned,
+                &uncommitted_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
 
         // Invalid: Unassigned -> Unassigned
-        assert!(route_operation(&unassigned, &unassigned_id()).is_none());
+        assert!(
+            route_operation(
+                &unassigned,
+                &unassigned_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
 
         // Invalid: Unassigned -> CommittedFile
-        assert!(route_operation(&unassigned, &committed_file_id()).is_none());
+        assert!(
+            route_operation(
+                &unassigned,
+                &committed_file_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -1973,22 +2161,64 @@ mod tests {
         let committed_file = committed_file_id();
 
         // Valid: CommittedFile -> Branch
-        assert!(route_operation(&committed_file, &branch_id()).is_some());
+        assert!(
+            route_operation(
+                &committed_file,
+                &branch_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Valid: CommittedFile -> Commit
-        assert!(route_operation(&committed_file, &commit_id()).is_some());
+        assert!(
+            route_operation(
+                &committed_file,
+                &commit_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Valid: CommittedFile -> Unassigned
-        assert!(route_operation(&committed_file, &unassigned_id()).is_some());
+        assert!(
+            route_operation(
+                &committed_file,
+                &unassigned_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
+        );
 
         // Invalid: CommittedFile -> Uncommitted
-        assert!(route_operation(&committed_file, &uncommitted_id()).is_none());
+        assert!(
+            route_operation(
+                &committed_file,
+                &uncommitted_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
 
         // Invalid: CommittedFile -> Stack
-        assert!(route_operation(&committed_file, &stack_id()).is_none());
+        assert!(
+            route_operation(
+                &committed_file,
+                &stack_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
 
         // Invalid: CommittedFile -> CommittedFile
-        assert!(route_operation(&committed_file, &committed_file_id()).is_none());
+        assert!(
+            route_operation(
+                &committed_file,
+                &committed_file_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_none()
+        );
     }
 
     /// Verifies that route_operation returns the correct variant (not just Some/None).
@@ -2006,61 +2236,69 @@ mod tests {
         // We use match with wildcard to verify the variant type without destructuring all fields
 
         // Uncommitted -> Unassigned should be UnassignUncommitted
-        match route_operation(&uncommitted, &unassigned) {
+        match route_operation(
+            &uncommitted,
+            &unassigned,
+            MessageCombinationStrategy::KeepBoth,
+        ) {
             Some(RubOperation::UnassignUncommitted(..)) => {}
             _ => panic!("Expected UnassignUncommitted variant"),
         }
 
         // Uncommitted -> Commit should be UncommittedToCommit
-        match route_operation(&uncommitted, &commit) {
+        match route_operation(&uncommitted, &commit, MessageCombinationStrategy::KeepBoth) {
             Some(RubOperation::UncommittedToCommit(..)) => {}
             _ => panic!("Expected UncommittedToCommit variant"),
         }
 
         // Commit -> Commit should be SquashCommits
-        match route_operation(&commit, &commit_id()) {
+        match route_operation(&commit, &commit_id(), MessageCombinationStrategy::KeepBoth) {
             Some(RubOperation::SquashCommits(..)) => {}
             _ => panic!("Expected SquashCommits variant"),
         }
 
         // Commit -> Unassigned should be CommitToUnassigned
-        match route_operation(&commit, &unassigned) {
+        match route_operation(&commit, &unassigned, MessageCombinationStrategy::KeepBoth) {
             Some(RubOperation::CommitToUnassigned(..)) => {}
             _ => panic!("Expected CommitToUnassigned variant"),
         }
 
         // Commit -> Stack should be CommitToStack
-        match route_operation(&commit, &stack) {
+        match route_operation(&commit, &stack, MessageCombinationStrategy::KeepBoth) {
             Some(RubOperation::CommitToStack(..)) => {}
             _ => panic!("Expected CommitToStack variant"),
         }
 
         // Branch -> Stack should be BranchToStack
-        match route_operation(&branch, &stack) {
+        match route_operation(&branch, &stack, MessageCombinationStrategy::KeepBoth) {
             Some(RubOperation::BranchToStack(..)) => {}
             _ => panic!("Expected BranchToStack variant"),
         }
 
         // Stack -> Branch should be StackToBranch
-        match route_operation(&stack, &branch) {
+        match route_operation(&stack, &branch, MessageCombinationStrategy::KeepBoth) {
             Some(RubOperation::StackToBranch(..)) => {}
             _ => panic!("Expected StackToBranch variant"),
         }
 
         // Stack -> Commit should be StackToCommit
-        match route_operation(&stack, &commit) {
+        match route_operation(&stack, &commit, MessageCombinationStrategy::KeepBoth) {
             Some(RubOperation::StackToCommit(..)) => {}
             _ => panic!("Expected StackToCommit variant"),
         }
 
         // CommittedFile -> Commit should be CommittedFileToCommit
-        match route_operation(&committed_file, &commit) {
+        match route_operation(
+            &committed_file,
+            &commit,
+            MessageCombinationStrategy::KeepBoth,
+        ) {
             Some(RubOperation::CommittedFileToCommit(..)) => {}
             _ => panic!("Expected CommittedFileToCommit variant"),
         }
 
         // Unassigned -> Stack should be UnassignedToStack
-        match route_operation(&unassigned, &stack) {
+        match route_operation(&unassigned, &stack, MessageCombinationStrategy::KeepBoth) {
             Some(RubOperation::UnassignedToStack(..)) => {}
             _ => panic!("Expected UnassignedToStack variant"),
         }

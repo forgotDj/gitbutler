@@ -1,5 +1,6 @@
 use std::{borrow::Cow, iter::once};
 
+use but_workspace::commit::squash_commits::MessageCombinationStrategy;
 use itertools::Either;
 use ratatui::{
     Frame,
@@ -172,10 +173,17 @@ pub(super) fn render_status_list_item(
             Mode::Normal | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
             Mode::Rub(RubMode {
                 source,
+                how_to_combine_messages,
                 available_targets: _,
                 _unlock_details: _,
             }) => {
-                render_rub_inline_labels_for_selected_line(app, data, source, &mut line);
+                render_rub_inline_labels_for_selected_line(
+                    app,
+                    data,
+                    source,
+                    *how_to_combine_messages,
+                    &mut line,
+                );
             }
             Mode::Commit(commit_mode) => {
                 if data
@@ -200,6 +208,7 @@ pub(super) fn render_status_list_item(
             Mode::Normal | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
             Mode::Rub(RubMode {
                 source,
+                how_to_combine_messages: _,
                 available_targets: _,
                 _unlock_details: _,
             }) => {
@@ -427,6 +436,7 @@ fn render_rub_inline_labels_for_selected_line(
     app: &App,
     data: &StatusOutputLineData,
     source: &RubSource,
+    how_to_combine_messages: MessageCombinationStrategy,
     line: &mut Line<'static>,
 ) {
     let Some(target) = data.cli_id() else {
@@ -438,9 +448,10 @@ fn render_rub_inline_labels_for_selected_line(
     }
 
     let display = match source {
-        RubSource::CliId(source) => {
-            Cow::Borrowed(rub::rub_operation_display(source, target).unwrap_or("invalid"))
-        }
+        RubSource::CliId(source) => Cow::Borrowed(
+            rub::rub_operation_display(source, target, how_to_combine_messages)
+                .unwrap_or("invalid"),
+        ),
         RubSource::CommittedHunk(hunk) => Cow::Borrowed(
             rub_from_detail_view::rub_operation_display(hunk, target).unwrap_or("invalid"),
         ),
