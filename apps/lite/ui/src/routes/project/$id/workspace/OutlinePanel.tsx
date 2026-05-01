@@ -5,15 +5,10 @@ import {
 	unapplyStackMutationOptions,
 	updateBranchNameMutationOptions,
 } from "#ui/api/mutations.ts";
-import {
-	changesInWorktreeQueryOptions,
-	commitDetailsWithLineStatsQueryOptions,
-	headInfoQueryOptions,
-} from "#ui/api/queries.ts";
+import { changesInWorktreeQueryOptions, headInfoQueryOptions } from "#ui/api/queries.ts";
 import { getCommonBaseCommitId } from "#ui/api/ref-info.ts";
 import { encodeRefName } from "#ui/api/ref-name.ts";
 import { commitTitle, shortCommitId } from "#ui/commit.ts";
-import { getDependencyCommitIds, getHunkDependencyDiffsByPath } from "#ui/hunk.ts";
 import {
 	showNativeContextMenu,
 	showNativeMenuFromTrigger,
@@ -22,11 +17,8 @@ import {
 import {
 	baseCommitOperand,
 	branchOperand,
-	changesFileParent,
 	changesSectionOperand,
-	commitFileParent,
 	commitOperand,
-	fileOperand,
 	operandEquals,
 	operandIdentityKey,
 	stackOperand,
@@ -38,21 +30,18 @@ import { includeOperandForOutlineMode, isValidOutlineMode } from "#ui/outline/mo
 import { Panel as PanelType, useFocusedProjectPanel } from "#ui/panels.ts";
 import {
 	projectActions,
-	selectProjectExpandedCommitId,
 	selectProjectHighlightedCommitIds,
 	selectProjectOperationModeState,
 	selectProjectOutlineModeState,
-	selectProjectSelection,
+	selectProjectSelectionOutline,
 } from "#ui/projects/state.ts";
 import { CommitLabel } from "#ui/routes/project/$id/CommitLabel.tsx";
-import { DependencyIndicatorButton } from "#ui/routes/project/$id/workspace/DependencyIndicatorButton.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { classes } from "#ui/ui/classes.ts";
-import { DependencyIcon, ExpandCollapseIcon, MenuTriggerIcon, PushIcon } from "#ui/ui/icons.tsx";
-import uiStyles from "#ui/ui/ui.module.css";
+import { MenuTriggerIcon, PushIcon } from "#ui/ui/icons.tsx";
 import {
 	buildNavigationIndex,
 	filterNavigationIndex,
@@ -63,9 +52,8 @@ import {
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
 import { useWorkspaceOutline } from "#ui/workspace/outline.ts";
-import { mergeProps, Tooltip, useRender } from "@base-ui/react";
+import { mergeProps, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
-import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import { AbsorptionTarget, Commit, Segment, Stack, TreeChange } from "@gitbutler/but-sdk";
 import {
 	formatForDisplay,
@@ -76,43 +64,38 @@ import {
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { Match } from "effect";
-import { NonEmptyArray } from "effect/Array";
+
 import {
 	ComponentProps,
 	FC,
 	Fragment,
-	Ref,
-	Suspense,
 	useEffect,
-	useLayoutEffect,
 	useOptimistic,
 	useRef,
-	useState,
 	useTransition,
 } from "react";
-import { Panel } from "react-resizable-panels";
+import { Panel, PanelProps } from "react-resizable-panels";
 import styles from "./OutlinePanel.module.css";
+import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
+import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.tsx";
 
 const assert = <T,>(t: T | null | undefined): T => {
 	if (t == null) throw new Error("Expected value to be non-null and defined");
 	return t;
 };
 
-export const OutlinePanel: FC<{
-	className?: string;
-	elementRef: Ref<HTMLDivElement | null>;
-	focusPanel: (panel: PanelType) => void;
-	onAbsorbChanges: (target: AbsorptionTarget) => void;
-}> = ({ className, elementRef, focusPanel, onAbsorbChanges }) => {
+export const OutlinePanel: FC<
+	{
+		focusPanel: (panel: PanelType) => void;
+		onAbsorbChanges: (target: AbsorptionTarget) => void;
+	} & PanelProps
+> = ({ focusPanel, onAbsorbChanges, ...panelProps }) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const dispatch = useAppDispatch();
 
-	const expandedCommitId = useAppSelector((state) =>
-		selectProjectExpandedCommitId(state, projectId),
-	);
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
-	const workspaceOutline = useWorkspaceOutline({ projectId, expandedCommitId });
+	const workspaceOutline = useWorkspaceOutline({ projectId });
 
 	const navigationIndexUnfiltered = buildNavigationIndex(workspaceOutline);
 
@@ -128,14 +111,14 @@ export const OutlinePanel: FC<{
 			dispatch(projectActions.exitMode({ projectId }));
 	}, [outlineMode, navigationIndexUnfiltered, projectId, dispatch]);
 
-	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
+	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
 
 	// React allows state updates on render, but not for external stores.
 	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
 	useEffect(() => {
 		if (!navigationIndexIncludes(navigationIndexUnfiltered, selection))
 			dispatch(
-				projectActions.select({
+				projectActions.selectOutline({
 					projectId,
 					selection: changesSectionOperand,
 				}),
@@ -181,14 +164,11 @@ export const OutlinePanel: FC<{
 
 	return (
 		<Panel
-			id={"outline" satisfies PanelType}
-			minSize={400}
-			groupResizeBehavior="preserve-pixel-size"
-			elementRef={elementRef}
+			{...panelProps}
 			tabIndex={0}
 			role="tree"
-			aria-activedescendant={treeItemId(projectId, selection)}
-			className={classes(className, styles.outlinePanel)}
+			aria-activedescendant={treeItemId(selection)}
+			className={classes(panelProps.className, styles.tree)}
 		>
 			<Changes
 				projectId={projectId}
@@ -228,13 +208,13 @@ export const OutlinePanel: FC<{
 
 const useIsSelected = ({ projectId, operand }: { projectId: string; operand: Operand }): boolean =>
 	useAppSelector((state) => {
-		const selection = selectProjectSelection(state, projectId);
+		const selection = selectProjectSelectionOutline(state, projectId);
 
 		return operandEquals(selection, operand);
 	});
 
-const treeItemId = (projectId: string, operand: Operand): string =>
-	`project-${encodeURIComponent(projectId)}-treeitem-${encodeURIComponent(operandIdentityKey(operand))}`;
+const treeItemId = (operand: Operand): string =>
+	`outline-treeitem-${encodeURIComponent(operandIdentityKey(operand))}`;
 
 const useOutlineSelectionHotkeys = ({
 	focusedPanel,
@@ -248,10 +228,10 @@ const useOutlineSelectionHotkeys = ({
 	focusPanel: (panel: PanelType) => void;
 }) => {
 	const dispatch = useAppDispatch();
-	const selection = useAppSelector((state) => selectProjectSelection(state, projectId));
+	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
 
 	const selectAndFocus = (newItem: Operand) => {
-		dispatch(projectActions.select({ projectId, selection: newItem }));
+		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
 		focusPanel("outline");
 	};
 
@@ -504,133 +484,29 @@ const useOutlineSelectionHotkeys = ({
 	);
 };
 
-const changeLabel = (change: TreeChange) => {
-	const status = Match.value(change.status).pipe(
-		Match.when({ type: "Addition" }, () => "A"),
-		Match.when({ type: "Deletion" }, () => "D"),
-		Match.when({ type: "Modification" }, () => "M"),
-		Match.when({ type: "Rename" }, () => "R"),
-		Match.exhaustive,
-	);
-
-	return `${status} ${change.path}`;
-};
-
-const CommitFiles: FC<{
-	projectId: string;
-	commitId: string;
-	parentCommitOperand: CommitOperand;
-	navigationIndex: NavigationIndex;
-}> = ({ projectId, commitId, parentCommitOperand, navigationIndex }) => {
-	const { data } = useSuspenseQuery(
-		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
-	);
-
-	const conflictedPaths = data.conflictEntries
-		? globalThis.Array.from(
-				new Set([
-					...data.conflictEntries.ancestorEntries,
-					...data.conflictEntries.ourEntries,
-					...data.conflictEntries.theirEntries,
-				]),
-			).sort((a: string, b: string) => a.localeCompare(b))
-		: [];
-
-	if (conflictedPaths.length === 0 && data.changes.length === 0)
-		return <div className={styles.itemRowEmpty}>No file changes.</div>;
-
-	return (
-		<>
-			{conflictedPaths.length > 0 && (
-				<div>
-					<div>Conflicts:</div>
-					<ul>
-						{conflictedPaths.map((path: string) => (
-							<li key={path}>{path}</li>
-						))}
-					</ul>
-				</div>
-			)}
-
-			{data.changes.length > 0 && (
-				<div role="group">
-					{data.changes.map((change) => (
-						<CommitFileRow
-							key={change.path}
-							change={change}
-							parentCommitOperand={parentCommitOperand}
-							navigationIndex={navigationIndex}
-							projectId={projectId}
-						/>
-					))}
-				</div>
-			)}
-		</>
-	);
-};
-
-const ItemRowPresentational: FC<
-	{
-		isSelected?: boolean;
-	} & ComponentProps<"div">
-> = ({ className, isSelected, ref: refProp, ...props }) => {
-	const rowRef = useRef<HTMLDivElement | null>(null);
-	const mergedRef = useMergedRefs(rowRef, refProp);
-
-	useLayoutEffect(() => {
-		if (!isSelected) return;
-		rowRef.current?.scrollIntoView({
-			block: "nearest",
-			inline: "nearest",
-		});
-	}, [isSelected]);
-
-	return (
-		<div
-			{...props}
-			ref={mergedRef}
-			className={classes(className, styles.itemRow, isSelected && styles.itemRowSelected)}
-		/>
-	);
-};
-
 const ItemRow: FC<
 	{
 		projectId: string;
 		operand: Operand;
 		navigationIndex: NavigationIndex;
-	} & Omit<ComponentProps<typeof ItemRowPresentational>, "inert" | "isSelected">
+	} & Omit<ComponentProps<typeof WorkspaceItemRow>, "inert" | "isSelected">
 > = ({ projectId, operand, navigationIndex, onClick, ...props }) => {
 	const dispatch = useAppDispatch();
 	const isSelected = useIsSelected({ projectId, operand });
 
 	return (
-		<ItemRowPresentational
+		<WorkspaceItemRow
 			{...props}
 			inert={!navigationIndexIncludes(navigationIndex, operand)}
 			isSelected={isSelected}
 			onClick={(event) => {
 				onClick?.(event);
 				if (!event.defaultPrevented)
-					dispatch(projectActions.select({ projectId, selection: operand }));
+					dispatch(projectActions.selectOutline({ projectId, selection: operand }));
 			}}
 		/>
 	);
 };
-
-const ItemRowToolbar: FC<Omit<ComponentProps<typeof Toolbar.Root>, "className">> = ({
-	onClick,
-	...props
-}) => (
-	<Toolbar.Root
-		{...props}
-		className={styles.itemRowToolbar}
-		onClick={(event) => {
-			onClick?.(event);
-			event.stopPropagation();
-		}}
-	/>
-);
 
 const TreeItem: FC<
 	{
@@ -646,7 +522,7 @@ const TreeItem: FC<
 		render,
 		defaultTagName: "div",
 		props: mergeProps<"div">(props, {
-			id: treeItemId(projectId, operand),
+			id: treeItemId(operand),
 			role: "treeitem",
 			"aria-label": label,
 			"aria-selected": isSelected,
@@ -750,13 +626,12 @@ const InlineRewordCommit: FC<{
 const CommitRow: FC<
 	{
 		commit: Commit;
-		isExpanded: boolean;
 		projectId: string;
 		stackId: string;
 		navigationIndex: NavigationIndex;
 		focusPanel: (panel: PanelType) => void;
 	} & ComponentProps<"div">
-> = ({ commit, isExpanded, projectId, stackId, navigationIndex, focusPanel, ...restProps }) => {
+> = ({ commit, projectId, stackId, navigationIndex, focusPanel, ...restProps }) => {
 	const isHighlighted = useAppSelector((state) =>
 		selectProjectHighlightedCommitIds(state, projectId).includes(commit.id),
 	);
@@ -784,8 +659,6 @@ const CommitRow: FC<
 		(_currentMessage, nextMessage: string) => nextMessage,
 	);
 	const [isCommitMessagePending, startCommitMessageTransition] = useTransition();
-	// We use a controlled tooltip as a workaround for https://github.com/mui/base-ui/issues/4499.
-	const [isExpandCollapseTooltipOpen, setIsExpandCollapseTooltipOpen] = useState(false);
 
 	const commitWithOptimisticMessage: Commit = {
 		...commit,
@@ -833,7 +706,7 @@ const CommitRow: FC<
 
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
-		dispatch(projectActions.select({ projectId, selection: operand }));
+		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
 		focusPanel("outline");
 	};
 
@@ -904,32 +777,6 @@ const CommitRow: FC<
 		meta: { group: "Commit", name: "Reword" },
 	});
 
-	useHotkey(
-		"ArrowRight",
-		() => {
-			dispatch(projectActions.openCommitFiles({ projectId, commit: commitOperandV }));
-		},
-		{
-			conflictBehavior: "allow",
-			enabled:
-				isSelected && focusedPanel === "outline" && outlineMode._tag === "Default" && !isExpanded,
-			meta: { group: "Commit", name: "Expand files" },
-		},
-	);
-
-	useHotkey(
-		"ArrowLeft",
-		() => {
-			dispatch(projectActions.closeCommitFiles({ projectId }));
-		},
-		{
-			conflictBehavior: "allow",
-			enabled:
-				isSelected && focusedPanel === "outline" && outlineMode._tag === "Default" && isExpanded,
-			meta: { group: "Commit", name: "Collapse files" },
-		},
-	);
-
 	useHotkey({ key: "" }, insertBlankCommitAbove, {
 		conflictBehavior: "allow",
 		enabled: isSelected && focusedPanel === "outline" && outlineMode._tag === "Default",
@@ -973,7 +820,10 @@ const CommitRow: FC<
 			projectId={projectId}
 			operand={operand}
 			navigationIndex={navigationIndex}
-			className={classes(restProps.className, isHighlighted && styles.itemRowHighlighted)}
+			className={classes(
+				restProps.className,
+				isHighlighted && workspaceItemRowStyles.itemRowHighlighted,
+			)}
 		>
 			{isRewording ? (
 				<InlineRewordCommit
@@ -985,7 +835,7 @@ const CommitRow: FC<
 			) : (
 				<>
 					<div
-						className={styles.itemRowLabel}
+						className={workspaceItemRowStyles.itemRowLabel}
 						onContextMenu={
 							outlineMode._tag === "Default"
 								? (event) => {
@@ -997,39 +847,10 @@ const CommitRow: FC<
 						<CommitLabel commit={commitWithOptimisticMessage} />
 					</div>
 					{outlineMode._tag === "Default" && (
-						<ItemRowToolbar aria-label="Commit actions">
-							<Tooltip.Root
-								open={isExpandCollapseTooltipOpen}
-								// Prevent tooltip from lingering while moving between nearby controls.
-								// [tag:tooltip-disable-hoverable-popup]
-								disableHoverablePopup
-							>
-								<Tooltip.Trigger
-									render={<Toolbar.Button type="button" className={styles.itemRowToolbarButton} />}
-									onClick={() =>
-										dispatch(
-											projectActions.toggleCommitFiles({ projectId, commit: commitOperandV }),
-										)
-									}
-									onMouseEnter={() => setIsExpandCollapseTooltipOpen(true)}
-									onMouseLeave={() => setIsExpandCollapseTooltipOpen(false)}
-									onFocus={() => setIsExpandCollapseTooltipOpen(true)}
-									onBlur={() => setIsExpandCollapseTooltipOpen(false)}
-									aria-label={"Toggle commit files"}
-								>
-									<ExpandCollapseIcon isExpanded={isExpanded} />
-								</Tooltip.Trigger>
-								<Tooltip.Portal>
-									<Tooltip.Positioner sideOffset={8}>
-										<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
-											Toggle commit files
-										</Tooltip.Popup>
-									</Tooltip.Positioner>
-								</Tooltip.Portal>
-							</Tooltip.Root>
+						<WorkspaceItemRowToolbar aria-label="Commit actions">
 							<Toolbar.Button
 								type="button"
-								className={styles.itemRowToolbarButton}
+								className={workspaceItemRowStyles.itemRowToolbarButton}
 								aria-label="Commit menu"
 								onClick={(event) => {
 									void showNativeMenuFromTrigger(event.currentTarget, menuItems);
@@ -1037,67 +858,11 @@ const CommitRow: FC<
 							>
 								<MenuTriggerIcon />
 							</Toolbar.Button>
-						</ItemRowToolbar>
+						</WorkspaceItemRowToolbar>
 					)}
 				</>
 			)}
 		</ItemRow>
-	);
-};
-
-const CommitFileRow: FC<{
-	change: TreeChange;
-	parentCommitOperand: CommitOperand;
-	navigationIndex: NavigationIndex;
-	projectId: string;
-}> = ({ change, parentCommitOperand, navigationIndex, projectId }) => {
-	const dispatch = useAppDispatch();
-	const operand = fileOperand({
-		parent: commitFileParent(parentCommitOperand),
-		path: change.path,
-	});
-	const isSelected = useIsSelected({ projectId, operand });
-	const focusedPanel = useFocusedProjectPanel(projectId);
-
-	useHotkey(
-		"ArrowLeft",
-		() => {
-			dispatch(projectActions.select({ projectId, selection: commitOperand(parentCommitOperand) }));
-		},
-		{
-			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "outline",
-			meta: {
-				group: "Commit file",
-				name: "Select commit",
-				commandPalette: false,
-				shortcutsBar: false,
-			},
-		},
-	);
-
-	return (
-		<TreeItem
-			projectId={projectId}
-			operand={operand}
-			label={changeLabel(change)}
-			render={
-				<OperandC
-					projectId={projectId}
-					operand={operand}
-					render={
-						<ItemRow
-							projectId={projectId}
-							operand={operand}
-							navigationIndex={navigationIndex}
-							className={styles.fileRow}
-						/>
-					}
-				/>
-			}
-		>
-			<div className={styles.itemRowLabel}>{changeLabel(change)}</div>
-		</TreeItem>
 	);
 };
 
@@ -1108,9 +873,6 @@ const CommitC: FC<{
 	navigationIndex: NavigationIndex;
 	focusPanel: (panel: PanelType) => void;
 }> = ({ commit, projectId, stackId, navigationIndex, focusPanel }) => {
-	const isExpanded = useAppSelector(
-		(state) => selectProjectExpandedCommitId(state, projectId) === commit.id,
-	);
 	const commitOperandV: CommitOperand = { stackId, commitId: commit.id };
 	const operand = commitOperand(commitOperandV);
 
@@ -1119,123 +881,15 @@ const CommitC: FC<{
 			projectId={projectId}
 			operand={operand}
 			label={commitTitle(commit.message)}
-			expanded={isExpanded}
 			render={<OperandC projectId={projectId} operand={operand} />}
 		>
 			<CommitRow
 				commit={commit}
-				isExpanded={isExpanded}
 				projectId={projectId}
 				stackId={stackId}
 				navigationIndex={navigationIndex}
 				focusPanel={focusPanel}
 			/>
-			{isExpanded && (
-				<Suspense fallback={<div className={styles.itemRowEmpty}>Loading commit files…</div>}>
-					<CommitFiles
-						projectId={projectId}
-						commitId={commit.id}
-						parentCommitOperand={commitOperandV}
-						navigationIndex={navigationIndex}
-					/>
-				</Suspense>
-			)}
-		</TreeItem>
-	);
-};
-
-const ChangesFileRow: FC<{
-	change: TreeChange;
-	dependencyCommitIds: NonEmptyArray<string> | undefined;
-	navigationIndex: NavigationIndex;
-	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	projectId: string;
-}> = ({ change, dependencyCommitIds, navigationIndex, onAbsorbChanges, projectId }) => {
-	const operand = fileOperand({ parent: changesFileParent, path: change.path });
-	const isSelected = useIsSelected({ projectId, operand });
-	const focusedPanel = useFocusedProjectPanel(projectId);
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
-
-	useHotkey(
-		"A",
-		() => {
-			onAbsorbChanges({
-				type: "treeChanges",
-				subject: {
-					changes: [change],
-					assignedStackId: null,
-				},
-			});
-		},
-		{
-			conflictBehavior: "allow",
-			enabled: isSelected && focusedPanel === "outline" && outlineMode._tag === "Default",
-			meta: { group: "Changes file", name: "Absorb" },
-		},
-	);
-
-	const menuItems: Array<NativeMenuItem> = [
-		{
-			_tag: "Item",
-			label: "Absorb",
-			onSelect: () => {
-				onAbsorbChanges({
-					type: "treeChanges",
-					subject: {
-						changes: [change],
-						assignedStackId: null,
-					},
-				});
-			},
-		},
-	];
-
-	return (
-		<TreeItem
-			projectId={projectId}
-			operand={operand}
-			label={changeLabel(change)}
-			render={
-				<OperandC
-					projectId={projectId}
-					operand={operand}
-					render={
-						<ItemRow projectId={projectId} operand={operand} navigationIndex={navigationIndex} />
-					}
-				/>
-			}
-		>
-			<div
-				className={styles.itemRowLabel}
-				onContextMenu={(event) => {
-					void showNativeContextMenu(event, menuItems);
-				}}
-			>
-				{changeLabel(change)}
-			</div>
-			{outlineMode._tag === "Default" && (
-				<ItemRowToolbar aria-label="File actions">
-					{dependencyCommitIds && (
-						<DependencyIndicatorButton
-							projectId={projectId}
-							commitIds={dependencyCommitIds}
-							render={<Toolbar.Button type="button" className={styles.itemRowToolbarButton} />}
-						>
-							<DependencyIcon />
-						</DependencyIndicatorButton>
-					)}
-					<Toolbar.Button
-						type="button"
-						className={styles.itemRowToolbarButton}
-						aria-label="File menu"
-						onClick={(event) => {
-							void showNativeMenuFromTrigger(event.currentTarget, menuItems);
-						}}
-					>
-						<MenuTriggerIcon />
-					</Toolbar.Button>
-				</ItemRowToolbar>
-			)}
 		</TreeItem>
 	);
 };
@@ -1282,7 +936,10 @@ const ChangesSectionRow: FC<{
 	return (
 		<ItemRow projectId={projectId} operand={operand} navigationIndex={navigationIndex}>
 			<div
-				className={classes(styles.itemRowLabel, styles.sectionLabel)}
+				className={classes(
+					workspaceItemRowStyles.itemRowLabel,
+					workspaceItemRowStyles.sectionLabel,
+				)}
 				onContextMenu={(event) => {
 					void showNativeContextMenu(event, menuItems);
 				}}
@@ -1290,13 +947,17 @@ const ChangesSectionRow: FC<{
 				Changes ({changes.length})
 			</div>
 			{outlineMode._tag === "Default" && (
-				<ItemRowToolbar aria-label="Changes actions">
-					<Toolbar.Button type="button" className={styles.itemRowToolbarButton} onClick={onCommit}>
+				<WorkspaceItemRowToolbar aria-label="Changes actions">
+					<Toolbar.Button
+						type="button"
+						className={workspaceItemRowStyles.itemRowToolbarButton}
+						onClick={onCommit}
+					>
 						Commit
 					</Toolbar.Button>
 					<Toolbar.Button
 						type="button"
-						className={styles.itemRowToolbarButton}
+						className={workspaceItemRowStyles.itemRowToolbarButton}
 						aria-label="Changes menu"
 						onClick={(event) => {
 							void showNativeMenuFromTrigger(event.currentTarget, menuItems);
@@ -1304,7 +965,7 @@ const ChangesSectionRow: FC<{
 					>
 						<MenuTriggerIcon />
 					</Toolbar.Button>
-				</ItemRowToolbar>
+				</WorkspaceItemRowToolbar>
 			)}
 		</ItemRow>
 	);
@@ -1318,7 +979,7 @@ const BaseCommit: FC<{
 	const operand = baseCommitOperand;
 
 	return (
-		<div className={styles.section}>
+		<div className={workspaceItemRowStyles.section}>
 			<TreeItem
 				projectId={projectId}
 				operand={operand}
@@ -1333,7 +994,12 @@ const BaseCommit: FC<{
 					/>
 				}
 			>
-				<div className={classes(styles.itemRowLabel, styles.sectionLabel)}>
+				<div
+					className={classes(
+						workspaceItemRowStyles.itemRowLabel,
+						workspaceItemRowStyles.sectionLabel,
+					)}
+				>
 					{commitId !== undefined
 						? `${shortCommitId(commitId)} (common base commit)`
 						: "(base commit)"}
@@ -1351,10 +1017,6 @@ const Changes: FC<{
 }> = ({ projectId, onAbsorbChanges, onCommit, navigationIndex }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
-	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
-		worktreeChanges.dependencies?.diffs ?? [],
-	);
-
 	const operand = changesSectionOperand;
 
 	return (
@@ -1362,8 +1024,7 @@ const Changes: FC<{
 			projectId={projectId}
 			operand={operand}
 			label={`Changes (${worktreeChanges.changes.length})`}
-			expanded
-			className={styles.section}
+			className={workspaceItemRowStyles.section}
 			render={<OperandC projectId={projectId} operand={operand} />}
 		>
 			<ChangesSectionRow
@@ -1373,29 +1034,6 @@ const Changes: FC<{
 				onCommit={onCommit}
 				projectId={projectId}
 			/>
-			{worktreeChanges.changes.length === 0 ? (
-				<div className={styles.itemRowEmpty}>No changes.</div>
-			) : (
-				<div role="group">
-					{worktreeChanges.changes.map((change) => {
-						const hunkDependencyDiffs = hunkDependencyDiffsByPath.get(change.path);
-						const dependencyCommitIds = hunkDependencyDiffs
-							? getDependencyCommitIds({ hunkDependencyDiffs })
-							: undefined;
-
-						return (
-							<ChangesFileRow
-								key={change.path}
-								change={change}
-								dependencyCommitIds={dependencyCommitIds}
-								navigationIndex={navigationIndex}
-								onAbsorbChanges={onAbsorbChanges}
-								projectId={projectId}
-							/>
-						);
-					})}
-				</div>
-			)}
 		</TreeItem>
 	);
 };
@@ -1492,7 +1130,7 @@ const BranchRow: FC<
 
 	const endEditing = () => {
 		dispatch(projectActions.exitMode({ projectId }));
-		dispatch(projectActions.select({ projectId, selection: operand }));
+		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
 		focusPanel("outline");
 	};
 
@@ -1518,7 +1156,7 @@ const BranchRow: FC<
 				// TODO: ideally the API would return the new ref?
 				branchRef: encodeRefName(`refs/heads/${trimmed}`),
 			});
-			dispatch(projectActions.select({ projectId, selection: newItem }));
+			dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
 			dispatch(projectActions.exitMode({ projectId }));
 		});
 	};
@@ -1555,7 +1193,10 @@ const BranchRow: FC<
 			) : (
 				<>
 					<div
-						className={classes(styles.itemRowLabel, styles.sectionLabel)}
+						className={classes(
+							workspaceItemRowStyles.itemRowLabel,
+							workspaceItemRowStyles.sectionLabel,
+						)}
 						onContextMenu={
 							outlineMode._tag === "Default"
 								? (event) => {
@@ -1567,10 +1208,10 @@ const BranchRow: FC<
 						{optimisticBranchName}
 					</div>
 					{outlineMode._tag === "Default" && (
-						<ItemRowToolbar aria-label="Branch actions">
+						<WorkspaceItemRowToolbar aria-label="Branch actions">
 							<Toolbar.Button
 								type="button"
-								className={styles.itemRowToolbarButton}
+								className={workspaceItemRowStyles.itemRowToolbarButton}
 								aria-label="Push branch"
 								disabled
 							>
@@ -1578,7 +1219,7 @@ const BranchRow: FC<
 							</Toolbar.Button>
 							<Toolbar.Button
 								type="button"
-								className={styles.itemRowToolbarButton}
+								className={workspaceItemRowStyles.itemRowToolbarButton}
 								aria-label="Branch menu"
 								onClick={(event) => {
 									void showNativeMenuFromTrigger(event.currentTarget, menuItems);
@@ -1586,7 +1227,7 @@ const BranchRow: FC<
 							>
 								<MenuTriggerIcon />
 							</Toolbar.Button>
-						</ItemRowToolbar>
+						</WorkspaceItemRowToolbar>
 					)}
 				</>
 			)}
@@ -1646,7 +1287,10 @@ const StackRow: FC<
 			navigationIndex={navigationIndex}
 		>
 			<div
-				className={classes(styles.itemRowLabel, styles.sectionLabel)}
+				className={classes(
+					workspaceItemRowStyles.itemRowLabel,
+					workspaceItemRowStyles.sectionLabel,
+				)}
 				onContextMenu={
 					outlineMode._tag === "Default"
 						? (event) => {
@@ -1658,10 +1302,10 @@ const StackRow: FC<
 				Stack
 			</div>
 			{outlineMode._tag === "Default" && (
-				<ItemRowToolbar aria-label="Stack actions">
+				<WorkspaceItemRowToolbar aria-label="Stack actions">
 					<Toolbar.Button
 						type="button"
-						className={styles.itemRowToolbarButton}
+						className={workspaceItemRowStyles.itemRowToolbarButton}
 						aria-label="Stack menu"
 						onClick={(event) => {
 							void showNativeMenuFromTrigger(event.currentTarget, menuItems);
@@ -1669,7 +1313,7 @@ const StackRow: FC<
 					>
 						<MenuTriggerIcon />
 					</Toolbar.Button>
-				</ItemRowToolbar>
+				</WorkspaceItemRowToolbar>
 			)}
 		</ItemRow>
 	);
@@ -1691,7 +1335,7 @@ const BranchSegment: FC<{
 			operand={operand}
 			label={refName.displayName}
 			expanded
-			className={classes(styles.section, styles.segment)}
+			className={classes(workspaceItemRowStyles.section, styles.segment)}
 		>
 			<OperandC
 				projectId={projectId}
@@ -1709,7 +1353,7 @@ const BranchSegment: FC<{
 			/>
 
 			{segment.commits.length === 0 ? (
-				<div className={styles.itemRowEmpty}>No commits.</div>
+				<div className={workspaceItemRowStyles.itemRowEmpty}>No commits.</div>
 			) : (
 				<div role="group">
 					{segment.commits.map((commit) => (
@@ -1735,7 +1379,7 @@ const BranchlessSegment: FC<{
 	stackId: string;
 	focusPanel: (panel: PanelType) => void;
 }> = ({ navigationIndex, projectId, segment, stackId, focusPanel }) => (
-	<div className={classes(styles.section, styles.segment)}>
+	<div className={classes(workspaceItemRowStyles.section, styles.segment)}>
 		{segment.commits.map((commit) => (
 			<CommitC
 				key={commit.id}
@@ -1772,15 +1416,10 @@ const StackC: FC<{
 			operand={operand}
 			label="Stack"
 			expanded
-			className={classes(styles.stack, styles.section)}
+			className={classes(styles.stack, workspaceItemRowStyles.section)}
 			render={<OperandC projectId={projectId} operand={operand} />}
 		>
-			<StackRow
-				projectId={projectId}
-				stackId={stackId}
-				navigationIndex={navigationIndex}
-				className={styles.stackRow}
-			/>
+			<StackRow projectId={projectId} stackId={stackId} navigationIndex={navigationIndex} />
 
 			<div role="group" className={styles.segments}>
 				{stack.segments.map((segment) => {

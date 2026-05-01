@@ -1,20 +1,13 @@
-import {
-	changesInWorktreeQueryOptions,
-	commitDetailsWithLineStatsQueryOptions,
-	headInfoQueryOptions,
-} from "#ui/api/queries.ts";
-import { CommitDetails, Segment, type RefInfo, type TreeChange } from "@gitbutler/but-sdk";
-import { useQueries, useSuspenseQuery } from "@tanstack/react-query";
+import { headInfoQueryOptions } from "#ui/api/queries.ts";
+import { Segment, type RefInfo } from "@gitbutler/but-sdk";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { type NonEmptyArray } from "effect/Array";
 import {
 	branchOperand,
 	baseCommitOperand,
 	changesSectionOperand,
-	changesFileParent,
 	type Operand,
 	commitOperand,
-	commitFileParent,
-	fileOperand,
 	stackOperand,
 } from "#ui/operands.ts";
 
@@ -25,38 +18,14 @@ export type WorkspaceSection = {
 
 export type WorkspaceOutline = NonEmptyArray<WorkspaceSection>;
 
-type BuildWorkspaceOutlineArgs = {
-	headInfo: RefInfo;
-	changes: Array<TreeChange>;
-	expandedCommitDetails?: CommitDetails;
-};
-
-const buildWorkspaceOutline = ({
-	headInfo,
-	changes,
-	expandedCommitDetails,
-}: BuildWorkspaceOutlineArgs): WorkspaceOutline => {
+const buildWorkspaceOutline = (headInfo: RefInfo): WorkspaceOutline => {
 	const changesSection: WorkspaceSection = {
 		section: changesSectionOperand,
-		children: changes.map((change) =>
-			fileOperand({ parent: changesFileParent, path: change.path }),
-		),
+		children: [],
 	};
 
 	const segmentChildren = (stackId: string, segment: Segment): Array<Operand> =>
-		segment.commits.flatMap(
-			(commit): Array<Operand> => [
-				commitOperand({ stackId, commitId: commit.id }),
-				...(commit.id === expandedCommitDetails?.commit.id
-					? expandedCommitDetails.changes.map((change) =>
-							fileOperand({
-								parent: commitFileParent({ stackId, commitId: commit.id }),
-								path: change.path,
-							}),
-						)
-					: []),
-			],
-		);
+		segment.commits.map((commit) => commitOperand({ stackId, commitId: commit.id }));
 
 	const segmentSection = (stackId: string, segment: Segment): WorkspaceSection | null => {
 		const children = segmentChildren(stackId, segment);
@@ -97,24 +66,8 @@ const buildWorkspaceOutline = ({
 	];
 };
 
-export const useWorkspaceOutline = ({
-	projectId,
-	expandedCommitId,
-}: {
-	projectId: string;
-	expandedCommitId: string | null;
-}) => {
+export const useWorkspaceOutline = ({ projectId }: { projectId: string }) => {
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
-	const commitDetailsQueries = useQueries({
-		queries: (expandedCommitId !== null ? [expandedCommitId] : []).map((commitId) =>
-			commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
-		),
-	});
 
-	return buildWorkspaceOutline({
-		headInfo,
-		changes: worktreeChanges.changes,
-		expandedCommitDetails: commitDetailsQueries[0]?.data,
-	});
+	return buildWorkspaceOutline(headInfo);
 };

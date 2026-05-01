@@ -21,27 +21,29 @@ import {
 	type OutlineMode,
 } from "#ui/outline/mode.ts";
 
-const createInitialWorkspaceSelectionState = (): Operand => changesSectionOperand;
+type WorkspaceSelectionState = {
+	outline: Operand;
+	files: Operand;
+};
+
+const createInitialWorkspaceSelectionState = (): WorkspaceSelectionState => ({
+	outline: changesSectionOperand,
+	files: changesSectionOperand,
+});
 
 export type WorkspaceState = {
-	expandedCommitId: string | null;
 	highlightedCommitIds: Array<string>;
 	mode: OutlineMode;
-	selection: Operand;
+	selection: WorkspaceSelectionState;
 };
 
 export const createInitialState = (): WorkspaceState => ({
-	expandedCommitId: null,
 	highlightedCommitIds: [],
 	mode: defaultOutlineMode,
 	selection: createInitialWorkspaceSelectionState(),
 });
 
 export const initialState: WorkspaceState = createInitialState();
-
-export const closeCommitFiles = (state: WorkspaceState) => {
-	state.expandedCommitId = null;
-};
 
 export const enterMoveMode = (state: WorkspaceState, source: Operand) => {
 	state.mode = operationOutlineMode(moveOperationMode({ source }));
@@ -82,18 +84,16 @@ export const exitMode = (state: WorkspaceState) => {
 	state.mode = defaultOutlineMode;
 };
 
-export const openCommitFiles = (state: WorkspaceState, commit: CommitOperand) => {
-	state.expandedCommitId = commit.commitId;
-};
+export const selectOutline = (state: WorkspaceState, selection: Operand) => {
+	state.selection.outline = selection;
+	state.selection.files = selection;
 
-export const select = (state: WorkspaceState, selection: Operand) => {
-	state.selection = selection;
 	if (!isValidOutlineModeForSelection({ mode: state.mode, selection }))
 		state.mode = defaultOutlineMode;
 };
 
-export const setExpandedCommitId = (state: WorkspaceState, commitId: string | null) => {
-	state.expandedCommitId = commitId;
+export const selectFiles = (state: WorkspaceState, selection: Operand) => {
+	state.selection.files = selection;
 };
 
 export const setHighlightedCommitIds = (state: WorkspaceState, commitIds: Array<string> | null) => {
@@ -101,7 +101,7 @@ export const setHighlightedCommitIds = (state: WorkspaceState, commitIds: Array<
 };
 
 export const startRenameBranch = (state: WorkspaceState, branch: BranchOperand) => {
-	select(state, branchOperand(branch));
+	selectOutline(state, branchOperand(branch));
 	state.mode = renameBranchOutlineMode({
 		stackId: branch.stackId,
 		branchRef: branch.branchRef,
@@ -109,30 +109,21 @@ export const startRenameBranch = (state: WorkspaceState, branch: BranchOperand) 
 };
 
 export const startRewordCommit = (state: WorkspaceState, commit: CommitOperand) => {
-	select(state, commitOperand(commit));
+	selectOutline(state, commitOperand(commit));
 	state.mode = rewordCommitOutlineMode({
 		stackId: commit.stackId,
 		commitId: commit.commitId,
 	});
 };
 
-export const toggleCommitFiles = (state: WorkspaceState, commit: CommitOperand) => {
-	if (state.expandedCommitId === commit.commitId) {
-		closeCommitFiles(state);
-		return;
-	}
+export const selectSelectionOutlineState = (state: WorkspaceState): Operand =>
+	state.selection.outline;
 
-	openCommitFiles(state, commit);
-};
-
-export const selectSelectionState = (state: WorkspaceState): Operand => state.selection;
+export const selectSelectionFilesState = (state: WorkspaceState): Operand => state.selection.files;
 
 export const selectMode = (state: WorkspaceState): OutlineMode => state.mode;
 
 export const selectOperationMode = (state: WorkspaceState) => getOperationMode(state.mode);
-
-export const selectExpandedCommitId = (state: WorkspaceState): string | null =>
-	state.expandedCommitId;
 
 export const selectHighlightedCommitIds = (state: WorkspaceState): Array<string> =>
 	state.highlightedCommitIds;
