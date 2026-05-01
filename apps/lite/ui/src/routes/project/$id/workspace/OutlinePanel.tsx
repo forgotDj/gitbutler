@@ -82,7 +82,7 @@ const assert = <T,>(t: T | null | undefined): T => {
 	return t;
 };
 
-const buildWorkspaceOutline = (headInfo: RefInfo): NonEmptyArray<Node> => {
+const sections = (headInfo: RefInfo): NonEmptyArray<Node> => {
 	const changesSection: Node = {
 		section: changesSectionOperand,
 		children: [],
@@ -133,11 +133,9 @@ const buildWorkspaceOutline = (headInfo: RefInfo): NonEmptyArray<Node> => {
 const useNavigationIndex = (projectId: string, focusPanel: (panel: PanelType) => void) => {
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 
-	const outline = buildWorkspaceOutline(headInfo);
-
 	const dispatch = useAppDispatch();
 
-	const navigationIndexUnfiltered = buildNavigationIndex(outline);
+	const navigationIndexUnfiltered = buildNavigationIndex(sections(headInfo));
 
 	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
 
