@@ -184,7 +184,7 @@ export const OutlinePanel: FC<
 			tabIndex={0}
 			role="tree"
 			aria-activedescendant={treeItemId(projectId, selection)}
-			className={classes(panelProps.className, styles.outlinePanel)}
+			className={classes(panelProps.className, styles.tree)}
 		>
 			<Changes
 				projectId={projectId}
