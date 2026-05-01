@@ -7,7 +7,7 @@ export type CommandGroup =
 	| "Commit"
 	| "Details"
 	| "Global"
-	| "Outline selection"
+	| "Outline"
 	| "Operation mode"
 	| "Panels"
 	| "Rename branch"

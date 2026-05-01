@@ -300,31 +300,31 @@ const useOutlineSelectionHotkeys = ({
 			{
 				hotkey: "ArrowUp",
 				callback: selectPreviousItem,
-				options: { meta: { group: "Outline selection", name: "Up", commandPalette: false } },
+				options: { meta: { group: "Outline", name: "Up", commandPalette: false } },
 			},
 			{
 				hotkey: "K",
 				callback: selectPreviousItem,
 				// Hidden until we can combine in shortcuts bar.
-				options: { meta: { group: "Outline selection", shortcutsBar: false } },
+				options: { meta: { group: "Outline", shortcutsBar: false } },
 			},
 			{
 				hotkey: "ArrowDown",
 				callback: selectNextItem,
-				options: { meta: { group: "Outline selection", name: "Down", commandPalette: false } },
+				options: { meta: { group: "Outline", name: "Down", commandPalette: false } },
 			},
 			{
 				hotkey: "J",
 				callback: selectNextItem,
 				// Hidden until we can combine in shortcuts bar.
-				options: { meta: { group: "Outline selection", shortcutsBar: false } },
+				options: { meta: { group: "Outline", shortcutsBar: false } },
 			},
 			{
 				hotkey: "Shift+ArrowUp",
 				callback: selectPreviousSection,
 				options: {
 					meta: {
-						group: "Outline selection",
+						group: "Outline",
 						name: "Previous section",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -336,7 +336,7 @@ const useOutlineSelectionHotkeys = ({
 				callback: selectPreviousSection,
 				options: {
 					meta: {
-						group: "Outline selection",
+						group: "Outline",
 						name: "Previous section",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -348,7 +348,7 @@ const useOutlineSelectionHotkeys = ({
 				callback: selectNextSection,
 				options: {
 					meta: {
-						group: "Outline selection",
+						group: "Outline",
 						name: "Next section",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -360,7 +360,7 @@ const useOutlineSelectionHotkeys = ({
 				callback: selectNextSection,
 				options: {
 					meta: {
-						group: "Outline selection",
+						group: "Outline",
 						name: "Next section",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -372,7 +372,7 @@ const useOutlineSelectionHotkeys = ({
 				callback: selectFirstItem,
 				options: {
 					meta: {
-						group: "Outline selection",
+						group: "Outline",
 						name: "First item",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -384,7 +384,7 @@ const useOutlineSelectionHotkeys = ({
 				callback: selectFirstItem,
 				options: {
 					meta: {
-						group: "Outline selection",
+						group: "Outline",
 						name: "First item",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -396,7 +396,7 @@ const useOutlineSelectionHotkeys = ({
 				callback: selectLastItem,
 				options: {
 					meta: {
-						group: "Outline selection",
+						group: "Outline",
 						name: "Last item",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -408,7 +408,7 @@ const useOutlineSelectionHotkeys = ({
 				callback: selectLastItem,
 				options: {
 					meta: {
-						group: "Outline selection",
+						group: "Outline",
 						name: "Last item",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -420,7 +420,7 @@ const useOutlineSelectionHotkeys = ({
 				callback: selectLastItem,
 				options: {
 					meta: {
-						group: "Outline selection",
+						group: "Outline",
 						name: "Last item",
 						commandPalette: false,
 						shortcutsBar: false,
@@ -434,7 +434,7 @@ const useOutlineSelectionHotkeys = ({
 	useHotkeySequence(["G", "G"], selectFirstItem, {
 		enabled: focusedPanel === "outline",
 		meta: {
-			group: "Outline selection",
+			group: "Outline",
 			name: "First item",
 			commandPalette: false,
 			shortcutsBar: false,
@@ -445,12 +445,12 @@ const useOutlineSelectionHotkeys = ({
 		{
 			hotkey: "T",
 			callback: openBranchPicker,
-			options: { meta: { group: "Outline selection", name: "Branch" } },
+			options: { meta: { group: "Outline", name: "Branch" } },
 		},
 		{
 			hotkey: "Z",
 			callback: selectChanges,
-			options: { meta: { group: "Outline selection", name: "Changes" } },
+			options: { meta: { group: "Outline", name: "Changes" } },
 		},
 	]);
 
@@ -461,25 +461,25 @@ const useOutlineSelectionHotkeys = ({
 			{
 				hotkey: "M",
 				callback: enterMoveMode,
-				options: { meta: { group: "Outline selection", name: "Move" } },
+				options: { meta: { group: "Outline", name: "Move" } },
 			},
 			{
 				hotkey: "Mod+X",
 				callback: enterMoveMode,
 				options: {
 					ignoreInputs: true,
-					meta: { group: "Outline selection", name: "Cut" },
+					meta: { group: "Outline", name: "Cut" },
 				},
 			},
 			{
 				hotkey: "R",
 				callback: enterRubMode,
-				options: { meta: { group: "Outline selection", name: "Rub" } },
+				options: { meta: { group: "Outline", name: "Rub" } },
 			},
 			{
 				hotkey: "C",
 				callback: enterCommitMode,
-				options: { meta: { group: "Outline selection", name: "Commit" } },
+				options: { meta: { group: "Outline", name: "Commit" } },
 			},
 		],
 		{ enabled: focusedPanel === "outline" && outlineMode._tag === "Default" },
