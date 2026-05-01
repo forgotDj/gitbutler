@@ -1,6 +1,7 @@
 import {
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
+	commitMoveMutationOptions,
 	commitRewordMutationOptions,
 	unapplyStackMutationOptions,
 	updateBranchNameMutationOptions,
@@ -667,6 +668,7 @@ const CommitRow: FC<
 
 	const commitInsertBlank = useMutation(commitInsertBlankMutationOptions);
 	const commitDiscard = useMutation(commitDiscardMutationOptions);
+	const commitMove = useMutation(commitMoveMutationOptions);
 	const commitReword = useMutation(commitRewordMutationOptions);
 
 	const insertBlankCommitAbove = () => {
@@ -691,6 +693,93 @@ const CommitRow: FC<
 		commitDiscard.mutate({
 			projectId,
 			subjectCommitId: commit.id,
+			dryRun: false,
+		});
+	};
+
+	const moveCommitUp = () => {
+		const selectionIdx = navigationIndex.indexByKey.get(operandIdentityKey(operand));
+		if (selectionIdx === undefined) return;
+
+		const selectionSectionIdx = navigationIndex.sectionIndexByItemIndex[selectionIdx];
+		if (selectionSectionIdx === undefined) return;
+
+		const prevItem = navigationIndex.items[selectionIdx - 1];
+		if (
+			navigationIndex.sectionIndexByItemIndex[selectionIdx - 1] === selectionSectionIdx &&
+			prevItem?._tag === "Commit" &&
+			prevItem.stackId === stackId
+		) {
+			commitMove.mutate({
+				projectId,
+				subjectCommitIds: [commit.id],
+				relativeTo: { type: "commit", subject: prevItem.commitId },
+				side: "above",
+				dryRun: false,
+			});
+			return;
+		}
+
+		const sectionStartIdx = navigationIndex.sectionStartIndexes[selectionSectionIdx];
+		if (sectionStartIdx === undefined) return;
+
+		const prevSectionTarget = navigationIndex.items[sectionStartIdx - 1];
+		if (prevSectionTarget?._tag === "Commit" && prevSectionTarget.stackId === stackId) {
+			commitMove.mutate({
+				projectId,
+				subjectCommitIds: [commit.id],
+				relativeTo: { type: "commit", subject: prevSectionTarget.commitId },
+				side: "below",
+				dryRun: false,
+			});
+			return;
+		}
+
+		if (prevSectionTarget?._tag !== "Branch" || prevSectionTarget.stackId !== stackId) return;
+
+		commitMove.mutate({
+			projectId,
+			subjectCommitIds: [commit.id],
+			relativeTo: { type: "referenceBytes", subject: prevSectionTarget.branchRef },
+			side: "below",
+			dryRun: false,
+		});
+	};
+
+	const moveCommitDown = () => {
+		const selectionIdx = navigationIndex.indexByKey.get(operandIdentityKey(operand));
+		if (selectionIdx === undefined) return;
+
+		const selectionSectionIdx = navigationIndex.sectionIndexByItemIndex[selectionIdx];
+		if (selectionSectionIdx === undefined) return;
+
+		const nextIdx = selectionIdx + 1;
+		const nextItem = navigationIndex.items[nextIdx];
+		if (
+			navigationIndex.sectionIndexByItemIndex[nextIdx] === selectionSectionIdx &&
+			nextItem?._tag === "Commit" &&
+			nextItem.stackId === stackId
+		) {
+			commitMove.mutate({
+				projectId,
+				subjectCommitIds: [commit.id],
+				relativeTo: { type: "commit", subject: nextItem.commitId },
+				side: "below",
+				dryRun: false,
+			});
+			return;
+		}
+
+		const nextSectionStartIdx = navigationIndex.sectionStartIndexes[selectionSectionIdx + 1];
+		if (nextSectionStartIdx === undefined) return;
+		const nextSection = navigationIndex.items[nextSectionStartIdx];
+		if (nextSection?._tag !== "Branch" || nextSection.stackId !== stackId) return;
+
+		commitMove.mutate({
+			projectId,
+			subjectCommitIds: [commit.id],
+			relativeTo: { type: "referenceBytes", subject: nextSection.branchRef },
+			side: "below",
 			dryRun: false,
 		});
 	};
@@ -775,6 +864,34 @@ const CommitRow: FC<
 			focusedPanel === "outline" &&
 			outlineMode._tag === "Default",
 		meta: { group: "Commit", name: "Reword" },
+	});
+
+	useHotkey("Alt+ArrowUp", moveCommitUp, {
+		enabled:
+			!commitMove.isPending &&
+			isSelected &&
+			focusedPanel === "outline" &&
+			outlineMode._tag === "Default",
+		meta: {
+			group: "Commit",
+			name: "Move up",
+			commandPalette: false,
+			shortcutsBar: false,
+		},
+	});
+
+	useHotkey("Alt+ArrowDown", moveCommitDown, {
+		enabled:
+			!commitMove.isPending &&
+			isSelected &&
+			focusedPanel === "outline" &&
+			outlineMode._tag === "Default",
+		meta: {
+			group: "Commit",
+			name: "Move down",
+			commandPalette: false,
+			shortcutsBar: false,
+		},
 	});
 
 	useHotkey({ key: "" }, insertBlankCommitAbove, {
