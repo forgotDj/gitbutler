@@ -24,15 +24,13 @@ fn assert_cursor_context_rows(
     visible_height: usize,
     preferred_context: usize,
 ) {
-    let selected_rows = tui
-        .app
-        .selected_row_range()
-        .expect("selected row should be in bounds");
+    let selected_rows =
+        super::render::selected_row_range(&tui.app).expect("selected row should be in bounds");
     let selected_height = selected_rows.end.saturating_sub(selected_rows.start);
     let effective_context =
         preferred_context.min(visible_height.saturating_sub(selected_height) / 2);
 
-    let total_rows = tui.app.total_rendered_height();
+    let total_rows = super::render::total_rendered_height(&tui.app);
     let available_above = selected_rows.start;
     let available_below = total_rows.saturating_sub(selected_rows.end);
 

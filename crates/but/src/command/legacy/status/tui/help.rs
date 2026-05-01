@@ -12,7 +12,7 @@ use strum::IntoEnumIterator;
 use unicode_width::UnicodeWidthStr;
 
 use crate::{
-    command::legacy::status::tui::{KeyBinds, SpanExt, mode::ModeDiscriminant},
+    command::legacy::status::tui::{KeyBinds, mode::ModeDiscriminant, render::SpanExt},
     theme::Theme,
 };
 
