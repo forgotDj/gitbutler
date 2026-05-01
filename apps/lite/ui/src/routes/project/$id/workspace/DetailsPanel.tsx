@@ -354,8 +354,9 @@ export const DetailsPanel: FC<
 	useHotkey(
 		"Escape",
 		() => {
-			dispatch(projectActions.hidePanel({ projectId, panel: "details" }));
 			focusPanel("outline");
+
+			dispatch(projectActions.hidePanel({ projectId, panel: "details" }));
 		},
 		{
 			conflictBehavior: "allow",
