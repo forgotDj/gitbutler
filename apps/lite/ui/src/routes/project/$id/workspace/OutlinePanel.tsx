@@ -205,12 +205,7 @@ export const OutlinePanel: FC<
 
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	const commit = () =>
-		dispatch(
-			projectActions.enterMoveMode({
-				projectId,
-				source: changesSectionOperand,
-			}),
-		);
+		dispatch(projectActions.openBranchPicker({ projectId, intent: "commitChanges" }));
 
 	const selectChanges = () => {
 		select(changesSectionOperand);
@@ -218,7 +213,7 @@ export const OutlinePanel: FC<
 	};
 
 	const openBranchPicker = () => {
-		dispatch(projectActions.openBranchPicker({ projectId }));
+		dispatch(projectActions.openBranchPicker({ projectId, intent: "selectBranch" }));
 	};
 
 	useHotkeys([
