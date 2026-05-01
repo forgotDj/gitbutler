@@ -19,7 +19,10 @@ export const ShortcutButton: FC<
 	const buttonRef = useRef<HTMLButtonElement>(null);
 	const tooltip = `${children} (${formatForDisplay(hotkey)})`;
 
-	useHotkey(hotkey, () => buttonRef.current?.click(), hotkeyOptions);
+	useHotkey(hotkey, () => buttonRef.current?.click(), {
+		...hotkeyOptions,
+		enabled: !props.disabled && hotkeyOptions?.enabled !== false,
+	});
 
 	return (
 		<Tooltip.Root>
