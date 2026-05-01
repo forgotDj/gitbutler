@@ -27,7 +27,7 @@ import {
 	type CommitOperand,
 	type Operand,
 } from "#ui/operands.ts";
-import { includeOperandForOutlineMode } from "#ui/outline/mode.ts";
+import { filterNavigationIndexForOperationMode } from "#ui/outline/mode.ts";
 import {
 	Panel as PanelType,
 	useFocusedProjectPanel,
@@ -49,7 +49,6 @@ import { classes } from "#ui/ui/classes.ts";
 import { MenuTriggerIcon, PushIcon } from "#ui/ui/icons.tsx";
 import {
 	buildNavigationIndex,
-	filterNavigationIndex,
 	navigationIndexIncludes,
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
@@ -103,10 +102,16 @@ const useNavigationIndex = (projectId: string, focusPanel: (panel: PanelType) =>
 			);
 	}, [navigationIndexUnfiltered, selection, projectId, dispatch]);
 
-	const navigationIndex = useFilteredNavigationIndex({
-		projectId,
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
+
+	const navigationIndex = filterNavigationIndexForOperationMode({
 		navigationIndex: navigationIndexUnfiltered,
 		selection,
+		outlineMode,
+		operationMode,
 	});
 
 	const focusedPanel = useFocusedProjectPanel(projectId);
@@ -232,36 +237,6 @@ const useIsSelected = ({ projectId, operand }: { projectId: string; operand: Ope
 
 const treeItemId = (operand: Operand): string =>
 	`outline-treeitem-${encodeURIComponent(operandIdentityKey(operand))}`;
-
-export const useFilteredNavigationIndex = ({
-	projectId,
-	navigationIndex: navigationIndexUnfiltered,
-	selection,
-}: {
-	projectId: string;
-	navigationIndex: NavigationIndex;
-	selection: Operand;
-}) => {
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
-	const operationMode = useAppSelector((state) =>
-		selectProjectOperationModeState(state, projectId),
-	);
-
-	return outlineMode._tag !== "Default"
-		? filterNavigationIndex(
-				navigationIndexUnfiltered,
-				(operand) =>
-					// When entering operation mode, the selection must still be
-					// selectable otherwise the details panel will suddenly appear to
-					// change and the user may lose sight of their source operand (e.g.
-					// hunk).
-					operandEquals(selection, operand) ||
-					// After selection moves, allow returning selection to the source operand.
-					(operationMode?.source && operandEquals(operationMode.source, operand)) ||
-					includeOperandForOutlineMode({ mode: outlineMode, operand }),
-			)
-		: navigationIndexUnfiltered;
-};
 
 const ItemRow: FC<
 	{
