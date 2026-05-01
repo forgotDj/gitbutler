@@ -2248,9 +2248,16 @@ impl App {
             .collect::<Vec<_>>();
 
         if let Some(branch_names) = NonEmpty::from_vec(branch_names) {
+            let include_unassigned = Cursor::select_unassigned(&self.status_lines)
+                .and_then(|cursor| cursor.selected_line(&self.status_lines))
+                .is_some_and(|unassigned| {
+                    is_selectable_in_mode(unassigned, &self.mode, self.flags.show_files)
+                });
+
             self.branch_picker = Some(BranchPicker::new(
                 branch_names,
                 self.theme,
+                include_unassigned,
                 |item, messages| {
                     match item {
                         branch_picker::Item::Branch(branch_name) => {

@@ -70,6 +70,7 @@ impl BranchPicker {
     pub(super) fn new<F>(
         branch_names: NonEmpty<FullName>,
         theme: &'static Theme,
+        include_unassigned: bool,
         on_branch_selected: F,
     ) -> Self
     where
@@ -78,8 +79,13 @@ impl BranchPicker {
         let mut textarea = TextArea::default();
         textarea.set_cursor_line_style(theme.default);
 
-        let mut items = NonEmpty::new(Item::Unassigned);
-        items.extend(branch_names.map(Item::Branch));
+        let items = if include_unassigned {
+            let mut items = NonEmpty::new(Item::Unassigned);
+            items.extend(branch_names.map(Item::Branch));
+            items
+        } else {
+            branch_names.map(Item::Branch)
+        };
 
         let mut this = Self {
             items,
