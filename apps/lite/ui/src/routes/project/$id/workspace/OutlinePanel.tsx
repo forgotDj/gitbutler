@@ -512,7 +512,7 @@ const useOutlineSelectionHotkeys = ({
 	);
 };
 
-const fileRowLabel = (change: TreeChange) => {
+const changeLabel = (change: TreeChange) => {
 	const status = Match.value(change.status).pipe(
 		Match.when({ type: "Addition" }, () => "A"),
 		Match.when({ type: "Deletion" }, () => "D"),
@@ -562,10 +562,10 @@ const CommitFiles: FC<{
 
 			{data.changes.length > 0 && (
 				<div role="group">
-					{data.changes.map((file) => (
+					{data.changes.map((change) => (
 						<CommitFileRow
-							key={file.path}
-							change={file}
+							key={change.path}
+							change={change}
 							parentCommitOperand={parentCommitOperand}
 							navigationIndex={navigationIndex}
 							projectId={projectId}
@@ -1187,7 +1187,7 @@ const CommitFileRow: FC<{
 		<TreeItem
 			projectId={projectId}
 			operand={operand}
-			label={fileRowLabel(change)}
+			label={changeLabel(change)}
 			render={
 				<OperandC
 					projectId={projectId}
@@ -1203,7 +1203,7 @@ const CommitFileRow: FC<{
 				/>
 			}
 		>
-			<div className={styles.itemRowLabel}>{fileRowLabel(change)}</div>
+			<div className={styles.itemRowLabel}>{changeLabel(change)}</div>
 		</TreeItem>
 	);
 };
@@ -1301,7 +1301,7 @@ const ChangesFileRow: FC<{
 		<TreeItem
 			projectId={projectId}
 			operand={operand}
-			label={fileRowLabel(change)}
+			label={changeLabel(change)}
 			render={
 				<OperandC
 					projectId={projectId}
@@ -1318,7 +1318,7 @@ const ChangesFileRow: FC<{
 					void showNativeContextMenu(event, menuItems);
 				}}
 			>
-				{fileRowLabel(change)}
+				{changeLabel(change)}
 			</div>
 			{outlineMode._tag === "Default" && (
 				<ItemRowToolbar aria-label="File actions">
