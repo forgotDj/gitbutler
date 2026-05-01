@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use but_forge::ForgeReview;
+use but_oxidize::{ObjectIdExt as _, OidExt as _};
 use gitbutler_branch::BranchCreateRequest;
 use gitbutler_branch_actions::upstream_integration::{
     BranchStatus, Resolution, ResolutionApproach, StackStatuses, UpstreamTreeStatus,
@@ -740,4 +741,234 @@ fn integrate_upstream_with_fully_integrated_branch_in_stack() {
         "only branch3 should remain visible"
     );
     assert_eq!(stacks[0].1.branch_details[0].name, "branch3");
+}
+
+/// Regression test for the scenario where stacks carry different amounts of
+/// upstream history, causing `merge_workspace` to fail during `integrate_upstream`.
+///
+/// Reproduces the real-world bug: three stacks are in the workspace, none of
+/// them touch `foo.txt`, yet each stack tree carries a different version of
+/// `foo.txt` because each was previously rebased onto a different intermediate
+/// upstream commit. The stacks don't share a common base, so sequential
+/// octopus-merging their trees against `target.tree()` produces a genuine
+/// textual conflict on a file no stack ever edited.
+///
+/// The graph rebase commit path (used for all commit operations) never calls
+/// `remerged_workspace_tree_v2`, so the inter-stack conflict goes undetected
+/// during normal development. It only surfaces during `integrate_upstream`.
+///
+/// The fix adds a pre-flight check (`check_workspace_stacks_mergeable`) that
+/// detects the conflict early and returns a descriptive error naming the
+/// offending stack and file, so the user can unapply it and retry. No state
+/// is mutated on failure.
+#[test]
+fn integrate_upstream_with_inter_stack_tree_conflict() {
+    let Test { repo, ctx, .. } = &mut Test::default();
+
+    // Initial state: foo.txt exists alongside per-stack files.
+    // No stack will ever edit foo.txt directly — the conflict comes purely
+    // from upstream history divergence.
+    fs::write(repo.path().join("foo.txt"), "original\n").unwrap();
+    fs::write(repo.path().join("file_a.txt"), "a\n").unwrap();
+    fs::write(repo.path().join("file_b.txt"), "b\n").unwrap();
+    fs::write(repo.path().join("file_c.txt"), "c\n").unwrap();
+    let initial = repo.commit_all("initial");
+    repo.push();
+
+    // Upstream commits that progressively change foo.txt:
+    // C1: rename (foo.txt = "renamed")
+    fs::write(repo.path().join("foo.txt"), "renamed\n").unwrap();
+    let c1 = repo.commit_all("upstream: rename foo");
+    // C2: rewrite (foo.txt = multi-line, incompatible with C1 from target's perspective)
+    fs::write(
+        repo.path().join("foo.txt"),
+        "renamed\nextra line\nmore content\n",
+    )
+    .unwrap();
+    let c2 = repo.commit_all("upstream: rewrite foo");
+    // C3: another upstream commit so the target can advance past C2.
+    fs::write(repo.path().join("unrelated.txt"), "new\n").unwrap();
+    repo.commit_all("upstream: unrelated file");
+    repo.push();
+
+    // Reset local back to initial so there's an upstream delta.
+    repo.reset_hard(Some(initial));
+
+    // Set the base branch (target = initial).
+    let mut guard = ctx.exclusive_worktree_access();
+    gitbutler_branch_actions::set_base_branch(
+        ctx,
+        &"refs/remotes/origin/master".parse().unwrap(),
+        guard.write_permission(),
+    )
+    .unwrap();
+    drop(guard);
+
+    // Create three stacks, each editing only its own file (never foo.txt).
+    let stack_ids: Vec<_> = ["stack-a", "stack-b", "stack-c"]
+        .iter()
+        .zip(["file_a.txt", "file_b.txt", "file_c.txt"])
+        .map(|(name, file)| {
+            let mut guard = ctx.exclusive_worktree_access();
+            let entry = gitbutler_branch_actions::create_virtual_branch(
+                ctx,
+                &BranchCreateRequest {
+                    name: Some(name.to_string()),
+                    ..Default::default()
+                },
+                guard.write_permission(),
+            )
+            .unwrap();
+            drop(guard);
+            fs::write(repo.path().join(file), format!("modified by {name}\n")).unwrap();
+            super::create_commit(ctx, entry.id, &format!("{name}: modify {file}")).unwrap();
+            entry.id
+        })
+        .collect();
+
+    // Simulate a previous partial integrate: rebase each stack onto a different
+    // intermediate upstream commit, without advancing the target. This gives
+    // each stack tree a different version of foo.txt purely through upstream
+    // history, even though no stack ever edited foo.txt.
+    //
+    // stack-a → rebased onto initial (foo.txt = "original")
+    // stack-b → rebased onto C1      (foo.txt = "renamed")
+    // stack-c → rebased onto C2      (foo.txt = "renamed\nextra line\nmore content")
+    {
+        let gix_repo = ctx.repo.get().unwrap();
+        let git_repo = git2::Repository::open(repo.path()).unwrap();
+        let sig = git2::Signature::now("test", "test@email.com").unwrap();
+
+        let mut vb_state = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
+
+        let rebase_targets = [initial, c1, c2];
+        let mut new_heads = Vec::new();
+
+        for (stack_id, rebase_onto) in stack_ids.iter().zip(rebase_targets) {
+            let mut stack = vb_state.get_stack(*stack_id).unwrap();
+            let old_head = stack.heads.last().unwrap().head_oid(&gix_repo).unwrap();
+
+            let onto_commit = git_repo.find_commit(rebase_onto).unwrap();
+            let old_commit = git_repo.find_commit(old_head.to_git2()).unwrap();
+            let mut index = git_repo
+                .merge_commits(&onto_commit, &old_commit, None)
+                .unwrap();
+            assert!(
+                !index.has_conflicts(),
+                "cherry-pick onto intermediate upstream should be clean"
+            );
+            let tree_oid = index.write_tree_to(&git_repo).unwrap();
+            let tree = git_repo.find_tree(tree_oid).unwrap();
+            let new_head = git_repo
+                .commit(
+                    None,
+                    &sig,
+                    &sig,
+                    &format!("rebased onto {}", &rebase_onto.to_string()[..8]),
+                    &tree,
+                    &[&onto_commit],
+                )
+                .unwrap();
+
+            stack
+                .set_stack_head(&mut vb_state, &gix_repo, new_head.to_gix())
+                .unwrap();
+            new_heads.push(new_head);
+        }
+
+        // Rebuild the workspace merge commit so stacks_v3 can discover all
+        // three stacks from the graph. The tree used here is arbitrary —
+        // merge_workspace recomputes it from stack trees.
+        let target_commit = git_repo.find_commit(initial).unwrap();
+        let parent_commits: Vec<_> = std::iter::once(&initial)
+            .chain(new_heads.iter())
+            .map(|oid| git_repo.find_commit(*oid).unwrap())
+            .collect();
+        let parent_refs: Vec<_> = parent_commits.iter().collect();
+        let ws_tree = target_commit.tree().unwrap();
+        let ws_oid = git_repo
+            .commit(
+                None,
+                &sig,
+                &sig,
+                "GitButler Workspace Commit",
+                &ws_tree,
+                &parent_refs,
+            )
+            .unwrap();
+        git_repo
+            .reference(
+                "refs/heads/gitbutler/workspace",
+                ws_oid,
+                true,
+                "test: rebuild workspace",
+            )
+            .unwrap();
+    }
+
+    // Integrate upstream. Before the fix, merge_workspace would bail with a
+    // generic "merge conflict when computing workspace tree". Now we get a
+    // descriptive error telling the user which stack and file are problematic.
+    let resolutions: Vec<_> = stack_ids
+        .iter()
+        .map(|id| Resolution {
+            stack_id: *id,
+            approach: ResolutionApproach::Rebase,
+            delete_integrated_branches: false,
+        })
+        .collect();
+    let err =
+        gitbutler_branch_actions::integrate_upstream(ctx, &resolutions, None, &Default::default())
+            .expect_err(
+                "should fail when stacks have conflicting trees from divergent upstream bases",
+            );
+
+    let msg = err.to_string();
+    assert!(
+        msg.contains("conflicts with other applied stacks"),
+        "expected descriptive conflict error, got: {msg}"
+    );
+    assert!(
+        msg.contains("foo.txt"),
+        "error should name the conflicting file, got: {msg}"
+    );
+    assert!(
+        msg.contains("unapply"),
+        "error should suggest unapplying, got: {msg}"
+    );
+
+    // The failed integrate_upstream must leave the repository in a clean state:
+    // all three stacks still applied, worktree unchanged, workspace functional.
+    let vb_state = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
+    let applied_stacks = vb_state.list_stacks_in_workspace().unwrap();
+    assert_eq!(
+        applied_stacks.len(),
+        3,
+        "all three stacks should still be applied after a failed integrate"
+    );
+    let mut applied_names: Vec<String> = applied_stacks.iter().map(|s| s.name()).collect();
+    applied_names.sort();
+    assert_eq!(
+        applied_names,
+        vec!["stack-a", "stack-b", "stack-c"],
+        "all stacks should retain their names"
+    );
+
+    // Worktree files should be exactly as they were before the call.
+    assert_eq!(
+        fs::read_to_string(repo.path().join("foo.txt")).unwrap(),
+        "original\n",
+        "foo.txt should be untouched"
+    );
+    for (file, stack_name) in [
+        ("file_a.txt", "stack-a"),
+        ("file_b.txt", "stack-b"),
+        ("file_c.txt", "stack-c"),
+    ] {
+        assert_eq!(
+            fs::read_to_string(repo.path().join(file)).unwrap(),
+            format!("modified by {stack_name}\n"),
+            "{file} should be untouched"
+        );
+    }
 }

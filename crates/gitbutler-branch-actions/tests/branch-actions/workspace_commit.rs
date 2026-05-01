@@ -108,3 +108,43 @@ fn merge_workspace_succeeds_with_adjacent_hunks_from_both_sides() -> Result<()> 
 
     Ok(())
 }
+
+/// Regression test for a merge-base mismatch between `merge_workspace` and
+/// `remerged_workspace_tree_v2`.
+///
+/// Three stacks based on different upstream commits inherit different versions
+/// of `shared.txt` that none of them intentionally modified. The fix uses the
+/// target's tree as merge base (matching `remerged_workspace_tree_v2`), which
+/// produces a clean merge. The old behavior used `merge_base_octopus` which
+/// fell behind the target, causing false conflicts.
+///
+/// This directly tests `WorkspaceState::create_from_heads_and_target` and
+/// `merge_workspace` — the exact code path that was fixed.
+#[test]
+fn merge_workspace_with_diverged_stacks() -> Result<()> {
+    let (ctx, _temp_dir) = command_ctx("diverged-stacks")?;
+
+    let repo = ctx.repo.get()?;
+    let target_oid = repo.rev_parse_single("current-target")?.detach();
+    let head_oids: Vec<gix::ObjectId> = ["stack_a", "stack_b", "stack_c"]
+        .iter()
+        .map(|name| repo.rev_parse_single(*name).map(|id| id.detach()))
+        .collect::<Result<_, _>>()?;
+
+    // Build WorkspaceState from the stack heads and target — this is exactly
+    // what `integrate_upstream` does before calling `merge_workspace`.
+    let workspace =
+        gitbutler_workspace::branch_trees::WorkspaceState::create_from_heads_and_target(
+            &repo, &head_oids, target_oid,
+        )?;
+
+    // With the fix (target tree as base), this merges cleanly because each
+    // stack's inherited shared.txt differs in a different section.
+    // With the old code (octopus base = init), this would fail because all
+    // stacks replace "base content" with different multi-line content.
+    let gix_repo = ctx.clone_repo_for_merging()?;
+    gitbutler_workspace::branch_trees::merge_workspace(&gix_repo, &workspace)
+        .expect("workspace should merge cleanly with target tree as base");
+
+    Ok(())
+}
