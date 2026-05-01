@@ -1,7 +1,7 @@
 import { type Operand, operandIdentityKey } from "#ui/operands.ts";
 import { Array } from "effect";
 
-export type Node = {
+export type Section = {
 	section: Operand | null;
 	children: Array<Operand>;
 };
@@ -20,13 +20,13 @@ const createNavigationIndex = (): NavigationIndex => ({
 	indexByKey: new Map<string, number>(),
 });
 
-export const buildNavigationIndex = (nodes: Array.NonEmptyArray<Node>): NavigationIndex => {
+export const buildNavigationIndex = (sections: Array.NonEmptyArray<Section>): NavigationIndex => {
 	const index = createNavigationIndex();
 
-	for (const outlineSection of nodes) {
-		const itemsInSection = outlineSection.section
-			? [outlineSection.section, ...outlineSection.children]
-			: outlineSection.children;
+	for (const section of sections) {
+		const itemsInSection = section.section
+			? [section.section, ...section.children]
+			: section.children;
 		if (itemsInSection.length === 0) continue;
 
 		const sectionIndex = index.sectionStartIndexes.length;

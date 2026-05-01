@@ -50,7 +50,7 @@ import { MenuTriggerIcon, PushIcon } from "#ui/ui/icons.tsx";
 import {
 	buildNavigationIndex,
 	navigationIndexIncludes,
-	Node,
+	Section,
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
 import { mergeProps, useRender } from "@base-ui/react";
@@ -82,8 +82,8 @@ const assert = <T,>(t: T | null | undefined): T => {
 	return t;
 };
 
-const sections = (headInfo: RefInfo): NonEmptyArray<Node> => {
-	const changesSection: Node = {
+const sections = (headInfo: RefInfo): NonEmptyArray<Section> => {
+	const changesSection: Section = {
 		section: changesSectionOperand,
 		children: [],
 	};
@@ -91,7 +91,7 @@ const sections = (headInfo: RefInfo): NonEmptyArray<Node> => {
 	const segmentChildren = (stackId: string, segment: Segment): Array<Operand> =>
 		segment.commits.map((commit) => commitOperand({ stackId, commitId: commit.id }));
 
-	const segmentSection = (stackId: string, segment: Segment): Node | null => {
+	const segmentSection = (stackId: string, segment: Segment): Section | null => {
 		const children = segmentChildren(stackId, segment);
 		const branchRef = segment.refName?.fullNameBytes;
 		if (!branchRef && children.length === 0) return null;
@@ -102,7 +102,7 @@ const sections = (headInfo: RefInfo): NonEmptyArray<Node> => {
 		};
 	};
 
-	const baseCommitSection: Node = {
+	const baseCommitSection: Section = {
 		section: baseCommitOperand,
 		children: [],
 	};
@@ -113,7 +113,7 @@ const sections = (headInfo: RefInfo): NonEmptyArray<Node> => {
 		...headInfo.stacks.flatMap((stack) => {
 			// oxlint-disable-next-line typescript/no-non-null-assertion -- [ref:stack-id-required]
 			const stackId = stack.id!;
-			const stackOperandSection: Node = {
+			const stackOperandSection: Section = {
 				section: stackOperand({ stackId }),
 				children: [],
 			};
