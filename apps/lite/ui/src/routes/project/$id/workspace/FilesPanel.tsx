@@ -287,6 +287,7 @@ const FilesTreePanel: FC<{ navigationIndex: NavigationIndex } & PanelProps> = ({
 				label="All changes"
 				expanded
 				className={workspaceItemRowStyles.section}
+				render={<OperandC projectId={projectId} operand={outlineSelection} />}
 			>
 				<ItemRow projectId={projectId} operand={outlineSelection} navigationIndex={navigationIndex}>
 					<div
