@@ -27,7 +27,7 @@ import {
 	type CommitOperand,
 	type Operand,
 } from "#ui/operands.ts";
-import { includeOperandForOutlineMode, isValidOutlineMode } from "#ui/outline/mode.ts";
+import { includeOperandForOutlineMode } from "#ui/outline/mode.ts";
 import {
 	Panel as PanelType,
 	useFocusedProjectPanel,
@@ -87,23 +87,9 @@ const useNavigationIndex = (
 	focusPanel: (panel: PanelType) => void,
 	outline: WorkspaceOutline,
 ) => {
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
-
 	const dispatch = useAppDispatch();
 
 	const navigationIndexUnfiltered = buildNavigationIndex(outline);
-
-	// React allows state updates on render, but not for external stores.
-	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
-	useEffect(() => {
-		if (
-			!isValidOutlineMode({
-				mode: outlineMode,
-				navigationIndex: navigationIndexUnfiltered,
-			})
-		)
-			dispatch(projectActions.exitMode({ projectId }));
-	}, [outlineMode, navigationIndexUnfiltered, projectId, dispatch]);
 
 	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
 

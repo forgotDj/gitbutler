@@ -1,6 +1,5 @@
 import { Match } from "effect";
 import { branchOperand, commitOperand, operandEquals, type Operand } from "#ui/operands.ts";
-import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import { getOperation, getOperations, OperationType } from "#ui/operations/operation.ts";
 
 /** @public */
@@ -94,45 +93,6 @@ export const operationModeToOperationType = (operationMode: OperationMode): Oper
 			DragAndDrop: ({ operationType }) => operationType,
 		}),
 		Match.exhaustive,
-	);
-
-export const isValidOutlineMode = ({
-	mode,
-	navigationIndex,
-}: {
-	mode: OutlineMode;
-	navigationIndex: NavigationIndex;
-}): boolean =>
-	Match.value(mode).pipe(
-		Match.tagsExhaustive({
-			Default: () => true,
-			Operation: ({ value }) =>
-				Match.value(value).pipe(
-					Match.tagsExhaustive({
-						Rub: (mode) => navigationIndexIncludes(navigationIndex, mode.source),
-						Move: (mode) => navigationIndexIncludes(navigationIndex, mode.source),
-						// Once we have keyboard selectable hunks, this should check the
-						// navigation index(es).
-						DragAndDrop: () => true,
-					}),
-				),
-			RewordCommit: (mode) =>
-				navigationIndexIncludes(
-					navigationIndex,
-					commitOperand({
-						stackId: mode.stackId,
-						commitId: mode.commitId,
-					}),
-				),
-			RenameBranch: (mode) =>
-				navigationIndexIncludes(
-					navigationIndex,
-					branchOperand({
-						stackId: mode.stackId,
-						branchRef: mode.branchRef,
-					}),
-				),
-		}),
 	);
 
 export const isValidOutlineModeForSelection = ({
