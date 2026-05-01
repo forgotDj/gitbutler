@@ -78,39 +78,58 @@ export const OperationTooltip: FC<
 		isActive: boolean;
 	} & useRender.ComponentProps<"div">
 > = ({ projectId, operand, operationMode, isActive, render, ...props }) => {
-	const operation = operationMode?.source
-		? getOperation({
-				source: operationMode.source,
-				target: operand,
-				operationType: operationModeToOperationType(operationMode),
-			})
-		: null;
+	const tooltip =
+		isActive && !!operationMode
+			? Match.value(operationMode).pipe(
+					Match.tags({
+						DragAndDrop: () => {
+							const operation = getOperation({
+								source: operationMode.source,
+								target: operand,
+								operationType: operationModeToOperationType(operationMode),
+							});
+							if (!operation) return null;
 
-	const tooltipLabel = isActive ? (
-		operation ? (
-			<>{operationLabel(operation)}</>
-		) : !!operationMode?.source && operandEquals(operationMode.source, operand) ? (
-			<>Select a target</>
-		) : null
-	) : null;
+							return <>{operationLabel(operation)}</>;
+						},
+					}),
+					Match.orElse(() => {
+						const operation = getOperation({
+							source: operationMode.source,
+							target: operand,
+							operationType: operationModeToOperationType(operationMode),
+						});
+						return (
+							<>
+								{operation ? (
+									<>{operationLabel(operation)}</>
+								) : operandEquals(operationMode.source, operand) ? (
+									<>Select a target</>
+								) : null}
+								<OperationModeControls
+									projectId={projectId}
+									operation={operation}
+									operationMode={operationMode}
+								/>
+							</>
+						);
+					}),
+				)
+			: null;
 
 	const trigger = useRender({ render, props });
 
-	const showControls =
-		isActive &&
+	const isDragAndDrop =
 		!!operationMode &&
 		Match.value(operationMode).pipe(
-			Match.tagsExhaustive({
-				DragAndDrop: () => false,
-				Rub: () => true,
-				Move: () => true,
-			}),
+			Match.tags({ DragAndDrop: () => true }),
+			Match.orElse(() => false),
 		);
 
 	return (
 		<Tooltip.Root
-			open={!!tooltipLabel || showControls}
-			disableHoverablePopup={!showControls}
+			open={!!tooltip}
+			disableHoverablePopup={isDragAndDrop}
 			onOpenChange={(_open, eventDetails) => {
 				eventDetails.allowPropagation();
 			}}
@@ -119,14 +138,7 @@ export const OperationTooltip: FC<
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip, styles.popup)}>
-						{tooltipLabel}
-						{showControls && (
-							<OperationModeControls
-								projectId={projectId}
-								operation={operation}
-								operationMode={operationMode}
-							/>
-						)}
+						{tooltip}
 					</Tooltip.Popup>
 				</Tooltip.Positioner>
 			</Tooltip.Portal>
