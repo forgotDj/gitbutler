@@ -129,6 +129,11 @@ export const useNavigationIndexHotkeys = ({
 		focusPanel("outline");
 	};
 
+	const enterCutMode = () => {
+		dispatch(projectActions.enterCutMode({ projectId, source: selection }));
+		focusPanel("outline");
+	};
+
 	const enterCommitMode = () => {
 		dispatch(projectActions.enterMoveMode({ projectId, source: changesSectionOperand }));
 		focusPanel("outline");
@@ -295,7 +300,7 @@ export const useNavigationIndexHotkeys = ({
 			},
 			{
 				hotkey: "Mod+X",
-				callback: enterRubMode,
+				callback: enterCutMode,
 				options: {
 					ignoreInputs: true,
 					meta: { group, name: "Cut" },
