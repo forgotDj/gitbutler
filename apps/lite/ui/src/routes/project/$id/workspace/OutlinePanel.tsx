@@ -79,6 +79,7 @@ import { Panel, PanelProps } from "react-resizable-panels";
 import styles from "./OutlinePanel.module.css";
 import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
 import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.tsx";
+import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
 
 const assert = <T,>(t: T | null | undefined): T => {
 	if (t == null) throw new Error("Expected value to be non-null and defined");
@@ -697,6 +698,8 @@ const CommitRow: FC<
 		});
 	};
 
+	const runOperation = useRunOperation();
+
 	const moveCommitUp = () => {
 		const selectionIdx = navigationIndex.indexByKey.get(operandIdentityKey(operand));
 		if (selectionIdx === undefined) return;
@@ -705,45 +708,12 @@ const CommitRow: FC<
 		if (selectionSectionIdx === undefined) return;
 
 		const prevItem = navigationIndex.items[selectionIdx - 1];
-		if (
-			navigationIndex.sectionIndexByItemIndex[selectionIdx - 1] === selectionSectionIdx &&
-			prevItem?._tag === "Commit" &&
-			prevItem.stackId === stackId
-		) {
-			commitMove.mutate({
-				projectId,
-				subjectCommitIds: [commit.id],
-				relativeTo: { type: "commit", subject: prevItem.commitId },
-				side: "above",
-				dryRun: false,
-			});
-			return;
-		}
+		if (!prevItem) return;
 
-		const sectionStartIdx = navigationIndex.sectionStartIndexes[selectionSectionIdx];
-		if (sectionStartIdx === undefined) return;
+		const operation = moveOperation({ source: operand, target: prevItem, side: "above" });
+		if (!operation) return;
 
-		const prevSectionTarget = navigationIndex.items[sectionStartIdx - 1];
-		if (prevSectionTarget?._tag === "Commit" && prevSectionTarget.stackId === stackId) {
-			commitMove.mutate({
-				projectId,
-				subjectCommitIds: [commit.id],
-				relativeTo: { type: "commit", subject: prevSectionTarget.commitId },
-				side: "below",
-				dryRun: false,
-			});
-			return;
-		}
-
-		if (prevSectionTarget?._tag !== "Branch" || prevSectionTarget.stackId !== stackId) return;
-
-		commitMove.mutate({
-			projectId,
-			subjectCommitIds: [commit.id],
-			relativeTo: { type: "referenceBytes", subject: prevSectionTarget.branchRef },
-			side: "below",
-			dryRun: false,
-		});
+		runOperation(projectId, operation);
 	};
 
 	const moveCommitDown = () => {
@@ -755,33 +725,12 @@ const CommitRow: FC<
 
 		const nextIdx = selectionIdx + 1;
 		const nextItem = navigationIndex.items[nextIdx];
-		if (
-			navigationIndex.sectionIndexByItemIndex[nextIdx] === selectionSectionIdx &&
-			nextItem?._tag === "Commit" &&
-			nextItem.stackId === stackId
-		) {
-			commitMove.mutate({
-				projectId,
-				subjectCommitIds: [commit.id],
-				relativeTo: { type: "commit", subject: nextItem.commitId },
-				side: "below",
-				dryRun: false,
-			});
-			return;
-		}
+		if (!nextItem) return;
 
-		const nextSectionStartIdx = navigationIndex.sectionStartIndexes[selectionSectionIdx + 1];
-		if (nextSectionStartIdx === undefined) return;
-		const nextSection = navigationIndex.items[nextSectionStartIdx];
-		if (nextSection?._tag !== "Branch" || nextSection.stackId !== stackId) return;
+		const operation = moveOperation({ source: operand, target: nextItem, side: "below" });
+		if (!operation) return;
 
-		commitMove.mutate({
-			projectId,
-			subjectCommitIds: [commit.id],
-			relativeTo: { type: "referenceBytes", subject: nextSection.branchRef },
-			side: "below",
-			dryRun: false,
-		});
+		runOperation(projectId, operation);
 	};
 
 	const cutCommit = () => {
