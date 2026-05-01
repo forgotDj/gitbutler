@@ -21,8 +21,7 @@ const OperationModeControls: FC<{
 	projectId: string;
 	operation: Operation | null;
 	operationMode: OperationMode;
-	isActive: boolean;
-}> = ({ projectId, operation, operationMode, isActive }) => {
+}> = ({ projectId, operation, operationMode }) => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
 
@@ -63,7 +62,6 @@ const OperationModeControls: FC<{
 		],
 		{
 			conflictBehavior: "allow",
-			enabled: isActive,
 		},
 	);
 
@@ -136,7 +134,6 @@ export const OperationTooltip: FC<
 								projectId={projectId}
 								operation={operation}
 								operationMode={operationMode}
-								isActive={isActive}
 							/>
 						)}
 					</Tooltip.Popup>
