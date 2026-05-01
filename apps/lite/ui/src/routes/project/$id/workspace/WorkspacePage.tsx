@@ -476,6 +476,7 @@ const WorkspacePage: FC = () => {
 				<OutlinePanel
 					id={"outline" satisfies PanelType}
 					minSize={400}
+					defaultSize={500}
 					groupResizeBehavior="preserve-pixel-size"
 					tabIndex={0}
 					className={styles.panel}
@@ -491,6 +492,7 @@ const WorkspacePage: FC = () => {
 						<FilesPanel
 							id={"files" satisfies PanelType}
 							minSize={400}
+							defaultSize={400}
 							groupResizeBehavior="preserve-pixel-size"
 							tabIndex={0}
 							className={styles.panel}
