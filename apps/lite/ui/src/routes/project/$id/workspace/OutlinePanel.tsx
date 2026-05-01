@@ -1,4 +1,3 @@
-import { Array } from "effect";
 import {
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
@@ -51,8 +50,7 @@ import { MenuTriggerIcon, PushIcon } from "#ui/ui/icons.tsx";
 import {
 	buildNavigationIndex,
 	navigationIndexIncludes,
-	WorkspaceOutline,
-	WorkspaceSection,
+	Node,
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
 import { mergeProps, useRender } from "@base-ui/react";
@@ -77,14 +75,15 @@ import styles from "./OutlinePanel.module.css";
 import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
 import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.tsx";
 import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
+import { NonEmptyArray } from "effect/Array";
 
 const assert = <T,>(t: T | null | undefined): T => {
 	if (t == null) throw new Error("Expected value to be non-null and defined");
 	return t;
 };
 
-const buildWorkspaceOutline = (headInfo: RefInfo): WorkspaceOutline => {
-	const changesSection: WorkspaceSection = {
+const buildWorkspaceOutline = (headInfo: RefInfo): NonEmptyArray<Node> => {
+	const changesSection: Node = {
 		section: changesSectionOperand,
 		children: [],
 	};
@@ -92,7 +91,7 @@ const buildWorkspaceOutline = (headInfo: RefInfo): WorkspaceOutline => {
 	const segmentChildren = (stackId: string, segment: Segment): Array<Operand> =>
 		segment.commits.map((commit) => commitOperand({ stackId, commitId: commit.id }));
 
-	const segmentSection = (stackId: string, segment: Segment): WorkspaceSection | null => {
+	const segmentSection = (stackId: string, segment: Segment): Node | null => {
 		const children = segmentChildren(stackId, segment);
 		const branchRef = segment.refName?.fullNameBytes;
 		if (!branchRef && children.length === 0) return null;
@@ -103,7 +102,7 @@ const buildWorkspaceOutline = (headInfo: RefInfo): WorkspaceOutline => {
 		};
 	};
 
-	const baseCommitSection: WorkspaceSection = {
+	const baseCommitSection: Node = {
 		section: baseCommitOperand,
 		children: [],
 	};
@@ -114,7 +113,7 @@ const buildWorkspaceOutline = (headInfo: RefInfo): WorkspaceOutline => {
 		...headInfo.stacks.flatMap((stack) => {
 			// oxlint-disable-next-line typescript/no-non-null-assertion -- [ref:stack-id-required]
 			const stackId = stack.id!;
-			const stackOperandSection: WorkspaceSection = {
+			const stackOperandSection: Node = {
 				section: stackOperand({ stackId }),
 				children: [],
 			};
