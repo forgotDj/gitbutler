@@ -76,6 +76,7 @@ import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
 import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.tsx";
 import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
 import { NonEmptyArray } from "effect/Array";
+import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
 
 const assert = <T,>(t: T | null | undefined): T => {
 	if (t == null) throw new Error("Expected value to be non-null and defined");
@@ -816,7 +817,16 @@ const ChangesSectionRow: FC<{
 					<Toolbar.Button
 						type="button"
 						className={workspaceItemRowStyles.itemRowToolbarButton}
-						onClick={onCommit}
+						render={
+							<ShortcutButton
+								onClick={onCommit}
+								hotkey="Shift+C"
+								hotkeyOptions={{
+									conflictBehavior: "allow",
+									meta: { group: "Changes", name: "Commit" },
+								}}
+							/>
+						}
 					>
 						Commit
 					</Toolbar.Button>
