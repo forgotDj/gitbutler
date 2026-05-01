@@ -50,7 +50,6 @@ import styles from "./FilesPanel.module.css";
 import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
 import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.tsx";
 import { decodeRefName } from "#ui/api/ref-name.ts";
-import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { getDependencyCommitIds, getHunkDependencyDiffsByPath } from "#ui/hunk.ts";
 import { DependencyIndicatorButton } from "#ui/routes/project/$id/workspace/DependencyIndicatorButton.tsx";
@@ -287,7 +286,7 @@ const FilesTreePanel: FC<{ navigationIndex: NavigationIndex } & PanelProps> = ({
 				label="All changes"
 				expanded
 				className={workspaceItemRowStyles.section}
-				render={<OperandC projectId={projectId} operand={outlineSelection} />}
+				render={<OperationSourceC projectId={projectId} source={outlineSelection} />}
 			>
 				<ItemRow projectId={projectId} operand={outlineSelection} navigationIndex={navigationIndex}>
 					<div
@@ -488,34 +487,6 @@ const TreeItem: FC<
 	});
 };
 
-const OperandC: FC<
-	{
-		projectId: string;
-		operand: Operand;
-	} & useRender.ComponentProps<"div">
-> = ({ projectId, operand, render, ...props }) => {
-	const isSelected = useIsSelected({ projectId, operand });
-
-	return useRender({
-		render: (
-			<OperationSourceC
-				projectId={projectId}
-				source={operand}
-				render={
-					<OperationTarget
-						projectId={projectId}
-						operand={operand}
-						isSelected={isSelected}
-						render={render}
-					/>
-				}
-			/>
-		),
-		defaultTagName: "div",
-		props,
-	});
-};
-
 const TreeChangeRow: FC<{
 	change: TreeChange;
 	operand: Operand;
@@ -527,9 +498,9 @@ const TreeChangeRow: FC<{
 		operand={operand}
 		label={changeLabel(change)}
 		render={
-			<OperandC
+			<OperationSourceC
 				projectId={projectId}
-				operand={operand}
+				source={operand}
 				render={
 					<ItemRow projectId={projectId} operand={operand} navigationIndex={navigationIndex} />
 				}
@@ -582,9 +553,9 @@ const ChangesFileRow: FC<{
 			operand={operand}
 			label={changeLabel(change)}
 			render={
-				<OperandC
+				<OperationSourceC
 					projectId={projectId}
-					operand={operand}
+					source={operand}
 					render={
 						<ItemRow projectId={projectId} operand={operand} navigationIndex={navigationIndex} />
 					}
