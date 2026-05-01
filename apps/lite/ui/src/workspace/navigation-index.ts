@@ -1,5 +1,12 @@
 import { type Operand, operandIdentityKey } from "#ui/operands.ts";
-import { type WorkspaceOutline } from "#ui/workspace/outline.ts";
+import { Array } from "effect";
+
+export type WorkspaceSection = {
+	section: Operand | null;
+	children: Array<Operand>;
+};
+
+export type WorkspaceOutline = Array.NonEmptyArray<WorkspaceSection>;
 
 export type NavigationIndex = {
 	items: Array<Operand>;

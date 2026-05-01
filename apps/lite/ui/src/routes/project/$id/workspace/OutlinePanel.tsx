@@ -1,3 +1,4 @@
+import { Array } from "effect";
 import {
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
@@ -50,12 +51,13 @@ import { MenuTriggerIcon, PushIcon } from "#ui/ui/icons.tsx";
 import {
 	buildNavigationIndex,
 	navigationIndexIncludes,
+	WorkspaceOutline,
+	WorkspaceSection,
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
-import { useWorkspaceOutline } from "#ui/workspace/outline.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
-import { AbsorptionTarget, Commit, Segment, Stack, TreeChange } from "@gitbutler/but-sdk";
+import { AbsorptionTarget, Commit, RefInfo, Segment, Stack, TreeChange } from "@gitbutler/but-sdk";
 import { formatForDisplay, useHotkey, useHotkeys } from "@tanstack/react-hotkeys";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
@@ -81,8 +83,58 @@ const assert = <T,>(t: T | null | undefined): T => {
 	return t;
 };
 
+const buildWorkspaceOutline = (headInfo: RefInfo): WorkspaceOutline => {
+	const changesSection: WorkspaceSection = {
+		section: changesSectionOperand,
+		children: [],
+	};
+
+	const segmentChildren = (stackId: string, segment: Segment): Array<Operand> =>
+		segment.commits.map((commit) => commitOperand({ stackId, commitId: commit.id }));
+
+	const segmentSection = (stackId: string, segment: Segment): WorkspaceSection | null => {
+		const children = segmentChildren(stackId, segment);
+		const branchRef = segment.refName?.fullNameBytes;
+		if (!branchRef && children.length === 0) return null;
+
+		return {
+			section: branchRef ? branchOperand({ stackId, branchRef }) : null,
+			children,
+		};
+	};
+
+	const baseCommitSection: WorkspaceSection = {
+		section: baseCommitOperand,
+		children: [],
+	};
+
+	return [
+		changesSection,
+
+		...headInfo.stacks.flatMap((stack) => {
+			// oxlint-disable-next-line typescript/no-non-null-assertion -- [ref:stack-id-required]
+			const stackId = stack.id!;
+			const stackOperandSection: WorkspaceSection = {
+				section: stackOperand({ stackId }),
+				children: [],
+			};
+			return [
+				stackOperandSection,
+				...stack.segments.flatMap((segment) => {
+					const section = segmentSection(stackId, segment);
+					return section ? [section] : [];
+				}),
+			];
+		}),
+
+		baseCommitSection,
+	];
+};
+
 const useNavigationIndex = (projectId: string, focusPanel: (panel: PanelType) => void) => {
-	const outline = useWorkspaceOutline({ projectId });
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+
+	const outline = buildWorkspaceOutline(headInfo);
 
 	const dispatch = useAppDispatch();
 
