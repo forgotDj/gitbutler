@@ -1,14 +1,15 @@
 import { classes } from "#ui/ui/classes.ts";
 import {
 	getOperation,
+	getOperations,
 	operationLabel,
 	useRunOperation,
 	type Operation,
+	type OperationsByType,
 } from "#ui/operations/operation.ts";
 import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
 import uiStyles from "#ui/ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
-import { useHotkey } from "@tanstack/react-hotkeys";
 import { FC } from "react";
 import styles from "./OperationTooltip.module.css";
 import { Operand, operandEquals } from "#ui/operands.ts";
@@ -20,8 +21,7 @@ import { Match } from "effect";
 const OperationModeControls: FC<{
 	projectId: string;
 	operation: Operation | null;
-	operationMode: OperationMode;
-}> = ({ projectId, operation, operationMode }) => {
+}> = ({ projectId, operation }) => {
 	const dispatch = useAppDispatch();
 	const runOperation = useRunOperation();
 
@@ -34,13 +34,6 @@ const OperationModeControls: FC<{
 	};
 
 	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
-
-	useHotkey("Mod+V", confirm, {
-		conflictBehavior: "allow",
-		enabled: operation !== null && operationMode._tag === "Rub",
-		ignoreInputs: true,
-		meta: { group: "Operation mode", name: "Paste" },
-	});
 
 	return (
 		<>
@@ -56,6 +49,73 @@ const OperationModeControls: FC<{
 					Confirm
 				</ShortcutButton>
 			)}
+			<ShortcutButton
+				hotkey="Escape"
+				hotkeyOptions={{
+					conflictBehavior: "allow",
+					meta: { group: "Operation mode", name: "Cancel" },
+				}}
+				onClick={cancel}
+			>
+				Cancel
+			</ShortcutButton>
+		</>
+	);
+};
+
+const CutOperationControls: FC<{
+	projectId: string;
+	operations: OperationsByType;
+}> = ({ projectId, operations }) => {
+	const dispatch = useAppDispatch();
+	const runOperation = useRunOperation();
+
+	const run = (operation: Operation | null) => {
+		dispatch(projectActions.exitMode({ projectId }));
+
+		if (!operation) return;
+
+		runOperation(projectId, operation);
+	};
+
+	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
+
+	return (
+		<>
+			<ShortcutButton
+				hotkey="A"
+				hotkeyOptions={{
+					conflictBehavior: "allow",
+					meta: { group: "Operation mode", name: "Move above" },
+				}}
+				disabled={!operations.moveAbove}
+				onClick={() => run(operations.moveAbove)}
+			>
+				Move above
+			</ShortcutButton>
+			<ShortcutButton
+				hotkey="Mod+V"
+				hotkeyOptions={{
+					conflictBehavior: "allow",
+					ignoreInputs: true,
+					meta: { group: "Operation mode", name: "Rub" },
+				}}
+				disabled={!operations.rub}
+				onClick={() => run(operations.rub)}
+			>
+				Rub
+			</ShortcutButton>
+			<ShortcutButton
+				hotkey="B"
+				hotkeyOptions={{
+					conflictBehavior: "allow",
+					meta: { group: "Operation mode", name: "Move below" },
+				}}
+				disabled={!operations.moveBelow}
+				onClick={() => run(operations.moveBelow)}
+			>
+				Move below
+			</ShortcutButton>
 			<ShortcutButton
 				hotkey="Escape"
 				hotkeyOptions={{
@@ -92,6 +152,12 @@ export const OperationTooltip: FC<
 
 							return <>{operationLabel(operation)}</>;
 						},
+						Cut: ({ source }) => (
+							<CutOperationControls
+								projectId={projectId}
+								operations={getOperations(source, operand)}
+							/>
+						),
 					}),
 					Match.orElse(() => {
 						const operation = getOperation({
@@ -106,11 +172,7 @@ export const OperationTooltip: FC<
 								) : operandEquals(operationMode.source, operand) ? (
 									<>Select a target</>
 								) : null}
-								<OperationModeControls
-									projectId={projectId}
-									operation={operation}
-									operationMode={operationMode}
-								/>
+								<OperationModeControls projectId={projectId} operation={operation} />
 							</>
 						);
 					}),

@@ -535,7 +535,7 @@ const CommitRow: FC<
 	};
 
 	const cutCommit = () => {
-		dispatch(projectActions.enterRubMode({ projectId, source: operand }));
+		dispatch(projectActions.enterCutMode({ projectId, source: operand }));
 	};
 
 	const startEditing = () => {

@@ -518,10 +518,9 @@ const isOperationSourceEnabled = (source: Operand): boolean =>
 		Match.orElse(() => true),
 	);
 
-export const getOperations = (
-	source: Operand,
-	target: Operand,
-): Record<OperationType, Operation | null> => {
+export type OperationsByType = Record<OperationType, Operation | null>;
+
+export const getOperations = (source: Operand, target: Operand): OperationsByType => {
 	if (operandEquals(source, target) || !isOperationSourceEnabled(source))
 		return {
 			rub: null,

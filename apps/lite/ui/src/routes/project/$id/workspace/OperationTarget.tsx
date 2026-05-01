@@ -174,6 +174,7 @@ export const OperationTarget: FC<
 						isActiveDropTarget && (operationType === "moveAbove" || operationType === "moveBelow")
 							? operationType
 							: null,
+					Cut: () => null,
 					Rub: () => null,
 					Move: () => null,
 				}),
@@ -185,6 +186,7 @@ export const OperationTarget: FC<
 		Match.value(operationMode).pipe(
 			Match.tagsExhaustive({
 				DragAndDrop: ({ operationType }) => isActiveDropTarget && operationType === "rub",
+				Cut: () => isSelected,
 				Rub: () => isSelected,
 				Move: () => isSelected,
 			}),

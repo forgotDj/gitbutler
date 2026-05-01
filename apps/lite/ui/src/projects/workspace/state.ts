@@ -9,6 +9,7 @@ import {
 	type Operand,
 } from "#ui/operands.ts";
 import {
+	cutOperationMode,
 	defaultOutlineMode,
 	dragAndDropOperationMode,
 	getOperationMode,
@@ -51,6 +52,10 @@ export const enterMoveMode = (state: WorkspaceState, source: Operand) => {
 
 export const enterRubMode = (state: WorkspaceState, source: Operand) => {
 	state.mode = operationOutlineMode(rubOperationMode({ source }));
+};
+
+export const enterCutMode = (state: WorkspaceState, source: Operand) => {
+	state.mode = operationOutlineMode(cutOperationMode({ source }));
 };
 
 export const enterDragAndDropMode = (state: WorkspaceState, source: Operand) => {

@@ -6,17 +6,26 @@ import { filterNavigationIndex, NavigationIndex } from "#ui/workspace/navigation
 /** @public */
 export type RubOperationMode = { source: Operand };
 /** @public */
+export type CutOperationMode = { source: Operand };
+/** @public */
 export type MoveOperationMode = { source: Operand };
 /** @public */
 export type DragAndDropOperationMode = { source: Operand; operationType: OperationType | null };
 export type OperationMode =
 	| ({ _tag: "Rub" } & RubOperationMode)
+	| ({ _tag: "Cut" } & CutOperationMode)
 	| ({ _tag: "Move" } & MoveOperationMode)
 	| ({ _tag: "DragAndDrop" } & DragAndDropOperationMode);
 
 /** @public */
 export const rubOperationMode = ({ source }: RubOperationMode): OperationMode => ({
 	_tag: "Rub",
+	source,
+});
+
+/** @public */
+export const cutOperationMode = ({ source }: CutOperationMode): OperationMode => ({
+	_tag: "Cut",
 	source,
 });
 
@@ -89,6 +98,7 @@ export const operationModeToOperationType = (operationMode: OperationMode): Oper
 		Match.withReturnType<OperationType | null>(),
 		Match.tags({
 			Rub: () => "rub",
+			Cut: () => null,
 			// We should have the ability to move either above or below.
 			Move: ({ source }) => (source._tag === "Branch" ? "moveAbove" : "moveBelow"),
 			DragAndDrop: ({ operationType }) => operationType,
@@ -126,6 +136,11 @@ export const isValidOutlineModeForSelection = ({
 		}),
 	);
 
+const hasAnyOperation = (source: Operand, target: Operand) => {
+	const operations = getOperations(source, target);
+	return !!operations.rub || !!operations.moveAbove || !!operations.moveBelow;
+};
+
 const includeOperandForOutlineMode = ({
 	mode,
 	operand,
@@ -139,10 +154,8 @@ const includeOperandForOutlineMode = ({
 			Operation: ({ value }) =>
 				Match.value(value).pipe(
 					Match.tagsExhaustive({
-						DragAndDrop: ({ source }) => {
-							const operations = getOperations(source, operand);
-							return !!operations.rub || !!operations.moveAbove || !!operations.moveBelow;
-						},
+						DragAndDrop: ({ source }) => hasAnyOperation(source, operand),
+						Cut: ({ source }) => hasAnyOperation(source, operand),
 						Move: (mode) =>
 							!!getOperation({
 								source: mode.source,
