@@ -124,12 +124,6 @@
 	flex-direction: column;
 }
 
-.laneActions {
-	display: flex;
-	column-gap: 8px;
-	align-items: center;
-}
-
 .editorForm {
 	display: flex;
 	row-gap: var(--row-block-padding);
