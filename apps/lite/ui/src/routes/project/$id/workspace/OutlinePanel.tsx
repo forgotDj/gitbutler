@@ -816,6 +816,7 @@ const CommitRow: FC<
 	});
 
 	useHotkey("Alt+ArrowUp", moveCommitUp, {
+		conflictBehavior: "allow",
 		enabled:
 			!commitMove.isPending &&
 			isSelected &&
@@ -830,6 +831,7 @@ const CommitRow: FC<
 	});
 
 	useHotkey("Alt+ArrowDown", moveCommitDown, {
+		conflictBehavior: "allow",
 		enabled:
 			!commitMove.isPending &&
 			isSelected &&
