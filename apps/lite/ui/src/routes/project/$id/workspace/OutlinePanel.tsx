@@ -143,15 +143,7 @@ export const OutlinePanel: FC<
 				)
 			: navigationIndexUnfiltered;
 
-	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	const focusedPanel = useFocusedProjectPanel(projectId);
-	const commit = () =>
-		dispatch(
-			projectActions.enterMoveMode({
-				projectId,
-				source: changesSectionOperand,
-			}),
-		);
 
 	const select = (newItem: Operand) =>
 		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
@@ -166,6 +158,15 @@ export const OutlinePanel: FC<
 		select,
 		selection,
 	});
+
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+	const commit = () =>
+		dispatch(
+			projectActions.enterMoveMode({
+				projectId,
+				source: changesSectionOperand,
+			}),
+		);
 
 	const selectChanges = () => {
 		select(changesSectionOperand);
