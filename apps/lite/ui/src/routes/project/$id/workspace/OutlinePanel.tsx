@@ -81,7 +81,6 @@ import {
 	ComponentProps,
 	FC,
 	Fragment,
-	Ref,
 	Suspense,
 	useEffect,
 	useLayoutEffect,
@@ -90,7 +89,7 @@ import {
 	useState,
 	useTransition,
 } from "react";
-import { Panel } from "react-resizable-panels";
+import { Panel, PanelProps } from "react-resizable-panels";
 import styles from "./OutlinePanel.module.css";
 
 const assert = <T,>(t: T | null | undefined): T => {
@@ -98,12 +97,12 @@ const assert = <T,>(t: T | null | undefined): T => {
 	return t;
 };
 
-export const OutlinePanel: FC<{
-	className?: string;
-	elementRef: Ref<HTMLDivElement | null>;
-	focusPanel: (panel: PanelType) => void;
-	onAbsorbChanges: (target: AbsorptionTarget) => void;
-}> = ({ className, elementRef, focusPanel, onAbsorbChanges }) => {
+export const OutlinePanel: FC<
+	{
+		focusPanel: (panel: PanelType) => void;
+		onAbsorbChanges: (target: AbsorptionTarget) => void;
+	} & PanelProps
+> = ({ focusPanel, onAbsorbChanges, ...panelProps }) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const dispatch = useAppDispatch();
 
@@ -181,14 +180,11 @@ export const OutlinePanel: FC<{
 
 	return (
 		<Panel
-			id={"outline" satisfies PanelType}
-			minSize={400}
-			groupResizeBehavior="preserve-pixel-size"
-			elementRef={elementRef}
+			{...panelProps}
 			tabIndex={0}
 			role="tree"
 			aria-activedescendant={treeItemId(projectId, selection)}
-			className={classes(className, styles.outlinePanel)}
+			className={classes(panelProps.className, styles.outlinePanel)}
 		>
 			<Changes
 				projectId={projectId}

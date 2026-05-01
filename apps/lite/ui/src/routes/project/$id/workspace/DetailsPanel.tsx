@@ -34,8 +34,8 @@ import { useHotkey } from "@tanstack/react-hotkeys";
 import { useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { Array, Match, pipe } from "effect";
-import { FC, Ref, Suspense, useDeferredValue } from "react";
-import { Panel } from "react-resizable-panels";
+import { FC, Suspense, useDeferredValue } from "react";
+import { Panel, PanelProps } from "react-resizable-panels";
 import { DependencyIndicatorButton } from "./DependencyIndicatorButton.tsx";
 import styles from "./DetailsPanel.module.css";
 
@@ -339,11 +339,12 @@ const Details: FC<{
 		}),
 	);
 
-export const DetailsPanel: FC<{
-	className?: string;
-	elementRef: Ref<HTMLDivElement | null>;
-	focusPanel: (panel: PanelType) => void;
-}> = ({ className, elementRef, focusPanel }) => {
+export const DetailsPanel: FC<
+	{
+		className?: string;
+		focusPanel: (panel: PanelType) => void;
+	} & Omit<PanelProps, "className">
+> = ({ focusPanel, className, ...panelProps }) => {
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const urgentSelection = useAppSelector((state) => selectProjectSelection(state, projectId));
@@ -365,12 +366,8 @@ export const DetailsPanel: FC<{
 
 	return (
 		<Panel
-			id={"details" satisfies PanelType}
-			minSize={300}
-			defaultSize="70%"
-			elementRef={elementRef}
-			tabIndex={0}
-			style={{ opacity: urgentSelection !== selection ? 0.5 : 1 }}
+			{...panelProps}
+			style={{ ...panelProps.style, opacity: urgentSelection !== selection ? 0.5 : 1 }}
 		>
 			<Virtualizer className={classes(className, styles.detailsVirtualizer)}>
 				<Suspense fallback={<div>Loading details...</div>}>
