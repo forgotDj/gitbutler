@@ -43,6 +43,8 @@ import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarge
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { getDependencyCommitIds, getHunkDependencyDiffsByPath } from "#ui/hunk.ts";
 import { DependencyIndicatorButton } from "#ui/routes/project/$id/workspace/DependencyIndicatorButton.tsx";
+import { useFocusedProjectPanel } from "#ui/panels.ts";
+import { useHotkey } from "@tanstack/react-hotkeys";
 
 export const FilesPanel: FC<
 	{
@@ -364,20 +366,30 @@ const ChangesFileRow: FC<{
 }> = ({ change, dependencyCommitIds, onAbsorbChanges, projectId }) => {
 	const operand = fileOperand({ parent: changesFileParent, path: change.path });
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const isSelected = useIsSelected({ projectId, operand });
+	const focusedPanel = useFocusedProjectPanel(projectId);
+
+	const absorb = () => {
+		onAbsorbChanges({
+			type: "treeChanges",
+			subject: {
+				changes: [change],
+				assignedStackId: null,
+			},
+		});
+	};
+
+	useHotkey("A", absorb, {
+		conflictBehavior: "allow",
+		enabled: isSelected && focusedPanel === "files" && outlineMode._tag === "Default",
+		meta: { group: "Changes", name: "Absorb" },
+	});
 
 	const menuItems: Array<NativeMenuItem> = [
 		{
 			_tag: "Item",
 			label: "Absorb",
-			onSelect: () => {
-				onAbsorbChanges({
-					type: "treeChanges",
-					subject: {
-						changes: [change],
-						assignedStackId: null,
-					},
-				});
-			},
+			onSelect: absorb,
 		},
 	];
 
