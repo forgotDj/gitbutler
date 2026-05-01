@@ -360,7 +360,7 @@ export const DetailsPanel: FC<
 		{
 			conflictBehavior: "allow",
 			enabled: focusedPanel === "details",
-			meta: { group: "Details", name: "Close" },
+			meta: { group: "Details", name: "Close", commandPalette: false },
 		},
 	);
 
