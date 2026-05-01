@@ -8,7 +8,7 @@ import {
 import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
 import uiStyles from "#ui/ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
-import { useHotkeys } from "@tanstack/react-hotkeys";
+import { useHotkey } from "@tanstack/react-hotkeys";
 import { FC } from "react";
 import styles from "./OperationTooltip.module.css";
 import { Operand, operandEquals } from "#ui/operands.ts";
@@ -35,44 +35,35 @@ const OperationModeControls: FC<{
 
 	const cancel = () => dispatch(projectActions.exitMode({ projectId }));
 
-	useHotkeys(
-		[
-			{
-				hotkey: "Enter",
-				callback: confirm,
-				options: {
-					enabled: operation !== null,
-					meta: { group: "Operation mode", name: "Confirm" },
-				},
-			},
-			{
-				hotkey: "Mod+V",
-				callback: confirm,
-				options: {
-					enabled: operation !== null && operationMode._tag === "Rub",
-					ignoreInputs: true,
-					meta: { group: "Operation mode", name: "Paste" },
-				},
-			},
-			{
-				hotkey: "Escape",
-				callback: cancel,
-				options: { meta: { group: "Operation mode", name: "Cancel" } },
-			},
-		],
-		{
-			conflictBehavior: "allow",
-		},
-	);
+	useHotkey("Mod+V", confirm, {
+		conflictBehavior: "allow",
+		enabled: operation !== null && operationMode._tag === "Rub",
+		ignoreInputs: true,
+		meta: { group: "Operation mode", name: "Paste" },
+	});
 
 	return (
 		<>
 			{operation && (
-				<ShortcutButton hotkey="Enter" onClick={confirm}>
+				<ShortcutButton
+					hotkey="Enter"
+					hotkeyOptions={{
+						conflictBehavior: "allow",
+						meta: { group: "Operation mode", name: "Confirm" },
+					}}
+					onClick={confirm}
+				>
 					Confirm
 				</ShortcutButton>
 			)}
-			<ShortcutButton hotkey="Escape" onClick={cancel}>
+			<ShortcutButton
+				hotkey="Escape"
+				hotkeyOptions={{
+					conflictBehavior: "allow",
+					meta: { group: "Operation mode", name: "Cancel" },
+				}}
+				onClick={cancel}
+			>
 				Cancel
 			</ShortcutButton>
 		</>

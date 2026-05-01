@@ -296,25 +296,24 @@ const TopBarActions: FC = () => {
 		dispatch(projectActions.togglePanel({ projectId, panel: "details" }));
 	};
 
-	const toggleDetailsHotkey = "D";
-	const applyBranchHotkey = "Shift+A";
-
-	useHotkey(applyBranchHotkey, openApplyBranchPicker, {
-		meta: { group: "Branches", name: "Apply" },
-	});
-
-	useHotkey(toggleDetailsHotkey, toggleDetails, {
-		meta: { group: "Details", name: isPanelVisible(panelsState, "details") ? "Close" : "Open" },
-	});
-
 	return (
 		<>
-			<ShortcutButton hotkey={applyBranchHotkey} onClick={openApplyBranchPicker}>
+			<ShortcutButton
+				hotkey="Shift+A"
+				hotkeyOptions={{ meta: { group: "Branches", name: "Apply" } }}
+				onClick={openApplyBranchPicker}
+			>
 				Apply branch
 			</ShortcutButton>
 			<ShortcutButton
-				hotkey={toggleDetailsHotkey}
+				hotkey="D"
 				aria-pressed={isPanelVisible(panelsState, "details")}
+				hotkeyOptions={{
+					meta: {
+						group: "Details",
+						name: isPanelVisible(panelsState, "details") ? "Close" : "Open",
+					},
+				}}
 				onClick={toggleDetails}
 			>
 				Details
