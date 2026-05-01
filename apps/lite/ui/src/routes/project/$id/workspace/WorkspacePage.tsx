@@ -495,6 +495,7 @@ const WorkspacePage: FC = () => {
 							tabIndex={0}
 							className={styles.panel}
 							elementRef={panelElementRef("files")}
+							focusPanel={focusPanel}
 							onAbsorbChanges={openAbsorptionDialog}
 						/>
 					</>

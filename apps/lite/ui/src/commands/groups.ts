@@ -6,6 +6,7 @@ export type CommandGroup =
 	| "Commit file"
 	| "Commit"
 	| "Details"
+	| "Files"
 	| "Global"
 	| "Outline"
 	| "Operation mode"

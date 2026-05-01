@@ -1,3 +1,4 @@
+import { Panel as PanelType, useNavigationIndexHotkeys } from "#ui/panels.ts";
 import {
 	branchDiffQueryOptions,
 	changesInWorktreeQueryOptions,
@@ -10,8 +11,11 @@ import {
 } from "#ui/native-menu.ts";
 import {
 	branchFileParent,
+	branchOperand,
 	changesFileParent,
+	changesSectionOperand,
 	commitFileParent,
+	commitOperand,
 	fileOperand,
 	operandEquals,
 	operandIdentityKey,
@@ -20,6 +24,7 @@ import {
 } from "#ui/operands.ts";
 import {
 	projectActions,
+	selectProjectOperationModeState,
 	selectProjectOutlineModeState,
 	selectProjectSelectionFiles,
 	selectProjectSelectionOutline,
@@ -29,11 +34,17 @@ import { classes } from "#ui/ui/classes.ts";
 import { DependencyIcon, MenuTriggerIcon } from "#ui/ui/icons.tsx";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
-import { AbsorptionTarget, TreeChange } from "@gitbutler/but-sdk";
+import {
+	AbsorptionTarget,
+	CommitDetails,
+	TreeChange,
+	TreeChanges,
+	WorktreeChanges,
+} from "@gitbutler/but-sdk";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { Array, Match } from "effect";
-import { ComponentProps, FC, Suspense } from "react";
+import { ComponentProps, FC, Suspense, useEffect } from "react";
 import { Panel, PanelProps } from "react-resizable-panels";
 import styles from "./FilesPanel.module.css";
 import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
@@ -45,12 +56,170 @@ import { getDependencyCommitIds, getHunkDependencyDiffsByPath } from "#ui/hunk.t
 import { DependencyIndicatorButton } from "#ui/routes/project/$id/workspace/DependencyIndicatorButton.tsx";
 import { useFocusedProjectPanel } from "#ui/panels.ts";
 import { useHotkey } from "@tanstack/react-hotkeys";
+import {
+	buildNavigationIndex,
+	NavigationIndex,
+	navigationIndexIncludes,
+} from "#ui/workspace/navigation-index.ts";
+import { filterNavigationIndexForOperationMode } from "#ui/outline/mode.ts";
+
+const useNavigationIndex = (
+	projectId: string,
+	focusPanel: (panel: PanelType) => void,
+	parent: Operand,
+	files: Array<Operand>,
+) => {
+	const dispatch = useAppDispatch();
+
+	const navigationIndexUnfiltered = buildNavigationIndex([{ section: parent, children: files }]);
+
+	const selection = useAppSelector((state) => selectProjectSelectionFiles(state, projectId));
+
+	// React allows state updates on render, but not for external stores.
+	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+	useEffect(() => {
+		if (!navigationIndexIncludes(navigationIndexUnfiltered, selection))
+			dispatch(
+				projectActions.selectFiles({
+					projectId,
+					selection: parent,
+				}),
+			);
+	}, [navigationIndexUnfiltered, selection, projectId, dispatch, parent]);
+
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
+
+	const navigationIndex = filterNavigationIndexForOperationMode({
+		navigationIndex: navigationIndexUnfiltered,
+		selection,
+		outlineMode,
+		operationMode,
+	});
+
+	const focusedPanel = useFocusedProjectPanel(projectId);
+
+	const select = (newItem: Operand) =>
+		dispatch(projectActions.selectFiles({ projectId, selection: newItem }));
+
+	useNavigationIndexHotkeys({
+		focusedPanel,
+		navigationIndex,
+		projectId,
+		group: "Files",
+		panel: "files",
+		focusPanel,
+		select,
+		selection,
+	});
+
+	return navigationIndex;
+};
+
+const CommitFilesTreePanel: FC<
+	{ projectId: string; commit: CommitOperand; focusPanel: (panel: PanelType) => void } & PanelProps
+> = ({ projectId, commit, focusPanel, ...panelProps }) => {
+	const { data } = useSuspenseQuery(
+		commitDetailsWithLineStatsQueryOptions({ projectId, commitId: commit.commitId }),
+	);
+
+	const parent = commitOperand(commit);
+
+	const files = data.changes.map((change) =>
+		fileOperand({
+			parent: commitFileParent({ stackId: commit.stackId, commitId: commit.commitId }),
+			path: change.path,
+		}),
+	);
+
+	const navigationIndex = useNavigationIndex(projectId, focusPanel, parent, files);
+
+	return (
+		<FilesTreePanel {...panelProps} navigationIndex={navigationIndex}>
+			<CommitFiles
+				projectId={projectId}
+				data={data}
+				parentCommitOperand={commit}
+				navigationIndex={navigationIndex}
+			/>
+		</FilesTreePanel>
+	);
+};
+
+const ChangesFilesTreePanel: FC<
+	{
+		projectId: string;
+		onAbsorbChanges: (target: AbsorptionTarget) => void;
+		focusPanel: (panel: PanelType) => void;
+	} & PanelProps
+> = ({ projectId, onAbsorbChanges, focusPanel, ...panelProps }) => {
+	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
+
+	const parent = changesSectionOperand;
+
+	const files = worktreeChanges.changes.map((change) =>
+		fileOperand({ parent: changesFileParent, path: change.path }),
+	);
+
+	const navigationIndex = useNavigationIndex(projectId, focusPanel, parent, files);
+
+	return (
+		<FilesTreePanel {...panelProps} navigationIndex={navigationIndex}>
+			<ChangesFiles
+				projectId={projectId}
+				onAbsorbChanges={onAbsorbChanges}
+				worktreeChanges={worktreeChanges}
+				navigationIndex={navigationIndex}
+			/>
+		</FilesTreePanel>
+	);
+};
+
+const BranchFilesTreePanel: FC<
+	{
+		projectId: string;
+		stackId: string;
+		branchRef: Array<number>;
+		focusPanel: (panel: PanelType) => void;
+	} & PanelProps
+> = ({ projectId, stackId, branchRef, focusPanel, ...panelProps }) => {
+	const decodedBranchRef = decodeRefName(branchRef);
+	const { data: branchDiff } = useSuspenseQuery(
+		branchDiffQueryOptions({ projectId, branch: decodedBranchRef }),
+	);
+
+	const parent = branchOperand({ stackId, branchRef });
+
+	const files = branchDiff.changes.map((change) =>
+		fileOperand({
+			parent: branchFileParent({ stackId, branchRef }),
+			path: change.path,
+		}),
+	);
+
+	const navigationIndex = useNavigationIndex(projectId, focusPanel, parent, files);
+
+	return (
+		<FilesTreePanel {...panelProps} navigationIndex={navigationIndex}>
+			<BranchFiles
+				projectId={projectId}
+				stackId={stackId}
+				branchRef={branchRef}
+				branchDiff={branchDiff}
+				navigationIndex={navigationIndex}
+			/>
+		</FilesTreePanel>
+	);
+};
 
 export const FilesPanel: FC<
 	{
 		onAbsorbChanges: (target: AbsorptionTarget) => void;
+		focusPanel: (panel: PanelType) => void;
 	} & PanelProps
-> = ({ onAbsorbChanges, ...panelProps }) => {
+> = ({ onAbsorbChanges, focusPanel, ...panelProps }) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 
 	const outlineSelection = useAppSelector((state) =>
@@ -61,23 +230,29 @@ export const FilesPanel: FC<
 		<Suspense fallback={<Panel {...panelProps}>Loading files…</Panel>}>
 			{Match.value(outlineSelection).pipe(
 				Match.tag("Commit", (commit) => (
-					<FilesTreePanel {...panelProps}>
-						<CommitFiles
-							projectId={projectId}
-							commitId={commit.commitId}
-							parentCommitOperand={commit}
-						/>
-					</FilesTreePanel>
+					<CommitFilesTreePanel
+						{...panelProps}
+						projectId={projectId}
+						commit={commit}
+						focusPanel={focusPanel}
+					/>
 				)),
 				Match.tag("ChangesSection", () => (
-					<FilesTreePanel {...panelProps}>
-						<ChangesFiles projectId={projectId} onAbsorbChanges={onAbsorbChanges} />
-					</FilesTreePanel>
+					<ChangesFilesTreePanel
+						{...panelProps}
+						projectId={projectId}
+						onAbsorbChanges={onAbsorbChanges}
+						focusPanel={focusPanel}
+					/>
 				)),
 				Match.tag("Branch", ({ stackId, branchRef }) => (
-					<FilesTreePanel {...panelProps}>
-						<BranchFiles projectId={projectId} branchRef={branchRef} stackId={stackId} />
-					</FilesTreePanel>
+					<BranchFilesTreePanel
+						{...panelProps}
+						projectId={projectId}
+						stackId={stackId}
+						branchRef={branchRef}
+						focusPanel={focusPanel}
+					/>
 				)),
 				Match.orElse(() => <Panel {...panelProps} />),
 			)}
@@ -85,7 +260,12 @@ export const FilesPanel: FC<
 	);
 };
 
-const FilesTreePanel: FC<PanelProps> = ({ className, children, ...panelProps }) => {
+const FilesTreePanel: FC<{ navigationIndex: NavigationIndex } & PanelProps> = ({
+	className,
+	children,
+	navigationIndex,
+	...panelProps
+}) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 
 	const outlineSelection = useAppSelector((state) =>
@@ -108,7 +288,7 @@ const FilesTreePanel: FC<PanelProps> = ({ className, children, ...panelProps }) 
 				expanded
 				className={workspaceItemRowStyles.section}
 			>
-				<ItemRow projectId={projectId} operand={outlineSelection}>
+				<ItemRow projectId={projectId} operand={outlineSelection} navigationIndex={navigationIndex}>
 					<div
 						className={classes(
 							workspaceItemRowStyles.itemRowLabel,
@@ -149,13 +329,10 @@ const changeLabel = (change: TreeChange) => {
 
 const CommitFiles: FC<{
 	projectId: string;
-	commitId: string;
 	parentCommitOperand: CommitOperand;
-}> = ({ projectId, commitId, parentCommitOperand }) => {
-	const { data } = useSuspenseQuery(
-		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
-	);
-
+	data: CommitDetails;
+	navigationIndex: NavigationIndex;
+}> = ({ projectId, data, parentCommitOperand, navigationIndex }) => {
 	const conflictedPaths = data.conflictEntries
 		? globalThis.Array.from(
 				new Set([
@@ -193,6 +370,7 @@ const CommitFiles: FC<{
 							key={change.path}
 							change={change}
 							projectId={projectId}
+							navigationIndex={navigationIndex}
 						/>
 					))}
 				</div>
@@ -204,9 +382,9 @@ const CommitFiles: FC<{
 const ChangesFiles: FC<{
 	projectId: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-}> = ({ projectId, onAbsorbChanges }) => {
-	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
-
+	worktreeChanges: WorktreeChanges;
+	navigationIndex: NavigationIndex;
+}> = ({ projectId, onAbsorbChanges, worktreeChanges, navigationIndex }) => {
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
 		worktreeChanges.dependencies?.diffs ?? [],
 	);
@@ -228,6 +406,7 @@ const ChangesFiles: FC<{
 						dependencyCommitIds={dependencyCommitIds}
 						onAbsorbChanges={onAbsorbChanges}
 						projectId={projectId}
+						navigationIndex={navigationIndex}
 					/>
 				);
 			})}
@@ -239,13 +418,10 @@ const BranchFiles: FC<{
 	projectId: string;
 	stackId: string;
 	branchRef: Array<number>;
-}> = ({ projectId, stackId, branchRef }) => {
-	const decodedBranchRef = decodeRefName(branchRef);
-	const { data: branchDiff } = useSuspenseQuery(
-		branchDiffQueryOptions({ projectId, branch: decodedBranchRef }),
-	);
-
-	return branchDiff.changes.length === 0 ? (
+	branchDiff: TreeChanges;
+	navigationIndex: NavigationIndex;
+}> = ({ projectId, stackId, branchRef, branchDiff, navigationIndex }) =>
+	branchDiff.changes.length === 0 ? (
 		<div className={workspaceItemRowStyles.itemRowEmpty}>No changes.</div>
 	) : (
 		<div role="group">
@@ -258,24 +434,26 @@ const BranchFiles: FC<{
 					key={change.path}
 					change={change}
 					projectId={projectId}
+					navigationIndex={navigationIndex}
 				/>
 			))}
 		</div>
 	);
-};
 
 const ItemRow: FC<
 	{
 		projectId: string;
 		operand: Operand;
+		navigationIndex: NavigationIndex;
 	} & Omit<ComponentProps<typeof WorkspaceItemRow>, "inert" | "isSelected">
-> = ({ projectId, operand, onClick, ...props }) => {
+> = ({ projectId, operand, navigationIndex, onClick, ...props }) => {
 	const dispatch = useAppDispatch();
 	const isSelected = useIsSelected({ projectId, operand });
 
 	return (
 		<WorkspaceItemRow
 			{...props}
+			inert={!navigationIndexIncludes(navigationIndex, operand)}
 			isSelected={isSelected}
 			onClick={(event) => {
 				onClick?.(event);
@@ -341,7 +519,8 @@ const TreeChangeRow: FC<{
 	change: TreeChange;
 	operand: Operand;
 	projectId: string;
-}> = ({ change, operand, projectId }) => (
+	navigationIndex: NavigationIndex;
+}> = ({ change, operand, projectId, navigationIndex }) => (
 	<TreeItem
 		projectId={projectId}
 		operand={operand}
@@ -350,7 +529,9 @@ const TreeChangeRow: FC<{
 			<OperandC
 				projectId={projectId}
 				operand={operand}
-				render={<ItemRow projectId={projectId} operand={operand} />}
+				render={
+					<ItemRow projectId={projectId} operand={operand} navigationIndex={navigationIndex} />
+				}
 			/>
 		}
 	>
@@ -363,7 +544,8 @@ const ChangesFileRow: FC<{
 	dependencyCommitIds: Array.NonEmptyArray<string> | undefined;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	projectId: string;
-}> = ({ change, dependencyCommitIds, onAbsorbChanges, projectId }) => {
+	navigationIndex: NavigationIndex;
+}> = ({ change, dependencyCommitIds, onAbsorbChanges, projectId, navigationIndex }) => {
 	const operand = fileOperand({ parent: changesFileParent, path: change.path });
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 	const isSelected = useIsSelected({ projectId, operand });
@@ -402,7 +584,9 @@ const ChangesFileRow: FC<{
 				<OperandC
 					projectId={projectId}
 					operand={operand}
-					render={<ItemRow projectId={projectId} operand={operand} />}
+					render={
+						<ItemRow projectId={projectId} operand={operand} navigationIndex={navigationIndex} />
+					}
 				/>
 			}
 		>
