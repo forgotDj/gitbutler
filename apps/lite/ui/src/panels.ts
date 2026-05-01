@@ -295,7 +295,7 @@ export const useNavigationIndexHotkeys = ({
 			},
 			{
 				hotkey: "Mod+X",
-				callback: enterMoveMode,
+				callback: enterRubMode,
 				options: {
 					ignoreInputs: true,
 					meta: { group, name: "Cut" },
