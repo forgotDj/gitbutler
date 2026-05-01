@@ -183,6 +183,7 @@ export const OutlinePanel: FC<{
 		<Panel
 			id={"outline" satisfies PanelType}
 			minSize={400}
+			groupResizeBehavior="preserve-pixel-size"
 			elementRef={elementRef}
 			tabIndex={0}
 			role="tree"
