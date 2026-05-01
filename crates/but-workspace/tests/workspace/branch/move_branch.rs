@@ -601,6 +601,74 @@ fn empty_move_keeps_display_order_aligned_with_metadata() -> anyhow::Result<()> 
     Ok(())
 }
 
+#[test]
+fn move_branch_when_base_segment_has_no_ref_name() -> anyhow::Result<()> {
+    // When origin/main advances past the fork point, the old fork commit becomes
+    // an unnamed base segment. Moving a branch should still work by falling back
+    // to selecting by the segment's tip commit.
+    let (_tmp, graph, repo, mut meta, _description) =
+        named_writable_scenario_with_description_and_graph(
+            "ws-ref-ws-commit-two-stacks-advanced-remote",
+            |meta| {
+                add_stack_with_segments(meta, 1, "A", StackState::InWorkspace, &[]);
+                add_stack_with_segments(meta, 2, "B", StackState::InWorkspace, &[]);
+            },
+        )?;
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
+    *   a236c53 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    |\  
+    | * c813d8d (B) B
+    * | 09d8e52 (A) A
+    |/  
+    | * 148c87a (origin/main) M2
+    |/  
+    * 85efbe4 (main) M
+    ");
+
+    let mut ws = graph.into_workspace()?;
+    insta::assert_snapshot!(graph_workspace(&ws), @r"
+    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main⇣1 on 85efbe4
+    ├── ≡📙:4:B on 85efbe4 {2}
+    │   └── 📙:4:B
+    │       └── ·c813d8d (🏘️)
+    └── ≡📙:3:A on 85efbe4 {1}
+        └── 📙:3:A
+            └── ·09d8e52 (🏘️)
+    ");
+
+    let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+    // Move B on top of A — the base segment at the old fork point has no ref name.
+    let but_workspace::branch::move_branch::Outcome { rebase, ws_meta } =
+        but_workspace::branch::move_branch(
+            editor,
+            "refs/heads/B".try_into()?,
+            "refs/heads/A".try_into()?,
+        )?;
+
+    rebase.materialize()?;
+    set_workspace_metadata(&mut meta, &ws, ws_meta)?;
+    ws.refresh_from_head(&repo, &meta)?;
+
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @"
+    * 148c87a (origin/main) M2
+    | * 3f2f4c5 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    | * 698ccd3 (B) B
+    | * 09d8e52 (A) A
+    |/  
+    * 85efbe4 (main) M
+    ");
+    insta::assert_snapshot!(graph_workspace(&ws), @r"
+    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main⇣1 on 85efbe4
+    └── ≡📙:3:B on 85efbe4 {1}
+        ├── 📙:3:B
+        │   └── ·698ccd3 (🏘️)
+        └── 📙:4:A
+            └── ·09d8e52 (🏘️)
+    ");
+
+    Ok(())
+}
+
 fn stack_display_order(ws: &but_graph::projection::Workspace) -> Vec<String> {
     ws.stacks
         .iter()
