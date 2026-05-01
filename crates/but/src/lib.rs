@@ -159,15 +159,23 @@ pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
                 .expect("target is checked to be Some in match guard");
             #[cfg(feature = "legacy")]
             {
+                use but_workspace::commit::squash_commits::MessageCombinationStrategy;
+
                 let status_after = args.status_after;
                 let mut ctx = setup::init_ctx(&args, InitCtxOptions::default(), &mut out)?;
                 out.begin_status_after(status_after);
-                let result = command::legacy::rub::handle(&mut ctx, &mut out, source, target)
-                    .context("Rubbed the wrong way.")
-                    .emit_metrics(OneshotMetricsContext::new_if_enabled(
-                        &app_settings,
-                        metrics::CommandName::Rub,
-                    ));
+                let result = command::legacy::rub::handle(
+                    &mut ctx,
+                    &mut out,
+                    source,
+                    target,
+                    MessageCombinationStrategy::KeepBoth,
+                )
+                .context("Rubbed the wrong way.")
+                .emit_metrics(OneshotMetricsContext::new_if_enabled(
+                    &app_settings,
+                    metrics::CommandName::Rub,
+                ));
                 maybe_run_status_after(status_after, &result, &mut ctx, &mut out).await;
                 result.show_root_cause_error_then_exit_without_destructors(out)
             }
@@ -729,6 +737,8 @@ async fn match_subcommand(
         }
         #[cfg(feature = "legacy")]
         Subcommands::Rub { source, target } => {
+            use but_workspace::commit::squash_commits::MessageCombinationStrategy;
+
             let status_after = args.status_after;
             let mut ctx = setup::init_ctx(
                 &args,
@@ -739,9 +749,15 @@ async fn match_subcommand(
                 out,
             )?;
             out.begin_status_after(status_after);
-            let result = command::legacy::rub::handle(&mut ctx, out, &source, &target)
-                .context("Rubbed the wrong way.")
-                .emit_metrics(metrics_ctx);
+            let result = command::legacy::rub::handle(
+                &mut ctx,
+                out,
+                &source,
+                &target,
+                MessageCombinationStrategy::KeepBoth,
+            )
+            .context("Rubbed the wrong way.")
+            .emit_metrics(metrics_ctx);
             maybe_run_status_after(status_after, &result, &mut ctx, out).await;
             result.show_root_cause_error_then_exit_without_destructors(output)
         }

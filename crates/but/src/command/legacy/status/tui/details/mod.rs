@@ -221,6 +221,8 @@ impl Details {
             Message::Rub(rub_message) => match rub_message {
                 RubMessage::Start
                 | RubMessage::StartReverse
+                | RubMessage::UseTargetMessage
+                | RubMessage::UseSourceMessage
                 | RubMessage::StartWithSource { .. } => false,
                 RubMessage::Confirm => true,
             },

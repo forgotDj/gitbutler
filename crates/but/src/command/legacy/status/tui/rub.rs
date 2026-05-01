@@ -4,11 +4,12 @@
 //! `RubOperationDiscriminants`, and `route_operation`.
 
 use but_ctx::Context;
+use but_workspace::commit::squash_commits::MessageCombinationStrategy;
 
 use crate::{
     CliId,
     command::legacy::{
-        rub::{RubOperation, RubOperationDiscriminants},
+        rub::{RubOperation, RubOperationDiscriminants, SquashCommitsOperation},
         status::tui::SelectAfterReload,
     },
 };
@@ -16,9 +17,11 @@ use crate::{
 pub(super) fn route_operation<'a>(
     source: &'a CliId,
     target: &'a CliId,
+    how_to_combine_messages: MessageCombinationStrategy,
 ) -> Option<RubOperation<'a>> {
     Some(
-        match crate::command::legacy::rub::route_operation(source, target)? {
+        match crate::command::legacy::rub::route_operation(source, target, how_to_combine_messages)?
+        {
             op @ RubOperation::UnassignUncommitted(..) => op,
             op @ RubOperation::UncommittedToCommit(..) => op,
             op @ RubOperation::UnassignedToCommit(..) => op,
@@ -60,12 +63,16 @@ pub(super) fn supports_rubbing(id: &CliId) -> bool {
 }
 
 /// Returns a human-facing operation descriptor for the source/target pair.
-pub(super) fn rub_operation_display(source: &CliId, target: &CliId) -> Option<&'static str> {
+pub(super) fn rub_operation_display(
+    source: &CliId,
+    target: &CliId,
+    how_to_combine_messages: MessageCombinationStrategy,
+) -> Option<&'static str> {
     if source == target {
         return Some("noop");
     }
 
-    let operation = route_operation(source, target)?;
+    let operation = route_operation(source, target, how_to_combine_messages)?;
     Some(match operation {
         RubOperation::UnassignUncommitted(..) => "unassign hunks",
         RubOperation::UncommittedToCommit(..) => "amend",
@@ -79,7 +86,15 @@ pub(super) fn rub_operation_display(source: &CliId, target: &CliId) -> Option<&'
         RubOperation::UnassignedToStack(..) => "assign hunks",
         RubOperation::CommitToUnassigned(..) => "undo commit",
         RubOperation::CommitToStack(..) => "undo commit",
-        RubOperation::SquashCommits(..) => "squash",
+        RubOperation::SquashCommits(SquashCommitsOperation {
+            source: _,
+            destination: _,
+            how_to_combine_messages,
+        }) => match how_to_combine_messages {
+            MessageCombinationStrategy::KeepBoth => "squash",
+            MessageCombinationStrategy::KeepSubject => "squash (discard this message)",
+            MessageCombinationStrategy::KeepTarget => "squash (use this message)",
+        },
         RubOperation::MoveCommitToBranch(..) => "move commit",
         RubOperation::BranchToUnassigned(..) => "unassign hunks",
         RubOperation::BranchToStack(..) => "reassign hunks",

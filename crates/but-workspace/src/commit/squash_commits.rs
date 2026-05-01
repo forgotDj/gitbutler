@@ -113,7 +113,7 @@ fn construct_new_squashed_commit<'ws, 'meta, M: RefMetadata>(
 }
 
 /// How to combine messages of commits being squashed.
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Copy, Clone)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 pub enum MessageCombinationStrategy {
     /// Keep both messages.

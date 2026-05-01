@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use bstr::BString;
 use but_core::HunkHeader;
+use but_workspace::commit::squash_commits::MessageCombinationStrategy;
 use gitbutler_stack::StackId;
 use ratatui::style::Color;
 use ratatui_textarea::TextArea;
@@ -83,6 +84,7 @@ impl ModeDiscriminant {
 pub(super) struct RubMode {
     pub(super) source: RubSource,
     pub(super) available_targets: Vec<Arc<CliId>>,
+    pub(super) how_to_combine_messages: MessageCombinationStrategy,
     pub(super) _unlock_details: Option<MessageOnDrop>,
 }
 

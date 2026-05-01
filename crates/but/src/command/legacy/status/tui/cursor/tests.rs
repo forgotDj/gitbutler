@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use but_workspace::commit::squash_commits::MessageCombinationStrategy;
 use gitbutler_stack::StackId;
 use ratatui_textarea::TextArea;
 
@@ -1061,6 +1062,7 @@ fn move_up_in_rub_mode_skips_unavailable_targets() {
     let mode = Mode::Rub(RubMode {
         source: RubSource::CliId(unassigned("source")),
         available_targets: vec![allowed],
+        how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
         _unlock_details: None,
     });
 
@@ -1096,6 +1098,7 @@ fn move_down_in_rub_mode_skips_unavailable_targets() {
     let mode = Mode::Rub(RubMode {
         source: RubSource::CliId(unassigned("source")),
         available_targets: vec![allowed],
+        how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
         _unlock_details: None,
     });
 
@@ -1141,6 +1144,7 @@ fn movement_in_rub_mode_handles_starting_on_unavailable_line() {
     let mode = Mode::Rub(RubMode {
         source: RubSource::CliId(unassigned("source")),
         available_targets: vec![allowed_a, allowed_b],
+        how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
         _unlock_details: None,
     });
 
@@ -1282,6 +1286,7 @@ fn move_next_section_in_rub_mode_jumps_to_first_selectable_in_next_section() {
     let mode = Mode::Rub(RubMode {
         source: RubSource::CliId(unassigned("source")),
         available_targets: vec![commit_a, commit_b],
+        how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
         _unlock_details: None,
     });
 
@@ -1315,6 +1320,7 @@ fn move_previous_section_in_rub_mode_moves_to_first_selectable_in_current_sectio
     let mode = Mode::Rub(RubMode {
         source: RubSource::CliId(unassigned("source")),
         available_targets: vec![commit],
+        how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
         _unlock_details: None,
     });
 
@@ -1364,6 +1370,7 @@ fn move_previous_section_in_rub_mode_from_first_selectable_goes_to_previous_sect
     let mode = Mode::Rub(RubMode {
         source: RubSource::CliId(unassigned("source")),
         available_targets: vec![commit_a, commit_b],
+        how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
         _unlock_details: None,
     });
 
@@ -1410,6 +1417,7 @@ fn move_next_section_in_rub_mode_skips_sections_without_selectable_targets() {
     let mode = Mode::Rub(RubMode {
         source: RubSource::CliId(unassigned("source")),
         available_targets: vec![allowed_commit],
+        how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
         _unlock_details: None,
     });
 
@@ -1480,6 +1488,7 @@ fn is_selectable_in_rub_mode_requires_available_target() {
     let mode = Mode::Rub(RubMode {
         source: RubSource::CliId(unassigned("source")),
         available_targets: vec![allowed],
+        how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
         _unlock_details: None,
     });
 
