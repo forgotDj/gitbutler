@@ -10,9 +10,10 @@ import {
 	commitDetailsWithLineStatsQueryOptions,
 	headInfoQueryOptions,
 } from "#ui/api/queries.ts";
-import { getBranchNameByCommitId, getCommonBaseCommitId } from "#ui/api/ref-info.ts";
+import { getCommonBaseCommitId } from "#ui/api/ref-info.ts";
 import { encodeRefName } from "#ui/api/ref-name.ts";
 import { commitTitle, shortCommitId } from "#ui/commit.ts";
+import { getDependencyCommitIds, getHunkDependencyDiffsByPath } from "#ui/hunk.ts";
 import {
 	showNativeContextMenu,
 	showNativeMenuFromTrigger,
@@ -44,6 +45,7 @@ import {
 	selectProjectSelection,
 } from "#ui/projects/state.ts";
 import { CommitLabel } from "#ui/routes/project/$id/CommitLabel.tsx";
+import { DependencyIndicatorButton } from "#ui/routes/project/$id/workspace/DependencyIndicatorButton.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
@@ -64,16 +66,7 @@ import { useWorkspaceOutline } from "#ui/workspace/outline.ts";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
-import {
-	AbsorptionTarget,
-	Commit,
-	DiffHunk,
-	HunkDependencies,
-	HunkHeader,
-	Segment,
-	Stack,
-	TreeChange,
-} from "@gitbutler/but-sdk";
+import { AbsorptionTarget, Commit, Segment, Stack, TreeChange } from "@gitbutler/but-sdk";
 import {
 	formatForDisplay,
 	useHotkey,
@@ -82,8 +75,8 @@ import {
 } from "@tanstack/react-hotkeys";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { Array, Match, pipe } from "effect";
-import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
+import { Match } from "effect";
+import { NonEmptyArray } from "effect/Array";
 import {
 	ComponentProps,
 	FC,
@@ -190,6 +183,7 @@ export const OutlinePanel: FC<{
 		<Panel
 			id={"outline" satisfies PanelType}
 			minSize={400}
+			groupResizeBehavior="preserve-pixel-size"
 			elementRef={elementRef}
 			tabIndex={0}
 			role="tree"
@@ -231,8 +225,6 @@ export const OutlinePanel: FC<{
 		</Panel>
 	);
 };
-
-type HunkDependencyDiff = HunkDependencies["diffs"][number];
 
 const useIsSelected = ({ projectId, operand }: { projectId: string; operand: Operand }): boolean =>
 	useAppSelector((state) => {
@@ -512,7 +504,7 @@ const useOutlineSelectionHotkeys = ({
 	);
 };
 
-const fileRowLabel = (change: TreeChange) => {
+const changeLabel = (change: TreeChange) => {
 	const status = Match.value(change.status).pipe(
 		Match.when({ type: "Addition" }, () => "A"),
 		Match.when({ type: "Deletion" }, () => "D"),
@@ -562,10 +554,10 @@ const CommitFiles: FC<{
 
 			{data.changes.length > 0 && (
 				<div role="group">
-					{data.changes.map((file) => (
+					{data.changes.map((change) => (
 						<CommitFileRow
-							key={file.path}
-							change={file}
+							key={change.path}
+							change={change}
 							parentCommitOperand={parentCommitOperand}
 							navigationIndex={navigationIndex}
 							projectId={projectId}
@@ -662,7 +654,6 @@ const TreeItem: FC<
 		}),
 	});
 };
-
 const OperandC: FC<
 	{
 		projectId: string;
@@ -689,104 +680,6 @@ const OperandC: FC<
 		defaultTagName: "div",
 		props,
 	});
-};
-
-export const DependencyIndicatorButton: FC<
-	{
-		projectId: string;
-		commitIds: NonEmptyArray<string>;
-	} & useRender.ComponentProps<"button">
-> = ({ projectId, commitIds, ...restProps }) => {
-	// We use a controlled tooltip as a workaround for https://github.com/mui/base-ui/issues/4499.
-	const [isTooltipOpen, setIsTooltipOpen] = useState(false);
-	const dispatch = useAppDispatch();
-	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-	// TODO: expensive
-	const branchNameByCommitId = getBranchNameByCommitId(headInfo);
-	const branchNames = pipe(
-		commitIds,
-		Array.flatMapNullable((commitId) => branchNameByCommitId.get(commitId)),
-		Array.dedupe,
-	);
-	const tooltip =
-		branchNames.length > 0 ? `Depends on ${branchNames.join(", ")}` : "Unknown dependencies";
-	const highlightCommitIds = () => {
-		setIsTooltipOpen(true);
-		dispatch(
-			projectActions.setHighlightedCommitIds({
-				projectId,
-				commitIds,
-			}),
-		);
-	};
-	const clearHighlightedCommitIds = () => {
-		setIsTooltipOpen(false);
-		dispatch(projectActions.setHighlightedCommitIds({ projectId, commitIds: null }));
-	};
-
-	return (
-		<Tooltip.Root
-			open={isTooltipOpen}
-			// [ref:tooltip-disable-hoverable-popup]
-			disableHoverablePopup
-		>
-			<Tooltip.Trigger
-				{...restProps}
-				type="button"
-				onMouseEnter={highlightCommitIds}
-				onMouseLeave={clearHighlightedCommitIds}
-				onFocus={highlightCommitIds}
-				onBlur={clearHighlightedCommitIds}
-				aria-label={tooltip}
-			/>
-			<Tooltip.Portal>
-				<Tooltip.Positioner sideOffset={8}>
-					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
-						{tooltip}
-					</Tooltip.Popup>
-				</Tooltip.Positioner>
-			</Tooltip.Portal>
-		</Tooltip.Root>
-	);
-};
-
-const hunkContainsHunk = (a: HunkHeader, b: HunkHeader): boolean =>
-	a.oldStart <= b.oldStart &&
-	a.oldStart + a.oldLines - 1 >= b.oldStart + b.oldLines - 1 &&
-	a.newStart <= b.newStart &&
-	a.newStart + a.newLines - 1 >= b.newStart + b.newLines - 1;
-
-const getHunkDependencyDiffsByPath = (
-	hunkDependencyDiffs: Array<HunkDependencyDiff>,
-): Map<string, Array<HunkDependencyDiff>> => {
-	const byPath = new Map<string, Array<HunkDependencyDiff>>();
-
-	for (const hunkDependencyDiff of hunkDependencyDiffs) {
-		const [path] = hunkDependencyDiff;
-		const pathDependencyDiffs = byPath.get(path);
-		if (pathDependencyDiffs) pathDependencyDiffs.push(hunkDependencyDiff);
-		else byPath.set(path, [hunkDependencyDiff]);
-	}
-
-	return byPath;
-};
-
-const getDependencyCommitIds = ({
-	hunk,
-	hunkDependencyDiffs,
-}: {
-	hunk?: DiffHunk;
-	hunkDependencyDiffs: Array<HunkDependencyDiff>;
-}): NonEmptyArray<string> | undefined => {
-	const commitIds = new Set<string>();
-
-	for (const [, dependencyHunk, locks] of hunkDependencyDiffs) {
-		if (hunk && !hunkContainsHunk(hunk, dependencyHunk)) continue;
-		for (const dependency of locks) commitIds.add(dependency.commitId);
-	}
-
-	const dependencyCommitIds = globalThis.Array.from(commitIds);
-	return isNonEmptyArray(dependencyCommitIds) ? dependencyCommitIds : undefined;
 };
 
 const EditorHelp: FC<{
@@ -1187,7 +1080,7 @@ const CommitFileRow: FC<{
 		<TreeItem
 			projectId={projectId}
 			operand={operand}
-			label={fileRowLabel(change)}
+			label={changeLabel(change)}
 			render={
 				<OperandC
 					projectId={projectId}
@@ -1203,7 +1096,7 @@ const CommitFileRow: FC<{
 				/>
 			}
 		>
-			<div className={styles.itemRowLabel}>{fileRowLabel(change)}</div>
+			<div className={styles.itemRowLabel}>{changeLabel(change)}</div>
 		</TreeItem>
 	);
 };
@@ -1301,7 +1194,7 @@ const ChangesFileRow: FC<{
 		<TreeItem
 			projectId={projectId}
 			operand={operand}
-			label={fileRowLabel(change)}
+			label={changeLabel(change)}
 			render={
 				<OperandC
 					projectId={projectId}
@@ -1318,7 +1211,7 @@ const ChangesFileRow: FC<{
 					void showNativeContextMenu(event, menuItems);
 				}}
 			>
-				{fileRowLabel(change)}
+				{changeLabel(change)}
 			</div>
 			{outlineMode._tag === "Default" && (
 				<ItemRowToolbar aria-label="File actions">
