@@ -3,8 +3,8 @@ import { selectProjectPickerDialogState } from "#ui/projects/state.ts";
 import { useAppSelector } from "#ui/store.ts";
 import { useRef } from "react";
 
-export type Panel = "outline" | "details";
-export const orderedPanels: Array<Panel> = ["outline", "details"];
+export type Panel = "outline" | "files" | "details";
+export const orderedPanels: Array<Panel> = ["outline", "files", "details"];
 
 const getFocusedProjectPanel = (activeElement: Element | null) =>
 	(activeElement?.closest("[data-panel]")?.id as Panel | undefined) ?? null;

@@ -1,3 +1,4 @@
+import { FilesPanel } from "./FilesPanel.tsx";
 import { applyBranchMutationOptions } from "#ui/api/mutations.ts";
 import {
 	absorptionPlanQueryOptions,
@@ -447,7 +448,7 @@ const WorkspacePage: FC = () => {
 
 	const selectBranch = (branch: BranchOperand) => {
 		dispatch(
-			projectActions.select({
+			projectActions.selectOutline({
 				projectId,
 				selection: branchOperand(branch),
 			}),
@@ -493,6 +494,20 @@ const WorkspacePage: FC = () => {
 					focusPanel={focusPanel}
 					onAbsorbChanges={openAbsorptionDialog}
 				/>
+				{isPanelVisible(panelsState, "files") && (
+					<>
+						<Separator className={styles.panelResizeHandle} />
+						<FilesPanel
+							id={"files" satisfies PanelType}
+							minSize={400}
+							groupResizeBehavior="preserve-pixel-size"
+							tabIndex={0}
+							className={styles.panel}
+							elementRef={panelElementRef("files")}
+							onAbsorbChanges={openAbsorptionDialog}
+						/>
+					</>
+				)}
 				{isPanelVisible(panelsState, "details") && (
 					<>
 						<Separator className={styles.panelResizeHandle} />

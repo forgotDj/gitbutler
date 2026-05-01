@@ -51,10 +51,15 @@ const projectSlice = createSlice({
 	name: "project",
 	initialState,
 	reducers: {
-		select: (state, action: PayloadAction<{ projectId: string; selection: Operand }>) => {
+		selectOutline: (state, action: PayloadAction<{ projectId: string; selection: Operand }>) => {
 			const { projectId, selection } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
-			workspace.select(projectState.workspace, selection);
+			workspace.selectOutline(projectState.workspace, selection);
+		},
+		selectFiles: (state, action: PayloadAction<{ projectId: string; selection: Operand }>) => {
+			const { projectId, selection } = action.payload;
+			const projectState = ensureProjectState(state, projectId);
+			workspace.selectFiles(projectState.workspace, selection);
 		},
 		startRewordCommit: (
 			state,
@@ -71,27 +76,6 @@ const projectSlice = createSlice({
 			const { projectId, branch } = action.payload;
 			const projectState = ensureProjectState(state, projectId);
 			workspace.startRenameBranch(projectState.workspace, branch);
-		},
-		openCommitFiles: (
-			state,
-			action: PayloadAction<{ projectId: string; commit: CommitOperand }>,
-		) => {
-			const { projectId, commit } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			workspace.openCommitFiles(projectState.workspace, commit);
-		},
-		closeCommitFiles: (state, action: PayloadAction<{ projectId: string }>) => {
-			const { projectId } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			workspace.closeCommitFiles(projectState.workspace);
-		},
-		toggleCommitFiles: (
-			state,
-			action: PayloadAction<{ projectId: string; commit: CommitOperand }>,
-		) => {
-			const { projectId, commit } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			workspace.toggleCommitFiles(projectState.workspace, commit);
 		},
 		enterRubMode: (state, action: PayloadAction<{ projectId: string; source: Operand }>) => {
 			const { projectId, source } = action.payload;
@@ -127,13 +111,6 @@ const projectSlice = createSlice({
 		},
 		exitMode: (state, action: PayloadAction<{ projectId: string }>) => {
 			workspace.exitMode(ensureProjectState(state, action.payload.projectId).workspace);
-		},
-		setExpandedCommitId: (
-			state,
-			action: PayloadAction<{ projectId: string; commitId: string | null }>,
-		) => {
-			const { projectId, commitId } = action.payload;
-			workspace.setExpandedCommitId(ensureProjectState(state, projectId).workspace, commitId);
 		},
 		setHighlightedCommitIds: (
 			state,
@@ -204,17 +181,17 @@ export const selectProjectPickerDialogState = (state: RootState, projectId: stri
 const selectProjectWorkspaceState = (state: RootState, projectId: string) =>
 	selectProjectState(state, projectId).workspace;
 
-export const selectProjectSelection = (state: RootState, projectId: string) =>
-	workspace.selectSelectionState(selectProjectWorkspaceState(state, projectId));
+export const selectProjectSelectionOutline = (state: RootState, projectId: string) =>
+	workspace.selectSelectionOutlineState(selectProjectWorkspaceState(state, projectId));
+
+export const selectProjectSelectionFiles = (state: RootState, projectId: string) =>
+	workspace.selectSelectionFilesState(selectProjectWorkspaceState(state, projectId));
 
 export const selectProjectOutlineModeState = (state: RootState, projectId: string) =>
 	workspace.selectMode(selectProjectWorkspaceState(state, projectId));
 
 export const selectProjectOperationModeState = (state: RootState, projectId: string) =>
 	workspace.selectOperationMode(selectProjectWorkspaceState(state, projectId));
-
-export const selectProjectExpandedCommitId = (state: RootState, projectId: string) =>
-	workspace.selectExpandedCommitId(selectProjectWorkspaceState(state, projectId));
 
 export const selectProjectHighlightedCommitIds = (state: RootState, projectId: string) =>
 	workspace.selectHighlightedCommitIds(selectProjectWorkspaceState(state, projectId));

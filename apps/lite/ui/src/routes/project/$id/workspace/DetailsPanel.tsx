@@ -22,7 +22,7 @@ import {
 	type Operand,
 } from "#ui/operands.ts";
 import { Panel as PanelType, useFocusedProjectPanel } from "#ui/panels.ts";
-import { projectActions, selectProjectSelection } from "#ui/projects/state.ts";
+import { projectActions, selectProjectSelectionFiles } from "#ui/projects/state.ts";
 import { CommitLabel } from "#ui/routes/project/$id/CommitLabel.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
@@ -347,7 +347,7 @@ export const DetailsPanel: FC<
 > = ({ focusPanel, className, ...panelProps }) => {
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
-	const urgentSelection = useAppSelector((state) => selectProjectSelection(state, projectId));
+	const urgentSelection = useAppSelector((state) => selectProjectSelectionFiles(state, projectId));
 	const selection = useDeferredValue(urgentSelection);
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
