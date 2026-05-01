@@ -3,7 +3,11 @@ import styles from "./OperationSourceC.module.css";
 import { OperationSourceLabel } from "./OperationSourceLabel.tsx";
 import { headInfoQueryOptions } from "#ui/api/queries.ts";
 import { classes } from "#ui/ui/classes.ts";
-import { projectActions, selectProjectOperationModeState } from "#ui/projects/state.ts";
+import {
+	projectActions,
+	selectProjectOperationModeState,
+	selectProjectOutlineModeState,
+} from "#ui/projects/state.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { centerUnderPointer } from "@atlaskit/pragmatic-drag-and-drop/element/center-under-pointer";
@@ -36,6 +40,7 @@ export const OperationSourceC: FC<
 	const operationMode = useAppSelector((state) =>
 		selectProjectOperationModeState(state, projectId),
 	);
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
 	const dispatch = useAppDispatch();
 	const dragRef = useRef<HTMLElement>(null);
@@ -63,6 +68,10 @@ export const OperationSourceC: FC<
 		const element = dragRef.current;
 		if (!element) return;
 
+		// Disable in rename/reword mode to prevent false positives when users drag
+		// to select text in the input field.
+		if (outlineMode._tag === "RenameBranch" || outlineMode._tag === "RewordCommit") return;
+
 		return draggable({
 			element,
 			getInitialData: (): DragData => ({ source }),
@@ -74,7 +83,7 @@ export const OperationSourceC: FC<
 				dispatch(projectActions.exitMode({ projectId }));
 			},
 		});
-	}, [dispatch, projectId, source]);
+	}, [dispatch, outlineMode._tag, projectId, source]);
 
 	const isActiveSource = operationMode?.source && operandEquals(operationMode.source, source);
 
