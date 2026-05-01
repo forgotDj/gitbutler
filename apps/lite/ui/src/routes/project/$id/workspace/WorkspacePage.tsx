@@ -277,7 +277,7 @@ const ApplyBranchPicker: FC<{
 	);
 };
 
-const TopBarActions: FC = () => {
+const TopBarActions: FC<{ focusPanel: (panel: PanelType) => void }> = ({ focusPanel }) => {
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
@@ -289,32 +289,30 @@ const TopBarActions: FC = () => {
 		if (focusedPanel === "details" && isPanelVisible(panelsState, "details")) {
 			const detailsPanelIndex = panelsState.visiblePanels.indexOf("details");
 			const nextPanel = panelsState.visiblePanels[detailsPanelIndex - 1];
-			if (nextPanel !== undefined)
-				document.getElementById(nextPanel)?.focus({ focusVisible: false });
+			if (nextPanel !== undefined) focusPanel(nextPanel);
 		}
 
 		dispatch(projectActions.togglePanel({ projectId, panel: "details" }));
 	};
 
-	const toggleDetailsHotkey = "D";
-	const applyBranchHotkey = "Shift+A";
-
-	useHotkey(applyBranchHotkey, openApplyBranchPicker, {
-		meta: { group: "Branches", name: "Apply" },
-	});
-
-	useHotkey(toggleDetailsHotkey, toggleDetails, {
-		meta: { group: "Details", name: isPanelVisible(panelsState, "details") ? "Close" : "Open" },
-	});
-
 	return (
 		<>
-			<ShortcutButton hotkey={applyBranchHotkey} onClick={openApplyBranchPicker}>
+			<ShortcutButton
+				hotkey="Shift+A"
+				hotkeyOptions={{ meta: { group: "Branches", name: "Apply" } }}
+				onClick={openApplyBranchPicker}
+			>
 				Apply branch
 			</ShortcutButton>
 			<ShortcutButton
-				hotkey={toggleDetailsHotkey}
+				hotkey="D"
 				aria-pressed={isPanelVisible(panelsState, "details")}
+				hotkeyOptions={{
+					meta: {
+						group: "Details",
+						name: isPanelVisible(panelsState, "details") ? "Close" : "Open",
+					},
+				}}
 				onClick={toggleDetails}
 			>
 				Details
@@ -465,7 +463,7 @@ const WorkspacePage: FC = () => {
 	return (
 		<>
 			<TopBarActionsPortal>
-				<TopBarActions />
+				<TopBarActions focusPanel={focusPanel} />
 			</TopBarActionsPortal>
 
 			<ShortcutsBarPortal>
