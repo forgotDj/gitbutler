@@ -22,7 +22,11 @@ import {
 	type Operand,
 } from "#ui/operands.ts";
 import { Panel as PanelType, useFocusedProjectPanel } from "#ui/panels.ts";
-import { projectActions, selectProjectSelectionFiles } from "#ui/projects/state.ts";
+import {
+	projectActions,
+	selectProjectPanelsState,
+	selectProjectSelectionFiles,
+} from "#ui/projects/state.ts";
 import { CommitLabel } from "#ui/routes/project/$id/CommitLabel.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
@@ -350,11 +354,14 @@ export const DetailsPanel: FC<
 	const urgentSelection = useAppSelector((state) => selectProjectSelectionFiles(state, projectId));
 	const selection = useDeferredValue(urgentSelection);
 	const focusedPanel = useFocusedProjectPanel(projectId);
+	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
 
 	useHotkey(
 		"Escape",
 		() => {
-			focusPanel("outline");
+			const detailsPanelIndex = panelsState.visiblePanels.indexOf("details");
+			const nextPanel = panelsState.visiblePanels[detailsPanelIndex - 1];
+			if (nextPanel !== undefined) focusPanel(nextPanel);
 
 			dispatch(projectActions.hidePanel({ projectId, panel: "details" }));
 		},
