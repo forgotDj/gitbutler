@@ -731,30 +731,26 @@ const ChangesSectionRow: FC<{
 	const focusedPanel = useFocusedProjectPanel(projectId);
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
-	useHotkey(
-		"A",
-		() => {
-			onAbsorbChanges({ type: "all" });
-		},
-		{
-			conflictBehavior: "allow",
-			enabled:
-				changes.length > 0 &&
-				isSelected &&
-				focusedPanel === "outline" &&
-				outlineMode._tag === "Default",
-			meta: { group: "Changes", name: "Absorb" },
-		},
-	);
+	const absorb = () => {
+		onAbsorbChanges({ type: "all" });
+	};
+
+	useHotkey("A", absorb, {
+		conflictBehavior: "allow",
+		enabled:
+			changes.length > 0 &&
+			isSelected &&
+			focusedPanel === "outline" &&
+			outlineMode._tag === "Default",
+		meta: { group: "Changes", name: "Absorb" },
+	});
 
 	const menuItems: Array<NativeMenuItem> = [
 		{
 			_tag: "Item",
 			label: "Absorb",
 			enabled: changes.length > 0,
-			onSelect: () => {
-				onAbsorbChanges({ type: "all" });
-			},
+			onSelect: absorb,
 		},
 	];
 
