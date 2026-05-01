@@ -53,7 +53,7 @@ import {
 	navigationIndexIncludes,
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
-import { useWorkspaceOutline } from "#ui/workspace/outline.ts";
+import { useWorkspaceOutline, WorkspaceOutline } from "#ui/workspace/outline.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { AbsorptionTarget, Commit, Segment, Stack, TreeChange } from "@gitbutler/but-sdk";
@@ -82,20 +82,16 @@ const assert = <T,>(t: T | null | undefined): T => {
 	return t;
 };
 
-export const OutlinePanel: FC<
-	{
-		focusPanel: (panel: PanelType) => void;
-		onAbsorbChanges: (target: AbsorptionTarget) => void;
-	} & PanelProps
-> = ({ focusPanel, onAbsorbChanges, ...panelProps }) => {
-	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
-	const dispatch = useAppDispatch();
-
+const useNavigationIndex = (
+	projectId: string,
+	focusPanel: (panel: PanelType) => void,
+	outline: WorkspaceOutline,
+) => {
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
-	const workspaceOutline = useWorkspaceOutline({ projectId });
+	const dispatch = useAppDispatch();
 
-	const navigationIndexUnfiltered = buildNavigationIndex(workspaceOutline);
+	const navigationIndexUnfiltered = buildNavigationIndex(outline);
 
 	// React allows state updates on render, but not for external stores.
 	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
@@ -123,25 +119,11 @@ export const OutlinePanel: FC<
 			);
 	}, [navigationIndexUnfiltered, selection, projectId, dispatch]);
 
-	const operationMode = useAppSelector((state) =>
-		selectProjectOperationModeState(state, projectId),
-	);
-
-	const navigationIndex =
-		outlineMode._tag !== "Default"
-			? filterNavigationIndex(
-					navigationIndexUnfiltered,
-					(operand) =>
-						// When entering operation mode, the selection must still be
-						// selectable otherwise the details panel will suddenly appear to
-						// change and the user may lose sight of their source operand (e.g.
-						// hunk).
-						operandEquals(selection, operand) ||
-						// After selection moves, allow returning selection to the source operand.
-						(operationMode?.source && operandEquals(operationMode.source, operand)) ||
-						includeOperandForOutlineMode({ mode: outlineMode, operand }),
-				)
-			: navigationIndexUnfiltered;
+	const navigationIndex = useFilteredNavigationIndex({
+		projectId,
+		navigationIndex: navigationIndexUnfiltered,
+		selection,
+	});
 
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
@@ -158,6 +140,31 @@ export const OutlinePanel: FC<
 		select,
 		selection,
 	});
+
+	return navigationIndex;
+};
+
+export const OutlinePanel: FC<
+	{
+		focusPanel: (panel: PanelType) => void;
+		onAbsorbChanges: (target: AbsorptionTarget) => void;
+	} & PanelProps
+> = ({ focusPanel, onAbsorbChanges, ...panelProps }) => {
+	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
+	const dispatch = useAppDispatch();
+
+	const workspaceOutline = useWorkspaceOutline({ projectId });
+
+	const navigationIndex = useNavigationIndex(projectId, focusPanel, workspaceOutline);
+
+	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
+
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
+
+	const select = (newItem: Operand) =>
+		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
 
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	const commit = () =>
@@ -243,6 +250,36 @@ const useIsSelected = ({ projectId, operand }: { projectId: string; operand: Ope
 
 const treeItemId = (operand: Operand): string =>
 	`outline-treeitem-${encodeURIComponent(operandIdentityKey(operand))}`;
+
+export const useFilteredNavigationIndex = ({
+	projectId,
+	navigationIndex: navigationIndexUnfiltered,
+	selection,
+}: {
+	projectId: string;
+	navigationIndex: NavigationIndex;
+	selection: Operand;
+}) => {
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const operationMode = useAppSelector((state) =>
+		selectProjectOperationModeState(state, projectId),
+	);
+
+	return outlineMode._tag !== "Default"
+		? filterNavigationIndex(
+				navigationIndexUnfiltered,
+				(operand) =>
+					// When entering operation mode, the selection must still be
+					// selectable otherwise the details panel will suddenly appear to
+					// change and the user may lose sight of their source operand (e.g.
+					// hunk).
+					operandEquals(selection, operand) ||
+					// After selection moves, allow returning selection to the source operand.
+					(operationMode?.source && operandEquals(operationMode.source, operand)) ||
+					includeOperandForOutlineMode({ mode: outlineMode, operand }),
+			)
+		: navigationIndexUnfiltered;
+};
 
 const ItemRow: FC<
 	{
