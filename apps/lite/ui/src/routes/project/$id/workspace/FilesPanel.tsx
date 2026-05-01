@@ -32,8 +32,7 @@ import { Toolbar } from "@base-ui/react/toolbar";
 import { AbsorptionTarget, TreeChange } from "@gitbutler/but-sdk";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { Match } from "effect";
-import { NonEmptyArray } from "effect/Array";
+import { Array, Match } from "effect";
 import { ComponentProps, FC, Suspense } from "react";
 import { Panel, PanelProps } from "react-resizable-panels";
 import styles from "./FilesPanel.module.css";
@@ -162,7 +161,7 @@ const CommitFiles: FC<{
 					...data.conflictEntries.ourEntries,
 					...data.conflictEntries.theirEntries,
 				]),
-			).sort((a: string, b: string) => a.localeCompare(b))
+			).toSorted((a, b) => a.localeCompare(b))
 		: [];
 
 	if (conflictedPaths.length === 0 && data.changes.length === 0)
@@ -359,7 +358,7 @@ const TreeChangeRow: FC<{
 
 const ChangesFileRow: FC<{
 	change: TreeChange;
-	dependencyCommitIds: NonEmptyArray<string> | undefined;
+	dependencyCommitIds: Array.NonEmptyArray<string> | undefined;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	projectId: string;
 }> = ({ change, dependencyCommitIds, onAbsorbChanges, projectId }) => {

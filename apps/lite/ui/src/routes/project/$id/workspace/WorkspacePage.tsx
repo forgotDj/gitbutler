@@ -42,29 +42,14 @@ import { PickerDialog, type PickerDialogGroup } from "#ui/ui/PickerDialog/Picker
 import { DetailsPanel } from "./DetailsPanel.tsx";
 import { OutlinePanel } from "./OutlinePanel.tsx";
 import styles from "./WorkspacePage.module.css";
-
-type HotkeyGroup =
-	| "Branch"
-	| "Branches"
-	| "Changes file"
-	| "Changes"
-	| "Commit file"
-	| "Commit"
-	| "Details"
-	| "Global"
-	| "Outline selection"
-	| "Operation mode"
-	| "Panels"
-	| "Rename branch"
-	| "Reword commit"
-	| "Stack";
+import type { CommandGroup } from "#ui/commands/groups.ts";
 
 declare module "@tanstack/react-hotkeys" {
 	interface HotkeyMeta {
 		/**
 		 * The component where the hotkey is registered.
 		 */
-		group: HotkeyGroup;
+		group: CommandGroup;
 		/**
 		 * @default true
 		 *
@@ -80,8 +65,11 @@ declare module "@tanstack/react-hotkeys" {
 	}
 }
 
-type CommandPaletteItem = HotkeyRegistrationView & {
-	options: { meta: { group: HotkeyGroup; name: string } };
+type CommandPaletteItem = {
+	id: string;
+	name: string;
+	group: CommandGroup;
+	hotkey?: string;
 };
 
 const groupCommandPaletteItems = (
@@ -90,19 +78,17 @@ const groupCommandPaletteItems = (
 	const groups = new Map<string, Array<CommandPaletteItem>>();
 
 	for (const command of commands) {
-		const groupName = command.options.meta.group;
+		const groupName = command.group;
 		const group = groups.get(groupName);
 		if (group) group.push(command);
 		else groups.set(groupName, [command]);
 	}
 
 	return globalThis.Array.from(groups.entries())
-		.sort(([a], [b]) => a.localeCompare(b))
+		.toSorted(([a], [b]) => a.localeCompare(b))
 		.map(([value, items]) => ({
 			value,
-			items: globalThis.Array.from(items).sort((a, b) =>
-				a.options.meta.name.localeCompare(b.options.meta.name),
-			),
+			items: items.toSorted((a, b) => a.name.localeCompare(b.name)),
 		}));
 };
 
@@ -113,13 +99,20 @@ const CommandPalette: FC<{
 	const { hotkeys } = useHotkeyRegistrations();
 	const items = pipe(
 		hotkeys
-			.filter(
-				(hotkey): hotkey is CommandPaletteItem =>
-					hotkey.options.enabled !== false &&
-					hotkey.options.meta?.name !== undefined &&
-					hotkey.options.meta.commandPalette !== false,
+			.flatMap((hotkey): CommandPaletteItem | [] =>
+				hotkey.options.enabled !== false &&
+				hotkey.options.meta?.name !== undefined &&
+				hotkey.options.meta.commandPalette !== false
+					? {
+							id: hotkey.id,
+							name: hotkey.options.meta.name,
+							group: hotkey.options.meta.group,
+							hotkey:
+								hotkey.options.meta.commandPalette === "hideHotkey" ? undefined : hotkey.hotkey,
+						}
+					: [],
 			)
-			.sort((a, b) => a.options.meta.name.localeCompare(b.options.meta.name)),
+			.toSorted((a, b) => a.name.localeCompare(b.name)),
 		groupCommandPaletteItems,
 	);
 
@@ -134,10 +127,8 @@ const CommandPalette: FC<{
 			closeLabel="Close command palette"
 			emptyLabel="No commands found."
 			getItemKey={(x) => x.id}
-			getItemLabel={(x) => x.options.meta.name}
-			getItemType={(x) =>
-				x.options.meta.commandPalette !== "hideHotkey" ? formatForDisplay(x.hotkey) : undefined
-			}
+			getItemLabel={(x) => x.name}
+			getItemType={(x) => (x.hotkey !== undefined ? formatForDisplay(x.hotkey) : undefined)}
 			items={items}
 			open={open}
 			onOpenChange={onOpenChange}

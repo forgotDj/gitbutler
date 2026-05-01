@@ -1,5 +1,5 @@
 import { DiffHunk, HunkDependencies, HunkHeader } from "@gitbutler/but-sdk";
-import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
+import { Array } from "effect";
 
 export type HunkDependencyDiff = HunkDependencies["diffs"][number];
 
@@ -33,7 +33,7 @@ export const getDependencyCommitIds = ({
 }: {
 	hunk?: DiffHunk;
 	hunkDependencyDiffs: Array<HunkDependencyDiff>;
-}): NonEmptyArray<string> | undefined => {
+}): Array.NonEmptyArray<string> | undefined => {
 	const commitIds = new Set<string>();
 
 	for (const [, dependencyHunk, locks] of hunkDependencyDiffs) {
@@ -42,5 +42,5 @@ export const getDependencyCommitIds = ({
 	}
 
 	const dependencyCommitIds = globalThis.Array.from(commitIds);
-	return isNonEmptyArray(dependencyCommitIds) ? dependencyCommitIds : undefined;
+	return Array.isNonEmptyArray(dependencyCommitIds) ? dependencyCommitIds : undefined;
 };

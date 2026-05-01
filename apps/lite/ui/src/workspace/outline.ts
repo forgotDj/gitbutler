@@ -1,7 +1,6 @@
 import { headInfoQueryOptions } from "#ui/api/queries.ts";
 import { Segment, type RefInfo } from "@gitbutler/but-sdk";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { type NonEmptyArray } from "effect/Array";
 import {
 	branchOperand,
 	baseCommitOperand,
@@ -10,13 +9,14 @@ import {
 	commitOperand,
 	stackOperand,
 } from "#ui/operands.ts";
+import { Array } from "effect";
 
 export type WorkspaceSection = {
 	section: Operand | null;
 	children: Array<Operand>;
 };
 
-export type WorkspaceOutline = NonEmptyArray<WorkspaceSection>;
+export type WorkspaceOutline = Array.NonEmptyArray<WorkspaceSection>;
 
 const buildWorkspaceOutline = (headInfo: RefInfo): WorkspaceOutline => {
 	const changesSection: WorkspaceSection = {

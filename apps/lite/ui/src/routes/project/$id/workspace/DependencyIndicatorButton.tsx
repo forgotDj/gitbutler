@@ -7,14 +7,13 @@ import uiStyles from "#ui/ui/ui.module.css";
 import { Tooltip, useRender } from "@base-ui/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Array, pipe } from "effect";
-import { NonEmptyArray } from "effect/Array";
 import { FC, useState } from "react";
 import styles from "./DependencyIndicatorButton.module.css";
 
 export const DependencyIndicatorButton: FC<
 	{
 		projectId: string;
-		commitIds: NonEmptyArray<string>;
+		commitIds: Array.NonEmptyArray<string>;
 	} & useRender.ComponentProps<"button">
 > = ({ projectId, commitIds, ...restProps }) => {
 	// We use a controlled tooltip as a workaround for https://github.com/mui/base-ui/issues/4499.

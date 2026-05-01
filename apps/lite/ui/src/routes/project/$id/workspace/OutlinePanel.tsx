@@ -1,6 +1,7 @@
 import {
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
+	commitMoveMutationOptions,
 	commitRewordMutationOptions,
 	unapplyStackMutationOptions,
 	updateBranchNameMutationOptions,
@@ -78,6 +79,7 @@ import { Panel, PanelProps } from "react-resizable-panels";
 import styles from "./OutlinePanel.module.css";
 import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
 import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.tsx";
+import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
 
 const assert = <T,>(t: T | null | undefined): T => {
 	if (t == null) throw new Error("Expected value to be non-null and defined");
@@ -667,6 +669,7 @@ const CommitRow: FC<
 
 	const commitInsertBlank = useMutation(commitInsertBlankMutationOptions);
 	const commitDiscard = useMutation(commitDiscardMutationOptions);
+	const commitMove = useMutation(commitMoveMutationOptions);
 	const commitReword = useMutation(commitRewordMutationOptions);
 
 	const insertBlankCommitAbove = () => {
@@ -693,6 +696,41 @@ const CommitRow: FC<
 			subjectCommitId: commit.id,
 			dryRun: false,
 		});
+	};
+
+	const runOperation = useRunOperation();
+
+	const moveCommitUp = () => {
+		const selectionIdx = navigationIndex.indexByKey.get(operandIdentityKey(operand));
+		if (selectionIdx === undefined) return;
+
+		const selectionSectionIdx = navigationIndex.sectionIndexByItemIndex[selectionIdx];
+		if (selectionSectionIdx === undefined) return;
+
+		const prevItem = navigationIndex.items[selectionIdx - 1];
+		if (!prevItem) return;
+
+		const operation = moveOperation({ source: operand, target: prevItem, side: "above" });
+		if (!operation) return;
+
+		runOperation(projectId, operation);
+	};
+
+	const moveCommitDown = () => {
+		const selectionIdx = navigationIndex.indexByKey.get(operandIdentityKey(operand));
+		if (selectionIdx === undefined) return;
+
+		const selectionSectionIdx = navigationIndex.sectionIndexByItemIndex[selectionIdx];
+		if (selectionSectionIdx === undefined) return;
+
+		const nextIdx = selectionIdx + 1;
+		const nextItem = navigationIndex.items[nextIdx];
+		if (!nextItem) return;
+
+		const operation = moveOperation({ source: operand, target: nextItem, side: "below" });
+		if (!operation) return;
+
+		runOperation(projectId, operation);
 	};
 
 	const cutCommit = () => {
@@ -775,6 +813,34 @@ const CommitRow: FC<
 			focusedPanel === "outline" &&
 			outlineMode._tag === "Default",
 		meta: { group: "Commit", name: "Reword" },
+	});
+
+	useHotkey("Alt+ArrowUp", moveCommitUp, {
+		enabled:
+			!commitMove.isPending &&
+			isSelected &&
+			focusedPanel === "outline" &&
+			outlineMode._tag === "Default",
+		meta: {
+			group: "Commit",
+			name: "Move up",
+			commandPalette: false,
+			shortcutsBar: false,
+		},
+	});
+
+	useHotkey("Alt+ArrowDown", moveCommitDown, {
+		enabled:
+			!commitMove.isPending &&
+			isSelected &&
+			focusedPanel === "outline" &&
+			outlineMode._tag === "Default",
+		meta: {
+			group: "Commit",
+			name: "Move down",
+			commandPalette: false,
+			shortcutsBar: false,
+		},
 	});
 
 	useHotkey({ key: "" }, insertBlankCommitAbove, {
