@@ -50,7 +50,7 @@ const OperationModeControls: FC<{
 				hotkey: "Mod+V",
 				callback: confirm,
 				options: {
-					enabled: operation !== null && operationMode._tag === "Move",
+					enabled: operation !== null && operationMode._tag === "Rub",
 					ignoreInputs: true,
 					meta: { group: "Operation mode", name: "Paste" },
 				},
