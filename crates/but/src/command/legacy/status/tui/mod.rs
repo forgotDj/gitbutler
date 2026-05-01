@@ -3,7 +3,6 @@
 use std::{
     borrow::Cow,
     ffi::OsString,
-    iter::once,
     process::Command,
     rc::Rc,
     sync::{Arc, mpsc::Receiver},
@@ -20,16 +19,10 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use gitbutler_operating_modes::OperatingMode;
 use gitbutler_stack::StackId;
 use gix::refs::FullName;
-use itertools::Either;
 use nonempty::NonEmpty;
-use ratatui::{
-    Frame,
-    prelude::*,
-    widgets::{Block, BorderType, Borders, List, ListItem},
-};
+use ratatui::prelude::*;
 use ratatui_textarea::{CursorMove, TextArea};
 use tracing::Level;
-use unicode_width::UnicodeWidthStr;
 
 use crate::{
     CliId,
@@ -37,18 +30,16 @@ use crate::{
         reword::get_branch_name_from_editor,
         rub::RubOperationDiscriminants,
         status::{
-            CommitLineContent, FileLineContent, StatusFlags, StatusOutputLine, TuiLaunchOptions,
-            output::BranchLineContent,
+            StatusFlags, StatusOutputLine, TuiLaunchOptions,
             tui::{
                 branch_picker::{BranchPicker, BranchPickerMessage},
                 confirm::{Confirm, ConfirmMessage},
                 cursor::{Cursor, is_selectable_in_mode},
-                details::{Details, DetailsMessage, DetailsVisibility, RenderNextChunkResult},
+                details::{Details, DetailsMessage, RenderNextChunkResult},
                 event_polling::{CrosstermEventPolling, EventPolling, NoopEventPolling},
                 fps::FpsCounter,
-                graph_extension::{ExtensionDirection, extend_connector_spans},
                 help::{Help, HelpMessage},
-                highlight::{Highlights, with_highlight},
+                highlight::Highlights,
                 key_bind::{
                     KeyBinds, branch_picker_key_binds, confirm_key_binds, default_key_binds,
                     help_key_binds,
@@ -70,10 +61,9 @@ use crate::{
     utils::{DebugAsType, OutputChannel, binary_path::current_exe_for_but_exec},
 };
 
-use super::{
-    FilesStatusFlag,
-    output::{StatusOutputContent, StatusOutputLineData},
-};
+use super::{FilesStatusFlag, output::StatusOutputLineData};
+
+use render::{details_viewport, ensure_cursor_visible, render_app, status_viewport_height};
 
 mod branch_picker;
 mod confirm;
@@ -88,6 +78,7 @@ mod key_bind;
 mod message_on_drop;
 mod mode;
 mod operations;
+mod render;
 mod rub;
 mod rub_from_detail_view;
 mod toast;
@@ -351,7 +342,7 @@ where
         let _span = tracing::trace_span!("render").entered();
         terminal_guard.terminal_mut().draw(|frame| {
             app.renders += 1;
-            app.render(frame)
+            render_app(app, frame)
         })?;
     }
 
@@ -451,94 +442,6 @@ impl App {
         }
     }
 
-    fn status_content_area(&self, terminal_area: Rect) -> Rect {
-        Layout::vertical([Constraint::Min(1), Constraint::Length(1)]).split(terminal_area)[0]
-    }
-
-    fn details_viewport(&self, terminal_area: Rect) -> Rect {
-        let content_area = self.status_content_area(terminal_area);
-        self.status_layout(content_area)
-            .details_area
-            .unwrap_or(content_area)
-    }
-
-    /// Returns the number of terminal rows available for rendering the status list.
-    fn status_viewport_height(&self, terminal_area: Rect) -> usize {
-        let content_area = self.status_content_area(terminal_area);
-        let status_area = self.status_layout(content_area).status_area;
-
-        // The status pane uses a bottom border, so the inner list viewport is one row shorter
-        // than the outer area.
-        usize::from(status_area.height.saturating_sub(1)).max(1)
-    }
-
-    /// Returns the rendered height in terminal rows for the given status line.
-    fn rendered_height_for_status_line(&self, line_idx: usize) -> usize {
-        self.status_lines
-            .get(line_idx)
-            .map(|line| {
-                self.render_status_list_item(line, self.cursor.index() == line_idx)
-                    .into_iter()
-                    .count()
-            })
-            .unwrap_or(0)
-    }
-
-    /// Returns the total rendered height of the entire status list.
-    fn total_rendered_height(&self) -> usize {
-        (0..self.status_lines.len())
-            .map(|idx| self.rendered_height_for_status_line(idx))
-            .sum()
-    }
-
-    /// Returns the rendered row range occupied by the selected line.
-    fn selected_row_range(&self) -> Option<std::ops::Range<usize>> {
-        let selected_idx = self.cursor.index();
-        let selected_line = self.status_lines.get(selected_idx)?;
-        let start = (0..selected_idx)
-            .map(|idx| self.rendered_height_for_status_line(idx))
-            .sum();
-        let len = self
-            .render_status_list_item(selected_line, true)
-            .into_iter()
-            .count();
-        Some(start..start.saturating_add(len))
-    }
-
-    /// Clamps the topmost visible rendered row to the available content height.
-    fn clamp_scroll_top(&mut self, visible_height: usize) {
-        let max_scroll_top = self.total_rendered_height().saturating_sub(visible_height);
-        self.scroll_top = self.scroll_top.min(max_scroll_top);
-    }
-
-    /// Adjusts the viewport so the selected line stays visible with context rows above and below
-    /// whenever possible.
-    fn ensure_cursor_visible(&mut self, visible_height: usize) {
-        self.clamp_scroll_top(visible_height);
-
-        let Some(selected_rows) = self.selected_row_range() else {
-            return;
-        };
-
-        let selected_height = selected_rows.end.saturating_sub(selected_rows.start);
-        let context_rows =
-            CURSOR_CONTEXT_ROWS.min(visible_height.saturating_sub(selected_height) / 2);
-
-        let min_scroll_top = selected_rows
-            .end
-            .saturating_add(context_rows)
-            .saturating_sub(visible_height);
-        let max_scroll_top = selected_rows.start.saturating_sub(context_rows);
-
-        if self.scroll_top < min_scroll_top {
-            self.scroll_top = min_scroll_top;
-        } else if self.scroll_top > max_scroll_top {
-            self.scroll_top = max_scroll_top;
-        }
-
-        self.clamp_scroll_top(visible_height);
-    }
-
     #[tracing::instrument(level = Level::TRACE, skip(self, ctx, out, mode, terminal_guard, messages))]
     async fn handle_message<T>(
         &mut self,
@@ -578,7 +481,7 @@ impl App {
 
         self.should_render = true;
         let terminal_area: Rect = terminal_guard.terminal_mut().size()?.into();
-        let visible_height = self.status_viewport_height(terminal_area);
+        let visible_height = status_viewport_height(self, terminal_area);
 
         if self.details.needs_update_after_message(&msg) {
             self.details.mark_dirty();
@@ -663,17 +566,17 @@ impl App {
                 }
             }
             Message::Rub(rub_message) => match rub_message {
-                RubMessage::Start => self.handle_start_rub(),
+                RubMessage::Start => self.handle_rub_start(),
                 RubMessage::StartWithSource {
                     source,
                     unlock_details,
                 } => {
-                    self.handle_start_rub_with_source(source, unlock_details);
+                    self.handle_rub_start_with_source(source, unlock_details);
                 }
                 RubMessage::StartReverse => {
                     self.handle_rub_start_reverse(ctx)?;
                 }
-                RubMessage::Confirm => self.handle_confirm_rub(ctx, messages)?,
+                RubMessage::Confirm => self.handle_rub_confirm(ctx, messages)?,
             },
             Message::EnterNormalMode => {
                 self.handle_enter_normal_mode(messages);
@@ -686,10 +589,10 @@ impl App {
             }
             Message::Files(files_message) => match files_message {
                 FilesMessage::ToggleGlobalFilesList => {
-                    self.handle_toggle_global_files_list(messages)
+                    self.handle_files_toggle_global_files_list(messages)
                 }
                 FilesMessage::ToggleFilesForCommit => {
-                    self.handle_toggle_files_for_commit(ctx, messages)?
+                    self.handle_files_toggle_files_for_commit(ctx, messages)?
                 }
             },
             Message::Reload(select_after_reload) => {
@@ -709,18 +612,18 @@ impl App {
                 RewordMessage::WithEditor => {
                     self.handle_reword_with_editor(ctx, terminal_guard, messages)?;
                 }
-                RewordMessage::InlineStart => self.handle_start_reword_inline(ctx, messages)?,
+                RewordMessage::InlineStart => self.handle_reword_inline_start(ctx, messages)?,
                 RewordMessage::InlineInput(ev) => self.handle_reword_inline_input(ev),
-                RewordMessage::InlineConfirm => self.handle_confirm_inline_reword(ctx, messages)?,
+                RewordMessage::InlineConfirm => self.handle_reword_inline_confirm(ctx, messages)?,
                 RewordMessage::OpenEditor => {
-                    self.handle_inline_reword_open_editor(ctx, terminal_guard, messages)?;
+                    self.handle_reword_open_editor(ctx, terminal_guard, messages)?;
                 }
             },
             Message::Command(command_message) => match command_message {
-                CommandMessage::Start(kind) => self.handle_enter_command_mode(kind),
+                CommandMessage::Start(kind) => self.handle_command_start(kind),
                 CommandMessage::Input(ev) => self.handle_command_input(ev),
                 CommandMessage::Confirm => {
-                    self.handle_run_command(terminal_guard, out, messages)?
+                    self.handle_command_confirm(terminal_guard, out, messages)?
                 }
             },
             Message::Move(move_message) => match move_message {
@@ -766,7 +669,7 @@ impl App {
                     .transpose()?;
             }
             Message::Details(details_message) => {
-                let details_viewport = self.details_viewport(terminal_area);
+                let details_viewport = details_viewport(self, terminal_area);
                 self.details
                     .try_handle_message(details_message, details_viewport, messages)?;
             }
@@ -816,7 +719,7 @@ impl App {
             }
         }
 
-        self.ensure_cursor_visible(visible_height);
+        ensure_cursor_visible(self, visible_height);
 
         if cfg!(feature = "tui-profiling") && !cfg!(test) {
             let elapsed_ms = start.elapsed().as_millis();
@@ -901,14 +804,14 @@ impl App {
         }
     }
 
-    fn handle_start_rub(&mut self) {
+    fn handle_rub_start(&mut self) {
         let Some(selected_line) = self.cursor.selected_line(&self.status_lines) else {
             return;
         };
         let Some(cli_id) = selected_line.data.cli_id() else {
             return;
         };
-        self.handle_start_rub_with_source(RubSource::CliId(Arc::clone(cli_id)), None);
+        self.handle_rub_start_with_source(RubSource::CliId(Arc::clone(cli_id)), None);
     }
 
     fn available_targets_for_rub_mode(&self, source: &RubSource) -> Vec<Arc<CliId>> {
@@ -928,7 +831,7 @@ impl App {
             .collect::<Vec<_>>()
     }
 
-    fn handle_start_rub_with_source(
+    fn handle_rub_start_with_source(
         &mut self,
         source: RubSource,
         unlock_details: Option<MessageOnDrop>,
@@ -1029,7 +932,7 @@ impl App {
     }
 
     /// Handles toggling file visibility and requests a status reload.
-    fn handle_toggle_global_files_list(&mut self, messages: &mut Vec<Message>) {
+    fn handle_files_toggle_global_files_list(&mut self, messages: &mut Vec<Message>) {
         self.flags.show_files = match self.flags.show_files {
             FilesStatusFlag::None => FilesStatusFlag::All,
             FilesStatusFlag::All | FilesStatusFlag::Commit(_) => FilesStatusFlag::None,
@@ -1037,7 +940,7 @@ impl App {
         messages.push(Message::Reload(None));
     }
 
-    fn handle_toggle_files_for_commit(
+    fn handle_files_toggle_files_for_commit(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
@@ -1068,7 +971,7 @@ impl App {
     }
 
     /// Handles confirming the currently selected rub operation.
-    fn handle_confirm_rub(
+    fn handle_rub_confirm(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
@@ -1927,7 +1830,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_start_reword_inline(
+    fn handle_reword_inline_start(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
@@ -2014,7 +1917,7 @@ impl App {
         }
     }
 
-    fn handle_confirm_inline_reword(
+    fn handle_reword_inline_confirm(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
@@ -2065,7 +1968,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_inline_reword_open_editor<T>(
+    fn handle_reword_open_editor<T>(
         &mut self,
         ctx: &mut Context,
         terminal_guard: &mut T,
@@ -2118,7 +2021,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_enter_command_mode(&mut self, kind: CommandModeKind) {
+    fn handle_command_start(&mut self, kind: CommandModeKind) {
         let mut textarea = TextArea::default();
         textarea.set_cursor_line_style(self.theme.default);
         textarea.move_cursor(CursorMove::End);
@@ -2135,7 +2038,7 @@ impl App {
         }
     }
 
-    fn handle_run_command<T>(
+    fn handle_command_confirm<T>(
         &mut self,
         terminal_guard: &mut T,
         out: &mut OutputChannel,
@@ -2230,696 +2133,6 @@ impl App {
         Some(*commit_id)
     }
 
-    fn render(&self, frame: &mut Frame) {
-        let content_layout =
-            Layout::vertical([Constraint::Min(1), Constraint::Length(1)]).split(frame.area());
-        let main_content_area = content_layout[0];
-
-        let (main_content_area, debug_area) = if self.options.debug {
-            let layout =
-                Layout::horizontal([Constraint::Percentage(70), Constraint::Percentage(30)])
-                    .split(main_content_area);
-            (layout[0], Some(layout[1]))
-        } else {
-            (main_content_area, None)
-        };
-
-        let hotbar_area = content_layout[1];
-
-        let status_layout = self.status_layout(main_content_area);
-
-        let dimmed_block = Block::bordered()
-            .border_style(self.theme.border)
-            .border_type(BorderType::Plain)
-            .borders(Borders::BOTTOM);
-        let focused_block = Block::bordered()
-            .border_style(self.theme.default.fg(self.mode.bg(self.theme)))
-            .border_type(BorderType::Thick)
-            .borders(Borders::BOTTOM);
-
-        let (status_block, details_block) = if matches!(self.mode, Mode::Details) {
-            (dimmed_block, focused_block)
-        } else {
-            (focused_block, dimmed_block)
-        };
-
-        {
-            let inner_area = status_block.inner(status_layout.status_area);
-            frame.render_widget(status_block, status_layout.status_area);
-            self.render_status(inner_area, frame);
-        }
-
-        if let Some(details_area) = status_layout.details_area {
-            let inner_area = details_block.inner(details_area);
-            frame.render_widget(details_block, details_area);
-            self.details.render(self.help.is_some(), inner_area, frame);
-        }
-
-        if let Some(debug_area) = debug_area {
-            let outer_block = Block::bordered()
-                .border_style(self.theme.border)
-                .border_type(BorderType::Thick)
-                .borders(Borders::LEFT);
-            let inner_area = outer_block.inner(debug_area);
-            frame.render_widget(outer_block, debug_area);
-            self.render_debug(inner_area, frame);
-        }
-
-        self.render_hotbar(hotbar_area, frame);
-
-        self.render_toasts(
-            status_layout
-                .details_area
-                .unwrap_or(status_layout.status_area),
-            frame,
-        );
-
-        if let Some(confirm) = &self.confirm {
-            confirm.render(frame.area(), frame);
-        }
-
-        if let Some(branch_picker) = &self.branch_picker {
-            branch_picker.render(frame.area(), frame);
-        }
-
-        if let Some(help) = &self.help {
-            help.render(frame.area(), frame);
-        }
-    }
-
-    fn status_layout(&self, area: Rect) -> StatusLayout {
-        let (status_area, details_area) = match self.details.visibility() {
-            DetailsVisibility::Hidden => (area, None),
-            DetailsVisibility::VisibleVertical => {
-                let layout = Layout::horizontal([
-                    Constraint::Percentage(self.status_width_percentage),
-                    Constraint::Percentage(100 - self.status_width_percentage),
-                ])
-                .split(area);
-                (layout[0], Some(layout[1]))
-            }
-        };
-
-        StatusLayout {
-            status_area,
-            details_area,
-        }
-    }
-
-    fn render_status(&self, content_area: Rect, frame: &mut Frame) {
-        let visible_height = content_area.height as usize;
-        let items = self
-            .status_lines
-            .iter()
-            .enumerate()
-            .flat_map(|(idx, tui_line)| {
-                self.render_status_list_item(tui_line, self.cursor.index() == idx)
-            })
-            .skip(self.scroll_top)
-            .take(visible_height);
-        let list = List::new(items);
-
-        frame.render_widget(list, content_area);
-
-        self.render_inline_reword(content_area, frame);
-    }
-
-    fn render_status_list_item(
-        &self,
-        tui_line: &StatusOutputLine,
-        is_selected: bool,
-    ) -> StatusListItem {
-        let StatusOutputLine {
-            connector,
-            content,
-            data,
-        } = tui_line;
-
-        let mut line = Line::default();
-
-        if let Some(connector) = connector {
-            line.extend(connector.clone());
-        }
-
-        let line_is_to_be_discarded =
-            self.to_be_discarded
-                .as_ref()
-                .is_some_and(|to_be_discarded| {
-                    data.cli_id()
-                        .is_some_and(|selection| to_be_discarded == selection)
-                });
-
-        if line_is_to_be_discarded {
-            line.extend([Span::raw("<< discard >>").black().on_red(), Span::raw(" ")]);
-        } else if is_selected {
-            match &self.mode {
-                Mode::Normal | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
-                Mode::Rub(RubMode {
-                    source,
-                    available_targets: _,
-                    _unlock_details: _,
-                }) => {
-                    self.render_rub_inline_labels_for_selected_line(data, source, &mut line);
-                }
-                Mode::Commit(commit_mode) => {
-                    if data
-                        .cli_id()
-                        .is_some_and(|target| *commit_mode.source == **target)
-                    {
-                        self.render_commit_labels_for_selected_line(data, commit_mode, &mut line);
-                    }
-                }
-                Mode::Move(move_mode) => {
-                    if data
-                        .cli_id()
-                        .is_some_and(|target| *move_mode.source == **target)
-                        || matches!(data, StatusOutputLineData::MergeBase)
-                    {
-                        self.render_move_labels_for_selected_line(data, move_mode, &mut line);
-                    }
-                }
-            }
-        } else {
-            match &self.mode {
-                Mode::Normal | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
-                Mode::Rub(RubMode {
-                    source,
-                    available_targets: _,
-                    _unlock_details: _,
-                }) => {
-                    if let Some(cli_id) = data.cli_id()
-                        && source == &**cli_id
-                    {
-                        line.extend([source_span(self.theme), Span::raw(" ")]);
-                    }
-                }
-                Mode::Commit(CommitMode { source, .. }) => {
-                    if let Some(cli_id) = data.cli_id()
-                        && **source == **cli_id
-                    {
-                        line.extend([source_span(self.theme), Span::raw(" ")]);
-                    }
-                }
-                Mode::Move(MoveMode { source, .. }) => {
-                    if let Some(cli_id) = data.cli_id()
-                        && **source == **cli_id
-                    {
-                        line.extend([source_span(self.theme), Span::raw(" ")]);
-                    }
-                }
-            }
-        }
-
-        let mut content_spans = match content {
-            StatusOutputContent::Plain(spans) => spans.clone(),
-            StatusOutputContent::Commit(CommitLineContent {
-                sha,
-                author,
-                message,
-                suffix,
-            }) => {
-                let mut spans =
-                    Vec::with_capacity(sha.len() + author.len() + message.len() + suffix.len());
-                if data.cli_id().is_some_and(|id| self.highlight.contains(id)) {
-                    spans.extend(sha.iter().cloned().map(with_highlight));
-                } else {
-                    spans.extend(sha.iter().cloned());
-                }
-                spans.extend(author.iter().cloned());
-                spans.extend(message.iter().cloned());
-                spans.extend(suffix.iter().cloned());
-                spans
-            }
-            StatusOutputContent::Branch(BranchLineContent {
-                id,
-                decoration_start,
-                branch_name,
-                decoration_end,
-                suffix,
-            }) => {
-                let mut spans = Vec::with_capacity(
-                    id.len()
-                        + decoration_start.len()
-                        + branch_name.len()
-                        + decoration_end.len()
-                        + suffix.len(),
-                );
-                spans.extend(id.iter().cloned());
-                spans.extend(decoration_start.iter().cloned());
-                if data.cli_id().is_some_and(|id| self.highlight.contains(id)) {
-                    spans.extend(branch_name.iter().cloned().map(with_highlight));
-                } else {
-                    spans.extend(branch_name.iter().cloned());
-                }
-                spans.extend(decoration_end.iter().cloned());
-                spans.extend(suffix.iter().cloned());
-                spans
-            }
-            StatusOutputContent::File(FileLineContent { id, status, path }) => {
-                let mut spans = Vec::with_capacity(id.len() + status.len() + path.len());
-                spans.extend(id.iter().cloned());
-                spans.extend(status.iter().cloned());
-                if data.cli_id().is_some_and(|id| self.highlight.contains(id)) {
-                    spans.extend(path.iter().cloned().map(with_highlight));
-                } else {
-                    spans.extend(path.iter().cloned());
-                }
-                spans
-            }
-        };
-
-        if line_is_to_be_discarded {
-            content_spans = content_spans
-                .into_iter()
-                .map(|span| span.crossed_out())
-                .collect();
-        }
-
-        match &self.mode {
-            Mode::InlineReword(inline_reword_mode) => {
-                if is_selected {
-                    match inline_reword_mode {
-                        InlineRewordMode::Commit { .. } => {
-                            if let StatusOutputContent::Commit(commit_content) = content {
-                                line.extend(commit_content.sha.iter().cloned());
-                            }
-                        }
-                        InlineRewordMode::Branch { textarea, .. } => {
-                            if let StatusOutputContent::Branch(branch_content) = content {
-                                line.extend(branch_content.id.iter().cloned());
-                                line.extend(branch_content.decoration_start.iter().cloned());
-
-                                let len = textarea
-                                    .lines()
-                                    .first()
-                                    .map(|line| line.width())
-                                    .unwrap_or(0);
-                                line.push_span(Span::raw(" ".repeat(len + 1)));
-
-                                line.extend(branch_content.decoration_end.iter().cloned());
-                                line.extend(branch_content.suffix.iter().cloned());
-                            }
-                        }
-                    }
-                } else {
-                    line.extend(content_spans);
-                }
-            }
-            Mode::Normal
-            | Mode::Details
-            | Mode::Move(..)
-            | Mode::Command(..)
-            | Mode::Rub(..)
-            | Mode::Commit(..) => {
-                if is_selectable_in_mode(tui_line, &self.mode, self.flags.show_files) {
-                    line.extend(content_spans);
-                } else {
-                    line.extend(
-                        content_spans
-                            .into_iter()
-                            .map(|span| span.style(self.theme.hint)),
-                    );
-                }
-            }
-        }
-
-        if is_selected {
-            match &self.mode {
-                Mode::Commit(commit_mode) => {
-                    if matches!(data, StatusOutputLineData::Commit { .. })
-                        || matches!(data, StatusOutputLineData::Branch { .. })
-                    {
-                        let mut extension_line =
-                            Line::default().style(self.theme.selection_highlight);
-                        extend_connector_spans(
-                            connector.as_deref().unwrap_or_default(),
-                            ExtensionDirection::Below,
-                            &mut extension_line,
-                        );
-                        self.render_commit_labels_for_selected_line(
-                            data,
-                            commit_mode,
-                            &mut extension_line,
-                        );
-                        return StatusListItem::Double(line, extension_line);
-                    }
-                }
-                Mode::Move(move_mode) => {
-                    if let StatusOutputLineData::Commit { cli_id: target, .. } = data
-                        && *move_mode.source != **target
-                    {
-                        let mut extension_line =
-                            Line::default().style(self.theme.selection_highlight);
-                        extend_connector_spans(
-                            connector.as_deref().unwrap_or_default(),
-                            ExtensionDirection::Below,
-                            &mut extension_line,
-                        );
-                        self.render_move_labels_for_selected_line(
-                            data,
-                            move_mode,
-                            &mut extension_line,
-                        );
-                        return StatusListItem::Double(line, extension_line);
-                    } else if let StatusOutputLineData::Branch { cli_id: target, .. } = data
-                        && *move_mode.source != **target
-                    {
-                        if move_mode.source.is_commit() {
-                            let mut extension_line =
-                                Line::default().style(self.theme.selection_highlight);
-                            extend_connector_spans(
-                                connector.as_deref().unwrap_or_default(),
-                                ExtensionDirection::Below,
-                                &mut extension_line,
-                            );
-                            self.render_move_labels_for_selected_line(
-                                data,
-                                move_mode,
-                                &mut extension_line,
-                            );
-                            return StatusListItem::Double(line, extension_line);
-                        } else {
-                            let mut extension_line =
-                                Line::default().style(self.theme.selection_highlight);
-                            extend_connector_spans(
-                                connector.as_deref().unwrap_or_default(),
-                                ExtensionDirection::Above,
-                                &mut extension_line,
-                            );
-                            self.render_move_labels_for_selected_line(
-                                data,
-                                move_mode,
-                                &mut extension_line,
-                            );
-                            return StatusListItem::Double(extension_line, line);
-                        }
-                    }
-                }
-                Mode::Normal
-                | Mode::Details
-                | Mode::Rub(..)
-                | Mode::InlineReword(..)
-                | Mode::Command(..) => {}
-            }
-        }
-
-        if is_selected && self.help.is_none() {
-            line = line.style(self.theme.selection_highlight);
-        }
-
-        StatusListItem::Single(line)
-    }
-
-    fn render_rub_inline_labels_for_selected_line(
-        &self,
-        data: &StatusOutputLineData,
-        source: &RubSource,
-        line: &mut Line<'static>,
-    ) {
-        let Some(target) = data.cli_id() else {
-            return;
-        };
-
-        if source == &**target {
-            line.extend([source_span(self.theme), Span::raw(" ")]);
-        }
-
-        let display = match source {
-            RubSource::CliId(source) => {
-                Cow::Borrowed(rub::rub_operation_display(source, target).unwrap_or("invalid"))
-            }
-            RubSource::CommittedHunk(hunk) => Cow::Borrowed(
-                rub_from_detail_view::rub_operation_display(hunk, target).unwrap_or("invalid"),
-            ),
-        };
-        line.extend([
-            Span::raw("<< ").mode_colors(&self.mode, self.theme),
-            Span::raw(display).mode_colors(&self.mode, self.theme),
-            Span::raw(" >>").mode_colors(&self.mode, self.theme),
-            Span::raw(" "),
-        ]);
-    }
-
-    fn render_commit_labels_for_selected_line(
-        &self,
-        data: &StatusOutputLineData,
-        mode: &CommitMode,
-        line: &mut Line<'static>,
-    ) {
-        let Some(target) = data.cli_id() else {
-            return;
-        };
-
-        if *mode.source == **target {
-            line.extend([source_span(self.theme), Span::raw(" ")]);
-            line.extend(
-                [
-                    Span::raw("<< ").mode_colors(&self.mode, self.theme),
-                    Span::raw(NOOP).mode_colors(&self.mode, self.theme),
-                ]
-                .into_iter()
-                .chain(match mode.message_composer {
-                    CommitMessageComposer::Editor => None,
-                    CommitMessageComposer::Empty => {
-                        Some(Span::raw(" (empty message)").mode_colors(&self.mode, self.theme))
-                    }
-                    CommitMessageComposer::Inline => {
-                        Some(Span::raw(" (reword inline)").mode_colors(&self.mode, self.theme))
-                    }
-                })
-                .chain([
-                    Span::raw(" >>").mode_colors(&self.mode, self.theme),
-                    Span::raw(" "),
-                ]),
-            );
-        } else if let Some(display) = commit_operation_display(data, mode) {
-            line.extend(
-                [
-                    Span::raw("<< ").mode_colors(&self.mode, self.theme),
-                    Span::raw(display).mode_colors(&self.mode, self.theme),
-                ]
-                .into_iter()
-                .chain(match mode.message_composer {
-                    CommitMessageComposer::Editor => None,
-                    CommitMessageComposer::Empty => {
-                        Some(Span::raw(" (empty message)").mode_colors(&self.mode, self.theme))
-                    }
-                    CommitMessageComposer::Inline => {
-                        Some(Span::raw(" (reword inline)").mode_colors(&self.mode, self.theme))
-                    }
-                })
-                .chain([
-                    Span::raw(" >>").mode_colors(&self.mode, self.theme),
-                    Span::raw(" "),
-                ]),
-            );
-        }
-    }
-
-    fn render_move_labels_for_selected_line(
-        &self,
-        data: &StatusOutputLineData,
-        mode: &MoveMode,
-        line: &mut Line<'static>,
-    ) {
-        if data.cli_id().is_some_and(|target| *mode.source == **target) {
-            line.extend([source_span(self.theme), Span::raw(" ")]);
-            line.extend([
-                Span::raw("<< ").mode_colors(&self.mode, self.theme),
-                Span::raw(NOOP).mode_colors(&self.mode, self.theme),
-                Span::raw(" >>").mode_colors(&self.mode, self.theme),
-                Span::raw(" "),
-            ]);
-        } else if let Some(display) = move_operation_display(data, mode) {
-            line.extend([
-                Span::raw("<< ").mode_colors(&self.mode, self.theme),
-                Span::raw(display).mode_colors(&self.mode, self.theme),
-                Span::raw(" >>").mode_colors(&self.mode, self.theme),
-                Span::raw(" "),
-            ]);
-        }
-    }
-
-    fn render_hotbar(&self, area: Rect, frame: &mut Frame) {
-        let mode_span = Span::raw(format!(
-            "  {}  ",
-            ModeDiscriminant::from(&self.mode).hotbar_string()
-        ))
-        .mode_colors(&self.mode, self.theme);
-
-        let layout = Layout::horizontal([
-            Constraint::Length(mode_span.width() as _),
-            Constraint::Length(1),
-            Constraint::Min(1),
-        ])
-        .split(area);
-
-        frame.render_widget(mode_span, layout[0]);
-
-        frame.render_widget(" ", layout[1]);
-
-        match &self.mode {
-            Mode::Normal
-            | Mode::Details
-            | Mode::Rub(..)
-            | Mode::Commit(..)
-            | Mode::Move(..)
-            | Mode::InlineReword(..) => {
-                let mut line = Line::default();
-                let mut key_binds_iter = self
-                    .active_key_binds()
-                    .iter_key_binds_available_in_mode(ModeDiscriminant::from(&self.mode))
-                    .filter(|key_bind| !key_bind.hide_from_hotbar())
-                    .peekable();
-                while let Some(key_bind) = key_binds_iter.next() {
-                    line.extend([
-                        Span::styled(key_bind.chord_display(), self.theme.legend),
-                        Span::raw(" "),
-                        Span::styled(key_bind.short_description(), self.theme.hint),
-                    ]);
-
-                    if key_binds_iter.peek().is_some() {
-                        line.push_span(Span::styled(" • ", self.theme.hint));
-                    }
-                }
-
-                frame.render_widget(line, layout[2]);
-            }
-            Mode::Command(CommandMode { textarea, kind }) => {
-                let command_layout = Layout::horizontal([
-                    match kind {
-                        CommandModeKind::But => Constraint::Length(4),
-                        CommandModeKind::Shell => Constraint::Length(2),
-                    },
-                    Constraint::Min(1),
-                ])
-                .split(layout[2]);
-
-                match kind {
-                    CommandModeKind::But => {
-                        frame.render_widget("but ", command_layout[0]);
-                    }
-                    CommandModeKind::Shell => {
-                        frame.render_widget("$ ", command_layout[0]);
-                    }
-                }
-                frame.render_widget(&**textarea, command_layout[1]);
-            }
-        }
-    }
-
-    /// Renders transient toasts stacked in the content area.
-    fn render_toasts(&self, area: Rect, frame: &mut Frame) {
-        toast::render_toasts(frame, area, &self.toasts, self.theme);
-    }
-
-    fn render_inline_reword(&self, area: Rect, frame: &mut Frame) {
-        let inline_reword_mode = if let Mode::InlineReword(inline_reword_mode) = &self.mode {
-            inline_reword_mode
-        } else {
-            return;
-        };
-
-        let selected_idx = self.cursor.index();
-        let Some(selected_rows) = self.selected_row_range() else {
-            return;
-        };
-        if selected_rows.start < self.scroll_top {
-            return;
-        }
-        let idx = selected_rows.start - self.scroll_top;
-        if idx >= area.height as usize {
-            return;
-        }
-        let Some(line) = self.status_lines.get(selected_idx) else {
-            return;
-        };
-
-        match inline_reword_mode {
-            InlineRewordMode::Commit { textarea, .. } => {
-                let StatusOutputLineData::Commit { .. } = &line.data else {
-                    return;
-                };
-                let Some(connector) = &line.connector else {
-                    return;
-                };
-                let StatusOutputContent::Commit(commit_content) = &line.content else {
-                    return;
-                };
-                let connector_and_prefix = connector
-                    .iter()
-                    .chain(&commit_content.sha)
-                    .map(|span| span.width() as u16)
-                    .sum::<u16>();
-                let padding = 1;
-
-                let start_x = connector_and_prefix + padding;
-                let x = area.x.saturating_add(start_x);
-                let width = area.right().saturating_sub(x);
-                let area = Rect::new(x, area.y.saturating_add(idx as u16), width, 1);
-                frame.render_widget(&**textarea, area);
-            }
-            InlineRewordMode::Branch { textarea, .. } => {
-                let StatusOutputLineData::Branch { .. } = &line.data else {
-                    return;
-                };
-                let Some(connector) = &line.connector else {
-                    return;
-                };
-                let StatusOutputContent::Branch(branch_content) = &line.content else {
-                    return;
-                };
-
-                let connector_and_prefix = connector
-                    .iter()
-                    .chain(&branch_content.id)
-                    .chain(&branch_content.decoration_start)
-                    .map(|span| span.width() as u16)
-                    .sum::<u16>();
-
-                let padding = 0;
-
-                let start_x = connector_and_prefix + padding;
-                let x = area.x.saturating_add(start_x);
-                let width = area.right().saturating_sub(x);
-                let area = Rect::new(x, area.y.saturating_add(idx as u16), width, 1);
-                frame.render_widget(&**textarea, area);
-            }
-        }
-    }
-
-    fn render_debug(&self, area: Rect, frame: &mut Frame) {
-        let renders = once(ListItem::new("FPS").black().on_blue()).chain(once(ListItem::new(
-            format!("{} FPS ({} renders)", self.fps.fps(), self.renders),
-        )));
-
-        let details_selection = format!("{:#?}", self.details.selection());
-        let details_selection = once(ListItem::new("Details selection").black().on_blue()).chain(
-            details_selection
-                .lines()
-                .take(100)
-                .map(|line| ListItem::new(line.to_owned())),
-        );
-
-        let status_selection = format!("{:#?}", self.cursor.selected_line(&self.status_lines));
-        let status_selection = once(ListItem::new("Status selection").black().on_blue()).chain(
-            status_selection
-                .lines()
-                .take(100)
-                .map(|line| ListItem::new(line.to_owned())),
-        );
-
-        let list = List::new(
-            renders
-                .chain(once(ListItem::new("")))
-                .chain(details_selection)
-                .chain(once(ListItem::new("")))
-                .chain(status_selection),
-        );
-
-        frame.render_widget(list, area);
-    }
-
     fn update_status_width_percentage(&mut self, new: u16, terminal_area: Rect) {
         if !self.details.is_visible() {
             return;
@@ -2930,7 +2143,7 @@ impl App {
             100 - DETAILS_MIN_SIZE_PERCENTAGE,
         );
 
-        let details_viewport = self.details_viewport(terminal_area);
+        let details_viewport = details_viewport(self, terminal_area);
         self.details.ensure_selection_visible(details_viewport);
     }
 
@@ -3247,138 +2460,8 @@ fn format_exit_status(status: std::process::ExitStatus) -> String {
     }
 }
 
-fn commit_operation_display(
-    data: &StatusOutputLineData,
-    mode: &CommitMode,
-) -> Option<&'static str> {
-    match data {
-        StatusOutputLineData::Branch { cli_id } => {
-            if let Some(stack_scope) = mode.scope_to_stack
-                && let Some(stack_id) = cli_id.stack_id()
-                && stack_scope != stack_id
-            {
-                // don't allow selecting branches outside the scoped stack
-                None
-            } else {
-                Some("insert commit")
-            }
-        }
-        StatusOutputLineData::Commit { stack_id, .. } => {
-            if let Some(stack_scope) = mode.scope_to_stack
-                && Some(stack_scope) != *stack_id
-            {
-                // don't allow selecting commits outside the scoped stack
-                None
-            } else {
-                Some("insert commit")
-            }
-        }
-        StatusOutputLineData::StagedChanges { .. }
-        | StatusOutputLineData::StagedFile { .. }
-        | StatusOutputLineData::UnassignedChanges { .. }
-        | StatusOutputLineData::UnassignedFile { .. }
-        | StatusOutputLineData::UpdateNotice
-        | StatusOutputLineData::Connector
-        | StatusOutputLineData::CommitMessage
-        | StatusOutputLineData::EmptyCommitMessage
-        | StatusOutputLineData::File { .. }
-        | StatusOutputLineData::MergeBase
-        | StatusOutputLineData::UpstreamChanges
-        | StatusOutputLineData::Warning
-        | StatusOutputLineData::Hint
-        | StatusOutputLineData::NoAssignmentsUnstaged => None,
-    }
-}
-
-fn move_operation_display(data: &StatusOutputLineData, mode: &MoveMode) -> Option<&'static str> {
-    match &*mode.source {
-        MoveSource::Commit { .. } => match data {
-            StatusOutputLineData::Commit { .. } | StatusOutputLineData::Branch { .. } => {
-                Some("move commit")
-            }
-            StatusOutputLineData::UpdateNotice
-            | StatusOutputLineData::Connector
-            | StatusOutputLineData::StagedChanges { .. }
-            | StatusOutputLineData::StagedFile { .. }
-            | StatusOutputLineData::UnassignedChanges { .. }
-            | StatusOutputLineData::UnassignedFile { .. }
-            | StatusOutputLineData::CommitMessage
-            | StatusOutputLineData::EmptyCommitMessage
-            | StatusOutputLineData::File { .. }
-            | StatusOutputLineData::MergeBase
-            | StatusOutputLineData::UpstreamChanges
-            | StatusOutputLineData::Warning
-            | StatusOutputLineData::Hint
-            | StatusOutputLineData::NoAssignmentsUnstaged => None,
-        },
-        MoveSource::Branch { .. } => match data {
-            StatusOutputLineData::Branch { .. } => Some("move branch"),
-            StatusOutputLineData::MergeBase => Some("unstack branch"),
-            StatusOutputLineData::UpdateNotice
-            | StatusOutputLineData::Commit { .. }
-            | StatusOutputLineData::Connector
-            | StatusOutputLineData::StagedChanges { .. }
-            | StatusOutputLineData::StagedFile { .. }
-            | StatusOutputLineData::UnassignedChanges { .. }
-            | StatusOutputLineData::UnassignedFile { .. }
-            | StatusOutputLineData::CommitMessage
-            | StatusOutputLineData::EmptyCommitMessage
-            | StatusOutputLineData::File { .. }
-            | StatusOutputLineData::UpstreamChanges
-            | StatusOutputLineData::Warning
-            | StatusOutputLineData::Hint
-            | StatusOutputLineData::NoAssignmentsUnstaged => None,
-        },
-    }
-}
-
-fn source_span(theme: &'static Theme) -> Span<'static> {
-    Span::raw("<< source >>").mode_colors(&Mode::Normal, theme)
-}
-
-trait SpanExt<M> {
-    fn mode_colors(self, mode: M, theme: &'static Theme) -> Self;
-}
-
-impl SpanExt<&Mode> for Span<'_> {
-    fn mode_colors(self, mode: &Mode, theme: &'static Theme) -> Self {
-        self.mode_colors(ModeDiscriminant::from(mode), theme)
-    }
-}
-
-impl SpanExt<ModeDiscriminant> for Span<'_> {
-    fn mode_colors(self, mode: ModeDiscriminant, theme: &'static Theme) -> Self {
-        self.fg(mode.fg(theme)).bg(mode.bg(theme))
-    }
-}
-
-enum StatusListItem {
-    Single(Line<'static>),
-    Double(Line<'static>, Line<'static>),
-}
-
-impl IntoIterator for StatusListItem {
-    type Item = ListItem<'static>;
-    type IntoIter =
-        Either<std::iter::Once<ListItem<'static>>, std::array::IntoIter<ListItem<'static>, 2>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        match self {
-            StatusListItem::Single(line) => Either::Left(once(ListItem::new(line))),
-            StatusListItem::Double(line1, line2) => {
-                Either::Right([ListItem::new(line1), ListItem::new(line2)].into_iter())
-            }
-        }
-    }
-}
-
 enum MoveTarget<'a> {
     Branch { name: &'a str },
     Commit { commit_id: gix::ObjectId },
     MergeBase,
-}
-
-struct StatusLayout {
-    status_area: Rect,
-    details_area: Option<Rect>,
 }

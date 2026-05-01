@@ -8,7 +8,10 @@ use crate::{
     command::legacy::status::{
         FilesStatusFlag, StatusOutputLine,
         output::StatusOutputLineData,
-        tui::{Mode, SelectAfterReload, commit_operation_display, move_operation_display},
+        tui::{
+            Mode, SelectAfterReload,
+            render::{commit_operation_display, move_operation_display},
+        },
     },
 };
 
