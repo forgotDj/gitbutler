@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-15 # [macOs, ARM64]
+          - platform: macos-26 # [macOs, ARM64]
           - platform: ubuntu-22.04 # [linux, x64]
           - platform: windows-latest # [windows, x64]
     env:
@@ -37,9 +37,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y install pkg-config libxss-dev libdbus-1-dev
-      - name: Select Xcode 26.3
-        if: runner.os == 'macOS'
-        run: sudo xcode-select -s /Applications/Xcode_26.3.app
       - uses: ./.github/actions/init-env-node
       - name: Set version
         working-directory: apps/lite
