@@ -11,7 +11,7 @@ import { ComponentPropsWithoutRef, FC, useRef } from "react";
 
 export const ShortcutButton: FC<
 	Omit<ComponentPropsWithoutRef<"button">, "children"> & {
-		children: string;
+		children?: string;
 		hotkey: RegisterableHotkey;
 		hotkeyOptions?: UseHotkeyOptions;
 	}
@@ -31,7 +31,7 @@ export const ShortcutButton: FC<
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
-						{children} (<kbd>{formatForDisplay(hotkey)}</kbd>)
+						<kbd>{formatForDisplay(hotkey)}</kbd>
 					</Tooltip.Popup>
 				</Tooltip.Positioner>
 			</Tooltip.Portal>
