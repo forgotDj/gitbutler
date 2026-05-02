@@ -25,7 +25,10 @@ export const ShortcutButton: FC<
 
 	return (
 		<Tooltip.Root>
-			<Tooltip.Trigger {...props} render={<button ref={buttonRef} type="button" />}>
+			<Tooltip.Trigger
+				{...props}
+				render={<button ref={buttonRef} type="button" disabled={props.disabled} />}
+			>
 				{children}
 			</Tooltip.Trigger>
 			<Tooltip.Portal>
