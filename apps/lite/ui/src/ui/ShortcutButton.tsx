@@ -27,10 +27,9 @@ export const ShortcutButton: FC<
 	return (
 		<Tooltip.Root>
 			<Tooltip.Trigger
-				ref={buttonRef}
 				{...props}
 				aria-label={props["aria-label"] ?? tooltip}
-				render={<button type="button" />}
+				render={<button ref={buttonRef} type="button" />}
 			>
 				{children}
 			</Tooltip.Trigger>
