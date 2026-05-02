@@ -1,16 +1,17 @@
 import { classes } from "#ui/ui/classes.ts";
 import uiStyles from "#ui/ui/ui.module.css";
 import { Tooltip } from "@base-ui/react";
+import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import {
 	formatForDisplay,
 	useHotkey,
 	type RegisterableHotkey,
 	type UseHotkeyOptions,
 } from "@tanstack/react-hotkeys";
-import { ComponentPropsWithoutRef, FC, useRef } from "react";
+import { ComponentProps, FC, useRef } from "react";
 
 export const ShortcutButton: FC<
-	Omit<ComponentPropsWithoutRef<"button">, "children"> & {
+	Omit<ComponentProps<"button">, "children"> & {
 		children?: string;
 		hotkey: RegisterableHotkey;
 		hotkeyOptions?: UseHotkeyOptions;
@@ -27,7 +28,8 @@ export const ShortcutButton: FC<
 		<Tooltip.Root>
 			<Tooltip.Trigger
 				{...props}
-				render={<button ref={buttonRef} type="button" disabled={props.disabled} />}
+				ref={useMergedRefs(buttonRef, props.ref)}
+				render={<button type="button" disabled={props.disabled} />}
 			>
 				{children}
 			</Tooltip.Trigger>
