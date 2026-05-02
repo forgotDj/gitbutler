@@ -3,7 +3,7 @@
 	import { BRANCH_SERVICE } from "$lib/branches/branchService.svelte";
 	import { GIT_CONFIG_SERVICE } from "$lib/config/gitConfigService";
 	import { getPrStatus } from "$lib/forge/interface/prUtils";
-	import { USER_SERVICE } from "$lib/user/userService";
+	import { useUserAvatarUrl } from "$lib/user/userAvatar.svelte";
 	import { inject } from "@gitbutler/core/context";
 
 	import { AvatarGroup, ReviewBadge, SeriesLabelsRow, TestId, TimeAgo } from "@gitbutler/ui";
@@ -22,15 +22,13 @@
 	}
 
 	const { reviewUnit, projectId, branchListing, prs, selected, onclick }: Props = $props();
+	const userAvatarUrl = useUserAvatarUrl();
 
 	const unknownName = "unknown";
 	const unknownEmail = "example@example.com";
 
-	const userService = inject(USER_SERVICE);
 	const gitConfigService = inject(GIT_CONFIG_SERVICE);
 	const branchService = inject(BRANCH_SERVICE);
-
-	const user = userService.user;
 
 	// TODO: Use information from all PRs in a stack?
 	const pr = $derived(prs.at(0));
@@ -73,13 +71,14 @@
 	async function setAvatars(ownedByUser: boolean, branchListingDetails?: BranchListingDetails) {
 		if (ownedByUser) {
 			const name = (await gitConfigService.get("user.name")) || unknownName;
-			const email = (await gitConfigService.get("user.email")) || unknownEmail;
-			const srcUrl =
-				email.toLowerCase() === $user?.email?.toLowerCase() && $user?.picture
-					? $user?.picture
-					: await gravatarUrlFromEmail(email);
+			const email = (await gitConfigService.get<string>("user.email")) || unknownEmail;
 
-			avatars = [{ username: name, srcUrl: srcUrl }];
+			avatars = [
+				{
+					username: name,
+					srcUrl: userAvatarUrl(email) ?? (await gravatarUrlFromEmail(email)),
+				},
+			];
 		} else if (branchListingDetails) {
 			avatars = branchListingDetails.authors
 				? await Promise.all(
@@ -87,9 +86,8 @@
 							return {
 								username: author.name || unknownName,
 								srcUrl:
-									(author.email?.toLowerCase() === $user?.email?.toLowerCase()
-										? $user?.picture
-										: author.gravatarUrl) ??
+									userAvatarUrl(author.email) ??
+									author.gravatarUrl ??
 									(await gravatarUrlFromEmail(author.email || unknownEmail)),
 							};
 						}),
