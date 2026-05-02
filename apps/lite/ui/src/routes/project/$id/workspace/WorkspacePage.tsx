@@ -524,7 +524,7 @@ const WorkspacePage: FC = () => {
 						<Separator className={styles.panelResizeHandle} />
 						<DetailsPanel
 							id={"details" satisfies PanelType}
-							minSize={300}
+							minSize={400}
 							tabIndex={0}
 							className={styles.panel}
 							elementRef={panelElementRef("details")}
