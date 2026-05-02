@@ -1,3 +1,4 @@
+import uiStyles from "#ui/ui/ui.module.css";
 import { FilesPanel } from "./FilesPanel.tsx";
 import { applyBranchMutationOptions } from "#ui/api/mutations.ts";
 import {
@@ -37,7 +38,7 @@ import { useParams } from "@tanstack/react-router";
 import { Match, pipe } from "effect";
 import { FC, useState } from "react";
 import { Group, Separator, useDefaultLayout } from "react-resizable-panels";
-import { branchOperand, type BranchOperand } from "#ui/operands.ts";
+import { branchOperand, changesSectionOperand, type BranchOperand } from "#ui/operands.ts";
 import { PickerDialog, type PickerDialogGroup } from "#ui/ui/PickerDialog/PickerDialog.tsx";
 import { DetailsPanel } from "./DetailsPanel.tsx";
 import { OutlinePanel } from "./OutlinePanel.tsx";
@@ -298,6 +299,7 @@ const TopBarActions: FC<{ focusPanel: (panel: PanelType) => void }> = ({ focusPa
 	return (
 		<>
 			<ShortcutButton
+				className={uiStyles.button}
 				hotkey="Shift+A"
 				hotkeyOptions={{ meta: { group: "Branches", name: "Apply" } }}
 				onClick={openApplyBranchPicker}
@@ -305,6 +307,7 @@ const TopBarActions: FC<{ focusPanel: (panel: PanelType) => void }> = ({ focusPa
 				Apply branch
 			</ShortcutButton>
 			<ShortcutButton
+				className={uiStyles.button}
 				hotkey="D"
 				aria-pressed={isPanelVisible(panelsState, "details")}
 				hotkeyOptions={{
@@ -445,8 +448,24 @@ const WorkspacePage: FC = () => {
 		focusPanel("outline");
 	};
 
+	const commitChangesToBranch = (branch: BranchOperand) => {
+		dispatch(
+			projectActions.selectOutline({
+				projectId,
+				selection: branchOperand(branch),
+			}),
+		);
+		dispatch(
+			projectActions.enterMoveMode({
+				projectId,
+				source: changesSectionOperand,
+			}),
+		);
+		focusPanel("outline");
+	};
+
 	const setBranchPickerOpen = (open: boolean) => {
-		if (open) dispatch(projectActions.openBranchPicker({ projectId }));
+		if (open) dispatch(projectActions.openBranchPicker({ projectId, intent: "selectBranch" }));
 		else dispatch(projectActions.closePickerDialog({ projectId }));
 	};
 
@@ -532,11 +551,15 @@ const WorkspacePage: FC = () => {
 					ApplyBranchPicker: () => (
 						<ApplyBranchPicker open onOpenChange={setApplyBranchPickerOpen} projectId={projectId} />
 					),
-					BranchPicker: () => (
+					BranchPicker: ({ intent }) => (
 						<BranchPicker
 							open
 							onOpenChange={setBranchPickerOpen}
-							onSelectBranch={selectBranch}
+							onSelectBranch={Match.value(intent).pipe(
+								Match.when("selectBranch", () => selectBranch),
+								Match.when("commitChanges", () => commitChangesToBranch),
+								Match.exhaustive,
+							)}
 							stacks={headInfo.stacks}
 						/>
 					),

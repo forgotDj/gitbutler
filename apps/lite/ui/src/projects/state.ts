@@ -9,7 +9,7 @@ import { OperationType } from "#ui/operations/operation.ts";
 type PickerDialog =
 	| { _tag: "None" }
 	| { _tag: "ApplyBranchPicker" }
-	| { _tag: "BranchPicker" }
+	| { _tag: "BranchPicker"; intent: "selectBranch" | "commitChanges" }
 	| { _tag: "CommandPalette"; focusedPanel: Panel | null };
 
 type ProjectState = {
@@ -155,9 +155,16 @@ const projectSlice = createSlice({
 				focusedPanel,
 			};
 		},
-		openBranchPicker: (state, action: PayloadAction<{ projectId: string }>) => {
+		openBranchPicker: (
+			state,
+			action: PayloadAction<{
+				projectId: string;
+				intent: "selectBranch" | "commitChanges";
+			}>,
+		) => {
 			ensureProjectState(state, action.payload.projectId).pickerDialog = {
 				_tag: "BranchPicker",
+				intent: action.payload.intent,
 			};
 		},
 		openApplyBranchPicker: (state, action: PayloadAction<{ projectId: string }>) => {
