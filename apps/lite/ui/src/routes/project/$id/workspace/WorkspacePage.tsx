@@ -525,7 +525,6 @@ const WorkspacePage: FC = () => {
 						<DetailsPanel
 							id={"details" satisfies PanelType}
 							minSize={300}
-							defaultSize="70%"
 							tabIndex={0}
 							className={styles.panel}
 							elementRef={panelElementRef("details")}
