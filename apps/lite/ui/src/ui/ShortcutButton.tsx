@@ -19,7 +19,7 @@ export const ShortcutButton: FC<
 	const buttonRef = useRef<HTMLButtonElement>(null);
 	const tooltip = (
 		<>
-			{children} ({formatForDisplay(hotkey)})
+			{children} (<kbd>{formatForDisplay(hotkey)}</kbd>)
 		</>
 	);
 
