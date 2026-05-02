@@ -17,11 +17,6 @@ export const ShortcutButton: FC<
 	}
 > = ({ children, hotkey, hotkeyOptions, ...props }) => {
 	const buttonRef = useRef<HTMLButtonElement>(null);
-	const tooltip = (
-		<>
-			{children} (<kbd>{formatForDisplay(hotkey)}</kbd>)
-		</>
-	);
 
 	useHotkey(hotkey, () => buttonRef.current?.click(), {
 		...hotkeyOptions,
@@ -36,7 +31,7 @@ export const ShortcutButton: FC<
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
-						{tooltip}
+						{children} (<kbd>{formatForDisplay(hotkey)}</kbd>)
 					</Tooltip.Popup>
 				</Tooltip.Positioner>
 			</Tooltip.Portal>
