@@ -38,7 +38,7 @@ base64.workspace = true
 rust-embed = { workspace = true, optional = true }
 mime_guess = { workspace = true, optional = true }
 serde.workspace = true
-axum = { version = "0.8.8", features = ["ws"] }
+axum = { version = "0.8.9", features = ["ws"] }
 futures-util = { version = "0.3", default-features = false, features = [
     "sink",
     "std",
