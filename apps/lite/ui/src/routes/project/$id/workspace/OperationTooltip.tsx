@@ -39,6 +39,7 @@ const OperationModeControls: FC<{
 		<>
 			{operation && (
 				<ShortcutButton
+					className={uiStyles.button}
 					hotkey="Enter"
 					hotkeyOptions={{
 						conflictBehavior: "allow",
@@ -50,6 +51,7 @@ const OperationModeControls: FC<{
 				</ShortcutButton>
 			)}
 			<ShortcutButton
+				className={uiStyles.button}
 				hotkey="Escape"
 				hotkeyOptions={{
 					conflictBehavior: "allow",
@@ -83,6 +85,7 @@ const CutOperationControls: FC<{
 	return (
 		<>
 			<ShortcutButton
+				className={uiStyles.button}
 				hotkey="A"
 				hotkeyOptions={{
 					conflictBehavior: "allow",
@@ -94,6 +97,7 @@ const CutOperationControls: FC<{
 				Move above
 			</ShortcutButton>
 			<ShortcutButton
+				className={uiStyles.button}
 				hotkey="Mod+V"
 				hotkeyOptions={{
 					conflictBehavior: "allow",
@@ -106,6 +110,7 @@ const CutOperationControls: FC<{
 				Rub
 			</ShortcutButton>
 			<ShortcutButton
+				className={uiStyles.button}
 				hotkey="B"
 				hotkeyOptions={{
 					conflictBehavior: "allow",
@@ -117,6 +122,7 @@ const CutOperationControls: FC<{
 				Move below
 			</ShortcutButton>
 			<ShortcutButton
+				className={uiStyles.button}
 				hotkey="Escape"
 				hotkeyOptions={{
 					conflictBehavior: "allow",

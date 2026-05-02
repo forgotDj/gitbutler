@@ -1,3 +1,4 @@
+import uiStyles from "#ui/ui/ui.module.css";
 import { FilesPanel } from "./FilesPanel.tsx";
 import { applyBranchMutationOptions } from "#ui/api/mutations.ts";
 import {
@@ -298,6 +299,7 @@ const TopBarActions: FC<{ focusPanel: (panel: PanelType) => void }> = ({ focusPa
 	return (
 		<>
 			<ShortcutButton
+				className={uiStyles.button}
 				hotkey="Shift+A"
 				hotkeyOptions={{ meta: { group: "Branches", name: "Apply" } }}
 				onClick={openApplyBranchPicker}
@@ -305,6 +307,7 @@ const TopBarActions: FC<{ focusPanel: (panel: PanelType) => void }> = ({ focusPa
 				Apply branch
 			</ShortcutButton>
 			<ShortcutButton
+				className={uiStyles.button}
 				hotkey="D"
 				aria-pressed={isPanelVisible(panelsState, "details")}
 				hotkeyOptions={{

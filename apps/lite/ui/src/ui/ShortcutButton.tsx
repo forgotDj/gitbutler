@@ -29,7 +29,6 @@ export const ShortcutButton: FC<
 			<Tooltip.Trigger
 				ref={buttonRef}
 				{...props}
-				className={classes(uiStyles.button, props.className)}
 				aria-label={props["aria-label"] ?? tooltip}
 				render={<button type="button" />}
 			>
