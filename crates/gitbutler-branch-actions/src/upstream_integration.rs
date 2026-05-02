@@ -283,6 +283,62 @@ fn stacks(
     )
 }
 
+/// Verify that all workspace stacks can be octopus-merged without conflicts.
+///
+/// When stacks have divergent upstream bases they can carry different versions
+/// of the same file, causing the sequential octopus merge to fail. Instead of
+/// silently evicting the offending stack, we return a descriptive error so the
+/// user can unapply it manually and retry.
+fn check_workspace_stacks_mergeable(
+    context: &UpstreamIntegrationContext,
+    repo: &gix::Repository,
+) -> Result<()> {
+    // Use an in-memory ODB so the intermediate merge trees don't pollute the
+    // real object store — this is a read-only pre-flight check.
+    let repo = repo.clone().with_object_memory();
+
+    let target_tree = repo.find_commit(context.old_target_id)?.tree_id()?.detach();
+
+    let (merge_options, conflict_kind) = repo.merge_options_fail_fast()?;
+
+    let mut workspace_tree = target_tree;
+    for stack in &context.stacks_in_workspace {
+        let stack_tree = repo.find_commit(stack.tip)?.tree_id()?.detach();
+
+        let mut merge = repo.merge_trees(
+            target_tree,
+            workspace_tree,
+            stack_tree,
+            repo.default_merge_labels(),
+            merge_options.clone(),
+        )?;
+
+        if merge.has_unresolved_conflicts(conflict_kind) {
+            let conflicting_files: Vec<String> = merge
+                .conflicts
+                .iter()
+                .filter(|c| c.is_unresolved(TreatAsUnresolved::git()))
+                .map(|c| c.ours.location().to_str_lossy().into_owned())
+                .collect();
+
+            let stack_name = stack
+                .name()
+                .map(|n| n.to_str_lossy().into_owned())
+                .unwrap_or_else(|| "<unnamed>".to_string());
+
+            bail!(
+                "Stack '{stack_name}' conflicts with other applied stacks on: {}. \
+                 Please unapply it and try again.",
+                conflicting_files.join(", ")
+            );
+        }
+
+        workspace_tree = merge.tree.write()?.detach();
+    }
+
+    Ok(())
+}
+
 #[expect(deprecated, reason = "calls but_workspace::legacy::stack_details_v3")]
 fn stack_details(
     ctx: &Context,
@@ -497,6 +553,12 @@ pub(crate) fn integrate_upstream(
     let repo = ctx.repo.get()?;
     let context =
         UpstreamIntegrationContext::open(ctx, target_commit_oid, permission, &repo, review_map)?;
+
+    // Check that all workspace stacks can be merged together. If any pair
+    // of stacks carries conflicting trees (e.g. from divergent upstream
+    // bases), ask the user to unapply the offending stack first.
+    check_workspace_stacks_mergeable(&context, &repo)?;
+
     let mut virtual_branches_state = VirtualBranchesHandle::new(ctx.project_data_dir());
 
     let mut deleted_branches = vec![];

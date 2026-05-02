@@ -7,10 +7,7 @@ use but_ctx::{
 use but_oxidize::{ObjectIdExt, OidExt};
 use gitbutler_cherry_pick::GixRepositoryExt as _;
 
-use crate::{
-    legacy_target_base_oid, legacy_workspace_stack_heads, workspace_base_from_heads,
-    workspace_base_from_heads_and_target,
-};
+use crate::{legacy_target_base_oid, legacy_workspace_stack_heads};
 
 /// A snapshot of the workspace at a point in time.
 #[derive(Debug)]
@@ -43,8 +40,9 @@ impl WorkspaceState {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        let base = workspace_base_from_heads_and_target(repo, head_oids, target_base_oid)?;
-        let base_tree_id = repo.find_commit(base)?.tree_id()?.detach();
+        // Use the target's tree directly as the merge base, matching
+        // `remerged_workspace_tree_v2`.
+        let base_tree_id = repo.find_commit(target_base_oid)?.tree_id()?.detach();
 
         Ok(WorkspaceState {
             heads,
@@ -54,28 +52,12 @@ impl WorkspaceState {
 
     pub fn create_from_heads(
         ctx: &Context,
-        perm: &RepoShared,
+        _perm: &RepoShared,
         heads: &[gix::ObjectId],
     ) -> Result<Self> {
         let repo = &*ctx.repo.get()?;
-
-        let base = workspace_base_from_heads(ctx, perm, heads)?;
-
-        let heads = heads
-            .iter()
-            .map(|head| -> Result<gix::ObjectId> {
-                let commit = repo.find_commit(*head)?;
-                let tree = repo.find_real_tree(&commit, Default::default())?;
-                Ok(tree.detach())
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        let base_tree_id = repo.find_commit(base)?.tree_id()?.detach();
-
-        Ok(WorkspaceState {
-            heads,
-            base: base_tree_id,
-        })
+        let target_base_oid = legacy_target_base_oid(ctx)?;
+        Self::create_from_heads_and_target(repo, heads, target_base_oid)
     }
 }
 
