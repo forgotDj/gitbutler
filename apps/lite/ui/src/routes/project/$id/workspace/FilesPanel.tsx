@@ -120,15 +120,6 @@ const CommitFilesTreePanel: FC<
 
 	const parent = commitOperand(commit);
 
-	const files = data.changes.map((change) =>
-		fileOperand({
-			parent: commitFileParent({ stackId: commit.stackId, commitId: commit.commitId }),
-			path: change.path,
-		}),
-	);
-
-	const navigationIndex = useNavigationIndex(projectId, focusPanel, parent, files);
-
 	const conflictedPaths = data.conflictEntries
 		? globalThis.Array.from(
 				new Set([
@@ -138,6 +129,18 @@ const CommitFilesTreePanel: FC<
 				]),
 			).toSorted((a, b) => a.localeCompare(b))
 		: [];
+
+	const files = [
+		...conflictedPaths,
+		...data.changes.filter((x) => !conflictedPaths.includes(x.path)).map((x) => x.path),
+	].map((path) =>
+		fileOperand({
+			parent: commitFileParent({ stackId: commit.stackId, commitId: commit.commitId }),
+			path,
+		}),
+	);
+
+	const navigationIndex = useNavigationIndex(projectId, focusPanel, parent, files);
 
 	return (
 		<FilesTreePanel {...panelProps} navigationIndex={navigationIndex}>
