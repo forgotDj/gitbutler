@@ -43,6 +43,8 @@ export enum ReduxTag {
 	IrcChannels = "IrcChannels",
 	IrcMessages = "IrcMessages",
 	IrcUsers = "IrcUsers",
+	User = "User",
+	UserProfile = "UserProfile",
 }
 
 type Tag<T extends string | number> = {

@@ -5,7 +5,7 @@
 	import { GIT_SERVICE } from "$lib/git/gitService";
 	import { SHORTCUT_SERVICE } from "$lib/shortcuts/shortcutService";
 	import { DATA_SHARING_SERVICE } from "$lib/support/dataSharing";
-	import { USER } from "$lib/user/user";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { HTTP_CLIENT } from "@gitbutler/shared/network/httpClient";
 
@@ -25,7 +25,7 @@
 	const fileService = inject(FILE_SERVICE);
 	const dataSharingService = inject(DATA_SHARING_SERVICE);
 	const gitService = inject(GIT_SERVICE);
-	const user = inject(USER);
+	const userService = inject(USER_SERVICE);
 	const backend = inject(BACKEND);
 
 	export function show() {
@@ -64,7 +64,7 @@
 
 	async function submit() {
 		const message = messageInputValue;
-		const email = $user?.email ?? emailInputValue;
+		const email = userService.user?.email ?? emailInputValue;
 
 		// put together context information to send with the feedback
 		let context = "";
@@ -93,7 +93,7 @@
 					: undefined,
 			]).then(
 				async ([logs, repo, graph]) =>
-					await createFeedback($user?.access_token, {
+					await createFeedback(userService.user?.access_token, {
 						email,
 						message,
 						context,
@@ -159,7 +159,7 @@
 			review it for you and help identify how we can help resolve the issue.
 		</p>
 
-		{#if !$user}
+		{#if !userService.user}
 			<EmailTextbox
 				label="Email"
 				placeholder="Provide an email so that we can get back to you"

@@ -13,7 +13,7 @@
 	import { URL_SERVICE } from "$lib/backend/url";
 	import { SETTINGS_SERVICE } from "$lib/settings/appSettings";
 	import { generalSettingsPages } from "$lib/settings/generalSettingsPages";
-	import { USER_SERVICE } from "$lib/user/userService";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { Icon } from "@gitbutler/ui";
 	import type { GeneralSettingsModalState, GeneralSettingsPageId } from "$lib/state/uiState.svelte";
@@ -25,7 +25,6 @@
 	const { data }: Props = $props();
 
 	const userService = inject(USER_SERVICE);
-	const user = userService.user;
 	const settingsService = inject(SETTINGS_SERVICE);
 	const settingsStore = settingsService.appSettings;
 	const ircEnabled = $derived($settingsStore?.featureFlags.irc ?? false);
@@ -42,7 +41,7 @@
 	title="Global settings"
 	pages={generalSettingsPages.filter((p) => p.id !== "irc" || ircEnabled)}
 	selectedId={currentSelectedId}
-	isAdmin={$user?.role === "admin"}
+	isAdmin={userService.user?.role === "admin"}
 	onSelectPage={selectPage}
 >
 	{#snippet content({ currentPage })}

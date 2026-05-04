@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { fModeEnabled } from "$lib/config/uiFeatureFlags";
 	import { SETTINGS_SERVICE } from "$lib/settings/appSettings";
-	import { USER } from "$lib/user/user";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { CardGroup, Toggle } from "@gitbutler/ui";
 
 	const settingsService = inject(SETTINGS_SERVICE);
 	const settingsStore = settingsService.appSettings;
 
-	const user = inject(USER);
+	const userService = inject(USER_SERVICE);
 </script>
 
 <p class="text-12 text-body experimental-settings__text">
@@ -34,7 +34,7 @@
 		{/snippet}
 	</CardGroup.Item>
 
-	{#if $user?.role === "admin"}
+	{#if userService.user?.role === "admin"}
 		<CardGroup.Item labelFor="single-branch">
 			{#snippet title()}
 				Single-branch mode

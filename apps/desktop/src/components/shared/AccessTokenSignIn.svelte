@@ -1,16 +1,15 @@
 <script lang="ts">
 	import signinSvg from "$lib/assets/token.svg?raw";
-	import { USER_SERVICE } from "$lib/user/userService";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { Button, CardGroup, Textbox, Spacer } from "@gitbutler/ui";
 
 	const userService = inject(USER_SERVICE);
-	const user = userService.user;
 
 	let accessToken = $state("");
 </script>
 
-{#if !$user}
+{#if !userService.user}
 	<CardGroup.Item standalone>
 		<div class="token-content">
 			<div class="token-svg">

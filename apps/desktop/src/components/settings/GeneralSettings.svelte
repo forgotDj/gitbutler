@@ -15,7 +15,7 @@
 		type TerminalSettings,
 	} from "$lib/settings/userSettings";
 	import { UPDATER_SERVICE } from "$lib/updater/updater";
-	import { USER_SERVICE } from "$lib/user/userService";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import {
 		Button,
@@ -34,7 +34,6 @@
 	const userService = inject(USER_SERVICE);
 	const settingsService = inject(SETTINGS_SERVICE);
 	const projectsService = inject(PROJECTS_SERVICE);
-	const user = userService.user;
 
 	const updaterService = inject(UPDATER_SERVICE);
 	const disableAutoChecks = updaterService.disableAutoChecks;
@@ -52,7 +51,7 @@
 	let isDeleting = $state(false);
 	let loaded = $state(false);
 
-	let userPicture = $state($user?.picture);
+	let userPicture = $state(userService.user?.picture);
 
 	let deleteConfirmationModal: ReturnType<typeof Modal> | undefined = $state();
 
@@ -104,7 +103,7 @@
 	}));
 
 	$effect(() => {
-		if ($user && !loaded) {
+		if (userService.user && !loaded) {
 			loaded = true;
 			userService.getUser().then((cloudUser) => {
 				const userData: User = {
@@ -121,14 +120,14 @@
 				userPicture = userData.picture;
 				userService.setUser(userData);
 			});
-			newName = $user?.name || "";
+			newName = userService.user?.name || "";
 		}
 	});
 
 	let selectedPictureFile: File | undefined = $state();
 
 	async function onSubmit(e: SubmitEvent) {
-		if (!$user) return;
+		if (!userService.user) return;
 		saving = true;
 
 		e.preventDefault();
@@ -173,7 +172,7 @@
 	let showSymlink = $state(false);
 </script>
 
-{#if $user}
+{#if userService.user}
 	<CardGroup>
 		<form onsubmit={onSubmit} class="profile-form">
 			<ProfilePictureUpload
@@ -185,7 +184,7 @@
 			<div id="contact-info" class="contact-info">
 				<div class="contact-info__fields">
 					<Textbox label="Full name" bind:value={newName} required />
-					<Textbox label="Email" bind:value={$user.email} readonly />
+					<Textbox label="Email" value={userService.user?.email} readonly />
 				</div>
 
 				<Button type="submit" style="pop" loading={saving}>Update profile</Button>

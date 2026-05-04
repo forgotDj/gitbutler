@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { IRC_API_SERVICE } from "$lib/irc/ircApiService";
 	import { SETTINGS_SERVICE } from "$lib/settings/appSettings";
-	import { USER } from "$lib/user/user";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { Badge, Button, CardGroup, Textbox, Toggle } from "@gitbutler/ui";
 	import type { IconName } from "@gitbutler/ui";
 	import type { ComponentColorType } from "@gitbutler/ui/utils/colorTypes";
 
 	const settingsService = inject(SETTINGS_SERVICE);
-	const user = inject(USER);
+	const userService = inject(USER_SERVICE);
 	const ircApiService = inject(IRC_API_SERVICE);
 
 	const settings = settingsService.appSettings;
@@ -117,7 +117,7 @@
 				value={irc.connection.nickname ?? ""}
 				size="large"
 				label="Nickname"
-				placeholder={$user?.login ?? "your-nickname"}
+				placeholder={userService.user?.login ?? "your-nickname"}
 				onchange={(value) => settingsService.updateIrc({ connection: { nickname: value || null } })}
 			/>
 		</CardGroup.Item>
@@ -158,7 +158,7 @@
 				value={irc.connection.realname ?? ""}
 				size="large"
 				label="Real Name"
-				placeholder={$user?.name ?? $user?.login ?? "Your Name"}
+				placeholder={userService.user?.name ?? userService.user?.login ?? "Your Name"}
 				onchange={(value) => settingsService.updateIrc({ connection: { realname: value || null } })}
 			/>
 		</CardGroup.Item>

@@ -7,7 +7,7 @@
 	import { OpenAIModelName, AnthropicModelName, ModelKind } from "$lib/ai/types";
 	import { GIT_CONFIG_SERVICE } from "$lib/config/gitConfigService";
 	import { SECRET_SERVICE } from "$lib/secrets/secretsService";
-	import { USER_SERVICE } from "$lib/user/userService";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import {
 		CardGroup,
@@ -28,7 +28,6 @@
 	const secretsService = inject(SECRET_SERVICE);
 	const aiService = inject(AI_SERVICE);
 	const userService = inject(USER_SERVICE);
-	const user = userService.user;
 	let initialized = false;
 
 	let modelKind: ModelKind | undefined = $state();
@@ -224,7 +223,7 @@
 				</Select>
 
 				{#if openAIKeyOption === KeyOption.ButlerAPI}
-					{#if !$user}
+					{#if !userService.user}
 						<AuthorizationBanner message="Please sign in to use the GitButler API." />
 					{:else}
 						{@render shortNote("GitButler uses OpenAI API for commit messages and branch names.")}
@@ -292,7 +291,7 @@
 				</Select>
 
 				{#if anthropicKeyOption === KeyOption.ButlerAPI}
-					{#if !$user}
+					{#if !userService.user}
 						<AuthorizationBanner message="Please sign in to use the GitButler API." />
 					{:else}
 						{@render shortNote(
