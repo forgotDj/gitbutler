@@ -347,35 +347,35 @@ const CommitFiles: FC<{
 		return <div className={workspaceItemRowStyles.itemRowEmpty}>No file changes.</div>;
 
 	return (
-		<>
-			{conflictedPaths.length > 0 && (
-				<div>
-					<div>Conflicts:</div>
-					<ul>
-						{conflictedPaths.map((path: string) => (
-							<li key={path}>{path}</li>
-						))}
-					</ul>
-				</div>
-			)}
+		<div role="group">
+			{conflictedPaths.length > 0 &&
+				conflictedPaths.map((path: string) => (
+					<ConflictedFileRow
+						operand={fileOperand({
+							parent: commitFileParent(parentCommitOperand),
+							path,
+						})}
+						key={path}
+						path={path}
+						projectId={projectId}
+						navigationIndex={navigationIndex}
+					/>
+				))}
 
-			{data.changes.length > 0 && (
-				<div role="group">
-					{data.changes.map((change) => (
-						<TreeChangeRow
-							operand={fileOperand({
-								parent: commitFileParent(parentCommitOperand),
-								path: change.path,
-							})}
-							key={change.path}
-							change={change}
-							projectId={projectId}
-							navigationIndex={navigationIndex}
-						/>
-					))}
-				</div>
-			)}
-		</>
+			{data.changes.length > 0 &&
+				data.changes.map((change) => (
+					<TreeChangeRow
+						operand={fileOperand({
+							parent: commitFileParent(parentCommitOperand),
+							path: change.path,
+						})}
+						key={change.path}
+						change={change}
+						projectId={projectId}
+						navigationIndex={navigationIndex}
+					/>
+				))}
+		</div>
 	);
 };
 
@@ -510,6 +510,33 @@ const TreeChangeRow: FC<{
 		<div className={workspaceItemRowStyles.itemRowLabel}>{changeLabel(change)}</div>
 	</TreeItem>
 );
+
+const ConflictedFileRow: FC<{
+	path: string;
+	operand: Operand;
+	projectId: string;
+	navigationIndex: NavigationIndex;
+}> = ({ path, operand, projectId, navigationIndex }) => {
+	const label = `C ${path}`;
+	return (
+		<TreeItem
+			projectId={projectId}
+			operand={operand}
+			label={label}
+			render={
+				<OperationSourceC
+					projectId={projectId}
+					source={operand}
+					render={
+						<ItemRow projectId={projectId} operand={operand} navigationIndex={navigationIndex} />
+					}
+				/>
+			}
+		>
+			<div className={workspaceItemRowStyles.itemRowLabel}>{label}</div>
+		</TreeItem>
+	);
+};
 
 const ChangesFileRow: FC<{
 	change: TreeChange;
