@@ -26,10 +26,9 @@ use ratatui_textarea::{CursorMove, TextArea};
 use tracing::Level;
 
 use crate::{
-    CliId,
+    CliId, IdMap,
     command::legacy::{
         reword::get_branch_name_from_editor,
-        rub::RubOperationDiscriminants,
         status::{
             StatusFlags, StatusOutputLine, TuiLaunchOptions,
             tui::{
@@ -43,13 +42,14 @@ use crate::{
                 highlight::Highlights,
                 key_bind::{
                     KeyBinds, branch_picker_key_binds, confirm_key_binds, default_key_binds,
-                    help_key_binds,
+                    help_key_binds, normal_with_marks_key_binds,
                 },
+                marking::{Markable, Marks},
                 message_on_drop::MessageOnDrop,
                 mode::{
                     CommandMode, CommandModeKind, CommitMessageComposer, CommitMode, CommitSource,
-                    InlineRewordMode, Mode, ModeDiscriminant, MoveMode, MoveSource, RubMode,
-                    RubSource, StackCommitSource, UnassignedCommitSource,
+                    InlineRewordMode, Mode, ModeDiscriminant, MoveMode, MoveSource, NormalMode,
+                    RubMode, RubSource, StackCommitSource, UnassignedCommitSource,
                 },
                 operations::stack_has_assigned_changes,
                 toast::{ToastKind, Toasts},
@@ -76,6 +76,7 @@ mod graph_extension;
 mod help;
 mod highlight;
 mod key_bind;
+mod marking;
 mod message_on_drop;
 mod mode;
 mod operations;
@@ -359,13 +360,10 @@ struct App {
     cursor: Cursor,
     scroll_top: usize,
     mode: Mode,
-    key_binds: KeyBinds,
-    confirm_key_binds: KeyBinds,
-    branch_picker_key_binds: KeyBinds,
-    help_key_binds: KeyBinds,
     toasts: Toasts,
     renders: u64,
     updates: u64,
+    app_key_binds: AppKeyBinds,
     highlight: Highlights,
     confirm: Option<Confirm>,
     details: Details,
@@ -378,6 +376,15 @@ struct App {
     branch_picker: Option<BranchPicker>,
     theme: &'static Theme,
     help: Option<Help>,
+}
+
+#[derive(Debug)]
+struct AppKeyBinds {
+    key_binds: KeyBinds,
+    confirm_key_binds: KeyBinds,
+    branch_picker_key_binds: KeyBinds,
+    help_key_binds: KeyBinds,
+    normal_with_marks_key_binds: KeyBinds,
 }
 
 impl App {
@@ -401,6 +408,14 @@ impl App {
             Details::new_hidden(theme)
         };
 
+        let app_key_binds = AppKeyBinds {
+            key_binds: default_key_binds(),
+            confirm_key_binds: confirm_key_binds(),
+            branch_picker_key_binds: branch_picker_key_binds(),
+            help_key_binds: help_key_binds(),
+            normal_with_marks_key_binds: normal_with_marks_key_binds(),
+        };
+
         Self {
             status_lines,
             flags,
@@ -410,13 +425,10 @@ impl App {
             should_render: true,
             mode: Mode::default(),
             help: None,
-            key_binds: default_key_binds(),
-            confirm_key_binds: confirm_key_binds(),
-            branch_picker_key_binds: branch_picker_key_binds(),
-            help_key_binds: help_key_binds(),
             toasts: Default::default(),
             renders: 0,
             updates: 0,
+            app_key_binds,
             highlight: Default::default(),
             delayed_messages: Default::default(),
             incoming_out_of_band_messages: Default::default(),
@@ -433,13 +445,17 @@ impl App {
 
     fn active_key_binds(&self) -> &KeyBinds {
         if self.confirm.is_some() {
-            &self.confirm_key_binds
+            &self.app_key_binds.confirm_key_binds
         } else if self.branch_picker.is_some() {
-            &self.branch_picker_key_binds
+            &self.app_key_binds.branch_picker_key_binds
         } else if self.help.is_some() {
-            &self.help_key_binds
+            &self.app_key_binds.help_key_binds
+        } else if let Mode::Normal(NormalMode { marks }) = &self.mode
+            && !marks.is_empty()
+        {
+            &self.app_key_binds.normal_with_marks_key_binds
         } else {
-            &self.key_binds
+            &self.app_key_binds.key_binds
         }
     }
 
@@ -533,7 +549,11 @@ impl App {
                 {
                     self.cursor = if matches!(self.mode, Mode::Rub(_)) {
                         new_cursor
-                            .move_down(&self.status_lines, &self.mode, self.flags.show_files)
+                            .move_down_within_section(
+                                &self.status_lines,
+                                &self.mode,
+                                self.flags.show_files,
+                            )
                             .unwrap_or(new_cursor)
                     } else {
                         new_cursor
@@ -724,6 +744,9 @@ impl App {
             Message::ToggleHelp => {
                 self.handle_toggle_help();
             }
+            Message::Mark => {
+                self.handle_mark(ctx)?;
+            }
         }
 
         ensure_cursor_visible(self, visible_height);
@@ -746,7 +769,7 @@ impl App {
     }
 
     fn handle_enter_normal_mode(&mut self, messages: &mut Vec<Message>) {
-        if matches!(self.mode, Mode::Normal) {
+        if matches!(self.mode, Mode::Normal(..)) {
             match self.flags.show_files {
                 FilesStatusFlag::None => {}
                 FilesStatusFlag::All => {
@@ -762,7 +785,7 @@ impl App {
             messages.push(Message::Details(DetailsMessage::Deselect));
         }
 
-        self.mode = Mode::Normal;
+        self.mode = Mode::Normal(NormalMode::default());
 
         match self.flags.show_files {
             FilesStatusFlag::Commit(object_id) => {
@@ -812,35 +835,78 @@ impl App {
     }
 
     fn handle_rub_start(&mut self) {
+        let Mode::Normal(normal_mode) = &self.mode else {
+            return;
+        };
         let Some(selected_line) = self.cursor.selected_line(&self.status_lines) else {
             return;
         };
         let Some(cli_id) = selected_line.data.cli_id() else {
             return;
         };
-        self.handle_rub_start_with_source(RubSource::CliId(Arc::clone(cli_id)), None);
+        if normal_mode.marks.is_empty() {
+            self.handle_rub_start_with_source(RubSource::CliId(Arc::clone(cli_id)), None);
+        } else {
+            self.handle_rub_start_with_source(RubSource::Marks(normal_mode.marks.clone()), None);
+        }
     }
 
     fn available_targets_for_rub_mode(&self, source: &RubSource) -> Vec<Arc<CliId>> {
-        self.status_lines
-            .iter()
-            .filter_map(|line| line.data.cli_id())
-            .filter(|target| {
-                *source == ***target
-                    || match &source {
-                        RubSource::CliId(source) => rub::route_operation(
-                            source,
+        match &source {
+            RubSource::CliId(source) => self
+                .status_lines
+                .iter()
+                .filter_map(|line| line.data.cli_id())
+                .filter(|target| {
+                    source == *target
+                        || rub::route_operation(
+                            NonEmpty::new(source),
                             target,
                             MessageCombinationStrategy::KeepBoth,
                         )
-                        .is_some(),
-                        RubSource::CommittedHunk(hunk) => {
-                            rub_from_detail_view::route_operation(hunk, target).is_some()
+                        .is_some()
+                })
+                .cloned()
+                .collect::<Vec<_>>(),
+            RubSource::CommittedHunk(hunk) => self
+                .status_lines
+                .iter()
+                .filter_map(|line| line.data.cli_id())
+                .filter(|target| {
+                    source.contains(target)
+                        || rub_from_detail_view::route_operation(hunk, target).is_some()
+                })
+                .cloned()
+                .collect::<Vec<_>>(),
+            RubSource::Marks(marks) => {
+                let marks = marks
+                    .iter()
+                    .map(|mark| match mark {
+                        Markable::Commit { commit_id, id } => CliId::Commit {
+                            commit_id: *commit_id,
+                            id: id.clone(),
+                        },
+                    })
+                    .collect::<Vec<_>>();
+                self.status_lines
+                    .iter()
+                    .filter_map(|line| line.data.cli_id())
+                    .filter(|target| {
+                        source.contains(target) || {
+                            marks.iter().all(|mark| {
+                                rub::route_operation(
+                                    NonEmpty::new(mark),
+                                    target,
+                                    MessageCombinationStrategy::KeepBoth,
+                                )
+                                .is_some()
+                            })
                         }
-                    }
-            })
-            .cloned()
-            .collect::<Vec<_>>()
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>()
+            }
+        }
     }
 
     fn handle_rub_start_with_source(
@@ -852,6 +918,13 @@ impl App {
             RubSource::CliId(cli_id) => {
                 if !rub::supports_rubbing(cli_id) {
                     return;
+                }
+            }
+            RubSource::Marks(marks) => {
+                for mark in marks {
+                    if !rub::mark_supports_rubbing(mark) {
+                        return;
+                    }
                 }
             }
             RubSource::CommittedHunk(..) => {}
@@ -1034,28 +1107,13 @@ impl App {
                 {
                     match source {
                         RubSource::CliId(source) => {
-                            if let Some(operation) =
-                                rub::route_operation(source, target, *how_to_combine_messages)
-                            {
-                                if let Some(what_to_select) = operations::rub(ctx, &operation)? {
-                                    if self.options.debug {
-                                        messages.push(Message::ShowToast {
-                                            kind: ToastKind::Debug,
-                                            text: format!(
-                                                "Performed `{:?}`",
-                                                RubOperationDiscriminants::from(operation)
-                                            ),
-                                        });
-                                    }
-                                    Some(Message::Reload(Some(what_to_select)))
-                                } else {
-                                    messages.push(Message::ShowError(Arc::new(
-                                        anyhow::Error::from(rub::OperationNotSupported::new(
-                                            &operation,
-                                        )),
-                                    )));
-                                    None
-                                }
+                            if let Some(operation) = rub::route_operation(
+                                NonEmpty::new(source),
+                                target,
+                                *how_to_combine_messages,
+                            ) {
+                                operations::rub(ctx, &operation)?
+                                    .map(|what_to_select| Message::Reload(Some(what_to_select)))
                             } else {
                                 None
                             }
@@ -1069,12 +1127,35 @@ impl App {
                                 None
                             }
                         }
+                        RubSource::Marks(marks) => {
+                            let sources = marks
+                                .iter()
+                                .cloned()
+                                .map(|markable| match markable {
+                                    Markable::Commit { commit_id, id } => {
+                                        CliId::Commit { commit_id, id }
+                                    }
+                                })
+                                .filter(|source| source != &**target)
+                                .collect::<Vec<_>>();
+                            let mut iter = sources.iter();
+                            if let Some(sources) =
+                                iter.next().map(|first| nonempty_from_refs(first, iter))
+                                && let Some(operation) =
+                                    rub::route_operation(sources, target, *how_to_combine_messages)
+                            {
+                                operations::rub(ctx, &operation)?
+                                    .map(|what_to_select| Message::Reload(Some(what_to_select)))
+                            } else {
+                                None
+                            }
+                        }
                     }
                 } else {
                     None
                 }
             }
-            Mode::Normal
+            Mode::Normal(..)
             | Mode::Details
             | Mode::InlineReword(..)
             | Mode::Command(..)
@@ -1321,10 +1402,6 @@ impl App {
         ctx: &mut Context,
         messages: &mut Vec<Message>,
     ) -> anyhow::Result<()> {
-        if !matches!(self.mode, Mode::Normal) {
-            return Ok(());
-        }
-
         let Some(selection) = self.cursor.selected_line(&self.status_lines) else {
             return Ok(());
         };
@@ -1857,10 +1934,6 @@ impl App {
         T: TerminalGuard,
         anyhow::Error: From<<T::Backend as Backend>::Error>,
     {
-        if !matches!(self.mode, Mode::Normal) {
-            return Ok(());
-        }
-
         let Some(commit_id) = self.selected_commit_id() else {
             return Ok(());
         };
@@ -1884,9 +1957,6 @@ impl App {
         ctx: &mut Context,
         messages: &mut Vec<Message>,
     ) -> anyhow::Result<()> {
-        if !matches!(self.mode, Mode::Normal) {
-            return Ok(());
-        }
         let Some(selection) = self.cursor.selected_line(&self.status_lines) else {
             return Ok(());
         };
@@ -2279,8 +2349,55 @@ impl App {
         if self.help.is_some() {
             self.help = None;
         } else {
-            self.help = Some(Help::new([&self.key_binds], self.theme));
+            self.help = Some(Help::new([&self.app_key_binds.key_binds], self.theme));
         }
+    }
+
+    fn handle_mark(&mut self, ctx: &mut Context) -> anyhow::Result<()> {
+        let Some(selection) = self
+            .cursor
+            .selected_line(&self.status_lines)
+            .and_then(|selection| selection.data.cli_id())
+        else {
+            return Ok(());
+        };
+
+        match &**selection {
+            CliId::Commit { .. } => {
+                if handle_mark_commit(selection, &mut self.mode)
+                    && let Some(new_cursor) = self.cursor.move_down_within_section(
+                        &self.status_lines,
+                        &self.mode,
+                        self.flags.show_files,
+                    )
+                {
+                    self.cursor = new_cursor;
+                }
+            }
+            CliId::Branch {
+                name,
+                id: _,
+                stack_id,
+            } => {
+                // you cannot select branches in rub mode so we don't need to care about that
+                if let Mode::Normal(normal_mode) = &mut self.mode
+                    && let Some(stack_id) = *stack_id
+                {
+                    handle_mark_branch(&mut normal_mode.marks, ctx, stack_id, name)?;
+                }
+            }
+            CliId::Uncommitted(..)
+            | CliId::PathPrefix { .. }
+            | CliId::CommittedFile { .. }
+            | CliId::Unassigned { .. }
+            | CliId::Stack { .. } => {}
+        }
+
+        Ok(())
+    }
+
+    fn marks(&self) -> Option<&Marks> {
+        self.mode.marks()
     }
 }
 
@@ -2313,7 +2430,7 @@ fn event_to_messages(
                         Mode::Command(..) => {
                             messages.push(Message::Command(CommandMessage::Input(ev)));
                         }
-                        Mode::Normal
+                        Mode::Normal(..)
                         | Mode::Details
                         | Mode::Rub(..)
                         | Mode::Commit(..)
@@ -2332,7 +2449,11 @@ fn event_to_messages(
             Mode::Command(..) => {
                 messages.push(Message::Command(CommandMessage::Input(ev)));
             }
-            Mode::Normal | Mode::Details | Mode::Rub(..) | Mode::Commit(..) | Mode::Move(..) => {
+            Mode::Normal(..)
+            | Mode::Details
+            | Mode::Rub(..)
+            | Mode::Commit(..)
+            | Mode::Move(..) => {
                 messages.push(Message::JustRender);
             }
         },
@@ -2341,6 +2462,145 @@ fn event_to_messages(
         }
         Event::FocusLost | Event::Mouse(_) => {}
     }
+}
+
+fn handle_mark_commit(commit: &CliId, mode: &mut Mode) -> bool {
+    let Some(markable) = Markable::try_from_cli_id(commit) else {
+        return false;
+    };
+
+    match mode {
+        Mode::Normal(normal_mode) => {
+            normal_mode.marks.toggle(markable);
+        }
+        Mode::Rub(rub_mode) => {
+            match &mut rub_mode.source {
+                RubSource::CliId(cli_id) => {
+                    match &**cli_id {
+                        CliId::Commit { .. } => {
+                            // we only support rubbing commits, meaning the source
+                            // also most be a commit
+                            let mut marks = Marks::default();
+                            if let Some(previous_source) = Markable::try_from_cli_id(cli_id)
+                                && markable != previous_source
+                            {
+                                marks.toggle(previous_source);
+                            }
+                            marks.toggle(markable);
+                            rub_mode.source = RubSource::Marks(marks);
+                        }
+                        CliId::Uncommitted(..)
+                        | CliId::PathPrefix { .. }
+                        | CliId::CommittedFile { .. }
+                        | CliId::Branch { .. }
+                        | CliId::Unassigned { .. }
+                        | CliId::Stack { .. } => return false,
+                    }
+                }
+                RubSource::CommittedHunk(..) => return false,
+                RubSource::Marks(marks) => {
+                    marks.toggle(markable.clone());
+
+                    match marks.len() {
+                        0 => match markable {
+                            Markable::Commit { commit_id, id } => {
+                                rub_mode.source =
+                                    RubSource::CliId(Arc::new(CliId::Commit { commit_id, id }))
+                            }
+                        },
+                        1 => {
+                            let only_remaining_mark = marks.iter().next().cloned();
+                            if let Some(mark) = only_remaining_mark {
+                                match mark {
+                                    Markable::Commit { commit_id, id } => {
+                                        rub_mode.source =
+                                            RubSource::CliId(Arc::new(CliId::Commit {
+                                                commit_id,
+                                                id,
+                                            }))
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            //
+                        }
+                    }
+                }
+            }
+        }
+        Mode::InlineReword(..)
+        | Mode::Command(..)
+        | Mode::Commit(..)
+        | Mode::Move(..)
+        | Mode::Details => {
+            return false;
+        }
+    }
+
+    true
+}
+
+fn handle_mark_branch(
+    marks: &mut Marks,
+    ctx: &mut Context,
+    stack_id: StackId,
+    name: &str,
+) -> anyhow::Result<()> {
+    let guard = ctx.shared_worktree_access();
+    let id_map = IdMap::new_from_context(ctx, None, guard.read_permission())?;
+
+    let Some(segment) = id_map
+        .stacks()
+        .iter()
+        .filter(|stack| stack.id.is_some_and(|id| id == stack_id))
+        .flat_map(|stack| &stack.segments)
+        .find(|segment| {
+            segment
+                .branch_name()
+                .is_some_and(|branch_name| branch_name == name)
+        })
+    else {
+        return Ok(());
+    };
+
+    let Some(commits) = segment
+        .workspace_commits
+        .iter()
+        .map(|commit| {
+            Markable::try_from_cli_id(&CliId::Commit {
+                commit_id: commit.commit_id(),
+                id: commit.short_id.clone(),
+            })
+        })
+        .collect::<Option<Vec<_>>>()
+    else {
+        return Ok(());
+    };
+
+    let (marked, unmarked) = commits
+        .into_iter()
+        .partition::<Vec<_>, _>(|commit| marks.contains(commit));
+
+    match (marked.is_empty(), unmarked.is_empty()) {
+        (true, false) => {
+            for commit in unmarked {
+                marks.insert(commit);
+            }
+        }
+        (false, true) => {
+            for commit in marked {
+                marks.remove(&commit);
+            }
+        }
+        _ => {
+            for commit in unmarked {
+                marks.insert(commit);
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[derive(Debug, Clone, strum::EnumDiscriminants)]
@@ -2386,6 +2646,7 @@ enum Message {
     LeaveDetailsMode,
     NewBranch,
     ToggleHelp,
+    Mark,
 
     // Utilities
     CopySelection,
@@ -2522,4 +2783,10 @@ enum MoveTarget<'a> {
     Branch { name: &'a str },
     Commit { commit_id: gix::ObjectId },
     MergeBase,
+}
+
+fn nonempty_from_refs<'a, T>(head: &'a T, tail: impl Iterator<Item = &'a T>) -> NonEmpty<&'a T> {
+    let mut nonempty = NonEmpty::new(head);
+    nonempty.extend(tail);
+    nonempty
 }

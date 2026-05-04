@@ -261,6 +261,7 @@ pub struct Theme {
     pub tui_mode_command: Style,
     pub tui_mode_move: Style,
     pub tui_mode_details: Style,
+    pub tui_mark: Style,
 
     // General purpose
     /// Subdued hint text for supplemental information that should not demand attention
@@ -390,6 +391,7 @@ impl Theme {
             tui_mode_command: Style::new().bg(Color::Yellow).fg(Color::Black),
             tui_mode_move: Style::new().bg(Color::Cyan).fg(Color::Black),
             tui_mode_details: Style::new().bg(Color::Rgb(255, 165, 0)).fg(Color::Black),
+            tui_mark: Style::new().bg(Color::Blue).fg(Color::Black),
 
             // General purpose
             hint: Style::new().add_modifier(Modifier::DIM),
@@ -447,6 +449,7 @@ impl Theme {
             tui_mode_command: dark_t.tui_mode_command.fg(white_256),
             tui_mode_move: dark_t.tui_mode_move.fg(white_256),
             tui_mode_details: dark_t.tui_mode_details.fg(Color::Black),
+            tui_mark: dark_t.tui_mark.fg(white_256),
 
             // General purpose
             hint: style_fg(Color::DarkGray),
@@ -476,6 +479,8 @@ pub struct ThemeSymbols {
     pub arrow: StyledSymbol,
     /// Force / lightning indicator.
     pub lightning: StyledSymbol,
+    /// Line marked in TUI
+    pub mark: StyledSymbol,
 }
 
 impl ThemeSymbols {
@@ -487,6 +492,7 @@ impl ThemeSymbols {
             dot: StyledSymbol::new("●", t.default),
             arrow: StyledSymbol::new("→", t.hint),
             lightning: StyledSymbol::new("⚡", t.attention.add_modifier(Modifier::BOLD)),
+            mark: StyledSymbol::new("✔︎", t.tui_mark),
         }
     }
 }

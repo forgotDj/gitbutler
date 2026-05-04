@@ -9,23 +9,28 @@ use ratatui_textarea::TextArea;
 
 use crate::{
     CliId,
-    command::legacy::status::tui::MessageOnDrop,
+    command::legacy::status::tui::{Markable, Marks, MessageOnDrop},
     id::{ShortId, UncommittedCliId},
     theme::Theme,
 };
 
-#[derive(Debug, Default, strum::EnumDiscriminants)]
+#[derive(Debug, strum::EnumDiscriminants)]
 #[strum_discriminants(derive(strum::EnumIter, Hash))]
 #[strum_discriminants(name(ModeDiscriminant))]
 pub(super) enum Mode {
-    #[default]
-    Normal,
+    Normal(NormalMode),
     Rub(RubMode),
     InlineReword(InlineRewordMode),
     Command(CommandMode),
     Commit(CommitMode),
     Move(MoveMode),
     Details,
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Self::Normal(Default::default())
+    }
 }
 
 impl Mode {
@@ -36,6 +41,21 @@ impl Mode {
     #[expect(dead_code)]
     pub(super) fn fg(&self, theme: &'static Theme) -> Color {
         ModeDiscriminant::from(self).fg(theme)
+    }
+
+    pub(super) fn marks(&self) -> Option<&Marks> {
+        match self {
+            Mode::Normal(normal_mode) => Some(&normal_mode.marks),
+            Mode::Rub(rub_mode) => match &rub_mode.source {
+                RubSource::Marks(marks) => Some(marks),
+                RubSource::CliId(..) | RubSource::CommittedHunk(..) => None,
+            },
+            Mode::InlineReword(..)
+            | Mode::Command(..)
+            | Mode::Commit(..)
+            | Mode::Move(..)
+            | Mode::Details => None,
+        }
     }
 }
 
@@ -80,6 +100,11 @@ impl ModeDiscriminant {
     }
 }
 
+#[derive(Debug, Default)]
+pub(super) struct NormalMode {
+    pub(super) marks: Marks,
+}
+
 #[derive(Debug)]
 pub(super) struct RubMode {
     pub(super) source: RubSource,
@@ -88,15 +113,19 @@ pub(super) struct RubMode {
     pub(super) _unlock_details: Option<MessageOnDrop>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum RubSource {
+    Marks(Marks),
     CliId(Arc<CliId>),
     CommittedHunk(CommittedHunk),
 }
 
-impl PartialEq<CliId> for RubSource {
-    fn eq(&self, other: &CliId) -> bool {
+impl RubSource {
+    pub(super) fn contains(&self, other: &CliId) -> bool {
         match self {
+            RubSource::Marks(marks) => {
+                Markable::try_from_cli_id(other).is_some_and(|markable| marks.contains(&markable))
+            }
             RubSource::CliId(source) => &**source == other,
             RubSource::CommittedHunk { .. } => false,
         }

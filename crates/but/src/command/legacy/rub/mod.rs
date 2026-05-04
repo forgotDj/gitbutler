@@ -148,8 +148,8 @@ pub(crate) struct CommitToStackOperation {
 /// Represents squashing one commit into another.
 #[derive(Debug)]
 pub(crate) struct SquashCommitsOperation {
-    /// The source commit id.
-    pub(crate) source: gix::ObjectId,
+    /// The source commit ids.
+    pub(crate) sources: NonEmpty<gix::ObjectId>,
     /// The destination commit id.
     pub(crate) destination: gix::ObjectId,
     pub(crate) how_to_combine_messages: MessageCombinationStrategy,
@@ -644,12 +644,22 @@ impl SquashCommitsOperation {
         if let Some(out) = out.for_human() {
             let t = theme::get();
             let repo = ctx.repo.get()?;
-            writeln!(
-                out,
-                "Squashed {} → {}",
-                t.cli_id.paint(shorten_object_id(&repo, self.source)),
-                t.cli_id.paint(shorten_object_id(&repo, result.new_commit)),
-            )?;
+            if self.sources.len() == 1 {
+                writeln!(
+                    out,
+                    "Squashed {} → {}",
+                    t.cli_id
+                        .paint(shorten_object_id(&repo, *self.sources.first())),
+                    t.cli_id.paint(shorten_object_id(&repo, result.new_commit)),
+                )?;
+            } else {
+                writeln!(
+                    out,
+                    "Squashed {} commits → {}",
+                    self.sources.len(),
+                    t.cli_id.paint(shorten_object_id(&repo, result.new_commit)),
+                )?;
+            }
         } else if let Some(out) = out.for_json() {
             out.write_value(serde_json::json!({
                 "ok": true,
@@ -664,7 +674,7 @@ impl SquashCommitsOperation {
     pub(crate) fn execute_inner(&self, ctx: &mut Context) -> anyhow::Result<CommitSquashResult> {
         but_api::commit::squash::commit_squash(
             ctx,
-            vec![self.source],
+            self.sources.iter().copied().collect(),
             self.destination,
             self.how_to_combine_messages,
             DryRun::No,
@@ -940,252 +950,287 @@ impl<'a> RubOperation<'a> {
 /// This function is the single source of truth for what operations are valid.
 /// Both `handle()` and disambiguation logic use this function.
 pub(crate) fn route_operation<'a>(
-    source: &'a CliId,
+    sources: NonEmpty<&'a CliId>,
     target: &'a CliId,
     how_to_combine_messages: MessageCombinationStrategy,
 ) -> Option<RubOperation<'a>> {
     use CliId::*;
 
-    match (source, target) {
-        // Uncommitted -> *
-        (Uncommitted(uncommitted), Unassigned { .. }) => {
-            let hunk_assignments = uncommitted.hunk_assignments.as_ref();
-            let description = uncommitted.describe();
-            Some(RubOperation::UnassignUncommitted(
-                UnassignUncommittedOperation {
-                    hunk_assignments,
-                    description,
+    if sources.len() == 1 {
+        let source = sources.first();
+        match (source, target) {
+            // Uncommitted -> *
+            (Uncommitted(uncommitted), Unassigned { .. }) => {
+                let hunk_assignments = uncommitted.hunk_assignments.as_ref();
+                let description = uncommitted.describe();
+                Some(RubOperation::UnassignUncommitted(
+                    UnassignUncommittedOperation {
+                        hunk_assignments,
+                        description,
+                    },
+                ))
+            }
+            (Uncommitted(uncommitted), Commit { commit_id, .. }) => {
+                let hunk_assignments = uncommitted.hunk_assignments.as_ref();
+                let description = uncommitted.describe();
+                Some(RubOperation::UncommittedToCommit(
+                    UncommittedToCommitOperation {
+                        hunk_assignments,
+                        description,
+                        oid: *commit_id,
+                    },
+                ))
+            }
+            (Uncommitted(uncommitted), Branch { name, .. }) => {
+                let hunk_assignments = uncommitted.hunk_assignments.as_ref();
+                let description = uncommitted.describe();
+                Some(RubOperation::UncommittedToBranch(
+                    UncommittedToBranchOperation {
+                        hunk_assignments,
+                        description,
+                        name,
+                    },
+                ))
+            }
+            (Uncommitted(uncommitted), Stack { stack_id, .. }) => {
+                let hunk_assignments = uncommitted.hunk_assignments.as_ref();
+                let description = uncommitted.describe();
+                Some(RubOperation::UncommittedToStack(
+                    UncommittedToStackOperation {
+                        hunk_assignments,
+                        description,
+                        stack_id: *stack_id,
+                    },
+                ))
+            }
+            // Uncommitted path prefix -> *
+            (
+                PathPrefix {
+                    hunk_assignments, ..
                 },
-            ))
-        }
-        (Uncommitted(uncommitted), Commit { commit_id, .. }) => {
-            let hunk_assignments = uncommitted.hunk_assignments.as_ref();
-            let description = uncommitted.describe();
-            Some(RubOperation::UncommittedToCommit(
-                UncommittedToCommitOperation {
-                    hunk_assignments,
-                    description,
-                    oid: *commit_id,
+                Unassigned { .. },
+            ) => {
+                let hunk_assignments = hunk_assignments
+                    .as_ref()
+                    .map(|(_, hunk_assignment)| hunk_assignment);
+                Some(RubOperation::UnassignUncommitted(
+                    UnassignUncommittedOperation {
+                        hunk_assignments,
+                        description: "hunk(s)".to_string(),
+                    },
+                ))
+            }
+            (
+                PathPrefix {
+                    hunk_assignments, ..
                 },
-            ))
-        }
-        (Uncommitted(uncommitted), Branch { name, .. }) => {
-            let hunk_assignments = uncommitted.hunk_assignments.as_ref();
-            let description = uncommitted.describe();
-            Some(RubOperation::UncommittedToBranch(
-                UncommittedToBranchOperation {
-                    hunk_assignments,
-                    description,
-                    name,
+                Commit { commit_id, .. },
+            ) => {
+                let hunk_assignments = hunk_assignments
+                    .as_ref()
+                    .map(|(_, hunk_assignment)| hunk_assignment);
+                Some(RubOperation::UncommittedToCommit(
+                    UncommittedToCommitOperation {
+                        hunk_assignments,
+                        description: "hunk(s)".to_string(),
+                        oid: *commit_id,
+                    },
+                ))
+            }
+            (
+                PathPrefix {
+                    hunk_assignments, ..
                 },
-            ))
-        }
-        (Uncommitted(uncommitted), Stack { stack_id, .. }) => {
-            let hunk_assignments = uncommitted.hunk_assignments.as_ref();
-            let description = uncommitted.describe();
-            Some(RubOperation::UncommittedToStack(
-                UncommittedToStackOperation {
-                    hunk_assignments,
-                    description,
+                Branch { name, .. },
+            ) => {
+                let hunk_assignments = hunk_assignments
+                    .as_ref()
+                    .map(|(_, hunk_assignment)| hunk_assignment);
+                Some(RubOperation::UncommittedToBranch(
+                    UncommittedToBranchOperation {
+                        hunk_assignments,
+                        description: "hunk(s)".to_string(),
+                        name,
+                    },
+                ))
+            }
+            (
+                PathPrefix {
+                    hunk_assignments, ..
+                },
+                Stack { stack_id, .. },
+            ) => {
+                let hunk_assignments = hunk_assignments
+                    .as_ref()
+                    .map(|(_, hunk_assignment)| hunk_assignment);
+                Some(RubOperation::UncommittedToStack(
+                    UncommittedToStackOperation {
+                        hunk_assignments,
+                        description: "hunk(s)".to_string(),
+                        stack_id: *stack_id,
+                    },
+                ))
+            }
+            // Stack -> *
+            (Stack { stack_id, .. }, Unassigned { .. }) => Some(RubOperation::StackToUnassigned(
+                StackToUnassignedOperation {
                     stack_id: *stack_id,
                 },
-            ))
-        }
-        // Uncommitted path prefix -> *
-        (
-            PathPrefix {
-                hunk_assignments, ..
-            },
-            Unassigned { .. },
-        ) => {
-            let hunk_assignments = hunk_assignments
-                .as_ref()
-                .map(|(_, hunk_assignment)| hunk_assignment);
-            Some(RubOperation::UnassignUncommitted(
-                UnassignUncommittedOperation {
-                    hunk_assignments,
-                    description: "hunk(s)".to_string(),
+            )),
+            (Stack { stack_id: from, .. }, Stack { stack_id: to, .. }) => {
+                Some(RubOperation::StackToStack(StackToStackOperation {
+                    from: *from,
+                    to: *to,
+                }))
+            }
+            (Stack { stack_id: from, .. }, Branch { name: to, .. }) => {
+                Some(RubOperation::StackToBranch(StackToBranchOperation {
+                    from: *from,
+                    to,
+                }))
+            }
+            (Stack { stack_id, .. }, Commit { commit_id, .. }) => {
+                Some(RubOperation::StackToCommit(StackToCommitOperation {
+                    from: *stack_id,
+                    to: *commit_id,
+                }))
+            }
+            // Unassigned -> *
+            (Unassigned { .. }, Commit { commit_id, .. }) => Some(
+                RubOperation::UnassignedToCommit(UnassignedToCommitOperation { oid: *commit_id }),
+            ),
+            (Unassigned { .. }, Branch { name, .. }) => Some(RubOperation::UnassignedToBranch(
+                UnassignedToBranchOperation { to: name },
+            )),
+            (Unassigned { .. }, Stack { stack_id, .. }) => Some(RubOperation::UnassignedToStack(
+                UnassignedToStackOperation { to: *stack_id },
+            )),
+            // Commit -> *
+            (Commit { commit_id, .. }, Unassigned { .. }) => Some(
+                RubOperation::CommitToUnassigned(CommitToUnassignedOperation { oid: *commit_id }),
+            ),
+            (
+                Commit {
+                    commit_id: source, ..
                 },
-            ))
-        }
-        (
-            PathPrefix {
-                hunk_assignments, ..
-            },
-            Commit { commit_id, .. },
-        ) => {
-            let hunk_assignments = hunk_assignments
-                .as_ref()
-                .map(|(_, hunk_assignment)| hunk_assignment);
-            Some(RubOperation::UncommittedToCommit(
-                UncommittedToCommitOperation {
-                    hunk_assignments,
-                    description: "hunk(s)".to_string(),
+                Commit {
+                    commit_id: destination,
+                    ..
+                },
+            ) => Some(RubOperation::SquashCommits(SquashCommitsOperation {
+                sources: NonEmpty::new(*source),
+                destination: *destination,
+                how_to_combine_messages,
+            })),
+            (Commit { commit_id, .. }, Branch { name, .. }) => Some(
+                RubOperation::MoveCommitToBranch(MoveCommitToBranchOperation {
                     oid: *commit_id,
+                    name,
+                }),
+            ),
+            (Commit { commit_id, .. }, Stack { stack_id, .. }) => {
+                Some(RubOperation::CommitToStack(CommitToStackOperation {
+                    oid: *commit_id,
+                    stack: *stack_id,
+                }))
+            }
+            // Branch -> *
+            (Branch { name, .. }, Unassigned { .. }) => Some(RubOperation::BranchToUnassigned(
+                BranchToUnassignedOperation { from: name },
+            )),
+            (Branch { name: from, .. }, Stack { stack_id, .. }) => {
+                Some(RubOperation::BranchToStack(BranchToStackOperation {
+                    from,
+                    to: *stack_id,
+                }))
+            }
+            (Branch { name, .. }, Commit { commit_id, .. }) => {
+                Some(RubOperation::BranchToCommit(BranchToCommitOperation {
+                    name,
+                    oid: *commit_id,
+                }))
+            }
+            (Branch { name: from, .. }, Branch { name: to, .. }) => {
+                Some(RubOperation::BranchToBranch(BranchToBranchOperation {
+                    from,
+                    to,
+                }))
+            }
+            // CommittedFile -> *
+            (
+                CommittedFile {
+                    path, commit_id, ..
                 },
-            ))
-        }
-        (
-            PathPrefix {
-                hunk_assignments, ..
-            },
-            Branch { name, .. },
-        ) => {
-            let hunk_assignments = hunk_assignments
-                .as_ref()
-                .map(|(_, hunk_assignment)| hunk_assignment);
-            Some(RubOperation::UncommittedToBranch(
-                UncommittedToBranchOperation {
-                    hunk_assignments,
-                    description: "hunk(s)".to_string(),
+                Branch { name, .. },
+            ) => Some(RubOperation::CommittedFileToBranch(
+                CommittedFileToBranchOperation {
+                    path: path.as_ref(),
+                    commit_oid: *commit_id,
                     name,
                 },
-            ))
-        }
-        (
-            PathPrefix {
-                hunk_assignments, ..
-            },
-            Stack { stack_id, .. },
-        ) => {
-            let hunk_assignments = hunk_assignments
-                .as_ref()
-                .map(|(_, hunk_assignment)| hunk_assignment);
-            Some(RubOperation::UncommittedToStack(
-                UncommittedToStackOperation {
-                    hunk_assignments,
-                    description: "hunk(s)".to_string(),
-                    stack_id: *stack_id,
+            )),
+            (
+                CommittedFile {
+                    path,
+                    commit_id: source,
+                    ..
                 },
-            ))
+                Commit {
+                    commit_id: target, ..
+                },
+            ) => Some(RubOperation::CommittedFileToCommit(
+                CommittedFileToCommitOperation {
+                    path: path.as_ref(),
+                    commit_oid: *source,
+                    oid: *target,
+                },
+            )),
+            (
+                CommittedFile {
+                    path, commit_id, ..
+                },
+                Unassigned { .. },
+            ) => Some(RubOperation::CommittedFileToUnassigned(
+                CommittedFileToUnassignedOperation {
+                    path: path.as_ref(),
+                    commit_oid: *commit_id,
+                },
+            )),
+            // All other combinations are invalid
+            _ => None,
         }
-        // Stack -> *
-        (Stack { stack_id, .. }, Unassigned { .. }) => Some(RubOperation::StackToUnassigned(
-            StackToUnassignedOperation {
-                stack_id: *stack_id,
-            },
-        )),
-        (Stack { stack_id: from, .. }, Stack { stack_id: to, .. }) => {
-            Some(RubOperation::StackToStack(StackToStackOperation {
-                from: *from,
-                to: *to,
-            }))
-        }
-        (Stack { stack_id: from, .. }, Branch { name: to, .. }) => {
-            Some(RubOperation::StackToBranch(StackToBranchOperation {
-                from: *from,
-                to,
-            }))
-        }
-        (Stack { stack_id, .. }, Commit { commit_id, .. }) => {
-            Some(RubOperation::StackToCommit(StackToCommitOperation {
-                from: *stack_id,
-                to: *commit_id,
-            }))
-        }
-        // Unassigned -> *
-        (Unassigned { .. }, Commit { commit_id, .. }) => Some(RubOperation::UnassignedToCommit(
-            UnassignedToCommitOperation { oid: *commit_id },
-        )),
-        (Unassigned { .. }, Branch { name, .. }) => Some(RubOperation::UnassignedToBranch(
-            UnassignedToBranchOperation { to: name },
-        )),
-        (Unassigned { .. }, Stack { stack_id, .. }) => Some(RubOperation::UnassignedToStack(
-            UnassignedToStackOperation { to: *stack_id },
-        )),
-        // Commit -> *
-        (Commit { commit_id, .. }, Unassigned { .. }) => Some(RubOperation::CommitToUnassigned(
-            CommitToUnassignedOperation { oid: *commit_id },
-        )),
-        (
+    } else {
+        match target {
             Commit {
-                commit_id: source, ..
-            },
-            Commit {
-                commit_id: destination,
-                ..
-            },
-        ) => Some(RubOperation::SquashCommits(SquashCommitsOperation {
-            source: *source,
-            destination: *destination,
-            how_to_combine_messages,
-        })),
-        (Commit { commit_id, .. }, Branch { name, .. }) => Some(RubOperation::MoveCommitToBranch(
-            MoveCommitToBranchOperation {
-                oid: *commit_id,
-                name,
-            },
-        )),
-        (Commit { commit_id, .. }, Stack { stack_id, .. }) => {
-            Some(RubOperation::CommitToStack(CommitToStackOperation {
-                oid: *commit_id,
-                stack: *stack_id,
-            }))
+                commit_id: target_commit_id,
+                id: _,
+            } => sources
+                .iter()
+                .map(|source| match source {
+                    Commit { commit_id, id: _ } => Some(*commit_id),
+                    Uncommitted(..)
+                    | PathPrefix { .. }
+                    | CommittedFile { .. }
+                    | Branch { .. }
+                    | Unassigned { .. }
+                    | Stack { .. } => None,
+                })
+                .collect::<Option<Vec<_>>>()
+                .and_then(NonEmpty::from_vec)
+                .map(|commits| {
+                    RubOperation::SquashCommits(SquashCommitsOperation {
+                        sources: commits,
+                        destination: *target_commit_id,
+                        how_to_combine_messages,
+                    })
+                }),
+            Uncommitted(..)
+            | PathPrefix { .. }
+            | CommittedFile { .. }
+            | Branch { .. }
+            | Unassigned { .. }
+            | Stack { .. } => None,
         }
-        // Branch -> *
-        (Branch { name, .. }, Unassigned { .. }) => Some(RubOperation::BranchToUnassigned(
-            BranchToUnassignedOperation { from: name },
-        )),
-        (Branch { name: from, .. }, Stack { stack_id, .. }) => {
-            Some(RubOperation::BranchToStack(BranchToStackOperation {
-                from,
-                to: *stack_id,
-            }))
-        }
-        (Branch { name, .. }, Commit { commit_id, .. }) => {
-            Some(RubOperation::BranchToCommit(BranchToCommitOperation {
-                name,
-                oid: *commit_id,
-            }))
-        }
-        (Branch { name: from, .. }, Branch { name: to, .. }) => {
-            Some(RubOperation::BranchToBranch(BranchToBranchOperation {
-                from,
-                to,
-            }))
-        }
-        // CommittedFile -> *
-        (
-            CommittedFile {
-                path, commit_id, ..
-            },
-            Branch { name, .. },
-        ) => Some(RubOperation::CommittedFileToBranch(
-            CommittedFileToBranchOperation {
-                path: path.as_ref(),
-                commit_oid: *commit_id,
-                name,
-            },
-        )),
-        (
-            CommittedFile {
-                path,
-                commit_id: source,
-                ..
-            },
-            Commit {
-                commit_id: target, ..
-            },
-        ) => Some(RubOperation::CommittedFileToCommit(
-            CommittedFileToCommitOperation {
-                path: path.as_ref(),
-                commit_oid: *source,
-                oid: *target,
-            },
-        )),
-        (
-            CommittedFile {
-                path, commit_id, ..
-            },
-            Unassigned { .. },
-        ) => Some(RubOperation::CommittedFileToUnassigned(
-            CommittedFileToUnassignedOperation {
-                path: path.as_ref(),
-                commit_oid: *commit_id,
-            },
-        )),
-        // All other combinations are invalid
-        _ => None,
     }
 }
 
@@ -1200,7 +1245,9 @@ pub(crate) fn handle(
     let (sources, target) = ids(ctx, &id_map, source_str, target_str, out)?;
 
     for source in sources {
-        let Some(operation) = route_operation(&source, &target, how_to_combine_messages) else {
+        let Some(operation) =
+            route_operation(NonEmpty::new(&source), &target, how_to_combine_messages)
+        else {
             bail!(makes_no_sense_error(&source, &target))
         };
 
@@ -1246,8 +1293,12 @@ fn ids(
         .into_iter()
         .filter(|target_candidate| {
             sources.iter().all(|src| {
-                route_operation(src, target_candidate, MessageCombinationStrategy::KeepBoth)
-                    .is_some()
+                route_operation(
+                    NonEmpty::new(src),
+                    target_candidate,
+                    MessageCombinationStrategy::KeepBoth,
+                )
+                .is_some()
             })
         })
         .collect();
@@ -1883,7 +1934,7 @@ mod tests {
         // Valid: Uncommitted -> Unassigned
         assert!(
             route_operation(
-                &uncommitted,
+                NonEmpty::new(&uncommitted),
                 &unassigned_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -1893,7 +1944,7 @@ mod tests {
         // Valid: Uncommitted -> Commit
         assert!(
             route_operation(
-                &uncommitted,
+                NonEmpty::new(&uncommitted),
                 &commit_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -1903,7 +1954,7 @@ mod tests {
         // Valid: Uncommitted -> Branch
         assert!(
             route_operation(
-                &uncommitted,
+                NonEmpty::new(&uncommitted),
                 &branch_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -1913,7 +1964,7 @@ mod tests {
         // Valid: Uncommitted -> Stack
         assert!(
             route_operation(
-                &uncommitted,
+                NonEmpty::new(&uncommitted),
                 &stack_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -1923,7 +1974,7 @@ mod tests {
         // Invalid: Uncommitted -> Uncommitted
         assert!(
             route_operation(
-                &uncommitted,
+                NonEmpty::new(&uncommitted),
                 &uncommitted_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -1933,7 +1984,7 @@ mod tests {
         // Invalid: Uncommitted -> CommittedFile
         assert!(
             route_operation(
-                &uncommitted,
+                NonEmpty::new(&uncommitted),
                 &committed_file_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -1948,7 +1999,7 @@ mod tests {
         // Valid: Commit -> Unassigned
         assert!(
             route_operation(
-                &commit,
+                NonEmpty::new(&commit),
                 &unassigned_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -1957,23 +2008,38 @@ mod tests {
 
         // Valid: Commit -> Commit
         assert!(
-            route_operation(&commit, &commit_id(), MessageCombinationStrategy::KeepBoth).is_some()
+            route_operation(
+                NonEmpty::new(&commit),
+                &commit_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
         );
 
         // Valid: Commit -> Branch
         assert!(
-            route_operation(&commit, &branch_id(), MessageCombinationStrategy::KeepBoth).is_some()
+            route_operation(
+                NonEmpty::new(&commit),
+                &branch_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
         );
 
         // Valid: Commit -> Stack
         assert!(
-            route_operation(&commit, &stack_id(), MessageCombinationStrategy::KeepBoth).is_some()
+            route_operation(
+                NonEmpty::new(&commit),
+                &stack_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
         );
 
         // Invalid: Commit -> Uncommitted
         assert!(
             route_operation(
-                &commit,
+                NonEmpty::new(&commit),
                 &uncommitted_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -1983,7 +2049,7 @@ mod tests {
         // Invalid: Commit -> CommittedFile
         assert!(
             route_operation(
-                &commit,
+                NonEmpty::new(&commit),
                 &committed_file_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -1998,7 +2064,7 @@ mod tests {
         // Valid: Branch -> Unassigned
         assert!(
             route_operation(
-                &branch,
+                NonEmpty::new(&branch),
                 &unassigned_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2007,23 +2073,38 @@ mod tests {
 
         // Valid: Branch -> Stack
         assert!(
-            route_operation(&branch, &stack_id(), MessageCombinationStrategy::KeepBoth).is_some()
+            route_operation(
+                NonEmpty::new(&branch),
+                &stack_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
         );
 
         // Valid: Branch -> Commit
         assert!(
-            route_operation(&branch, &commit_id(), MessageCombinationStrategy::KeepBoth).is_some()
+            route_operation(
+                NonEmpty::new(&branch),
+                &commit_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
         );
 
         // Valid: Branch -> Branch
         assert!(
-            route_operation(&branch, &branch_id(), MessageCombinationStrategy::KeepBoth).is_some()
+            route_operation(
+                NonEmpty::new(&branch),
+                &branch_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
         );
 
         // Invalid: Branch -> Uncommitted
         assert!(
             route_operation(
-                &branch,
+                NonEmpty::new(&branch),
                 &uncommitted_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2033,7 +2114,7 @@ mod tests {
         // Invalid: Branch -> CommittedFile
         assert!(
             route_operation(
-                &branch,
+                NonEmpty::new(&branch),
                 &committed_file_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2048,7 +2129,7 @@ mod tests {
         // Valid: Stack -> Unassigned
         assert!(
             route_operation(
-                &stack,
+                NonEmpty::new(&stack),
                 &unassigned_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2057,23 +2138,38 @@ mod tests {
 
         // Valid: Stack -> Stack
         assert!(
-            route_operation(&stack, &stack_id(), MessageCombinationStrategy::KeepBoth).is_some()
+            route_operation(
+                NonEmpty::new(&stack),
+                &stack_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
         );
 
         // Valid: Stack -> Branch
         assert!(
-            route_operation(&stack, &branch_id(), MessageCombinationStrategy::KeepBoth).is_some()
+            route_operation(
+                NonEmpty::new(&stack),
+                &branch_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
         );
 
         // Valid: Stack -> Commit
         assert!(
-            route_operation(&stack, &commit_id(), MessageCombinationStrategy::KeepBoth).is_some()
+            route_operation(
+                NonEmpty::new(&stack),
+                &commit_id(),
+                MessageCombinationStrategy::KeepBoth
+            )
+            .is_some()
         );
 
         // Invalid: Stack -> Uncommitted
         assert!(
             route_operation(
-                &stack,
+                NonEmpty::new(&stack),
                 &uncommitted_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2083,7 +2179,7 @@ mod tests {
         // Invalid: Stack -> CommittedFile
         assert!(
             route_operation(
-                &stack,
+                NonEmpty::new(&stack),
                 &committed_file_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2098,7 +2194,7 @@ mod tests {
         // Valid: Unassigned -> Commit
         assert!(
             route_operation(
-                &unassigned,
+                NonEmpty::new(&unassigned),
                 &commit_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2108,7 +2204,7 @@ mod tests {
         // Valid: Unassigned -> Branch
         assert!(
             route_operation(
-                &unassigned,
+                NonEmpty::new(&unassigned),
                 &branch_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2118,7 +2214,7 @@ mod tests {
         // Valid: Unassigned -> Stack
         assert!(
             route_operation(
-                &unassigned,
+                NonEmpty::new(&unassigned),
                 &stack_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2128,7 +2224,7 @@ mod tests {
         // Invalid: Unassigned -> Uncommitted
         assert!(
             route_operation(
-                &unassigned,
+                NonEmpty::new(&unassigned),
                 &uncommitted_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2138,7 +2234,7 @@ mod tests {
         // Invalid: Unassigned -> Unassigned
         assert!(
             route_operation(
-                &unassigned,
+                NonEmpty::new(&unassigned),
                 &unassigned_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2148,7 +2244,7 @@ mod tests {
         // Invalid: Unassigned -> CommittedFile
         assert!(
             route_operation(
-                &unassigned,
+                NonEmpty::new(&unassigned),
                 &committed_file_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2163,7 +2259,7 @@ mod tests {
         // Valid: CommittedFile -> Branch
         assert!(
             route_operation(
-                &committed_file,
+                NonEmpty::new(&committed_file),
                 &branch_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2173,7 +2269,7 @@ mod tests {
         // Valid: CommittedFile -> Commit
         assert!(
             route_operation(
-                &committed_file,
+                NonEmpty::new(&committed_file),
                 &commit_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2183,7 +2279,7 @@ mod tests {
         // Valid: CommittedFile -> Unassigned
         assert!(
             route_operation(
-                &committed_file,
+                NonEmpty::new(&committed_file),
                 &unassigned_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2193,7 +2289,7 @@ mod tests {
         // Invalid: CommittedFile -> Uncommitted
         assert!(
             route_operation(
-                &committed_file,
+                NonEmpty::new(&committed_file),
                 &uncommitted_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2203,7 +2299,7 @@ mod tests {
         // Invalid: CommittedFile -> Stack
         assert!(
             route_operation(
-                &committed_file,
+                NonEmpty::new(&committed_file),
                 &stack_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2213,7 +2309,7 @@ mod tests {
         // Invalid: CommittedFile -> CommittedFile
         assert!(
             route_operation(
-                &committed_file,
+                NonEmpty::new(&committed_file),
                 &committed_file_id(),
                 MessageCombinationStrategy::KeepBoth
             )
@@ -2237,7 +2333,7 @@ mod tests {
 
         // Uncommitted -> Unassigned should be UnassignUncommitted
         match route_operation(
-            &uncommitted,
+            NonEmpty::new(&uncommitted),
             &unassigned,
             MessageCombinationStrategy::KeepBoth,
         ) {
@@ -2246,50 +2342,78 @@ mod tests {
         }
 
         // Uncommitted -> Commit should be UncommittedToCommit
-        match route_operation(&uncommitted, &commit, MessageCombinationStrategy::KeepBoth) {
+        match route_operation(
+            NonEmpty::new(&uncommitted),
+            &commit,
+            MessageCombinationStrategy::KeepBoth,
+        ) {
             Some(RubOperation::UncommittedToCommit(..)) => {}
             _ => panic!("Expected UncommittedToCommit variant"),
         }
 
         // Commit -> Commit should be SquashCommits
-        match route_operation(&commit, &commit_id(), MessageCombinationStrategy::KeepBoth) {
+        match route_operation(
+            NonEmpty::new(&commit),
+            &commit_id(),
+            MessageCombinationStrategy::KeepBoth,
+        ) {
             Some(RubOperation::SquashCommits(..)) => {}
             _ => panic!("Expected SquashCommits variant"),
         }
 
         // Commit -> Unassigned should be CommitToUnassigned
-        match route_operation(&commit, &unassigned, MessageCombinationStrategy::KeepBoth) {
+        match route_operation(
+            NonEmpty::new(&commit),
+            &unassigned,
+            MessageCombinationStrategy::KeepBoth,
+        ) {
             Some(RubOperation::CommitToUnassigned(..)) => {}
             _ => panic!("Expected CommitToUnassigned variant"),
         }
 
         // Commit -> Stack should be CommitToStack
-        match route_operation(&commit, &stack, MessageCombinationStrategy::KeepBoth) {
+        match route_operation(
+            NonEmpty::new(&commit),
+            &stack,
+            MessageCombinationStrategy::KeepBoth,
+        ) {
             Some(RubOperation::CommitToStack(..)) => {}
             _ => panic!("Expected CommitToStack variant"),
         }
 
         // Branch -> Stack should be BranchToStack
-        match route_operation(&branch, &stack, MessageCombinationStrategy::KeepBoth) {
+        match route_operation(
+            NonEmpty::new(&branch),
+            &stack,
+            MessageCombinationStrategy::KeepBoth,
+        ) {
             Some(RubOperation::BranchToStack(..)) => {}
             _ => panic!("Expected BranchToStack variant"),
         }
 
         // Stack -> Branch should be StackToBranch
-        match route_operation(&stack, &branch, MessageCombinationStrategy::KeepBoth) {
+        match route_operation(
+            NonEmpty::new(&stack),
+            &branch,
+            MessageCombinationStrategy::KeepBoth,
+        ) {
             Some(RubOperation::StackToBranch(..)) => {}
             _ => panic!("Expected StackToBranch variant"),
         }
 
         // Stack -> Commit should be StackToCommit
-        match route_operation(&stack, &commit, MessageCombinationStrategy::KeepBoth) {
+        match route_operation(
+            NonEmpty::new(&stack),
+            &commit,
+            MessageCombinationStrategy::KeepBoth,
+        ) {
             Some(RubOperation::StackToCommit(..)) => {}
             _ => panic!("Expected StackToCommit variant"),
         }
 
         // CommittedFile -> Commit should be CommittedFileToCommit
         match route_operation(
-            &committed_file,
+            NonEmpty::new(&committed_file),
             &commit,
             MessageCombinationStrategy::KeepBoth,
         ) {
@@ -2298,7 +2422,11 @@ mod tests {
         }
 
         // Unassigned -> Stack should be UnassignedToStack
-        match route_operation(&unassigned, &stack, MessageCombinationStrategy::KeepBoth) {
+        match route_operation(
+            NonEmpty::new(&unassigned),
+            &stack,
+            MessageCombinationStrategy::KeepBoth,
+        ) {
             Some(RubOperation::UnassignedToStack(..)) => {}
             _ => panic!("Expected UnassignedToStack variant"),
         }

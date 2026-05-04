@@ -339,6 +339,30 @@ impl Cursor {
         Some(Self(idx))
     }
 
+    #[must_use]
+    pub(super) fn move_down_within_section(
+        self,
+        lines: &[StatusOutputLine],
+        mode: &Mode,
+        show_files: FilesStatusFlag,
+    ) -> Option<Self> {
+        if self.0 >= lines.len() {
+            return None;
+        }
+
+        find_section_start_at_or_before(lines, mode, self.0)?;
+        let next_section_start =
+            find_next_section_start(lines, mode, self.0).unwrap_or(lines.len());
+
+        let (idx, _) = lines
+            .iter()
+            .enumerate()
+            .skip(self.0 + 1)
+            .take(next_section_start.saturating_sub(self.0 + 1))
+            .find(|(_, line)| is_selectable_in_mode(line, mode, show_files))?;
+        Some(Self(idx))
+    }
+
     /// Moves the cursor to the first selectable row in the next section.
     #[must_use]
     pub(super) fn move_next_section(
@@ -489,7 +513,7 @@ fn is_discard_commit_boundary(line: &StatusOutputLine) -> bool {
 /// Returns true if a line is a section header row.
 fn is_section_header(line: &StatusOutputLine, mode: &Mode) -> bool {
     match mode {
-        Mode::Normal
+        Mode::Normal(..)
         | Mode::InlineReword(..)
         | Mode::Command(..)
         | Mode::Commit(..)
@@ -528,7 +552,7 @@ pub(super) fn is_selectable_in_mode(
     match mode {
         Mode::Rub(rub_mode) => {
             if let Some(cli_id) = line.data.cli_id()
-                && rub_mode.source == **cli_id
+                && rub_mode.source.contains(cli_id)
             {
                 return true;
             }
@@ -547,11 +571,11 @@ pub(super) fn is_selectable_in_mode(
                 return true;
             }
         }
-        Mode::Command(..) | Mode::InlineReword(..) | Mode::Normal | Mode::Details => {}
+        Mode::Command(..) | Mode::InlineReword(..) | Mode::Normal(..) | Mode::Details => {}
     }
 
     match mode {
-        Mode::Normal | Mode::Details => match show_files_flag {
+        Mode::Normal(..) | Mode::Details => match show_files_flag {
             FilesStatusFlag::None | FilesStatusFlag::All => true,
             FilesStatusFlag::Commit(object_id) => {
                 if let Some(cli_id) = line.data.cli_id()
