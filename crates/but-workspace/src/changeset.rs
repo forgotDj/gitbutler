@@ -89,11 +89,9 @@ impl RefInfo {
         );
         let upstream_lut = create_similarity_lut(
             repo,
-            upstream_commits.iter().filter_map(|id| {
-                but_core::Commit::from_id(id.attach(repo))
-                    .map(crate::ref_info::Commit::from)
-                    .ok()
-            }),
+            upstream_commits
+                .iter()
+                .filter_map(|id| commit_from_id(repo, *id).ok()),
             cost_info,
             expensive,
         )?;
@@ -115,17 +113,7 @@ impl RefInfo {
                     // top-to-bottom
                     .commits
                     .iter_mut()
-                    .take_while(|c| {
-                        matches!(
-                            c.relation,
-                            // This happens when the identity match with the remote didn't work.
-                            LocalCommitRelation::LocalOnly |
-                            // This would be expected to be a remote-match by identity (we don't check for this),
-                            // something that is determined during graph traversal time. But we want to see
-                            // if any of these is also integrated.
-                            LocalCommitRelation::LocalAndRemote(_)
-                        )
-                    })
+                    .take_while(|c| is_similarity_candidate(c))
                 {
                     let expensive =
                         changeset_identifier(repo, expensive.then_some(local), &mut time_used)?;
@@ -332,6 +320,73 @@ fn first_parent_contains_commit(
         found
     });
     found
+}
+
+fn is_similarity_candidate(commit: &crate::ref_info::LocalCommit) -> bool {
+    matches!(
+        commit.relation,
+        // This happens when the identity match with the remote didn't work.
+        LocalCommitRelation::LocalOnly |
+        // This would be expected to be a remote-match by identity (we don't check for this),
+        // something that is determined during graph traversal time. But we want to see
+        // if any of these is also integrated.
+        LocalCommitRelation::LocalAndRemote(_)
+    )
+}
+
+/// Similarity matches between workspace commits and upstream commits, computed from commit IDs.
+#[expect(dead_code)]
+pub(crate) struct SimilarityByCommitIds {
+    /// Upstream commit IDs keyed by the workspace commit ID that matched them.
+    pub(crate) matches_by_workspace_commit: HashMap<gix::ObjectId, gix::ObjectId>,
+}
+
+/// Compute upstream similarity for the provided workspace commits without depending on [`RefInfo`].
+///
+/// The returned matches use the same cheap and optional expensive checks as [`RefInfo::compute_similarity`]
+/// for upstream integration: change IDs are skipped, while commit data and changeset IDs are considered.
+#[expect(dead_code)]
+pub(crate) fn compute_similarity_by_commit_ids(
+    repo: &gix::Repository,
+    upstream_commit_ids: &[gix::ObjectId],
+    workspace_commit_ids: &[gix::ObjectId],
+    expensive: bool,
+) -> anyhow::Result<SimilarityByCommitIds> {
+    let cost_info = (
+        upstream_commit_ids.len(),
+        repo.index_or_empty()?.entries().len(),
+    );
+    let upstream_lut = create_similarity_lut(
+        repo,
+        upstream_commit_ids
+            .iter()
+            .filter_map(|id| commit_from_id(repo, *id).ok()),
+        cost_info,
+        expensive,
+    )?;
+
+    let mut time_used = std::time::Duration::default();
+    let mut matches_by_workspace_commit = HashMap::new();
+    for workspace_commit_id in workspace_commit_ids {
+        let commit = commit_from_id(repo, *workspace_commit_id)?;
+        let expensive = changeset_identifier(repo, expensive.then_some(&commit), &mut time_used)?;
+        if let Some(upstream_commit_id) =
+            lookup_similar(&upstream_lut, &commit, expensive.as_ref(), ChangeId::Skip)
+        {
+            matches_by_workspace_commit.insert(*workspace_commit_id, *upstream_commit_id);
+        }
+    }
+
+    Ok(SimilarityByCommitIds {
+        matches_by_workspace_commit,
+    })
+}
+
+fn commit_from_id(
+    repo: &gix::Repository,
+    id: gix::ObjectId,
+) -> anyhow::Result<crate::ref_info::Commit> {
+    but_core::Commit::from_id(id.attach(repo)).map(crate::ref_info::Commit::from)
 }
 
 fn changeset_identifier(
