@@ -34,13 +34,7 @@ import { classes } from "#ui/ui/classes.ts";
 import { DependencyIcon, MenuTriggerIcon } from "#ui/ui/icons.tsx";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
-import {
-	AbsorptionTarget,
-	CommitDetails,
-	TreeChange,
-	TreeChanges,
-	WorktreeChanges,
-} from "@gitbutler/but-sdk";
+import { AbsorptionTarget, TreeChange } from "@gitbutler/but-sdk";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { Array, Match } from "effect";
@@ -135,14 +129,54 @@ const CommitFilesTreePanel: FC<
 
 	const navigationIndex = useNavigationIndex(projectId, focusPanel, parent, files);
 
+	const conflictedPaths = data.conflictEntries
+		? globalThis.Array.from(
+				new Set([
+					...data.conflictEntries.ancestorEntries,
+					...data.conflictEntries.ourEntries,
+					...data.conflictEntries.theirEntries,
+				]),
+			).toSorted((a, b) => a.localeCompare(b))
+		: [];
+
 	return (
 		<FilesTreePanel {...panelProps} navigationIndex={navigationIndex}>
-			<CommitFiles
-				projectId={projectId}
-				data={data}
-				parentCommitOperand={commit}
-				navigationIndex={navigationIndex}
-			/>
+			{(() => {
+				if (conflictedPaths.length === 0 && data.changes.length === 0)
+					return <div className={workspaceItemRowStyles.itemRowEmpty}>No file changes.</div>;
+
+				return (
+					<div role="group">
+						{conflictedPaths.length > 0 &&
+							conflictedPaths.map((path: string) => (
+								<ConflictedFileRow
+									operand={fileOperand({
+										parent: commitFileParent(commit),
+										path,
+									})}
+									key={path}
+									path={path}
+									projectId={projectId}
+									navigationIndex={navigationIndex}
+								/>
+							))}
+
+						{data.changes.length > 0 &&
+							data.changes.map((change) => (
+								<TreeChangeRow
+									operand={fileOperand({
+										parent: commitFileParent(commit),
+										path: change.path,
+									})}
+									key={change.path}
+									change={change}
+									projectId={projectId}
+									navigationIndex={navigationIndex}
+								/>
+							))}
+					</div>
+				);
+			})()}
 		</FilesTreePanel>
 	);
 };
@@ -164,14 +198,35 @@ const ChangesFilesTreePanel: FC<
 
 	const navigationIndex = useNavigationIndex(projectId, focusPanel, parent, files);
 
+	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
+		worktreeChanges.dependencies?.diffs ?? [],
+	);
+
 	return (
 		<FilesTreePanel {...panelProps} navigationIndex={navigationIndex}>
-			<ChangesFiles
-				projectId={projectId}
-				onAbsorbChanges={onAbsorbChanges}
-				worktreeChanges={worktreeChanges}
-				navigationIndex={navigationIndex}
-			/>
+			{worktreeChanges.changes.length === 0 ? (
+				<div className={workspaceItemRowStyles.itemRowEmpty}>No changes.</div>
+			) : (
+				<div role="group">
+					{worktreeChanges.changes.map((change) => {
+						const hunkDependencyDiffs = hunkDependencyDiffsByPath.get(change.path);
+						const dependencyCommitIds = hunkDependencyDiffs
+							? getDependencyCommitIds({ hunkDependencyDiffs })
+							: undefined;
+
+						return (
+							<ChangesFileRow
+								key={change.path}
+								change={change}
+								dependencyCommitIds={dependencyCommitIds}
+								onAbsorbChanges={onAbsorbChanges}
+								projectId={projectId}
+								navigationIndex={navigationIndex}
+							/>
+						);
+					})}
+				</div>
+			)}
 		</FilesTreePanel>
 	);
 };
@@ -202,13 +257,24 @@ const BranchFilesTreePanel: FC<
 
 	return (
 		<FilesTreePanel {...panelProps} navigationIndex={navigationIndex}>
-			<BranchFiles
-				projectId={projectId}
-				stackId={stackId}
-				branchRef={branchRef}
-				branchDiff={branchDiff}
-				navigationIndex={navigationIndex}
-			/>
+			{branchDiff.changes.length === 0 ? (
+				<div className={workspaceItemRowStyles.itemRowEmpty}>No changes.</div>
+			) : (
+				<div role="group">
+					{branchDiff.changes.map((change) => (
+						<TreeChangeRow
+							operand={fileOperand({
+								parent: branchFileParent({ stackId, branchRef }),
+								path: change.path,
+							})}
+							key={change.path}
+							change={change}
+							projectId={projectId}
+							navigationIndex={navigationIndex}
+						/>
+					))}
+				</div>
+			)}
 		</FilesTreePanel>
 	);
 };
@@ -326,119 +392,6 @@ const changeLabel = (change: TreeChange) => {
 
 	return `${status} ${change.path}`;
 };
-
-const CommitFiles: FC<{
-	projectId: string;
-	parentCommitOperand: CommitOperand;
-	data: CommitDetails;
-	navigationIndex: NavigationIndex;
-}> = ({ projectId, data, parentCommitOperand, navigationIndex }) => {
-	const conflictedPaths = data.conflictEntries
-		? globalThis.Array.from(
-				new Set([
-					...data.conflictEntries.ancestorEntries,
-					...data.conflictEntries.ourEntries,
-					...data.conflictEntries.theirEntries,
-				]),
-			).toSorted((a, b) => a.localeCompare(b))
-		: [];
-
-	if (conflictedPaths.length === 0 && data.changes.length === 0)
-		return <div className={workspaceItemRowStyles.itemRowEmpty}>No file changes.</div>;
-
-	return (
-		<div role="group">
-			{conflictedPaths.length > 0 &&
-				conflictedPaths.map((path: string) => (
-					<ConflictedFileRow
-						operand={fileOperand({
-							parent: commitFileParent(parentCommitOperand),
-							path,
-						})}
-						key={path}
-						path={path}
-						projectId={projectId}
-						navigationIndex={navigationIndex}
-					/>
-				))}
-
-			{data.changes.length > 0 &&
-				data.changes.map((change) => (
-					<TreeChangeRow
-						operand={fileOperand({
-							parent: commitFileParent(parentCommitOperand),
-							path: change.path,
-						})}
-						key={change.path}
-						change={change}
-						projectId={projectId}
-						navigationIndex={navigationIndex}
-					/>
-				))}
-		</div>
-	);
-};
-
-const ChangesFiles: FC<{
-	projectId: string;
-	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	worktreeChanges: WorktreeChanges;
-	navigationIndex: NavigationIndex;
-}> = ({ projectId, onAbsorbChanges, worktreeChanges, navigationIndex }) => {
-	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
-		worktreeChanges.dependencies?.diffs ?? [],
-	);
-
-	return worktreeChanges.changes.length === 0 ? (
-		<div className={workspaceItemRowStyles.itemRowEmpty}>No changes.</div>
-	) : (
-		<div role="group">
-			{worktreeChanges.changes.map((change) => {
-				const hunkDependencyDiffs = hunkDependencyDiffsByPath.get(change.path);
-				const dependencyCommitIds = hunkDependencyDiffs
-					? getDependencyCommitIds({ hunkDependencyDiffs })
-					: undefined;
-
-				return (
-					<ChangesFileRow
-						key={change.path}
-						change={change}
-						dependencyCommitIds={dependencyCommitIds}
-						onAbsorbChanges={onAbsorbChanges}
-						projectId={projectId}
-						navigationIndex={navigationIndex}
-					/>
-				);
-			})}
-		</div>
-	);
-};
-
-const BranchFiles: FC<{
-	projectId: string;
-	stackId: string;
-	branchRef: Array<number>;
-	branchDiff: TreeChanges;
-	navigationIndex: NavigationIndex;
-}> = ({ projectId, stackId, branchRef, branchDiff, navigationIndex }) =>
-	branchDiff.changes.length === 0 ? (
-		<div className={workspaceItemRowStyles.itemRowEmpty}>No changes.</div>
-	) : (
-		<div role="group">
-			{branchDiff.changes.map((change) => (
-				<TreeChangeRow
-					operand={fileOperand({
-						parent: branchFileParent({ stackId, branchRef }),
-						path: change.path,
-					})}
-					key={change.path}
-					change={change}
-					projectId={projectId}
-					navigationIndex={navigationIndex}
-				/>
-			))}
-		</div>
-	);
 
 const ItemRow: FC<
 	{
