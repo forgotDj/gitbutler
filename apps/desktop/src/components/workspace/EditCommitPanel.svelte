@@ -15,7 +15,7 @@
 	import { createCommitSelection } from "$lib/selection/key";
 	import { SETTINGS } from "$lib/settings/userSettings";
 	import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
-	import { USER } from "$lib/user/user";
+	import { useUserAvatarUrl } from "$lib/user/userAvatar.svelte";
 	import { inject } from "@gitbutler/core/context";
 
 	import { AsyncButton, Avatar, Badge, Button, InfoButton, Modal, TestId } from "@gitbutler/ui";
@@ -35,12 +35,13 @@
 	const projectService = inject(PROJECTS_SERVICE);
 	const projectQuery = $derived(projectService.getProject(projectId));
 
-	const user = inject(USER);
 	const stackService = inject(STACK_SERVICE);
 	const modeService = inject(MODE_SERVICE);
 	const userSettings = inject(SETTINGS);
 	const urlService = inject(URL_SERVICE);
 	const fileService = inject(FILE_SERVICE);
+
+	const userAvatarUrl = useUserAvatarUrl();
 
 	const initialFiles = $derived(modeService.initialEditModeState({ projectId }));
 	const uncommittedFiles = $derived(modeService.changesSinceInitialEditState({ projectId }));
@@ -232,9 +233,7 @@
 						<ReduxResult {projectId} result={commitQuery.result}>
 							{#snippet children(commit)}
 								{@const authorImgUrl = commit
-									? commit.author.email?.toLowerCase() === $user?.email?.toLowerCase()
-										? $user?.picture
-										: commit.author.gravatarUrl
+									? (userAvatarUrl(commit.author.email) ?? commit.author.gravatarUrl)
 									: undefined}
 								{@const title = splitMessage(commit.message).title}
 								<h3 class="text-13 text-semibold text-body commit-card__title">

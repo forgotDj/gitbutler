@@ -4,7 +4,7 @@
 	import { splitMessage } from "$lib/commits/commitMessage";
 	import { rewrapCommitMessage } from "$lib/config/uiFeatureFlags";
 	import { SETTINGS } from "$lib/settings/userSettings";
-	import { USER_SERVICE } from "$lib/user/userService";
+	import { useUserAvatarUrl } from "$lib/user/userAvatar.svelte";
 	import { rejoinParagraphs, truncate } from "$lib/utils/string";
 	import { inject } from "@gitbutler/core/context";
 
@@ -20,12 +20,10 @@
 
 	const { commit, rewrap, includeTitle }: Props = $props();
 
-	const userService = inject(USER_SERVICE);
 	const userSettings = inject(SETTINGS);
 	const clipboardService = inject(CLIPBOARD_SERVICE);
+	const userAvatarUrl = useUserAvatarUrl();
 	const zoom = $derived($userSettings.zoom);
-
-	const user = $derived(userService.user);
 
 	let messageWidth = $state(0);
 	const messageWidthRem = $derived(pxToRem(messageWidth, zoom));
@@ -43,16 +41,6 @@
 	const isAbbrev = $derived(abbreviated !== description);
 
 	let expanded = $state(false);
-
-	function getGravatarUrl(email: string, existingravatarUrl: string): string {
-		if ($user?.email === undefined) {
-			return existingravatarUrl;
-		}
-		if (email === $user.email) {
-			return $user.picture ?? existingravatarUrl;
-		}
-		return existingravatarUrl;
-	}
 </script>
 
 <div class="commit">
@@ -61,7 +49,7 @@
 		<Avatar
 			size="medium"
 			username={commit.author.name}
-			srcUrl={getGravatarUrl(commit.author.email, commit.author.gravatarUrl)}
+			srcUrl={userAvatarUrl(commit.author.email) ?? commit.author.gravatarUrl}
 		/>
 		<span class="divider">•</span>
 		<TimeAgo date={commitCreatedAtDate(commit)} />
