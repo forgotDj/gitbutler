@@ -59,10 +59,6 @@ use but_utils::OnDemand;
 use rusqlite::ErrorCode;
 use std::path::PathBuf;
 
-#[cfg(feature = "poll")]
-/// Polling helpers to watch for database-backed state changes.
-pub mod poll;
-
 mod handle;
 mod table;
 mod transaction;
