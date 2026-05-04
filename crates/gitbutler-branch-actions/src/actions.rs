@@ -218,35 +218,6 @@ pub fn unapply_stack(
     Ok(branch_name)
 }
 
-pub fn squash_commits(
-    ctx: &mut Context,
-    stack_id: StackId,
-    source_ids: Vec<gix::ObjectId>,
-    destination_id: gix::ObjectId,
-) -> Result<gix::ObjectId> {
-    let mut guard = ctx.exclusive_worktree_access();
-    squash_commits_with_perm(
-        ctx,
-        stack_id,
-        source_ids,
-        destination_id,
-        guard.write_permission(),
-    )
-}
-
-pub fn squash_commits_with_perm(
-    ctx: &mut Context,
-    stack_id: StackId,
-    source_ids: Vec<gix::ObjectId>,
-    destination_id: gix::ObjectId,
-    perm: &mut RepoExclusive,
-) -> Result<gix::ObjectId> {
-    ctx.verify(perm)?;
-    ensure_open_workspace_mode(ctx, perm.read_permission())
-        .context("Squashing a commit requires open workspace mode")?;
-    crate::squash::squash_commits(ctx, stack_id, source_ids, destination_id, perm)
-}
-
 pub fn create_virtual_branch_from_branch_with_perm(
     ctx: &mut Context,
     branch: &Refname,
