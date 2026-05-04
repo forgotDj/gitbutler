@@ -14,7 +14,6 @@ import {
 	NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
 import { useHotkeys, useHotkeySequence } from "@tanstack/react-hotkeys";
-import { useRef } from "react";
 
 export type Panel = "outline" | "files" | "details";
 export const orderedPanels: Array<Panel> = ["outline", "files", "details"];
@@ -30,15 +29,8 @@ export const useFocusedProjectPanel = (projectId: string): Panel | null => {
 };
 
 export const useProjectPanelFocusManager = () => {
-	const panelElementsRef = useRef(new Map<Panel, HTMLDivElement>());
-	const panelElementRef =
-		(panel: Panel) =>
-		(element: HTMLDivElement | null): void => {
-			if (element) panelElementsRef.current.set(panel, element);
-			else panelElementsRef.current.delete(panel);
-		};
 	const focusPanel = (panel: Panel) => {
-		panelElementsRef.current.get(panel)?.focus({ focusVisible: false });
+		document.getElementById(panel)?.focus({ focusVisible: false });
 	};
 	const focusAdjacentPanel = (offset: -1 | 1) => {
 		const currentPanel = getFocusedProjectPanel(document.activeElement);
@@ -51,7 +43,6 @@ export const useProjectPanelFocusManager = () => {
 	return {
 		focusAdjacentPanel,
 		focusPanel,
-		panelElementRef,
 	};
 };
 
