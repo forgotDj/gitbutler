@@ -34,6 +34,31 @@ describe("buildStackEndpoints", () => {
 		});
 	});
 
+	test("maps squash commits to commit_squash with the new request shape", () => {
+		const endpoints = buildStackEndpoints(createEndpointBuilder());
+		const query = endpoints.squashCommits.query;
+
+		expect(endpoints.squashCommits.extraOptions).toEqual({
+			command: "commit_squash",
+			actionName: "Squash Commits",
+		});
+		expect(query).toBeDefined();
+		expect(
+			query?.({
+				projectId: "project-1",
+				stackId: "stack-1",
+				sourceCommitIds: ["commit-1", "commit-2"],
+				targetCommitId: "commit-3",
+			}),
+		).toEqual({
+			projectId: "project-1",
+			subjectCommitIds: ["commit-1", "commit-2"],
+			targetCommitId: "commit-3",
+			howToCombineMessages: "KeepBoth",
+			dryRun: false,
+		});
+	});
+
 	test("uses commit_move for generic commit moves", () => {
 		const endpoints = buildStackEndpoints(createEndpointBuilder());
 		const query = endpoints.commitMove.query;

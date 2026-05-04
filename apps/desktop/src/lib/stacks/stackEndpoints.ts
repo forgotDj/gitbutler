@@ -32,6 +32,7 @@ import type {
 	MoveChangesResult,
 	CommitCreateResult,
 	CommitRewordResult,
+	CommitSquashResult,
 	CommitInsertBlankResult,
 	MoveBranchResult,
 	RejectionReason,
@@ -853,14 +854,20 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			],
 		}),
 		squashCommits: build.mutation<
-			void,
+			CommitSquashResult,
 			{ projectId: string; stackId: string; sourceCommitIds: string[]; targetCommitId: string }
 		>({
 			extraOptions: {
-				command: "squash_commits",
+				command: "commit_squash",
 				actionName: "Squash Commits",
 			},
-			query: (args) => args,
+			query: ({ projectId, sourceCommitIds, targetCommitId }) => ({
+				projectId,
+				subjectCommitIds: sourceCommitIds,
+				targetCommitId,
+				howToCombineMessages: "KeepBoth",
+				dryRun: false,
+			}),
 			invalidatesTags: [
 				invalidatesList(ReduxTag.HeadSha),
 				invalidatesList(ReduxTag.WorktreeChanges), // Could cause conflicts
