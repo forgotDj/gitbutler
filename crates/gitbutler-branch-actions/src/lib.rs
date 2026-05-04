@@ -10,10 +10,8 @@ pub use actions::{
     create_virtual_branch, create_virtual_branch_from_branch_with_perm, delete_local_branch,
     get_initial_integration_steps_for_branch, integrate_branch_with_steps, integrate_upstream,
     integrate_upstream_commits, push_base_branch, resolve_upstream_integration, set_base_branch,
-    set_target_push_remote, squash_commits, squash_commits_with_perm, unapply_stack,
-    update_stack_order, upstream_integration_statuses,
+    set_target_push_remote, unapply_stack, update_stack_order, upstream_integration_statuses,
 };
-mod squash;
 
 mod r#virtual;
 
@@ -34,7 +32,6 @@ pub use integration::{
 mod remote;
 
 pub mod branch_upstream_integration;
-mod reorder;
 
 mod gravatar;
 use gitbutler_stack::VirtualBranchesHandle;

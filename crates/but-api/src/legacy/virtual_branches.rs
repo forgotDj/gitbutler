@@ -358,52 +358,6 @@ pub fn get_branch_listing_details(
     Ok(branches)
 }
 
-/// Squash `source_commit_ids` into `target_commit_id` within the stack identified by `stack_id`.
-///
-/// This acquires exclusive worktree access from `ctx` before rewriting the
-/// stack.
-///
-/// See [`squash_commits_with_perm()`] for the underlying mutation.
-#[but_api]
-#[instrument(err(Debug))]
-pub fn squash_commits(
-    ctx: &mut Context,
-    stack_id: StackId,
-    source_commit_ids: Vec<gix::ObjectId>,
-    target_commit_id: gix::ObjectId,
-) -> Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    squash_commits_with_perm(
-        ctx,
-        stack_id,
-        source_commit_ids,
-        target_commit_id,
-        guard.write_permission(),
-    )?;
-    Ok(())
-}
-
-/// Squash `source_commit_ids` into `target_commit_id` within the stack identified by `stack_id`,
-/// reusing caller-held exclusive access.
-///
-/// This delegates to [`gitbutler_branch_actions::squash_commits_with_perm()`].
-pub fn squash_commits_with_perm(
-    ctx: &mut Context,
-    stack_id: StackId,
-    source_commit_ids: Vec<gix::ObjectId>,
-    target_commit_id: gix::ObjectId,
-    perm: &mut RepoExclusive,
-) -> Result<()> {
-    gitbutler_branch_actions::squash_commits_with_perm(
-        ctx,
-        stack_id,
-        source_commit_ids,
-        target_commit_id,
-        perm,
-    )?;
-    Ok(())
-}
-
 #[but_api]
 #[instrument(err(Debug))]
 pub fn fetch_from_remotes(ctx: &Context, action: Option<String>) -> Result<BaseBranch> {

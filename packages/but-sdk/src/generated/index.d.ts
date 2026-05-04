@@ -1764,18 +1764,6 @@ export type SerdeError = {
   source: any | null;
 };
 
-/** Represents the order of changes (commits) in a series (branch). */
-export type SeriesOrder = {
-  /** Unique name of the series (branch). Must already exist in the stack. */
-  name: string;
-  /**
-   * This is the desired commit order for the series. Because the commits will be rebased,
-   * naturally, the commit ids will be different after updating.
-   * The changes are ordered from newest to oldest (most recent changes go first)
-   */
-  commitIds: Array<string>;
-};
-
 /** The UI-clone of `branch::Stack`. */
 export type Stack = {
   /** Otherwise, it is `None`. */
@@ -1840,12 +1828,6 @@ export type StackHeadInfo = {
    * This is `false` if the worktree is checked out.
    */
   isCheckedOut: boolean;
-};
-
-/** Represents the order of series (branches) and changes (commits) in a stack. */
-export type StackOrder = {
-  /** The series are ordered from newest to oldest (most recent stacks go first) */
-  series: Array<SeriesOrder>;
 };
 
 /** Represents a reference to an associated virtual branch */

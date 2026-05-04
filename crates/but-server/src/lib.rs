@@ -942,10 +942,6 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(legacy::virtual_branches::get_branch_listing_details_cmd),
         )
         .route(
-            "/squash_commits",
-            but_post(legacy::virtual_branches::squash_commits_cmd),
-        )
-        .route(
             "/fetch_from_remotes",
             but_post(legacy::virtual_branches::fetch_from_remotes_cmd),
         )

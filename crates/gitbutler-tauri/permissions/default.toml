@@ -188,7 +188,6 @@ commands.allow = [
   "snapshot_diff",
   "split_branch",
   "split_branch_into_dependent_branch",
-  "squash_commits",
   "stack_details",
   "stacks",
   "stash_into_branch",
