@@ -1153,6 +1153,10 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(commit::move_changes::commit_move_changes_between_cmd),
         )
         .route(
+            "/commit_squash",
+            but_post(commit::squash::commit_squash_cmd),
+        )
+        .route(
             "/commit_uncommit_changes",
             but_post(commit::uncommit::commit_uncommit_changes_cmd),
         )
