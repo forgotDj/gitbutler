@@ -9,9 +9,10 @@ import {
 } from "#ui/api/queries.ts";
 import { useActiveElement } from "#ui/focus.ts";
 import {
+	focusAdjacentPanel,
+	focusPanel,
 	Panel as PanelType,
 	useFocusedProjectPanel,
-	useProjectPanelFocusManager,
 } from "#ui/panels.ts";
 import { isPanelVisible } from "#ui/panels/state.ts";
 import {
@@ -362,13 +363,7 @@ const ShortcutsBar: FC = () => {
 	);
 };
 
-const usePanelsHotkeys = ({
-	focusedPanel,
-	focusAdjacentPanel,
-}: {
-	focusedPanel: PanelType | null;
-	focusAdjacentPanel: (offset: -1 | 1) => void;
-}) => {
+const usePanelsHotkeys = ({ focusedPanel }: { focusedPanel: PanelType | null }) => {
 	useHotkey(
 		"H",
 		() => {
@@ -399,7 +394,6 @@ const WorkspacePage: FC = () => {
 
 	const pickerDialog = useAppSelector((state) => selectProjectPickerDialogState(state, projectId));
 	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
-	const { focusAdjacentPanel, focusPanel } = useProjectPanelFocusManager();
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	const [absorptionTarget, setAbsorptionTarget] = useState<AbsorptionTarget | null>(null);
@@ -427,7 +421,7 @@ const WorkspacePage: FC = () => {
 		},
 	);
 
-	usePanelsHotkeys({ focusedPanel, focusAdjacentPanel });
+	usePanelsHotkeys({ focusedPanel });
 
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
 		id: `project:${projectId}:layout`,

@@ -28,22 +28,16 @@ export const useFocusedProjectPanel = (projectId: string): Panel | null => {
 	return pickerDialog._tag === "CommandPalette" ? pickerDialog.focusedPanel : focusedPanel;
 };
 
-export const useProjectPanelFocusManager = () => {
-	const focusPanel = (panel: Panel) => {
-		document.getElementById(panel)?.focus({ focusVisible: false });
-	};
-	const focusAdjacentPanel = (offset: -1 | 1) => {
-		const currentPanel = getFocusedProjectPanel(document.activeElement);
-		if (currentPanel === null) return;
-		const nextPanel = orderedPanels[orderedPanels.indexOf(currentPanel) + offset];
-		if (nextPanel === undefined) return;
-		focusPanel(nextPanel);
-	};
+export const focusPanel = (panel: Panel) => {
+	document.getElementById(panel)?.focus({ focusVisible: false });
+};
 
-	return {
-		focusAdjacentPanel,
-		focusPanel,
-	};
+export const focusAdjacentPanel = (offset: -1 | 1) => {
+	const currentPanel = getFocusedProjectPanel(document.activeElement);
+	if (currentPanel === null) return;
+	const nextPanel = orderedPanels[orderedPanels.indexOf(currentPanel) + offset];
+	if (nextPanel === undefined) return;
+	focusPanel(nextPanel);
 };
 
 export const useNavigationIndexHotkeys = ({
