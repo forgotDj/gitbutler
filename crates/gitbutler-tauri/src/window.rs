@@ -9,8 +9,6 @@ pub(crate) mod state {
 
     pub(crate) mod event {
         use anyhow::{Context as _, Result};
-        use but_ctx::ProjectHandleOrLegacyProjectId;
-        use but_db::poll::ItemKind;
         use but_settings::AppSettings;
         use gitbutler_watcher::Change;
         use tauri::Emitter;
@@ -70,19 +68,6 @@ pub(crate) mod state {
             }
         }
 
-        impl From<(ProjectHandleOrLegacyProjectId, ItemKind)> for ChangeForFrontend {
-            fn from(project_item: (ProjectHandleOrLegacyProjectId, ItemKind)) -> Self {
-                let (project_id, item) = project_item;
-                // Use the shared conversion function from but_broadcaster
-                let event =
-                    but_claude::broadcaster::FrontendEvent::from_db_item(project_id.clone(), item);
-                ChangeForFrontend {
-                    name: event.name,
-                    payload: event.payload,
-                }
-            }
-        }
-
         impl ChangeForFrontend {
             pub fn send(&self, app_handle: &tauri::AppHandle) -> Result<()> {
                 app_handle
@@ -103,9 +88,6 @@ pub(crate) mod state {
         /// An active lock to signal that the entire project is locked for the Window this state belongs to.
         /// Let's make it optional while it's only in our own way, while aiming for making that reasonably well working.
         exclusive_access: Option<but_core::sync::LockFile>,
-        // Database watcher handle.
-        #[expect(dead_code)]
-        db_watcher: but_db::poll::DBWatcherHandle,
     }
 
     impl Drop for State {
@@ -189,13 +171,6 @@ pub(crate) mod state {
                 watch_mode,
             )?;
 
-            let db = ctx.db.get_cache()?;
-            let db_watcher = but_db::poll::watch_in_background(&db, {
-                let app_handle = self.app_handle.clone();
-                let project_id = ctx.legacy_project.id.clone();
-                move |item| ChangeForFrontend::from((project_id.clone(), item)).send(&app_handle)
-            })?;
-
             let has_exclusive_access = exclusive_access.is_some();
             state_by_label.insert(
                 window.to_owned(),
@@ -203,7 +178,6 @@ pub(crate) mod state {
                     project_id: ctx.legacy_project.id.clone(),
                     watcher,
                     exclusive_access,
-                    db_watcher,
                 },
             );
             tracing::debug!("Maintaining {} Windows", state_by_label.len());

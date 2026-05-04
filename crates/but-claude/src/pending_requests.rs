@@ -47,8 +47,7 @@ struct PendingQuestion {
 
 /// In-memory storage for pending requests awaiting user responses.
 ///
-/// This replaces the database-based polling mechanism for ephemeral request/response
-/// patterns. Requests are stored with oneshot channels that allow the waiting async
+/// Requests are stored with oneshot channels that allow the waiting async
 /// task to be notified immediately when a response is received.
 #[derive(Default)]
 pub struct PendingRequests {

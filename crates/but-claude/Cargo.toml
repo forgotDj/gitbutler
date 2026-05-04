@@ -12,7 +12,7 @@ doctest = false
 [dependencies]
 but-core.workspace = true
 but-action.workspace = true
-but-db = { workspace = true, features = ["poll"] }
+but-db.workspace = true
 but-rules.workspace = true
 but-settings.workspace = true
 but-hunk-assignment.workspace = true

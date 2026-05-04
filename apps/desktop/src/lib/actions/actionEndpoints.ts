@@ -68,6 +68,7 @@ export function buildActionEndpoints(build: BackendEndpointBuilder) {
 			extraOptions: { command: "create_workspace_rule" },
 			query: (args) => args,
 			invalidatesTags: () => [
+				invalidatesList(ReduxTag.WorkspaceRules),
 				invalidatesList(ReduxTag.WorktreeChanges),
 				invalidatesList(ReduxTag.Stacks),
 			],
@@ -76,6 +77,7 @@ export function buildActionEndpoints(build: BackendEndpointBuilder) {
 			extraOptions: { command: "delete_workspace_rule" },
 			query: (args) => args,
 			invalidatesTags: [
+				invalidatesList(ReduxTag.WorkspaceRules),
 				invalidatesList(ReduxTag.ClaudeCodeTranscript),
 				invalidatesList(ReduxTag.ClaudePermissionRequests),
 				invalidatesList(ReduxTag.ClaudeSessionDetails),
@@ -89,6 +91,7 @@ export function buildActionEndpoints(build: BackendEndpointBuilder) {
 			extraOptions: { command: "update_workspace_rule" },
 			query: (args) => args,
 			invalidatesTags: () => [
+				invalidatesList(ReduxTag.WorkspaceRules),
 				invalidatesList(ReduxTag.WorktreeChanges),
 				invalidatesList(ReduxTag.Stacks),
 			],

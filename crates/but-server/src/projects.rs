@@ -4,7 +4,6 @@ use anyhow::Result;
 use but_api::json::ToJsonError;
 use but_claude::{Claude, broadcaster::FrontendEvent};
 use but_ctx::{Context, ProjectHandleOrLegacyProjectId};
-use but_db::poll::DBWatcherHandle;
 use but_settings::AppSettingsWithDiskSync;
 use gitbutler_watcher::{Change, WatcherHandle};
 use serde::Deserialize;
@@ -23,8 +22,6 @@ struct SetProjectActiveParams {
 struct ProjectHandles {
     // Watchers are kept alive, drop handles cleanup.
     _file_watcher: WatcherHandle,
-    // Watchers are kept alive, drop handles cleanup.
-    _db_watcher: DBWatcherHandle,
 }
 
 pub struct ActiveProjects {
@@ -125,28 +122,10 @@ impl ActiveProjects {
             watch_mode,
         )?;
 
-        // Set up database watcher for database changes
-        let db_watcher = {
-            let db = &mut *ctx.db.get_cache_mut()?;
-            but_db::poll::watch_in_background(db, {
-                let broadcaster = claude.broadcaster.clone();
-                let project_id = ctx.legacy_project.id.clone();
-                move |item| {
-                    let event = FrontendEvent::from_db_item(project_id.clone(), item);
-                    let broadcaster = broadcaster.clone();
-                    tokio::task::spawn(async move {
-                        broadcaster.lock().await.send(event);
-                    });
-                    Ok(())
-                }
-            })?
-        };
-
         self.projects.insert(
             ctx.legacy_project.id.clone(),
             ProjectHandles {
                 _file_watcher: file_watcher,
-                _db_watcher: db_watcher,
             },
         );
         Ok(())

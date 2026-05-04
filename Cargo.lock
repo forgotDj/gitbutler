@@ -1186,7 +1186,6 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "backoff",
- "bitflags 2.11.1",
  "but-utils",
  "chrono",
  "insta",
@@ -1194,7 +1193,6 @@ dependencies = [
  "rusqlite",
  "serde",
  "tempfile",
- "tokio",
  "tracing",
 ]
 
@@ -1612,7 +1610,6 @@ dependencies = [
  "but-askpass",
  "but-claude",
  "but-ctx",
- "but-db",
  "but-feedback",
  "but-irc",
  "but-path",
