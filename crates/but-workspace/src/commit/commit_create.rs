@@ -8,6 +8,8 @@ use but_rebase::graph_rebase::{
 
 use crate::commit_engine::{Destination, create_commit};
 
+use super::compute_merge_base_override;
+
 /// The result of creating and inserting a new commit in the graph rebase editor.
 #[derive(Debug)]
 pub struct CommitCreateOutcome<'ws, 'meta, M: RefMetadata> {
@@ -55,6 +57,9 @@ pub fn commit_create<'ws, 'meta, M: RefMetadata>(
     let parent_commit_id =
         parent_commit_id_for_new_commit(&editor, editor.lookup_step(relative_to_selector)?, side)?;
 
+    // Clone before `create_commit` consumes the vec — needed afterwards
+    // to determine which changes were consumed (not rejected).
+    let all_changes = changes.clone();
     let create_out = create_commit(
         editor.repo(),
         Destination::NewCommit {
@@ -73,6 +78,22 @@ pub fn commit_create<'ws, 'meta, M: RefMetadata>(
             rejected_specs: create_out.rejected_specs,
         });
     };
+
+    // Tell the editor which changes were consumed so the checkout's snapshot
+    // merge doesn't reintroduce them as uncommitted changes.
+    let rejected_paths: std::collections::BTreeSet<_> = create_out
+        .rejected_specs
+        .iter()
+        .map(|(_, spec)| &spec.path)
+        .collect();
+    let consumed: Vec<_> = all_changes
+        .into_iter()
+        .filter(|spec| !rejected_paths.contains(&spec.path))
+        .collect();
+    if !consumed.is_empty() {
+        let merge_base = compute_merge_base_override(editor.repo(), consumed, context_lines)?;
+        editor.set_merge_base_override(merge_base);
+    }
 
     let commit_selector = editor.insert(
         relative_to_selector,

@@ -169,6 +169,7 @@ fn go_back_to_integration(ctx: &Context, default_target: &Target) -> Result<Base
             but_core::worktree::checkout::Options {
                 uncommitted_changes: UncommitedWorktreeChanges::KeepAndAbortOnConflict,
                 skip_head_update: false,
+                ..Default::default()
             },
         )?;
     } else {

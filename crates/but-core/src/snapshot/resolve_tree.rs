@@ -33,6 +33,13 @@ pub struct Options {
     ///
     /// If `None`, perform the merge just like Git, which will include conflict markers!
     pub worktree_cherry_pick: Option<gix::merge::tree::Options>,
+    /// If set, use this tree as the merge base instead of the `HEAD` entry from the snapshot.
+    ///
+    /// This is used when an operation consumed some worktree changes (e.g. amend/commit).
+    /// By setting the merge base to `HEAD^{tree}` + consumed changes, the consumed hunks
+    /// are already present in the base and won't appear as diffs in the snapshot side of
+    /// the merge — eliminating duplication without any hunk-level subtraction.
+    pub merge_base_override: Option<gix::ObjectId>,
 }
 
 pub(super) mod function {
@@ -60,6 +67,7 @@ pub(super) mod function {
         target_worktree_tree_id: gix::ObjectId,
         Options {
             worktree_cherry_pick: worktree_cherry_pick_options,
+            merge_base_override,
         }: Options,
     ) -> anyhow::Result<Outcome<'_>> {
         let repo = snapshot_tree.repo;
@@ -71,7 +79,7 @@ pub(super) mod function {
 
         let worktree_cherry_pick = match (&head_tree, worktree) {
             (Some(worktree_base), Some(worktree)) => {
-                let base = worktree_base.object_id();
+                let base = merge_base_override.unwrap_or_else(|| worktree_base.object_id());
                 let ours = target_worktree_tree_id;
                 let theirs = worktree.object_id();
 

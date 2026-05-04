@@ -183,6 +183,7 @@ pub fn update_workspace_commit_with_vb_state(
             but_core::worktree::checkout::Options {
                 uncommitted_changes: UncommitedWorktreeChanges::KeepAndAbortOnConflict,
                 skip_head_update: true,
+                ..Default::default()
             },
         );
         Some(res)

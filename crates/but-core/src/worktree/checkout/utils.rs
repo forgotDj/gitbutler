@@ -68,6 +68,7 @@ pub fn merge_worktree_changes_into_destination_or_keep_snapshot(
     destination_tree_id: gix::ObjectId,
     checkout_opts: &mut git2::build::CheckoutBuilder,
     uncommitted_changes: UncommitedWorktreeChanges,
+    merge_base_override: Option<gix::ObjectId>,
 ) -> anyhow::Result<Option<(gix::ObjectId, Option<gix::ObjectId>)>> {
     if files_to_checkout.is_empty() {
         return Ok(None);
@@ -186,6 +187,7 @@ pub fn merge_worktree_changes_into_destination_or_keep_snapshot(
             repo_in_memory
                 .config_snapshot_mut()
                 .set_value(&gix::config::tree::Merge::RENORMALIZE, "true")?;
+
             let out = crate::snapshot::create_tree(
                 source_tree_id.attach(&repo_in_memory),
                 snapshot::create_tree::State {
@@ -201,6 +203,7 @@ pub fn merge_worktree_changes_into_destination_or_keep_snapshot(
                     destination_tree_id,
                     snapshot::resolve_tree::Options {
                         worktree_cherry_pick: None,
+                        merge_base_override,
                     },
                 )?;
                 let new_destination_id =

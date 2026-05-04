@@ -1027,9 +1027,9 @@ fn partial_commit_with_adjacent_lines_conflicts_on_checkout() -> anyhow::Result<
     )?;
 
     // The remaining worktree change (added-b) conflicts with the committed change
-    // (added-a) because both add at the same position. This is the underlying
-    // reason commit_create uses materialize_without_checkout instead of a full
-    // checkout — it avoids this conflict entirely by not touching the worktree.
+    // (added-a) because both add at the same position. Without a merge-base
+    // override that includes the consumed changes, the 3-way merge treats this
+    // as a conflict.
     let err = safe_checkout(head_commit.id, new_commit.id, &repo, Default::default()).unwrap_err();
     assert!(
         err.to_string()
@@ -1078,6 +1078,7 @@ fn overwrite_options() -> checkout::Options {
     checkout::Options {
         uncommitted_changes: UncommitedWorktreeChanges::KeepConflictingInSnapshotAndOverwrite,
         skip_head_update: false,
+        ..Default::default()
     }
 }
 

@@ -64,44 +64,6 @@ impl WorkspaceState {
         )
     }
 
-    /// Build a [`WorkspaceState`] from a successful rebase, materializing without checkout.
-    ///
-    /// Use this when the worktree already contains the right content and only the
-    /// index needs to be synced to the new workspace tree. This is the case for
-    /// commit creation, where committed changes came from the worktree and the
-    /// operation cannot cause descendant conflicts, so the workspace tree can't
-    /// diverge from what's on disk.
-    ///
-    /// Do **not** use this for operations that can cause conflicts in descendant
-    /// commits (e.g. amend), as those require a full checkout to update the worktree.
-    ///
-    /// A full checkout would snapshot-and-cherry-pick remaining worktree changes,
-    /// which fails when partially-committed hunks overlap with uncommitted ones.
-    pub(crate) fn from_successful_rebase_without_checkout<M: RefMetadata>(
-        rebase: SuccessfulRebase<'_, '_, M>,
-        repo: &gix::Repository,
-        dry_run: DryRun,
-    ) -> anyhow::Result<WorkspaceState> {
-        if dry_run.into() {
-            return Self::from_rebase_preview(&rebase, rebase.history.commit_mappings());
-        }
-
-        let materialized = rebase.materialize_without_checkout()?;
-        let tree_index = repo.index_from_tree(&repo.head_tree_id()?)?;
-        let mut disk_index = repo.index()?.into_owned_or_cloned();
-        but_workspace::commit_engine::index::sync_index_to_tree(
-            repo.workdir().expect("non-bare"),
-            &tree_index,
-            &mut disk_index,
-        )?;
-        disk_index.write(Default::default())?;
-        Self::from_workspace(
-            materialized.workspace,
-            repo,
-            materialized.history.commit_mappings(),
-        )
-    }
-
     /// Build a [`WorkspaceState`] from a successful rebase, materializing it when needed.
     ///
     /// Use this as the default entry point when an operation ends with a

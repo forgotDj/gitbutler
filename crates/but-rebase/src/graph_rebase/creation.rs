@@ -289,7 +289,13 @@ impl<'ws, 'meta, M: RefMetadata> Editor<'ws, 'meta, M> {
             initial_references: references,
             // TODO(CTO): We need to eventually list all worktrees that we own
             // here so we can `safe_checkout` them too.
-            checkouts: head_selectors.into_iter().map(Checkout::Head).collect(),
+            checkouts: head_selectors
+                .into_iter()
+                .map(|selector| Checkout::Head {
+                    selector,
+                    merge_base_override: None,
+                })
+                .collect(),
             repo: repo.clone().with_object_memory(),
             history: RevisionHistory::new(),
             workspace,

@@ -13,7 +13,7 @@ pub enum UncommitedWorktreeChanges {
 }
 
 /// Options for use in [super::safe_checkout()].
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Options {
     /// How to deal with uncommitted changes.
     pub uncommitted_changes: UncommitedWorktreeChanges,
@@ -21,6 +21,13 @@ pub struct Options {
     ///
     /// This is typically to be avoided, but may be used if you want to change the HEAD location yourself.
     pub skip_head_update: bool,
+    /// If set, use this tree instead of `HEAD^{tree}` as the merge base when
+    /// resolving the worktree snapshot against the new HEAD.
+    ///
+    /// Set this to `HEAD^{tree}` + consumed changes (additive-only) after a
+    /// commit/amend so the consumed hunks cancel in the 3-way merge and don't
+    /// reappear as uncommitted changes.
+    pub merge_base_override: Option<gix::ObjectId>,
 }
 
 /// The successful outcome of [super::safe_checkout()] operation.

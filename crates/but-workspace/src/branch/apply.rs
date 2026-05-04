@@ -240,6 +240,7 @@ pub fn apply<'ws>(
             but_core::worktree::checkout::Options {
                 uncommitted_changes,
                 skip_head_update: false,
+                ..Default::default()
             },
         )?;
         let ws = ws
@@ -659,6 +660,7 @@ pub fn apply<'ws>(
         but_core::worktree::checkout::Options {
             uncommitted_changes,
             skip_head_update: true,
+            ..Default::default()
         },
     )?;
     persist_metadata_and_gitconfig(
