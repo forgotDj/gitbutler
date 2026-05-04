@@ -1271,11 +1271,9 @@ fn dlib_rs_auto_fix() -> anyhow::Result<()> {
     // it doesn't fail anymore.
     insta::assert_snapshot!(but_testsupport::graph_workspace_determinisitcally(&graph.into_workspace()?), @"
     📕🏘️:0:gitbutler/workspace <> ✓refs/remotes/origin/main on 3183e43
-    ├── ≡📙:5:main[🌳] <> origin/main →:1: on 3183e43 {1}
-    │   └── 📙:5:main[🌳] <> origin/main →:1:
-    │       └── ❄️bce0c5e (🏘️|✓)
-    └── ≡📙:4:confidence on 3183e43
-        └── 📙:4:confidence
+    └── ≡📙:5:main[🌳] <> origin/main →:1: on 3183e43 {1}
+        └── 📙:5:main[🌳] <> origin/main →:1:
+            └── ❄️bce0c5e (🏘️|✓)
     ");
 
     let path = store.path().to_owned();
@@ -1309,9 +1307,7 @@ fn dlib_rs_auto_fix() -> anyhow::Result<()> {
     )?;
     insta::assert_snapshot!(but_testsupport::graph_workspace_determinisitcally(&graph.into_workspace()?), @"
     📕🏘️:0:gitbutler/workspace <> ✓refs/remotes/origin/main on 3183e43
-    ├── ≡📙:4:confidence on 3183e43 {1}
-    │   └── 📙:4:confidence
-    └── ≡📙:2:main[🌳] <> origin/main →:1: on 3183e43
+    └── ≡📙:2:main[🌳] <> origin/main →:1: on 3183e43 {1}
         └── 📙:2:main[🌳] <> origin/main →:1:
             └── ❄️bce0c5e (🏘️|✓)
     ");
@@ -1342,22 +1338,8 @@ fn dlib_rs_auto_fix() -> anyhow::Result<()> {
                     ref_name: "refs/heads/main",
                     archived: false,
                 },
-                WorkspaceStackBranch {
-                    ref_name: "refs/heads/confidence",
-                    archived: false,
-                },
             ],
             workspacecommit_relation: Outside,
-        },
-        WorkspaceStack {
-            id: 3,
-            branches: [
-                WorkspaceStackBranch {
-                    ref_name: "refs/heads/confidence",
-                    archived: false,
-                },
-            ],
-            workspacecommit_relation: Merged,
         },
     ]
     "#);

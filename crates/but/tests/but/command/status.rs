@@ -597,6 +597,205 @@ fn status_upstream_merge_status_integrated() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Like `status_upstream_merge_status_integrated`, but the fixture adds two
+/// extra branches (`extra-untracked`, `extra-untracked-2`) that point at `base`
+/// and are NOT registered in workspace metadata.
+///
+/// Setup (fixture `upstream-integrated-with-extra-branch`):
+/// - Branches `A` and `B` each have one commit on top of `base`.
+/// - `origin/main` has advanced past `base` with a cherry-pick of A plus
+///   a `main-advance` commit.
+/// - `extra-untracked` and `extra-untracked-2` point at `base` with no
+///   commits of their own.
+/// - Only `A` and `B` are registered in `setup_metadata`.
+///
+/// Expected: both extra branches are pruned entirely.
+#[test]
+fn status_upstream_prunes_untracked_integrated_branch() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings_slow(
+        "upstream-integrated-with-extra-branch",
+    )?;
+    // Only register A and B — `extra-untracked` is deliberately omitted.
+    env.setup_metadata(&["A", "B"])?;
+
+    env.but("status --upstream")
+        .env("NO_BG_TASKS", "1")
+        .assert()
+        .success()
+        .stderr_eq(snapbox::str![])
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [unassigned changes] (no changes)
+┊
+┊╭┄g0 [A] [⬆ integrated upstream]
+┊●   756ee31 A-change
+├╯
+┊
+┊╭┄h0 [B] [✓ upstream merges cleanly]
+┊●   536958e B-change
+├╯
+┊
+┊╭┄(upstream) ⏫ 2 new commits
+┊● 9354ac4 main-advance
+┊● 756ee31 A-change
+┊┊
+├╯ efc9211 [origin/main] 2000-01-02 base
+
+Hint: run `but help` for all commands
+
+"#]]);
+
+    Ok(())
+}
+
+/// Same fixture as `status_upstream_prunes_untracked_integrated_branch`, but
+/// `extra-untracked` is now registered in `setup_metadata` (simulating
+/// auto-discovery), while `extra-untracked-2` remains unregistered.
+///
+/// Expected: `extra-untracked` is kept (metadata-tracked), `extra-untracked-2`
+/// is pruned (not tracked).
+#[test]
+fn status_upstream_prunes_metadata_tracked_integrated_branches() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings_slow(
+        "upstream-integrated-with-extra-branch",
+    )?;
+    // Register A, B, and extra-untracked (simulating auto-discovery).
+    // extra-untracked-2 remains unregistered.
+    env.setup_metadata(&["A", "B", "extra-untracked"])?;
+
+    env.but("status --upstream")
+        .env("NO_BG_TASKS", "1")
+        .assert()
+        .success()
+        .stderr_eq(snapbox::str![])
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [unassigned changes] (no changes)
+┊
+┊╭┄g0 [A] [⬆ integrated upstream]
+┊●   756ee31 A-change
+├╯
+┊
+┊╭┄h0 [B] [✓ upstream merges cleanly]
+┊●   536958e B-change
+├╯
+┊
+┊╭┄ex [extra-untracked] ○ empty (no commits)
+├╯
+┊
+┊╭┄(upstream) ⏫ 2 new commits
+┊● 9354ac4 main-advance
+┊● 756ee31 A-change
+┊┊
+├╯ efc9211 [origin/main] 2000-01-02 base
+
+Hint: run `but help` for all commands
+
+"#]]);
+
+    Ok(())
+}
+
+/// Two branches with different merge bases against the target.
+///
+/// Setup (fixture `upstream-different-bases`):
+/// - `A` forks from `base` with one commit.
+/// - `origin/main` has two commits on top of `base`: `M1` and `M2`.
+/// - `B` forks from `M2` (the current `origin/main` tip) with one commit.
+///
+/// The graph walk starts from the lowest common base (`base`), so B's stack
+/// includes `M1` and `M2`. Since both stacks are metadata-tracked they are
+/// not pruned — `M1` and `M2` appear in B's stack as integrated commits,
+/// to be cleaned up by `integrate_upstream`.
+#[test]
+fn status_upstream_prunes_with_different_bases() -> anyhow::Result<()> {
+    let env =
+        Sandbox::init_scenario_with_target_and_default_settings_slow("upstream-different-bases")?;
+    env.setup_metadata(&["A", "B"])?;
+
+    env.but("status --upstream")
+        .env("NO_BG_TASKS", "1")
+        .assert()
+        .success()
+        .stderr_eq(snapbox::str![])
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [unassigned changes] (no changes)
+┊
+┊╭┄g0 [A] [✓ upstream merges cleanly]
+┊●   756ee31 A-change
+├╯
+┊
+┊╭┄h0 [B] [✓ upstream merges cleanly]
+┊●   594a02c B-change
+┊│
+┊├┄ma [main] [⬆ integrated upstream]
+┊●   ba5149e M2
+┊●   6daac93 M1
+├╯
+┊
+┊╭┄(upstream) ⏫ 2 new commits
+┊● ba5149e M2
+┊● 6daac93 M1
+┊┊
+├╯ efc9211 [origin/main] 2000-01-02 base
+
+Hint: run `but help` for all commands
+
+"#]]);
+
+    Ok(())
+}
+
+/// Simulate a `git fetch` that advances `origin/main` after the workspace
+/// commit was created.
+///
+/// Setup (fixture `upstream-advanced-after-workspace`):
+/// - `A` and `B` each have one commit on top of `base`.
+/// - The workspace commit was created when `origin/main` pointed at `base`.
+/// - A fetch then advances `origin/main` by two commits (`first-advance`,
+///   `second-advance`) that are *not* ancestors of the workspace commit.
+/// - `old-integrated` points at `first-advance` and is added to A's stack
+///   metadata (simulating auto-discovery).
+///
+/// Expected: `old-integrated` must NOT appear in any workspace stack, because
+/// its tip is only reachable from the new target (post-fetch), not from the
+/// workspace commit.
+#[test]
+fn status_upstream_advanced_target_does_not_leak_branches() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings_slow(
+        "upstream-advanced-after-workspace",
+    )?;
+    env.setup_metadata(&["A", "B"])?;
+
+    // Add old-integrated to A's stack in metadata, simulating auto-discovery
+    // before the branch was integrated upstream.
+    {
+        use but_core::RefMetadata;
+        use std::ops::DerefMut;
+        let mut meta = env.meta()?;
+        let ws_ref: &gix::refs::FullNameRef = but_core::WORKSPACE_REF_NAME.try_into()?;
+        let mut ws = meta.workspace(ws_ref)?;
+        ws.deref_mut()
+            .insert_new_segment_above_anchor_if_not_present(
+                "refs/heads/old-integrated".try_into()?,
+                "refs/heads/A".try_into()?,
+            );
+        meta.set_workspace(&ws)?;
+    }
+
+    let output = env
+        .but("status --upstream")
+        .env("NO_BG_TASKS", "1")
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // old-integrated must NOT appear in any workspace stack
+    assert!(
+        !stdout.contains("old-integrated"),
+        "old-integrated should not appear in workspace stacks, but got:\n{stdout}"
+    );
+
+    Ok(())
+}
+
 #[test]
 fn status_upstream_merge_status_conflicted() -> anyhow::Result<()> {
     let env = Sandbox::init_scenario_with_target_and_default_settings("upstream-conflicted")?;

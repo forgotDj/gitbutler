@@ -362,6 +362,7 @@ impl Graph {
         };
 
         ws.prune_archived_segments();
+        ws.prune_integrated_segments(self);
         ws.mark_remote_reachability(self)?;
         ws.add_commits_on_remote(self);
         ws.truncate_single_stack_to_match_base();
@@ -754,6 +755,30 @@ impl WorkspaceState {
         }
     }
 
+    /// Truncate each stack to only show commits above its fork point with the
+    /// target, then remove empty branches and stacks.
+    ///
+    /// The fork point is the first commit on the first-parent chain (walked via
+    /// the graph's `CommitFlags::Integrated`) that is reachable from the target.
+    ///
+    /// Stacks explicitly tracked in workspace metadata are never pruned —
+    /// their integrated branches and commits must remain visible so that
+    /// `integrate_upstream` can detect and remove them.
+    fn prune_integrated_segments(&mut self, graph: &Graph) {
+        if self.extra_target.is_some() || self.target_ref.is_none() {
+            return;
+        }
+        let metadata = self.metadata.as_ref();
+        for stack in &mut self.stacks {
+            if is_metadata_tracked(stack, metadata) {
+                continue;
+            }
+            truncate_at_fork_point(stack, graph);
+            remove_empty_branches(stack, metadata);
+        }
+        self.stacks.retain(|stack| !stack.segments.is_empty());
+    }
+
     /// Trace the remotes of each segments down to their segment or other segments and set the commit flags accordingly
     /// to indicate if a commit in the workspace is reachable, and how.
     fn mark_remote_reachability(&mut self, graph: &Graph) -> anyhow::Result<()> {
@@ -940,4 +965,66 @@ impl WorkspaceState {
         first_segment.commits.clear();
         first_segment.commits_by_segment.clear();
     }
+}
+
+/// Truncate the stack at the fork point: the first commit whose graph-level
+/// `CommitFlags::Integrated` flag is set, walking top-down through each
+/// segment's `commits_by_segment` entries.
+///
+/// If the very first commit is already integrated, the entire stack is
+/// integrated and we leave it untouched — pruning is only for partially
+/// integrated stacks where the bottom portion has been merged upstream.
+fn truncate_at_fork_point(stack: &mut Stack, graph: &Graph) {
+    let mut is_first = true;
+    for seg_idx in 0..stack.segments.len() {
+        let seg = &stack.segments[seg_idx];
+        for &(graph_sidx, ofs) in &seg.commits_by_segment {
+            for (i, commit) in graph[graph_sidx].commits.iter().enumerate() {
+                if commit.flags.contains(CommitFlags::Integrated) {
+                    if is_first {
+                        // Fully integrated — leave the stack as-is.
+                        return;
+                    }
+                    let cut = ofs + i;
+                    stack.segments[seg_idx].commits.truncate(cut);
+                    stack.segments[seg_idx]
+                        .commits_by_segment
+                        .retain(|(_, o)| *o < cut);
+                    // Clear commits in all segments below the cutoff, but keep
+                    // the segments themselves so that `remove_empty_branches`
+                    // can decide whether to retain metadata-tracked branches.
+                    for seg in &mut stack.segments[seg_idx + 1..] {
+                        seg.commits.clear();
+                        seg.commits_by_segment.clear();
+                    }
+                    return;
+                }
+                is_first = false;
+            }
+        }
+    }
+}
+
+/// Returns `true` if the stack is explicitly tracked in workspace metadata.
+fn is_metadata_tracked(
+    stack: &Stack,
+    metadata: Option<&but_core::ref_metadata::Workspace>,
+) -> bool {
+    stack.id.is_some_and(|stack_id| {
+        metadata.is_some_and(|meta| meta.stacks(Applied).any(|ms| ms.id == stack_id))
+    })
+}
+
+fn remove_empty_branches(stack: &mut Stack, metadata: Option<&but_core::ref_metadata::Workspace>) {
+    let own_metadata_stack = stack.id.and_then(|stack_id| {
+        metadata.and_then(|meta| meta.stacks(Applied).find(|ms| ms.id == stack_id))
+    });
+    stack.segments.retain(|seg| {
+        !seg.commits.is_empty()
+            || own_metadata_stack.is_some_and(|ms| {
+                seg.ref_info
+                    .as_ref()
+                    .is_some_and(|ri| ms.branches.iter().any(|b| b.ref_name == ri.ref_name))
+            })
+    });
 }
