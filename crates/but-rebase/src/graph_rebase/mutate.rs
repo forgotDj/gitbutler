@@ -248,10 +248,7 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
             if let Step::Pick(Pick { id, .. }) = self.graph[node_idx]
                 && id == target
             {
-                return Some(Selector {
-                    id: node_idx,
-                    revision: self.history.current_revision(),
-                });
+                return Some(self.new_selector(node_idx));
             }
         }
 
@@ -264,10 +261,7 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
             if let Step::Reference { refname } = &self.graph[node_idx]
                 && target == refname.as_ref()
             {
-                return Some(Selector {
-                    id: node_idx,
-                    revision: self.history.current_revision(),
-                });
+                return Some(self.new_selector(node_idx));
             }
         }
 
@@ -282,15 +276,7 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
         Ok(self
             .graph
             .edges_directed(target.id, Direction::Incoming)
-            .map(|edge| {
-                (
-                    Selector {
-                        id: edge.source(),
-                        revision: self.history.current_revision(),
-                    },
-                    edge.weight().order,
-                )
-            })
+            .map(|edge| (self.new_selector(edge.source()), edge.weight().order))
             .collect())
     }
 
@@ -302,16 +288,39 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
         Ok(self
             .graph
             .edges_directed(target.id, Direction::Outgoing)
-            .map(|edge| {
-                (
-                    Selector {
-                        id: edge.target(),
-                        revision: self.history.current_revision(),
-                    },
-                    edge.weight().order,
-                )
-            })
+            .map(|edge| (self.new_selector(edge.target()), edge.weight().order))
             .collect())
+    }
+
+    /// For a given step, find all the references that point to it.
+    ///
+    /// The reference selectors are provided in no particular order.
+    pub fn step_references(&self, target: impl ToSelector) -> Result<Vec<Selector>> {
+        let target = self.history.normalize_selector(target.to_selector(self)?)?;
+
+        let mut references = vec![];
+        let mut seen = HashSet::new();
+        let mut tips = vec![target.id];
+
+        while let Some(tip) = tips.pop() {
+            for edge in self.graph.edges_directed(tip, Direction::Incoming) {
+                let child = edge.source();
+                if !seen.insert(child) {
+                    continue;
+                }
+
+                match &self.graph[child] {
+                    Step::None => tips.push(child),
+                    Step::Reference { .. } => {
+                        references.push(self.new_selector(child));
+                        tips.push(child);
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        Ok(references)
     }
 
     /// Replaces the node that the function was pointing to.
@@ -716,10 +725,7 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
                     self.graph.add_edge(edge_source, new_idx, edge_weight);
                 }
 
-                Ok(Selector {
-                    id: new_idx,
-                    revision: self.history.current_revision(),
-                })
+                Ok(self.new_selector(new_idx))
             }
             InsertSide::Below => {
                 let edges = self
@@ -736,10 +742,7 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
                     self.graph.add_edge(new_idx, edge_target, edge_weight);
                 }
 
-                Ok(Selector {
-                    id: new_idx,
-                    revision: self.history.current_revision(),
-                })
+                Ok(self.new_selector(new_idx))
             }
         }
     }

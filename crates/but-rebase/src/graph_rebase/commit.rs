@@ -74,13 +74,7 @@ impl<M: RefMetadata> Editor<'_, '_, M> {
             bail!("BUG: collect_ordered_parents provided a non-pick return value");
         };
 
-        Ok((
-            Selector {
-                id: *first_parent,
-                revision: self.history.current_revision(),
-            },
-            self.find_commit(pick.id)?,
-        ))
+        Ok((self.new_selector(*first_parent), self.find_commit(pick.id)?))
     }
 
     /// Writes a commit with correct signing to the in memory repository,

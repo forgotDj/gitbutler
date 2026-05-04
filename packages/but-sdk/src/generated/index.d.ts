@@ -317,6 +317,18 @@ export declare function updateReviewFooters(projectId: string, reviews: Array<Fo
  * part of any applied stack.
  */
 export declare function warmCiChecksCache(projectId: string): Promise<void>
+
+/**
+ * Integrate upstream changes into the current workspace and record an oplog
+ * snapshot on success.
+ *
+ * This acquires exclusive worktree access from `ctx`, applies the requested
+ * upstream updates, and commits a best-effort `MergeUpstream` oplog snapshot
+ * when the integration succeeds. When `dry_run` is enabled, the returned
+ * workspace previews the integration and no oplog entry is persisted. See
+ * [`workspace_integrate_upstream_with_perm()`] for lower-level details.
+ */
+export declare function workspaceIntegrateUpstream(projectId: string, updates: Array<BottomUpdate>, dryRun: boolean): Promise<WorkspaceState>
 export declare class WatcherHandle {
   /** Stop the underlying watcher if it is still active. */
   stop(): boolean
@@ -478,6 +490,17 @@ export type BaseBranchResolutionApproach = {
 } | {
   type: "hardReset";
 };
+
+/** JSON transport type describing one stack bottom to update. */
+export type BottomUpdate = {
+  /** How the selected stack bottom should be updated. */
+  kind: BottomUpdateKind;
+  /** The bottom-most commit or empty bottom reference to update. */
+  selector: RelativeTo;
+};
+
+/** JSON transport type for how a stack bottom should be updated. */
+export type BottomUpdateKind = "rebase" | "merge";
 
 /** Metadata about branches, associated with any Git branch. */
 export type Branch = {
