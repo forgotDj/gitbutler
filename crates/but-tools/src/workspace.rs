@@ -12,7 +12,10 @@ use but_core::{
 };
 use but_ctx::Context;
 use but_rebase::graph_rebase::{Editor, LookupStep as _};
-use but_workspace::legacy::{CommmitSplitOutcome, ui::StackEntryNoOpt};
+use but_workspace::{
+    commit::{SquashCommitsOutcome, squash_commits::MessageCombinationStrategy},
+    legacy::{CommmitSplitOutcome, ui::StackEntryNoOpt},
+};
 use gitbutler_branch_actions::{BranchManagerExt, update_workspace_commit};
 use gitbutler_oplog::{
     OplogExt, SnapshotExt,
@@ -963,6 +966,7 @@ pub fn squash_commits(
     params: SquashCommitsParameters,
     commit_mapping: &mut HashMap<gix::ObjectId, gix::ObjectId>,
 ) -> Result<gix::ObjectId, anyhow::Error> {
+    let stack_id = StackId::from_str(&params.stack_id)?;
     let destination_id = gix::ObjectId::from_str(&params.destination_commit_id)
         .map(|id| find_the_right_commit_id(id, commit_mapping))?;
     let source_ids = params
@@ -973,36 +977,89 @@ pub fn squash_commits(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let stack_id = StackId::from_str(&params.stack_id)?;
+    if source_ids.is_empty() {
+        bail!("No commits were provided to squash");
+    }
 
-    let message = format!(
-        "{}\n\n{}",
-        params.message_title.trim(),
-        params.message_body.trim()
-    );
+    let commit_ids = {
+        let meta = ctx.meta()?;
+        let repo = &*ctx.repo.get()?;
+        #[expect(
+            deprecated,
+            reason = "validates legacy stack-id tool input before using the new squash engine"
+        )]
+        let details = but_workspace::legacy::stack_details_v3(Some(stack_id), repo, &meta)?;
+        details
+            .branch_details
+            .iter()
+            .flat_map(|branch| branch.commits.iter().map(|commit| commit.id))
+            .collect::<HashSet<_>>()
+    };
 
-    let squashed_commit =
-        gitbutler_branch_actions::squash_commits(ctx, stack_id, source_ids, destination_id)?;
+    for commit_id in source_ids.iter().chain(std::iter::once(&destination_id)) {
+        if !commit_ids.contains(commit_id) {
+            bail!("commit {commit_id} not in stack {stack_id:?}");
+        }
+    }
 
-    if message.is_empty() {
+    let message_title = params.message_title.trim();
+    let message_body = params.message_body.trim();
+
+    if message_title.is_empty() && message_body.is_empty() {
         bail!("commit message can not be empty");
     }
 
-    let mut guard = ctx.exclusive_worktree_access();
-    let mut meta = ctx.meta()?;
-    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(guard.write_permission())?;
-    let editor = Editor::create(&mut ws, &mut meta, &repo)?;
-    let (rebase, edited_commit_selector) =
-        but_workspace::commit::reword(editor, squashed_commit, message.as_bytes().as_bstr())?;
-    let new_commit_id = rebase.lookup_pick(edited_commit_selector)?;
-    let materialized = rebase.materialize()?;
+    let message = format!("{message_title}\n\n{message_body}");
 
-    for (old_commit_id, new_commit_id) in materialized.history.commit_mappings() {
+    let mut guard = ctx.exclusive_worktree_access();
+    let perm = guard.write_permission();
+
+    let snapshot = ctx.create_snapshot(
+        SnapshotDetails::new(OperationKind::SquashCommit).with_count(source_ids.len()),
+        perm,
+    )?;
+    let squash_result = (|| {
+        let mut meta = ctx.meta()?;
+        let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
+        let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+        let SquashCommitsOutcome {
+            rebase,
+            commit_selector,
+        } = but_workspace::commit::squash_commits(
+            editor,
+            source_ids,
+            destination_id,
+            MessageCombinationStrategy::KeepBoth,
+        )?;
+        let squashed_commit = rebase.lookup_pick(commit_selector)?;
+        let materialized = rebase.materialize()?;
+        let mut replaced_commits = materialized.history.commit_mappings();
+
+        let mut meta = ctx.meta()?;
+        let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
+        let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+        let (rebase, edited_commit_selector) =
+            but_workspace::commit::reword(editor, squashed_commit, message.as_bytes().as_bstr())?;
+        let new_commit_id = rebase.lookup_pick(edited_commit_selector)?;
+        let materialized = rebase.materialize()?;
+
+        replaced_commits.extend(materialized.history.commit_mappings());
+        // Keep the original destination commit id pointing at the final squashed + reworded commit.
+        replaced_commits.insert(destination_id, new_commit_id);
+
+        Ok::<_, anyhow::Error>((new_commit_id, replaced_commits))
+    })();
+    let (new_commit_id, replaced_commits) = match squash_result {
+        Ok(outcome) => outcome,
+        Err(err) => {
+            ctx.restore_snapshot(snapshot, perm)?;
+            return Err(err);
+        }
+    };
+
+    for (old_commit_id, new_commit_id) in replaced_commits {
         commit_mapping.insert(old_commit_id, new_commit_id);
     }
-
-    // Keep the original destination commit id pointing at the final squashed + reworded commit.
-    commit_mapping.insert(destination_id, new_commit_id);
 
     Ok(new_commit_id)
 }
