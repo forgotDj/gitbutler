@@ -4,14 +4,13 @@
 	import SettingsSection from "$components/shared/SettingsSection.svelte";
 	import { projectAiExperimentalFeaturesEnabled, projectAiGenEnabled } from "$lib/config/config";
 	import { useSettingsModal } from "$lib/settings/settingsModal.svelte";
-	import { USER_SERVICE } from "$lib/user/userService";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { Button, CardGroup, Spacer, Toggle } from "@gitbutler/ui";
 
 	const { projectId }: { projectId: string } = $props();
 
 	const userService = inject(USER_SERVICE);
-	const user = userService.user;
 	const { openGeneralSettings } = useSettingsModal();
 
 	const aiGenEnabled = $derived(projectAiGenEnabled(projectId));
@@ -27,7 +26,7 @@
 
 	<Spacer />
 
-	{#if !$user}
+	{#if !userService.user}
 		<AccessTokenSignIn />
 		<Spacer />
 	{/if}

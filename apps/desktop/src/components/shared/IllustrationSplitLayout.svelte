@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ProfileButton from "$components/shared/ProfileButton.svelte";
-	import { USER } from "$lib/user/user";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { type Snippet } from "svelte";
 
@@ -13,7 +13,7 @@
 
 	const { hideDetails, img, children, testId }: Props = $props();
 
-	const user = inject(USER);
+	const userService = inject(USER_SERVICE);
 </script>
 
 <div class="decorative-split-view" data-testid={testId}>
@@ -27,7 +27,7 @@
 
 	<div class="right-side" data-tauri-drag-region>
 		<div class="right-side-wrapper">
-			{#if user && !hideDetails}
+			{#if userService.user && !hideDetails}
 				<div class="account-button">
 					<ProfileButton />
 				</div>

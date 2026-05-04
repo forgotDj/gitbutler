@@ -6,14 +6,13 @@
 	import GeneralSettingsModalContent from "$components/settings/GeneralSettingsModalContent.svelte";
 	import ProjectSettingsModalContent from "$components/settings/ProjectSettingsModalContent.svelte";
 	import { type GlobalModalState, UI_STATE } from "$lib/state/uiState.svelte";
-	import { USER_SERVICE } from "$lib/user/userService";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { Modal, TestId } from "@gitbutler/ui";
 	import type { ModalProps } from "@gitbutler/ui";
 
 	const uiState = inject(UI_STATE);
 	const userService = inject(USER_SERVICE);
-	const incomingUserLogin = $derived(userService.incomingUserLogin);
 
 	type ModalData = {
 		state: GlobalModalState;
@@ -112,7 +111,7 @@
 		// we should reject the incoming user to maintain state consistency.
 		// We check if there's still an incoming user to avoid calling reject after accept/reject buttons.
 		if (modalProps?.state.type === "login-confirmation") {
-			if ($incomingUserLogin) {
+			if (userService.incomingUserLogin) {
 				userService.rejectIncomingUser();
 			}
 		}

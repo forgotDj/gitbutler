@@ -1,7 +1,6 @@
 import { GIT_CONFIG_SERVICE } from "$lib/config/gitConfigService";
-import { USER_SERVICE } from "$lib/user/userService";
+import { USER_SERVICE } from "$lib/user/userService.svelte";
 import { inject } from "@gitbutler/core/context";
-import { get } from "svelte/store";
 
 /**
  * Returns the current user's profile picture if the given email belongs to them,
@@ -22,7 +21,7 @@ export function useUserAvatarUrl(): (email: string | null | undefined) => string
 
 	return (email: string | null | undefined): string | undefined => {
 		if (!email) return undefined;
-		const user = get(userService.user);
+		const user = userService.user;
 		if (!user?.picture) return undefined;
 		const lower = email.toLowerCase();
 		if (lower === user.email?.toLowerCase() || lower === gitConfigEmail?.toLowerCase()) {

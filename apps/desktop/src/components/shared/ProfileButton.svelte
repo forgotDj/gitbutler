@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { useSettingsModal } from "$lib/settings/settingsModal.svelte";
-	import { USER } from "$lib/user/user";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { ProfileButton } from "@gitbutler/ui";
 
-	const user = inject(USER);
+	const userService = inject(USER_SERVICE);
 	const { openGeneralSettings } = useSettingsModal();
 </script>
 
-<ProfileButton srcUrl={$user?.picture ?? null} onclick={async () => openGeneralSettings()} />
+<ProfileButton
+	srcUrl={userService.user?.picture ?? null}
+	onclick={async () => openGeneralSettings()}
+/>

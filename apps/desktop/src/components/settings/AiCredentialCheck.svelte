@@ -1,14 +1,13 @@
 <script lang="ts">
 	import { AI_SERVICE, type DiffInput } from "$lib/ai/service";
 	import { ModelKind } from "$lib/ai/types";
-	import { USER_SERVICE } from "$lib/user/userService";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { Button, InfoMessage, Link } from "@gitbutler/ui";
 	import { slide } from "svelte/transition";
 
 	const aiService = inject(AI_SERVICE);
 	const userService = inject(USER_SERVICE);
-	const user = userService.user;
 
 	let testing = $state(false);
 	let isStreaming = $state(false);
@@ -74,7 +73,7 @@
 
 			if (!isConfigValid) {
 				if (modelKind === ModelKind.OpenAI || modelKind === ModelKind.Anthropic) {
-					if (isUsingButlerAPI && !$user) {
+					if (isUsingButlerAPI && !userService.user) {
 						throw new Error("Please sign in to use GitButler's AI API");
 					} else {
 						throw new Error("Please provide a valid API key for your selected AI service");
@@ -208,7 +207,7 @@
 				{#snippet content()}
 					<div class="result-content" transition:slide={{ duration: 250 }}>
 						{#if error}
-							{#if (modelKind === ModelKind.OpenAI || modelKind === ModelKind.Anthropic) && isUsingButlerAPI && !$user}
+							{#if (modelKind === ModelKind.OpenAI || modelKind === ModelKind.Anthropic) && isUsingButlerAPI && !userService.user}
 								<span> Please sign in to use GitButler's AI API. </span>
 							{:else if modelKind === ModelKind.OpenAI || modelKind === ModelKind.Anthropic}
 								<span> Please check your API key or try GitButler's API. </span>

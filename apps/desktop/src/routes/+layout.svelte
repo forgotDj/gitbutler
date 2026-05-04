@@ -27,7 +27,7 @@
 	import { SHORTCUT_SERVICE } from "$lib/shortcuts/shortcutService";
 	import { CLIENT_STATE } from "$lib/state/clientState.svelte";
 	import { POSTHOG_WRAPPER } from "$lib/telemetry/posthog";
-	import { USER_SERVICE } from "$lib/user/userService";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { ChipToastContainer } from "@gitbutler/ui";
 	import { FOCUS_MANAGER } from "@gitbutler/ui/focus/focusManager";

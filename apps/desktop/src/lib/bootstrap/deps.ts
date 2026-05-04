@@ -67,8 +67,7 @@ import {
 	UPSTREAM_INTEGRATION_SERVICE,
 } from "$lib/upstream/upstreamIntegrationService.svelte";
 import { TokenMemoryService } from "$lib/user/tokenMemoryService";
-import { USER } from "$lib/user/user";
-import { USER_SERVICE, UserService } from "$lib/user/userService";
+import { USER_SERVICE, UserService } from "$lib/user/userService.svelte";
 import { WorktreeService, WORKTREE_SERVICE } from "$lib/worktree/worktreeService.svelte";
 import { provideAll } from "@gitbutler/core/context";
 import { FeedService, FEED_SERVICE } from "@gitbutler/shared/feeds/service";
@@ -161,7 +160,14 @@ export function initDependencies(args: {
 	const aiPromptService = new AIPromptService();
 	const aiService = new AIService(gitConfig, secretsService, httpClient, tokenMemoryService);
 	const claudeCodeService = new ClaudeCodeService(backend, clientState.backendApi);
-	const userService = new UserService(backend, httpClient, tokenMemoryService, posthog, uiState);
+	const userService = new UserService(
+		clientState.backendApi,
+		backend,
+		httpClient,
+		tokenMemoryService,
+		posthog,
+		uiState,
+	);
 	const ircApiService = new IrcApiService(clientState.backendApi);
 	const attachmentService = new AttachmentService(clientState);
 
@@ -381,7 +387,6 @@ export function initDependencies(args: {
 		[UPLOADS_SERVICE, uploadsService],
 		[UPSTREAM_INTEGRATION_SERVICE, upstreamIntegrationService],
 		[URL_SERVICE, urlService],
-		[USER, userService.user],
 		[USER_SERVICE, userService],
 		[WORKTREE_SERVICE, worktreeService],
 		[EXTERNAL_LINK_SERVICE, externalLinkService],

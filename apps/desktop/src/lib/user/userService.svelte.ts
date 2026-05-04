@@ -4,74 +4,52 @@ import { type UiState } from "$lib/state/uiState.svelte";
 import { InjectionToken } from "@gitbutler/core/context";
 import { type HttpClient } from "@gitbutler/shared/network/httpClient";
 import { chipToasts } from "@gitbutler/ui";
-import { derived, writable, type Readable } from "svelte/store";
 import type { IBackend } from "$lib/backend";
+import type { BackendApi } from "$lib/state/backendApi";
 import type { PostHogWrapper } from "$lib/telemetry/posthog";
 import type { TokenMemoryService } from "$lib/user/tokenMemoryService";
 import type { User } from "$lib/user/user";
 import type { ApiUser } from "@gitbutler/shared/users/types";
 
-export type LoginToken = {
-	/** Used for polling the user; should NEVER be sent to the browser. */
-	token: string;
-	browser_token: string;
-	expires: string;
-	url: string;
-};
-
 export const USER_SERVICE = new InjectionToken<UserService>("UserService");
 
 export class UserService {
-	readonly loading = writable(false);
+	private _incomingUserLogin = $state<User | undefined>(undefined);
+	private userQuery;
 
-	readonly user = writable<User | undefined>(undefined, () => {
-		this.refresh();
-	});
-	readonly userLogin = derived<Readable<User | undefined>, string | undefined>(
-		this.user,
-		(user, set) => {
-			set(user?.login ?? undefined);
-		},
-	);
-	readonly error = writable();
-	readonly incomingUserLogin = writable<User | undefined>(undefined);
+	get user(): User | undefined {
+		return this.userQuery.response;
+	}
 
-	async refresh() {
-		const user = await this.backend.invoke<User | undefined>("get_user");
-		if (user) {
-			this.tokenMemoryService.setToken(user.access_token);
-			// Telemetry is alreary set when the user is set.
-			// Just in case the user ID changes in the backend outside the usual cycle, we set it again here.
-			await this.setUserTelemetry(user);
-			this.user.set(user);
-			return user;
-		}
-
-		this.posthog.setAnonymousPostHogUser();
-		this.user.set(undefined);
+	get incomingUserLogin(): User | undefined {
+		return this._incomingUserLogin;
 	}
 
 	constructor(
+		private backendApi: BackendApi,
 		private backend: IBackend,
 		private httpClient: HttpClient,
 		private tokenMemoryService: TokenMemoryService,
 		private posthog: PostHogWrapper,
 		private uiState: UiState,
-	) {}
+	) {
+		this.userQuery = this.backendApi.endpoints.getUser.useQuery(undefined);
+
+		$effect(() => {
+			if (this.userQuery.result.isSuccess && !this.userQuery.response) {
+				this.posthog.setAnonymousPostHogUser();
+			}
+		});
+	}
 
 	async setUser(user: User | undefined) {
 		if (user) {
-			await this.backend.invoke("set_user", { user });
+			await this.backendApi.endpoints.setUser.mutate({ user });
 			this.tokenMemoryService.setToken(user.access_token);
 			await this.setUserTelemetry(user);
 		} else {
-			await this.clearUser();
+			await this.backendApi.endpoints.deleteUser.mutate(undefined);
 		}
-		this.user.set(user);
-	}
-
-	private async clearUser() {
-		await this.backend.invoke("delete_user");
 	}
 
 	private async setUserTelemetry(user: User) {
@@ -81,9 +59,10 @@ export class UserService {
 
 	async setUserAccessToken(token: string, bypassConfirmationToast = false) {
 		try {
-			const currentUser = await this.refresh();
+			const currentUser = await this.backendApi.endpoints.getUser.fetch(undefined, {
+				forceRefetch: true,
+			});
 			if (currentUser) {
-				// Error out if we're trying to set a token when we've already logged in.
 				showError(
 					"Error: Attempting to log in before logging out first",
 					"There's already an account logged in, please log out before attempting to log in to another account.",
@@ -91,15 +70,14 @@ export class UserService {
 				return;
 			}
 
-			const user = await this.backend.invoke<User>("login_with_token", { token });
+			const user = await this.backendApi.endpoints.loginWithToken.mutate({ token });
 
 			if (bypassConfirmationToast) {
-				// In the case that the token is e.g. pasted directly, we don't need a confirmation toast.
 				await this.setUser(user);
 				return;
 			}
 
-			this.incomingUserLogin.set(user);
+			this._incomingUserLogin = user;
 			// Display a login confirmation modal
 			this.uiState.global.modal.set({
 				type: "login-confirmation",
@@ -115,16 +93,15 @@ export class UserService {
 			throw new Error("No incoming user to accept");
 		}
 		await this.setUser(incomingUser);
-		this.incomingUserLogin.set(undefined);
+		this._incomingUserLogin = undefined;
 	}
 
 	async rejectIncomingUser() {
-		this.incomingUserLogin.set(undefined);
+		this._incomingUserLogin = undefined;
 	}
 
 	async forgetUserCredentials() {
-		await this.clearUser();
-		this.user.set(undefined);
+		await this.backendApi.endpoints.deleteUser.mutate(undefined);
 		this.tokenMemoryService.setToken(undefined);
 		await this.posthog.resetPostHog();
 		resetSentry();
@@ -133,7 +110,7 @@ export class UserService {
 	private async getLoginUrl(): Promise<string> {
 		await this.forgetUserCredentials();
 		try {
-			const token = await this.backend.invoke<LoginToken>("get_login_token");
+			const token = await this.backendApi.endpoints.getLoginToken.fetch(undefined);
 			const url = new URL(token.url);
 			url.host = this.httpClient.apiUrl.host;
 			const buildType = await this.backend.invoke<string>("build_type").catch(() => undefined);
@@ -167,7 +144,7 @@ export class UserService {
 	}
 
 	async getUser(): Promise<ApiUser> {
-		return await this.backend.invoke<ApiUser>("get_user_profile");
+		return await this.backendApi.endpoints.getUserProfile.fetch(undefined);
 	}
 
 	async updateUser(params: {
@@ -192,7 +169,7 @@ export class UserService {
 			avatarFilename = params.picture.name;
 		}
 
-		return await this.backend.invoke("update_user_profile", {
+		return await this.backendApi.endpoints.updateUserProfile.mutate({
 			params: {
 				name: params.name,
 				website: params.website,

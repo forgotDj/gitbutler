@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { USER_SERVICE } from "$lib/user/userService";
+	import { USER_SERVICE } from "$lib/user/userService.svelte";
 	import { inject } from "@gitbutler/core/context";
 	import { Button, ModalHeader, ModalFooter, SkeletonBone } from "@gitbutler/ui";
 	import { gravatarUrlFromEmail } from "@gitbutler/ui/components/avatar/gravatar";
@@ -13,12 +13,14 @@
 	const { close }: Props = $props();
 
 	const userService = inject(USER_SERVICE);
-	const incomingUser = $derived(userService.incomingUserLogin);
-	const incomingUserEmail = $derived($incomingUser?.email);
+	const incomingUserEmail = $derived(userService.incomingUserLogin?.email);
 	const incomingUserName = $derived(
-		$incomingUser?.login ?? $incomingUser?.name ?? incomingUserEmail ?? "unknown",
+		userService.incomingUserLogin?.login ??
+			userService.incomingUserLogin?.name ??
+			incomingUserEmail ??
+			"unknown",
 	);
-	const incomingUserAvatarUrl = $derived($incomingUser?.picture);
+	const incomingUserAvatarUrl = $derived(userService.incomingUserLogin?.picture);
 
 	async function getUserAvatarURL(): Promise<string | null> {
 		if (incomingUserAvatarUrl) return incomingUserAvatarUrl;
@@ -30,8 +32,8 @@
 	}
 
 	function acceptLogin() {
-		if ($incomingUser) {
-			userService.acceptIncomingUser($incomingUser);
+		if (userService.incomingUserLogin) {
+			userService.acceptIncomingUser(userService.incomingUserLogin);
 		}
 		close();
 	}
