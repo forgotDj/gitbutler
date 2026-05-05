@@ -279,7 +279,7 @@ const ApplyBranchPicker: FC<{
 	);
 };
 
-const TopBarActions: FC<{ focusPanel: (panel: PanelType) => void }> = ({ focusPanel }) => {
+const TopBarActions: FC = () => {
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
@@ -473,7 +473,7 @@ const WorkspacePage: FC = () => {
 	return (
 		<>
 			<TopBarActionsPortal>
-				<TopBarActions focusPanel={focusPanel} />
+				<TopBarActions />
 			</TopBarActionsPortal>
 
 			<ShortcutsBarPortal>
@@ -489,7 +489,6 @@ const WorkspacePage: FC = () => {
 					tabIndex={0}
 					className={styles.panel}
 					elementRef={(el) => el?.focus({ focusVisible: false })}
-					focusPanel={focusPanel}
 					onAbsorbChanges={openAbsorptionDialog}
 				/>
 				{isPanelVisible(panelsState, "files") && (
@@ -502,7 +501,6 @@ const WorkspacePage: FC = () => {
 							groupResizeBehavior="preserve-pixel-size"
 							tabIndex={0}
 							className={styles.panel}
-							focusPanel={focusPanel}
 							onAbsorbChanges={openAbsorptionDialog}
 						/>
 					</>
@@ -515,7 +513,6 @@ const WorkspacePage: FC = () => {
 							minSize={400}
 							tabIndex={0}
 							className={styles.panel}
-							focusPanel={focusPanel}
 						/>
 					</>
 				)}

@@ -1,4 +1,4 @@
-import { Panel as PanelType, useNavigationIndexHotkeys } from "#ui/panels.ts";
+import { useNavigationIndexHotkeys } from "#ui/panels.ts";
 import {
 	branchDiffQueryOptions,
 	changesInWorktreeQueryOptions,
@@ -56,12 +56,7 @@ import {
 } from "#ui/workspace/navigation-index.ts";
 import { filterNavigationIndexForOperationMode } from "#ui/outline/mode.ts";
 
-const useNavigationIndex = (
-	projectId: string,
-	focusPanel: (panel: PanelType) => void,
-	parent: Operand,
-	files: Array<Operand>,
-) => {
+const useNavigationIndex = (projectId: string, parent: Operand, files: Array<Operand>) => {
 	const dispatch = useAppDispatch();
 
 	const navigationIndexUnfiltered = buildNavigationIndex([{ section: parent, children: files }]);
@@ -103,7 +98,6 @@ const useNavigationIndex = (
 		projectId,
 		group: "Files",
 		panel: "files",
-		focusPanel,
 		select,
 		selection,
 	});
@@ -111,9 +105,11 @@ const useNavigationIndex = (
 	return navigationIndex;
 };
 
-const CommitFilesTreePanel: FC<
-	{ projectId: string; commit: CommitOperand; focusPanel: (panel: PanelType) => void } & PanelProps
-> = ({ projectId, commit, focusPanel, ...panelProps }) => {
+const CommitFilesTreePanel: FC<{ projectId: string; commit: CommitOperand } & PanelProps> = ({
+	projectId,
+	commit,
+	...panelProps
+}) => {
 	const { data } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId: commit.commitId }),
 	);
@@ -140,7 +136,7 @@ const CommitFilesTreePanel: FC<
 		}),
 	);
 
-	const navigationIndex = useNavigationIndex(projectId, focusPanel, parent, files);
+	const navigationIndex = useNavigationIndex(projectId, parent, files);
 
 	return (
 		<FilesTreePanel {...panelProps} navigationIndex={navigationIndex}>
@@ -188,9 +184,8 @@ const ChangesFilesTreePanel: FC<
 	{
 		projectId: string;
 		onAbsorbChanges: (target: AbsorptionTarget) => void;
-		focusPanel: (panel: PanelType) => void;
 	} & PanelProps
-> = ({ projectId, onAbsorbChanges, focusPanel, ...panelProps }) => {
+> = ({ projectId, onAbsorbChanges, ...panelProps }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const parent = changesSectionOperand;
@@ -199,7 +194,7 @@ const ChangesFilesTreePanel: FC<
 		fileOperand({ parent: changesFileParent, path: change.path }),
 	);
 
-	const navigationIndex = useNavigationIndex(projectId, focusPanel, parent, files);
+	const navigationIndex = useNavigationIndex(projectId, parent, files);
 
 	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
 		worktreeChanges.dependencies?.diffs ?? [],
@@ -239,9 +234,8 @@ const BranchFilesTreePanel: FC<
 		projectId: string;
 		stackId: string;
 		branchRef: Array<number>;
-		focusPanel: (panel: PanelType) => void;
 	} & PanelProps
-> = ({ projectId, stackId, branchRef, focusPanel, ...panelProps }) => {
+> = ({ projectId, stackId, branchRef, ...panelProps }) => {
 	const decodedBranchRef = decodeRefName(branchRef);
 	const { data: branchDiff } = useSuspenseQuery(
 		branchDiffQueryOptions({ projectId, branch: decodedBranchRef }),
@@ -256,7 +250,7 @@ const BranchFilesTreePanel: FC<
 		}),
 	);
 
-	const navigationIndex = useNavigationIndex(projectId, focusPanel, parent, files);
+	const navigationIndex = useNavigationIndex(projectId, parent, files);
 
 	return (
 		<FilesTreePanel {...panelProps} navigationIndex={navigationIndex}>
@@ -285,9 +279,8 @@ const BranchFilesTreePanel: FC<
 export const FilesPanel: FC<
 	{
 		onAbsorbChanges: (target: AbsorptionTarget) => void;
-		focusPanel: (panel: PanelType) => void;
 	} & PanelProps
-> = ({ onAbsorbChanges, focusPanel, ...panelProps }) => {
+> = ({ onAbsorbChanges, ...panelProps }) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 
 	const outlineSelection = useAppSelector((state) =>
@@ -298,19 +291,13 @@ export const FilesPanel: FC<
 		<Suspense fallback={<Panel {...panelProps}>Loading files…</Panel>}>
 			{Match.value(outlineSelection).pipe(
 				Match.tag("Commit", (commit) => (
-					<CommitFilesTreePanel
-						{...panelProps}
-						projectId={projectId}
-						commit={commit}
-						focusPanel={focusPanel}
-					/>
+					<CommitFilesTreePanel {...panelProps} projectId={projectId} commit={commit} />
 				)),
 				Match.tag("ChangesSection", () => (
 					<ChangesFilesTreePanel
 						{...panelProps}
 						projectId={projectId}
 						onAbsorbChanges={onAbsorbChanges}
-						focusPanel={focusPanel}
 					/>
 				)),
 				Match.tag("Branch", ({ stackId, branchRef }) => (
@@ -319,7 +306,6 @@ export const FilesPanel: FC<
 						projectId={projectId}
 						stackId={stackId}
 						branchRef={branchRef}
-						focusPanel={focusPanel}
 					/>
 				)),
 				Match.orElse(() => <Panel {...panelProps} />),

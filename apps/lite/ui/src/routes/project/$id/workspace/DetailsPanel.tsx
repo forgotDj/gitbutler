@@ -21,7 +21,7 @@ import {
 	type FileParent,
 	type Operand,
 } from "#ui/operands.ts";
-import { Panel as PanelType, useFocusedProjectPanel } from "#ui/panels.ts";
+import { focusPanel, useFocusedProjectPanel } from "#ui/panels.ts";
 import {
 	projectActions,
 	selectProjectPanelsState,
@@ -356,9 +356,8 @@ const Details: FC<{
 export const DetailsPanel: FC<
 	{
 		className?: string;
-		focusPanel: (panel: PanelType) => void;
 	} & Omit<PanelProps, "className">
-> = ({ focusPanel, className, ...panelProps }) => {
+> = ({ className, ...panelProps }) => {
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const urgentSelection = useAppSelector((state) => selectProjectSelectionFiles(state, projectId));
