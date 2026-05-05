@@ -139,6 +139,8 @@ const useNavigationIndex = (projectId: string) => {
 
 	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
 
+	// Reset selection when it's no longer part of the workspace.
+	//
 	// React allows state updates on render, but not for external stores.
 	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
 	useEffect(() => {
