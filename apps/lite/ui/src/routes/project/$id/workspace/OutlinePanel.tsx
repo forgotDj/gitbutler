@@ -73,6 +73,7 @@ import {
 	ComponentProps,
 	FC,
 	Fragment,
+	Suspense,
 	useEffect,
 	useOptimistic,
 	useRef,
@@ -187,6 +188,17 @@ const useNavigationIndex = (projectId: string, focusPanel: (panel: PanelType) =>
 };
 
 export const OutlinePanel: FC<
+	{
+		focusPanel: (panel: PanelType) => void;
+		onAbsorbChanges: (target: AbsorptionTarget) => void;
+	} & PanelProps
+> = ({ focusPanel, onAbsorbChanges, ...panelProps }) => (
+	<Suspense fallback={<Panel {...panelProps}>Loading outline…</Panel>}>
+		<OutlineTreePanel focusPanel={focusPanel} onAbsorbChanges={onAbsorbChanges} {...panelProps} />
+	</Suspense>
+);
+
+const OutlineTreePanel: FC<
 	{
 		focusPanel: (panel: PanelType) => void;
 		onAbsorbChanges: (target: AbsorptionTarget) => void;

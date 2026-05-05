@@ -41,9 +41,9 @@ import { Group, Separator, useDefaultLayout } from "react-resizable-panels";
 import { branchOperand, changesSectionOperand, type BranchOperand } from "#ui/operands.ts";
 import { PickerDialog, type PickerDialogGroup } from "#ui/ui/PickerDialog/PickerDialog.tsx";
 import { DetailsPanel } from "./DetailsPanel.tsx";
-import { OutlinePanel } from "./OutlinePanel.tsx";
 import styles from "./WorkspacePage.module.css";
 import type { CommandGroup } from "#ui/commands/groups.ts";
+import { OutlinePanel } from "#ui/routes/project/$id/workspace/OutlinePanel.tsx";
 
 declare module "@tanstack/react-hotkeys" {
 	interface HotkeyMeta {
