@@ -738,8 +738,7 @@ const CommitC: FC<{
 	navigationIndex: NavigationIndex;
 	focusPanel: (panel: PanelType) => void;
 }> = ({ commit, projectId, stackId, navigationIndex, focusPanel }) => {
-	const commitOperandV: CommitOperand = { stackId, commitId: commit.id };
-	const operand = commitOperand(commitOperandV);
+	const operand = commitOperand({ stackId, commitId: commit.id });
 
 	return (
 		<TreeItem
