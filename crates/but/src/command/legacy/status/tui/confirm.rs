@@ -36,7 +36,7 @@ impl Confirm {
         }
     }
 
-    pub(super) fn render(&self, area: Rect, frame: &mut Frame) {
+    pub(super) fn render(&self, has_focus: bool, area: Rect, frame: &mut Frame) {
         let padding = Padding::new(3, 6, 1, 1);
         let horizontal_padding = padding.left + padding.right;
         let vertical_padding = padding.top + padding.bottom;
@@ -47,8 +47,18 @@ impl Confirm {
             ListItem::new(&*self.text),
             ListItem::new(""),
             ListItem::new(Line::from_iter([
-                style_button(Span::raw("  Yes  "), self.yes_selected, self.theme),
-                style_button(Span::raw("  No  "), !self.yes_selected, self.theme),
+                style_button(
+                    Span::raw("  Yes  "),
+                    self.yes_selected,
+                    has_focus,
+                    self.theme,
+                ),
+                style_button(
+                    Span::raw("  No  "),
+                    !self.yes_selected,
+                    has_focus,
+                    self.theme,
+                ),
             ])),
         ]);
 
@@ -106,8 +116,13 @@ impl Confirm {
     }
 }
 
-fn style_button(span: Span<'static>, selected: bool, theme: &'static Theme) -> Span<'static> {
-    if selected {
+fn style_button(
+    span: Span<'static>,
+    selected: bool,
+    has_focus: bool,
+    theme: &'static Theme,
+) -> Span<'static> {
+    if selected && has_focus {
         span.style(theme.selection_highlight)
     } else {
         span.style(theme.hint)

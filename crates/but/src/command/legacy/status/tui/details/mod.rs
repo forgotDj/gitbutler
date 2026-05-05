@@ -201,6 +201,7 @@ impl Details {
             | Message::PickAndGotoBranch
             | Message::ToggleHelp
             | Message::Mark
+            | Message::SetHasFocus(_)
             | Message::RegisterOutOfBandMessage(_)
             | Message::WithOneFrameDelay(_)
             | Message::EnterNormalMode => false,
@@ -557,7 +558,7 @@ impl Details {
         }
     }
 
-    pub(super) fn render(&self, help_shown: bool, area: Rect, frame: &mut Frame) {
+    pub(super) fn render(&self, help_shown: bool, has_focus: bool, area: Rect, frame: &mut Frame) {
         let outer_block = Block::bordered()
             .borders(Borders::LEFT)
             .border_style(self.theme.border);
@@ -571,6 +572,7 @@ impl Details {
                 inner_area,
                 frame,
                 help_shown,
+                has_focus,
                 self.theme,
             );
         }
@@ -751,6 +753,7 @@ impl DetailsAndDiffWidget {
         area: Rect,
         buf: &mut Frame,
         help_shown: bool,
+        has_focus: bool,
         theme: &'static Theme,
     ) {
         enum ListItemOrString<'a> {
@@ -807,6 +810,7 @@ impl DetailsAndDiffWidget {
             ListItemOrString::ListItem(list_item) => list_item.to_owned(),
             ListItemOrString::ListItemInSection(section_id, list_item) => {
                 if !help_shown
+                    && has_focus
                     && cursor
                         .selection()
                         .is_some_and(|selection| selection == section_id)

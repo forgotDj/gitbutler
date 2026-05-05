@@ -1,4 +1,4 @@
-#![allow(clippy::type_complexity)]
+#![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
 use std::{
     borrow::Cow,
@@ -147,7 +147,6 @@ pub(super) async fn render_tui(
     Ok(app.status_lines)
 }
 
-#[expect(clippy::too_many_arguments)]
 async fn render_loop<T, E>(
     app: &mut App,
     terminal_guard: &mut T,
@@ -376,6 +375,7 @@ struct App {
     branch_picker: Option<BranchPicker>,
     theme: &'static Theme,
     help: Option<Help>,
+    has_focus: bool,
 }
 
 #[derive(Debug)]
@@ -440,6 +440,7 @@ impl App {
             options,
             status_width_percentage: 50,
             theme,
+            has_focus: true,
         }
     }
 
@@ -746,6 +747,9 @@ impl App {
             }
             Message::Mark => {
                 self.handle_mark(ctx)?;
+            }
+            Message::SetHasFocus(has_focus) => {
+                self.has_focus = has_focus;
             }
         }
 
@@ -2458,9 +2462,12 @@ fn event_to_messages(
             }
         },
         Event::FocusGained => {
-            messages.push(Message::Reload(None));
+            messages.extend([Message::Reload(None), Message::SetHasFocus(true)]);
         }
-        Event::FocusLost | Event::Mouse(_) => {}
+        Event::FocusLost => {
+            messages.push(Message::SetHasFocus(false));
+        }
+        Event::Mouse(_) => {}
     }
 }
 
@@ -2621,6 +2628,7 @@ enum Message {
     DropToBeDiscarded,
     GrowDetails,
     ShrinkDetails,
+    SetHasFocus(bool),
 
     // Cursor movement
     MoveCursorUp,
