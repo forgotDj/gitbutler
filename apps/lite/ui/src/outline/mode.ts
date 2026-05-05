@@ -126,7 +126,7 @@ const hasAnyOperation = (source: Operand, target: Operand) => {
 	return !!operations.rub || !!operations.moveAbove || !!operations.moveBelow;
 };
 
-const includeOperandForOperationMode = ({
+const operationModeHasOperation = ({
 	mode,
 	operand,
 }: {
@@ -175,7 +175,7 @@ export const filterNavigationIndexForOutlineMode = ({
 						operandEquals(selection, operand) ||
 						// After selection moves, allow returning selection to the source operand.
 						operandEquals(operationMode.value.source, operand) ||
-						includeOperandForOperationMode({ mode: operationMode.value, operand }),
+						operationModeHasOperation({ mode: operationMode.value, operand }),
 				),
 			RenameBranch: (x) =>
 				filterNavigationIndex(navigationIndexUnfiltered, (operand) =>
