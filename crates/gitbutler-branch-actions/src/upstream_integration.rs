@@ -2,14 +2,14 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::{Context as _, Result, bail};
 use bstr::ByteSlice;
-use but_core::{RefMetadata, Reference, RepositoryExt, WORKSPACE_REF_NAME};
+use but_core::{RefMetadata, Reference, RepositoryExt, WORKSPACE_REF_NAME, ref_metadata::StackId};
 use but_ctx::{Context, access::RepoExclusive};
 use but_rebase::{RebaseOutput, RebaseStep};
 use but_serde::BStringForFrontend;
 use but_workspace::{legacy::stack_ext::StackDetailsExt, ref_info::Options};
 use gitbutler_commit::commit_ext::CommitExt as _;
 use gitbutler_repo::{first_parent_commit_ids_until, rebase::merge_commits};
-use gitbutler_stack::{StackId, VirtualBranchesHandle};
+use gitbutler_stack::VirtualBranchesHandle;
 use gitbutler_workspace::branch_trees::{WorkspaceState, update_uncommitted_changes};
 use gix::merge::tree::TreatAsUnresolved;
 use serde::{Deserialize, Serialize};

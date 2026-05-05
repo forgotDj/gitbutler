@@ -1,9 +1,8 @@
 use bstr::BString;
 use but_api::diff::ComputeLineStats;
-use but_core::{UnifiedPatch, unified_diff::DiffHunk};
+use but_core::{UnifiedPatch, ref_metadata::StackId, unified_diff::DiffHunk};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignment;
-use gitbutler_stack::StackId;
 
 use super::{
     JsonChange, JsonDiff, JsonDiffOutput, JsonHunk,

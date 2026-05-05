@@ -12,13 +12,13 @@ use std::{
 use anyhow::Context as _;
 use bstr::{BString, ByteSlice};
 use but_api::diff::ComputeLineStats;
+use but_core::ref_metadata::StackId;
 use but_core::tree::create_tree::RejectionReason;
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::InsertSide;
 use but_workspace::commit::squash_commits::MessageCombinationStrategy;
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use gitbutler_operating_modes::OperatingMode;
-use gitbutler_stack::StackId;
 use gix::refs::FullName;
 use nonempty::NonEmpty;
 use ratatui::prelude::*;

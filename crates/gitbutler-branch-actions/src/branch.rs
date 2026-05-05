@@ -11,12 +11,12 @@ use anyhow::{Context as _, Result, bail};
 use bstr::{BStr, BString, ByteSlice};
 use but_core::{
     RefMetadata, RepositoryExt, WORKSPACE_REF_NAME, extract_remote_name_and_short_name,
+    ref_metadata::StackId,
 };
 use but_ctx::Context;
 use but_serde::BStringForFrontend;
 use gitbutler_branch::{BranchIdentity, ReferenceExtGix};
 use gitbutler_reference::normalize_branch_name;
-use gitbutler_stack::StackId;
 use gix::{object::tree::diff::Action, prelude::TreeDiffChangeExt, reference::Category};
 use serde::{Deserialize, Serialize};
 

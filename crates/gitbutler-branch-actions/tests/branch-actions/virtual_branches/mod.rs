@@ -2,7 +2,7 @@
 
 use std::{fs, path::PathBuf, str::FromStr};
 
-use but_core::RepositoryExt as _;
+use but_core::{RepositoryExt as _, ref_metadata::StackId};
 use but_ctx::{Context, ProjectHandleOrLegacyProjectId, RepoOpenMode};
 use but_error::Marker;
 use but_rebase::graph_rebase::LookupStep as _;
@@ -16,7 +16,6 @@ use gitbutler_branch_actions::GITBUTLER_WORKSPACE_COMMIT_TITLE;
 use gitbutler_oplog::{OplogExt, SnapshotExt};
 use gitbutler_reference::{LocalRefname, Refname};
 use gitbutler_repo::{SignaturePurpose, commit_without_signature_gix, signature_gix};
-use gitbutler_stack::StackId;
 use gix::refs::transaction::PreviousValue;
 use tempfile::{TempDir, tempdir};
 

@@ -1,9 +1,8 @@
 use anyhow::{Context as _, Result};
-use but_core::{DiffSpec, RepositoryExt};
+use but_core::{DiffSpec, RepositoryExt, ref_metadata::StackId};
 use but_ctx::access::RepoExclusive;
 use but_oxidize::ObjectIdExt;
 use gitbutler_repo_actions::RepoActionsExt;
-use gitbutler_stack::StackId;
 use tracing::instrument;
 
 use super::{BranchManager, checkout_remerged_head};

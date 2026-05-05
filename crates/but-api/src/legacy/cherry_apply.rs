@@ -1,7 +1,7 @@
 use anyhow::Result;
 use but_api_macros::but_api;
 use but_cherry_apply::CherryApplyStatus;
-use gitbutler_stack::StackId;
+use but_core::ref_metadata::StackId;
 use tracing::instrument;
 
 /// Return the cherry-pick applicability of `subject` using the behavior documented by

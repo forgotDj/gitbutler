@@ -4,10 +4,10 @@
 )]
 
 use anyhow::Result;
-use but_core::sync::RepoExclusive;
+use but_core::{ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use but_rebase::Rebase;
-use gitbutler_stack::{StackId, VirtualBranchesHandle};
+use gitbutler_stack::VirtualBranchesHandle;
 
 use crate::legacy::{
     MoveChangesResult,

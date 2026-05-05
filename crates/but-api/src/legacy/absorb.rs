@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use bstr::ByteSlice;
 use but_api_macros::but_api;
-use but_core::sync::RepoExclusive;
+use but_core::{ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use but_hunk_assignment::{
     AbsorptionReason, AbsorptionTarget, CommitAbsorption, CommitMap, FileAbsorption,
@@ -18,7 +18,6 @@ use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
 };
-use gitbutler_stack::StackId;
 use itertools::Itertools;
 use tracing::instrument;
 

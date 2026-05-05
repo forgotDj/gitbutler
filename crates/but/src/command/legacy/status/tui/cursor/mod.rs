@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bstr::BStr;
-use gitbutler_stack::StackId;
+use but_core::ref_metadata::StackId;
 
 use crate::{
     CliId,

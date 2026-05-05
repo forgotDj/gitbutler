@@ -1,5 +1,5 @@
 use anyhow::{Context as _, Result};
-use but_core::DiffSpec;
+use but_core::{DiffSpec, ref_metadata::StackId};
 use but_ctx::{
     Context,
     access::{RepoExclusive, RepoShared},
@@ -12,7 +12,6 @@ use gitbutler_oplog::{
     entry::{OperationKind, SnapshotDetails, Trailer},
 };
 use gitbutler_reference::{Refname, RemoteRefname};
-use gitbutler_stack::StackId;
 
 use crate::{
     VirtualBranchesExt, base,

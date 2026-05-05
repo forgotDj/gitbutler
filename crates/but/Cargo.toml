@@ -33,7 +33,6 @@ legacy = [
     "dep:but-cherry-apply",
     "dep:gitbutler-project",
     "dep:gitbutler-commit",
-    "dep:gitbutler-stack",
     "dep:gitbutler-branch-actions",
     "dep:gitbutler-oplog",
     "dep:gitbutler-edit-mode",
@@ -88,7 +87,6 @@ but-cherry-apply = { workspace = true, optional = true }
 
 gitbutler-project = { workspace = true, optional = true }
 gitbutler-commit = { workspace = true, optional = true }
-gitbutler-stack = { workspace = true, optional = true }
 gitbutler-branch-actions = { workspace = true, optional = true }
 gitbutler-oplog = { workspace = true, optional = true }
 gitbutler-edit-mode = { workspace = true, optional = true }

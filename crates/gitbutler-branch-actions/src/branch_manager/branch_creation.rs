@@ -1,5 +1,5 @@
 use anyhow::{Context as _, Result};
-use but_core::{RefMetadata, worktree::checkout::UncommitedWorktreeChanges};
+use but_core::{RefMetadata, ref_metadata::StackId, worktree::checkout::UncommitedWorktreeChanges};
 use but_ctx::access::RepoExclusive;
 use but_workspace::branch::{
     OnWorkspaceMergeConflict,
@@ -9,7 +9,7 @@ use gitbutler_branch::{self, BranchCreateRequest, dedup};
 use gitbutler_oplog::SnapshotExt;
 use gitbutler_reference::Refname;
 use gitbutler_repo_actions::RepoActionsExt;
-use gitbutler_stack::{Stack, StackId};
+use gitbutler_stack::Stack;
 use serde::Serialize;
 use tracing::instrument;
 

@@ -3,7 +3,7 @@ mod stack;
 mod state;
 mod target;
 
-pub use stack::{Stack, StackId};
+pub use stack::Stack;
 #[expect(
     deprecated,
     reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"

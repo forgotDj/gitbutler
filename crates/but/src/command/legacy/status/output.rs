@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use gitbutler_stack::StackId;
+use but_core::ref_metadata::StackId;
 use ratatui::text::Span;
 
 use crate::{

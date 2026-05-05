@@ -3,12 +3,12 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use but_api_macros::but_api;
+use but_core::ref_metadata::StackId;
 use but_ctx::Context;
 use but_rules::{
     CreateRuleRequest, UpdateRuleRequest, WorkspaceRule, create_rule, delete_rule, list_rules,
     update_rule,
 };
-use gitbutler_stack::StackId;
 use tracing::instrument;
 
 #[but_api]

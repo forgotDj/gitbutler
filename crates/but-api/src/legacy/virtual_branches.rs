@@ -5,7 +5,7 @@ use bstr::ByteSlice;
 use but_api_macros::but_api;
 use but_core::{
     DiffSpec, RefMetadata,
-    ref_metadata::{StackKind, WorkspaceStack},
+    ref_metadata::{StackId, StackKind, WorkspaceStack},
     sync::RepoExclusive,
 };
 use but_ctx::{Context, ThreadSafeContext};
@@ -23,7 +23,6 @@ use gitbutler_git::GitContextExt as _;
 use gitbutler_operating_modes::ensure_open_workspace_mode;
 use gitbutler_project::FetchResult;
 use gitbutler_reference::{Refname, normalize_branch_name as normalize_name};
-use gitbutler_stack::StackId;
 use gix::reference::Category;
 use tracing::instrument;
 

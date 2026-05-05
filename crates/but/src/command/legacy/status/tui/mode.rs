@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use bstr::BString;
-use but_core::HunkHeader;
+use but_core::{HunkHeader, ref_metadata::StackId};
 use but_workspace::commit::squash_commits::MessageCombinationStrategy;
-use gitbutler_stack::StackId;
 use ratatui::style::Color;
 use ratatui_textarea::TextArea;
 
