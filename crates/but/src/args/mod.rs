@@ -572,8 +572,6 @@ pub enum Subcommands {
     /// If `--dry-run` is specified, no changes will be made; instead, the absorption plan
     /// (what changes would be absorbed by which commits) will be shown.
     ///
-    /// If `--new` is specified, new commits will be created for absorbed changes
-    /// instead of amending existing commits.
     #[cfg(feature = "legacy")]
     #[clap(verbatim_doc_comment)]
     Absorb {
@@ -584,10 +582,6 @@ pub enum Subcommands {
         /// Show the absorption plan without making any changes.
         #[clap(long = "dry-run")]
         dry_run: bool,
-        /// Create new commits, instead of amending existing ones.
-        /// This is useful when you want to preserve existing commits and add new ones for the absorbed changes.
-        #[clap(long, short = 'n')]
-        new: bool,
     },
 
     /// Discard uncommitted changes from the worktree.
@@ -662,11 +656,7 @@ pub enum Subcommands {
     #[cfg(feature = "legacy")]
     #[clap(hide = true)]
     #[clap(verbatim_doc_comment)]
-    Mcp {
-        /// Starts the internal MCP server which has more granular tools.
-        #[clap(long, short = 'i', hide = true)]
-        internal: bool,
-    },
+    Mcp,
 
     /// AI: Claude hooks
     ///

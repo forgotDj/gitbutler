@@ -16,7 +16,6 @@ pub mod discard;
 pub mod forge;
 pub mod mark;
 pub mod mcp;
-pub mod mcp_internal;
 pub mod merge;
 pub mod oplog;
 pub mod pick;

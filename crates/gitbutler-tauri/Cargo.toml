@@ -37,14 +37,11 @@ but-action.workspace = true
 but-api = { workspace = true, features = ["tauri", "path-bytes", "legacy"] }
 but-claude.workspace = true
 but-ctx = { workspace = true, features = ["legacy"] }
-but-llm.workspace = true
-but-hunk-assignment.workspace = true
 but-irc = { workspace = true, optional = true }
 notify-rust.workspace = true
 
 gitbutler-watcher.workspace = true
 gitbutler-project.workspace = true
-gitbutler-oplog.workspace = true
 tauri = { version = "^2.10.3", features = ["unstable"] }
 tauri-plugin-single-instance = { version = "2.4.0", features = ["deep-link"] }
 tauri-plugin-dialog = "2.7.0"

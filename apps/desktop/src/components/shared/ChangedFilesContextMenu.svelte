@@ -4,13 +4,10 @@
 	import AbsorbPlanModal from "$components/stack/AbsorbPlanModal.svelte";
 	import DiscardChangesModal from "$components/workspace/DiscardChangesModal.svelte";
 	import StashIntoBranchModal from "$components/workspace/StashIntoBranchModal.svelte";
-	import { ACTION_SERVICE } from "$lib/actions/actionService.svelte";
-	import { AI_SERVICE } from "$lib/ai/service";
 	import { BACKEND } from "$lib/backend";
 	import { CLIPBOARD_SERVICE } from "$lib/backend/clipboard";
 	import { getEditorUri, URL_SERVICE } from "$lib/backend/url";
 	import { changesToDiffSpec } from "$lib/commits/utils";
-	import { projectAiExperimentalFeaturesEnabled, projectAiGenEnabled } from "$lib/config/config";
 	import { FILE_SERVICE } from "$lib/files/fileService";
 	import { isTreeChange } from "$lib/hunks/change";
 	import { vscodePath } from "$lib/project/project";
@@ -29,8 +26,6 @@
 	} from "@gitbutler/ui";
 	import type { SelectionId } from "$lib/selection/key";
 	import type { TreeChange } from "@gitbutler/but-sdk";
-
-	const DEFAULT_MODEL = "gpt-4";
 
 	type Props = {
 		projectId: string;
@@ -81,14 +76,10 @@
 	const uiState = inject(UI_STATE);
 	const defaultCodeEditor = uiState.global.defaultCodeEditor;
 	const idSelection = inject(FILE_SELECTION_MANAGER);
-	const aiService = inject(AI_SERVICE);
-	const actionService = inject(ACTION_SERVICE);
 	const fileService = inject(FILE_SERVICE);
 	const urlService = inject(URL_SERVICE);
 	const clipboardService = inject(CLIPBOARD_SERVICE);
 	const backend = inject(BACKEND);
-	const [autoCommit, autoCommitting] = actionService.autoCommit;
-	const [branchChanges, branchingChanges] = actionService.branchChanges;
 	const [, absorbingChanges] = stackService.absorb;
 	const [splitOffChanges] = stackService.splitBranch;
 	const [splitBranchIntoDependentBranch] = stackService.splitBranchIntoDependentBranch;
@@ -120,14 +111,6 @@
 	let discardModal: ReturnType<typeof DiscardChangesModal>;
 	let stashModal: ReturnType<typeof StashIntoBranchModal>;
 	let absorbModal: ReturnType<typeof AbsorbPlanModal>;
-	let aiConfigurationValid = $state(false);
-
-	const aiGenEnabled = $derived(projectAiGenEnabled(projectId));
-	const experimentalFeaturesEnabled = $derived(projectAiExperimentalFeaturesEnabled(projectId));
-
-	const canUseGBAI = $derived(
-		$aiGenEnabled && aiConfigurationValid && $experimentalFeaturesEnabled,
-	);
 
 	function isDeleted(item: ChangedFilesItem): boolean {
 		if (isChangedFolderItem(item)) {
@@ -152,9 +135,6 @@
 		menuTarget = e;
 		menuItem = newItem;
 		menuOpen = true;
-		aiService.validateGitButlerAPIConfiguration().then((value) => {
-			aiConfigurationValid = value;
-		});
 	}
 
 	export function close() {
@@ -184,43 +164,6 @@
 				uiState.lane(stackId).selection.set({ branchName, commitId: newCommitId, previewOpen });
 			}
 		});
-	}
-
-	async function triggerAutoCommit(changes: TreeChange[]) {
-		try {
-			uiState.global.modal.set({
-				type: "auto-commit",
-				projectId,
-			});
-			await autoCommit({
-				projectId,
-				target: {
-					type: "treeChanges",
-					subject: { changes, assignedStackId: stackId ?? null },
-				},
-				useAi: $aiGenEnabled,
-			});
-		} catch (error) {
-			console.error("Auto commit failed:", error);
-			uiState.global.modal.set(undefined);
-		}
-	}
-
-	async function triggerBranchChanges(changes: TreeChange[]) {
-		if (!canUseGBAI) {
-			chipToasts.error("GitButler AI is not configured or enabled for this project.");
-			return;
-		}
-
-		try {
-			await chipToasts.promise(branchChanges({ projectId, changes, model: DEFAULT_MODEL }), {
-				loading: "Creating a branch and committing changes",
-				success: "Branching changes succeeded",
-				error: "Branching changes failed",
-			});
-		} catch (error) {
-			console.error("Branching changes failed:", error);
-		}
 	}
 
 	async function split(changes: TreeChange[]) {
@@ -357,15 +300,6 @@
 							}}
 							disabled={absorbingChanges.current.isLoading}
 						/>
-						<ContextMenuItem
-							label="Auto commit"
-							icon="commit-ai"
-							onclick={() => {
-								menuOpen = false;
-								triggerAutoCommit(changes);
-							}}
-							disabled={autoCommitting.current.isLoading}
-						/>
 					{/if}
 					{#if selectionId.type === "commit" && stackId && !editMode}
 						{@const commitId = selectionId.commitId}
@@ -488,25 +422,6 @@
 					/>
 				{/if}
 			</ContextMenuSection>
-
-			{#if canUseGBAI && isUncommitted}
-				<ContextMenuSection>
-					<ContextMenuItemSubmenu label="Experimental AI" icon="lab">
-						{#snippet submenu(_sub)}
-							<ContextMenuSection>
-								<ContextMenuItem
-									label="Branch changes"
-									onclick={() => {
-										menuOpen = false;
-										triggerBranchChanges(item.changes);
-									}}
-									disabled={branchingChanges.current.isLoading}
-								/>
-							</ContextMenuSection>
-						{/snippet}
-					</ContextMenuItemSubmenu>
-				</ContextMenuSection>
-			{/if}
 		{:else}
 			<ContextMenuSection>
 				<p class="text-13">'Woops! Malformed data :(</p>

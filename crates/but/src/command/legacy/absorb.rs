@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use crate::theme::{self, Paint};
 use but_core::{RepositoryExt, sync::RepoExclusive};
 use but_ctx::Context;
@@ -37,7 +35,6 @@ pub(crate) fn handle(
     out: &mut OutputChannel,
     source: Option<&str>,
     dry_run: bool,
-    new: bool,
 ) -> anyhow::Result<()> {
     let mut guard = ctx.exclusive_worktree_access();
     let id_map = IdMap::new_from_context(ctx, None, guard.read_permission())?;
@@ -84,7 +81,7 @@ pub(crate) fn handle(
     // would overwrite the plan in the JSON buffer).
     let plan_json = {
         let repo = ctx.repo.get()?.clone().for_commit_shortening();
-        display_absorption_plan(&absorption_plan, &repo, out, new, dry_run)?
+        display_absorption_plan(&absorption_plan, &repo, out, dry_run)?
     };
 
     if dry_run {
@@ -97,16 +94,9 @@ pub(crate) fn handle(
         return Ok(());
     }
 
-    let repo = ctx.repo.get()?.clone();
-    let data_dir = ctx.project_data_dir();
-    let context_lines = ctx.settings.context_lines;
     // Create a snapshot before performing absorb or auto-commit operations
     // This allows the user to undo if needed
-    let operation = if new {
-        OperationKind::AutoCommit
-    } else {
-        OperationKind::Absorb
-    };
+    let operation = OperationKind::Absorb;
     let _snapshot = ctx
         .create_snapshot(SnapshotDetails::new(operation), guard.write_permission())
         .ok(); // Ignore errors for snapshot creation
@@ -114,11 +104,7 @@ pub(crate) fn handle(
         ctx,
         absorption_plan,
         guard.write_permission(),
-        &repo,
-        &data_dir,
         out,
-        context_lines,
-        new,
         plan_json,
     )?;
 
@@ -126,24 +112,14 @@ pub(crate) fn handle(
 }
 
 /// Absorb a single file into the appropriate commit
-#[expect(clippy::too_many_arguments)]
 fn absorb_assignments(
     ctx: &mut Context,
     absorption_plan: Vec<CommitAbsorption>,
     perm: &mut RepoExclusive,
-    repo: &gix::Repository,
-    data_dir: &Path,
     out: &mut OutputChannel,
-    context_lines: u32,
-    new: bool,
     plan_json: Option<JsonAbsorbOutput>,
 ) -> anyhow::Result<()> {
-    let total_rejected = if new {
-        but_action::auto_commit_simple(repo, data_dir, context_lines, None, absorption_plan, perm)?
-    } else {
-        but_api::legacy::absorb::absorb_with_perm(ctx, absorption_plan, perm)?
-    };
-
+    let total_rejected = but_api::legacy::absorb::absorb_with_perm(ctx, absorption_plan, perm)?;
     // Refresh the workspace commit so `gitbutler/workspace` HEAD stays in sync
     // with the rewritten branch commits. Without this, tools that inspect HEAD
     // (e.g. pre-push hooks that stash against it) see a stale synthetic commit.
@@ -222,7 +198,6 @@ fn display_absorption_plan(
     commit_absorptions: &[CommitAbsorption],
     repo: &gix::Repository,
     out: &mut OutputChannel,
-    new: bool,
     write_json: bool,
 ) -> anyhow::Result<Option<JsonAbsorbOutput>> {
     // Count total files
@@ -294,11 +269,7 @@ fn display_absorption_plan(
 
         for absorption in commit_absorptions {
             let short_hash = shorten_object_id(repo, absorption.commit_id);
-            let verb = if new {
-                "Created on top of commit"
-            } else {
-                "Absorbed to commit"
-            };
+            let verb = "Absorbed to commit";
 
             writeln!(
                 out,

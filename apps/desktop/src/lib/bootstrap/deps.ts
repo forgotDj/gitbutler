@@ -1,4 +1,3 @@
-import { ActionService, ACTION_SERVICE } from "$lib/actions/actionService.svelte";
 import {
 	PromptService as AIPromptService,
 	PROMPT_SERVICE as AI_PROMPT_SERVICE,
@@ -262,10 +261,9 @@ export function initDependencies(args: {
 	const dependencyService = new DependencyService(worktreeService);
 
 	// ============================================================================
-	// ACTIONS & WORKFLOWS
+	// WORKFLOWS
 	// ============================================================================
 
-	const actionService = new ActionService(clientState.backendApi, backend);
 	const upstreamIntegrationService = new UpstreamIntegrationService(
 		clientState.backendApi,
 		stackService,
@@ -325,7 +323,6 @@ export function initDependencies(args: {
 	// ============================================================================
 
 	provideAll([
-		[ACTION_SERVICE, actionService],
 		[AI_PROMPT_SERVICE, aiPromptService],
 		[AI_SERVICE, aiService],
 		[APP_DISPATCH, appState.appDispatch],

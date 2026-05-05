@@ -1,7 +1,6 @@
 <script lang="ts">
 	import AppScrollableContainer from "$components/shared/AppScrollableContainer.svelte";
 	import ReduxResult from "$components/shared/ReduxResult.svelte";
-	import { ACTION_SERVICE } from "$lib/actions/actionService.svelte";
 	import { CLIPBOARD_SERVICE } from "$lib/backend/clipboard";
 	import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
 	import { inject } from "@gitbutler/core/context";
@@ -11,40 +10,41 @@
 		SimpleCommitRow,
 		SimpleCommitRowSkeleton,
 	} from "@gitbutler/ui";
-	import { untrack } from "svelte";
-	import { SvelteMap } from "svelte/reactivity";
-	import type { AutoCommitModalState } from "$lib/state/uiState.svelte";
-	import type { AutoCommitEvent } from "@gitbutler/but-sdk";
 
-	type Props = {
-		data: AutoCommitModalState;
-		close: () => void;
+	type AutoCommitEvent =
+		| { type: "started"; steps_length: number }
+		| { type: "commitGeneration"; parent_commit_id: string; token: string }
+		| { type: "commitSuccess"; commit_id: string }
+		| { type: "commitError"; error_message: string }
+		| { type: "completed" };
+
+	type AutoCommitModalData = {
+		projectId: string;
 	};
 
-	const { data, close }: Props = $props();
+	type Props = {
+		data: AutoCommitModalData;
+		close: () => void;
+		events?: AutoCommitEvent[];
+	};
 
-	const actionService = inject(ACTION_SERVICE);
+	const { data, close, events = [] }: Props = $props();
+
 	const stackService = inject(STACK_SERVICE);
 	const clipboardService = inject(CLIPBOARD_SERVICE);
 
-	let events = $state<AutoCommitEvent[]>([]);
-	const commitMessageMap = new SvelteMap<string, string>();
+	// Keep this component disconnected until the auto-commit API is reworked.
+	const commitMessageMap = $derived.by(() => {
+		const messages = new Map<string, string>();
 
-	// Listen for auto-commit events and update commit messages
-	$effect(() => {
-		const unlisten = actionService.listenForAutoCommit(data.projectId, (event) => {
-			untrack(() => {
-				events = [...events, event];
-			});
-
+		for (const event of events) {
 			if (event.type === "commitGeneration") {
-				const untrackedMap = untrack(() => commitMessageMap);
-				const currentMessage = untrackedMap.get(event.parent_commit_id) || "";
-				untrackedMap.set(event.parent_commit_id, currentMessage + event.token);
+				const currentMessage = messages.get(event.parent_commit_id) || "";
+				messages.set(event.parent_commit_id, currentMessage + event.token);
 			}
-		});
+		}
 
-		return unlisten;
+		return messages;
 	});
 
 	// Check if generation is complete for a parent commit

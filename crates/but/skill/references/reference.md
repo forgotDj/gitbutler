@@ -219,7 +219,6 @@ but absorb <branch-id>        # Absorb all changes staged to this branch
 but absorb                    # Absorb ALL uncommitted changes (use with caution)
 but absorb --dry-run          # Preview without making changes
 but absorb <file-id> --dry-run  # Preview specific file absorption
-but absorb --new/-n           # Create new commits instead of amending existing ones
 but absorb --status-after     # Absorb then show workspace status
 ```
 

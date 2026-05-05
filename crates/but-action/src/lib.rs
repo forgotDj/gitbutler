@@ -2,21 +2,17 @@
 
 use std::{
     fmt::{Debug, Display},
-    path::Path,
     str::FromStr,
 };
 
-use but_core::{RefMetadata, TreeChange, WORKSPACE_REF_NAME, sync::RepoExclusive};
-use but_ctx::{Context, ProjectHandleOrLegacyProjectId};
-use but_hunk_assignment::CommitAbsorption;
+use but_core::{RefMetadata, WORKSPACE_REF_NAME, sync::RepoExclusive};
+use but_ctx::Context;
 use but_meta::virtual_branches_legacy_types::Target;
 use but_workspace::legacy::ui::StackEntry;
 use gitbutler_branch::BranchCreateRequest;
 use serde::{Deserialize, Serialize};
 
 mod action;
-mod auto_commit;
-mod branch_changes;
 pub mod cli;
 pub mod commit_format;
 mod generate;
@@ -29,56 +25,6 @@ use but_core::ref_metadata::StackId;
 use strum::EnumString;
 use uuid::Uuid;
 pub use workflow::{WorkflowList, list_workflows};
-
-pub fn branch_changes(
-    ctx: &mut Context,
-    llm: &but_llm::LLMProvider,
-    changes: Vec<TreeChange>,
-    model: String,
-) -> anyhow::Result<()> {
-    branch_changes::branch_changes(ctx, llm, changes, model)
-}
-
-#[expect(clippy::too_many_arguments)]
-pub fn auto_commit(
-    project_id: ProjectHandleOrLegacyProjectId,
-    repo: &gix::Repository,
-    project_data_dir: &Path,
-    context_lines: u32,
-    llm: Option<&but_llm::LLMProvider>,
-    emitter: impl Fn(&str, serde_json::Value) + Send + Sync + 'static,
-    absorption_plan: Vec<CommitAbsorption>,
-    perm: &mut RepoExclusive,
-) -> anyhow::Result<usize> {
-    auto_commit::auto_commit(
-        project_id,
-        repo,
-        project_data_dir,
-        context_lines,
-        llm,
-        emitter,
-        absorption_plan,
-        perm,
-    )
-}
-
-pub fn auto_commit_simple(
-    repo: &gix::Repository,
-    project_data_dir: &Path,
-    context_lines: u32,
-    llm: Option<&but_llm::LLMProvider>,
-    absorption_plan: Vec<CommitAbsorption>,
-    perm: &mut RepoExclusive,
-) -> anyhow::Result<usize> {
-    auto_commit::auto_commit_simple(
-        repo,
-        project_data_dir,
-        context_lines,
-        llm,
-        absorption_plan,
-        perm,
-    )
-}
 
 pub fn handle_changes(
     ctx: &mut Context,

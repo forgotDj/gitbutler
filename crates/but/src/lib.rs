@@ -472,13 +472,7 @@ async fn match_subcommand(
             result.emit_metrics(metrics_ctx)
         }
         #[cfg(feature = "legacy")]
-        Subcommands::Mcp { internal } => {
-            if internal {
-                command::legacy::mcp_internal::start(app_settings).await
-            } else {
-                command::legacy::mcp::start(app_settings).await
-            }
-        }
+        Subcommands::Mcp => command::legacy::mcp::start(app_settings).await,
         #[cfg(feature = "legacy")]
         Subcommands::Actions(actions::Platform { cmd }) => match cmd {
             Some(actions::Subcommands::HandleChanges {
@@ -1082,11 +1076,7 @@ async fn match_subcommand(
             command::legacy::oplog::undo_last_operation(&mut ctx, out).emit_metrics(metrics_ctx)
         }
         #[cfg(feature = "legacy")]
-        Subcommands::Absorb {
-            source,
-            dry_run,
-            new,
-        } => {
+        Subcommands::Absorb { source, dry_run } => {
             let status_after = args.status_after;
             let mut ctx = setup::init_ctx(
                 &args,
@@ -1097,9 +1087,8 @@ async fn match_subcommand(
                 out,
             )?;
             out.begin_status_after(status_after);
-            let result =
-                command::legacy::absorb::handle(&mut ctx, out, source.as_deref(), dry_run, new)
-                    .emit_metrics(metrics_ctx);
+            let result = command::legacy::absorb::handle(&mut ctx, out, source.as_deref(), dry_run)
+                .emit_metrics(metrics_ctx);
             maybe_run_status_after(status_after, &result, &mut ctx, out).await;
             result
         }

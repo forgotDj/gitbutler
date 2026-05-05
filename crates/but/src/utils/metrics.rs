@@ -162,7 +162,7 @@ impl Subcommands {
             },
             #[cfg(feature = "legacy")]
             Subcommands::Actions(_)
-            | Subcommands::Mcp { .. }
+            | Subcommands::Mcp
             | Subcommands::Setup { .. }
             | Subcommands::Teardown => Unknown,
             Subcommands::Config(config::Platform { cmd }) => match cmd {
