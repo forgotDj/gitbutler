@@ -82,3 +82,13 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+
+.changesSection {
+	display: flex;
+	row-gap: 2px;
+	flex-direction: column;
+}
+
+.changesSectionCommitButton {
+	text-align: center;
+}

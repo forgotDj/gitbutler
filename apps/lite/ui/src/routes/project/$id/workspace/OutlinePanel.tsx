@@ -1,3 +1,4 @@
+import uiStyles from "#ui/ui/ui.module.css";
 import {
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
@@ -760,9 +761,8 @@ const ChangesSectionRow: FC<{
 	changes: Array<TreeChange>;
 	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	onCommit: () => void;
 	projectId: string;
-}> = ({ changes, navigationIndex, onAbsorbChanges, onCommit, projectId }) => {
+}> = ({ changes, navigationIndex, onAbsorbChanges, projectId }) => {
 	const operand = changesSectionOperand;
 	const isSelected = useIsSelected({ projectId, operand });
 	const focusedPanel = useFocusedProjectPanel(projectId);
@@ -806,22 +806,6 @@ const ChangesSectionRow: FC<{
 			</div>
 			{outlineMode._tag === "Default" && (
 				<WorkspaceItemRowToolbar aria-label="Changes actions">
-					<Toolbar.Button
-						type="button"
-						className={workspaceItemRowStyles.itemRowToolbarButton}
-						render={
-							<ShortcutButton
-								onClick={onCommit}
-								hotkey="Shift+C"
-								hotkeyOptions={{
-									conflictBehavior: "allow",
-									meta: { group: "Changes", name: "Commit" },
-								}}
-							/>
-						}
-					>
-						Commit
-					</Toolbar.Button>
 					<Toolbar.Button
 						type="button"
 						className={workspaceItemRowStyles.itemRowToolbarButton}
@@ -886,21 +870,34 @@ const Changes: FC<{
 
 	const operand = changesSectionOperand;
 
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+
 	return (
 		<TreeItem
 			projectId={projectId}
 			operand={operand}
 			label={`Changes (${worktreeChanges.changes.length})`}
-			className={workspaceItemRowStyles.section}
+			className={classes(workspaceItemRowStyles.section, styles.changesSection)}
 			render={<OperandC projectId={projectId} operand={operand} />}
 		>
 			<ChangesSectionRow
 				changes={worktreeChanges.changes}
 				navigationIndex={navigationIndex}
 				onAbsorbChanges={onAbsorbChanges}
-				onCommit={onCommit}
 				projectId={projectId}
 			/>
+			<ShortcutButton
+				onClick={onCommit}
+				hotkey="Shift+C"
+				hotkeyOptions={{
+					conflictBehavior: "allow",
+					meta: { group: "Changes", name: "Commit" },
+				}}
+				className={classes(uiStyles.button, styles.changesSectionCommitButton)}
+				disabled={outlineMode._tag !== "Default"}
+			>
+				Commit
+			</ShortcutButton>
 		</TreeItem>
 	);
 };
