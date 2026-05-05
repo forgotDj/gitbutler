@@ -403,6 +403,15 @@ pub struct RevisionHistory {
     commit_mappings: BTreeMap<gix::ObjectId, gix::ObjectId>,
 }
 
+impl<'ws, 'meta, M: RefMetadata> Editor<'ws, 'meta, M> {
+    pub(crate) fn new_selector(&self, id: StepGraphIndex) -> Selector {
+        Selector {
+            id,
+            revision: self.history.current_revision(),
+        }
+    }
+}
+
 impl RevisionHistory {
     pub(crate) fn new() -> Self {
         Default::default()
