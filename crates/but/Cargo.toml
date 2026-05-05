@@ -27,7 +27,6 @@ legacy = [
     "dep:but-action",
     "dep:but-claude",
     "dep:but-cursor",
-    "dep:but-tools",
     "dep:but-rules",
     "dep:but-gerrit",
     "dep:but-worktrees",
@@ -36,7 +35,6 @@ legacy = [
     "dep:gitbutler-commit",
     "dep:gitbutler-stack",
     "dep:gitbutler-branch-actions",
-    "dep:gitbutler-branch",
     "dep:gitbutler-oplog",
     "dep:gitbutler-edit-mode",
     "dep:gitbutler-operating-modes",
@@ -83,7 +81,6 @@ but-action = { workspace = true, optional = true }
 but-hunk-assignment.workspace = true
 but-claude = { workspace = true, optional = true }
 but-cursor = { workspace = true, optional = true }
-but-tools = { workspace = true, optional = true }
 but-rules = { workspace = true, optional = true }
 but-gerrit = { workspace = true, optional = true }
 but-worktrees = { workspace = true, optional = true }
@@ -93,7 +90,6 @@ gitbutler-project = { workspace = true, optional = true }
 gitbutler-commit = { workspace = true, optional = true }
 gitbutler-stack = { workspace = true, optional = true }
 gitbutler-branch-actions = { workspace = true, optional = true }
-gitbutler-branch = { workspace = true, optional = true }
 gitbutler-oplog = { workspace = true, optional = true }
 gitbutler-edit-mode = { workspace = true, optional = true }
 gitbutler-operating-modes = { workspace = true, optional = true }
@@ -141,7 +137,11 @@ minus = { git = "https://github.com/arijit79/minus", rev = "57f1848f831d153a10d6
 ] }
 unicode-width = "0.2"
 cfg-if = "1.0.4"
-ratatui = { workspace = true, features = ["unstable-rendered-line-info", "palette", "serde"] }
+ratatui = { workspace = true, features = [
+    "unstable-rendered-line-info",
+    "palette",
+    "serde",
+] }
 crossterm.workspace = true
 sha2.workspace = true
 machine-uid = "0.5.4"

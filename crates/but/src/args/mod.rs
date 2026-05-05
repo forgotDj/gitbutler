@@ -658,11 +658,7 @@ pub enum Subcommands {
     #[cfg(feature = "legacy")]
     #[clap(hide = true)]
     #[clap(verbatim_doc_comment)]
-    Mcp {
-        /// Starts the internal MCP server which has more granular tools.
-        #[clap(long, short = 'i', hide = true)]
-        internal: bool,
-    },
+    Mcp,
 
     /// AI: Claude hooks
     ///
