@@ -20,39 +20,13 @@ pub(super) fn default_key_binds() -> KeyBinds {
         let mut builder = key_binds.for_modes([mode]);
         match mode {
             ModeDiscriminant::Normal => {
-                builder.up().register();
-                builder.down().register();
-                builder.next_section().register();
-                builder.prev_section().register();
-                builder.rub().register();
-                builder.reverse_rub().register();
-                builder.commit().register();
-                builder.new_commit().register();
-                builder.move_mode().register();
-                builder.branch().register();
-                builder.toggle_details().register();
-                builder.focus_details().register();
-                builder.grow_details().register();
-                builder.shrink_details().register();
-                builder.reword_inline().register();
-                builder.reword_editor().register();
-                builder.files().register();
-                builder.all_files().register();
-                builder.discard().register();
-                builder.branch_picker().register();
-                builder.unassigned().register();
-                builder.merge_base().register();
-                builder.command().register();
-                builder.shell_command().register();
-                builder.copy().register();
-                builder.reload().register();
-                builder.help().register();
-                builder.quit().register();
+                register_normal_mode_key_binds(&mut builder, true);
             }
             ModeDiscriminant::Rub => {
                 builder.rub_confirm().register();
                 builder.rub_use_target_message().register();
                 builder.rub_use_source_message().register();
+                builder.mark().register();
                 register_non_mode_specific_key_binds(&mut builder);
             }
             ModeDiscriminant::Commit => {
@@ -281,6 +255,16 @@ pub(super) fn help_key_binds() -> KeyBinds {
     key_binds
 }
 
+pub(super) fn normal_with_marks_key_binds() -> KeyBinds {
+    let mut key_binds = KeyBinds::new();
+
+    let mut builder = key_binds.for_modes(Vec::from([ModeDiscriminant::Normal]));
+
+    register_normal_mode_key_binds(&mut builder, false);
+
+    key_binds
+}
+
 #[derive(Clone, Copy, Debug)]
 struct KeyBindId(usize);
 
@@ -450,6 +434,12 @@ impl KeyBindsBuilder<'_> {
         )
         .hide_from_hotbar()
         .show_only_in_normal_mode_help_section()
+    }
+
+    fn mark(&mut self) -> KeyBindsInModesBuilder<'_> {
+        self.key_bind("mark", press().code(KeyCode::Char(' ')), Message::Mark)
+            .show_only_in_normal_mode_help_section()
+            .long_description("Mark and rub multiple commits")
     }
 
     fn quit(&mut self) -> KeyBindsInModesBuilder<'_> {
@@ -803,6 +793,56 @@ impl KeyBindsBuilder<'_> {
     }
 }
 
+fn register_normal_mode_key_binds(builder: &mut KeyBindsBuilder<'_>, without_marks: bool) {
+    builder.up().register();
+    builder.down().register();
+    builder.next_section().register();
+    builder.prev_section().register();
+
+    builder.rub().register();
+
+    if without_marks {
+        builder.reverse_rub().register();
+        builder.commit().register();
+        builder.new_commit().register();
+        builder.move_mode().register();
+        builder.branch().register();
+    }
+
+    builder.toggle_details().register();
+    builder.focus_details().register();
+    builder.grow_details().register();
+    builder.shrink_details().register();
+
+    if without_marks {
+        builder.reword_inline().register();
+        builder.reword_editor().register();
+    }
+
+    builder.files().register();
+    builder.all_files().register();
+
+    if without_marks {
+        builder.discard().register();
+    }
+
+    builder.mark().register();
+
+    builder.branch_picker().register();
+    builder.unassigned().register();
+    builder.merge_base().register();
+    builder.command().register();
+    builder.shell_command().register();
+
+    if without_marks {
+        builder.copy().register();
+    }
+
+    builder.reload().register();
+    builder.help().register();
+    builder.quit().register();
+}
+
 fn register_non_mode_specific_key_binds(builder: &mut KeyBindsBuilder<'_>) {
     builder.up().register();
     builder.down().register();
@@ -839,6 +879,14 @@ impl KeyBindsInModesBuilder<'_> {
         self
     }
 
+    /// Normally `?` shows key binds in all the methods they're available in. However that results
+    /// in a lot of noise since many key binds (such as moving the cursor) are available in all
+    /// modes.
+    ///
+    /// This methods is used to hide such key binds from non-normal modes to reduce that noise.
+    ///
+    /// The intention is that shared key binds are shown in normal mode so other modes can only
+    /// show key binds specific to them.
     fn show_only_in_normal_mode_help_section(mut self) -> Self {
         self.show_only_in_normal_mode_help_section = true;
         self
@@ -1051,6 +1099,7 @@ fn format_key_code(code: KeyCode, shifted: bool) -> String {
         KeyCode::Delete => "del".to_owned(),
         KeyCode::Insert => "ins".to_owned(),
         KeyCode::Esc => "esc".to_owned(),
+        KeyCode::Char(' ') => "space".to_owned(),
         KeyCode::Char(ch) => normalize_char_for_display(ch, shifted).to_string(),
         KeyCode::Null => "null".to_owned(),
         KeyCode::CapsLock => "capslock".to_owned(),

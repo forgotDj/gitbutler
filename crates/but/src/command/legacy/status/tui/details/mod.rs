@@ -200,6 +200,7 @@ impl Details {
             | Message::ShrinkDetails
             | Message::PickAndGotoBranch
             | Message::ToggleHelp
+            | Message::Mark
             | Message::RegisterOutOfBandMessage(_)
             | Message::WithOneFrameDelay(_)
             | Message::EnterNormalMode => false,

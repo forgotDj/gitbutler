@@ -11,8 +11,8 @@ use crate::{
         CommitClassification, FilesStatusFlag,
         output::{StatusOutputContent, StatusOutputLine, StatusOutputLineData},
         tui::{
-            CommitMessageComposer, CommitMode, CommitSource, InlineRewordMode, Mode, RubMode,
-            RubSource, SelectAfterReload, mode::UnassignedCommitSource,
+            CommitMessageComposer, CommitMode, CommitSource, InlineRewordMode, Mode, NormalMode,
+            RubMode, RubSource, SelectAfterReload, mode::UnassignedCommitSource,
         },
     },
 };
@@ -781,7 +781,11 @@ fn move_up_moves_to_previous_selectable_line() {
     ];
 
     let mut cursor = Cursor(2);
-    if let Some(new_cursor) = cursor.move_up(&lines, &Mode::Normal, FilesStatusFlag::All) {
+    if let Some(new_cursor) = cursor.move_up(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -800,7 +804,11 @@ fn move_up_does_not_move_when_already_at_first_selectable_line() {
     ];
 
     let mut cursor = Cursor(0);
-    if let Some(new_cursor) = cursor.move_up(&lines, &Mode::Normal, FilesStatusFlag::All) {
+    if let Some(new_cursor) = cursor.move_up(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -820,7 +828,11 @@ fn move_down_moves_to_next_selectable_line() {
     ];
 
     let mut cursor = Cursor(0);
-    if let Some(new_cursor) = cursor.move_down(&lines, &Mode::Normal, FilesStatusFlag::All) {
+    if let Some(new_cursor) = cursor.move_down(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -837,11 +849,50 @@ fn move_down_does_not_move_when_no_selectable_line_below() {
     ];
 
     let mut cursor = Cursor(0);
-    if let Some(new_cursor) = cursor.move_down(&lines, &Mode::Normal, FilesStatusFlag::All) {
+    if let Some(new_cursor) = cursor.move_down(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
     assert_eq!(cursor, Cursor(0));
+}
+
+#[test]
+fn move_down_within_section_stops_at_next_section() {
+    let lines = vec![
+        line(StatusOutputLineData::Branch {
+            cli_id: branch_cli_id("main", "b0", None),
+        }),
+        line(StatusOutputLineData::Hint),
+        line(StatusOutputLineData::Commit {
+            cli_id: commit_cli_id("1111111111111111111111111111111111111111", "c0"),
+            stack_id: None,
+            classification: CommitClassification::LocalOnly,
+        }),
+        line(StatusOutputLineData::Branch {
+            cli_id: branch_cli_id("other", "b1", None),
+        }),
+    ];
+
+    assert_eq!(
+        Cursor(0).move_down_within_section(
+            &lines,
+            &Mode::Normal(NormalMode::default()),
+            FilesStatusFlag::All
+        ),
+        Some(Cursor(2))
+    );
+    assert_eq!(
+        Cursor(2).move_down_within_section(
+            &lines,
+            &Mode::Normal(NormalMode::default()),
+            FilesStatusFlag::All
+        ),
+        None
+    );
 }
 
 #[test]
@@ -856,19 +907,32 @@ fn movement_does_not_panic_or_move_when_cursor_is_out_of_bounds() {
     ];
 
     let mut cursor = Cursor(99);
-    if let Some(new_cursor) = cursor.move_up(&lines, &Mode::Normal, FilesStatusFlag::All) {
+    if let Some(new_cursor) = cursor.move_up(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
-    if let Some(new_cursor) = cursor.move_down(&lines, &Mode::Normal, FilesStatusFlag::All) {
+    if let Some(new_cursor) = cursor.move_down(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
-    if let Some(new_cursor) = cursor.move_next_section(&lines, &Mode::Normal, FilesStatusFlag::All)
-    {
+    if let Some(new_cursor) = cursor.move_next_section(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
-    if let Some(new_cursor) =
-        cursor.move_previous_section(&lines, &Mode::Normal, FilesStatusFlag::All)
-    {
+    if let Some(new_cursor) = cursor.move_previous_section(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -905,8 +969,11 @@ fn move_next_section_moves_to_next_jump_target() {
     ];
 
     let mut cursor = Cursor(0);
-    if let Some(new_cursor) = cursor.move_next_section(&lines, &Mode::Normal, FilesStatusFlag::All)
-    {
+    if let Some(new_cursor) = cursor.move_next_section(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -925,8 +992,11 @@ fn move_next_section_does_not_move_when_no_jump_target_below() {
     ];
 
     let mut cursor = Cursor(1);
-    if let Some(new_cursor) = cursor.move_next_section(&lines, &Mode::Normal, FilesStatusFlag::All)
-    {
+    if let Some(new_cursor) = cursor.move_next_section(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -963,9 +1033,11 @@ fn move_previous_section_moves_to_current_section_header_when_cursor_is_inside_i
     ];
 
     let mut cursor = Cursor(3);
-    if let Some(new_cursor) =
-        cursor.move_previous_section(&lines, &Mode::Normal, FilesStatusFlag::All)
-    {
+    if let Some(new_cursor) = cursor.move_previous_section(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -987,9 +1059,11 @@ fn move_previous_section_moves_to_immediate_previous_when_already_on_section_hea
     ];
 
     let mut cursor = Cursor(2);
-    if let Some(new_cursor) =
-        cursor.move_previous_section(&lines, &Mode::Normal, FilesStatusFlag::All)
-    {
+    if let Some(new_cursor) = cursor.move_previous_section(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -1008,9 +1082,11 @@ fn move_previous_section_moves_to_current_header_when_only_current_section_exist
     ];
 
     let mut cursor = Cursor(1);
-    if let Some(new_cursor) =
-        cursor.move_previous_section(&lines, &Mode::Normal, FilesStatusFlag::All)
-    {
+    if let Some(new_cursor) = cursor.move_previous_section(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -1029,9 +1105,11 @@ fn move_previous_section_does_not_move_when_on_first_jump_target() {
     ];
 
     let mut cursor = Cursor(0);
-    if let Some(new_cursor) =
-        cursor.move_previous_section(&lines, &Mode::Normal, FilesStatusFlag::All)
-    {
+    if let Some(new_cursor) = cursor.move_previous_section(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -1192,8 +1270,11 @@ fn move_next_section_skips_non_jump_targets_like_commits() {
     ];
 
     let mut cursor = Cursor(0);
-    if let Some(new_cursor) = cursor.move_next_section(&lines, &Mode::Normal, FilesStatusFlag::All)
-    {
+    if let Some(new_cursor) = cursor.move_next_section(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -1219,8 +1300,11 @@ fn move_next_section_can_jump_to_merge_base_line() {
     ];
 
     let mut cursor = Cursor(0);
-    if let Some(new_cursor) = cursor.move_next_section(&lines, &Mode::Normal, FilesStatusFlag::All)
-    {
+    if let Some(new_cursor) = cursor.move_next_section(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 
@@ -1246,9 +1330,11 @@ fn move_previous_section_can_jump_from_merge_base_line() {
     ];
 
     let mut cursor = Cursor(2);
-    if let Some(new_cursor) =
-        cursor.move_previous_section(&lines, &Mode::Normal, FilesStatusFlag::All)
-    {
+    if let Some(new_cursor) = cursor.move_previous_section(
+        &lines,
+        &Mode::Normal(NormalMode::default()),
+        FilesStatusFlag::All,
+    ) {
         cursor = new_cursor;
     }
 

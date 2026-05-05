@@ -2,6 +2,7 @@ use std::{borrow::Cow, iter::once};
 
 use but_workspace::commit::squash_commits::MessageCombinationStrategy;
 use itertools::Either;
+use nonempty::NonEmpty;
 use ratatui::{
     Frame,
     prelude::*,
@@ -13,6 +14,7 @@ use crate::{
     command::legacy::status::{
         CommitLineContent, FileLineContent, StatusOutputLine,
         output::{BranchLineContent, StatusOutputContent, StatusOutputLineData},
+        tui::{Markable, rub::squash_operation_display},
     },
     theme::Theme,
 };
@@ -158,7 +160,32 @@ pub(super) fn render_status_list_item(
     let mut line = Line::default();
 
     if let Some(connector) = connector {
-        line.extend(connector.clone());
+        if data
+            .cli_id()
+            .and_then(|id| Markable::try_from_cli_id(id))
+            .is_some_and(|markable| app.marks().is_some_and(|marks| marks.contains(&markable)))
+        {
+            for (idx, span) in connector.iter().enumerate() {
+                if idx == 1 {
+                    line.push_span(app.theme.sym().mark.span());
+                } else if idx == 2 {
+                    // after the indicator is a bunch of spaces
+                    for (c_idx, c) in span.content.chars().enumerate() {
+                        line.push_span(if c_idx == 0 {
+                            // color the background of the first space the same as the mark indicator
+                            // since the checkmark symbol we use takes up more than one cell
+                            Span::raw(c.to_string()).style(app.theme.tui_mark)
+                        } else {
+                            Span::raw(c.to_string())
+                        });
+                    }
+                } else {
+                    line.push_span(span.clone());
+                }
+            }
+        } else {
+            line.extend(connector.clone());
+        }
     }
 
     let line_is_to_be_discarded = app.to_be_discarded.as_ref().is_some_and(|to_be_discarded| {
@@ -170,7 +197,7 @@ pub(super) fn render_status_list_item(
         line.extend([Span::raw("<< discard >>").black().on_red(), Span::raw(" ")]);
     } else if is_selected {
         match &app.mode {
-            Mode::Normal | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
+            Mode::Normal(..) | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
             Mode::Rub(RubMode {
                 source,
                 how_to_combine_messages,
@@ -205,7 +232,7 @@ pub(super) fn render_status_list_item(
         }
     } else {
         match &app.mode {
-            Mode::Normal | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
+            Mode::Normal(..) | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
             Mode::Rub(RubMode {
                 source,
                 how_to_combine_messages: _,
@@ -213,7 +240,7 @@ pub(super) fn render_status_list_item(
                 _unlock_details: _,
             }) => {
                 if let Some(cli_id) = data.cli_id()
-                    && source == &**cli_id
+                    && source.contains(cli_id)
                 {
                     line.extend([source_span(app.theme), Span::raw(" ")]);
                 }
@@ -330,7 +357,7 @@ pub(super) fn render_status_list_item(
                 line.extend(content_spans);
             }
         }
-        Mode::Normal
+        Mode::Normal(..)
         | Mode::Details
         | Mode::Move(..)
         | Mode::Command(..)
@@ -417,7 +444,7 @@ pub(super) fn render_status_list_item(
                     }
                 }
             }
-            Mode::Normal
+            Mode::Normal(..)
             | Mode::Details
             | Mode::Rub(..)
             | Mode::InlineReword(..)
@@ -443,18 +470,22 @@ fn render_rub_inline_labels_for_selected_line(
         return;
     };
 
-    if source == &**target {
+    if source.contains(target) {
         line.extend([source_span(app.theme), Span::raw(" ")]);
     }
 
     let display = match source {
         RubSource::CliId(source) => Cow::Borrowed(
-            rub::rub_operation_display(source, target, how_to_combine_messages)
+            rub::rub_operation_display(NonEmpty::new(source), target, how_to_combine_messages)
                 .unwrap_or("invalid"),
         ),
         RubSource::CommittedHunk(hunk) => Cow::Borrowed(
             rub_from_detail_view::rub_operation_display(hunk, target).unwrap_or("invalid"),
         ),
+        RubSource::Marks(_) => {
+            // squashing is currently the only operation that supports multiple sources
+            Cow::Borrowed(squash_operation_display(how_to_combine_messages))
+        }
     };
     line.extend([
         Span::raw("<< ").mode_colors(&app.mode, app.theme),
@@ -563,7 +594,7 @@ fn render_hotbar(app: &App, area: Rect, frame: &mut Frame) {
     frame.render_widget(" ", layout[1]);
 
     match &app.mode {
-        Mode::Normal
+        Mode::Normal(..)
         | Mode::Details
         | Mode::Rub(..)
         | Mode::Commit(..)
@@ -814,7 +845,7 @@ pub(super) fn move_operation_display(
 }
 
 fn source_span(theme: &'static Theme) -> Span<'static> {
-    Span::raw("<< source >>").mode_colors(&Mode::Normal, theme)
+    Span::raw("<< source >>").mode_colors(ModeDiscriminant::Normal, theme)
 }
 
 pub(super) trait SpanExt<M> {

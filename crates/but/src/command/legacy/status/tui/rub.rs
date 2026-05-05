@@ -5,23 +5,27 @@
 
 use but_ctx::Context;
 use but_workspace::commit::squash_commits::MessageCombinationStrategy;
+use nonempty::NonEmpty;
 
 use crate::{
     CliId,
     command::legacy::{
-        rub::{RubOperation, RubOperationDiscriminants, SquashCommitsOperation},
-        status::tui::SelectAfterReload,
+        rub::{RubOperation, SquashCommitsOperation},
+        status::tui::{Markable, SelectAfterReload},
     },
 };
 
 pub(super) fn route_operation<'a>(
-    source: &'a CliId,
+    sources: NonEmpty<&'a CliId>,
     target: &'a CliId,
     how_to_combine_messages: MessageCombinationStrategy,
 ) -> Option<RubOperation<'a>> {
     Some(
-        match crate::command::legacy::rub::route_operation(source, target, how_to_combine_messages)?
-        {
+        match crate::command::legacy::rub::route_operation(
+            sources,
+            target,
+            how_to_combine_messages,
+        )? {
             op @ RubOperation::UnassignUncommitted(..) => op,
             op @ RubOperation::UncommittedToCommit(..) => op,
             op @ RubOperation::UnassignedToCommit(..) => op,
@@ -62,17 +66,23 @@ pub(super) fn supports_rubbing(id: &CliId) -> bool {
     }
 }
 
+pub(super) fn mark_supports_rubbing(mark: &Markable) -> bool {
+    match mark {
+        Markable::Commit { .. } => true,
+    }
+}
+
 /// Returns a human-facing operation descriptor for the source/target pair.
 pub(super) fn rub_operation_display(
-    source: &CliId,
+    sources: NonEmpty<&CliId>,
     target: &CliId,
     how_to_combine_messages: MessageCombinationStrategy,
 ) -> Option<&'static str> {
-    if source == target {
+    if sources.len() == 1 && *sources.first() == target {
         return Some("noop");
     }
 
-    let operation = route_operation(source, target, how_to_combine_messages)?;
+    let operation = route_operation(sources, target, how_to_combine_messages)?;
     Some(match operation {
         RubOperation::UnassignUncommitted(..) => "unassign hunks",
         RubOperation::UncommittedToCommit(..) => "amend",
@@ -87,14 +97,10 @@ pub(super) fn rub_operation_display(
         RubOperation::CommitToUnassigned(..) => "undo commit",
         RubOperation::CommitToStack(..) => "undo commit",
         RubOperation::SquashCommits(SquashCommitsOperation {
-            source: _,
+            sources: _,
             destination: _,
             how_to_combine_messages,
-        }) => match how_to_combine_messages {
-            MessageCombinationStrategy::KeepBoth => "squash",
-            MessageCombinationStrategy::KeepSubject => "squash (discard this message)",
-            MessageCombinationStrategy::KeepTarget => "squash (use this message)",
-        },
+        }) => squash_operation_display(how_to_combine_messages),
         RubOperation::MoveCommitToBranch(..) => "move commit",
         RubOperation::BranchToUnassigned(..) => "unassign hunks",
         RubOperation::BranchToStack(..) => "reassign hunks",
@@ -105,6 +111,16 @@ pub(super) fn rub_operation_display(
         RubOperation::CommittedFileToUnassigned(..) => "uncommit file",
         RubOperation::StackToCommit(..) => "amend",
     })
+}
+
+pub(super) fn squash_operation_display(
+    how_to_combine_messages: MessageCombinationStrategy,
+) -> &'static str {
+    match how_to_combine_messages {
+        MessageCombinationStrategy::KeepBoth => "squash",
+        MessageCombinationStrategy::KeepSubject => "squash (discard this message)",
+        MessageCombinationStrategy::KeepTarget => "squash (use this message)",
+    }
 }
 
 /// Executes a rub operation and returns which item should be selected after reloading.
@@ -224,22 +240,3 @@ pub(super) fn perform_operation(
 
     Ok(Some(selection))
 }
-
-/// Error raised when a routed operation has no implementation in this rub-api module.
-#[derive(Debug)]
-pub(super) struct OperationNotSupported(RubOperationDiscriminants);
-
-impl OperationNotSupported {
-    /// Creates an unsupported-operation error from a routed operation value.
-    pub(super) fn new(operation: &RubOperation<'_>) -> Self {
-        OperationNotSupported(RubOperationDiscriminants::from(operation))
-    }
-}
-
-impl std::fmt::Display for OperationNotSupported {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?} is not supported", self.0)
-    }
-}
-
-impl std::error::Error for OperationNotSupported {}
