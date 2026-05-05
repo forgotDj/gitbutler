@@ -55,7 +55,15 @@ import {
 } from "#ui/workspace/navigation-index.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
-import { AbsorptionTarget, Commit, RefInfo, Segment, Stack, TreeChange } from "@gitbutler/but-sdk";
+import {
+	AbsorptionTarget,
+	BranchReference,
+	Commit,
+	RefInfo,
+	Segment,
+	Stack,
+	TreeChange,
+} from "@gitbutler/but-sdk";
 import { formatForDisplay, useHotkey, useHotkeys } from "@tanstack/react-hotkeys";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
@@ -1192,10 +1200,10 @@ const BranchSegment: FC<{
 	navigationIndex: NavigationIndex;
 	projectId: string;
 	segment: Segment;
+	refName: BranchReference;
 	stackId: string;
 	focusPanel: (panel: PanelType) => void;
-}> = ({ navigationIndex, projectId, segment, stackId, focusPanel }) => {
-	const refName = assert(segment.refName);
+}> = ({ navigationIndex, projectId, segment, refName, stackId, focusPanel }) => {
 	const operand = branchOperand({ stackId, branchRef: refName.fullNameBytes });
 
 	return (
@@ -1292,22 +1300,21 @@ const StackC: FC<{
 
 			<div role="group" className={styles.segments}>
 				{stack.segments.map((segment) => {
-					const branchRef = segment.refName?.fullNameBytes;
+					if (!segment.refName?.fullNameBytes && segment.commits.length === 0) return null;
 
-					if (!branchRef && segment.commits.length === 0) return null;
-
-					const segmentKey = branchRef
-						? JSON.stringify(branchRef)
+					const segmentKey = segment.refName
+						? JSON.stringify(segment.refName.fullNameBytes)
 						: // A segment should always either have a branch reference or at
 							// least one commit, so this assertion should be safe.
 							assert(segment.commits[0]).id;
 
-					return branchRef ? (
+					return segment.refName ? (
 						<BranchSegment
 							key={segmentKey}
 							navigationIndex={navigationIndex}
 							projectId={projectId}
 							segment={segment}
+							refName={segment.refName}
 							stackId={stackId}
 							focusPanel={focusPanel}
 						/>
