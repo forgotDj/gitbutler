@@ -1,7 +1,6 @@
 use std::{
     collections::{HashMap, hash_map::Entry},
     fs,
-    path::Path,
     str::{FromStr, from_utf8},
 };
 
@@ -11,18 +10,13 @@ use but_ctx::{
     Context,
     access::{RepoExclusive, RepoShared},
 };
-use but_meta::virtual_branches_legacy_types;
+use but_meta::virtual_branches_legacy_types::VirtualBranches;
 use but_oxidize::{ObjectIdExt as _, OidExt};
 use gitbutler_cherry_pick::GixRepositoryExt as _;
 use gitbutler_repo::{
     SignaturePurpose, commit_ids_excluding_reachable_from_with_graph, commit_without_signature_gix,
     signature_gix,
 };
-#[expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-use gitbutler_stack::{VirtualBranchesHandle, VirtualBranchesState};
 use gix::objs::Write as _;
 use gix::{
     ObjectId,
@@ -164,14 +158,7 @@ impl OplogExt for Context {
     ) -> Result<gix::ObjectId> {
         let target = self.persisted_default_target()?.sha;
         let repo = self.repo.get()?;
-        commit_snapshot(
-            &self.project_data_dir(),
-            &repo,
-            snapshot_tree_id,
-            details,
-            perm,
-            target,
-        )
+        commit_snapshot(self, &repo, snapshot_tree_id, details, perm, target)
     }
 
     #[instrument(skip(self, details, perm), err(Debug))]
@@ -185,14 +172,7 @@ impl OplogExt for Context {
             target_base_oid,
         } = prepare_snapshot_with_target(self, perm.read_permission())?;
         let repo = self.repo.get()?;
-        commit_snapshot(
-            &self.project_data_dir(),
-            &repo,
-            tree_id,
-            details,
-            perm,
-            target_base_oid,
-        )
+        commit_snapshot(self, &repo, tree_id, details, perm, target_base_oid)
     }
 
     #[instrument(skip(self), err(Debug))]
@@ -473,17 +453,112 @@ struct PreparedSnapshot {
     target_base_oid: gix::ObjectId,
 }
 
-#[expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
+mod legacy_virtual_branches {
+    use std::path::PathBuf;
+
+    use anyhow::Result;
+    use but_ctx::Context;
+    use but_meta::{
+        legacy_storage,
+        virtual_branches_legacy_types::{Stack, StackBranch, VirtualBranches},
+    };
+
+    pub(super) fn restore_legacy_metadata_from_toml(
+        ctx: &Context,
+        contents: &[u8],
+    ) -> Result<but_meta::VirtualBranchesTomlMetadata> {
+        let path = toml_path(ctx);
+        but_utils::write(&path, contents)?;
+        legacy_storage::import_toml_into_db(&path)?;
+        ctx.legacy_meta()
+    }
+
+    fn toml_path(ctx: &Context) -> PathBuf {
+        ctx.project_data_dir().join("virtual_branches.toml")
+    }
+
+    pub(super) fn in_workspace_stacks(
+        virtual_branches: &VirtualBranches,
+    ) -> impl Iterator<Item = &Stack> {
+        virtual_branches
+            .branches
+            .values()
+            .filter(|stack| stack.in_workspace)
+    }
+
+    pub(super) fn in_workspace_stacks_mut(
+        virtual_branches: &mut VirtualBranches,
+    ) -> impl Iterator<Item = &mut Stack> {
+        virtual_branches
+            .branches
+            .values_mut()
+            .filter(|stack| stack.in_workspace)
+    }
+
+    pub(super) fn stack_head_oid(
+        stack: &Stack,
+        default_target_oid: gix::ObjectId,
+        repo: &gix::Repository,
+    ) -> Result<gix::ObjectId> {
+        if let Some(branch) = stack.heads.last() {
+            branch_head_oid(branch, repo)
+        } else {
+            Ok(default_target_oid)
+        }
+    }
+
+    pub(super) fn sync_stack_heads_from_refs(stack: &mut Stack, repo: &gix::Repository) -> bool {
+        let mut changed = false;
+        for head in &mut stack.heads {
+            changed |= sync_branch_head_from_ref(head, repo).unwrap_or(false);
+        }
+        changed
+    }
+
+    fn branch_head_oid(branch: &StackBranch, repo: &gix::Repository) -> Result<gix::ObjectId> {
+        if let Some(mut reference) = repo.try_find_reference(&branch.name)? {
+            let commit = reference.peel_to_commit()?;
+            Ok(commit.id)
+        } else {
+            set_reference_to_stored_head(branch, repo)?;
+            Ok(branch.head)
+        }
+    }
+
+    pub(super) fn set_reference_to_stored_head(
+        branch: &StackBranch,
+        repo: &gix::Repository,
+    ) -> Result<()> {
+        repo.reference(
+            qualified_reference_name(&branch.name),
+            branch.head,
+            gix::refs::transaction::PreviousValue::Any,
+            "GitButler reference",
+        )?;
+        Ok(())
+    }
+
+    fn sync_branch_head_from_ref(branch: &mut StackBranch, repo: &gix::Repository) -> Result<bool> {
+        let oid_from_ref = branch_head_oid(branch, repo)?;
+        if oid_from_ref != branch.head {
+            branch.head = oid_from_ref;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn qualified_reference_name(name: &str) -> String {
+        format!("refs/heads/{}", name.trim_matches('/'))
+    }
+}
+
 fn prepare_snapshot_with_target(
     ctx: &Context,
     _shared_access: &RepoShared,
 ) -> Result<PreparedSnapshot> {
     let repo = ctx.repo.get()?;
     let empty_tree_id = repo.empty_tree().id;
-    let mut vb_state = VirtualBranchesHandle::new(ctx.project_data_dir());
 
     // grab the target commit
     let default_target_commit_id = ctx.persisted_default_target()?.sha;
@@ -508,49 +583,60 @@ fn prepare_snapshot_with_target(
     snapshot_tree.upsert("conflicts", EntryKind::Tree, conflicts_tree_id)?;
     snapshot_tree.upsert("virtual_branches", EntryKind::Tree, empty_tree_id)?;
 
-    for mut stack in vb_state.list_stacks_in_workspace()? {
-        let stack_tree = stack.tree(ctx)?;
-        let stack_head = stack.head_oid(ctx)?;
-        let stack_id = stack.id.to_string();
-        let mut stack_tree_cursor =
-            snapshot_tree.cursor_at(format!("virtual_branches/{stack_id}"))?;
+    let legacy_meta_path = {
+        let mut legacy_meta = ctx.legacy_meta()?;
+        let mut virtual_branches_changed = false;
+        for stack in legacy_virtual_branches::in_workspace_stacks_mut(legacy_meta.data_mut()) {
+            let stack_head =
+                legacy_virtual_branches::stack_head_oid(stack, default_target_commit_id, &repo)?;
+            let stack_tree = repo.find_commit(stack_head)?.tree_id()?.detach();
+            let stack_id = stack.id.to_string();
+            let mut stack_tree_cursor =
+                snapshot_tree.cursor_at(format!("virtual_branches/{stack_id}"))?;
 
-        // commits in virtual branches (tree and commit data)
-        // calculate all the commits between branch.head and the target and codify them
-        stack_tree_cursor.upsert("tree", EntryKind::Tree, stack_tree)?;
+            // commits in virtual branches (tree and commit data)
+            // calculate all the commits between branch.head and the target and codify them
+            stack_tree_cursor.upsert("tree", EntryKind::Tree, stack_tree)?;
 
-        // If the references are out of sync, now is a good time to update them
-        stack.sync_heads_with_references(&mut vb_state, &repo).ok();
+            // If the references are out of sync, now is a good time to update them
+            virtual_branches_changed |=
+                legacy_virtual_branches::sync_stack_heads_from_refs(stack, &repo);
 
-        for commit_id in commit_ids_excluding_reachable_from_with_graph(
-            &repo,
-            stack_head,
-            default_target_commit_id,
-            &mut graph,
-        )? {
-            let commit = repo.find_commit(commit_id)?;
-            let commit_tree_id = commit.tree_id()?.detach();
-            let commit_data_blob_id = repo.write_blob(&commit.data)?;
+            for commit_id in commit_ids_excluding_reachable_from_with_graph(
+                &repo,
+                stack_head,
+                default_target_commit_id,
+                &mut graph,
+            )? {
+                let commit = repo.find_commit(commit_id)?;
+                let commit_tree_id = commit.tree_id()?.detach();
+                let commit_data_blob_id = repo.write_blob(&commit.data)?;
 
-            stack_tree_cursor.upsert(
-                format!("commits/{commit_id}/commit"),
-                EntryKind::Blob,
-                commit_data_blob_id,
-            )?;
-            stack_tree_cursor.upsert(
-                format!("commits/{commit_id}/tree"),
-                EntryKind::Tree,
-                commit_tree_id,
-            )?;
+                stack_tree_cursor.upsert(
+                    format!("commits/{commit_id}/commit"),
+                    EntryKind::Blob,
+                    commit_data_blob_id,
+                )?;
+                stack_tree_cursor.upsert(
+                    format!("commits/{commit_id}/tree"),
+                    EntryKind::Tree,
+                    commit_tree_id,
+                )?;
+            }
         }
-    }
 
-    // The loop above may update the toml file in the stack.sync_heads_with_references call so write the virtual_branches.toml after
-    // It may be the case that with the refactoring through `but-meta` the head value is no longer in sync so sync_heads_with_references is the final attempt to sync it
+        if virtual_branches_changed {
+            legacy_meta.set_changed_to_necessitate_write();
+            legacy_meta.write_unreconciled()?;
+        }
+        legacy_meta.path().to_owned()
+    };
+
+    // The loop above may update the legacy metadata if stored heads drifted from refs, so
+    // snapshot virtual_branches.toml only after that final synchronization attempt.
     // This is relevant only for snapshot restore.
     // Create a blob out of `.git/gitbutler/virtual_branches.toml`
-    let vb_path = ctx.project_data_dir().join("virtual_branches.toml");
-    let vb_content = fs::read(vb_path)?;
+    let vb_content = fs::read(legacy_meta_path)?;
     let vb_blob_id = repo.write_blob(&vb_content)?;
     snapshot_tree.upsert("virtual_branches.toml", EntryKind::Blob, vb_blob_id)?;
     // Add the worktree tree
@@ -593,7 +679,7 @@ fn prepare_snapshot_with_target(
 }
 
 fn commit_snapshot(
-    project_data_dir: &Path,
+    ctx: &Context,
     repo: &gix::Repository,
     snapshot_tree_id: gix::ObjectId,
     details: SnapshotDetails,
@@ -602,7 +688,8 @@ fn commit_snapshot(
 ) -> Result<gix::ObjectId> {
     repo.find_tree(snapshot_tree_id)?;
 
-    let oplog_state = OplogHandle::new(project_data_dir);
+    let project_data_dir = ctx.project_data_dir();
+    let oplog_state = OplogHandle::new(&project_data_dir);
     let oplog_head_commit = oplog_state
         .oplog_head()?
         .and_then(|head_id| repo.find_commit(head_id).ok());
@@ -626,18 +713,11 @@ fn commit_snapshot(
 
     oplog_state.set_oplog_head(snapshot_commit_id)?;
 
-    set_reference_to_oplog(
-        repo.git_dir(),
-        ReflogCommits::new(project_data_dir, target)?,
-    )?;
+    set_reference_to_oplog(repo.git_dir(), ReflogCommits::new(ctx, target)?)?;
 
     Ok(snapshot_commit_id)
 }
 
-#[expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
 fn restore_snapshot(
     ctx: &Context,
     snapshot_commit_id: gix::ObjectId,
@@ -747,18 +827,13 @@ fn restore_snapshot(
     }
 
     // Update virtual_branches.toml with the state from the snapshot
-    fs::write(
-        ctx.project_data_dir().join("virtual_branches.toml"),
-        &vb_toml_blob.data,
-    )?;
+    let vb_state =
+        legacy_virtual_branches::restore_legacy_metadata_from_toml(ctx, &vb_toml_blob.data)?;
 
-    // Now that the toml file has been restored, update references to reflect the the values from virtual_branches.toml
-    let mut vb_state = VirtualBranchesHandle::new(ctx.project_data_dir());
-    vb_state.import_toml_into_db_for_restore()?;
-    let stacks = vb_state.list_stacks_in_workspace()?;
-    for stack in stacks {
-        for branch in stack.heads {
-            branch.set_reference_to_head_value(&gix_repo).ok();
+    // Now that legacy metadata has been restored, update references to reflect the restored heads.
+    for stack in legacy_virtual_branches::in_workspace_stacks(vb_state.data()) {
+        for branch in &stack.heads {
+            legacy_virtual_branches::set_reference_to_stored_head(branch, &gix_repo).ok();
         }
     }
     ctx.invalidate_workspace_cache()?;
@@ -803,7 +878,7 @@ fn restore_snapshot(
     let repo = ctx.repo.get()?;
     let target = ctx.persisted_default_target()?.sha;
     commit_snapshot(
-        &ctx.project_data_dir(),
+        ctx,
         &repo,
         before_restore_snapshot_tree_id,
         details,
@@ -922,15 +997,12 @@ fn tree_from_applied_vbranches(
         .find_blob(vb_toml_entry.id())
         .context("failed to convert virtual_branches tree entry to blob")?;
 
-    let vbs_from_toml: VirtualBranchesState = toml::from_str::<
-        virtual_branches_legacy_types::VirtualBranches,
-    >(from_utf8(&vb_toml_blob.data)?)?
-    .into();
-    let applied_branch_trees: Vec<_> = vbs_from_toml
-        .list_stacks_in_workspace()?
-        .iter()
-        .map(|b| {
-            let head_oid = b.head_oid(ctx)?;
+    let vbs_from_toml: VirtualBranches = toml::from_str(from_utf8(&vb_toml_blob.data)?)?;
+    let default_target_oid = ctx.persisted_default_target()?.sha;
+    let applied_branch_trees: Vec<_> = legacy_virtual_branches::in_workspace_stacks(&vbs_from_toml)
+        .map(|stack| {
+            let head_oid =
+                legacy_virtual_branches::stack_head_oid(stack, default_target_oid, repo)?;
             let commit = repo.find_commit(head_oid)?;
             repo.find_real_tree(&commit, Default::default())
                 .map(|id| id.detach())

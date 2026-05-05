@@ -1,14 +1,9 @@
-#![expect(
-    deprecated,
-    reason = "VirtualBranchesHandle should be replaced with ctx.workspace_* helpers"
-)]
-
 use std::path::Path;
 
 use anyhow::Result;
+use but_ctx::Context;
 use but_utils::write;
 use gitbutler_repo::{GITBUTLER_COMMIT_AUTHOR_EMAIL, GITBUTLER_COMMIT_AUTHOR_NAME};
-use gitbutler_stack::VirtualBranchesHandle;
 use gix::{config::tree::Key, date::parse::TimeBuf};
 
 use crate::state::OplogHandle;
@@ -25,10 +20,10 @@ pub struct ReflogCommits {
 
 impl ReflogCommits {
     /// Collect the current state of all relevant commits that we want to protect in the reflog to prevent them from being GC'd.
-    pub fn new(project_data_dir: &Path, target: gix::ObjectId) -> Result<Self> {
-        let vb_state = VirtualBranchesHandle::new(project_data_dir);
-        let last_pushed_base = vb_state.last_pushed_base()?;
-        let oplog_state = OplogHandle::new(project_data_dir);
+    pub fn new(ctx: &Context, target: gix::ObjectId) -> Result<Self> {
+        let last_pushed_base = ctx.legacy_meta()?.data().last_pushed_base;
+        let project_data_dir = ctx.project_data_dir();
+        let oplog_state = OplogHandle::new(&project_data_dir);
         let oplog = oplog_state.oplog_head()?;
 
         Ok(ReflogCommits {
