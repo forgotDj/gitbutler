@@ -1302,15 +1302,9 @@ const StackC: FC<{
 				{stack.segments.map((segment) => {
 					if (!segment.refName?.fullNameBytes && segment.commits.length === 0) return null;
 
-					const segmentKey = segment.refName
-						? JSON.stringify(segment.refName.fullNameBytes)
-						: // A segment should always either have a branch reference or at
-							// least one commit, so this assertion should be safe.
-							assert(segment.commits[0]).id;
-
 					return segment.refName ? (
 						<BranchSegment
-							key={segmentKey}
+							key={JSON.stringify(segment.refName.fullNameBytes)}
 							navigationIndex={navigationIndex}
 							projectId={projectId}
 							segment={segment}
@@ -1320,7 +1314,11 @@ const StackC: FC<{
 						/>
 					) : (
 						<BranchlessSegment
-							key={segmentKey}
+							key={
+								// A segment should always either have a branch reference or at
+								// least one commit, so this assertion should be safe.
+								assert(segment.commits[0]).id
+							}
 							navigationIndex={navigationIndex}
 							projectId={projectId}
 							segment={segment}
