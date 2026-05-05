@@ -12,8 +12,6 @@ commands.allow = [
   "add_project_best_effort",
   "add_remote",
   "assign_hunk",
-  "auto_branch_changes",
-  "auto_commit",
   "branch_details",
   "branch_diff",
   "build_type",

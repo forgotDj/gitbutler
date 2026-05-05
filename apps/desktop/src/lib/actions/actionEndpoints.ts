@@ -7,40 +7,9 @@ import {
 import { invalidatesList, providesItems, ReduxTag } from "$lib/state/tags";
 import { createEntityAdapter, type EntityState } from "@reduxjs/toolkit";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
-import type { AbsorptionTarget, TreeChange } from "@gitbutler/but-sdk";
 
 export function buildActionEndpoints(build: BackendEndpointBuilder) {
 	return {
-		// ── Actions ─────────────────────────────────────────────────
-		autoCommit: build.mutation<
-			void,
-			{ projectId: string; target: AbsorptionTarget; useAi: boolean }
-		>({
-			extraOptions: {
-				command: "auto_commit",
-				actionName: "Figure out where to commit the given changes",
-			},
-			query: (args) => args,
-			invalidatesTags: [
-				invalidatesList(ReduxTag.HeadSha),
-				invalidatesList(ReduxTag.WorktreeChanges),
-			],
-		}),
-		autoBranchChanges: build.mutation<
-			void,
-			{ projectId: string; changes: TreeChange[]; model: string }
-		>({
-			extraOptions: {
-				command: "auto_branch_changes",
-				actionName: "Create a branch for the given changes",
-			},
-			query: (args) => args,
-			invalidatesTags: [
-				invalidatesList(ReduxTag.HeadSha),
-				invalidatesList(ReduxTag.WorktreeChanges),
-			],
-		}),
-
 		// ── Rules ───────────────────────────────────────────────────
 		createWorkspaceRule: build.mutation<
 			WorkspaceRule,

@@ -6,15 +6,11 @@
 	import ScrollableContainer from "$components/shared/AppScrollableContainer.svelte";
 	import Dropzone from "$components/shared/Dropzone.svelte";
 	import DropzoneOverlay from "$components/shared/DropzoneOverlay.svelte";
-	import { ACTION_SERVICE } from "$lib/actions/actionService.svelte";
-	import { AI_SERVICE } from "$lib/ai/service";
-	import { projectAiGenEnabled } from "$lib/config/config";
 	import { UncommitDzHandler } from "$lib/dragging/dropHandlers/commitDropHandler";
 	import { AssignmentDropHandler } from "$lib/dragging/dropHandlers/hunkDropHandler";
 	import { DIFF_SERVICE } from "$lib/hunks/diffService.svelte";
 	import { IRC_API_SERVICE } from "$lib/irc/ircApiService";
 	import { WORKING_FILES_BROADCAST } from "$lib/irc/workingFilesBroadcast.svelte";
-	import { showToast } from "$lib/notifications/toasts";
 	import { FILE_SELECTION_MANAGER } from "$lib/selection/fileSelectionManager.svelte";
 	import { createWorktreeSelection } from "$lib/selection/key";
 	import { UNCOMMITTED_SERVICE } from "$lib/selection/uncommittedService.svelte";
@@ -26,8 +22,6 @@
 	import { isDefined } from "@gitbutler/ui/utils/typeguards";
 	import { untrack, type Snippet } from "svelte";
 	import type { DropzoneHandler } from "$lib/dragging/handler";
-	import type { FileListKeyHandler } from "$lib/selection/fileListController.svelte";
-	import type { TreeChange } from "@gitbutler/but-sdk";
 
 	type Props = {
 		projectId: string;
@@ -97,93 +91,6 @@
 		new AssignmentDropHandler(projectId, diffService, uncommittedService, stackId, idSelection),
 	);
 
-	const DEFAULT_MODEL = "gpt-4.1";
-	const aiService = inject(AI_SERVICE);
-	const actionService = inject(ACTION_SERVICE);
-	const [autoCommit] = actionService.autoCommit;
-	const [branchChanges] = actionService.branchChanges;
-
-	const aiGenEnabled = $derived(projectAiGenEnabled(projectId));
-	let aiConfigurationValid = $state(false);
-	const canUseGBAI = $derived($aiGenEnabled && aiConfigurationValid);
-
-	$effect(() => {
-		aiService.validateGitButlerAPIConfiguration().then((value) => {
-			aiConfigurationValid = value;
-		});
-	});
-
-	function getSelectedTreeChanges(): TreeChange[] | undefined {
-		const selectedFiles = idSelection.values(selectionId);
-		if (selectedFiles.length === 0) return;
-		const paths = new Set(selectedFiles.map((file) => file.path));
-		return changes.current.filter((change) => paths.has(change.path));
-	}
-
-	/**
-	 * Create a branch and commit from the selected changes.
-	 *
-	 * _Branch [/bræntʃ/]_ is a verb that means to create a new branch and commit from the current changes.
-	 *
-	 * _According to who? Me._
-	 *
-	 * - Anonymous
-	 */
-	async function branchSelection() {
-		const treeChanges = getSelectedTreeChanges();
-		if (!treeChanges || !canUseGBAI) return;
-
-		showToast({
-			style: "info",
-			title: "Creating a branch and committing the changes",
-			message: "This may take a few seconds.",
-		});
-
-		await branchChanges({
-			projectId,
-			changes: treeChanges,
-			model: DEFAULT_MODEL,
-		});
-
-		showToast({
-			style: "success",
-			title: "And... done!",
-			message: `Now, you're free to continue`,
-		});
-	}
-
-	async function autoCommitSelection() {
-		const treeChanges = getSelectedTreeChanges();
-		if (!treeChanges) return;
-
-		await autoCommit({
-			projectId,
-			target: {
-				type: "treeChanges",
-				subject: {
-					changes: treeChanges,
-					assignedStackId: stackId ?? null,
-				},
-			},
-			useAi: $aiGenEnabled,
-		});
-	}
-
-	const aiKeyHandlers: FileListKeyHandler[] = [
-		(_change, _idx, e) => {
-			if (e.code === "KeyB" && (e.ctrlKey || e.metaKey) && e.altKey) {
-				branchSelection();
-				e.preventDefault();
-				return true;
-			}
-			if (e.code === "KeyC" && (e.ctrlKey || e.metaKey) && e.altKey) {
-				autoCommitSelection();
-				e.preventDefault();
-				return true;
-			}
-		},
-	];
-
 	function getDropzoneLabel(handler: DropzoneHandler | undefined): string {
 		if (handler instanceof UncommitDzHandler) {
 			return "Uncommit";
@@ -208,7 +115,6 @@
 			{ircWorkingFiles}
 			dataTestId={TestId.UncommittedChanges_FileList}
 			onselect={onFileClick && ((_change, index) => onFileClick(index))}
-			extraKeyHandlers={aiKeyHandlers}
 		/>
 	</FileListProvider>
 {/snippet}

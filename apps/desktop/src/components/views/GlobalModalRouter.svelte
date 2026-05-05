@@ -1,5 +1,4 @@
 <script lang="ts">
-	import AutoCommitModalContent from "$components/commit/AutoCommitModalContent.svelte";
 	import CommitFailedModalContent from "$components/commit/CommitFailedModalContent.svelte";
 	import LoginConfirmationModalContent from "$components/onboarding/LoginConfirmationModalContent.svelte";
 	import AuthorMissingModalContent from "$components/settings/AuthorMissingModalContent.svelte";
@@ -79,17 +78,6 @@
 					},
 				};
 			}
-			case "auto-commit": {
-				return {
-					state: modalState,
-					props: {
-						testId: TestId.AutoCommitModal,
-						width: 440,
-						noPadding: true,
-						preventCloseOnClickOutside: true,
-					},
-				};
-			}
 		}
 	}
 
@@ -150,8 +138,6 @@
 			<ProjectSettingsModalContent data={modalProps.state} />
 		{:else if modalProps.state.type === "login-confirmation"}
 			<LoginConfirmationModalContent data={modalProps.state} close={closeModal} />
-		{:else if modalProps.state.type === "auto-commit"}
-			<AutoCommitModalContent data={modalProps.state} close={closeModal} />
 		{/if}
 	</Modal>
 {/if}

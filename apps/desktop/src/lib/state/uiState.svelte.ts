@@ -107,8 +107,7 @@ type GlobalModalType =
 	| "author-missing"
 	| "general-settings"
 	| "project-settings"
-	| "login-confirmation"
-	| "auto-commit";
+	| "login-confirmation";
 type BaseGlobalModalState = {
 	type: GlobalModalType;
 };
@@ -144,11 +143,6 @@ export type LoginConfirmationModalState = BaseGlobalModalState & {
 	type: "login-confirmation";
 };
 
-export type AutoCommitModalState = BaseGlobalModalState & {
-	type: "auto-commit";
-	projectId: string;
-};
-
 export type AppTheme = "system" | "light" | "dark";
 
 export type GlobalModalState =
@@ -156,8 +150,7 @@ export type GlobalModalState =
 	| AuthorMissingModalState
 	| GeneralSettingsModalState
 	| ProjectSettingsModalState
-	| LoginConfirmationModalState
-	| AutoCommitModalState;
+	| LoginConfirmationModalState;
 
 export type CodeEditorSettings = {
 	schemeIdentifer: string;

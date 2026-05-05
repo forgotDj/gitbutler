@@ -584,10 +584,6 @@ pub enum Subcommands {
         /// Show the absorption plan without making any changes.
         #[clap(long = "dry-run")]
         dry_run: bool,
-        /// Create new commits, instead of amending existing ones.
-        /// This is useful when you want to preserve existing commits and add new ones for the absorbed changes.
-        #[clap(long, short = 'n')]
-        new: bool,
     },
 
     /// Discard uncommitted changes from the worktree.
