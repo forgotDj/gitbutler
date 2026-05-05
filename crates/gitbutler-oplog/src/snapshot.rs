@@ -3,7 +3,6 @@ use std::vec;
 use anyhow::Result;
 use but_ctx::access::RepoExclusive;
 use gitbutler_branch::BranchUpdateRequest;
-use gitbutler_stack::Stack;
 
 use super::entry::Trailer;
 use crate::{
@@ -58,7 +57,7 @@ pub trait SnapshotExt {
     fn snapshot_branch_update(
         &self,
         snapshot_tree: gix::ObjectId,
-        old_stack: &Stack,
+        old_order: usize,
         update: &BranchUpdateRequest,
         error: Option<&anyhow::Error>,
         perm: &mut RepoExclusive,
@@ -179,7 +178,7 @@ impl SnapshotExt for but_ctx::Context {
     fn snapshot_branch_update(
         &self,
         snapshot_tree: gix::ObjectId,
-        old_stack: &Stack,
+        old_order: usize,
         update: &BranchUpdateRequest,
         error: Option<&anyhow::Error>,
         perm: &mut RepoExclusive,
@@ -190,7 +189,7 @@ impl SnapshotExt for but_ctx::Context {
                     vec![
                         Trailer {
                             key: "before".to_string(),
-                            value: old_stack.order.to_string(),
+                            value: old_order.to_string(),
                         },
                         Trailer {
                             key: "after".to_string(),

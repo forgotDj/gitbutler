@@ -10,7 +10,7 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-but-meta.workspace = true
+but-meta = { workspace = true, features = ["legacy"] }
 but-serde = { workspace = true, features = ["legacy"]}
 but-core.workspace = true
 but-oxidize.workspace = true
@@ -18,7 +18,6 @@ but-utils.workspace = true
 but-ctx = { workspace = true }
 
 gitbutler-branch.workspace = true
-gitbutler-stack.workspace = true
 gitbutler-repo.workspace = true
 gitbutler-cherry-pick.workspace = true
 
