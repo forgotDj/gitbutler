@@ -261,11 +261,15 @@ const CommitDetails: FC<{
 		);
 
 	const selectedChange = commitDetails.changes.find((candidate) => candidate.path === selectedPath);
-	const changes = selectedChange ? [selectedChange] : commitDetails.changes;
+	if (!selectedChange) return null;
 
 	return (
 		<div>
-			<ChangesFileDiffList changes={changes} fileParent={fileParent} projectId={projectId} />
+			<ChangesFileDiffList
+				changes={[selectedChange]}
+				fileParent={fileParent}
+				projectId={projectId}
+			/>
 		</div>
 	);
 };
