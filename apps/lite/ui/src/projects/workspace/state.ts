@@ -22,12 +22,12 @@ import {
 	type OutlineMode,
 } from "#ui/outline/mode.ts";
 
-type WorkspaceSelectionState = {
+type SelectionState = {
 	outline: Operand;
 	files: Operand;
 };
 
-const createInitialWorkspaceSelectionState = (): WorkspaceSelectionState => ({
+const createInitialSelectionState = (): SelectionState => ({
 	outline: changesSectionOperand,
 	files: changesSectionOperand,
 });
@@ -35,13 +35,13 @@ const createInitialWorkspaceSelectionState = (): WorkspaceSelectionState => ({
 export type WorkspaceState = {
 	highlightedCommitIds: Array<string>;
 	mode: OutlineMode;
-	selection: WorkspaceSelectionState;
+	selection: SelectionState;
 };
 
 export const createInitialState = (): WorkspaceState => ({
 	highlightedCommitIds: [],
 	mode: defaultOutlineMode,
-	selection: createInitialWorkspaceSelectionState(),
+	selection: createInitialSelectionState(),
 });
 
 export const initialState: WorkspaceState = createInitialState();
