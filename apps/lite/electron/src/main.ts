@@ -58,15 +58,73 @@ import {
 	updateBranchName,
 	BranchListingFilter,
 } from "@gitbutler/but-sdk";
-import { app, BrowserWindow, ipcMain, Menu, type MenuItemConstructorOptions } from "electron";
+import {
+	app,
+	BrowserWindow,
+	ipcMain,
+	Menu,
+	net,
+	protocol,
+	type MenuItemConstructorOptions,
+} from "electron";
 import { REACT_DEVELOPER_TOOLS, installExtension } from "electron-devtools-installer";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = path.dirname(currentFilePath);
+
+const liteProtocolScheme = "lite";
+const liteProtocolHost = "app";
+const contentRootURL = pathToFileURL(path.join(currentDirPath, "../ui"));
+
+// Custom scheme to serve files. This is necessary for two reasons:
+//
+// 1. Security, as serving via file:// opens up a wider attack surface than is desirable (see https://www.electronjs.org/docs/latest/tutorial/security#18-avoid-usage-of-the-file-protocol-and-prefer-usage-of-custom-protocols)
+// 2. The ability to reload the page when we've set a route that does not correspond to a file we can actually serve
+protocol.registerSchemesAsPrivileged([
+	{
+		scheme: liteProtocolScheme,
+		privileges: {
+			standard: true,
+			secure: true,
+			supportFetchAPI: true,
+		},
+	},
+]);
+
+const registerLiteProtocolHandler = () => {
+	// Handler based on the examples in https://www.electronjs.org/docs/latest/api/protocol#protocolhandlescheme-handler
+	protocol.handle(liteProtocolScheme, async (req) => {
+		const { host, pathname } = new URL(req.url);
+
+		// Our bundle is served with a primary index.html and a flat assets directory, so there's
+		// no need for relative directory traversal to serve our content at this time. We can
+		// therefore trivially prevent path traversal by simply disallowing any ..
+		//
+		// Don't name files with any intermediate .. and we don't need to make this check account for that :)
+		//
+		// In addition, we only have the single host to serve from for now.
+		if (pathname.includes("..") || host !== liteProtocolHost)
+			return new Response("Not found", {
+				status: 404,
+				headers: { "content-type": "text/html" },
+			});
+
+		// We default to serving the index file unless the pathname indicates it's an asset. This is
+		// important to be compatible with React Router's "soft navigation" where it changes the
+		// location to track where you are in the app, but it's still an SPA with only an index file
+		// to actually serve from the backend. For example, if the user navigates somewhere and then
+		// reloads the page, we should still serve up the index file, and React Router will handle the
+		// rest by reading the pathname.
+		const urlToServe = new URL(contentRootURL);
+		urlToServe.pathname += pathname.startsWith("/assets/") ? pathname : "/index.html";
+
+		return net.fetch(urlToServe.toString());
+	});
+};
 
 // Dev-only runtime icons path (packaged builds rely on electron-builder icons).
 const iconsPath = path.join(currentDirPath, "../../resources/icons");
@@ -295,7 +353,8 @@ const createMainWindow = async (): Promise<void> => {
 		return;
 	}
 
-	await mainWindow.loadFile(path.join(currentDirPath, "../ui/index.html"));
+	const rootUrl = `${liteProtocolScheme}://${liteProtocolHost}/`;
+	await mainWindow.loadURL(rootUrl);
 	registerUpdater(mainWindow);
 	checkForUpdates();
 };
@@ -307,6 +366,7 @@ void app.whenReady().then(async () => {
 		if (dockIcon !== undefined && app.dock) app.dock.setIcon(dockIcon);
 	}
 	registerIpcHandlers();
+	registerLiteProtocolHandler();
 	await createMainWindow();
 
 	app.on("activate", () => {
