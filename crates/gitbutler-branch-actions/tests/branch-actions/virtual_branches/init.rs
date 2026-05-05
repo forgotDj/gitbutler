@@ -152,7 +152,7 @@ fn commit_on_non_target_remote() {
     repo.checkout(&"refs/heads/some-feature".parse().unwrap());
     fs::write(repo.path().join("file.txt"), "content").unwrap();
     repo.commit_all("commit on target");
-    repo.push_branch(&"refs/heads/some-feature".parse().unwrap());
+    repo.simulate_push_branch(&"refs/heads/some-feature".parse().unwrap());
 
     let mut guard = ctx.exclusive_worktree_access();
     gitbutler_branch_actions::set_base_branch(
@@ -209,12 +209,7 @@ fn commit_on_target() {
 
 #[test]
 fn submodule() {
-    let Test { repo, ctx, .. } = &mut Test::default();
-
-    let test_project = TestRepo::default();
-    let submodule_url: gitbutler_url::Url =
-        test_project.path().display().to_string().parse().unwrap();
-    repo.add_submodule(&submodule_url, path::Path::new("submodule"));
+    let Test { ctx, .. } = &mut Test::from_fixture("scenario/repo-with-origin-and-submodule.sh");
 
     let mut guard = ctx.exclusive_worktree_access();
     gitbutler_branch_actions::set_base_branch(

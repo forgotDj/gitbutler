@@ -6,10 +6,10 @@ Most of the broad migration is already done. This document only tracks the remai
 
 Repository audit on 2026-05-05:
 
-- `git2::` callsites in `crates/**/*.rs`: 122
-- files with `git2::` references: 22
+- `git2::` callsites in `crates/**/*.rs`: 92
+- files with `git2::` references: 20
 - `ctx.git2_repo` / `ctx.with_git2_repo` callsites: 21
-- test-only direct `git2` / `git2_repo` / `git2_hooks` references: 66 across 9 files
+- test-only direct `git2` / `git2_repo` / `git2_hooks` references: 36 across 7 files
 
 ## Allowed Remaining Boundary
 
@@ -100,15 +100,15 @@ open the generated repository with `open_repo`, then create or update `VirtualBr
 
 Priority targets:
 
-- `crates/gitbutler-repo/tests/repo/support/*`: remove `TestingRepository`, `test_repository`, and
-  `RepoWithOrigin` as `git2` repository builders; replace their states with named fixture scripts.
-- `crates/gitbutler-repo/tests/repo/create_wd_tree.rs`: split reusable initial states into fixture
-  scripts instead of building them with `git2`; keep per-test filesystem mutations only when they are
-  the behavior under test.
-- `crates/gitbutler-repo/tests/repo/rebase.rs`: replace synthetic `git2` commit graph construction
-  with fixture scripts exposing named refs or tags for target and incoming commits.
+- `crates/gitbutler-repo/tests/repo/support/*`: done for repository initial states. The remaining
+  `TestingRepository` `git2` handle exists only for tests that still mutate the index directly.
+- `crates/gitbutler-repo/tests/repo/create_wd_tree.rs`: done for reusable initial states; they are
+  now fixture scripts. Remaining per-test filesystem/index mutations are the behavior under test.
+- `crates/gitbutler-repo/tests/repo/rebase.rs`: done; synthetic `git2` commit graph construction was
+  replaced with fixture scripts exposing named tags for target and incoming commits.
 - `crates/gitbutler-branch-actions/tests/branch-actions/virtual_branches/*`: replace `TestRepo`'s
-  `git2` setup helpers with fixture states plus post-processed metadata where needed.
+  `git2` setup helpers with fixture states plus post-processed metadata where needed. The shared
+  default fixture now owns base config, remote URL normalization, and initial remote-tracking refs.
 
 Goal:
 

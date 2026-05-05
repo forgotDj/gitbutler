@@ -12,7 +12,7 @@ fn no_conflicts() {
         repo.checkout(&branch_name);
         fs::write(repo.path().join("file.txt"), "first").unwrap();
         repo.commit_all("first");
-        repo.push_branch(&branch_name);
+        repo.simulate_push_branch(&branch_name);
         repo.checkout(&"refs/heads/master".parse().unwrap());
     }
 
@@ -57,7 +57,7 @@ fn conflicts_with_uncommited() {
         repo.checkout(&branch_name);
         fs::write(repo.path().join("file.txt"), "first").unwrap();
         repo.commit_all("first");
-        repo.push_branch(&branch_name);
+        repo.simulate_push_branch(&branch_name);
         repo.checkout(&"refs/heads/master".parse().unwrap());
     }
 
@@ -114,7 +114,7 @@ fn conflicts_with_commited() {
         repo.checkout(&branch_name);
         fs::write(repo.path().join("file.txt"), "first").unwrap();
         repo.commit_all("first");
-        repo.push_branch(&branch_name);
+        repo.simulate_push_branch(&branch_name);
         repo.checkout(&"refs/heads/master".parse().unwrap());
     }
 
@@ -238,7 +238,7 @@ fn from_state_remote_branch() {
         repo.checkout(&branch_name);
         fs::write(repo.path().join("file.txt"), "branch commit").unwrap();
         repo.commit_all("branch commit");
-        repo.push_branch(&branch_name);
+        repo.simulate_push_branch(&branch_name);
         repo.checkout(&"refs/heads/master".parse().unwrap());
 
         // make remote branch stale

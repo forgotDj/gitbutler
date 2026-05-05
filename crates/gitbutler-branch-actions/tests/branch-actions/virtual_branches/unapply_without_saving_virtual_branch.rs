@@ -37,16 +37,9 @@ fn should_unapply_diff() {
     assert_eq!(stacks.len(), 0);
     assert!(!repo.path().join("file.txt").exists());
 
-    let mut opts = git2::StatusOptions::new();
-    opts.include_untracked(true);
-    let statuses = repo.local_repo.statuses(Some(&mut opts)).unwrap();
-    assert!(statuses.is_empty());
+    assert_worktree_clean(repo.path());
 
-    let refnames = repo
-        .references()
-        .into_iter()
-        .filter_map(|reference| reference.name().map(|name| name.to_string()))
-        .collect::<Vec<_>>();
+    let refnames = repo.references();
     assert!(!refnames.contains(&"refs/gitbutler/name".to_string()));
 }
 
@@ -110,68 +103,40 @@ fn unapply_with_integrated_commits_no_spurious_uncommitted_changes() {
     create_commit(ctx, stack_r.id, "stack-r: delete ghost.txt, add r-file.txt").unwrap();
 
     // ── T2: advance remote master, deleting ghost.txt ────────────────────────
-    {
-        let remote_url = repo
-            .local_repo
-            .find_remote("origin")
-            .unwrap()
-            .url()
-            .unwrap()
-            .to_string();
-        let remote_path = repo.path().parent().unwrap().join(&remote_url);
-        let remote_repo = git2::Repository::open_bare(&remote_path).unwrap();
-
-        let parent = remote_repo
-            .find_reference("refs/heads/master")
-            .unwrap()
-            .peel_to_commit()
-            .unwrap();
-
-        // T2 tree: preserve the parent tree and remove only ghost.txt.
-        let parent_tree = parent.tree().unwrap();
-        let mut tb = remote_repo.treebuilder(Some(&parent_tree)).unwrap();
-        tb.remove("ghost.txt").unwrap();
-        let tree_oid = tb.write().unwrap();
-        let tree = remote_repo.find_tree(tree_oid).unwrap();
-        let sig = git2::Signature::now("test", "test@test.com").unwrap();
-        remote_repo
-            .commit(
-                Some("refs/heads/master"),
-                &sig,
-                &sig,
-                "T2: delete ghost.txt",
-                &tree,
-                &[&parent],
-            )
-            .unwrap();
-    }
-    repo.local_repo
-        .find_remote("origin")
+    let local_repo = open_repo(repo.path()).unwrap();
+    let parent = local_repo
+        .find_reference("refs/remotes/origin/master")
         .unwrap()
-        .fetch(
-            &["refs/heads/master:refs/remotes/origin/master"],
-            None,
-            None,
+        .peel_to_id()
+        .unwrap()
+        .detach();
+    let t2 = commit_without_signature_gix(
+        &local_repo,
+        None,
+        signature_gix(SignaturePurpose::Author),
+        signature_gix(SignaturePurpose::Committer),
+        "T2: delete ghost.txt".into(),
+        local_repo.empty_tree().id,
+        &[parent],
+        None,
+    )
+    .unwrap();
+    local_repo
+        .reference(
+            "refs/remotes/origin/master",
+            t2,
+            PreviousValue::Any,
+            "test: advance remote tracking branch",
         )
         .unwrap();
 
     // Advance the stored target SHA to T2 WITHOUT rebasing stack R.
     // Stack R remains branched from T1, so workspace_base = merge_base(R_head, T2) = T1.
-    let t2_sha = {
-        let oid = repo
-            .local_repo
-            .find_reference("refs/remotes/origin/master")
-            .unwrap()
-            .target()
-            .unwrap();
-        let bytes: [u8; 20] = oid.as_bytes().try_into().unwrap();
-        gix::ObjectId::Sha1(bytes)
-    };
     {
         let mut guard = ctx.exclusive_worktree_access();
         let mut meta = ctx.legacy_meta_mut(guard.write_permission()).unwrap();
         let mut target = meta.data().default_target.clone().unwrap();
-        target.sha = t2_sha;
+        target.sha = t2;
         meta.set_default_target(target).unwrap();
     }
 
@@ -207,19 +172,18 @@ fn unapply_with_integrated_commits_no_spurious_uncommitted_changes() {
     drop(guard);
 
     // No uncommitted changes should appear — ghost.txt must not be re-introduced.
-    let mut opts = git2::StatusOptions::new();
-    opts.include_untracked(true);
-    let statuses = repo.local_repo.statuses(Some(&mut opts)).unwrap();
-    let status_entries: Vec<_> = statuses
-        .iter()
-        .map(|e| format!("{}: {:?}", e.path().unwrap_or("?"), e.status()))
-        .collect();
-    assert!(
-        statuses.is_empty(),
-        "Expected no uncommitted changes after unapplying stack, but got: {status_entries:?}"
-    );
+    assert_worktree_clean(repo.path());
     assert!(
         !repo.path().join("ghost.txt").exists(),
         "ghost.txt should not have been re-introduced by the unapply merge"
+    );
+}
+
+fn assert_worktree_clean(path: &std::path::Path) {
+    let repo = open_repo(path).unwrap();
+    let changes = but_core::diff::worktree_changes(&repo).unwrap().changes;
+    assert!(
+        changes.is_empty(),
+        "Expected no uncommitted changes, but got: {changes:?}"
     );
 }
