@@ -27,7 +27,7 @@ import {
 	type CommitOperand,
 	type Operand,
 } from "#ui/operands.ts";
-import { filterNavigationIndexForOperationMode } from "#ui/outline/mode.ts";
+import { filterNavigationIndexForOutlineMode } from "#ui/outline/mode.ts";
 import { focusPanel, useFocusedProjectPanel, useNavigationIndexHotkeys } from "#ui/panels.ts";
 import {
 	projectActions,
@@ -159,7 +159,7 @@ const useNavigationIndex = (projectId: string) => {
 		selectProjectOperationModeState(state, projectId),
 	);
 
-	const navigationIndex = filterNavigationIndexForOperationMode({
+	const navigationIndex = filterNavigationIndexForOutlineMode({
 		navigationIndex: navigationIndexUnfiltered,
 		selection,
 		outlineMode,

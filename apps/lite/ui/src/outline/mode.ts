@@ -189,7 +189,7 @@ const includeOperandForOutlineMode = ({
 		}),
 	);
 
-export const filterNavigationIndexForOperationMode = ({
+export const filterNavigationIndexForOutlineMode = ({
 	navigationIndex: navigationIndexUnfiltered,
 	selection,
 	outlineMode,

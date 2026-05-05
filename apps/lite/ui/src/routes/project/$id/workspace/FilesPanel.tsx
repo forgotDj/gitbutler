@@ -54,7 +54,7 @@ import {
 	NavigationIndex,
 	navigationIndexIncludes,
 } from "#ui/workspace/navigation-index.ts";
-import { filterNavigationIndexForOperationMode } from "#ui/outline/mode.ts";
+import { filterNavigationIndexForOutlineMode } from "#ui/outline/mode.ts";
 
 const useNavigationIndex = (projectId: string, parent: Operand, files: Array<Operand>) => {
 	const dispatch = useAppDispatch();
@@ -82,7 +82,7 @@ const useNavigationIndex = (projectId: string, parent: Operand, files: Array<Ope
 		selectProjectOperationModeState(state, projectId),
 	);
 
-	const navigationIndex = filterNavigationIndexForOperationMode({
+	const navigationIndex = filterNavigationIndexForOutlineMode({
 		navigationIndex: navigationIndexUnfiltered,
 		selection,
 		outlineMode,
