@@ -9,9 +9,10 @@ import {
 } from "#ui/api/queries.ts";
 import { useActiveElement } from "#ui/focus.ts";
 import {
+	focusAdjacentPanel,
+	focusPanel,
 	Panel as PanelType,
 	useFocusedProjectPanel,
-	useProjectPanelFocusManager,
 } from "#ui/panels.ts";
 import { isPanelVisible } from "#ui/panels/state.ts";
 import {
@@ -24,7 +25,6 @@ import { ShortcutsBarPortal, TopBarActionsPortal } from "#ui/portals.tsx";
 import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { isInputElement } from "#ui/commands/hotkeys.ts";
-import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import { AbsorptionTarget, BranchListing, Segment, Stack } from "@gitbutler/but-sdk";
 import {
 	formatForDisplay,
@@ -363,13 +363,7 @@ const ShortcutsBar: FC = () => {
 	);
 };
 
-const usePanelsHotkeys = ({
-	focusedPanel,
-	focusAdjacentPanel,
-}: {
-	focusedPanel: PanelType | null;
-	focusAdjacentPanel: (offset: -1 | 1) => void;
-}) => {
+const usePanelsHotkeys = ({ focusedPanel }: { focusedPanel: PanelType | null }) => {
 	useHotkey(
 		"H",
 		() => {
@@ -400,7 +394,6 @@ const WorkspacePage: FC = () => {
 
 	const pickerDialog = useAppSelector((state) => selectProjectPickerDialogState(state, projectId));
 	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
-	const { focusAdjacentPanel, focusPanel, panelElementRef } = useProjectPanelFocusManager();
 	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	const [absorptionTarget, setAbsorptionTarget] = useState<AbsorptionTarget | null>(null);
@@ -428,7 +421,7 @@ const WorkspacePage: FC = () => {
 		},
 	);
 
-	usePanelsHotkeys({ focusedPanel, focusAdjacentPanel });
+	usePanelsHotkeys({ focusedPanel });
 
 	const { defaultLayout, onLayoutChanged } = useDefaultLayout({
 		id: `project:${projectId}:layout`,
@@ -497,9 +490,7 @@ const WorkspacePage: FC = () => {
 					groupResizeBehavior="preserve-pixel-size"
 					tabIndex={0}
 					className={styles.panel}
-					elementRef={useMergedRefs(panelElementRef("outline"), (el) =>
-						el?.focus({ focusVisible: false }),
-					)}
+					elementRef={(el) => el?.focus({ focusVisible: false })}
 					focusPanel={focusPanel}
 					onAbsorbChanges={openAbsorptionDialog}
 				/>
@@ -513,7 +504,6 @@ const WorkspacePage: FC = () => {
 							groupResizeBehavior="preserve-pixel-size"
 							tabIndex={0}
 							className={styles.panel}
-							elementRef={panelElementRef("files")}
 							focusPanel={focusPanel}
 							onAbsorbChanges={openAbsorptionDialog}
 						/>
@@ -524,11 +514,9 @@ const WorkspacePage: FC = () => {
 						<Separator className={styles.panelResizeHandle} />
 						<DetailsPanel
 							id={"details" satisfies PanelType}
-							minSize={300}
-							defaultSize="70%"
+							minSize={400}
 							tabIndex={0}
 							className={styles.panel}
-							elementRef={panelElementRef("details")}
 							focusPanel={focusPanel}
 						/>
 					</>

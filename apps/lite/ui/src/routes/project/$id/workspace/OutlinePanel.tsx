@@ -55,7 +55,15 @@ import {
 } from "#ui/workspace/navigation-index.ts";
 import { mergeProps, useRender } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
-import { AbsorptionTarget, Commit, RefInfo, Segment, Stack, TreeChange } from "@gitbutler/but-sdk";
+import {
+	AbsorptionTarget,
+	BranchReference,
+	Commit,
+	RefInfo,
+	Segment,
+	Stack,
+	TreeChange,
+} from "@gitbutler/but-sdk";
 import { formatForDisplay, useHotkey, useHotkeys } from "@tanstack/react-hotkeys";
 import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
@@ -75,13 +83,8 @@ import styles from "./OutlinePanel.module.css";
 import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
 import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.tsx";
 import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
-import { NonEmptyArray } from "effect/Array";
+import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
 import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
-
-const assert = <T,>(t: T | null | undefined): T => {
-	if (t == null) throw new Error("Expected value to be non-null and defined");
-	return t;
-};
 
 const sections = (headInfo: RefInfo): NonEmptyArray<Section> => {
 	const changesSection: Section = {
@@ -738,8 +741,7 @@ const CommitC: FC<{
 	navigationIndex: NavigationIndex;
 	focusPanel: (panel: PanelType) => void;
 }> = ({ commit, projectId, stackId, navigationIndex, focusPanel }) => {
-	const commitOperandV: CommitOperand = { stackId, commitId: commit.id };
-	const operand = commitOperand(commitOperandV);
+	const operand = commitOperand({ stackId, commitId: commit.id });
 
 	return (
 		<TreeItem
@@ -1193,10 +1195,10 @@ const BranchSegment: FC<{
 	navigationIndex: NavigationIndex;
 	projectId: string;
 	segment: Segment;
+	refName: BranchReference;
 	stackId: string;
 	focusPanel: (panel: PanelType) => void;
-}> = ({ navigationIndex, projectId, segment, stackId, focusPanel }) => {
-	const refName = assert(segment.refName);
+}> = ({ navigationIndex, projectId, segment, refName, stackId, focusPanel }) => {
 	const operand = branchOperand({ stackId, branchRef: refName.fullNameBytes });
 
 	return (
@@ -1292,37 +1294,32 @@ const StackC: FC<{
 			<StackRow projectId={projectId} stackId={stackId} navigationIndex={navigationIndex} />
 
 			<div role="group" className={styles.segments}>
-				{stack.segments.map((segment) => {
-					const branchRef = segment.refName?.fullNameBytes;
-
-					if (!branchRef && segment.commits.length === 0) return null;
-
-					const segmentKey = branchRef
-						? JSON.stringify(branchRef)
-						: // A segment should always either have a branch reference or at
-							// least one commit, so this assertion should be safe.
-							assert(segment.commits[0]).id;
-
-					return branchRef ? (
+				{stack.segments.map((segment) =>
+					segment.refName ? (
 						<BranchSegment
-							key={segmentKey}
+							key={JSON.stringify(segment.refName.fullNameBytes)}
 							navigationIndex={navigationIndex}
 							projectId={projectId}
 							segment={segment}
+							refName={segment.refName}
 							stackId={stackId}
 							focusPanel={focusPanel}
 						/>
 					) : (
-						<BranchlessSegment
-							key={segmentKey}
-							navigationIndex={navigationIndex}
-							projectId={projectId}
-							segment={segment}
-							stackId={stackId}
-							focusPanel={focusPanel}
-						/>
-					);
-				})}
+						// A segment should always either have a branch reference or at
+						// least one commit.
+						isNonEmptyArray(segment.commits) && (
+							<BranchlessSegment
+								key={segment.commits[0].id}
+								navigationIndex={navigationIndex}
+								projectId={projectId}
+								segment={segment}
+								stackId={stackId}
+								focusPanel={focusPanel}
+							/>
+						)
+					),
+				)}
 			</div>
 		</TreeItem>
 	);

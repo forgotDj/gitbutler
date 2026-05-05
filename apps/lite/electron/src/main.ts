@@ -292,7 +292,6 @@ const createMainWindow = async (): Promise<void> => {
 	const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 	if (devServerUrl !== undefined) {
 		await mainWindow.loadURL(devServerUrl);
-		mainWindow.webContents.openDevTools({ mode: "bottom" });
 		return;
 	}
 

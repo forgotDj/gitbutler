@@ -236,30 +236,40 @@ const CommitDetails: FC<{
 	const { data: commitDetails } = useSuspenseQuery(
 		commitDetailsWithLineStatsQueryOptions({ projectId, commitId }),
 	);
-	const selectedChange =
-		selectedPath !== undefined
-			? commitDetails.changes.find((candidate) => candidate.path === selectedPath)
-			: undefined;
-	const changes = selectedChange ? [selectedChange] : commitDetails.changes;
+
 	const fileParent = commitFileParent({ stackId, commitId });
+
+	if (selectedPath === undefined)
+		return (
+			<div>
+				<h3>
+					<CommitLabel commit={commitDetails.commit} />
+				</h3>
+				{commitDetails.commit.message.includes("\n") && (
+					<p className={styles.commitMessageBody}>
+						{commitDetails.commit.message
+							.slice(commitDetails.commit.message.indexOf("\n") + 1)
+							.trim()}
+					</p>
+				)}
+				<ChangesFileDiffList
+					changes={commitDetails.changes}
+					fileParent={fileParent}
+					projectId={projectId}
+				/>
+			</div>
+		);
+
+	const selectedChange = commitDetails.changes.find((candidate) => candidate.path === selectedPath);
+	if (!selectedChange) return null;
 
 	return (
 		<div>
-			{selectedPath === undefined && (
-				<>
-					<h3>
-						<CommitLabel commit={commitDetails.commit} />
-					</h3>
-					{commitDetails.commit.message.includes("\n") && (
-						<p className={styles.commitMessageBody}>
-							{commitDetails.commit.message
-								.slice(commitDetails.commit.message.indexOf("\n") + 1)
-								.trim()}
-						</p>
-					)}
-				</>
-			)}
-			<ChangesFileDiffList changes={changes} fileParent={fileParent} projectId={projectId} />
+			<ChangesFileDiffList
+				changes={[selectedChange]}
+				fileParent={fileParent}
+				projectId={projectId}
+			/>
 		</div>
 	);
 };
