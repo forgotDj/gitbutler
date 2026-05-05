@@ -22,7 +22,7 @@ use but_settings::AppSettingsWithDiskSync;
 #[cfg(feature = "irc")]
 use gitbutler_tauri::irc;
 use gitbutler_tauri::{
-    WindowState, action, askpass, bot, claude, csp::csp_with_extras, env, logs, menu, projects,
+    WindowState, action, askpass, claude, csp::csp_with_extras, env, logs, menu, projects,
     settings, zip,
 };
 use tauri::{Emitter, Manager, generate_context};
@@ -460,8 +460,6 @@ fn main() -> anyhow::Result<()> {
                 settings::update_reviews,
                 settings::update_ui,
                 settings::update_irc,
-                bot::bot,
-                bot::forge_branch_chat,
                 // Debug-only - not for production!
                 #[cfg(debug_assertions)]
                 env::env_vars,
