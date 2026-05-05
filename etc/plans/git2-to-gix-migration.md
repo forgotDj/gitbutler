@@ -4,11 +4,12 @@
 
 Most of the broad migration is already done. This document only tracks the remaining scope needed to finish, plus the intentional `git2` boundaries that are still allowed.
 
-Repository audit on 2026-04-02:
+Repository audit on 2026-05-05:
 
-- `git2::` callsites in `crates/**/*.rs`: 146
-- files with `git2::` references: 24
-- `ctx.git2_repo` / `ctx.with_git2_repo` callsites: 23
+- `git2::` callsites in `crates/**/*.rs`: 122
+- files with `git2::` references: 22
+- `ctx.git2_repo` / `ctx.with_git2_repo` callsites: 21
+- test-only direct `git2` / `git2_repo` / `git2_hooks` references: 66 across 9 files
 
 ## Allowed Remaining Boundary
 
@@ -79,19 +80,43 @@ Goal:
 - avoid expanding these surfaces
 - remove or reduce them only when callers have moved off them
 
-### Tests and legacy test support
+### Test fixture initial states
 
-Test-only `git2` usage still exists and should continue shrinking unless it is exercising the accepted hard boundary:
+Test-only `git2` usage still exists, but the next migration target is narrower than "all tests":
+remove `git2` from repository initial-state setup. Each reusable initial state should be expressed
+as a dedicated `tests/fixtures/scenario/*.sh` script that uses plain `git` commands.
 
-- selected `crates/gitbutler-branch-actions/tests/*`
-- `crates/gitbutler-edit-mode/tests/edit_mode.rs`
-- selected `crates/gitbutler-repo/tests/*`
-- `crates/but-testsupport/src/legacy/*`
+Tests should load those scripts through existing `but-testsupport` fixture primitives such as
+`writable_scenario`, `read_only_in_memory_scenario`, `writable_scenario_with_post`, or
+`read_only_in_memory_scenario_named_with_post`. Do not replace `git2` setup with runtime Git command
+helpers such as `invoke_git()`, `git()`, `git_at_dir()`, or similar helpers in test bodies. Those
+helpers are useful for assertions and exceptional test actions, but initial repository shape belongs
+in fixture scripts.
+
+When a fixture needs `virtual_branches.toml`, keep Git history and refs in the shell fixture and write
+metadata in a post-processing callback. This matches the existing documented `but-testsupport` pattern:
+use a `*_with_post` fixture loader, increment the post-processing version when the callback changes,
+open the generated repository with `open_repo`, then create or update `VirtualBranchesTomlMetadata`.
+
+Priority targets:
+
+- `crates/gitbutler-repo/tests/repo/support/*`: remove `TestingRepository`, `test_repository`, and
+  `RepoWithOrigin` as `git2` repository builders; replace their states with named fixture scripts.
+- `crates/gitbutler-repo/tests/repo/create_wd_tree.rs`: split reusable initial states into fixture
+  scripts instead of building them with `git2`; keep per-test filesystem mutations only when they are
+  the behavior under test.
+- `crates/gitbutler-repo/tests/repo/rebase.rs`: replace synthetic `git2` commit graph construction
+  with fixture scripts exposing named refs or tags for target and incoming commits.
+- `crates/gitbutler-branch-actions/tests/branch-actions/virtual_branches/*`: replace `TestRepo`'s
+  `git2` setup helpers with fixture states plus post-processed metadata where needed.
 
 Goal:
 
-- prefer `gix` and `but-*` helpers for fixtures and assertions
-- keep direct `git2` setup only where boundary coverage actually requires it
+- repository initial states are created by fixture scripts, not by `git2` or runtime Git helper calls
+  in test bodies
+- tests use `but-testsupport` fixture loaders and `gix`/`but-*` APIs for assertions and read-side access
+- direct test `git2` remains only for explicit hard-boundary coverage, such as checkout/index conflict
+  materialization or hook compatibility
 
 ## Current Direction
 
@@ -108,7 +133,8 @@ This plan is complete when all of the following are true:
 1. Non-boundary application logic no longer depends directly on `git2`.
 2. Remaining `git2` use is confined to the accepted boundary or explicit compatibility/adapter code.
 3. `ctx.git2_repo` callers are limited to those accepted sites.
-4. Test and fixture code uses `gix` by default unless boundary coverage requires `git2`.
+4. Test initial states are provided by plain-`git` fixture scripts and loaded through `but-testsupport`
+   fixture primitives.
 5. Validation still passes for touched crates and workspace-level checks.
 
 ## Verification
@@ -119,6 +145,7 @@ Recommended checks:
 cargo clippy --all-targets --workspace
 rg -n "git2::" crates -S --glob '*.rs'
 rg -n "ctx\\.(git2_repo|with_git2_repo)" crates -S --glob '*.rs'
+rg -n "git2::|git2_repo|git2_hooks|CheckoutBuilder|IndexAddOption|ResetType" crates/*/tests -g '*.rs'
 ```
 
 ## Tracking
@@ -128,5 +155,6 @@ rg -n "ctx\\.(git2_repo|with_git2_repo)" crates -S --glob '*.rs'
 - [x] `Context::git2_repo` deprecated
 - [ ] Workspace/edit-mode/oplog boundary reduced to the minimal handoff
 - [ ] Repo and transport adapters narrowed further
+- [ ] Test repository initial states moved to plain-`git` fixture scripts
 - [ ] Test and legacy helper `git2` usage reduced to boundary coverage only
 - [ ] In-scope `git2` audit at zero outside accepted boundaries
