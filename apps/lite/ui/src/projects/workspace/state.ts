@@ -67,19 +67,10 @@ export const updateDragAndDropMode = (
 	operationType: OperationType | null,
 ) => {
 	Match.value(state.mode).pipe(
-		Match.tags({
-			Operation: ({ value }) => {
-				Match.value(value).pipe(
-					Match.tags({
-						DragAndDrop: (mode) => {
-							state.mode = operationOutlineMode(
-								dragAndDropOperationMode({ source: mode.source, operationType }),
-							);
-						},
-					}),
-					Match.orElse(() => {}),
-				);
-			},
+		Match.when({ _tag: "Operation", value: { _tag: "DragAndDrop" } }, (mode) => {
+			state.mode = operationOutlineMode(
+				dragAndDropOperationMode({ source: mode.value.source, operationType }),
+			);
 		}),
 		Match.orElse(() => {}),
 	);
