@@ -1300,7 +1300,7 @@ const StackC: FC<{
 
 			<div role="group" className={styles.segments}>
 				{stack.segments.map((segment) => {
-					if (!segment.refName?.fullNameBytes && segment.commits.length === 0) return null;
+					if (!segment.refName && segment.commits.length === 0) return null;
 
 					return segment.refName ? (
 						<BranchSegment
