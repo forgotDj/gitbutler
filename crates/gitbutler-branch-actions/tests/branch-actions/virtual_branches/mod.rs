@@ -1,18 +1,23 @@
 #![expect(deprecated, reason = "calls but_workspace::legacy::stacks_v3")]
 
-use std::{fs, path, path::PathBuf, str::FromStr};
+use std::{fs, path::PathBuf, str::FromStr};
 
+use but_core::RepositoryExt as _;
 use but_ctx::{Context, ProjectHandleOrLegacyProjectId, RepoOpenMode};
 use but_error::Marker;
-use but_project_handle::storage_path_config_key;
 use but_rebase::graph_rebase::LookupStep as _;
 use but_settings::AppSettings;
-use but_testsupport::gix_testtools::{Creation, scripted_fixture_writable_with_args};
+use but_testsupport::{
+    gix_testtools::{Creation, scripted_fixture_writable_with_args},
+    open_repo,
+};
 use gitbutler_branch::BranchCreateRequest;
 use gitbutler_branch_actions::GITBUTLER_WORKSPACE_COMMIT_TITLE;
 use gitbutler_oplog::{OplogExt, SnapshotExt};
 use gitbutler_reference::{LocalRefname, Refname};
+use gitbutler_repo::{SignaturePurpose, commit_without_signature_gix, signature_gix};
 use gitbutler_stack::StackId;
+use gix::refs::transaction::PreviousValue;
 use tempfile::{TempDir, tempdir};
 
 pub(crate) use crate::support::stack_details;
@@ -20,37 +25,28 @@ pub(crate) use crate::support::stack_details;
 const VAR_NO_CLEANUP: &str = "GITBUTLER_TESTS_NO_CLEANUP";
 
 struct TestRepo {
-    local_repo: git2::Repository,
-    temp_dir: Option<TempDir>,
+    /// The worktree path of the local repository in the fixture.
+    local_path: PathBuf,
+    fixture_tmp_dir: Option<TempDir>,
 }
 
 impl Default for TestRepo {
     fn default() -> Self {
-        let temp_dir = scripted_fixture_writable_with_args(
-            "scenario/repo-with-origin.sh",
-            None::<String>,
-            Creation::Execute,
-        )
-        .map_err(anyhow::Error::from_boxed)
-        .expect("fixture should materialize");
-        let local_repo =
-            git2::Repository::open(temp_dir.path().join("local")).expect("local repo opens");
-        setup_config(&local_repo.config().expect("config exists")).expect("config is writable");
-        local_repo
-            .remote_set_url(
-                "origin",
-                temp_dir
-                    .path()
-                    .join("remote")
-                    .to_str()
-                    .expect("remote path is valid UTF-8"),
-            )
-            .expect("origin remote URL can be normalized");
-        sync_origin_refs(&local_repo).expect("origin refs are available locally");
+        Self::from_fixture("scenario/repo-with-origin.sh")
+    }
+}
+
+impl TestRepo {
+    fn from_fixture(fixture: &str) -> Self {
+        let temp_dir =
+            scripted_fixture_writable_with_args(fixture, None::<String>, Creation::Execute)
+                .map_err(anyhow::Error::from_boxed)
+                .expect("fixture should materialize");
+        let local_path = temp_dir.path().join("local");
 
         Self {
-            local_repo,
-            temp_dir: Some(temp_dir),
+            local_path,
+            fixture_tmp_dir: Some(temp_dir),
         }
     }
 }
@@ -58,144 +54,165 @@ impl Default for TestRepo {
 impl Drop for TestRepo {
     fn drop(&mut self) {
         if std::env::var_os(VAR_NO_CLEANUP).is_some() {
-            let _ = self.temp_dir.take().map(|tmp| tmp.keep());
+            let _ = self.fixture_tmp_dir.take().map(|tmp| tmp.keep());
         }
     }
 }
 
 impl TestRepo {
     pub fn debug_local_repo(&mut self) -> Option<PathBuf> {
-        self.temp_dir.take().map(|tmp| tmp.keep().join("local"))
+        self.fixture_tmp_dir
+            .take()
+            .map(|tmp| tmp.keep().join("local"))
     }
 
     pub fn path(&self) -> &std::path::Path {
-        self.local_repo.workdir().expect("non-bare worktree")
+        &self.local_path
     }
 
-    pub fn push_branch(&self, branch: &LocalRefname) {
-        let mut origin = self.local_repo.find_remote("origin").unwrap();
-        origin.push(&[&format!("{branch}:{branch}")], None).unwrap();
-        sync_origin_refs(&self.local_repo).unwrap();
+    fn open(&self) -> gix::Repository {
+        open_repo(&self.local_path).expect("local repo opens")
+    }
+
+    /// Simulate pushing `branch` by updating the matching `origin` remote-tracking ref.
+    pub fn simulate_push_branch(&self, branch: &LocalRefname) {
+        let repo = self.open();
+        let local_target = repo
+            .find_reference(&branch.to_string())
+            .unwrap()
+            .peel_to_id()
+            .unwrap()
+            .detach();
+        let short = branch
+            .to_string()
+            .strip_prefix("refs/heads/")
+            .expect("local branch ref")
+            .to_owned();
+        let remote_ref = format!("refs/remotes/origin/{short}");
+        repo.reference(
+            remote_ref.as_str(),
+            local_target,
+            PreviousValue::Any,
+            "sync origin refs for tests",
+        )
+        .unwrap();
     }
 
     pub fn push(&self) {
-        let mut origin = self.local_repo.find_remote("origin").unwrap();
-        origin
-            .push(&["refs/heads/master:refs/heads/master"], None)
-            .unwrap();
-        sync_origin_refs(&self.local_repo).unwrap();
+        self.simulate_push_branch(&"refs/heads/master".parse().unwrap());
     }
 
-    pub fn reset_hard(&self, oid: Option<git2::Oid>) {
-        let mut index = self.local_repo.index().expect("failed to get index");
-        index
-            .add_all(["."], git2::IndexAddOption::DEFAULT, None)
-            .expect("failed to add all");
-        index.write().expect("failed to write index");
-
-        let head = self.local_repo.head().unwrap();
-        let commit = oid.map_or(head.peel_to_commit().unwrap(), |oid| {
-            self.local_repo.find_commit(oid).unwrap()
-        });
-
-        self.local_repo
-            .reset(commit.as_object(), git2::ResetType::Hard, None)
-            .unwrap();
+    pub fn reset_hard(&self, oid: Option<gix::ObjectId>) {
+        let repo = self.open();
+        let current_head = repo.head_id().expect("HEAD peels").detach();
+        let target = oid.unwrap_or(current_head);
+        but_core::worktree::safe_checkout(
+            current_head,
+            target,
+            &repo,
+            but_core::worktree::checkout::Options {
+                skip_head_update: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        update_current_head(&repo, target, "reset hard");
     }
 
-    pub fn checkout_commit(&self, commit_oid: git2::Oid) {
-        let commit = self.local_repo.find_commit(commit_oid).unwrap();
-        let commit_tree = commit.tree().unwrap();
-
-        self.local_repo.set_head_detached(commit_oid).unwrap();
-        self.local_repo
-            .checkout_tree(
-                commit_tree.as_object(),
-                Some(git2::build::CheckoutBuilder::new().force()),
-            )
-            .unwrap();
+    pub fn checkout_commit(&self, commit_oid: gix::ObjectId) {
+        let repo = self.open();
+        let current_head = repo.head_id().expect("HEAD peels").detach();
+        but_core::worktree::safe_checkout(
+            current_head,
+            commit_oid,
+            &repo,
+            but_core::worktree::checkout::Options {
+                skip_head_update: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        set_head_detached(&repo, commit_oid);
     }
 
     pub fn checkout(&self, branch: &LocalRefname) {
+        let repo = self.open();
         let refname: Refname = branch.into();
-        let head_commit = self.local_repo.head().unwrap().peel_to_commit().unwrap();
-        let tree = match maybe_find_branch_by_refname(&self.local_repo, &refname) {
-            Ok(branch) => match branch {
-                Some(branch) => branch.get().peel_to_tree().unwrap(),
-                None => {
-                    self.local_repo
-                        .reference(&refname.to_string(), head_commit.id(), false, "new branch")
-                        .unwrap();
-                    head_commit.tree().unwrap()
-                }
-            },
-            Err(error) => panic!("{error:?}"),
+        let current_head = repo.head_id().expect("HEAD peels").detach();
+        let branch_name = refname.to_string();
+        let target = match repo.try_find_reference(&branch_name).unwrap() {
+            Some(mut reference) => reference.peel_to_id().unwrap().detach(),
+            None => {
+                repo.reference(
+                    branch_name.as_str(),
+                    current_head,
+                    PreviousValue::Any,
+                    "new branch",
+                )
+                .unwrap();
+                current_head
+            }
         };
-        self.local_repo.set_head(&refname.to_string()).unwrap();
-        self.local_repo
-            .checkout_tree(
-                tree.as_object(),
-                Some(git2::build::CheckoutBuilder::new().force()),
-            )
-            .unwrap();
+        but_core::worktree::safe_checkout(
+            current_head,
+            target,
+            &repo,
+            but_core::worktree::checkout::Options {
+                skip_head_update: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        set_head_symbolic(&repo, branch_name.as_str());
     }
 
-    pub fn commit_all(&self, message: &str) -> git2::Oid {
-        let head = self.local_repo.head().unwrap();
-        let mut index = self.local_repo.index().expect("failed to get index");
-        index
-            .add_all(["."], git2::IndexAddOption::DEFAULT, None)
-            .expect("failed to add all");
-        index.write().expect("failed to write index");
-        let tree_id = index.write_tree().expect("failed to write tree");
-        let tree = self.local_repo.find_tree(tree_id).expect("tree exists");
-        let signature = git2::Signature::now("test", "test@email.com").unwrap();
-        let parent = self
-            .local_repo
-            .find_commit(
-                self.local_repo
-                    .refname_to_id("HEAD")
-                    .expect("failed to get head"),
-            )
-            .expect("failed to find parent commit");
-        self.local_repo
-            .commit(
-                Some(head.name().expect("head has name")),
-                &signature,
-                &signature,
-                message,
-                &tree,
-                &[&parent],
-            )
-            .expect("failed to commit")
+    pub fn commit_all(&self, message: &str) -> gix::ObjectId {
+        let repo = self.open();
+        let parent = repo.head_id().expect("HEAD peels").detach();
+        let tree_id = repo
+            .create_wd_tree(0)
+            .expect("worktree tree can be written");
+        let author = signature_gix(SignaturePurpose::Author);
+        let committer = signature_gix(SignaturePurpose::Committer);
+        let commit_id = commit_without_signature_gix(
+            &repo,
+            None,
+            author,
+            committer,
+            message.into(),
+            tree_id,
+            &[parent],
+            None,
+        )
+        .expect("failed to commit");
+        but_core::worktree::safe_checkout(
+            parent,
+            commit_id,
+            &repo,
+            but_core::worktree::checkout::Options {
+                skip_head_update: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        update_current_head(&repo, commit_id, "commit");
+        commit_id
     }
 
-    pub fn add_submodule(&self, url: &gitbutler_url::Url, path: &path::Path) {
-        let mut submodule = self
-            .local_repo
-            .submodule(&url.to_string(), path.as_ref(), false)
-            .unwrap();
-        let repo = submodule.open().unwrap();
-
-        repo.find_remote("origin")
-            .unwrap()
-            .fetch(&["+refs/heads/*:refs/heads/*"], None, None)
-            .unwrap();
-        let reference = repo.find_reference("refs/heads/master").unwrap();
-        let reference_head = repo.find_commit(reference.target().unwrap()).unwrap();
-        repo.checkout_tree(reference_head.tree().unwrap().as_object(), None)
-            .unwrap();
-
-        repo.set_head("refs/heads/master").unwrap();
-        submodule.add_finalize().unwrap();
-    }
-
-    pub fn references(&self) -> Vec<git2::Reference<'_>> {
-        self.local_repo
-            .references()
-            .expect("failed to get references")
-            .collect::<Result<Vec<_>, _>>()
-            .expect("failed to read references")
+    pub fn references(&self) -> Vec<String> {
+        let repo = self.open();
+        repo.references()
+            .expect("references can be read")
+            .all()
+            .expect("all references can be listed")
+            .map(|reference| {
+                reference
+                    .expect("reference can be read")
+                    .name()
+                    .as_bstr()
+                    .to_string()
+            })
+            .collect()
     }
 }
 
@@ -207,10 +224,20 @@ struct Test {
 }
 
 impl Test {
+    pub fn from_fixture(fixture: &str) -> Self {
+        Self::new_with_settings_and_repo(|_settings| {}, TestRepo::from_fixture(fixture))
+    }
+
     pub fn new_with_settings(change_settings: fn(&mut AppSettings)) -> Self {
+        Self::new_with_settings_and_repo(change_settings, TestRepo::default())
+    }
+
+    fn new_with_settings_and_repo(
+        change_settings: fn(&mut AppSettings),
+        test_project: TestRepo,
+    ) -> Self {
         let data_dir = tempdir().expect("tempdir exists");
 
-        let test_project = TestRepo::default();
         let outcome =
             gitbutler_project::add_at_app_data_dir(data_dir.as_ref(), test_project.path())
                 .expect("failed to add project");
@@ -256,62 +283,49 @@ impl Test {
     }
 }
 
-fn setup_config(config: &git2::Config) -> anyhow::Result<()> {
-    match config.open_level(git2::ConfigLevel::Local) {
-        Ok(mut local) => {
-            local.set_str("commit.gpgsign", "false")?;
-            local.set_str("user.name", "gitbutler-test")?;
-            local.set_str("user.email", "gitbutler-test@example.com")?;
-            local.set_str(storage_path_config_key(), "gitbutler")?;
-            Ok(())
+fn update_current_head(repo: &gix::Repository, target: gix::ObjectId, message: &str) {
+    match repo.head_name().expect("HEAD can be read") {
+        Some(name) => {
+            let name = name.as_bstr().to_string();
+            repo.reference(name.as_str(), target, PreviousValue::Any, message)
+                .expect("head reference can be updated");
         }
-        Err(err) => Err(err.into()),
+        None => set_head_detached(repo, target),
     }
 }
 
-fn sync_origin_refs(repo: &git2::Repository) -> anyhow::Result<()> {
-    let remote = repo.find_remote("origin")?;
-    let url = remote
-        .url()
-        .ok_or_else(|| anyhow::anyhow!("origin must have a URL"))?;
-    let remote_path = if let Some(path) = url.strip_prefix("file://") {
-        PathBuf::from(path)
-    } else {
-        repo.path().parent().expect("git dir in worktree").join(url)
-    };
-    let remote_repo = git2::Repository::open(remote_path)?;
-    for reference in remote_repo.references_glob("refs/heads/*")? {
-        let reference = reference?;
-        let name = reference.name().expect("reference has name");
-        let short = name
-            .strip_prefix("refs/heads/")
-            .expect("head ref prefix is present");
-        repo.reference(
-            &format!("refs/remotes/origin/{short}"),
-            reference.target().expect("direct ref target"),
-            true,
-            "sync origin refs for tests",
-        )?;
-    }
-    Ok(())
-}
-
-fn maybe_find_branch_by_refname<'repo>(
-    repo: &'repo git2::Repository,
-    name: &Refname,
-) -> anyhow::Result<Option<git2::Branch<'repo>>> {
-    let branch = repo.find_branch(
-        &name.simple_name(),
-        match name {
-            Refname::Virtual(_) | Refname::Local(_) | Refname::Other(_) => git2::BranchType::Local,
-            Refname::Remote(_) => git2::BranchType::Remote,
+fn set_head_symbolic(repo: &gix::Repository, target: &str) {
+    repo.edit_reference(gix::refs::transaction::RefEdit {
+        change: gix::refs::transaction::Change::Update {
+            log: gix::refs::transaction::LogChange {
+                mode: gix::refs::transaction::RefLog::AndReference,
+                force_create_reflog: false,
+                message: b"test: set HEAD".into(),
+            },
+            expected: PreviousValue::Any,
+            new: gix::refs::Target::Symbolic(target.try_into().unwrap()),
         },
-    );
-    match branch {
-        Ok(branch) => Ok(Some(branch)),
-        Err(err) if err.code() == git2::ErrorCode::NotFound => Ok(None),
-        Err(err) => Err(err.into()),
-    }
+        name: "HEAD".try_into().unwrap(),
+        deref: false,
+    })
+    .expect("HEAD can be set");
+}
+
+fn set_head_detached(repo: &gix::Repository, target: gix::ObjectId) {
+    repo.edit_reference(gix::refs::transaction::RefEdit {
+        change: gix::refs::transaction::Change::Update {
+            log: gix::refs::transaction::LogChange {
+                mode: gix::refs::transaction::RefLog::AndReference,
+                force_create_reflog: false,
+                message: b"test: detach HEAD".into(),
+            },
+            expected: PreviousValue::Any,
+            new: gix::refs::Target::Object(target),
+        },
+        name: "HEAD".try_into().unwrap(),
+        deref: false,
+    })
+    .expect("HEAD can be detached");
 }
 
 mod apply_virtual_branch;

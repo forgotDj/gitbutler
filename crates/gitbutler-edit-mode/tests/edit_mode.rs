@@ -7,11 +7,12 @@ use but_core::{
 use but_ctx::Context;
 use but_meta::{VirtualBranchesTomlMetadata, virtual_branches_legacy_types::Target};
 use but_testsupport::{gix_testtools, open_repo, visualize_commit_graph};
-use git2::build::CheckoutBuilder;
 use gitbutler_edit_mode::commands::{
     abort_and_return_to_workspace, enter_edit_mode, save_and_return_to_workspace,
 };
-use gitbutler_operating_modes::INTEGRATION_BRANCH_REF;
+use gitbutler_operating_modes::{
+    EditModeMetadata, INTEGRATION_BRANCH_REF, write_edit_mode_metadata,
+};
 use tempfile::TempDir;
 
 fn command_ctx(folder: &str) -> Result<(Context, TempDir)> {
@@ -31,8 +32,9 @@ fn command_ctx(folder: &str) -> Result<(Context, TempDir)> {
         },
     )
     .map_err(anyhow::Error::from_boxed)?;
-    let repo = open_repo(tmp.path().join(folder).as_path())?;
-    Ok((Context::from_repo(repo)?, tmp))
+    let repo = open_repo(tmp.path().join(&folder).as_path())?;
+    let ctx = Context::from_repo(repo)?;
+    Ok((ctx, tmp))
 }
 
 fn seed_metadata(repo: &gix::Repository) -> Result<()> {
@@ -70,6 +72,27 @@ fn stack_id(ctx: &Context) -> Result<StackId> {
         .context("expected workspace stack")?
         .id
         .context("expected workspace stack id")
+}
+
+/// Seed the metadata that [`enter_edit_mode()`] normally writes.
+///
+/// Some fixtures start directly on `refs/heads/gitbutler/edit` with a hand-crafted
+/// conflicted index, so running the normal entry command would replace the state the
+/// test is trying to exercise. `save_and_return_to_workspace()` still needs this
+/// metadata to know which stack and commit the edit branch belongs to.
+///
+/// `edit_commit_id` is the Git revision to record as the commit being edited. It is resolved
+/// the same way as command input would be, allowing fixtures to name the original
+/// edit target without hard-coding an object id.
+fn seed_edit_mode_metadata(ctx: &Context, edit_commit_id: &str) -> Result<()> {
+    let repo = ctx.repo.get()?;
+    let edit_mode_metadata = EditModeMetadata {
+        commit_oid: repo.rev_parse_single(edit_commit_id)?.detach(),
+        stack_id: StackId::from_number_for_testing(1),
+    };
+    drop(repo);
+    write_edit_mode_metadata(ctx, &edit_mode_metadata)?;
+    Ok(())
 }
 
 #[test]
@@ -218,40 +241,9 @@ fn apply_commit_on_itself() -> Result<()> {
 // Where "left" and "right" contain changes which conflict with each other
 #[test]
 fn conficted_entries_get_written_when_leaving_edit_mode() -> Result<()> {
-    let (mut ctx, _tempdir) = command_ctx("conficted_entries_get_written_when_leaving_edit_mode")?;
-    let repo = ctx.repo.get()?;
-
-    let foobar = repo.head_commit()?.decode()?.parents().next().unwrap();
-
-    drop(repo);
-    let stack_id = stack_id(&ctx)?;
-    enter_edit_mode(&mut ctx, foobar, stack_id)?;
-
-    #[expect(deprecated, reason = "checkout/index boundary coverage")]
-    let repo = ctx.git2_repo.get()?;
-    let init = repo.find_reference("refs/heads/main")?.peel_to_commit()?;
-    let left = repo.find_reference("refs/heads/left")?.peel_to_commit()?;
-    let right = repo.find_reference("refs/heads/right")?.peel_to_commit()?;
-
-    let mut merge = repo.merge_trees(
-        &init.tree()?,
-        &left.tree()?,
-        &right.tree()?,
-        Default::default(),
-    )?;
-
-    repo.checkout_index(
-        Some(&mut merge),
-        Some(
-            CheckoutBuilder::new()
-                .force()
-                .remove_untracked(true)
-                .conflict_style_diff3(true),
-        ),
-    )?;
-
-    drop((init, left, right));
-    drop(repo);
+    let (mut ctx, _tempdir) =
+        command_ctx("conficted_entries_get_written_when_leaving_edit_mode_in_edit_mode")?;
+    seed_edit_mode_metadata(&ctx, "refs/heads/branchy")?;
     save_and_return_to_workspace(&mut ctx)?;
 
     let repo = ctx.repo.get()?;

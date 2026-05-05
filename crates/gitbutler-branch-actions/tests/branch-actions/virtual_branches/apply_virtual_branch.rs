@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use but_forge::ForgeReview;
-use but_oxidize::{ObjectIdExt as _, OidExt as _};
 use gitbutler_branch::BranchCreateRequest;
 use gitbutler_branch_actions::upstream_integration::{
     BranchStatus, Resolution, ResolutionApproach, StackStatuses, UpstreamTreeStatus,
@@ -835,9 +834,7 @@ fn integrate_upstream_with_inter_stack_tree_conflict() {
     // stack-b → rebased onto C1      (foo.txt = "renamed")
     // stack-c → rebased onto C2      (foo.txt = "renamed\nextra line\nmore content")
     {
-        let gix_repo = ctx.repo.get().unwrap();
-        let git_repo = git2::Repository::open(repo.path()).unwrap();
-        let sig = git2::Signature::now("test", "test@email.com").unwrap();
+        let repo = ctx.repo.get().unwrap();
 
         let mut vb_state = gitbutler_stack::VirtualBranchesHandle::new(ctx.project_data_dir());
 
@@ -846,32 +843,59 @@ fn integrate_upstream_with_inter_stack_tree_conflict() {
 
         for (stack_id, rebase_onto) in stack_ids.iter().zip(rebase_targets) {
             let mut stack = vb_state.get_stack(*stack_id).unwrap();
-            let old_head = stack.heads.last().unwrap().head_oid(&gix_repo).unwrap();
+            let old_head = stack.heads.last().unwrap().head_oid(&repo).unwrap();
 
-            let onto_commit = git_repo.find_commit(rebase_onto).unwrap();
-            let old_commit = git_repo.find_commit(old_head.to_git2()).unwrap();
-            let mut index = git_repo
-                .merge_commits(&onto_commit, &old_commit, None)
-                .unwrap();
-            assert!(
-                !index.has_conflicts(),
-                "cherry-pick onto intermediate upstream should be clean"
-            );
-            let tree_oid = index.write_tree_to(&git_repo).unwrap();
-            let tree = git_repo.find_tree(tree_oid).unwrap();
-            let new_head = git_repo
-                .commit(
-                    None,
-                    &sig,
-                    &sig,
-                    &format!("rebased onto {}", &rebase_onto.to_string()[..8]),
-                    &tree,
-                    &[&onto_commit],
+            let merge_base = repo.merge_base(rebase_onto, old_head).unwrap();
+            let merge_base_tree = repo
+                .find_commit(merge_base)
+                .unwrap()
+                .tree_id()
+                .unwrap()
+                .detach();
+            let onto_tree = repo
+                .find_commit(rebase_onto)
+                .unwrap()
+                .tree_id()
+                .unwrap()
+                .detach();
+            let old_tree = repo
+                .find_commit(old_head)
+                .unwrap()
+                .tree_id()
+                .unwrap()
+                .detach();
+            let mut merge = repo
+                .merge_trees(
+                    merge_base_tree,
+                    onto_tree,
+                    old_tree,
+                    repo.default_merge_labels(),
+                    repo.tree_merge_options().unwrap(),
                 )
                 .unwrap();
+            assert!(
+                !merge.has_unresolved_conflicts(
+                    gix::merge::tree::TreatAsUnresolved::forced_resolution()
+                ),
+                "cherry-pick onto intermediate upstream should be clean"
+            );
+            let tree_oid = merge.tree.write().unwrap().detach();
+            let new_head = commit_without_signature_gix(
+                &repo,
+                None,
+                signature_gix(SignaturePurpose::Author),
+                signature_gix(SignaturePurpose::Committer),
+                format!("rebased onto {}", &rebase_onto.to_string()[..8])
+                    .as_str()
+                    .into(),
+                tree_oid,
+                &[rebase_onto],
+                None,
+            )
+            .unwrap();
 
             stack
-                .set_stack_head(&mut vb_state, &gix_repo, new_head.to_gix())
+                .set_stack_head(&mut vb_state, &repo, new_head)
                 .unwrap();
             new_heads.push(new_head);
         }
@@ -879,31 +903,30 @@ fn integrate_upstream_with_inter_stack_tree_conflict() {
         // Rebuild the workspace merge commit so stacks_v3 can discover all
         // three stacks from the graph. The tree used here is arbitrary —
         // merge_workspace recomputes it from stack trees.
-        let target_commit = git_repo.find_commit(initial).unwrap();
+        let target_commit = repo.find_commit(initial).unwrap();
         let parent_commits: Vec<_> = std::iter::once(&initial)
             .chain(new_heads.iter())
-            .map(|oid| git_repo.find_commit(*oid).unwrap())
+            .copied()
             .collect();
-        let parent_refs: Vec<_> = parent_commits.iter().collect();
-        let ws_tree = target_commit.tree().unwrap();
-        let ws_oid = git_repo
-            .commit(
-                None,
-                &sig,
-                &sig,
-                "GitButler Workspace Commit",
-                &ws_tree,
-                &parent_refs,
-            )
-            .unwrap();
-        git_repo
-            .reference(
-                "refs/heads/gitbutler/workspace",
-                ws_oid,
-                true,
-                "test: rebuild workspace",
-            )
-            .unwrap();
+        let ws_tree = target_commit.tree_id().unwrap().detach();
+        let ws_oid = commit_without_signature_gix(
+            &repo,
+            None,
+            signature_gix(SignaturePurpose::Author),
+            signature_gix(SignaturePurpose::Committer),
+            "GitButler Workspace Commit".into(),
+            ws_tree,
+            &parent_commits,
+            None,
+        )
+        .unwrap();
+        repo.reference(
+            "refs/heads/gitbutler/workspace",
+            ws_oid,
+            PreviousValue::Any,
+            "test: rebuild workspace",
+        )
+        .unwrap();
     }
 
     // Integrate upstream. Before the fix, merge_workspace would bail with a

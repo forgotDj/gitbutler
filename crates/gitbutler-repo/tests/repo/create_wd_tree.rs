@@ -1,14 +1,11 @@
-use std::{
-    fs::{File, Permissions},
-    path::Path,
-};
+use std::fs::{File, Permissions};
 
 use crate::support::testing_repository::TestingRepository;
 use but_core::RepositoryExt as _;
 use but_testsupport::{gix_testtools::scripted_fixture_read_only, open_repo, visualize_tree};
 use gix::prelude::ObjectIdExt as _;
 
-const MAX_SIZE: u64 = 20;
+const MAX_FILE_SIZE_BYTES: u64 = 20;
 
 fn tree_entry_count(tree: gix::Id<'_>) -> anyhow::Result<usize> {
     Ok(tree.object()?.peel_to_tree()?.iter().count())
@@ -35,18 +32,10 @@ mod head_upsert_truthtable {
     // | add                | delete            | no-action |
     #[test]
     fn index_new_worktree_delete() -> anyhow::Result<()> {
-        let test = TestingRepository::open_with_initial_commit(&[]);
-
-        std::fs::write(test.tempdir.path().join("file1.txt"), "content1")?;
-
-        let mut index = test.repository.index()?;
-        index.add_path(Path::new("file1.txt"))?;
-        index.write()?;
-
-        std::fs::remove_file(test.tempdir.path().join("file1.txt"))?;
+        let test = TestingRepository::from_fixture("create-wd-tree-index-new-worktree-delete");
 
         let repo = gix_repo(&test)?;
-        let tree = create_wd_tree(&repo, MAX_SIZE)?;
+        let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
         assert_eq!(tree_entry_count(tree)?, 0, "Tree should end up empty");
         Ok(())
@@ -55,18 +44,10 @@ mod head_upsert_truthtable {
     // | modify             | delete            | remove    |
     #[test]
     fn index_modify_worktree_delete() -> anyhow::Result<()> {
-        let test = TestingRepository::open_with_initial_commit(&[("file1.txt", "content1")]);
-
-        std::fs::write(test.tempdir.path().join("file1.txt"), "content2")?;
-
-        let mut index = test.repository.index()?;
-        index.add_path(Path::new("file1.txt"))?;
-        index.write()?;
-
-        std::fs::remove_file(test.tempdir.path().join("file1.txt"))?;
+        let test = TestingRepository::from_fixture("create-wd-tree-index-modify-worktree-delete");
 
         let repo = gix_repo(&test)?;
-        let tree = create_wd_tree(&repo, MAX_SIZE)?;
+        let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
         assert_eq!(tree_entry_count(tree)?, 0, "Tree should end up empty");
         Ok(())
@@ -77,10 +58,10 @@ mod head_upsert_truthtable {
     fn worktree_delete() -> anyhow::Result<()> {
         let test = TestingRepository::open_with_initial_commit(&[("file1.txt", "content1")]);
 
-        std::fs::remove_file(test.tempdir.path().join("file1.txt"))?;
+        std::fs::remove_file(test.fixture_dir.path().join("file1.txt"))?;
 
         let repo = gix_repo(&test)?;
-        let tree = create_wd_tree(&repo, MAX_SIZE)?;
+        let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
         assert_eq!(tree_entry_count(tree)?, 0, "Tree should end up empty");
         Ok(())
@@ -89,14 +70,10 @@ mod head_upsert_truthtable {
     // | delete             |                   | remove    |
     #[test]
     fn index_delete() -> anyhow::Result<()> {
-        let test = TestingRepository::open_with_initial_commit(&[("file1.txt", "content1")]);
-
-        let mut index = test.repository.index()?;
-        index.remove_all(["*"], None)?;
-        index.write()?;
+        let test = TestingRepository::from_fixture("create-wd-tree-index-delete");
 
         let repo = gix_repo(&test)?;
-        let tree = create_wd_tree(&repo, MAX_SIZE)?;
+        let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
         // We should ignore whatever happens to the index - the current worktree state matters.
         insta::assert_snapshot!(visualize_tree(tree), @r#"
@@ -109,16 +86,10 @@ mod head_upsert_truthtable {
     // | delete             | add               | upsert    |
     #[test]
     fn index_delete_worktree_add() -> anyhow::Result<()> {
-        let test = TestingRepository::open_with_initial_commit(&[("file1.txt", "content1")]);
-
-        let mut index = test.repository.index()?;
-        index.remove_all(["*"], None)?;
-        index.write()?;
-
-        std::fs::write(test.tempdir.path().join("file1.txt"), "content2")?;
+        let test = TestingRepository::from_fixture("create-wd-tree-index-delete-worktree-add");
 
         let repo = gix_repo(&test)?;
-        let tree = create_wd_tree(&repo, MAX_SIZE)?;
+        let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
         // Tree should match whatever is written on disk
         insta::assert_snapshot!(visualize_tree(tree), @r#"
@@ -131,16 +102,10 @@ mod head_upsert_truthtable {
     // | add                |                   | upsert    |
     #[test]
     fn index_add() -> anyhow::Result<()> {
-        let test = TestingRepository::open_with_initial_commit(&[]);
-
-        std::fs::write(test.tempdir.path().join("file1.txt"), "content2")?;
-
-        let mut index = test.repository.index()?;
-        index.add_path(Path::new("file1.txt"))?;
-        index.write()?;
+        let test = TestingRepository::from_fixture("create-wd-tree-index-add");
 
         let repo = gix_repo(&test)?;
-        let tree = create_wd_tree(&repo, MAX_SIZE)?;
+        let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
         insta::assert_snapshot!(visualize_tree(tree), @r#"
         f87e9ef
@@ -154,10 +119,10 @@ mod head_upsert_truthtable {
     fn worktree_add() -> anyhow::Result<()> {
         let test = TestingRepository::open_with_initial_commit(&[]);
 
-        std::fs::write(test.tempdir.path().join("file1.txt"), "content2")?;
+        std::fs::write(test.fixture_dir.path().join("file1.txt"), "content2")?;
 
         let repo = gix_repo(&test)?;
-        let tree = create_wd_tree(&repo, MAX_SIZE)?;
+        let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
         insta::assert_snapshot!(visualize_tree(tree), @r#"
         f87e9ef
@@ -169,18 +134,10 @@ mod head_upsert_truthtable {
     // | add                | modify            | upsert    |
     #[test]
     fn index_add_worktree_modify() -> anyhow::Result<()> {
-        let test = TestingRepository::open_with_initial_commit(&[]);
-
-        std::fs::write(test.tempdir.path().join("file1.txt"), "content1")?;
-
-        let mut index = test.repository.index()?;
-        index.add_path(Path::new("file1.txt"))?;
-        index.write()?;
-
-        std::fs::write(test.tempdir.path().join("file1.txt"), "content2")?;
+        let test = TestingRepository::from_fixture("create-wd-tree-index-add-worktree-modify");
 
         let repo = gix_repo(&test)?;
-        let tree = create_wd_tree(&repo, MAX_SIZE)?;
+        let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
         insta::assert_snapshot!(visualize_tree(tree), @r#"
         f87e9ef
@@ -192,21 +149,10 @@ mod head_upsert_truthtable {
     // | modify             | modify            | upsert    |
     #[test]
     fn index_modify_worktree_modify_racy_git() -> anyhow::Result<()> {
-        let test = TestingRepository::open_with_initial_commit(&[("file1.txt", "content1")]);
-
-        let file_path = test.tempdir.path().join("file1.txt");
-        std::fs::write(&file_path, "content2")?;
-
-        let mut index = test.repository.index()?;
-        index.add_path(Path::new("file1.txt"))?;
-        index.write()?;
-
-        // This change is made within the same second, so if racy-git isn't handled correctly,
-        // this change won't be seen.
-        std::fs::write(file_path, "content3")?;
+        let test = TestingRepository::from_fixture("create-wd-tree-index-modify-worktree-modify");
 
         let repo = gix_repo(&test)?;
-        let tree = create_wd_tree(&repo, MAX_SIZE)?;
+        let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
         insta::assert_snapshot!(visualize_tree(tree), @r#"
         d377861
@@ -218,17 +164,10 @@ mod head_upsert_truthtable {
     // | modify             |                   | upsert    |
     #[test]
     fn index_modify() -> anyhow::Result<()> {
-        let test = TestingRepository::open_with_initial_commit(&[("file1.txt", "content1")]);
-
-        let file_path = test.tempdir.path().join("file1.txt");
-        std::fs::write(&file_path, "content2")?;
-
-        let mut index = test.repository.index()?;
-        index.add_path(Path::new("file1.txt"))?;
-        index.write()?;
+        let test = TestingRepository::from_fixture("create-wd-tree-index-modify");
 
         let repo = gix_repo(&test)?;
-        let tree = create_wd_tree(&repo, MAX_SIZE)?;
+        let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
         insta::assert_snapshot!(visualize_tree(tree), @r#"
         f87e9ef
@@ -242,11 +181,11 @@ mod head_upsert_truthtable {
 fn lists_uncommited_changes() -> anyhow::Result<()> {
     let test = TestingRepository::open_with_initial_commit(&[]);
 
-    std::fs::write(test.tempdir.path().join("file1.txt"), "content1")?;
-    std::fs::write(test.tempdir.path().join("file2.txt"), "content2")?;
+    std::fs::write(test.fixture_dir.path().join("file1.txt"), "content1")?;
+    std::fs::write(test.fixture_dir.path().join("file2.txt"), "content2")?;
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
     insta::assert_snapshot!(visualize_tree(tree), @r#"
     1ae8c21
@@ -258,19 +197,10 @@ fn lists_uncommited_changes() -> anyhow::Result<()> {
 
 #[test]
 fn does_not_include_staged_but_deleted_files() -> anyhow::Result<()> {
-    let test = TestingRepository::open_with_initial_commit(&[]);
-
-    std::fs::write(test.tempdir.path().join("file1.txt"), "content1")?;
-    std::fs::write(test.tempdir.path().join("file2.txt"), "content2")?;
-
-    std::fs::write(test.tempdir.path().join("file3.txt"), "content2")?;
-    let mut index = test.repository.index()?;
-    index.add_path(Path::new("file3.txt"))?;
-    index.write()?;
-    std::fs::remove_file(test.tempdir.path().join("file3.txt"))?;
+    let test = TestingRepository::from_fixture("create-wd-tree-staged-deleted-file");
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
     insta::assert_snapshot!(visualize_tree(tree), @r#"
     1ae8c21
@@ -282,30 +212,13 @@ fn does_not_include_staged_but_deleted_files() -> anyhow::Result<()> {
 
 #[test]
 fn should_be_empty_after_checking_out_empty_tree() -> anyhow::Result<()> {
-    let test = TestingRepository::open_with_initial_commit(&[
-        ("file1.txt", "content1"),
-        ("file2.txt", "content2"),
-    ]);
+    let test = TestingRepository::from_fixture("create-wd-tree-empty-worktree-from-two-files");
 
-    // Checkout an empty tree
-    {
-        let tree_oid = test.repository.treebuilder(None)?.write()?;
-        let tree = test.repository.find_tree(tree_oid)?;
-        test.repository.checkout_tree(
-            tree.as_object(),
-            Some(
-                git2::build::CheckoutBuilder::new()
-                    .force()
-                    .remove_untracked(true),
-            ),
-        )?;
-    }
-
-    assert!(!test.tempdir.path().join("file1.txt").exists());
-    assert!(!test.tempdir.path().join("file2.txt").exists());
+    assert!(!test.fixture_dir.path().join("file1.txt").exists());
+    assert!(!test.fixture_dir.path().join("file2.txt").exists());
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
     // `create_wd_tree` uses the head commit as the base, and then performs
     // modifications to the tree to match the working tree.
@@ -315,23 +228,13 @@ fn should_be_empty_after_checking_out_empty_tree() -> anyhow::Result<()> {
 
 #[test]
 fn should_track_deleted_files() -> anyhow::Result<()> {
-    let test = TestingRepository::open_with_initial_commit(&[
-        ("file1.txt", "content1"),
-        ("file2.txt", "content2"),
-    ]);
+    let test = TestingRepository::from_fixture("create-wd-tree-empty-index-delete-file");
 
-    // Make sure the index is empty, perhaps the user did this action
-    let mut index = test.repository.index()?;
-    index.remove_all(["*"], None)?;
-    index.write()?;
-
-    std::fs::remove_file(test.tempdir.path().join("file1.txt"))?;
-
-    assert!(!test.tempdir.path().join("file1.txt").exists());
-    assert!(test.tempdir.path().join("file2.txt").exists());
+    assert!(!test.fixture_dir.path().join("file1.txt").exists());
+    assert!(test.fixture_dir.path().join("file2.txt").exists());
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
     insta::assert_snapshot!(visualize_tree(tree), @r#"
     295a2e4
@@ -342,29 +245,22 @@ fn should_track_deleted_files() -> anyhow::Result<()> {
 
 #[test]
 fn should_not_change_index() -> anyhow::Result<()> {
-    let test = TestingRepository::open_with_initial_commit(&[("file1.txt", "content1")]);
-
-    let mut index = test.repository.index()?;
-    index.remove_all(["*"], None)?;
-    index.write()?;
-
-    let index_tree = index.write_tree()?;
-    let index_tree = test.repository.find_tree(index_tree)?;
-    assert_eq!(index_tree.len(), 0);
+    let test = TestingRepository::from_fixture("create-wd-tree-empty-index-file1");
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
-
-    let mut index = test.repository.index()?;
-    let index_tree = index.write_tree()?;
-    let index_tree = test.repository.find_tree(index_tree)?;
-    assert_eq!(index_tree.len(), 0);
+    assert_eq!(
+        repo.index()?.entries().len(),
+        0,
+        "it starts with an empty index"
+    );
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
     // Tree should match whatever is written on disk
     insta::assert_snapshot!(visualize_tree(tree), @r#"
     7cd1c45
     └── file1.txt:100644:dd954e7 "content1"
     "#);
+    assert_eq!(repo.index()?.entries().len(), 0, "the index is untouched");
     Ok(())
 }
 
@@ -376,13 +272,13 @@ fn tree_behavior() -> anyhow::Result<()> {
     ]);
 
     // Update a file in a directory
-    std::fs::write(test.tempdir.path().join("dir1/file1.txt"), "new1")?;
+    std::fs::write(test.fixture_dir.path().join("dir1/file1.txt"), "new1")?;
     // Make a new directory and file
-    std::fs::create_dir(test.tempdir.path().join("dir3"))?;
-    std::fs::write(test.tempdir.path().join("dir3/file1.txt"), "new2")?;
+    std::fs::create_dir(test.fixture_dir.path().join("dir3"))?;
+    std::fs::write(test.fixture_dir.path().join("dir3/file1.txt"), "new2")?;
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
     insta::assert_snapshot!(visualize_tree(tree), @r#"
     c8aa4f7
@@ -403,12 +299,12 @@ fn executable_blobs() -> anyhow::Result<()> {
 
     let test = TestingRepository::open_with_initial_commit(&[]);
 
-    let mut file = File::create(test.tempdir.path().join("file1.txt"))?;
+    let mut file = File::create(test.fixture_dir.path().join("file1.txt"))?;
     file.set_permissions(Permissions::from_mode(0o755))?;
     file.write_all(b"content1")?;
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
     // The executable bit is also present in the tree.
     insta::assert_snapshot!(visualize_tree(tree), @r#"
@@ -423,10 +319,10 @@ fn executable_blobs() -> anyhow::Result<()> {
 fn links() -> anyhow::Result<()> {
     let test = TestingRepository::open_with_initial_commit(&[("target", "helloworld")]);
 
-    std::os::unix::fs::symlink("target", test.tempdir.path().join("link1.txt"))?;
+    std::os::unix::fs::symlink("target", test.fixture_dir.path().join("link1.txt"))?;
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
     // Links are also present in the tree.
     insta::assert_snapshot!(visualize_tree(tree), @r#"
@@ -443,13 +339,13 @@ fn tracked_file_becomes_directory_in_worktree() -> anyhow::Result<()> {
         "soon-directory",
         "this tracked file becomes a directory",
     )]);
-    let worktree_path = test.tempdir.path().join("soon-directory");
+    let worktree_path = test.fixture_dir.path().join("soon-directory");
     std::fs::remove_file(&worktree_path)?;
     std::fs::create_dir(&worktree_path)?;
     std::fs::write(worktree_path.join("file"), "content in directory")?;
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
     insta::assert_snapshot!(visualize_tree(tree), @r#"
     8b80519
     └── soon-directory:df6d699 
@@ -464,12 +360,12 @@ fn tracked_directory_becomes_file_in_worktree() -> anyhow::Result<()> {
         "soon-file/content",
         "this tracked is removed and the parent dir becomes a file",
     )]);
-    let worktree_path = test.tempdir.path().join("soon-file");
+    let worktree_path = test.fixture_dir.path().join("soon-file");
     std::fs::remove_dir_all(&worktree_path)?;
     std::fs::write(worktree_path, "content")?;
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
     insta::assert_snapshot!(visualize_tree(tree), @r#"
     637be29
     └── soon-file:100644:6b584e8 "content"
@@ -482,7 +378,7 @@ fn tracked_directory_becomes_file_in_worktree() -> anyhow::Result<()> {
 fn non_files_are_ignored() -> anyhow::Result<()> {
     let test = TestingRepository::open_with_initial_commit(&[]);
 
-    let fifo_path = test.tempdir.path().join("fifo");
+    let fifo_path = test.fixture_dir.path().join("fifo");
     assert!(
         std::process::Command::new("mkfifo")
             .arg(&fifo_path)
@@ -491,7 +387,7 @@ fn non_files_are_ignored() -> anyhow::Result<()> {
     );
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
     assert_eq!(
         tree_entry_count(tree)?,
         0,
@@ -505,7 +401,7 @@ fn non_files_are_ignored() -> anyhow::Result<()> {
 fn tracked_file_swapped_with_non_file() -> anyhow::Result<()> {
     let test = TestingRepository::open_with_initial_commit(&[("soon-fifo", "actual content")]);
 
-    let fifo_path = test.tempdir.path().join("soon-fifo");
+    let fifo_path = test.fixture_dir.path().join("soon-fifo");
     std::fs::remove_file(&fifo_path)?;
     assert!(
         std::process::Command::new("mkfifo")
@@ -515,7 +411,7 @@ fn tracked_file_swapped_with_non_file() -> anyhow::Result<()> {
     );
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
     assert_eq!(
         tree_entry_count(tree)?,
         0,
@@ -531,11 +427,11 @@ fn ignored_files() -> anyhow::Result<()> {
         (".gitignore", "*.ignored"),
     ]);
 
-    let ignored_path = test.tempdir.path().join("I-am.ignored");
+    let ignored_path = test.fixture_dir.path().join("I-am.ignored");
     std::fs::write(&ignored_path, "")?;
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
     // ignored files aren't picked up.
     insta::assert_snapshot!(visualize_tree(tree), @r#"
     38b94c0
@@ -549,11 +445,11 @@ fn ignored_files() -> anyhow::Result<()> {
 fn can_autotrack_empty_files() -> anyhow::Result<()> {
     let test = TestingRepository::open_with_initial_commit(&[("soon-empty", "content")]);
 
-    let ignored_path = test.tempdir.path().join("soon-empty");
+    let ignored_path = test.fixture_dir.path().join("soon-empty");
     std::fs::write(&ignored_path, "")?;
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
     // ignored files aren't picked up.
     insta::assert_snapshot!(visualize_tree(tree), @r#"
     4fe2781
@@ -566,7 +462,7 @@ fn can_autotrack_empty_files() -> anyhow::Result<()> {
 fn intent_to_add_is_picked_up_just_like_untracked() -> anyhow::Result<()> {
     let repo = repo("intent-to-add")?;
 
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
     // We pick up what's in the worktree, independently of the intent-to-add flag.
     insta::assert_snapshot!(visualize_tree(tree), @r#"
     d6a22f9
@@ -579,7 +475,7 @@ fn intent_to_add_is_picked_up_just_like_untracked() -> anyhow::Result<()> {
 fn submodule_in_index_is_picked_up() -> anyhow::Result<()> {
     let repo = repo("with-submodule-in-index")?;
 
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
     // Everything that is not contending with the worktree that is already in the index
     // is picked up, even if it involves submodules.
     insta::assert_snapshot!(visualize_tree(tree), @r#"
@@ -594,7 +490,7 @@ fn submodule_in_index_is_picked_up() -> anyhow::Result<()> {
 fn submodule_change() -> anyhow::Result<()> {
     let repo = repo("with-submodule-new-commit")?;
 
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
     // Changes to submodule heads are also picked up.
     insta::assert_snapshot!(visualize_tree(tree), @r#"
@@ -609,8 +505,8 @@ fn submodule_change() -> anyhow::Result<()> {
 fn big_files_check_is_disabled_with_zero() -> anyhow::Result<()> {
     let test = TestingRepository::open_with_initial_commit(&[]);
 
-    std::fs::write(test.tempdir.path().join("empty"), "")?;
-    std::fs::write(test.tempdir.path().join("with-content"), "content")?;
+    std::fs::write(test.fixture_dir.path().join("empty"), "")?;
+    std::fs::write(test.fixture_dir.path().join("with-content"), "content")?;
 
     let repo = gix_repo(&test)?;
     let tree = create_wd_tree(&repo, 0)?;
@@ -629,11 +525,11 @@ fn big_files_are_ignored_based_on_threshold_in_working_tree() -> anyhow::Result<
     let test =
         TestingRepository::open_with_initial_commit(&[("soon-too-big", "still small enough")]);
 
-    let big_file_path = test.tempdir.path().join("soon-too-big");
+    let big_file_path = test.fixture_dir.path().join("soon-too-big");
     std::fs::write(&big_file_path, "a massive file above the threshold")?;
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
     // It does not pickup the big worktree change.
     insta::assert_snapshot!(visualize_tree(tree), @r#"
@@ -645,19 +541,10 @@ fn big_files_are_ignored_based_on_threshold_in_working_tree() -> anyhow::Result<
 
 #[test]
 fn big_files_are_fine_when_in_the_index() -> anyhow::Result<()> {
-    let test =
-        TestingRepository::open_with_initial_commit(&[("soon-too-big", "still small enough")]);
-
-    std::fs::write(
-        test.tempdir.path().join("soon-too-big"),
-        "a massive file above the threshold",
-    )?;
-    let mut index = test.repository.index()?;
-    index.add_path("soon-too-big".as_ref())?;
-    index.write()?;
+    let test = TestingRepository::from_fixture("create-wd-tree-big-file-staged");
 
     let repo = gix_repo(&test)?;
-    let tree = create_wd_tree(&repo, MAX_SIZE)?;
+    let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
     // It keeps files that were already added.
     insta::assert_snapshot!(visualize_tree(tree), @r#"
@@ -668,7 +555,7 @@ fn big_files_are_fine_when_in_the_index() -> anyhow::Result<()> {
 }
 
 fn gix_repo(test: &TestingRepository) -> anyhow::Result<gix::Repository> {
-    open_repo(test.repository.path())
+    open_repo(test.fixture_dir.path())
 }
 
 fn repo(name: &str) -> anyhow::Result<gix::Repository> {

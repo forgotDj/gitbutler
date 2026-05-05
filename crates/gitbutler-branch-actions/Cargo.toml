@@ -41,7 +41,6 @@ gitbutler-repo-actions.workspace = true
 gitbutler-branch.workspace = true
 gitbutler-reference.workspace = true
 gitbutler-commit.workspace = true
-gitbutler-url.workspace = true
 gitbutler-operating-modes.workspace = true
 gitbutler-stack.workspace = true
 gitbutler-workspace.workspace = true
@@ -50,7 +49,6 @@ gitbutler-project.workspace = true
 tracing.workspace = true
 anyhow.workspace = true
 git2.workspace = true
-git2-hooks.workspace = true
 gix = { workspace = true, features = ["blob-diff", "revision", "merge"] }
 uuid = { workspace = true }
 serde.workspace = true

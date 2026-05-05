@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use crate::support::{commit_all, test_repository};
+use crate::support::{repository, test_repository};
 use but_ctx::{Context, RepoOpenMode};
 use but_settings::AppSettings;
 use gitbutler_project as projects;
@@ -85,10 +85,8 @@ fn rejects_symlink_escape() {
 
 #[test]
 fn reads_deleted_file_from_index() {
-    let (repo, _tmp) = test_repository();
+    let (repo, _tmp) = repository("tracked-deleted-file");
     let workdir = repo.workdir().expect("workdir exists");
-    fs::write(workdir.join("deleted.txt"), "tracked content").expect("write tracked file");
-    commit_all(&repo);
     fs::remove_file(workdir.join("deleted.txt")).expect("delete file from workspace");
 
     let ctx = context_for_repo(workdir);
@@ -101,10 +99,8 @@ fn reads_deleted_file_from_index() {
 
 #[test]
 fn reads_deleted_file_from_head_commit() {
-    let (repo, _tmp) = test_repository();
+    let (repo, _tmp) = repository("tracked-deleted-file");
     let workdir = repo.workdir().expect("workdir exists");
-    fs::write(workdir.join("deleted.txt"), "tracked content").expect("write tracked file");
-    commit_all(&repo);
     fs::remove_file(workdir.join("deleted.txt")).expect("delete file from workspace");
     fs::remove_file(repo.path().join("index")).expect("delete index file");
 
