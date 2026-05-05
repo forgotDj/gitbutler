@@ -442,23 +442,6 @@ export type Author = {
   gravatarUrl: string;
 };
 
-export type AutoCommitEvent = {
-  steps_length: number;
-  type: "started";
-} | {
-  parent_commit_id: string;
-  token: string;
-  type: "commitGeneration";
-} | {
-  commit_id: string;
-  type: "commitSuccess";
-} | {
-  error_message: string;
-  type: "commitError";
-} | {
-  type: "completed";
-};
-
 export type BaseBranch = {
   branchName: string;
   remoteName: string;

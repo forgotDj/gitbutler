@@ -572,8 +572,6 @@ pub enum Subcommands {
     /// If `--dry-run` is specified, no changes will be made; instead, the absorption plan
     /// (what changes would be absorbed by which commits) will be shown.
     ///
-    /// If `--new` is specified, new commits will be created for absorbed changes
-    /// instead of amending existing commits.
     #[cfg(feature = "legacy")]
     #[clap(verbatim_doc_comment)]
     Absorb {

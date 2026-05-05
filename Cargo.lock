@@ -1659,22 +1659,11 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-openai",
- "bstr",
  "but-core",
  "but-ctx",
- "but-graph",
- "but-hunk-assignment",
- "but-rebase",
- "but-serde",
  "but-workspace",
- "gitbutler-branch",
- "gitbutler-branch-actions",
- "gitbutler-oplog",
- "gitbutler-reference",
  "gix",
- "schemars 1.2.1",
  "serde",
- "serde-error",
  "serde_json",
 ]
 
