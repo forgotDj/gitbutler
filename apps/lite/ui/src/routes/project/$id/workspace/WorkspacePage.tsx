@@ -175,8 +175,9 @@ const BranchPicker: FC<{
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onSelectBranch: (branch: BranchOperand) => void;
-	stacks: Array<Stack>;
-}> = ({ open, onOpenChange, onSelectBranch, stacks }) => {
+}> = ({ open, onOpenChange, onSelectBranch }) => {
+	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	const selectBranch = (option: BranchPickerOption) => {
 		onOpenChange(false);
 		onSelectBranch(option.branch);
@@ -194,7 +195,7 @@ const BranchPicker: FC<{
 			items={[
 				{
 					value: "Branches",
-					items: stacks.flatMap(stackToBranchPickerOptions),
+					items: headInfo.stacks.flatMap(stackToBranchPickerOptions),
 				},
 			]}
 			open={open}
@@ -428,9 +429,6 @@ const WorkspacePage: FC = () => {
 		panelIds: panelsState.visiblePanels,
 	});
 
-	// TODO: handle project not found error. or only run when project is not null? waterfall.
-	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-
 	const selectBranch = (branch: BranchOperand) => {
 		dispatch(
 			projectActions.selectOutline({
@@ -548,7 +546,6 @@ const WorkspacePage: FC = () => {
 								Match.when("commitChanges", () => commitChangesToBranch),
 								Match.exhaustive,
 							)}
-							stacks={headInfo.stacks}
 						/>
 					),
 					CommandPalette: () => <CommandPalette open onOpenChange={setCommandPaletteOpen} />,
