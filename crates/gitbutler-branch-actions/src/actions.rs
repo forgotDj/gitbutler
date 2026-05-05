@@ -5,7 +5,7 @@ use but_ctx::{
     access::{RepoExclusive, RepoShared},
 };
 use but_workspace::legacy::{stack_heads_info, ui};
-use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
+use gitbutler_branch::BranchCreateRequest;
 use gitbutler_operating_modes::ensure_open_workspace_mode;
 use gitbutler_oplog::{
     OplogExt,
@@ -14,7 +14,6 @@ use gitbutler_oplog::{
 use gitbutler_reference::{Refname, RemoteRefname};
 use gitbutler_stack::StackId;
 
-use super::r#virtual as vbranch;
 use crate::{
     VirtualBranchesExt, base,
     base::BaseBranch,
@@ -162,22 +161,6 @@ pub fn integrate_branch_with_steps(
         steps,
         guard.write_permission(),
     )
-}
-
-pub fn update_stack_order(ctx: &mut Context, updates: Vec<BranchUpdateRequest>) -> Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    ensure_open_workspace_mode(ctx, guard.read_permission())
-        .context("Updating branch order requires open workspace mode")?;
-    for stack_update in updates {
-        let stack = ctx
-            .virtual_branches()
-            .get_stack_in_workspace(stack_update.id.context("BUG(opt-stack-id)")?)?;
-        if stack_update.order != Some(stack.order) {
-            vbranch::update_stack(ctx, &stack_update)?;
-        }
-    }
-    Ok(())
 }
 
 /// Unapplies a virtual branch and deletes the branch entry from the virtual branch state.

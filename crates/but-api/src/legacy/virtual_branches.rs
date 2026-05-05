@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::{Context as _, Result, anyhow};
 use bstr::ByteSlice;
 use but_api_macros::but_api;
-use but_core::{DiffSpec, sync::RepoExclusive};
+use but_core::{DiffSpec, RefMetadata, ref_metadata::WorkspaceStack, sync::RepoExclusive};
 use but_ctx::{Context, ThreadSafeContext};
 use but_workspace::legacy::ui::{StackEntryNoOpt, StackHeadInfo};
 use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
@@ -16,6 +16,7 @@ use gitbutler_branch_actions::{
     },
 };
 use gitbutler_git::GitContextExt as _;
+use gitbutler_operating_modes::ensure_open_workspace_mode;
 use gitbutler_project::FetchResult;
 use gitbutler_reference::{Refname, normalize_branch_name as normalize_name};
 use gitbutler_stack::StackId;
@@ -289,8 +290,202 @@ pub fn update_stack_order(
     ctx: &mut but_ctx::Context,
     stacks: Vec<BranchUpdateRequest>,
 ) -> Result<()> {
-    gitbutler_branch_actions::update_stack_order(ctx, stacks)?;
+    let mut guard = ctx.exclusive_worktree_access();
+    update_stack_order_with_perm(ctx, stacks, guard.write_permission())
+}
+
+/// Update stack order while reusing caller-held exclusive repository access.
+///
+/// This writes through workspace metadata directly instead of using the legacy
+/// `VirtualBranchesHandle` path in `gitbutler-branch-actions`.
+pub fn update_stack_order_with_perm(
+    ctx: &mut but_ctx::Context,
+    stacks: Vec<BranchUpdateRequest>,
+    perm: &mut RepoExclusive,
+) -> Result<()> {
+    ensure_open_workspace_mode(ctx, perm.read_permission())
+        .context("Updating branch order requires open workspace mode")?;
+
+    let mut meta = ctx.legacy_meta_mut(perm)?;
+    let (_repo, mut ws, _db) = ctx.workspace_mut_and_db_with_perm(perm)?;
+    let workspace_ref = ws
+        .ref_name()
+        .context("Updating stack order requires a managed workspace")?;
+    let mut workspace_metadata = meta.workspace(workspace_ref)?;
+    let changed = apply_stack_order_updates(&mut workspace_metadata, stacks)?;
+
+    if changed {
+        let updated_metadata = (*workspace_metadata).clone();
+        meta.set_workspace(&workspace_metadata)?;
+        meta.set_changed_to_necessitate_write();
+        ws.metadata = Some(updated_metadata);
+        sort_projected_stacks_like_metadata(&mut ws.stacks, &workspace_metadata.stacks);
+    }
+
     Ok(())
+}
+
+fn apply_stack_order_updates(
+    workspace: &mut but_core::ref_metadata::Workspace,
+    updates: Vec<BranchUpdateRequest>,
+) -> Result<bool> {
+    let mut requested_orders = HashMap::new();
+
+    for update in updates {
+        let stack_id = update.id.context("BUG(opt-stack-id)")?;
+        if !workspace
+            .stacks
+            .iter()
+            .any(|stack| stack.id == stack_id && stack.is_in_workspace())
+        {
+            return Err(anyhow!("branch with ID {stack_id} not found")
+                .context(but_error::Code::BranchNotFound));
+        }
+
+        if let Some(order) = update.order {
+            requested_orders.insert(stack_id, order);
+        }
+    }
+
+    if requested_orders.is_empty() {
+        return Ok(false);
+    }
+
+    let original_stack_ids = workspace
+        .stacks
+        .iter()
+        .map(|stack| stack.id)
+        .collect::<Vec<_>>();
+    let original_orders = original_stack_ids
+        .iter()
+        .copied()
+        .enumerate()
+        .map(|(order, stack_id)| (stack_id, order))
+        .collect::<HashMap<_, _>>();
+
+    workspace.stacks.sort_by_cached_key(|stack| {
+        let order = requested_orders
+            .get(&stack.id)
+            .copied()
+            .unwrap_or_else(|| original_orders[&stack.id]);
+
+        (order, stack.name().map(ToString::to_string), stack.id)
+    });
+
+    Ok(workspace
+        .stacks
+        .iter()
+        .map(|stack| stack.id)
+        .ne(original_stack_ids))
+}
+
+fn sort_projected_stacks_like_metadata(
+    stacks: &mut [but_graph::projection::Stack],
+    metadata_stacks: &[WorkspaceStack],
+) {
+    let stack_orders = metadata_stacks
+        .iter()
+        .enumerate()
+        .map(|(order, stack)| (stack.id, order))
+        .collect::<HashMap<_, _>>();
+
+    stacks.sort_by_key(|stack| {
+        stack
+            .id
+            .and_then(|stack_id| stack_orders.get(&stack_id).copied())
+            .unwrap_or(usize::MAX)
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use but_core::ref_metadata::{
+        StackId, Workspace, WorkspaceCommitRelation, WorkspaceStack, WorkspaceStackBranch,
+    };
+
+    use super::*;
+
+    #[test]
+    fn stack_order_updates_reorder_workspace_metadata() -> Result<()> {
+        let first = StackId::from_number_for_testing(1);
+        let second = StackId::from_number_for_testing(2);
+        let third = StackId::from_number_for_testing(3);
+        let mut workspace = workspace_with_stacks([
+            stack(first, "first", WorkspaceCommitRelation::Merged),
+            stack(second, "second", WorkspaceCommitRelation::Merged),
+            stack(third, "third", WorkspaceCommitRelation::Merged),
+        ]);
+
+        let changed = apply_stack_order_updates(
+            &mut workspace,
+            vec![
+                BranchUpdateRequest {
+                    id: Some(first),
+                    order: Some(2),
+                },
+                BranchUpdateRequest {
+                    id: Some(second),
+                    order: Some(0),
+                },
+                BranchUpdateRequest {
+                    id: Some(third),
+                    order: Some(1),
+                },
+            ],
+        )?;
+
+        assert!(changed);
+        assert_eq!(stack_ids(&workspace), vec![second, third, first]);
+        Ok(())
+    }
+
+    #[test]
+    fn stack_order_updates_reject_unapplied_stacks() {
+        let applied = StackId::from_number_for_testing(1);
+        let unapplied = StackId::from_number_for_testing(2);
+        let mut workspace = workspace_with_stacks([
+            stack(applied, "applied", WorkspaceCommitRelation::Merged),
+            stack(unapplied, "unapplied", WorkspaceCommitRelation::Outside),
+        ]);
+
+        let result = apply_stack_order_updates(
+            &mut workspace,
+            vec![BranchUpdateRequest {
+                id: Some(unapplied),
+                order: Some(0),
+            }],
+        );
+
+        assert!(result.is_err());
+        assert_eq!(stack_ids(&workspace), vec![applied, unapplied]);
+    }
+
+    fn workspace_with_stacks<const N: usize>(stacks: [WorkspaceStack; N]) -> Workspace {
+        Workspace {
+            stacks: stacks.into(),
+            ..Default::default()
+        }
+    }
+
+    fn stack(
+        id: StackId,
+        name: &str,
+        workspacecommit_relation: WorkspaceCommitRelation,
+    ) -> WorkspaceStack {
+        WorkspaceStack {
+            id,
+            workspacecommit_relation,
+            branches: vec![WorkspaceStackBranch {
+                ref_name: gix::refs::FullName::try_from(format!("refs/heads/{name}"))
+                    .expect("valid test ref name"),
+                archived: false,
+            }],
+        }
+    }
+
+    fn stack_ids(workspace: &Workspace) -> Vec<StackId> {
+        workspace.stacks.iter().map(|stack| stack.id).collect()
+    }
 }
 
 #[but_api(napi)]

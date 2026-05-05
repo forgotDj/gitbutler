@@ -1,24 +1,7 @@
 use anyhow::{Context as _, Result};
 use but_core::RepositoryExt;
-use but_ctx::Context;
-use gitbutler_branch::BranchUpdateRequest;
 use gitbutler_commit::commit_ext::CommitExt;
-use gitbutler_stack::Stack;
 use itertools::Itertools;
-
-use crate::VirtualBranchesExt;
-
-pub(crate) fn update_stack(ctx: &Context, update: &BranchUpdateRequest) -> Result<Stack> {
-    let mut vb_state = ctx.virtual_branches();
-    let mut stack = vb_state.get_stack_in_workspace(update.id.context("BUG(opt-stack-id)")?)?;
-
-    if let Some(order) = update.order {
-        stack.order = order;
-    };
-
-    vb_state.set_stack(stack.clone())?;
-    Ok(stack)
-}
 
 type MergeBaseCommitGraph<'repo, 'cache> = gix::revwalk::Graph<
     'repo,
