@@ -155,15 +155,11 @@ const useNavigationIndex = (projectId: string) => {
 	}, [navigationIndexUnfiltered, selection, projectId, dispatch]);
 
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
-	const operationMode = useAppSelector((state) =>
-		selectProjectOperationModeState(state, projectId),
-	);
 
 	const navigationIndex = filterNavigationIndexForOutlineMode({
 		navigationIndex: navigationIndexUnfiltered,
 		selection,
 		outlineMode,
-		operationMode,
 	});
 
 	const focusedPanel = useFocusedProjectPanel(projectId);

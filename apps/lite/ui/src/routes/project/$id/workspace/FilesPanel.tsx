@@ -24,7 +24,6 @@ import {
 } from "#ui/operands.ts";
 import {
 	projectActions,
-	selectProjectOperationModeState,
 	selectProjectOutlineModeState,
 	selectProjectSelectionFiles,
 	selectProjectSelectionOutline,
@@ -78,15 +77,11 @@ const useNavigationIndex = (projectId: string, parent: Operand, files: Array<Ope
 	}, [navigationIndexUnfiltered, selection, projectId, dispatch, parent]);
 
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
-	const operationMode = useAppSelector((state) =>
-		selectProjectOperationModeState(state, projectId),
-	);
 
 	const navigationIndex = filterNavigationIndexForOutlineMode({
 		navigationIndex: navigationIndexUnfiltered,
 		selection,
 		outlineMode,
-		operationMode,
 	});
 
 	const focusedPanel = useFocusedProjectPanel(projectId);

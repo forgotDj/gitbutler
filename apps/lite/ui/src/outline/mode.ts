@@ -126,37 +126,29 @@ const hasAnyOperation = (source: Operand, target: Operand) => {
 	return !!operations.rub || !!operations.moveAbove || !!operations.moveBelow;
 };
 
-const includeOperandForOutlineMode = ({
+const includeOperandForOperationMode = ({
 	mode,
 	operand,
 }: {
-	mode: OutlineMode;
+	mode: OperationMode;
 	operand: Operand;
 }): boolean =>
 	Match.value(mode).pipe(
 		Match.tagsExhaustive({
-			Default: () => true,
-			Operation: ({ value }) =>
-				Match.value(value).pipe(
-					Match.tagsExhaustive({
-						DragAndDrop: ({ source }) => hasAnyOperation(source, operand),
-						Cut: ({ source }) => hasAnyOperation(source, operand),
-						Move: (mode) =>
-							!!getOperation({
-								source: mode.source,
-								target: operand,
-								operationType: operationModeToOperationType(mode),
-							}),
-						Rub: (mode) =>
-							!!getOperation({
-								source: mode.source,
-								target: operand,
-								operationType: operationModeToOperationType(mode),
-							}),
-					}),
-				),
-			RenameBranch: (mode) => operandEquals(operand, branchOperand(mode.operand)),
-			RewordCommit: (mode) => operandEquals(operand, commitOperand(mode.operand)),
+			DragAndDrop: ({ source }) => hasAnyOperation(source, operand),
+			Cut: ({ source }) => hasAnyOperation(source, operand),
+			Move: (mode) =>
+				!!getOperation({
+					source: mode.source,
+					target: operand,
+					operationType: operationModeToOperationType(mode),
+				}),
+			Rub: (mode) =>
+				!!getOperation({
+					source: mode.source,
+					target: operand,
+					operationType: operationModeToOperationType(mode),
+				}),
 		}),
 	);
 
@@ -164,24 +156,34 @@ export const filterNavigationIndexForOutlineMode = ({
 	navigationIndex: navigationIndexUnfiltered,
 	selection,
 	outlineMode,
-	operationMode,
 }: {
 	navigationIndex: NavigationIndex;
 	selection: Operand;
 	outlineMode: OutlineMode;
-	operationMode: OperationMode | null;
 }) =>
-	outlineMode._tag !== "Default"
-		? filterNavigationIndex(
-				navigationIndexUnfiltered,
-				(operand) =>
-					// When entering operation mode, the selection must still be
-					// selectable otherwise the details panel will suddenly appear to
-					// change and the user may lose sight of their source operand (e.g.
-					// hunk).
-					operandEquals(selection, operand) ||
-					// After selection moves, allow returning selection to the source operand.
-					(operationMode?.source && operandEquals(operationMode.source, operand)) ||
-					includeOperandForOutlineMode({ mode: outlineMode, operand }),
-			)
-		: navigationIndexUnfiltered;
+	Match.value(outlineMode).pipe(
+		Match.tagsExhaustive({
+			Default: () => navigationIndexUnfiltered,
+			Operation: (operationMode) =>
+				filterNavigationIndex(
+					navigationIndexUnfiltered,
+					(operand) =>
+						// When entering operation mode, the selection must still be
+						// selectable otherwise the details panel will suddenly appear to
+						// change and the user may lose sight of their source operand (e.g.
+						// hunk).
+						operandEquals(selection, operand) ||
+						// After selection moves, allow returning selection to the source operand.
+						operandEquals(operationMode.value.source, operand) ||
+						includeOperandForOperationMode({ mode: operationMode.value, operand }),
+				),
+			RenameBranch: (x) =>
+				filterNavigationIndex(navigationIndexUnfiltered, (operand) =>
+					operandEquals(operand, branchOperand(x.operand)),
+				),
+			RewordCommit: (x) =>
+				filterNavigationIndex(navigationIndexUnfiltered, (operand) =>
+					operandEquals(operand, commitOperand(x.operand)),
+				),
+		}),
+	);
