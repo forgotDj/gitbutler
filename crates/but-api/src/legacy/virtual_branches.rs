@@ -3,7 +3,11 @@ use std::collections::HashMap;
 use anyhow::{Context as _, Result, anyhow};
 use bstr::ByteSlice;
 use but_api_macros::but_api;
-use but_core::{DiffSpec, RefMetadata, ref_metadata::WorkspaceStack, sync::RepoExclusive};
+use but_core::{
+    DiffSpec, RefMetadata,
+    ref_metadata::{StackKind, WorkspaceStack},
+    sync::RepoExclusive,
+};
 use but_ctx::{Context, ThreadSafeContext};
 use but_workspace::legacy::ui::{StackEntryNoOpt, StackHeadInfo};
 use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
@@ -99,8 +103,64 @@ pub fn delete_local_branch(
     refname: Refname,
     given_name: String,
 ) -> Result<()> {
-    gitbutler_branch_actions::delete_local_branch(ctx, &refname, given_name)?;
+    let branch_refname = local_branch_refname(refname, &given_name)?;
+    let mut guard = ctx.exclusive_worktree_access();
+    let mut meta = ctx.legacy_meta_mut(guard.write_permission())?;
+    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(guard.write_permission())?;
+
+    if ws
+        .metadata
+        .as_ref()
+        .and_then(|metadata| {
+            metadata.find_stack_with_branch(branch_refname.as_ref(), StackKind::AppliedAndUnapplied)
+        })
+        .is_some_and(|stack| stack.is_in_workspace())
+    {
+        return Err(anyhow!(
+            "Cannot delete a branch that is applied in workspace"
+        ));
+    }
+
+    if let Some(new_ws) = but_workspace::branch::remove_reference(
+        branch_refname.as_ref(),
+        &repo,
+        &ws,
+        &mut meta,
+        but_workspace::branch::remove_reference::Options {
+            avoid_anonymous_stacks: false,
+            keep_metadata: false,
+        },
+    )? {
+        *ws = new_ws;
+    } else {
+        if let Some(reference) = repo.try_find_reference(branch_refname.as_ref())? {
+            let safe_delete = but_core::branch::SafeDelete::new(&repo)?;
+            let outcome = safe_delete.delete_reference(&reference)?;
+            if let Some(paths) = outcome.checked_out_in_worktree_dirs {
+                return Err(anyhow!(
+                    "Refusing to delete a branch that is checked out. Worktrees are: {paths:?}"
+                ));
+            }
+        }
+        meta.remove(branch_refname.as_ref())?;
+        if let Some(metadata) = &mut ws.metadata {
+            metadata.remove_segment(branch_refname.as_ref());
+        }
+    }
+
     Ok(())
+}
+
+fn local_branch_refname(refname: Refname, given_name: &str) -> Result<gix::refs::FullName> {
+    if let Ok(refname) = gix::refs::FullName::try_from(refname.to_string())
+        && refname.as_ref().category() == Some(Category::LocalBranch)
+    {
+        return Ok(refname);
+    }
+
+    Category::LocalBranch
+        .to_full_name(given_name)
+        .map_err(anyhow::Error::from)
 }
 
 /// Turn `branch` into an applied virtual branch, optionally associating
