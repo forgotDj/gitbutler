@@ -387,7 +387,7 @@ export const DetailsPanel: FC<
 			style={{ ...panelProps.style, opacity: urgentSelection !== selection ? 0.5 : 1 }}
 		>
 			<Virtualizer className={classes(className, styles.detailsVirtualizer)}>
-				<Suspense fallback={<div>Loading details...</div>}>
+				<Suspense fallback={<div>Loading details…</div>}>
 					<Details projectId={projectId} selection={selection} />
 				</Suspense>
 			</Virtualizer>
