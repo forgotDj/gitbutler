@@ -1,6 +1,6 @@
 import uiStyles from "#ui/ui/ui.module.css";
 import { FilesPanel } from "./FilesPanel.tsx";
-import { applyBranchMutationOptions } from "#ui/api/mutations.ts";
+import { applyBranchMutationOptions, commitCreateMutationOptions } from "#ui/api/mutations.ts";
 import {
 	absorptionPlanQueryOptions,
 	headInfoQueryOptions,
@@ -45,6 +45,9 @@ import { DetailsPanel } from "./DetailsPanel.tsx";
 import styles from "./WorkspacePage.module.css";
 import type { CommandGroup } from "#ui/commands/groups.ts";
 import { OutlinePanel } from "#ui/routes/project/$id/workspace/OutlinePanel.tsx";
+import { rejectedChangesToastOptions } from "#ui/operations/rejectedChangesToastOptions.tsx";
+import { Toast } from "@base-ui/react";
+import { resolveDiffSpecs } from "#ui/operations/diff-specs.ts";
 
 declare module "@tanstack/react-hotkeys" {
 	interface HotkeyMeta {
@@ -440,19 +443,39 @@ const WorkspacePage: FC = () => {
 		focusPanel("outline");
 	};
 
+	const toastManager = Toast.useToastManager();
+
+	const commitCreate = useMutation({
+		...commitCreateMutationOptions,
+		onSuccess: async (response, input, context, mutation) => {
+			await commitCreateMutationOptions.onSuccess?.(response, input, context, mutation);
+
+			if (response.rejectedChanges.length > 0)
+				toastManager.add(
+					rejectedChangesToastOptions({
+						newCommit: response.newCommit,
+						rejectedChanges: response.rejectedChanges,
+					}),
+				);
+		},
+	});
+
 	const commitChangesToBranch = (branch: BranchOperand) => {
-		dispatch(
-			projectActions.selectOutline({
-				projectId,
-				selection: branchOperand(branch),
-			}),
-		);
-		dispatch(
-			projectActions.enterMoveMode({
-				projectId,
-				source: changesSectionOperand,
-			}),
-		);
+		const changes = resolveDiffSpecs({
+			source: changesSectionOperand,
+			queryClient,
+			projectId,
+		});
+		if (!changes) return;
+
+		commitCreate.mutate({
+			projectId,
+			relativeTo: { type: "referenceBytes", subject: branch.branchRef },
+			side: "below",
+			changes,
+			message: "",
+			dryRun: false,
+		});
 		focusPanel("outline");
 	};
 
