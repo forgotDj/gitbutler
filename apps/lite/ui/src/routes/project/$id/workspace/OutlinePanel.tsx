@@ -50,6 +50,7 @@ import {
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
 import { mergeProps, useRender } from "@base-ui/react";
+import { Combobox } from "@base-ui/react/combobox";
 import { Toolbar } from "@base-ui/react/toolbar";
 import {
 	AbsorptionTarget,
@@ -73,6 +74,7 @@ import {
 	useEffect,
 	useOptimistic,
 	useRef,
+	useState,
 	useTransition,
 } from "react";
 import { Panel, PanelProps } from "react-resizable-panels";
@@ -81,8 +83,8 @@ import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
 import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.tsx";
 import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
-import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
 import { defaultOutlineSelection } from "#ui/projects/workspace/state.ts";
+import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
 
 const sections = (headInfo: RefInfo): NonEmptyArray<Section> => {
 	const changesSection: Section = {
@@ -184,18 +186,24 @@ const useNavigationIndex = (projectId: string) => {
 export const OutlinePanel: FC<
 	{
 		onAbsorbChanges: (target: AbsorptionTarget) => void;
+		onCommitChanges: (branch: BranchOperand) => void;
 	} & PanelProps
-> = ({ onAbsorbChanges, ...panelProps }) => (
+> = ({ onAbsorbChanges, onCommitChanges, ...panelProps }) => (
 	<Suspense fallback={<Panel {...panelProps}>Loading outline…</Panel>}>
-		<OutlineTreePanel onAbsorbChanges={onAbsorbChanges} {...panelProps} />
+		<OutlineTreePanel
+			onAbsorbChanges={onAbsorbChanges}
+			onCommitChanges={onCommitChanges}
+			{...panelProps}
+		/>
 	</Suspense>
 );
 
 const OutlineTreePanel: FC<
 	{
 		onAbsorbChanges: (target: AbsorptionTarget) => void;
+		onCommitChanges: (branch: BranchOperand) => void;
 	} & PanelProps
-> = ({ onAbsorbChanges, ...panelProps }) => {
+> = ({ onAbsorbChanges, onCommitChanges, ...panelProps }) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const dispatch = useAppDispatch();
 
@@ -211,16 +219,13 @@ const OutlineTreePanel: FC<
 		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
 
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-	const commit = () =>
-		dispatch(projectActions.openBranchPicker({ projectId, intent: "commitChanges" }));
-
 	const selectChanges = () => {
 		select(changesSectionOperand);
 		focusPanel("outline");
 	};
 
 	const openBranchPicker = () => {
-		dispatch(projectActions.openBranchPicker({ projectId, intent: "selectBranch" }));
+		dispatch(projectActions.openBranchPicker({ projectId }));
 	};
 
 	useHotkeys([
@@ -247,7 +252,7 @@ const OutlineTreePanel: FC<
 			<Changes
 				projectId={projectId}
 				onAbsorbChanges={onAbsorbChanges}
-				onCommit={commit}
+				onCommit={onCommitChanges}
 				navigationIndex={navigationIndex}
 			/>
 
@@ -860,10 +865,36 @@ const BaseCommit: FC<{
 	);
 };
 
+type CommitBranchComboboxItem = {
+	id: string;
+	label: string;
+	branch: BranchOperand;
+};
+
+const CommitBranchComboboxPopup: FC = () => (
+	<Combobox.Popup className={classes(uiStyles.popup, styles.commitBranchComboboxPopup)}>
+		<Combobox.Input
+			aria-label="Search branches"
+			placeholder="Search branches…"
+			className={styles.commitBranchComboboxInput}
+		/>
+		<Combobox.Empty>
+			<div className={styles.commitBranchComboboxEmpty}>No branches found.</div>
+		</Combobox.Empty>
+		<Combobox.List className={styles.commitBranchComboboxList}>
+			{(item: CommitBranchComboboxItem) => (
+				<Combobox.Item key={item.id} value={item} className={styles.commitBranchComboboxItem}>
+					{item.label}
+				</Combobox.Item>
+			)}
+		</Combobox.List>
+	</Combobox.Popup>
+);
+
 const Changes: FC<{
 	projectId: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	onCommit: () => void;
+	onCommit: (branch: BranchOperand) => void;
 	navigationIndex: NavigationIndex;
 }> = ({ projectId, onAbsorbChanges, onCommit, navigationIndex }) => {
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
@@ -871,6 +902,44 @@ const Changes: FC<{
 	const operand = changesSectionOperand;
 
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+	const branchComboboxItems = headInfo.stacks.flatMap((stack): Array<CommitBranchComboboxItem> => {
+		// oxlint-disable-next-line typescript/no-non-null-assertion -- [ref:stack-id-required]
+		const stackId = stack.id!;
+		return stack.segments.flatMap((segment): Array<CommitBranchComboboxItem> => {
+			const refName = segment.refName;
+			if (!refName) return [];
+
+			return [
+				{
+					id: JSON.stringify([stackId, refName.fullNameBytes]),
+					label: refName.displayName,
+					branch: { stackId, branchRef: refName.fullNameBytes },
+				},
+			];
+		});
+	});
+
+	const [branchState, setBranch] = useState<CommitBranchComboboxItem | null>(null);
+
+	if (branchState && !branchComboboxItems.some((item) => item.id === branchState.id))
+		setBranch(null);
+
+	const branch = branchState ?? branchComboboxItems[0];
+
+	const commit = () => {
+		if (!branch) return;
+
+		onCommit(branch.branch);
+	};
+
+	const [open, setOpen] = useState(false);
+
+	const selectBranch = (option: CommitBranchComboboxItem | null) => {
+		setBranch(option);
+		setOpen(false);
+	};
 
 	return (
 		<TreeItem
@@ -886,18 +955,55 @@ const Changes: FC<{
 				onAbsorbChanges={onAbsorbChanges}
 				projectId={projectId}
 			/>
-			<ShortcutButton
-				onClick={onCommit}
-				hotkey="Mod+Enter"
-				hotkeyOptions={{
-					conflictBehavior: "allow",
-					meta: { group: "Changes", name: "Commit" },
-				}}
-				className={classes(uiStyles.button, styles.changesSectionCommitButton)}
-				disabled={outlineMode._tag !== "Default"}
-			>
-				Commit
-			</ShortcutButton>
+
+			<div className={styles.commitControls}>
+				<Combobox.Root<CommitBranchComboboxItem>
+					items={branchComboboxItems}
+					open={open}
+					onOpenChange={setOpen}
+					value={branch}
+					onValueChange={selectBranch}
+					itemToStringLabel={(x) => x.label}
+					itemToStringValue={(x) => x.id}
+					isItemEqualToValue={(a, b) => a.id === b.id}
+					autoHighlight
+					disabled={outlineMode._tag !== "Default"}
+				>
+					<Combobox.Trigger
+						className={classes(uiStyles.button, styles.commitBranchComboboxTrigger)}
+						aria-label="Select branch"
+						render={
+							<ShortcutButton
+								hotkey="Mod+Shift+B"
+								hotkeyOptions={{
+									conflictBehavior: "allow",
+									meta: { group: "Changes", name: "Select commit branch" },
+								}}
+							/>
+						}
+					>
+						<Combobox.Value placeholder="Select branch" />
+					</Combobox.Trigger>
+					<Combobox.Portal>
+						<Combobox.Positioner align="start" sideOffset={8}>
+							<CommitBranchComboboxPopup />
+						</Combobox.Positioner>
+					</Combobox.Portal>
+				</Combobox.Root>
+
+				<ShortcutButton
+					hotkey="Mod+Enter"
+					hotkeyOptions={{
+						conflictBehavior: "allow",
+						meta: { group: "Changes", name: "Commit" },
+					}}
+					className={classes(uiStyles.button, styles.changesSectionCommitButton)}
+					onClick={commit}
+					disabled={outlineMode._tag !== "Default" || !branch}
+				>
+					Commit
+				</ShortcutButton>
+			</div>
 		</TreeItem>
 	);
 };

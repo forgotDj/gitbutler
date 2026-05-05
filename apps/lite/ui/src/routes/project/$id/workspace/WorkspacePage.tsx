@@ -480,7 +480,7 @@ const WorkspacePage: FC = () => {
 	};
 
 	const setBranchPickerOpen = (open: boolean) => {
-		if (open) dispatch(projectActions.openBranchPicker({ projectId, intent: "selectBranch" }));
+		if (open) dispatch(projectActions.openBranchPicker({ projectId }));
 		else dispatch(projectActions.closePickerDialog({ projectId }));
 	};
 
@@ -514,6 +514,7 @@ const WorkspacePage: FC = () => {
 					className={styles.panel}
 					elementRef={(el) => el?.focus({ focusVisible: false })}
 					onAbsorbChanges={openAbsorptionDialog}
+					onCommitChanges={commitChangesToBranch}
 				/>
 				{isPanelVisible(panelsState, "files") && (
 					<>
@@ -558,16 +559,8 @@ const WorkspacePage: FC = () => {
 					ApplyBranchPicker: () => (
 						<ApplyBranchPicker open onOpenChange={setApplyBranchPickerOpen} projectId={projectId} />
 					),
-					BranchPicker: ({ intent }) => (
-						<BranchPicker
-							open
-							onOpenChange={setBranchPickerOpen}
-							onSelectBranch={Match.value(intent).pipe(
-								Match.when("selectBranch", () => selectBranch),
-								Match.when("commitChanges", () => commitChangesToBranch),
-								Match.exhaustive,
-							)}
-						/>
+					BranchPicker: () => (
+						<BranchPicker open onOpenChange={setBranchPickerOpen} onSelectBranch={selectBranch} />
 					),
 					CommandPalette: () => <CommandPalette open onOpenChange={setCommandPaletteOpen} />,
 				}),
