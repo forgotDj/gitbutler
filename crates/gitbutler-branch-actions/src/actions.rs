@@ -46,45 +46,6 @@ pub fn create_virtual_branch(
     })
 }
 
-/// Deletes a local branch reference and it's associated virtual branch.
-/// If there is a virtual branch and it is applied, this function will return an error.
-/// If there is no such local reference, this function will return an error.
-pub fn delete_local_branch(ctx: &mut Context, refname: &Refname, given_name: String) -> Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    let repo = &*ctx.repo.get()?;
-    let mut handle = ctx.virtual_branches();
-    let stack = handle.list_all_stacks()?.into_iter().find(|stack| {
-        stack
-            .source_refname
-            .as_ref()
-            .is_some_and(|source_refname| source_refname == refname)
-            || stack.heads(false).contains(&given_name)
-    });
-
-    if let Some(mut stack) = stack {
-        // Disallow deletion of branches that are applied in workspace
-        if stack.in_workspace {
-            return Err(anyhow::anyhow!(
-                "Cannot delete a branch that is applied in workspace"
-            ));
-        }
-        // Delete the branch head or if it is the only one, delete the entire stack
-        if stack.heads.len() > 1 {
-            stack.remove_branch(ctx, &given_name)?;
-        } else {
-            handle.delete_branch_entry(&stack.id)?;
-        }
-    }
-
-    // If a branch reference for this can be found, delete it
-    let full_name = format!("refs/heads/{given_name}");
-    if let Some(reference) = repo.try_find_reference(&full_name)? {
-        but_core::branch::SafeDelete::new(repo)?.delete_reference(&reference)?;
-    }
-    Ok(())
-}
-
 pub fn set_base_branch(
     ctx: &Context,
     target_branch: &RemoteRefname,
