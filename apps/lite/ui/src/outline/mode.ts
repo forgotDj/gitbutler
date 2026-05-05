@@ -1,5 +1,12 @@
 import { Match } from "effect";
-import { branchOperand, commitOperand, operandEquals, type Operand } from "#ui/operands.ts";
+import {
+	BranchOperand,
+	branchOperand,
+	CommitOperand,
+	commitOperand,
+	operandEquals,
+	type Operand,
+} from "#ui/operands.ts";
 import { getOperation, getOperations, OperationType } from "#ui/operations/operation.ts";
 import { filterNavigationIndex, NavigationIndex } from "#ui/workspace/navigation-index.ts";
 
@@ -46,9 +53,9 @@ export const dragAndDropOperationMode = ({
 });
 
 /** @public */
-export type RewordCommitOutlineMode = { stackId: string; commitId: string };
+export type RewordCommitOutlineMode = { operand: CommitOperand };
 /** @public */
-export type RenameBranchOutlineMode = { stackId: string; branchRef: Array<number> };
+export type RenameBranchOutlineMode = { operand: BranchOperand };
 export type OutlineMode =
 	| { _tag: "Default" }
 	| ({ _tag: "RewordCommit" } & RewordCommitOutlineMode)
@@ -67,23 +74,15 @@ export const operationOutlineMode = (value: OperationMode): OutlineMode => ({
 });
 
 /** @public */
-export const rewordCommitOutlineMode = ({
-	stackId,
-	commitId,
-}: RewordCommitOutlineMode): OutlineMode => ({
+export const rewordCommitOutlineMode = ({ operand }: RewordCommitOutlineMode): OutlineMode => ({
 	_tag: "RewordCommit",
-	stackId,
-	commitId,
+	operand,
 });
 
 /** @public */
-export const renameBranchOutlineMode = ({
-	stackId,
-	branchRef,
-}: RenameBranchOutlineMode): OutlineMode => ({
+export const renameBranchOutlineMode = ({ operand }: RenameBranchOutlineMode): OutlineMode => ({
 	_tag: "RenameBranch",
-	stackId,
-	branchRef,
+	operand,
 });
 
 export const getOperationMode = (mode: OutlineMode): OperationMode | null =>
@@ -117,22 +116,8 @@ export const isValidOutlineModeForSelection = ({
 		Match.tagsExhaustive({
 			Default: () => true,
 			Operation: () => true,
-			RewordCommit: (mode) =>
-				operandEquals(
-					selection,
-					commitOperand({
-						stackId: mode.stackId,
-						commitId: mode.commitId,
-					}),
-				),
-			RenameBranch: (mode) =>
-				operandEquals(
-					selection,
-					branchOperand({
-						stackId: mode.stackId,
-						branchRef: mode.branchRef,
-					}),
-				),
+			RewordCommit: (mode) => operandEquals(selection, commitOperand(mode.operand)),
+			RenameBranch: (mode) => operandEquals(selection, branchOperand(mode.operand)),
 		}),
 	);
 
@@ -170,22 +155,8 @@ const includeOperandForOutlineMode = ({
 							}),
 					}),
 				),
-			RenameBranch: (mode) =>
-				operandEquals(
-					operand,
-					branchOperand({
-						stackId: mode.stackId,
-						branchRef: mode.branchRef,
-					}),
-				),
-			RewordCommit: (mode) =>
-				operandEquals(
-					operand,
-					commitOperand({
-						stackId: mode.stackId,
-						commitId: mode.commitId,
-					}),
-				),
+			RenameBranch: (mode) => operandEquals(operand, branchOperand(mode.operand)),
+			RewordCommit: (mode) => operandEquals(operand, commitOperand(mode.operand)),
 		}),
 	);
 

@@ -100,18 +100,12 @@ export const setHighlightedCommitIds = (state: WorkspaceState, commitIds: Array<
 
 export const startRenameBranch = (state: WorkspaceState, branch: BranchOperand) => {
 	selectOutline(state, branchOperand(branch));
-	state.mode = renameBranchOutlineMode({
-		stackId: branch.stackId,
-		branchRef: branch.branchRef,
-	});
+	state.mode = renameBranchOutlineMode({ operand: branch });
 };
 
 export const startRewordCommit = (state: WorkspaceState, commit: CommitOperand) => {
 	selectOutline(state, commitOperand(commit));
-	state.mode = rewordCommitOutlineMode({
-		stackId: commit.stackId,
-		commitId: commit.commitId,
-	});
+	state.mode = rewordCommitOutlineMode({ operand: commit });
 };
 
 export const selectSelectionOutlineState = (state: WorkspaceState): Operand =>

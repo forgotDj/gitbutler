@@ -454,13 +454,7 @@ const CommitRow: FC<
 	const isRewording =
 		isSelected &&
 		outlineMode._tag === "RewordCommit" &&
-		operandEquals(
-			operand,
-			commitOperand({
-				stackId: outlineMode.stackId,
-				commitId: outlineMode.commitId,
-			}),
-		);
+		operandEquals(operand, commitOperand(outlineMode.operand));
 	const [optimisticMessage, setOptimisticMessage] = useOptimistic(
 		commit.message,
 		(_currentMessage, nextMessage: string) => nextMessage,
@@ -982,13 +976,7 @@ const BranchRow: FC<
 	const operand = branchOperand(branchOperandV);
 	const isRenaming =
 		outlineMode._tag === "RenameBranch" &&
-		operandEquals(
-			operand,
-			branchOperand({
-				stackId: outlineMode.stackId,
-				branchRef: outlineMode.branchRef,
-			}),
-		);
+		operandEquals(operand, branchOperand(outlineMode.operand));
 	const [optimisticBranchName, setOptimisticBranchName] = useOptimistic(
 		branchName,
 		(_currentBranchName, nextBranchName: string) => nextBranchName,
