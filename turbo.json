@@ -28,7 +28,8 @@
 		"dev": {
 			"dependsOn": ["package"],
 			"cache": false,
-			"persistent": true
+			"persistent": true,
+			"passThroughEnv": ["SSH_AUTH_SOCK"]
 		},
 		"check": {
 			"dependsOn": ["package"]
