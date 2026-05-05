@@ -231,13 +231,10 @@ fn no_overzealous_stacks_due_to_workspace_metadata() -> anyhow::Result<()> {
     │   └── 📙:3:X <> origin/X →:5:⇡1
     │       ├── ·0b203b5 (🏘️)
     │       └── ❄️4840f3b (🏘️)
-    └── ≡:7:anon: on 3183e43 {2}
-        ├── :7:anon:
-        │   ├── ·835086d (🏘️) ►four, ►three
-        │   └── ·ff310d3 (🏘️)
-        └── 📙:2:feat-2
-            ├── ·a821094 (🏘️|✓) ►main, ►one, ►remote, ►two
-            └── ·bce0c5e (🏘️|✓)
+    └── ≡:7:anon: on a821094 {2}
+        └── :7:anon:
+            ├── ·835086d (🏘️) ►four, ►three
+            └── ·ff310d3 (🏘️)
     ");
 
     Ok(())
@@ -536,9 +533,6 @@ fn single_stack_ws_insertions() -> anyhow::Result<()> {
         │   └── ·320e105 (🏘️) ►tags/without-ref
         ├── 📙:3:B-empty
         │   └── ·2a31450 (🏘️) ►ambiguous-01
-        ├── 📙:7:A-empty-03
-        ├── 📙:8:A-empty-02
-        ├── 📙:9:A-empty-01
         └── 📙:10:A
             └── ❄70bde6b (🏘️)
     ");
@@ -578,7 +572,6 @@ fn single_stack_ws_insertions() -> anyhow::Result<()> {
         │   └── ·320e105 (🏘️) ►tags/without-ref
         ├── 📙:4:B-empty
         │   └── ·2a31450 (🏘️) ►ambiguous-01
-        ├── 📙:7:A
         └── 👉📙:8:A-empty-01
             └── ❄70bde6b (🏘️) ►A-empty-02, ►A-empty-03
     ");
@@ -603,7 +596,6 @@ fn single_stack_ws_insertions() -> anyhow::Result<()> {
         │   └── ·320e105 (🏘️) ►tags/without-ref
         ├── 📙:4:B-empty
         │   └── ·2a31450 (🏘️) ►ambiguous-01
-        ├── 📙:9:A
         └── 📙:10:A-empty-01
             └── ❄70bde6b (🏘️) ►A-empty-02, ►A-empty-03
     ");
@@ -1373,7 +1365,6 @@ fn two_stacks_many_refs() -> anyhow::Result<()> {
     │   ├── 📙:9:G
     │   ├── 📙:10:F
     │   │   └── ·16f132b (🏘️)
-    │   ├── 📙:11:D
     │   └── 📙:12:E
     │       └── ·917b9da (🏘️)
     ├── ≡📙:7:A on fafd9d0 {2}
@@ -1414,7 +1405,6 @@ fn two_stacks_many_refs() -> anyhow::Result<()> {
     │   ├── 📙:9:G
     │   ├── 📙:10:F
     │   │   └── ·16f132b (🏘️)
-    │   ├── 📙:11:D
     │   └── 📙:12:E
     │       └── ·917b9da (🏘️)
     ├── ≡📙:7:A on fafd9d0 {2}
@@ -3581,9 +3571,6 @@ fn multi_lane_with_shared_segment_one_integrated() -> anyhow::Result<()> {
     │   └── :5:B
     │       ├── ·acdc49a (🏘️)
     │       └── ·f0117e0 (🏘️)
-    ├── ≡:4:A on d4f537e
-    │   └── :4:A
-    │       └── ·0bad3af (🏘️|✓)
     └── ≡:3:D on d4f537e
         ├── :3:D
         │   └── ·9895054 (🏘️)
@@ -5522,12 +5509,11 @@ fn applied_stack_below_explicit_lower_bound() -> anyhow::Result<()> {
             └── ·938e6f2 (⌂|✓|10)
                 └── →:5:
     ");
-    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @"
+    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @r"
     📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main⇣1 on bce0c5e
     ├── ≡📙:4:B on bce0c5e {1}
     │   └── 📙:4:B
-    │       ├── ·78b1b59 (🏘️)
-    │       └── ·f52fcec (🏘️|✓)
+    │       └── ·78b1b59 (🏘️)
     └── ≡📙:3:A on bce0c5e {0}
         └── 📙:3:A
             └── ·6fdab32 (🏘️)
@@ -6515,8 +6501,8 @@ fn reproduce_12146() -> anyhow::Result<()> {
 
 /// A stack where a local merge commit at the bottom is already integrated into
 /// origin/main (the same PR was merged upstream). The merge commit is kept
-/// because it is above the fork point — it's part of the branch's history
-/// even though an equivalent merge exists on main.
+/// because it is above the workspace target — integrated commits are only
+/// pruned at or below the target.
 #[test]
 fn integrated_merge_at_bottom_is_kept() -> anyhow::Result<()> {
     let (repo, mut meta) = read_only_in_memory_scenario("ws/integrated-merge-at-bottom")?;
@@ -6537,14 +6523,13 @@ fn integrated_merge_at_bottom_is_kept() -> anyhow::Result<()> {
     add_stack_with_segments(&mut meta, 0, "local-stack", StackState::InWorkspace, &[]);
     let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
 
-    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @"
+    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @r"
     📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main⇣1 on f5f42e0
     └── ≡📙:3:local-stack {0}
         └── 📙:3:local-stack
             ├── ·66ea651 (🏘️)
             ├── ·e5a88a7 (🏘️)
-            ├── ·0b3ccaf (🏘️)
-            └── ·fafd9d0 (🏘️|✓)
+            └── ·0b3ccaf (🏘️)
     ");
 
     Ok(())
@@ -6592,14 +6577,63 @@ fn merge_from_main_keeps_all_branch_commits() -> anyhow::Result<()> {
     // instead of the moved merge base (ef56fab), so all 3 branch commits are visible:
     // branch-commit-2, the merge commit, and branch-commit-1.
     let ws = graph.into_workspace()?;
-    insta::assert_snapshot!(graph_workspace(&ws), @"
+    insta::assert_snapshot!(graph_workspace(&ws), @r"
     📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main on ef56fab
     └── ≡📙:3:my-branch {0}
         └── 📙:3:my-branch
             ├── ·cd76046 (🏘️)
             ├── ·f8ff9a3 (🏘️)
-            ├── ·6f65768 (🏘️)
-            └── ·fafd9d0 (🏘️|✓)
+            └── ·6f65768 (🏘️)
+    ");
+
+    Ok(())
+}
+
+/// A branch whose commits are integrated (reachable from origin/main after
+/// upstream merged them) but the workspace target hasn't advanced yet.
+/// Integrated commits above the target must be kept so `integrate_upstream`
+/// can detect them. Once the target advances past them, they are pruned.
+#[test]
+fn integrated_commits_above_target_are_kept() -> anyhow::Result<()> {
+    let (repo, mut meta) = read_only_in_memory_scenario("ws/integrated-above-target")?;
+    insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
+    * 7786959 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
+    | *   1af5972 (origin/main, main) Merge branch my-branch
+    | |\  
+    | |/  
+    |/|   
+    * | 312f819 (my-branch) B
+    * | e255adc A
+    |/  
+    * fafd9d0 init
+    ");
+
+    let init_id = repo.rev_parse_single("main~1")?.detach();
+    add_workspace_with_target(&mut meta, init_id);
+    add_stack_with_segments(&mut meta, 0, "my-branch", StackState::InWorkspace, &[]);
+
+    let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+    // With the target at "init", A and B are above the target and should be
+    // kept even though they are marked integrated.
+    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @r"
+    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main⇣1 on fafd9d0
+    └── ≡📙:4:my-branch on fafd9d0 {0}
+        └── 📙:4:my-branch
+            ├── ·312f819 (🏘️|✓)
+            └── ·e255adc (🏘️|✓)
+    ");
+
+    // Now advance the target to origin/main (which includes the merge).
+    // Both commits are at or below the new target and should be pruned,
+    // but the metadata-tracked branch entry is preserved.
+    let main_id = repo.rev_parse_single("main")?.detach();
+    add_workspace_with_target(&mut meta, main_id);
+
+    let graph = Graph::from_head(&repo, &*meta, standard_options())?.validated()?;
+    insta::assert_snapshot!(graph_workspace(&graph.into_workspace()?), @r"
+    📕🏘️:0:gitbutler/workspace[🌳] <> ✓refs/remotes/origin/main⇣1 on 312f819
+    └── ≡📙:5:my-branch on 312f819 {0}
+        └── 📙:5:my-branch
     ");
 
     Ok(())
