@@ -6,6 +6,7 @@ import {
 	treeChangeDiffsQueryOptions,
 } from "#ui/api/queries.ts";
 import { decodeRefName } from "#ui/api/ref-name.ts";
+import { commitTitle } from "#ui/commit.ts";
 import {
 	formatHunkHeader,
 	getDependencyCommitIds,
@@ -27,7 +28,6 @@ import {
 	selectProjectPanelsState,
 	selectProjectSelectionFiles,
 } from "#ui/projects/state.ts";
-import { CommitLabel } from "#ui/routes/project/$id/CommitLabel.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { classes } from "#ui/ui/classes.ts";
@@ -243,7 +243,8 @@ const CommitDetails: FC<{
 		return (
 			<div>
 				<h3>
-					<CommitLabel commit={commitDetails.commit} />
+					{commitTitle(commitDetails.commit.message)}
+					{commitDetails.commit.hasConflicts && " ⚠️"}
 				</h3>
 				{commitDetails.commit.message.includes("\n") && (
 					<p className={styles.commitMessageBody}>

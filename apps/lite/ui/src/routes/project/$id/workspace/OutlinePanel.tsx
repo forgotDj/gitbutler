@@ -36,7 +36,6 @@ import {
 	selectProjectOutlineModeState,
 	selectProjectSelectionOutline,
 } from "#ui/projects/state.ts";
-import { CommitLabel } from "#ui/routes/project/$id/CommitLabel.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
@@ -715,7 +714,8 @@ const CommitRow: FC<
 								: undefined
 						}
 					>
-						<CommitLabel commit={commitWithOptimisticMessage} />
+						{commitTitle(commitWithOptimisticMessage.message)}
+						{commitWithOptimisticMessage.hasConflicts && " ⚠️"}
 					</div>
 					{outlineMode._tag === "Default" && (
 						<WorkspaceItemRowToolbar aria-label="Commit actions">
