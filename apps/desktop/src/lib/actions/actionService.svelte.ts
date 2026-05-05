@@ -27,8 +27,4 @@ export class ActionService {
 	get branchChanges() {
 		return this.backendApi.endpoints.autoBranchChanges.useMutation();
 	}
-
-	get bot() {
-		return this.backendApi.endpoints.bot.useMutation();
-	}
 }

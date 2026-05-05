@@ -1034,23 +1034,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "but-bot"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "but-ctx",
- "but-forge",
- "but-llm",
- "but-tools",
- "chrono",
- "gix",
- "schemars 1.2.1",
- "serde",
- "serde_json",
- "uuid",
-]
-
-[[package]]
 name = "but-cherry-apply"
 version = "0.0.0"
 dependencies = [
@@ -4260,14 +4243,12 @@ dependencies = [
  "but-action",
  "but-api",
  "but-askpass",
- "but-bot",
  "but-claude",
  "but-core",
  "but-ctx",
  "but-db",
  "but-error",
  "but-feedback",
- "but-forge",
  "but-hunk-assignment",
  "but-irc",
  "but-llm",

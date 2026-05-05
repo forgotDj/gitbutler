@@ -9,11 +9,6 @@ import { createEntityAdapter, type EntityState } from "@reduxjs/toolkit";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
 import type { AbsorptionTarget, TreeChange } from "@gitbutler/but-sdk";
 
-type ChatMessage = {
-	type: "user" | "assistant";
-	content: string;
-};
-
 export function buildActionEndpoints(build: BackendEndpointBuilder) {
 	return {
 		// ── Actions ─────────────────────────────────────────────────
@@ -38,20 +33,6 @@ export function buildActionEndpoints(build: BackendEndpointBuilder) {
 			extraOptions: {
 				command: "auto_branch_changes",
 				actionName: "Create a branch for the given changes",
-			},
-			query: (args) => args,
-			invalidatesTags: [
-				invalidatesList(ReduxTag.HeadSha),
-				invalidatesList(ReduxTag.WorktreeChanges),
-			],
-		}),
-		bot: build.mutation<
-			string,
-			{ projectId: string; messageId: string; chatMessages: ChatMessage[]; model: string }
-		>({
-			extraOptions: {
-				command: "bot",
-				actionName: "but bot action",
 			},
 			query: (args) => args,
 			invalidatesTags: [

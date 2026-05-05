@@ -14,7 +14,6 @@ commands.allow = [
   "assign_hunk",
   "auto_branch_changes",
   "auto_commit",
-  "bot",
   "branch_details",
   "branch_diff",
   "build_type",

@@ -57,8 +57,6 @@ members = [
     "crates/but-rules", # 📄Decide what to do when files change in the worktree
     # 👉Unclear purpose (a mix of everything?); lacks tests and docs. Uses legacy crates (a lot).
     "crates/but-action", # 📄TBD
-    # 👉Unclear purpose; lacks docs and tests. Uses legacy crate.
-    "crates/but-bot", # 📄TBD
     # 👉Unclear purpose (a mix of everything?); lacks tests and docs. Uses legacy crates (a lot).
     "crates/but-tools", # 📄TBD
     # 👉No tests, lacks top-level docs, purpose somewhat unclear.
