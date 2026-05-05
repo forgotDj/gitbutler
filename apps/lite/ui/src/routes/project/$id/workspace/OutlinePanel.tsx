@@ -888,7 +888,7 @@ const Changes: FC<{
 			/>
 			<ShortcutButton
 				onClick={onCommit}
-				hotkey="Shift+C"
+				hotkey="Mod+Enter"
 				hotkeyOptions={{
 					conflictBehavior: "allow",
 					meta: { group: "Changes", name: "Commit" },
