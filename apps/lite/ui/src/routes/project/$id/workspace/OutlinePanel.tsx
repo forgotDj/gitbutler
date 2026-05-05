@@ -532,6 +532,7 @@ const CommitRow: FC<
 	};
 
 	const startEditing = () => {
+		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
 		dispatch(projectActions.startRewordCommit({ projectId, commit: commitOperandV }));
 	};
 	const focusedPanel = useFocusedProjectPanel(projectId);
@@ -698,6 +699,7 @@ const CommitRow: FC<
 				<>
 					<div
 						className={workspaceItemRowStyles.itemRowLabel}
+						onDoubleClick={outlineMode._tag === "Default" ? startEditing : undefined}
 						onContextMenu={
 							outlineMode._tag === "Default"
 								? (event) => {
@@ -981,6 +983,7 @@ const BranchRow: FC<
 	const updateBranchName = useMutation(updateBranchNameMutationOptions);
 
 	const startEditing = () => {
+		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
 		dispatch(projectActions.startRenameBranch({ projectId, branch: branchOperandV }));
 	};
 	const isSelected = useIsSelected({ projectId, operand });
@@ -1055,6 +1058,7 @@ const BranchRow: FC<
 							workspaceItemRowStyles.itemRowLabel,
 							workspaceItemRowStyles.sectionLabel,
 						)}
+						onDoubleClick={outlineMode._tag === "Default" ? startEditing : undefined}
 						onContextMenu={
 							outlineMode._tag === "Default"
 								? (event) => {
