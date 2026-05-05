@@ -72,4 +72,77 @@ mod git {
 
         Ok(())
     }
+
+    #[test]
+    fn empty_strings_remove_existing_values() -> anyhow::Result<()> {
+        let tmp = gix_testtools::tempfile::TempDir::new()?;
+        gix::init(tmp.path())?;
+        let repo = gix::open_opts(tmp.path(), gix::open::Options::isolated())?;
+
+        repo.set_git_settings(&GitConfigSettings {
+            gitbutler_sign_commits: Some(true),
+            gitbutler_gerrit_mode: Some(false),
+            gitbutler_forge_review_template_path: Some("template.md".into()),
+            gitbutler_gitlab_project_id: Some("project-id".into()),
+            gitbutler_gitlab_upstream_project_id: Some("upstream-project-id".into()),
+            signing_key: Some("signing key".into()),
+            signing_format: Some("ssh".into()),
+            gpg_program: Some("gpg".into()),
+            gpg_ssh_program: Some("ssh-keygen".into()),
+        })?;
+
+        repo.set_git_settings(&GitConfigSettings {
+            gitbutler_sign_commits: Some(true),
+            gitbutler_gerrit_mode: Some(false),
+            gitbutler_forge_review_template_path: Some("".into()),
+            gitbutler_gitlab_project_id: Some(String::new()),
+            gitbutler_gitlab_upstream_project_id: Some(String::new()),
+            signing_key: Some("".into()),
+            signing_format: Some("".into()),
+            gpg_program: Some("".into()),
+            gpg_ssh_program: Some("".into()),
+        })?;
+
+        let repo = but_testsupport::open_repo(repo.path())?;
+        let actual = repo.git_settings()?;
+        assert_eq!(actual.gitbutler_forge_review_template_path, None);
+        assert_eq!(actual.gitbutler_gitlab_project_id, None);
+        assert_eq!(actual.gitbutler_gitlab_upstream_project_id, None);
+        assert_eq!(actual.signing_key, None);
+        assert_eq!(actual.signing_format, None);
+        assert_eq!(actual.gpg_program, None);
+        assert_eq!(actual.gpg_ssh_program, None);
+
+        let config = repo.config_snapshot();
+        assert!(
+            config.string("gitbutler.forgeReviewTemplatePath").is_none(),
+            "expected empty template path to remove the config key"
+        );
+        assert!(
+            config.string("gitbutler.gitlabProjectId").is_none(),
+            "expected empty project ID to remove the config key"
+        );
+        assert!(
+            config.string("gitbutler.gitlabUpstreamProjectId").is_none(),
+            "expected empty upstream project ID to remove the config key"
+        );
+        assert!(
+            config.string("user.signingKey").is_none(),
+            "expected empty signing key to remove the config key"
+        );
+        assert!(
+            config.string("gpg.format").is_none(),
+            "expected empty signing format to remove the config key"
+        );
+        assert!(
+            config.trusted_program("gpg.program").is_none(),
+            "expected empty gpg program to remove the config key"
+        );
+        assert!(
+            config.trusted_program("gpg.ssh.program").is_none(),
+            "expected empty gpg ssh program to remove the config key"
+        );
+
+        Ok(())
+    }
 }

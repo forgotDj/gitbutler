@@ -5,7 +5,7 @@ pub mod git {
     use anyhow::Result;
     use bstr::{BStr, BString, ByteSlice, ByteVec};
 
-    use crate::git_config::edit_repo_config;
+    use crate::git_config::{edit_repo_config, remove_config_value};
 
     const GIT_SIGN_COMMITS: &str = "commit.gpgsign";
     const GITBUTLER_SIGN_COMMITS: &str = "gitbutler.signCommits";
@@ -200,38 +200,66 @@ pub mod git {
                     )?;
                 };
                 if let Some(forge_template_path) = &self.gitbutler_forge_review_template_path {
-                    config.set_raw_value(
-                        GITBUTLER_FORGE_TEMPLATE_PATH,
-                        forge_template_path.as_bstr(),
-                    )?;
+                    if forge_template_path.is_empty() {
+                        remove_config_value(config, GITBUTLER_FORGE_TEMPLATE_PATH)?;
+                    } else {
+                        config.set_raw_value(
+                            GITBUTLER_FORGE_TEMPLATE_PATH,
+                            forge_template_path.as_bstr(),
+                        )?;
+                    }
                 };
                 if let Some(signing_key) = &self.signing_key {
-                    config.set_raw_value(SIGNING_KEY, signing_key.as_bstr())?;
+                    if signing_key.is_empty() {
+                        remove_config_value(config, SIGNING_KEY)?;
+                    } else {
+                        config.set_raw_value(SIGNING_KEY, signing_key.as_bstr())?;
+                    }
                 };
                 if let Some(signing_format) = &self.signing_format {
-                    config.set_raw_value(SIGNING_FORMAT, signing_format.as_bstr())?;
+                    if signing_format.is_empty() {
+                        remove_config_value(config, SIGNING_FORMAT)?;
+                    } else {
+                        config.set_raw_value(SIGNING_FORMAT, signing_format.as_bstr())?;
+                    }
                 }
                 if let Some(gpg_program) = self.gpg_program.as_ref().and_then(osstring_into_bstring)
                 {
-                    config.set_raw_value(GPG_PROGRAM, gpg_program.as_bstr())?;
+                    if gpg_program.is_empty() {
+                        remove_config_value(config, GPG_PROGRAM)?;
+                    } else {
+                        config.set_raw_value(GPG_PROGRAM, gpg_program.as_bstr())?;
+                    }
                 }
                 if let Some(gpg_ssh_program) = self
                     .gpg_ssh_program
                     .as_ref()
                     .and_then(osstring_into_bstring)
                 {
-                    config.set_raw_value(GPG_SSH_PROGRAM, gpg_ssh_program.as_bstr())?;
+                    if gpg_ssh_program.is_empty() {
+                        remove_config_value(config, GPG_SSH_PROGRAM)?;
+                    } else {
+                        config.set_raw_value(GPG_SSH_PROGRAM, gpg_ssh_program.as_bstr())?;
+                    }
                 }
                 if let Some(gitlab_project_id) = self.gitbutler_gitlab_project_id.as_deref() {
-                    config.set_raw_value(GITBUTLER_GITLAB_PROJECT_ID, gitlab_project_id)?;
+                    if gitlab_project_id.is_empty() {
+                        remove_config_value(config, GITBUTLER_GITLAB_PROJECT_ID)?;
+                    } else {
+                        config.set_raw_value(GITBUTLER_GITLAB_PROJECT_ID, gitlab_project_id)?;
+                    }
                 }
                 if let Some(gitlab_upstream_project_id) =
                     self.gitbutler_gitlab_upstream_project_id.as_deref()
                 {
-                    config.set_raw_value(
-                        GITBUTLER_GITLAB_UPSTREAM_PROJECT_ID,
-                        gitlab_upstream_project_id,
-                    )?;
+                    if gitlab_upstream_project_id.is_empty() {
+                        remove_config_value(config, GITBUTLER_GITLAB_UPSTREAM_PROJECT_ID)?;
+                    } else {
+                        config.set_raw_value(
+                            GITBUTLER_GITLAB_UPSTREAM_PROJECT_ID,
+                            gitlab_upstream_project_id,
+                        )?;
+                    }
                 }
 
                 Ok(())
