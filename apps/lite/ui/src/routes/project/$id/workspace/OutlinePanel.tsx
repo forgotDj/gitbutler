@@ -83,13 +83,8 @@ import styles from "./OutlinePanel.module.css";
 import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
 import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.tsx";
 import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
-import { NonEmptyArray } from "effect/Array";
+import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
 import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
-
-const assert = <T,>(t: T | null | undefined): T => {
-	if (t == null) throw new Error("Expected value to be non-null and defined");
-	return t;
-};
 
 const sections = (headInfo: RefInfo): NonEmptyArray<Section> => {
 	const changesSection: Section = {
@@ -1311,13 +1306,11 @@ const StackC: FC<{
 							focusPanel={focusPanel}
 						/>
 					) : (
-						segment.commits.length > 0 && (
+						// A segment should always either have a branch reference or at
+						// least one commit.
+						isNonEmptyArray(segment.commits) && (
 							<BranchlessSegment
-								key={
-									// A segment should always either have a branch reference or at
-									// least one commit, so this assertion should be safe.
-									assert(segment.commits[0]).id
-								}
+								key={segment.commits[0].id}
 								navigationIndex={navigationIndex}
 								projectId={projectId}
 								segment={segment}
