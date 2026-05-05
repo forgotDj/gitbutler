@@ -151,7 +151,7 @@ const CommitFilesTreePanel: FC<
 				return (
 					<div role="group">
 						{conflictedPaths.length > 0 &&
-							conflictedPaths.map((path: string) => (
+							conflictedPaths.map((path) => (
 								<ConflictedFileRow
 									operand={fileOperand({
 										parent: commitFileParent(commit),
