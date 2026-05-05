@@ -81,6 +81,7 @@ import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.ts
 import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
 import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
+import { defaultOutlineSelection } from "#ui/projects/workspace/state.ts";
 
 const sections = (headInfo: RefInfo): NonEmptyArray<Section> => {
 	const changesSection: Section = {
@@ -148,7 +149,7 @@ const useNavigationIndex = (projectId: string) => {
 			dispatch(
 				projectActions.selectOutline({
 					projectId,
-					selection: changesSectionOperand,
+					selection: defaultOutlineSelection,
 				}),
 			);
 	}, [navigationIndexUnfiltered, selection, projectId, dispatch]);

@@ -27,9 +27,11 @@ type SelectionState = {
 	files: Operand;
 };
 
+export const defaultOutlineSelection = changesSectionOperand;
+
 const createInitialSelectionState = (): SelectionState => ({
-	outline: changesSectionOperand,
-	files: changesSectionOperand,
+	outline: defaultOutlineSelection,
+	files: defaultOutlineSelection,
 });
 
 export type WorkspaceState = {
