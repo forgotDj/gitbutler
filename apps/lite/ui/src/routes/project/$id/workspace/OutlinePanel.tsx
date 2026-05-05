@@ -1299,10 +1299,8 @@ const StackC: FC<{
 			<StackRow projectId={projectId} stackId={stackId} navigationIndex={navigationIndex} />
 
 			<div role="group" className={styles.segments}>
-				{stack.segments.map((segment) => {
-					if (!segment.refName && segment.commits.length === 0) return null;
-
-					return segment.refName ? (
+				{stack.segments.map((segment) =>
+					segment.refName ? (
 						<BranchSegment
 							key={JSON.stringify(segment.refName.fullNameBytes)}
 							navigationIndex={navigationIndex}
@@ -1313,20 +1311,22 @@ const StackC: FC<{
 							focusPanel={focusPanel}
 						/>
 					) : (
-						<BranchlessSegment
-							key={
-								// A segment should always either have a branch reference or at
-								// least one commit, so this assertion should be safe.
-								assert(segment.commits[0]).id
-							}
-							navigationIndex={navigationIndex}
-							projectId={projectId}
-							segment={segment}
-							stackId={stackId}
-							focusPanel={focusPanel}
-						/>
-					);
-				})}
+						segment.commits.length > 0 && (
+							<BranchlessSegment
+								key={
+									// A segment should always either have a branch reference or at
+									// least one commit, so this assertion should be safe.
+									assert(segment.commits[0]).id
+								}
+								navigationIndex={navigationIndex}
+								projectId={projectId}
+								segment={segment}
+								stackId={stackId}
+								focusPanel={focusPanel}
+							/>
+						)
+					),
+				)}
 			</div>
 		</TreeItem>
 	);
