@@ -13,8 +13,8 @@ export-schema = ["dep:schemars", "dep:but-schemars"]
 doctest = false
 
 [dependencies]
+but-core.workspace = true
 gitbutler-reference.workspace = true
-gitbutler-stack.workspace = true
 
 anyhow.workspace = true
 gix = { workspace = true, features = [] }

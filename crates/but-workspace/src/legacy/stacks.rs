@@ -6,11 +6,11 @@ use anyhow::{Context as _, bail};
 use bstr::BString;
 use but_core::{
     RefMetadata,
-    ref_metadata::{StackKind, Workspace},
+    ref_metadata::{StackId, StackKind, Workspace},
 };
 use but_ctx::Context;
 use gitbutler_commit::commit_ext::{CommitExt, CommitMessageBstr as _};
-use gitbutler_stack::{Stack, StackId};
+use gitbutler_stack::Stack;
 use gix::date::parse::TimeBuf;
 use tracing::instrument;
 

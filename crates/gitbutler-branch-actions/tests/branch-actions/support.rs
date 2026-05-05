@@ -4,11 +4,11 @@
 )]
 
 use anyhow::Result;
+use but_core::ref_metadata::StackId;
 use but_ctx::{Context, RepoOpenMode};
 use but_settings::AppSettings;
 use but_testsupport::gix_testtools::{Creation, scripted_fixture_writable_with_args};
 use but_workspace::{legacy::StacksFilter, ui::StackDetails};
-use gitbutler_stack::StackId;
 use tempfile::{TempDir, tempdir};
 
 pub struct HookCase {

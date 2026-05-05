@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use anyhow::Context as _;
-use but_core::DryRun;
+use but_core::{DryRun, ref_metadata::StackId};
 use but_ctx::Context;
-use gitbutler_stack::StackId;
 
 use crate::{
     CliId,

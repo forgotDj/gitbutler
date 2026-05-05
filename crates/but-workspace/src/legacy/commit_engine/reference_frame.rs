@@ -1,5 +1,6 @@
 use anyhow::{Context as _, bail};
-use gitbutler_stack::{StackId, VirtualBranchesState};
+use but_core::ref_metadata::StackId;
+use gitbutler_stack::VirtualBranchesState;
 use gix::{prelude::ObjectIdExt, revision::walk::Sorting};
 
 use crate::legacy::commit_engine::ReferenceFrame;

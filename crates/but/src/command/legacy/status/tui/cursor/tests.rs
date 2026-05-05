@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
+use but_core::ref_metadata::StackId;
 use but_workspace::commit::squash_commits::MessageCombinationStrategy;
-use gitbutler_stack::StackId;
 use ratatui_textarea::TextArea;
 
 use super::{Cursor, is_selectable_in_mode};

@@ -2,12 +2,11 @@ use std::borrow::Cow;
 
 use anyhow::{Context as _, Result, anyhow};
 use but_api_macros::but_api;
-use but_core::{branch, sync::RepoExclusive};
+use but_core::{branch, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use gitbutler_branch_actions::stack::CreateSeriesRequest;
 use gitbutler_git::PushResult;
 use gitbutler_oplog::SnapshotExt;
-use gitbutler_stack::StackId;
 use gix::refs::Category;
 use tracing::instrument;
 

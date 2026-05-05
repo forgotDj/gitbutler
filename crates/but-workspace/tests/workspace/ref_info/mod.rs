@@ -5,6 +5,7 @@
 
 use std::borrow::Cow;
 
+use but_core::ref_metadata::StackId;
 use but_workspace::{legacy::StacksFilter, ref_info};
 use gix::prelude::ObjectIdExt;
 
@@ -37,7 +38,7 @@ pub fn stacks_v3(
     note = "Use head_info() and the returned RefInfo instead. Callers that already have a Context should prefer ctx.workspace_* helpers."
 )]
 pub fn stack_details_v3(
-    stack_id: Option<gitbutler_stack::StackId>,
+    stack_id: Option<StackId>,
     repo: &gix::Repository,
     meta: &but_meta::VirtualBranchesTomlMetadata,
 ) -> anyhow::Result<but_workspace::ui::StackDetails> {

@@ -4,11 +4,11 @@
 )]
 
 use anyhow::Result;
-use but_core::{Reference, sync::RepoExclusive};
+use but_core::{Reference, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use but_rebase::{Rebase, RebaseStep, ReferenceSpec};
 use gitbutler_repo::first_parent_commit_ids_until;
-use gitbutler_stack::{StackBranch, StackId, VirtualBranchesHandle};
+use gitbutler_stack::{StackBranch, VirtualBranchesHandle};
 use gix::prelude::ReferenceExt;
 
 use crate::legacy::{

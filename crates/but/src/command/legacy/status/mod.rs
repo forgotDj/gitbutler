@@ -4,7 +4,7 @@ use anyhow::Context as _;
 use assignment::FileAssignment;
 use bstr::{BStr, BString, ByteSlice};
 use but_api::diff::ComputeLineStats;
-use but_core::{RepositoryExt, TreeStatus, ui};
+use but_core::{RepositoryExt, TreeStatus, ref_metadata::StackId, ui};
 use but_ctx::Context;
 use but_forge::ForgeReview;
 use but_graph::SegmentIndex;
@@ -14,7 +14,6 @@ use but_workspace::{
 };
 use gitbutler_branch_actions::upstream_integration::BranchStatus as UpstreamBranchStatus;
 use gitbutler_operating_modes::OperatingMode;
-use gitbutler_stack::StackId;
 use gix::date::time::CustomFormat;
 use ratatui::{style::Modifier, text::Span};
 use serde::Serialize;
@@ -128,7 +127,7 @@ enum CommitClassification {
 }
 
 type StackDetail = (Option<StackWithId>, Vec<FileAssignment>);
-type StackEntry = (Option<gitbutler_stack::StackId>, StackDetail);
+type StackEntry = (Option<StackId>, StackDetail);
 
 #[derive(Serialize)]
 struct CommonMergeBase {

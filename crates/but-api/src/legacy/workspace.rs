@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use anyhow::{Context as _, Result};
 use but_api_macros::but_api;
-use but_core::RepositoryExt;
+use but_core::{RepositoryExt, ref_metadata::StackId};
 use but_ctx::Context;
 use but_workspace::{
     commit_engine::{self, StackSegmentId},
@@ -15,7 +15,6 @@ use gitbutler_oplog::{
     entry::{OperationKind, SnapshotDetails},
 };
 use gitbutler_reference::{LocalRefname, Refname};
-use gitbutler_stack::StackId;
 use tracing::instrument;
 
 use crate::json::HexHash;

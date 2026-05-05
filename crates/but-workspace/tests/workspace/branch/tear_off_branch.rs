@@ -1,7 +1,6 @@
-use but_core::RefMetadata;
+use but_core::{RefMetadata, ref_metadata::StackId};
 use but_rebase::graph_rebase::Editor;
 use but_testsupport::{graph_workspace, visualize_commit_graph_all};
-use gitbutler_stack::StackId;
 
 use crate::ref_info::with_workspace_commit::utils::{
     StackState, add_stack_with_segments, named_writable_scenario_with_description_and_graph,

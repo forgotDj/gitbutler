@@ -4,10 +4,11 @@
 )]
 
 use anyhow::{Result, bail};
+use but_core::ref_metadata::StackId;
 use but_ctx::{Context, access::RepoExclusive};
 use but_rebase::{Rebase, RebaseStep};
 use but_workspace::{legacy::stack_ext::StackExt, ui::CommitState};
-use gitbutler_stack::{StackId, VirtualBranchesHandle};
+use gitbutler_stack::VirtualBranchesHandle;
 use gitbutler_workspace::branch_trees::{WorkspaceState, update_uncommitted_changes};
 use gix::ObjectId;
 use serde::{Deserialize, Serialize};

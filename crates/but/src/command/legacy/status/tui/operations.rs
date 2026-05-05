@@ -12,11 +12,10 @@ use but_api::{
     },
     diff::ComputeLineStats,
 };
-use but_core::{DiffSpec, DryRun, diff::CommitDetails};
+use but_core::{DiffSpec, DryRun, diff::CommitDetails, ref_metadata::StackId};
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
 use gitbutler_operating_modes::OperatingMode;
-use gitbutler_stack::StackId;
 
 use crate::{
     CliId,
@@ -94,7 +93,7 @@ pub(super) fn create_commit_legacy(
     ctx: &mut Context,
     target: &CliId,
     source: &CommitSource,
-    scope_to_stack: Option<gitbutler_stack::StackId>,
+    scope_to_stack: Option<StackId>,
     insert_side: InsertSide,
 ) -> anyhow::Result<Option<CommitCreateResult>> {
     let mut guard = ctx.exclusive_worktree_access();

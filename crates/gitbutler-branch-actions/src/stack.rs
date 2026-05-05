@@ -1,5 +1,5 @@
 use anyhow::{Context as _, Result};
-use but_core::{RepositoryExt, extract_remote_name_and_short_name};
+use but_core::{RepositoryExt, extract_remote_name_and_short_name, ref_metadata::StackId};
 use but_ctx::Context;
 use gitbutler_git::{GitContextExt as _, PushResult};
 use gitbutler_operating_modes::ensure_open_workspace_mode;
@@ -9,7 +9,7 @@ use gitbutler_oplog::{
 };
 use gitbutler_reference::{RemoteRefname, normalize_branch_name};
 use gitbutler_repo::hooks;
-use gitbutler_stack::{PatchReferenceUpdate, Stack, StackBranch, StackId};
+use gitbutler_stack::{PatchReferenceUpdate, Stack, StackBranch};
 use gix::reference::Category;
 use serde::{Deserialize, Serialize};
 

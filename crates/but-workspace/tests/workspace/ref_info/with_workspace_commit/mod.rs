@@ -3861,13 +3861,13 @@ mod journey;
 mod legacy;
 
 pub(crate) mod utils {
+    use but_core::ref_metadata::StackId;
     use but_graph::init::Options;
     use but_meta::{
         VirtualBranchesTomlMetadata,
         virtual_branches_legacy_types::{Stack, StackBranch, Target},
     };
     use but_testsupport::gix_testtools::tempfile::TempDir;
-    use gitbutler_stack::StackId;
 
     pub fn read_only_in_memory_scenario(
         name: &str,

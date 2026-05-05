@@ -4,10 +4,10 @@
 )]
 
 use anyhow::{Result, bail};
-use but_core::{DiffSpec, TreeChange, sync::RepoExclusive};
+use but_core::{DiffSpec, TreeChange, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use but_rebase::{Rebase, replace_commit_tree};
-use gitbutler_stack::{StackId, VirtualBranchesHandle};
+use gitbutler_stack::VirtualBranchesHandle;
 use gix::ObjectId;
 
 use super::MoveChangesResult;

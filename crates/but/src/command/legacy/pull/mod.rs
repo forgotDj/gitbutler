@@ -2,7 +2,7 @@ mod json;
 
 use std::{collections::HashMap, fmt::Write};
 
-use but_core::RepositoryExt;
+use but_core::{RepositoryExt, ref_metadata::StackId};
 use but_ctx::Context;
 use gitbutler_branch_actions::upstream_integration::{
     BranchStatus::{self, Conflicted, Empty, Integrated, SafelyUpdatable},
@@ -467,10 +467,8 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
     // Step 3: Actually perform the integration
     if let Some((resolutions, statuses)) = resolutions {
         // Store branch information before integration, along with resolution approaches
-        let mut branch_info_map: HashMap<gitbutler_stack::StackId, (String, String)> =
-            HashMap::new();
-        let mut resolution_map: HashMap<gitbutler_stack::StackId, ResolutionApproach> =
-            HashMap::new();
+        let mut branch_info_map: HashMap<StackId, (String, String)> = HashMap::new();
+        let mut resolution_map: HashMap<StackId, ResolutionApproach> = HashMap::new();
 
         for (maybe_stack_id, status) in &statuses {
             if let Some(stack_id) = maybe_stack_id {
