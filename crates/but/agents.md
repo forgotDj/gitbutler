@@ -35,9 +35,9 @@ Usable output goes to `out: &mut OutputChannel`
 ### Testing
 
 * use `snapbox::str![]` to assert with `.stdout_eq(str![])` and `stderr_eq(str![])` respectively,
-  and auto-update expectations with `SNAPSHOTS=overwrite cargo test -p but`.
+  and auto-update expectations with `SNAPSHOTS=overwrite cargo nextest run -p but`.
 * When color is involved, use with `.stdout_eq(snapbox::file!["snapshots/<test-name>/<invocation>.stdout.term.svg"])`, and update it 
-  with `SNAPSHOT=overwrite cargo test -p but`.
+  with `SNAPSHOT=overwrite cargo nextest run -p but`.
 * In `crates/but/tests/`, prefer `env.but(...).assert().success()/failure().stdout_eq(str![...]).stderr_eq(str![...])` for CLI output checks.
 * In `crates/but/tests/`, avoid `std::process::Command::new("git")`; use sandbox helpers instead.
 * Do not replace existing `env.invoke_bash(...)` usages with `env.invoke_git(...)`.
