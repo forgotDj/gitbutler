@@ -251,7 +251,7 @@ fn should_not_change_index() -> anyhow::Result<()> {
     assert_eq!(
         repo.index()?.entries().len(),
         0,
-        "it stars with an empty index"
+        "it starts with an empty index"
     );
     let tree = create_wd_tree(&repo, MAX_FILE_SIZE_BYTES)?;
 
@@ -260,7 +260,6 @@ fn should_not_change_index() -> anyhow::Result<()> {
     7cd1c45
     └── file1.txt:100644:dd954e7 "content1"
     "#);
-    // repo.reload()?;
     assert_eq!(repo.index()?.entries().len(), 0, "the index is untouched");
     Ok(())
 }
