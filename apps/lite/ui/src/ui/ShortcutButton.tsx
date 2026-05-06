@@ -18,13 +18,15 @@ export const ShortcutButton: FC<
 > = ({ hotkey, hotkeyOptions, ...props }) => {
 	const buttonRef = useRef<HTMLButtonElement>(null);
 
+	const hotkeyEnabled = !props.disabled && hotkeyOptions?.enabled !== false;
+
 	useHotkey(hotkey, () => buttonRef.current?.click(), {
 		...hotkeyOptions,
-		enabled: !props.disabled && hotkeyOptions?.enabled !== false,
+		enabled: hotkeyEnabled,
 	});
 
 	return (
-		<Tooltip.Root>
+		<Tooltip.Root disabled={!hotkeyEnabled}>
 			<Tooltip.Trigger
 				{...props}
 				ref={useMergedRefs(buttonRef, props.ref)}
