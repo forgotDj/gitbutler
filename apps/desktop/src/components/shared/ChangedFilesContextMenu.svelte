@@ -1,6 +1,5 @@
 <!-- This is a V3 replacement for `FileContextMenu.svelte` -->
 <script lang="ts">
-	import ReduxResult from "$components/shared/ReduxResult.svelte";
 	import AbsorbPlanModal from "$components/stack/AbsorbPlanModal.svelte";
 	import DiscardChangesModal from "$components/workspace/DiscardChangesModal.svelte";
 	import StashIntoBranchModal from "$components/workspace/StashIntoBranchModal.svelte";
@@ -81,16 +80,9 @@
 	const clipboardService = inject(CLIPBOARD_SERVICE);
 	const backend = inject(BACKEND);
 	const [, absorbingChanges] = stackService.absorb;
-	const [splitOffChanges] = stackService.splitBranch;
-	const [splitBranchIntoDependentBranch] = stackService.splitBranchIntoDependentBranch;
-
 	const projectService = inject(PROJECTS_SERVICE);
 
 	const isUncommitted = $derived(selectionId.type === "worktree");
-	const isBranchFiles = $derived(selectionId.type === "branch");
-	const selectionBranchName = $derived(
-		selectionId.type === "branch" ? selectionId.branchName : undefined,
-	);
 
 	// Platform-specific label for "Show in Finder/Explorer/File Manager"
 	const showInFolderLabel = (() => {
@@ -165,91 +157,6 @@
 			}
 		});
 	}
-
-	async function split(changes: TreeChange[]) {
-		if (!stackId) {
-			chipToasts.error("No stack selected to split off changes.");
-			return;
-		}
-
-		if (selectionId.type !== "branch") {
-			chipToasts.error("Please select a branch to split off changes.");
-			return;
-		}
-
-		const branchName = selectionId.branchName;
-
-		const fileNames = changes.map((change) => change.path);
-
-		try {
-			await chipToasts.promise(
-				(async () => {
-					const newBranchName = await stackService.fetchNewBranchName(projectId);
-
-					if (!newBranchName) {
-						throw new Error("Failed to generate a new branch name.");
-					}
-
-					await splitOffChanges({
-						projectId,
-						sourceStackId: stackId,
-						sourceBranchName: branchName,
-						fileChangesToSplitOff: fileNames,
-						newBranchName: newBranchName,
-					});
-				})(),
-				{
-					loading: "Splitting off changes",
-					success: "Changes split off into a new branch",
-					error: "Failed to split off changes",
-				},
-			);
-		} catch (error) {
-			console.error("Failed to split off changes:", error);
-		}
-	}
-
-	async function splitIntoDependentBranch(changes: TreeChange[]) {
-		if (!stackId) {
-			chipToasts.error("No stack selected to split off changes.");
-			return;
-		}
-
-		if (selectionId.type !== "branch") {
-			chipToasts.error("Please select a branch to split off changes.");
-			return;
-		}
-
-		const branchName = selectionId.branchName;
-		const fileNames = changes.map((change) => change.path);
-
-		try {
-			await chipToasts.promise(
-				(async () => {
-					const newBranchName = await stackService.fetchNewBranchName(projectId);
-
-					if (!newBranchName) {
-						throw new Error("Failed to generate a new branch name.");
-					}
-
-					await splitBranchIntoDependentBranch({
-						projectId,
-						sourceStackId: stackId,
-						sourceBranchName: branchName,
-						fileChangesToSplitOff: fileNames,
-						newBranchName: newBranchName,
-					});
-				})(),
-				{
-					loading: "Splitting into dependent branch",
-					success: "Changes split into a dependent branch",
-					error: "Failed to split into dependent branch",
-				},
-			);
-		} catch (error) {
-			console.error("Failed to split into dependent branch:", error);
-		}
-	}
 </script>
 
 {#if menuOpen && menuItem}
@@ -308,36 +215,6 @@
 							icon="commit-undo"
 							onclick={async () => uncommitChanges(stackId, commitId, changes)}
 						/>
-					{/if}
-
-					{#if isBranchFiles && stackId && selectionBranchName}
-						{@const branchIsConflicted = stackService.isBranchConflicted(
-							projectId,
-							stackId,
-							selectionBranchName,
-						)}
-						<ReduxResult {projectId} result={branchIsConflicted?.result}>
-							{#snippet children(isConflicted)}
-								{#if isConflicted === false}
-									<ContextMenuItem
-										label="Split off changes"
-										icon="split"
-										onclick={() => {
-											menuOpen = false;
-											split(changes);
-										}}
-									/>
-									<ContextMenuItem
-										label="Split into dependent branch"
-										icon="stack-plus"
-										onclick={() => {
-											menuOpen = false;
-											splitIntoDependentBranch(changes);
-										}}
-									/>
-								{/if}
-							{/snippet}
-						</ReduxResult>
 					{/if}
 				</ContextMenuSection>
 			{/if}

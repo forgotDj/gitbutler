@@ -841,18 +841,6 @@ export class StackService {
 		);
 	}
 
-	get splitBranch() {
-		return this.backendApi.endpoints.splitBranch.useMutation();
-	}
-
-	get splitBranchMutation() {
-		return this.backendApi.endpoints.splitBranch.mutate;
-	}
-
-	get splitBranchIntoDependentBranch() {
-		return this.backendApi.endpoints.splitBranchIntoDependentBranch.useMutation();
-	}
-
 	invalidateStacksAndDetails() {
 		this.dispatch(
 			this.backendApi.util.invalidateTags([
