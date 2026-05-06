@@ -22,6 +22,11 @@ impl Default for Lut {
 
 #[expect(clippy::indexing_slicing)]
 impl Lut {
+    /// Return `true` if no files have been tracked.
+    pub fn nodes_is_empty(&self) -> bool {
+        self.nodes.len() == 1 && self.nodes[0].children.is_empty()
+    }
+
     /// Insert a node for each component in slash-separated `rela_path`.
     pub fn track_file(&mut self, rela_path: &BStr) {
         let mut next_index = self.nodes.len();

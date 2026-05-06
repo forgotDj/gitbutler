@@ -4,7 +4,10 @@ use but_rebase::graph_rebase::{Editor, LookupStep as _};
 use but_testsupport::git_status;
 use but_workspace::commit::commit_amend;
 
-use crate::ref_info::with_workspace_commit::utils::named_writable_scenario_with_description_and_graph as writable_scenario;
+use crate::ref_info::with_workspace_commit::utils::{
+    StackState, add_stack_with_segments,
+    named_writable_scenario_with_description_and_graph as writable_scenario,
+};
 
 fn worktree_changes_as_specs(repo: &gix::Repository) -> Result<Vec<DiffSpec>> {
     Ok(but_core::diff::worktree_changes(repo)?
@@ -115,6 +118,85 @@ fn amend_into_earlier_commit_leaves_no_uncommitted_changes() -> Result<()> {
     assert_eq!(
         status_after, "",
         "expected no uncommitted changes after amending, but got:\n{status_after}"
+    );
+
+    Ok(())
+}
+
+/// Amending a modified file into one stack must not discard uncommitted
+/// deletions on a different stack.
+///
+/// Scenario (two independent branches A and B in the workspace):
+///   - Branch A: adds a-file.txt
+///   - Branch B: adds b-file.txt
+///   - Uncommitted: a-file.txt modified, b-file.txt deleted
+///   - Amend only a-file.txt into A's commit
+///
+/// After amend, b-file.txt must still appear as a deleted uncommitted change.
+#[test]
+fn amend_with_two_stacks_preserves_uncommitted_deletions() -> Result<()> {
+    let (_tmp, graph, repo, mut meta, _description) =
+        writable_scenario("amend-two-stacks-with-deletions", |meta| {
+            add_stack_with_segments(meta, 1, "A", StackState::InWorkspace, &[]);
+            add_stack_with_segments(meta, 2, "B", StackState::InWorkspace, &[]);
+        })?;
+
+    let workdir = repo.workdir().expect("non-bare repo");
+
+    // Verify initial state: a-file.txt modified, b-file.txt deleted
+    let status_before = git_status(&repo)?;
+    assert!(
+        status_before.contains("a-file.txt"),
+        "should have uncommitted changes to a-file.txt before amend, got: {status_before}"
+    );
+    assert!(
+        status_before.contains("b-file.txt"),
+        "should have uncommitted deletion of b-file.txt before amend, got: {status_before}"
+    );
+    assert!(
+        !workdir.join("b-file.txt").exists(),
+        "b-file.txt should be deleted on disk"
+    );
+
+    // Build DiffSpecs for only a-file.txt (the file we want to amend)
+    let all_changes = but_core::diff::worktree_changes(&repo)?;
+    let a_file_specs: Vec<DiffSpec> = all_changes
+        .changes
+        .iter()
+        .filter(|c| c.path == "a-file.txt")
+        .map(DiffSpec::from)
+        .collect();
+    assert_eq!(
+        a_file_specs.len(),
+        1,
+        "should have exactly one spec for a-file.txt"
+    );
+
+    // Find the commit on branch A
+    let a_commit_id = repo.rev_parse_single("A")?.detach();
+
+    let mut ws = graph.into_workspace()?;
+    let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+    let outcome = commit_amend(editor, a_commit_id, a_file_specs, 0)?;
+
+    assert!(outcome.rejected_specs.is_empty());
+    let _materialized = outcome.rebase.materialize()?;
+
+    // After amend: a-file.txt should no longer be modified (it was amended)
+    // but b-file.txt should STILL be deleted (uncommitted deletion preserved)
+    assert!(
+        !workdir.join("b-file.txt").exists(),
+        "b-file.txt should still be deleted on disk after amend"
+    );
+
+    let status_after = git_status(&repo)?;
+    assert!(
+        !status_after.contains("a-file.txt"),
+        "a-file.txt should no longer appear as modified after amend, got:\n{status_after}"
+    );
+    assert!(
+        status_after.contains("b-file.txt"),
+        "b-file.txt should still appear as a deleted file after amend, got:\n{status_after}"
     );
 
     Ok(())

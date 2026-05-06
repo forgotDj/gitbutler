@@ -223,11 +223,13 @@ fn worktree_and_index_deletions_are_ignored_in_snapshots() -> anyhow::Result<()>
     ");
     insta::assert_snapshot!(visualize_index(&*repo.index()?), @r"
     100644:3e75765 added-to-index
-    100644:637f034 to-be-deleted-in-index
     100644:e69de29 to-be-deleted/a
     ");
+    // `to-be-deleted-in-index` was staged for deletion (`git rm`) and is no longer
+    // restored by the checkout — the checkout only touches `to-be-deleted` → `to-be-deleted/a`.
     insta::assert_snapshot!(git_status(&repo)?, @r"
     A  added-to-index
+    D  to-be-deleted-in-index
     ?? untracked
     ");
 
@@ -415,18 +417,22 @@ inserted in new tree
     * 89b113a (HEAD -> main) edited 'file' (add single line)
     * 647cc94 init
     ");
+    // `file-to-be-renamed-in-index` is no longer restored by the checkout — the checkout
+    // only touches `file`, so the index rename (`RM file-to-be-renamed-in-index -> …`) is preserved.
     insta::assert_snapshot!(visualize_index(&*repo.index()?), @r"
     100644:832f532 file
     100755:cb89473 file-in-index
     100644:3d3b36f file-renamed-in-index
     100644:3d3b36f file-to-be-renamed
-    100644:3d3b36f file-to-be-renamed-in-index
     ");
     // Notably, 'file' is not in the index anymore, as that now always matches the worktree.
+    // The rename of `file-to-be-renamed-in-index` and deletion of `file-to-be-renamed` are
+    // preserved — the checkout only touched `file`.
     insta::assert_snapshot!(git_status(&repo)?, @r"
     M  file
     M  file-in-index
-    AM file-renamed-in-index
+    RM file-to-be-renamed-in-index -> file-renamed-in-index
+     D file-to-be-renamed
     ?? file-renamed
     ");
 
@@ -569,17 +575,17 @@ fn snapshot_fails_by_default_if_changed_file_turns_into_directory() -> anyhow::R
     * 434b908 (HEAD -> main) turn changed files into a directories
     * 647cc94 init
     ");
+    // `file-to-be-renamed-in-index` is no longer restored — the checkout only touches
+    // `file` and `file-in-index` (turned into directories), not unrelated deleted paths.
     insta::assert_snapshot!(visualize_index(&*repo.index()?), @r"
     100644:e69de29 file-in-index/a
     100644:3d3b36f file-renamed-in-index
     100644:3d3b36f file-to-be-renamed
-    100644:3d3b36f file-to-be-renamed-in-index
     100644:e69de29 file/a
     ");
-    // Note how the deleted file (which is in the destination tree) was restored, because we are additive,
-    // and can't differentiate between missing files and deleted files.
     insta::assert_snapshot!(git_status(&repo)?, @r"
-    AM file-renamed-in-index
+    RM file-to-be-renamed-in-index -> file-renamed-in-index
+     D file-to-be-renamed
     ?? file-renamed
     ");
 
@@ -854,18 +860,16 @@ fn forced_changes_with_snapshot_and_directory_to_file() -> anyhow::Result<()> {
 
     // TODO: use `gix` to also checkout 'dir-to-be-file', for some reason `git2` doesn't check it out
     //       even though it's given and it's part of the tree.
+    // Worktree-deleted files (`executable`, `file`, `link`, `other-file`) are no longer restored
+    // by the checkout — only `dir-to-be-file` and `file-to-be-dir/b/a` are being checked out.
     insta::assert_snapshot!(visualize_disk_tree_skip_dot_git(repo.workdir().unwrap())?, @r"
     .
     ├── .git:40755
-    ├── executable:100755
-    ├── file:100644
     ├── file-to-be-dir:40755
     │   ├── b:40755
     │   │   └── a:100644
     │   └── file:100644
-    ├── link:120755
     ├── link-renamed:120755
-    ├── other-file:100644
     └── to-be-overwritten:100644
     ");
     insta::assert_snapshot!(visualize_commit_graph_all(&repo)?, @r"
@@ -883,7 +887,11 @@ fn forced_changes_with_snapshot_and_directory_to_file() -> anyhow::Result<()> {
     ");
     insta::assert_snapshot!(git_status(&repo)?, @r"
     D  dir-to-be-file
+     D executable
+     D file
     A  file-to-be-dir/file
+     D link
+     D other-file
      M to-be-overwritten
     ?? link-renamed
     ");
@@ -998,8 +1006,12 @@ fn unrelated_additions_do_not_affect_worktree_changes() -> anyhow::Result<()> {
     100644:e69de29 unrelated
     ");
 
-    // It also restored the deleted files, after all they are part of the tree.
+    // Deleted files stay deleted — the checkout only adds `unrelated`, which
+    // doesn't intersect with the worktree deletions.
     insta::assert_snapshot!(git_status(&repo)?, @r"
+     D executable
+     D file
+     D link
     ?? executable-renamed
     ?? file-renamed
     ?? link-renamed
