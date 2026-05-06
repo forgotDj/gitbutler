@@ -25,7 +25,6 @@ pub use stacks::{
 };
 pub use tree_manipulation::{
     MoveChangesResult,
-    remove_changes_from_commit_in_stack::remove_changes_from_commit_in_stack,
     split_branch::{split_branch, split_into_dependent_branch},
 };
 
