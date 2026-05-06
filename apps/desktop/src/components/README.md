@@ -1,6 +1,6 @@
 # Svelte Component Architecture
 
-> This document describes the preferred component architecture for complex UI in `apps/desktop`. It supplements the patterns in `.github/copilot-instructions.md`.
+> This document describes the preferred component architecture for complex UI in `apps/desktop`.
 
 ## Folder Organization
 

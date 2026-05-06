@@ -1,23 +1,33 @@
 ## General information
 
-This is a monorepo with multiple projects.
-The main applications are found in the `apps` directory.
-They are:
+This is a Rust/Svelte/React/TypeScript monorepo with multiple projects. For
+agent instruction precedence and scoped guidance, follow the nearest applicable
+`AGENTS.md`; use this file as Copilot-oriented project context.
+
+The main applications are found in the `apps` directory:
 
 - `desktop` containing the Tauri application's frontend code
 - `web` containing the web application's frontend code
+- `lite` containing the Electron/React desktop app
 
-The backend of the Tauri application is found in the `crates` directory.
-It contains different rust packages, with `gitbutler-tauri` for the tauri application,
-and `but-api` for implementing various command-line utilities like `but`.
+Rust code is found in the `crates` directory. It contains `gitbutler-tauri` for
+the Tauri application, `but-api` for the API surface used by Tauri, Electron,
+CLI, and TUI callers, and the `but` CLI crate.
 
 The `packages` directory contains different self-contained npm packages.
-These are shared between the `desktop` and `web` applications.
+These are shared between the applications.
 The packages are:
 
+- `but-sdk` containing the generated TypeScript/Node SDK for Rust APIs
+- `core` containing shared TypeScript helpers
 - `ui` containing the shared UI components
 - `shared` containing the shared types and utils
-- `no-relative-imports` containing the no-relative-imports ESLINT package
+- `no-cross-domain-imports` containing the no-cross-domain-imports ESLint package
+- `no-relative-imports` containing the no-relative-imports ESLint package
+- `svelte-comment-injector` containing the Svelte comment injector package
+
+The `e2e` directory contains Playwright, WebdriverIO, and blackbox end-to-end
+tests.
 
 ## Technology Stack
 
