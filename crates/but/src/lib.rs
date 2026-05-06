@@ -31,7 +31,7 @@ use clap::Parser;
 pub mod args;
 use args::{
     Args, OutputFormat, Subcommands, actions, alias as alias_args, branch, claude, cursor, forge,
-    metrics, update as update_args, worktree,
+    update as update_args, worktree,
 };
 use but_settings::AppSettings;
 use gix::date::time::CustomFormat;
@@ -41,9 +41,7 @@ use theme::Paint;
 use crate::command::legacy::ShowDiffInEditor;
 use crate::{
     setup::{BackgroundSync, InitCtxOptions},
-    utils::{
-        OneshotMetricsContext, OutputChannel, ResultErrorExt, ResultJsonExt, ResultMetricsExt,
-    },
+    utils::{OutputChannel, ResultErrorExt, ResultJsonExt, ResultMetricsExt},
 };
 
 mod id;
@@ -113,6 +111,11 @@ pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
     }
 
     let mut args: Args = Args::parse_from(args);
+    if args.path.is_some() && args.cmd.is_some() {
+        anyhow::bail!(
+            "PATH cannot be used together with a subcommand. To run a subcommand in a different directory, use `-C <path>` before the subcommand, for example: `but -C <path> status`"
+        );
+    }
     let app_settings = AppSettings::load_from_default_path_creating_without_customization()?;
     let output_format = if args.json {
         OutputFormat::Json
@@ -143,57 +146,22 @@ pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
     let namespace = option_env!("IDENTIFIER").unwrap_or("com.gitbutler.app");
     but_secret::secret::set_application_namespace(namespace);
 
-    // If no subcommand is provided, but we have source and target, default to rub
     let mut out = OutputChannel::new_with_optional_pager(output_format, use_pager);
 
     match args.cmd.take() {
-        None if args.source_or_path.is_some() && args.target.is_some() => {
-            // Default to rub when two arguments are provided without a subcommand
-            let source = args
-                .source_or_path
-                .as_ref()
-                .expect("source is checked to be Some in match guard");
-            let target = args
-                .target
-                .as_ref()
-                .expect("target is checked to be Some in match guard");
-            #[cfg(feature = "legacy")]
-            {
-                use but_workspace::commit::squash_commits::MessageCombinationStrategy;
-
-                let status_after = args.status_after;
-                let mut ctx = setup::init_ctx(&args, InitCtxOptions::default(), &mut out)?;
-                out.begin_status_after(status_after);
-                let result = command::legacy::rub::handle(
-                    &mut ctx,
-                    &mut out,
-                    source,
-                    target,
-                    MessageCombinationStrategy::KeepBoth,
-                )
-                .context("Rubbed the wrong way.")
-                .emit_metrics(OneshotMetricsContext::new_if_enabled(
-                    &app_settings,
-                    metrics::CommandName::Rub,
-                ));
-                maybe_run_status_after(status_after, &result, &mut ctx, &mut out).await;
-                result.show_root_cause_error_then_exit_without_destructors(out)
-            }
-            #[cfg(not(feature = "legacy"))]
-            todo!("Non-legacy rub isn't implemented yet")
-        }
-        None if args.source_or_path.is_some() && args.target.is_none() => {
-            // If only one argument is provided without a subcommand, check if this is a valid path.
+        None if args.path.is_some() => {
+            // If one argument is provided without a subcommand, check if this is a valid path.
             let maybe_path = args
-                .source_or_path
+                .path
                 .as_ref()
                 .expect("path is checked to be Some in match guard");
-            let path = std::path::Path::new(args.current_dir.as_path()).join(maybe_path);
+            let path = args.current_dir.join(maybe_path);
 
             // Check if the path exists before trying to open the GUI
             if !path.exists() {
                 anyhow::bail!(
-                    "\"but {maybe_path}\" is not a command. Type \"but --help\" to see all available commands."
+                    "\"but {}\" is not a command. Type \"but --help\" to see all available commands.",
+                    maybe_path.display()
                 );
             }
 
@@ -201,7 +169,7 @@ pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
             Ok(())
         }
         None => {
-            // No subcommand and no source/target means run the default alias
+            // No subcommand and no path means run the default alias
             // The default alias expands to "status" which provides a helpful entry point
             let default_args = vec![OsString::from("but"), OsString::from("default")];
             let expanded = alias::expand_aliases(default_args)?;

@@ -49,8 +49,8 @@ pub fn print_grouped(out: &mut dyn std::fmt::Write) -> std::fmt::Result {
         t.error.paint("The GitButler CLI change control system")
     )?;
     writeln!(out)?;
-    writeln!(out, "Usage: but [OPTIONS] <COMMAND>")?;
-    writeln!(out, "       but [OPTIONS] [RUB-SOURCE] [RUB-TARGET]")?;
+    writeln!(out, "Usage: but [OPTIONS] [COMMAND]")?;
+    writeln!(out, "       but [OPTIONS] [PATH]")?;
     writeln!(out)?;
     writeln!(
         out,
