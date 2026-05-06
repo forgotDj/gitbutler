@@ -9,7 +9,7 @@ use std::path::Path;
 use anyhow::{Context as _, bail};
 use bstr::BString;
 use but_core::{DiffSpec, ref_metadata::StackId, tree::create_tree::RejectionReason};
-use but_ctx::{Context, access::RepoExclusive};
+use but_ctx::access::RepoExclusive;
 use but_rebase::merge::ConflictErrorContext;
 use gitbutler_stack::{VirtualBranchesHandle, VirtualBranchesState};
 use gix::{prelude::ObjectIdExt, refs::transaction::PreviousValue};
@@ -36,64 +36,6 @@ pub struct ReferenceFrame {
     ///
     /// Note that in case of moves, right now the source *and* destination need to be contained.
     pub branch_tip: Option<gix::ObjectId>,
-}
-
-/// Less pure but a simpler version of [`create_commit_and_update_refs_with_project`]
-pub fn create_commit_simple(
-    ctx: &Context,
-    stack_id: StackId,
-    parent_id: Option<gix::ObjectId>,
-    worktree_changes: Vec<DiffSpec>,
-    message: String,
-    stack_branch_name: String,
-    perm: &mut RepoExclusive,
-) -> anyhow::Result<CreateCommitOutcome> {
-    let repo = ctx.repo.get()?;
-    // If parent_id was not set but a stack branch name was provided, pick the current head of that branch as parent.
-    let parent_commit_id: Option<gix::ObjectId> = match parent_id {
-        Some(id) => Some(id),
-        None => {
-            let state = VirtualBranchesHandle::new(ctx.project_data_dir());
-            let stack = state.get_stack(stack_id)?;
-            if !stack.heads(true).contains(&stack_branch_name) {
-                return Err(anyhow::anyhow!(
-                    "Stack {stack_id} does not have branch {stack_branch_name}"
-                ));
-            }
-            let reference = repo
-                .try_find_reference(&stack_branch_name)
-                .map_err(anyhow::Error::from)?;
-            if let Some(mut r) = reference {
-                Some(r.peel_to_commit().map_err(anyhow::Error::from)?.id)
-            } else {
-                return Err(anyhow::anyhow!("No branch {stack_branch_name} found"));
-            }
-        }
-    };
-    let outcome = create_commit_and_update_refs_with_project(
-        &repo,
-        &ctx.project_data_dir(),
-        Some(stack_id),
-        Destination::NewCommit {
-            parent_commit_id,
-            message: message.clone(),
-            stack_segment: Some(StackSegmentId {
-                stack_id,
-                segment_ref: format!("refs/heads/{stack_branch_name}")
-                    .try_into()
-                    .map_err(anyhow::Error::from)?,
-            }),
-        },
-        worktree_changes,
-        ctx.settings.context_lines,
-        perm,
-    );
-
-    let outcome = outcome?;
-    if !outcome.rejected_specs.is_empty() {
-        tracing::warn!(?outcome.rejected_specs, "Failed to commit at least one hunk");
-    }
-    Ok(outcome)
 }
 
 /// Like [`create_commit()`], but allows to also update virtual branches and git references pointing to commits
