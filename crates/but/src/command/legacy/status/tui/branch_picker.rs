@@ -103,7 +103,7 @@ impl BranchPicker {
         this
     }
 
-    pub(super) fn render(&self, area: Rect, frame: &mut Frame) {
+    pub(super) fn render(&self, has_focus: bool, area: Rect, frame: &mut Frame) {
         let padding = Padding {
             left: 0,
             right: 0,
@@ -202,7 +202,7 @@ impl BranchPicker {
                         ListItem::new(Line::from_iter(spans)).style(item.style(self.theme))
                     }
                 };
-                if idx == self.cursor {
+                if has_focus && idx == self.cursor {
                     item.patch_style(self.theme.selection_highlight)
                 } else {
                     item

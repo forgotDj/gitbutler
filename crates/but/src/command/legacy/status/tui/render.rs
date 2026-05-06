@@ -73,7 +73,8 @@ pub(super) fn render_app(app: &App, frame: &mut Frame) {
     if let Some(details_area) = status_layout.details_area {
         let inner_area = details_block.inner(details_area);
         frame.render_widget(details_block, details_area);
-        app.details.render(app.help.is_some(), inner_area, frame);
+        app.details
+            .render(app.help.is_some(), app.has_focus, inner_area, frame);
     }
 
     if let Some(debug_area) = debug_area {
@@ -97,11 +98,11 @@ pub(super) fn render_app(app: &App, frame: &mut Frame) {
     );
 
     if let Some(confirm) = &app.confirm {
-        confirm.render(frame.area(), frame);
+        confirm.render(app.has_focus, frame.area(), frame);
     }
 
     if let Some(branch_picker) = &app.branch_picker {
-        branch_picker.render(frame.area(), frame);
+        branch_picker.render(app.has_focus, frame.area(), frame);
     }
 
     if let Some(help) = &app.help {
@@ -381,7 +382,8 @@ pub(super) fn render_status_list_item(
                 if matches!(data, StatusOutputLineData::Commit { .. })
                     || matches!(data, StatusOutputLineData::Branch { .. })
                 {
-                    let mut extension_line = Line::default().style(app.theme.selection_highlight);
+                    let mut extension_line =
+                        highlight_line_if(Line::default(), app.has_focus, app.theme);
                     extend_connector_spans(
                         connector.as_deref().unwrap_or_default(),
                         ExtensionDirection::Below,
@@ -400,7 +402,8 @@ pub(super) fn render_status_list_item(
                 if let StatusOutputLineData::Commit { cli_id: target, .. } = data
                     && *move_mode.source != **target
                 {
-                    let mut extension_line = Line::default().style(app.theme.selection_highlight);
+                    let mut extension_line =
+                        highlight_line_if(Line::default(), app.has_focus, app.theme);
                     extend_connector_spans(
                         connector.as_deref().unwrap_or_default(),
                         ExtensionDirection::Below,
@@ -413,7 +416,7 @@ pub(super) fn render_status_list_item(
                 {
                     if move_mode.source.is_commit() {
                         let mut extension_line =
-                            Line::default().style(app.theme.selection_highlight);
+                            highlight_line_if(Line::default(), app.has_focus, app.theme);
                         extend_connector_spans(
                             connector.as_deref().unwrap_or_default(),
                             ExtensionDirection::Below,
@@ -428,7 +431,7 @@ pub(super) fn render_status_list_item(
                         return StatusListItem::Double(line, extension_line);
                     } else {
                         let mut extension_line =
-                            Line::default().style(app.theme.selection_highlight);
+                            highlight_line_if(Line::default(), app.has_focus, app.theme);
                         extend_connector_spans(
                             connector.as_deref().unwrap_or_default(),
                             ExtensionDirection::Above,
@@ -452,11 +455,21 @@ pub(super) fn render_status_list_item(
         }
     }
 
-    if is_selected && app.help.is_none() {
-        line = line.style(app.theme.selection_highlight);
-    }
+    line = highlight_line_if(
+        line,
+        is_selected && app.help.is_none() && app.has_focus,
+        app.theme,
+    );
 
     StatusListItem::Single(line)
+}
+
+fn highlight_line_if(line: Line<'static>, highlight: bool, theme: &'static Theme) -> Line<'static> {
+    if highlight {
+        line.style(theme.selection_highlight)
+    } else {
+        line
+    }
 }
 
 fn render_rub_inline_labels_for_selected_line(
