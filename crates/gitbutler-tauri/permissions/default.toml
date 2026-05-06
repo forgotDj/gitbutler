@@ -184,8 +184,6 @@ commands.allow = [
   "show_graph_svg",
   "show_in_finder",
   "snapshot_diff",
-  "split_branch",
-  "split_branch_into_dependent_branch",
   "stack_details",
   "stacks",
   "stash_into_branch",
