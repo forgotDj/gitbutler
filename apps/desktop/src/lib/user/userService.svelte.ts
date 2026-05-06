@@ -110,9 +110,7 @@ export class UserService {
 	private async getLoginUrl(): Promise<string> {
 		await this.forgetUserCredentials();
 		try {
-			const token = await this.backendApi.endpoints.getLoginToken.fetch(undefined);
-			const url = new URL(token.url);
-			url.host = this.httpClient.apiUrl.host;
+			const url = new URL("/login", this.httpClient.apiUrl);
 			const buildType = await this.backend.invoke<string>("build_type").catch(() => undefined);
 			if (buildType !== undefined && buildType !== "development")
 				url.searchParams.set("bt", buildType);
