@@ -297,6 +297,9 @@ const ItemRow: FC<
 > = ({ projectId, operand, navigationIndex, ...props }) => {
 	const dispatch = useAppDispatch();
 	const isSelected = useIsSelected({ projectId, operand });
+	const selectItem = () => {
+		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
+	};
 
 	return (
 		<WorkspaceItemRow
@@ -305,8 +308,11 @@ const ItemRow: FC<
 			isSelected={isSelected}
 			onClick={(event) => {
 				props.onClick?.(event);
-				if (!event.defaultPrevented)
-					dispatch(projectActions.selectOutline({ projectId, selection: operand }));
+				if (!event.defaultPrevented) selectItem();
+			}}
+			onContextMenu={(event) => {
+				props.onContextMenu?.(event);
+				selectItem();
 			}}
 		/>
 	);
