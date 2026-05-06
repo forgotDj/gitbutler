@@ -4,8 +4,15 @@ use anyhow::{Context as _, Result};
 use but_api_macros::but_api;
 use but_core::{RepositoryExt, ref_metadata::StackId};
 use but_ctx::Context;
+use but_rebase::{
+    RebaseOutput,
+    graph_rebase::{
+        Editor, LookupStep as _,
+        mutate::{InsertSide, RelativeToRef},
+    },
+};
 use but_workspace::{
-    commit_engine::{self, StackSegmentId},
+    commit_engine,
     legacy::{StacksFilter, ui::StackEntry},
 };
 use gitbutler_branch_actions::BranchManagerExt;
@@ -332,8 +339,7 @@ pub fn stash_into_branch(
 
     let _ = ctx.snapshot_stash_into_branch(branch_name.clone(), perm);
 
-    let branch_manager = ctx.branch_manager();
-    let stack = branch_manager.create_virtual_branch(
+    let stack = ctx.branch_manager().create_virtual_branch(
         &gitbutler_branch::BranchCreateRequest {
             name: Some(branch_name.clone()),
             ..Default::default()
@@ -341,32 +347,64 @@ pub fn stash_into_branch(
         perm,
     )?;
 
-    let parent_commit_id = stack.head_oid(ctx)?;
     let branch_name = stack.derived_name()?;
+    let full_ref_name: gix::refs::FullName = format!("refs/heads/{branch_name}").try_into()?;
 
-    let outcome = but_workspace::legacy::commit_engine::create_commit_and_update_refs_with_project(
-        &*ctx.repo.get()?,
-        &ctx.project_data_dir(),
-        Some(stack.id),
-        commit_engine::Destination::NewCommit {
-            parent_commit_id: Some(parent_commit_id),
-            message: "Mo-Stashed changes".into(),
-            stack_segment: Some(StackSegmentId {
-                stack_id: stack.id,
-                segment_ref: format!("refs/heads/{branch_name}")
-                    .try_into()
-                    .map_err(anyhow::Error::from)?,
-            }),
-        },
-        worktree_changes,
-        ctx.settings.context_lines,
-        perm,
-    );
+    ctx.reload_repo_and_invalidate_workspace(perm)?;
+
+    let outcome = {
+        let mut meta = ctx.meta()?;
+        let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
+        let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+        let but_workspace::commit::CommitCreateOutcome {
+            rebase,
+            commit_selector,
+            rejected_specs,
+        } = but_workspace::commit::commit_create(
+            editor,
+            worktree_changes,
+            RelativeToRef::Reference(full_ref_name.as_ref()),
+            InsertSide::Below,
+            "Mo-Stashed changes",
+            ctx.settings.context_lines,
+        )?;
+
+        let new_commit = commit_selector
+            .map(|selector| rebase.lookup_pick(selector))
+            .transpose()?;
+        let rebase_output = if let Some(new_commit) = new_commit {
+            let materialized = rebase.materialize()?;
+            let commit_mapping: Vec<_> = materialized
+                .history
+                .commit_mappings()
+                .into_iter()
+                .map(|(old, new)| (None, old, new))
+                .collect();
+            (!commit_mapping.is_empty()).then_some(RebaseOutput {
+                top_commit: new_commit,
+                references: Vec::new(),
+                commit_mapping,
+            })
+        } else {
+            None
+        };
+
+        Ok(commit_engine::CreateCommitOutcome {
+            rejected_specs,
+            new_commit,
+            changed_tree_pre_cherry_pick: None,
+            references: Vec::new(),
+            rebase_output,
+            index: None,
+        })
+    };
+
+    ctx.reload_repo_and_invalidate_workspace(perm)?;
 
     gitbutler_branch_actions::update_workspace_commit(ctx, false)
         .context("failed to update gitbutler workspace")?;
 
-    branch_manager.unapply(
+    ctx.branch_manager().unapply(
         stack.id,
         perm,
         false,
