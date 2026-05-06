@@ -4,7 +4,7 @@
 	border-radius: 8px;
 
 	&:where(:hover) {
-		background-color: var(--color-row-hover-bg);
+		background-color: var(--button-ghost-hover-bg);
 	}
 
 	&[inert] {
@@ -15,23 +15,23 @@
 .itemRowEmpty {
 	padding-inline: var(--row-inline-padding);
 	padding-block: var(--row-block-padding);
-	color: var(--color-text-secondary);
+	color: var(--text-2);
 	line-height: var(--row-line-height);
 }
 
 .itemRowSelected {
-	background-color: var(--color-item-row-selected-unfocused-bg);
-	color: var(--color-item-row-selected-fg);
+	background-color: color-mix(var(--fill-gray-bg) 60%, transparent);
+	color: var(--fill-gray-fg);
 
 	&:has(:where(textarea, input):focus),
 	:where([data-panel]:focus) & {
-		background-color: var(--color-item-row-selected-focused-bg);
+		background-color: var(--fill-gray-bg);
 	}
 }
 
 .itemRowHighlighted {
-	background-color: var(--color-item-row-highlighted-bg);
-	color: var(--color-text);
+	background-color: #63cdc7;
+	color: var(--text-1);
 }
 
 .itemRowToolbar {
@@ -52,10 +52,10 @@
 	border-radius: 8px;
 
 	&:not([data-disabled]):hover {
-		background-color: var(--color-item-row-action-hover-bg);
+		background-color: var(--button-ghost-hover-bg);
 
 		.itemRowSelected & {
-			background-color: var(--color-item-row-selected-action-hover-bg);
+			background-color: color-mix(var(--fill-gray-fg) 10%, transparent);
 		}
 	}
 
@@ -81,7 +81,7 @@
 
 .section {
 	border-radius: 8px;
-	background-color: var(--color-section-selected-bg);
+	background-color: var(--bg-2);
 }
 
 .sectionLabel {

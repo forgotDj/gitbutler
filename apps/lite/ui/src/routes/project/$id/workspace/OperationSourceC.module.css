@@ -2,10 +2,9 @@
 	max-width: 400px;
 	padding: 8px;
 	overflow: hidden;
-	border: 1px solid light-dark(rgb(0 0 0 / 0.2), rgb(255 255 255 / 0.16));
+	border: 1px solid var(--border-2);
 	border-radius: 8px;
-	background-color: var(--color-bg);
-	box-shadow: 0 12px 16px -8px light-dark(rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.4));
+	background-color: var(--bg-1);
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
@@ -14,13 +13,14 @@
 we must use an overlay for the background. */
 .activeSource {
 	position: relative;
+
 	&:after {
 		position: absolute;
 		inset: 0;
 		border-radius: 8px;
-		background-color: var(--color-gray-200);
+		background-color: var(--bg-1);
 		content: "";
-		opacity: 0.5;
+		opacity: 0.6;
 		pointer-events: none;
 	}
 }

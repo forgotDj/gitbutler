@@ -18,13 +18,13 @@
 	border-top: 2px solid transparent;
 
 	[data-panel]:focus-within & {
-		border-top-color: var(--color-black);
+		border-top-color: var(--fill-gray-bg);
 	}
 }
 
 .panelResizeHandle {
 	width: 1px;
-	background-color: var(--color-separator);
+	background-color: var(--border-2);
 }
 
 .shortcutsBarContainer {
@@ -34,13 +34,13 @@
 	flex-wrap: wrap;
 	align-items: baseline;
 	padding: 4px var(--panel-padding);
-	border-top: 1px solid var(--color-separator);
-	color: var(--color-text-secondary);
+	border-top: 1px solid var(--border-2);
+	color: var(--text-2);
 	text-transform: lowercase;
 }
 
 .shortcutsBarScope {
-	color: var(--color-text);
+	color: var(--text-1);
 	font-weight: 600;
 }
 
@@ -51,5 +51,5 @@
 }
 
 .shortcutsBarKeys {
-	color: var(--color-text);
+	color: var(--text-1);
 }
