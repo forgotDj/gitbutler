@@ -13,7 +13,8 @@ use std::path::PathBuf;
     name = "but",
     about = "A GitButler CLI tool",
     version = option_env!("VERSION").unwrap_or("dev"),
-    disable_help_subcommand = true
+    disable_help_subcommand = true,
+    override_usage = "but [OPTIONS] [COMMAND]\n       but [OPTIONS] [PATH]"
 )]
 pub struct Args {
     /// Enable tracing for debug and performance information printed to stderr.
@@ -50,13 +51,9 @@ pub struct Args {
     /// {"result": ..., "status_error": ...} if the status query fails (in which case "status" is absent).
     #[clap(long = "status-after", global = true)]
     pub status_after: bool,
-    /// Source entity for rub operation (when no subcommand is specified).
-    /// If no target is specified, this is treated as a path to open on the GUI.
-    #[clap(value_name = "SOURCE")]
-    pub source_or_path: Option<String>,
-    /// Target entity for rub operation (when no subcommand is specified).
-    #[clap(value_name = "TARGET", requires = "source_or_path")]
-    pub target: Option<String>,
+    /// If no command is specified, this is treated as a path to open with the GUI.
+    #[clap(value_name = "PATH")]
+    pub path: Option<PathBuf>,
     /// Subcommand to run.
     #[clap(subcommand)]
     pub cmd: Option<Subcommands>,

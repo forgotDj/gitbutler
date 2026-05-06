@@ -116,3 +116,19 @@ Error: "but nonexistent-directory-entry" is not a command. Type "but --help" to 
 
     Ok(())
 }
+
+#[test]
+fn path_and_subcommand_are_rejected() -> anyhow::Result<()> {
+    let env = Sandbox::empty()?;
+
+    env.but("some-path completions bash")
+        .assert()
+        .failure()
+        .stdout_eq(str![[]])
+        .stderr_eq(str![[r#"
+Error: PATH cannot be used together with a subcommand. To run a subcommand in a different directory, use `-C <path>` before the subcommand, for example: `but -C <path> status`
+
+"#]]);
+
+    Ok(())
+}

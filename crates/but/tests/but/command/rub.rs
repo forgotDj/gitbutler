@@ -8,19 +8,20 @@ use crate::{
 };
 
 #[test]
-fn shorthand_without_subcommand() -> anyhow::Result<()> {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks")?;
+fn shorthand_without_subcommand_is_rejected() -> anyhow::Result<()> {
+    let env = Sandbox::empty()?;
 
-    // Must set metadata to match the scenario
-    env.setup_metadata(&["A", "B"])?;
-
-    // Test that calling `but <id1> <id2>` defaults to rub
-    // This should fail with a CliId not found error rather than a command not found error
     env.but("nonexistent1 nonexistent2")
         .assert()
         .failure()
+        .stdout_eq(str![[]])
         .stderr_eq(str![[r#"
-Rubbed the wrong way. Source 'nonexistent1' not found. If you just performed a Git operation (squash, rebase, etc.), try running 'but status' to refresh the current state.
+error: unexpected argument 'nonexistent2' found
+
+Usage: but [OPTIONS] [COMMAND]
+       but [OPTIONS] [PATH]
+
+For more information, try '--help'.
 
 "#]]);
 
@@ -32,7 +33,7 @@ fn assigned_uncommitted_file_env() -> anyhow::Result<Sandbox> {
 
     env.setup_metadata(&["A", "B"])?;
     env.file("a.txt", "arbitrary text\n");
-    env.but("zz:a.txt A").assert().success();
+    env.but("rub zz:a.txt A").assert().success();
     Ok(env)
 }
 
@@ -192,7 +193,7 @@ j0 a.txt│
 #[test]
 fn uncommitted_file_to_unassigned() -> anyhow::Result<()> {
     let env = assigned_uncommitted_file_env()?;
-    env.but("A@{stack}:a.txt zz")
+    env.but("rub A@{stack}:a.txt zz")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -324,7 +325,7 @@ fn committed_file_to_unassigned() -> anyhow::Result<()> {
 
 "#]]);
 
-    env.but("fc:b.txt zz")
+    env.but("rub fc:b.txt zz")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -420,7 +421,7 @@ fn shorthand_uncommitted_hunk_to_unassigned() -> anyhow::Result<()> {
     commit_file_with_worktree_changes_as_two_hunks(&env, "A", "a.txt");
 
     // Assign the change to A.
-    env.but("a.txt A").assert().success();
+    env.but("rub a.txt A").assert().success();
 
     // Verify that the first hunk is j0, and move it to unassigned.
     env.but("diff A@{stack}:a.txt")
@@ -446,7 +447,7 @@ k0 a.txt│
        9│+lasta
 
 "#]]);
-    env.but("j0 zz")
+    env.but("rub j0 zz")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
