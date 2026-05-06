@@ -32,6 +32,7 @@ use crate::{
         status::{
             StatusFlags, StatusOutputLine, TuiLaunchOptions,
             tui::{
+                backstack::{Backstack, BackstackEntry, RememberToUpdateBackstack},
                 branch_picker::{BranchPicker, BranchPickerMessage},
                 confirm::{Confirm, ConfirmMessage},
                 cursor::{Cursor, is_selectable_in_mode},
@@ -66,6 +67,7 @@ use super::{FilesStatusFlag, output::StatusOutputLineData};
 
 use render::{details_viewport, ensure_cursor_visible, render_app, status_viewport_height};
 
+mod backstack;
 mod branch_picker;
 mod confirm;
 mod cursor;
@@ -358,7 +360,7 @@ struct App {
     should_render: bool,
     cursor: Cursor,
     scroll_top: usize,
-    mode: Mode,
+    mode: RememberToUpdateBackstack<Mode>,
     toasts: Toasts,
     renders: u64,
     updates: u64,
@@ -376,6 +378,7 @@ struct App {
     theme: &'static Theme,
     help: Option<Help>,
     has_focus: bool,
+    backstack: Backstack,
 }
 
 #[derive(Debug)]
@@ -423,7 +426,7 @@ impl App {
             scroll_top: 0,
             should_quit: false,
             should_render: true,
-            mode: Mode::default(),
+            mode: Default::default(),
             help: None,
             toasts: Default::default(),
             renders: 0,
@@ -434,6 +437,7 @@ impl App {
             incoming_out_of_band_messages: Default::default(),
             to_be_discarded: Default::default(),
             branch_picker: Default::default(),
+            backstack: Default::default(),
             fps: FpsCounter::new(),
             confirm: None,
             details,
@@ -451,7 +455,7 @@ impl App {
             &self.app_key_binds.branch_picker_key_binds
         } else if self.help.is_some() {
             &self.app_key_binds.help_key_binds
-        } else if let Mode::Normal(NormalMode { marks }) = &self.mode
+        } else if let Mode::Normal(NormalMode { marks }) = &*self.mode
             && !marks.is_empty()
         {
             &self.app_key_binds.normal_with_marks_key_binds
@@ -548,7 +552,7 @@ impl App {
                 if let Some(new_cursor) =
                     Cursor::select_branch(&branch_name.shorten().to_str_lossy(), &self.status_lines)
                 {
-                    self.cursor = if matches!(self.mode, Mode::Rub(_)) {
+                    self.cursor = if matches!(&*self.mode, Mode::Rub(_)) {
                         new_cursor
                             .move_down_within_section(
                                 &self.status_lines,
@@ -606,14 +610,17 @@ impl App {
                     self.handle_rub_use_source_message();
                 }
             },
-            Message::EnterNormalMode => {
-                self.handle_enter_normal_mode(messages);
+            Message::Back => {
+                self.handle_back(messages);
+            }
+            Message::UnfocusDetails => {
+                self.handle_unfocus_details(messages);
+            }
+            Message::EnterNormalModeAfterConfirmingOperation => {
+                self.handle_enter_normal_mode_after_confirming_operation();
             }
             Message::EnterDetailsMode => {
                 self.handle_enter_details_mode(messages);
-            }
-            Message::LeaveDetailsMode => {
-                self.handle_leave_details_mode(messages);
             }
             Message::Files(files_message) => match files_message {
                 FilesMessage::ToggleGlobalFilesList => {
@@ -772,25 +779,66 @@ impl App {
         Ok(())
     }
 
-    fn handle_enter_normal_mode(&mut self, messages: &mut Vec<Message>) {
-        if matches!(self.mode, Mode::Normal(..)) {
-            match self.flags.show_files {
-                FilesStatusFlag::None => {}
-                FilesStatusFlag::All => {
-                    messages.push(Message::Files(FilesMessage::ToggleGlobalFilesList));
+    fn handle_unfocus_details(&mut self, messages: &mut Vec<Message>) {
+        self.mode.update(&mut self.backstack, |backstack, mode| {
+            *mode = Mode::Normal(Default::default());
+            backstack.remove_leave_normal_mode();
+        });
+
+        messages.push(Message::Details(DetailsMessage::Deselect));
+    }
+
+    fn handle_enter_normal_mode_after_confirming_operation(&mut self) {
+        self.mode.update(&mut self.backstack, |backstack, mode| {
+            *mode = Mode::Normal(NormalMode::default());
+            backstack.clear();
+        });
+        self.maybe_move_cursor_into_file_list();
+    }
+
+    fn handle_back(&mut self, messages: &mut Vec<Message>) {
+        if let Some(entry) = self.backstack.pop() {
+            match entry {
+                BackstackEntry::LeaveNormalMode => {
+                    *self
+                        .mode
+                        .get_mut_without_updating_backstack_and_i_promise_not_to_change_state() =
+                        Mode::Normal(NormalMode {
+                            marks: self.marks().cloned().unwrap_or_default(),
+                        });
+                    self.maybe_move_cursor_into_file_list();
                 }
-                FilesStatusFlag::Commit(_) => {
-                    messages.push(Message::Files(FilesMessage::ToggleFilesForCommit));
+                BackstackEntry::ShowFileList => {
+                    self.flags.show_files = FilesStatusFlag::None;
+                    messages.push(Message::Reload(None));
                 }
+                BackstackEntry::Mark => match self
+                    .mode
+                    .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
+                {
+                    Mode::Normal(normal_mode) => {
+                        normal_mode.marks.clear();
+                    }
+                    Mode::Rub(..) => {
+                        *self
+                            .mode
+                            .get_mut_without_updating_backstack_and_i_promise_not_to_change_state(
+                            ) = Mode::Normal(NormalMode::default());
+                        self.backstack.remove_mark();
+                        self.backstack.remove_leave_normal_mode();
+                        self.maybe_move_cursor_into_file_list();
+                    }
+                    Mode::InlineReword(..)
+                    | Mode::Command(..)
+                    | Mode::Commit(..)
+                    | Mode::Move(..)
+                    | Mode::Details => {}
+                },
             }
         }
+    }
 
-        if matches!(self.mode, Mode::Details) {
-            messages.push(Message::Details(DetailsMessage::Deselect));
-        }
-
-        self.mode = Mode::Normal(NormalMode::default());
-
+    fn maybe_move_cursor_into_file_list(&mut self) {
         match self.flags.show_files {
             FilesStatusFlag::Commit(object_id) => {
                 // When viewing files in a commit cursor movement is constrained to only those
@@ -818,7 +866,11 @@ impl App {
     }
 
     fn handle_enter_details_mode(&mut self, messages: &mut Vec<Message>) {
-        self.mode = Mode::Details;
+        self.mode
+            .update_and_push_leave_normal_mode(&mut self.backstack, |mode| {
+                *mode = Mode::Details;
+            });
+
         if self.details.is_visible() {
             messages.push(Message::Details(DetailsMessage::SelectFirstSection));
         } else {
@@ -832,14 +884,8 @@ impl App {
         }
     }
 
-    fn handle_leave_details_mode(&mut self, messages: &mut Vec<Message>) {
-        if matches!(self.mode, Mode::Details) {
-            messages.push(Message::EnterNormalMode);
-        }
-    }
-
     fn handle_rub_start(&mut self) {
-        let Mode::Normal(normal_mode) = &self.mode else {
+        let Mode::Normal(normal_mode) = &*self.mode else {
             return;
         };
         let Some(selected_line) = self.cursor.selected_line(&self.status_lines) else {
@@ -936,12 +982,15 @@ impl App {
 
         let available_targets = self.available_targets_for_rub_mode(&source);
 
-        self.mode = Mode::Rub(RubMode {
-            source,
-            available_targets,
-            how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
-            _unlock_details: unlock_details,
-        });
+        self.mode
+            .update_and_push_leave_normal_mode(&mut self.backstack, |mode| {
+                *mode = Mode::Rub(RubMode {
+                    source,
+                    available_targets,
+                    how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
+                    _unlock_details: unlock_details,
+                });
+            });
 
         if self
             .cursor
@@ -1012,21 +1061,29 @@ impl App {
 
         let available_targets = self.available_targets_for_rub_mode(&source);
 
-        self.mode = Mode::Rub(RubMode {
-            source,
-            available_targets,
-            how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
-            _unlock_details: None,
-        });
+        self.mode
+            .update_and_push_leave_normal_mode(&mut self.backstack, |mode| {
+                *mode = Mode::Rub(RubMode {
+                    source,
+                    available_targets,
+                    how_to_combine_messages: MessageCombinationStrategy::KeepBoth,
+                    _unlock_details: None,
+                });
+            });
 
         Ok(())
     }
 
-    /// Handles toggling file visibility and requests a status reload.
     fn handle_files_toggle_global_files_list(&mut self, messages: &mut Vec<Message>) {
         self.flags.show_files = match self.flags.show_files {
-            FilesStatusFlag::None => FilesStatusFlag::All,
-            FilesStatusFlag::All | FilesStatusFlag::Commit(_) => FilesStatusFlag::None,
+            FilesStatusFlag::None => {
+                self.backstack.push_show_file_list();
+                FilesStatusFlag::All
+            }
+            FilesStatusFlag::All | FilesStatusFlag::Commit(_) => {
+                self.backstack.remove_show_file_list();
+                FilesStatusFlag::None
+            }
         };
         messages.push(Message::Reload(None));
     }
@@ -1044,10 +1101,12 @@ impl App {
                 let select_after_reload = match self.flags.show_files {
                     FilesStatusFlag::None => {
                         self.flags.show_files = FilesStatusFlag::Commit(*commit_id);
+                        self.backstack.push_show_file_list();
                         Some(SelectAfterReload::FirstFileInCommit(*commit_id))
                     }
                     FilesStatusFlag::All | FilesStatusFlag::Commit(_) => {
                         self.flags.show_files = FilesStatusFlag::None;
+                        self.backstack.remove_show_file_list();
                         Some(SelectAfterReload::Commit(*commit_id))
                     }
                 };
@@ -1055,6 +1114,7 @@ impl App {
             }
         } else {
             self.flags.show_files = FilesStatusFlag::None;
+            self.backstack.remove_show_file_list();
             messages.push(Message::Reload(None));
         };
 
@@ -1065,7 +1125,9 @@ impl App {
         let Mode::Rub(RubMode {
             how_to_combine_messages,
             ..
-        }) = &mut self.mode
+        }) = self
+            .mode
+            .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
         else {
             return;
         };
@@ -1081,7 +1143,9 @@ impl App {
         let Mode::Rub(RubMode {
             how_to_combine_messages,
             ..
-        }) = &mut self.mode
+        }) = self
+            .mode
+            .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
         else {
             return;
         };
@@ -1099,7 +1163,7 @@ impl App {
         ctx: &mut Context,
         messages: &mut Vec<Message>,
     ) -> anyhow::Result<()> {
-        let reload_message = match &self.mode {
+        let reload_message = match &*self.mode {
             Mode::Rub(RubMode {
                 source,
                 how_to_combine_messages,
@@ -1170,7 +1234,7 @@ impl App {
         self.flags.show_files = FilesStatusFlag::None;
 
         messages.extend([
-            Message::EnterNormalMode,
+            Message::EnterNormalModeAfterConfirmingOperation,
             reload_message.unwrap_or(Message::Reload(None)),
         ]);
 
@@ -1236,7 +1300,7 @@ impl App {
 
         // ensure we always enter normal mode when something does wrong
         // so we don't get stuck in whatever mode we were in previously
-        messages.push(Message::EnterNormalMode);
+        messages.push(Message::EnterNormalModeAfterConfirmingOperation);
     }
 
     fn select_top_branch_for_stack_after_reload(
@@ -1542,7 +1606,10 @@ impl App {
             | StatusOutputLineData::NoAssignmentsUnstaged => return Ok(()),
         };
 
-        self.mode = Mode::Commit(commit_mode);
+        self.mode
+            .update_and_push_leave_normal_mode(&mut self.backstack, |mode| {
+                *mode = Mode::Commit(commit_mode);
+            });
 
         Ok(())
     }
@@ -1556,7 +1623,7 @@ impl App {
             source,
             scope_to_stack,
             message_composer,
-        }) = &self.mode
+        }) = &*self.mode
         else {
             return Ok(());
         };
@@ -1570,7 +1637,7 @@ impl App {
             .cli_id()
             .is_some_and(|target| **source == **target)
         {
-            messages.push(Message::EnterNormalMode);
+            messages.push(Message::EnterNormalModeAfterConfirmingOperation);
             return Ok(());
         }
 
@@ -1650,7 +1717,7 @@ impl App {
 
         messages.extend(
             [
-                Message::EnterNormalMode,
+                Message::EnterNormalModeAfterConfirmingOperation,
                 Message::Reload(
                     commit_create_result
                         .new_commit
@@ -1684,7 +1751,10 @@ impl App {
     }
 
     fn handle_commit_toggle_message_composer(&mut self, composer: CommitMessageComposer) {
-        if let Mode::Commit(mode) = &mut self.mode {
+        if let Mode::Commit(mode) = self
+            .mode
+            .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
+        {
             match composer {
                 CommitMessageComposer::Editor => {
                     // you can't toggle the editor composer, that is always the default
@@ -1741,7 +1811,10 @@ impl App {
             | StatusOutputLineData::NoAssignmentsUnstaged => return,
         };
 
-        self.mode = Mode::Move(move_mode);
+        self.mode
+            .update_and_push_leave_normal_mode(&mut self.backstack, |mode| {
+                *mode = Mode::Move(move_mode);
+            });
     }
 
     fn handle_move_confirm(
@@ -1749,7 +1822,7 @@ impl App {
         ctx: &mut Context,
         messages: &mut Vec<Message>,
     ) -> anyhow::Result<()> {
-        let Mode::Move(MoveMode { source }) = &self.mode else {
+        let Mode::Move(MoveMode { source }) = &*self.mode else {
             return Ok(());
         };
 
@@ -1763,7 +1836,7 @@ impl App {
             .cli_id()
             .is_some_and(|target| **source == **target)
         {
-            messages.push(Message::EnterNormalMode);
+            messages.push(Message::EnterNormalModeAfterConfirmingOperation);
             return Ok(());
         }
 
@@ -1852,7 +1925,7 @@ impl App {
         };
 
         messages.extend([
-            Message::EnterNormalMode,
+            Message::EnterNormalModeAfterConfirmingOperation,
             Message::Reload(selection_after_reload),
         ]);
 
@@ -2008,14 +2081,20 @@ impl App {
             | CliId::Stack { .. } => return Ok(()),
         };
 
-        self.mode = Mode::InlineReword(inline_reword_mode);
+        self.mode
+            .update_and_push_leave_normal_mode(&mut self.backstack, |mode| {
+                *mode = Mode::InlineReword(inline_reword_mode);
+            });
 
         Ok(())
     }
 
     /// Handles key input while inline reword mode is active.
     fn handle_reword_inline_input(&mut self, ev: Event) {
-        if let Mode::InlineReword(inline_reword_mode) = &mut self.mode {
+        if let Mode::InlineReword(inline_reword_mode) = self
+            .mode
+            .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
+        {
             let ev = match inline_reword_mode {
                 InlineRewordMode::Branch { .. } => {
                     if let Event::Key(key_ev) = ev
@@ -2045,10 +2124,10 @@ impl App {
         ctx: &mut Context,
         messages: &mut Vec<Message>,
     ) -> anyhow::Result<()> {
-        let inline_reword_mode = if let Mode::InlineReword(inline_reword_mode) = &self.mode {
+        let inline_reword_mode = if let Mode::InlineReword(inline_reword_mode) = &*self.mode {
             inline_reword_mode
         } else {
-            messages.push(Message::EnterNormalMode);
+            messages.push(Message::EnterNormalModeAfterConfirmingOperation);
             return Ok(());
         };
 
@@ -2064,12 +2143,12 @@ impl App {
                 let Some(reword_result) =
                     operations::reword_commit_legacy(ctx, *commit_id, first_line)?
                 else {
-                    messages.push(Message::EnterNormalMode);
+                    messages.push(Message::EnterNormalModeAfterConfirmingOperation);
                     return Ok(());
                 };
 
                 messages.extend([
-                    Message::EnterNormalMode,
+                    Message::EnterNormalModeAfterConfirmingOperation,
                     Message::Reload(Some(SelectAfterReload::Commit(reword_result.new_commit))),
                 ]);
             }
@@ -2082,7 +2161,7 @@ impl App {
                 )?;
 
                 messages.extend([
-                    Message::EnterNormalMode,
+                    Message::EnterNormalModeAfterConfirmingOperation,
                     Message::Reload(Some(SelectAfterReload::Branch(new_name))),
                 ]);
             }
@@ -2101,7 +2180,7 @@ impl App {
         T: TerminalGuard,
         anyhow::Error: From<<T::Backend as Backend>::Error>,
     {
-        let Mode::InlineReword(inline_reword_mode) = &self.mode else {
+        let Mode::InlineReword(inline_reword_mode) = &*self.mode else {
             return Ok(());
         };
 
@@ -2137,7 +2216,7 @@ impl App {
         drop(_suspend_guard);
 
         messages.extend([
-            Message::EnterNormalMode,
+            Message::EnterNormalModeAfterConfirmingOperation,
             Message::Reload(Some(what_to_select)),
         ]);
 
@@ -2149,14 +2228,20 @@ impl App {
         textarea.set_cursor_line_style(self.theme.default);
         textarea.move_cursor(CursorMove::End);
 
-        self.mode = Mode::Command(CommandMode {
-            textarea: Box::new(textarea),
-            kind,
-        });
+        self.mode
+            .update_and_push_leave_normal_mode(&mut self.backstack, |mode| {
+                *mode = Mode::Command(CommandMode {
+                    textarea: Box::new(textarea),
+                    kind,
+                });
+            });
     }
 
     fn handle_command_input(&mut self, ev: Event) {
-        if let Mode::Command(CommandMode { textarea, .. }) = &mut self.mode {
+        if let Mode::Command(CommandMode { textarea, .. }) = self
+            .mode
+            .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
+        {
             textarea.input(ev);
         }
     }
@@ -2171,8 +2256,8 @@ impl App {
         T: TerminalGuard,
         anyhow::Error: From<<T::Backend as Backend>::Error>,
     {
-        let Mode::Command(CommandMode { textarea, kind }) = &self.mode else {
-            messages.push(Message::EnterNormalMode);
+        let Mode::Command(CommandMode { textarea, kind }) = &*self.mode else {
+            messages.push(Message::EnterNormalModeAfterConfirmingOperation);
             return Ok(());
         };
 
@@ -2193,7 +2278,7 @@ impl App {
             CommandModeKind::Shell => {
                 let mut args = shell_words::split(input)?.into_iter().map(OsString::from);
                 let Some(binary) = args.next() else {
-                    messages.push(Message::EnterNormalMode);
+                    messages.push(Message::EnterNormalModeAfterConfirmingOperation);
                     return Ok(());
                 };
                 let mut cmd = Command::new(binary);
@@ -2207,7 +2292,10 @@ impl App {
         self.prompt_to_continue(out)?;
 
         if status.success() {
-            messages.extend([Message::EnterNormalMode, Message::Reload(None)]);
+            messages.extend([
+                Message::EnterNormalModeAfterConfirmingOperation,
+                Message::Reload(None),
+            ]);
         } else {
             self.push_transient_error(anyhow::Error::msg(format!(
                 "command exited with status {}",
@@ -2294,7 +2382,7 @@ impl App {
                 Some(&ref_info.ref_name)
             })
             .filter(|name| {
-                if matches!(self.mode, Mode::Rub(_)) {
+                if matches!(&*self.mode, Mode::Rub(_)) {
                     true
                 } else {
                     // not all branches are selectable all the time, for example if we're committing
@@ -2368,13 +2456,15 @@ impl App {
 
         match &**selection {
             CliId::Commit { .. } => {
-                if handle_mark_commit(selection, &mut self.mode)
-                    && let Some(new_cursor) = self.cursor.move_down_within_section(
-                        &self.status_lines,
-                        &self.mode,
-                        self.flags.show_files,
-                    )
-                {
+                if handle_mark_commit(
+                    selection,
+                    self.mode
+                        .get_mut_without_updating_backstack_and_i_promise_not_to_change_state(),
+                ) && let Some(new_cursor) = self.cursor.move_down_within_section(
+                    &self.status_lines,
+                    &self.mode,
+                    self.flags.show_files,
+                ) {
                     self.cursor = new_cursor;
                 }
             }
@@ -2384,7 +2474,9 @@ impl App {
                 stack_id,
             } => {
                 // you cannot select branches in rub mode so we don't need to care about that
-                if let Mode::Normal(normal_mode) = &mut self.mode
+                if let Mode::Normal(normal_mode) = self
+                    .mode
+                    .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
                     && let Some(stack_id) = *stack_id
                 {
                     handle_mark_branch(&mut normal_mode.marks, ctx, stack_id, name)?;
@@ -2395,6 +2487,14 @@ impl App {
             | CliId::CommittedFile { .. }
             | CliId::Unassigned { .. }
             | CliId::Stack { .. } => {}
+        }
+
+        if let Some(marks) = self.marks() {
+            if marks.is_empty() {
+                self.backstack.remove_mark();
+            } else {
+                self.backstack.push_mark();
+            }
         }
 
         Ok(())
@@ -2616,7 +2716,7 @@ enum Message {
     // Lifecycle
     JustRender,
     Quit,
-    EnterNormalMode,
+    EnterNormalModeAfterConfirmingOperation,
     Reload(Option<SelectAfterReload>),
     ShowError(Arc<anyhow::Error>),
     ShowToast {
@@ -2629,6 +2729,8 @@ enum Message {
     GrowDetails,
     ShrinkDetails,
     SetHasFocus(bool),
+    Back,
+    UnfocusDetails,
 
     // Cursor movement
     MoveCursorUp,
@@ -2651,7 +2753,6 @@ enum Message {
     BranchPicker(BranchPickerMessage),
     Help(HelpMessage),
     EnterDetailsMode,
-    LeaveDetailsMode,
     NewBranch,
     ToggleHelp,
     Mark,

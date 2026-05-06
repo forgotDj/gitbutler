@@ -24,6 +24,10 @@ impl Marks {
         self.marks.remove(markable);
     }
 
+    pub(super) fn clear(&mut self) {
+        self.marks.clear();
+    }
+
     pub(super) fn is_empty(&self) -> bool {
         self.marks.is_empty()
     }

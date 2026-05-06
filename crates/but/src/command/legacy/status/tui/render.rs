@@ -58,7 +58,7 @@ pub(super) fn render_app(app: &App, frame: &mut Frame) {
         .border_type(BorderType::Thick)
         .borders(Borders::BOTTOM);
 
-    let (status_block, details_block) = if matches!(app.mode, Mode::Details) {
+    let (status_block, details_block) = if matches!(&*app.mode, Mode::Details) {
         (dimmed_block, focused_block)
     } else {
         (focused_block, dimmed_block)
@@ -197,7 +197,7 @@ pub(super) fn render_status_list_item(
     if line_is_to_be_discarded {
         line.extend([Span::raw("<< discard >>").black().on_red(), Span::raw(" ")]);
     } else if is_selected {
-        match &app.mode {
+        match &*app.mode {
             Mode::Normal(..) | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
             Mode::Rub(RubMode {
                 source,
@@ -232,7 +232,7 @@ pub(super) fn render_status_list_item(
             }
         }
     } else {
-        match &app.mode {
+        match &*app.mode {
             Mode::Normal(..) | Mode::InlineReword(..) | Mode::Command(..) | Mode::Details => {}
             Mode::Rub(RubMode {
                 source,
@@ -328,7 +328,7 @@ pub(super) fn render_status_list_item(
             .collect();
     }
 
-    match &app.mode {
+    match &*app.mode {
         Mode::InlineReword(inline_reword_mode) => {
             if is_selected {
                 match inline_reword_mode {
@@ -377,7 +377,7 @@ pub(super) fn render_status_list_item(
     }
 
     if is_selected {
-        match &app.mode {
+        match &*app.mode {
             Mode::Commit(commit_mode) => {
                 if matches!(data, StatusOutputLineData::Commit { .. })
                     || matches!(data, StatusOutputLineData::Branch { .. })
@@ -501,9 +501,9 @@ fn render_rub_inline_labels_for_selected_line(
         }
     };
     line.extend([
-        Span::raw("<< ").mode_colors(&app.mode, app.theme),
-        Span::raw(display).mode_colors(&app.mode, app.theme),
-        Span::raw(" >>").mode_colors(&app.mode, app.theme),
+        Span::raw("<< ").mode_colors(&*app.mode, app.theme),
+        Span::raw(display).mode_colors(&*app.mode, app.theme),
+        Span::raw(" >>").mode_colors(&*app.mode, app.theme),
         Span::raw(" "),
     ]);
 }
@@ -522,42 +522,42 @@ fn render_commit_labels_for_selected_line(
         line.extend([source_span(app.theme), Span::raw(" ")]);
         line.extend(
             [
-                Span::raw("<< ").mode_colors(&app.mode, app.theme),
-                Span::raw(NOOP).mode_colors(&app.mode, app.theme),
+                Span::raw("<< ").mode_colors(&*app.mode, app.theme),
+                Span::raw(NOOP).mode_colors(&*app.mode, app.theme),
             ]
             .into_iter()
             .chain(match mode.message_composer {
                 CommitMessageComposer::Editor => None,
                 CommitMessageComposer::Empty => {
-                    Some(Span::raw(" (empty message)").mode_colors(&app.mode, app.theme))
+                    Some(Span::raw(" (empty message)").mode_colors(&*app.mode, app.theme))
                 }
                 CommitMessageComposer::Inline => {
-                    Some(Span::raw(" (reword inline)").mode_colors(&app.mode, app.theme))
+                    Some(Span::raw(" (reword inline)").mode_colors(&*app.mode, app.theme))
                 }
             })
             .chain([
-                Span::raw(" >>").mode_colors(&app.mode, app.theme),
+                Span::raw(" >>").mode_colors(&*app.mode, app.theme),
                 Span::raw(" "),
             ]),
         );
     } else if let Some(display) = commit_operation_display(data, mode) {
         line.extend(
             [
-                Span::raw("<< ").mode_colors(&app.mode, app.theme),
-                Span::raw(display).mode_colors(&app.mode, app.theme),
+                Span::raw("<< ").mode_colors(&*app.mode, app.theme),
+                Span::raw(display).mode_colors(&*app.mode, app.theme),
             ]
             .into_iter()
             .chain(match mode.message_composer {
                 CommitMessageComposer::Editor => None,
                 CommitMessageComposer::Empty => {
-                    Some(Span::raw(" (empty message)").mode_colors(&app.mode, app.theme))
+                    Some(Span::raw(" (empty message)").mode_colors(&*app.mode, app.theme))
                 }
                 CommitMessageComposer::Inline => {
-                    Some(Span::raw(" (reword inline)").mode_colors(&app.mode, app.theme))
+                    Some(Span::raw(" (reword inline)").mode_colors(&*app.mode, app.theme))
                 }
             })
             .chain([
-                Span::raw(" >>").mode_colors(&app.mode, app.theme),
+                Span::raw(" >>").mode_colors(&*app.mode, app.theme),
                 Span::raw(" "),
             ]),
         );
@@ -573,16 +573,16 @@ fn render_move_labels_for_selected_line(
     if data.cli_id().is_some_and(|target| *mode.source == **target) {
         line.extend([source_span(app.theme), Span::raw(" ")]);
         line.extend([
-            Span::raw("<< ").mode_colors(&app.mode, app.theme),
-            Span::raw(NOOP).mode_colors(&app.mode, app.theme),
-            Span::raw(" >>").mode_colors(&app.mode, app.theme),
+            Span::raw("<< ").mode_colors(&*app.mode, app.theme),
+            Span::raw(NOOP).mode_colors(&*app.mode, app.theme),
+            Span::raw(" >>").mode_colors(&*app.mode, app.theme),
             Span::raw(" "),
         ]);
     } else if let Some(display) = move_operation_display(data, mode) {
         line.extend([
-            Span::raw("<< ").mode_colors(&app.mode, app.theme),
-            Span::raw(display).mode_colors(&app.mode, app.theme),
-            Span::raw(" >>").mode_colors(&app.mode, app.theme),
+            Span::raw("<< ").mode_colors(&*app.mode, app.theme),
+            Span::raw(display).mode_colors(&*app.mode, app.theme),
+            Span::raw(" >>").mode_colors(&*app.mode, app.theme),
             Span::raw(" "),
         ]);
     }
@@ -591,9 +591,9 @@ fn render_move_labels_for_selected_line(
 fn render_hotbar(app: &App, area: Rect, frame: &mut Frame) {
     let mode_span = Span::raw(format!(
         "  {}  ",
-        ModeDiscriminant::from(&app.mode).hotbar_string()
+        ModeDiscriminant::from(&*app.mode).hotbar_string()
     ))
-    .mode_colors(&app.mode, app.theme);
+    .mode_colors(&*app.mode, app.theme);
 
     let layout = Layout::horizontal([
         Constraint::Length(mode_span.width() as _),
@@ -606,7 +606,7 @@ fn render_hotbar(app: &App, area: Rect, frame: &mut Frame) {
 
     frame.render_widget(" ", layout[1]);
 
-    match &app.mode {
+    match &*app.mode {
         Mode::Normal(..)
         | Mode::Details
         | Mode::Rub(..)
@@ -616,7 +616,7 @@ fn render_hotbar(app: &App, area: Rect, frame: &mut Frame) {
             let mut line = Line::default();
             let mut key_binds_iter = app
                 .active_key_binds()
-                .iter_key_binds_available_in_mode(ModeDiscriminant::from(&app.mode))
+                .iter_key_binds_available_in_mode(ModeDiscriminant::from(&*app.mode))
                 .filter(|key_bind| !key_bind.hide_from_hotbar())
                 .peekable();
             while let Some(key_bind) = key_binds_iter.next() {
@@ -661,7 +661,7 @@ fn render_toasts(app: &App, area: Rect, frame: &mut Frame) {
 }
 
 fn render_inline_reword(app: &App, area: Rect, frame: &mut Frame) {
-    let inline_reword_mode = if let Mode::InlineReword(inline_reword_mode) = &app.mode {
+    let inline_reword_mode = if let Mode::InlineReword(inline_reword_mode) = &*app.mode {
         inline_reword_mode
     } else {
         return;
@@ -742,6 +742,14 @@ fn render_debug(app: &App, area: Rect, frame: &mut Frame) {
         app.renders
     ))));
 
+    let backstack = format!("{:#?}", app.backstack);
+    let backstack = once(ListItem::new("Backstack").black().on_blue()).chain(
+        backstack
+            .lines()
+            .take(100)
+            .map(|line| ListItem::new(line.to_owned())),
+    );
+
     let details_selection = format!("{:#?}", app.details.selection());
     let details_selection = once(ListItem::new("Details selection").black().on_blue()).chain(
         details_selection
@@ -760,6 +768,8 @@ fn render_debug(app: &App, area: Rect, frame: &mut Frame) {
 
     let list = List::new(
         renders
+            .chain(once(ListItem::new("")))
+            .chain(backstack)
             .chain(once(ListItem::new("")))
             .chain(details_selection)
             .chain(once(ListItem::new("")))
