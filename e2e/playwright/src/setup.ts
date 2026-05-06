@@ -166,10 +166,10 @@ function createButServerProcess(rootDir: string, serverEnv: Record<string, strin
 	});
 
 	// Reprint stdout in green and buffer for artifact capture
-	child.stdout?.on("data", serverLogSink.push);
+	child.stdout?.on("data", (data) => serverLogSink.push(data));
 
 	// Reprint stderr in red and buffer for artifact capture
-	child.stderr?.on("data", serverLogSink.push);
+	child.stderr?.on("data", (data) => serverLogSink.push(data));
 
 	return child;
 }
