@@ -330,7 +330,7 @@ corepack prepare pnpm@10.17.0 --activate
 - **Development Guide**: See DEVELOPMENT.md for detailed setup instructions
 - **Contributing Guide**: See CONTRIBUTING.md for contribution guidelines
 - **Discord**: https://discord.gg/MmFkmaJ42D for questions and discussions
-- See `crates/but/agents.md` for information about the `but` CLI specifically
+- See `crates/AGENTS.md` for Rust-specific API, repository, and testing conventions
 
 ## Important Notes for AI Coding Agents
 

@@ -1,7 +1,32 @@
-## Automatic Context Loading
+# GitButler Agent Instructions
 
-When asked about general development workflow, project structure, building, testing, or contributing to GitButler, please read `@.github/copilot-instructions.md` for context.
+GitButler is a Rust/Svelte/React/TypeScript monorepo.
 
-When working on the `but` CLI (Rust command-line tool in `crates/but`), please read `@crates/but/agents.md` for context on API usage patterns, output formatting, and testing conventions.
+Apply all relevant instruction files. If instructions conflict, resolve them in
+this order:
 
-When tests need to observe repository changes written to disk, prefer `repo.reload()` over reopening the repository.
+1. Explicit human instructions
+2. Nearest nested `AGENTS.md`
+3. This file
+
+## Repo Map
+
+- `crates/` - Rust crates.
+- `apps/desktop/` - Tauri/Svelte desktop app.
+- `apps/web/` - Svelte web app.
+- `apps/lite/` - Electron/React desktop app.
+- `packages/` - shared TypeScript packages, including the SDK.
+- `e2e/` - Playwright, WebdriverIO, and blackbox end-to-end tests.
+
+## Working Style
+
+- Make focused, reviewable changes.
+- Inspect nearby code before introducing patterns.
+- Prefer existing APIs, tests, and conventions.
+- Avoid unrelated rewrites.
+- Run targeted validation for the area touched.
+
+## Scoped Instructions
+
+- For Rust work under `crates/`, follow `crates/AGENTS.md`.
+- For Lite work under `apps/lite/`, follow `apps/lite/AGENTS.md`.
