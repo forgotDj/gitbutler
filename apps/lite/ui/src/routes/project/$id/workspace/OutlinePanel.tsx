@@ -1,5 +1,6 @@
 import uiStyles from "#ui/ui/ui.module.css";
 import {
+	commitCreateMutationOptions,
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
 	commitMoveMutationOptions,
@@ -49,7 +50,7 @@ import {
 	Section,
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
-import { mergeProps, useRender } from "@base-ui/react";
+import { mergeProps, Toast, useRender } from "@base-ui/react";
 import { Combobox } from "@base-ui/react/combobox";
 import { Toolbar } from "@base-ui/react/toolbar";
 import {
@@ -62,7 +63,7 @@ import {
 	TreeChange,
 } from "@gitbutler/but-sdk";
 import { formatForDisplay, useHotkey, useHotkeys } from "@tanstack/react-hotkeys";
-import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { Match } from "effect";
 
@@ -85,6 +86,8 @@ import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
 import { defaultOutlineSelection } from "#ui/projects/workspace/state.ts";
 import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
+import { resolveDiffSpecs } from "#ui/operations/diff-specs.ts";
+import { rejectedChangesToastOptions } from "#ui/operations/rejectedChangesToastOptions.tsx";
 
 const sections = (headInfo: RefInfo): NonEmptyArray<Section> => {
 	const changesSection: Section = {
@@ -186,24 +189,18 @@ const useNavigationIndex = (projectId: string) => {
 export const OutlinePanel: FC<
 	{
 		onAbsorbChanges: (target: AbsorptionTarget) => void;
-		onCommitChanges: (branch: BranchOperand) => void;
 	} & PanelProps
-> = ({ onAbsorbChanges, onCommitChanges, ...panelProps }) => (
+> = ({ onAbsorbChanges, ...panelProps }) => (
 	<Suspense fallback={<Panel {...panelProps}>Loading outline…</Panel>}>
-		<OutlineTreePanel
-			onAbsorbChanges={onAbsorbChanges}
-			onCommitChanges={onCommitChanges}
-			{...panelProps}
-		/>
+		<OutlineTreePanel onAbsorbChanges={onAbsorbChanges} {...panelProps} />
 	</Suspense>
 );
 
 const OutlineTreePanel: FC<
 	{
 		onAbsorbChanges: (target: AbsorptionTarget) => void;
-		onCommitChanges: (branch: BranchOperand) => void;
 	} & PanelProps
-> = ({ onAbsorbChanges, onCommitChanges, ...panelProps }) => {
+> = ({ onAbsorbChanges, ...panelProps }) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const dispatch = useAppDispatch();
 
@@ -252,7 +249,6 @@ const OutlineTreePanel: FC<
 			<Changes
 				projectId={projectId}
 				onAbsorbChanges={onAbsorbChanges}
-				onCommit={onCommitChanges}
 				navigationIndex={navigationIndex}
 			/>
 
@@ -894,9 +890,27 @@ const CommitBranchComboboxPopup: FC = () => (
 const Changes: FC<{
 	projectId: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	onCommit: (branch: BranchOperand) => void;
 	navigationIndex: NavigationIndex;
-}> = ({ projectId, onAbsorbChanges, onCommit, navigationIndex }) => {
+}> = ({ projectId, onAbsorbChanges, navigationIndex }) => {
+	const toastManager = Toast.useToastManager();
+
+	const commitCreate = useMutation({
+		...commitCreateMutationOptions,
+		onSuccess: async (response, input, context, mutation) => {
+			await commitCreateMutationOptions.onSuccess?.(response, input, context, mutation);
+
+			if (response.rejectedChanges.length > 0)
+				toastManager.add(
+					rejectedChangesToastOptions({
+						newCommit: response.newCommit,
+						rejectedChanges: response.rejectedChanges,
+					}),
+				);
+		},
+	});
+
+	const queryClient = useQueryClient();
+
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const operand = changesSectionOperand;
@@ -931,7 +945,22 @@ const Changes: FC<{
 	const commit = () => {
 		if (!branch) return;
 
-		onCommit(branch.branch);
+		const changes = resolveDiffSpecs({
+			source: changesSectionOperand,
+			queryClient,
+			projectId,
+		});
+		if (!changes) return;
+
+		commitCreate.mutate({
+			projectId,
+			relativeTo: { type: "referenceBytes", subject: branch.branch.branchRef },
+			side: "below",
+			changes,
+			message: "",
+			dryRun: false,
+		});
+		focusPanel("outline");
 	};
 
 	const [open, setOpen] = useState(false);

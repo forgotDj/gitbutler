@@ -1,6 +1,6 @@
 import uiStyles from "#ui/ui/ui.module.css";
 import { FilesPanel } from "./FilesPanel.tsx";
-import { applyBranchMutationOptions, commitCreateMutationOptions } from "#ui/api/mutations.ts";
+import { applyBranchMutationOptions } from "#ui/api/mutations.ts";
 import {
 	absorptionPlanQueryOptions,
 	headInfoQueryOptions,
@@ -39,15 +39,12 @@ import { useParams } from "@tanstack/react-router";
 import { Match, pipe } from "effect";
 import { FC, useState } from "react";
 import { Group, Separator, useDefaultLayout } from "react-resizable-panels";
-import { branchOperand, changesSectionOperand, type BranchOperand } from "#ui/operands.ts";
+import { branchOperand, type BranchOperand } from "#ui/operands.ts";
 import { PickerDialog, type PickerDialogGroup } from "#ui/ui/PickerDialog/PickerDialog.tsx";
 import { DetailsPanel } from "./DetailsPanel.tsx";
 import styles from "./WorkspacePage.module.css";
 import type { CommandGroup } from "#ui/commands/groups.ts";
 import { OutlinePanel } from "#ui/routes/project/$id/workspace/OutlinePanel.tsx";
-import { rejectedChangesToastOptions } from "#ui/operations/rejectedChangesToastOptions.tsx";
-import { Toast } from "@base-ui/react";
-import { resolveDiffSpecs } from "#ui/operations/diff-specs.ts";
 
 declare module "@tanstack/react-hotkeys" {
 	interface HotkeyMeta {
@@ -443,42 +440,6 @@ const WorkspacePage: FC = () => {
 		focusPanel("outline");
 	};
 
-	const toastManager = Toast.useToastManager();
-
-	const commitCreate = useMutation({
-		...commitCreateMutationOptions,
-		onSuccess: async (response, input, context, mutation) => {
-			await commitCreateMutationOptions.onSuccess?.(response, input, context, mutation);
-
-			if (response.rejectedChanges.length > 0)
-				toastManager.add(
-					rejectedChangesToastOptions({
-						newCommit: response.newCommit,
-						rejectedChanges: response.rejectedChanges,
-					}),
-				);
-		},
-	});
-
-	const commitChangesToBranch = (branch: BranchOperand) => {
-		const changes = resolveDiffSpecs({
-			source: changesSectionOperand,
-			queryClient,
-			projectId,
-		});
-		if (!changes) return;
-
-		commitCreate.mutate({
-			projectId,
-			relativeTo: { type: "referenceBytes", subject: branch.branchRef },
-			side: "below",
-			changes,
-			message: "",
-			dryRun: false,
-		});
-		focusPanel("outline");
-	};
-
 	const setBranchPickerOpen = (open: boolean) => {
 		if (open) dispatch(projectActions.openBranchPicker({ projectId }));
 		else dispatch(projectActions.closePickerDialog({ projectId }));
@@ -514,7 +475,6 @@ const WorkspacePage: FC = () => {
 					className={styles.panel}
 					elementRef={(el) => el?.focus({ focusVisible: false })}
 					onAbsorbChanges={openAbsorptionDialog}
-					onCommitChanges={commitChangesToBranch}
 				/>
 				{isPanelVisible(panelsState, "files") && (
 					<>
