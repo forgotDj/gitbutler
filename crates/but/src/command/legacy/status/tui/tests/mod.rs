@@ -795,7 +795,7 @@ fn commit_file_toggle_on_commit_without_files_is_noop() {
 }
 
 #[test]
-fn commit_file_list_rub_can_escape_scope_and_esc_reenters_file_list() {
+fn commit_file_list_rub_esc_leaves_rub_and_closes_file_list() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
     env.setup_metadata(&["A", "B"]).unwrap();
 
@@ -814,9 +814,9 @@ fn commit_file_list_rub_can_escape_scope_and_esc_reenters_file_list() {
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
     tui.input_then_render(KeyCode::Esc)
-        .assert_current_line_eq(str!["┊│     94:tm A A"])
+        .assert_current_line_eq(str!["┊●   [..] add A"])
         .assert_rendered_term_svg_eq(file![
-            "snapshots/commit_file_list_rub_can_escape_scope_and_esc_reenters_file_list_final.svg"
+            "snapshots/commit_file_list_rub_esc_leaves_rub_and_closes_file_list_final.svg"
         ]);
 }
 
@@ -844,7 +844,7 @@ fn confirm_rub_keeps_commit_file_list_open() {
 }
 
 #[test]
-fn esc_in_normal_mode_keeps_global_file_list_open() {
+fn esc_in_normal_mode_closes_global_file_list() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
     env.setup_metadata(&["A", "B"]).unwrap();
 
@@ -860,14 +860,14 @@ fn esc_in_normal_mode_keeps_global_file_list_open() {
         .assert_current_line_eq(str!["┊│     [..] A A"]);
 
     tui.input_then_render(KeyCode::Esc)
-        .assert_current_line_eq(str!["┊│     94:tm A A"])
+        .assert_current_line_eq(str!["┊●   [..] add A"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/esc_in_normal_mode_closes_global_file_list_final.svg"
         ]);
 }
 
 #[test]
-fn esc_in_normal_mode_keeps_commit_file_list_open() {
+fn esc_in_normal_mode_closes_commit_file_list() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks").unwrap();
     env.setup_metadata(&["A", "B"]).unwrap();
 
@@ -880,7 +880,7 @@ fn esc_in_normal_mode_keeps_commit_file_list_open() {
         .assert_current_line_eq(str!["┊│     [..] A A"]);
 
     tui.input_then_render(KeyCode::Esc)
-        .assert_current_line_eq(str!["┊│     94:tm A A"])
+        .assert_current_line_eq(str!["┊●   [..] add A"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/esc_in_normal_mode_closes_commit_file_list_final.svg"
         ]);

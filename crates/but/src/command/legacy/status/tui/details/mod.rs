@@ -188,7 +188,6 @@ impl Details {
             | Message::CopySelection
             | Message::Quit
             | Message::EnterDetailsMode
-            | Message::LeaveDetailsMode
             | Message::Discard
             | Message::DropToBeDiscarded
             | Message::Debug(_)
@@ -204,7 +203,9 @@ impl Details {
             | Message::SetHasFocus(_)
             | Message::RegisterOutOfBandMessage(_)
             | Message::WithOneFrameDelay(_)
-            | Message::EnterNormalMode => false,
+            | Message::Back
+            | Message::UnfocusDetails
+            | Message::EnterNormalModeAfterConfirmingOperation => false,
 
             Message::MoveCursorUp
             | Message::MoveCursorDown
@@ -313,7 +314,7 @@ impl Details {
                     DetailsVisibility::Hidden => {
                         self.cursor = DetailsCursor::default();
                         self.scroll_top = 0;
-                        messages.push(Message::LeaveDetailsMode);
+                        messages.push(Message::UnfocusDetails);
                     }
                     DetailsVisibility::VisibleVertical => {
                         self.mark_dirty();

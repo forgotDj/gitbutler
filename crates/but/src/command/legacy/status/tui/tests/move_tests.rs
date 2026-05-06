@@ -162,7 +162,10 @@ fn move_branch_to_merge_base_tears_off_branch() {
     tui = tui.recreate();
     tui.render_with_messages(
         None,
-        Vec::from([Message::EnterNormalMode, Message::Reload(None)]),
+        Vec::from([
+            Message::EnterNormalModeAfterConfirmingOperation,
+            Message::Reload(None),
+        ]),
     )
     .assert_rendered_term_svg_eq(file![
         "snapshots/move_branch_to_merge_base_tears_off_branch_final.svg"

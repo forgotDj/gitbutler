@@ -410,7 +410,7 @@ impl KeyBindsBuilder<'_> {
         self.key_bind(
             "normal mode",
             press().control().code(KeyCode::Char('[')),
-            Message::EnterNormalMode,
+            Message::Back,
         )
         .hide_from_hotbar()
         .show_only_in_normal_mode_help_section()
@@ -640,7 +640,7 @@ impl KeyBindsBuilder<'_> {
     }
 
     fn back(&mut self) -> KeyBindsInModesBuilder<'_> {
-        self.key_bind("back", press().code(KeyCode::Esc), Message::EnterNormalMode)
+        self.key_bind("back", press().code(KeyCode::Esc), Message::Back)
             .hide_from_hotbar()
             .show_only_in_normal_mode_help_section()
     }
@@ -772,7 +772,7 @@ impl KeyBindsBuilder<'_> {
         self.key_bind(
             "focus status",
             press().code(KeyCode::Char('h')),
-            Message::EnterNormalMode,
+            Message::UnfocusDetails,
         )
     }
 
@@ -839,6 +839,7 @@ fn register_normal_mode_key_binds(builder: &mut KeyBindsBuilder<'_>, without_mar
     }
 
     builder.reload().register();
+    builder.back().hide_from_hotbar().register();
     builder.help().register();
     builder.quit().register();
 }
