@@ -4,7 +4,10 @@ use bstr::BString;
 use but_core::sync::RepoExclusive;
 use but_ctx::ProjectHandleOrLegacyProjectId;
 use but_hunk_assignment::{CommitMap, convert_assignments_to_diff_specs};
-use but_workspace::commit_engine;
+use but_rebase::graph_rebase::{
+    Editor, LookupStep as _,
+    mutate::{InsertSide, RelativeToRef},
+};
 use serde::Serialize;
 
 type AutoCommitEmitter = dyn Fn(&str, serde_json::Value) + Send + Sync + 'static;
@@ -136,7 +139,7 @@ pub(crate) fn auto_commit_simple(
 fn apply_commit_changes(
     project_id: Option<ProjectHandleOrLegacyProjectId>,
     repo: &gix::Repository,
-    project_data_dir: &Path,
+    _project_data_dir: &Path,
     context_lines: u32,
     llm: Option<&but_llm::LLMProvider>,
     absorption_plan: Vec<but_hunk_assignment::CommitAbsorption>,
@@ -145,6 +148,7 @@ fn apply_commit_changes(
     emitter: Option<std::sync::Arc<AutoCommitEmitter>>,
 ) -> anyhow::Result<usize> {
     let mut total_rejected = 0;
+    let ctx = but_ctx::Context::try_from(repo.clone())?;
     for absorption in absorption_plan {
         let diff_specs = convert_assignments_to_diff_specs(
             &absorption
@@ -163,22 +167,37 @@ fn apply_commit_changes(
             emitter.as_ref(),
             &diff_infos,
         )?;
-        let outcome =
-            but_workspace::legacy::commit_engine::create_commit_and_update_refs_with_project(
-                repo,
-                project_data_dir,
-                Some(stack_id),
-                commit_engine::Destination::NewCommit {
-                    message: commit_message,
-                    parent_commit_id: Some(commit_id),
-                    stack_segment: None,
-                },
+        let (new_commit, rejected_specs_len, commit_mappings) = {
+            let mut meta = ctx.meta()?;
+            let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
+            let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+            let outcome = but_workspace::commit::commit_create(
+                editor,
                 diff_specs,
+                RelativeToRef::Commit(commit_id),
+                InsertSide::Above,
+                &commit_message,
                 context_lines,
-                perm,
             )?;
+            let new_commit = outcome
+                .commit_selector
+                .map(|selector| outcome.rebase.lookup_pick(selector))
+                .transpose()?;
+            let commit_mappings = if new_commit.is_some() {
+                outcome
+                    .rebase
+                    .materialize()?
+                    .history
+                    .commit_mappings()
+                    .into_iter()
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            (new_commit, outcome.rejected_specs.len(), commit_mappings)
+        };
 
-        if let Some(new_commit_id) = outcome.new_commit
+        if let Some(new_commit_id) = new_commit
             && let Some(project_id) = project_id.as_ref()
             && let Some(emitter) = &emitter
         {
@@ -189,13 +208,11 @@ fn apply_commit_changes(
             emitter(&event_name, event.emit_payload());
         }
 
-        if let Some(rebase_output) = &outcome.rebase_output {
-            for mapping in &rebase_output.commit_mapping {
-                commit_map.add_mapping(mapping.1, mapping.2);
-            }
+        for (old, new) in commit_mappings {
+            commit_map.add_mapping(old, new);
         }
 
-        total_rejected += outcome.rejected_specs.len();
+        total_rejected += rejected_specs_len;
     }
 
     Ok(total_rejected)

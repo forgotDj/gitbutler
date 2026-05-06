@@ -107,7 +107,8 @@ fn handle_amend(
     change_id: &ChangeId,
     context_lines: u32,
 ) -> anyhow::Result<()> {
-    let changes: Vec<DiffSpec> = assignments.into_iter().map(|a| a.into()).collect();
+    let changes: Vec<DiffSpec> =
+        but_workspace::flatten_diff_specs(assignments.into_iter().map(DiffSpec::from));
     let mut commit_id: Option<gix::ObjectId> = None;
     'outer: for commit in ws.commits() {
         let commit_change_id = commit.attach(repo)?.headers().and_then(|hdr| hdr.change_id);
