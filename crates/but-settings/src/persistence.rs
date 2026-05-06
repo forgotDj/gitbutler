@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde_json::json;
 use serde_json_lenient::to_string_pretty;
 
@@ -44,9 +44,22 @@ impl AppSettings {
         }
 
         // merge customizations from disk into the defaults to get a complete set of settings.
-        let customizations: serde_json::Value =
-            serde_json_lenient::from_str(&std::fs::read_to_string(config_path)?)?;
-        let mut settings: serde_json::Value = serde_json_lenient::from_str(DEFAULTS)?;
+        let config_file_contents = std::fs::read_to_string(config_path).with_context(|| {
+            format!(
+                "failed to read settings file at '{}'",
+                config_path.display()
+            )
+        })?;
+        let customizations = serde_json_lenient::from_str::<serde_json::Value>(
+            &config_file_contents,
+        )
+        .with_context(|| {
+            format!(
+                "failed to parse settings file at '{}' as JSON",
+                config_path.display()
+            )
+        })?;
+        let mut settings = serde_json_lenient::from_str::<serde_json::Value>(DEFAULTS)?;
 
         merge_json_value(customizations, &mut settings);
         if let Some(extra) = customization {
