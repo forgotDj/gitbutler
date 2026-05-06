@@ -1801,7 +1801,7 @@ export type StackDetails = {
 };
 
 /**
- * Represents a lightweight version of a [`Stack`] for listing.
+ * Represents a lightweight version of a [`gitbutler_stack::Stack`] for listing.
  * NOTE: this is a UI type mostly because it's still modeled after the legacy stack with StackId, something that doesn't exist anymore.
  */
 export type StackEntry = {

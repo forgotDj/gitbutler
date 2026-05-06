@@ -1,7 +1,6 @@
 use anyhow::Context as _;
 use bstr::{BStr, BString, ByteSlice};
 use but_core::ref_metadata::StackId;
-use gitbutler_stack::Stack;
 use serde::Serialize;
 
 /// The information about the branch inside a stack
@@ -44,7 +43,7 @@ impl StackHeadInfo {
 #[cfg(feature = "export-schema")]
 but_schemars::register_sdk_type!(StackHeadInfo);
 
-/// Represents a lightweight version of a [`Stack`] for listing.
+/// Represents a lightweight version of a [`gitbutler_stack::Stack`] for listing.
 /// NOTE: this is a UI type mostly because it's still modeled after the legacy stack with StackId, something that doesn't exist anymore.
 #[derive(Debug, Clone, Serialize)]
 #[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
@@ -181,18 +180,5 @@ impl From<StackEntryNoOpt> for StackEntry {
             order,
             is_checked_out,
         }
-    }
-}
-
-impl StackEntryNoOpt {
-    pub(crate) fn try_new(repo: &gix::Repository, stack: &Stack) -> anyhow::Result<Self> {
-        let ctx = but_ctx::Context::try_from(repo.clone())?;
-        Ok(StackEntryNoOpt {
-            id: stack.id,
-            heads: crate::legacy::stacks::stack_heads_info(stack, repo)?,
-            tip: stack.head_oid(&ctx)?,
-            order: Some(stack.order),
-            is_checked_out: false,
-        })
     }
 }

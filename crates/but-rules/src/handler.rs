@@ -1,11 +1,11 @@
-use std::{path::Path, str::FromStr};
+use std::str::FromStr;
 
 use anyhow::ensure;
 use but_core::{ChangeId, DiffSpec, ref_metadata::StackId, sync::RepoExclusive};
 use but_ctx::Context;
 use but_db::HunkAssignmentsHandleMut;
 use but_hunk_assignment::HunkAssignment;
-use but_workspace::legacy::commit_engine;
+use but_rebase::graph_rebase::Editor;
 use itertools::Itertools;
 
 use crate::{Filter, StackTarget};
@@ -39,7 +39,6 @@ pub fn process_workspace_rules(
         return Ok(updates);
     }
 
-    let project_data_dir = ctx.project_data_dir();
     let context_lines = ctx.settings.context_lines;
     let mut meta = ctx.meta()?;
     let (repo, mut ws, mut db) = ctx.workspace_mut_and_db_mut_with_perm(perm)?;
@@ -81,16 +80,13 @@ pub fn process_workspace_rules(
             }
             super::Action::Explicit(super::Operation::Amend { change_id }) => {
                 let assignments = matching(assignments, rule.filters.clone());
-                handle_amend(
-                    &project_data_dir,
-                    &repo,
-                    new_ws.as_ref().unwrap_or(&ws),
-                    assignments,
-                    &change_id,
-                    perm,
-                    context_lines,
-                )
-                .unwrap_or_default();
+                let ws = if let Some(new_ws) = new_ws.as_mut() {
+                    new_ws
+                } else {
+                    &mut ws
+                };
+                handle_amend(&repo, ws, &mut meta, assignments, &change_id, context_lines)
+                    .unwrap_or_default();
             }
             _ => continue,
         };
@@ -104,15 +100,15 @@ pub fn process_workspace_rules(
 }
 
 fn handle_amend(
-    project_data_dir: &Path,
     repo: &gix::Repository,
-    ws: &but_graph::projection::Workspace,
+    ws: &mut but_graph::projection::Workspace,
+    meta: &mut impl but_core::RefMetadata,
     assignments: Vec<HunkAssignment>,
     change_id: &ChangeId,
-    perm: &mut RepoExclusive,
     context_lines: u32,
 ) -> anyhow::Result<()> {
-    let changes: Vec<DiffSpec> = assignments.into_iter().map(|a| a.into()).collect();
+    let changes: Vec<DiffSpec> =
+        but_workspace::flatten_diff_specs(assignments.into_iter().map(DiffSpec::from));
     let mut commit_id: Option<gix::ObjectId> = None;
     'outer: for commit in ws.commits() {
         let commit_change_id = commit.attach(repo)?.headers().and_then(|hdr| hdr.change_id);
@@ -126,19 +122,15 @@ fn handle_amend(
         anyhow::anyhow!("No commit with Change-Id {change_id} found in the current workspace")
     })?;
 
-    commit_engine::create_commit_and_update_refs_with_project(
-        repo,
-        project_data_dir,
-        None,
-        but_workspace::commit_engine::Destination::AmendCommit {
-            commit_id,
-            // TODO: Expose this in the UI for 'edit message' functionality.
-            new_message: None,
-        },
-        changes,
-        context_lines,
-        perm,
-    )?;
+    let editor = Editor::create(ws, meta, repo)?;
+    let outcome = but_workspace::commit::commit_amend(editor, commit_id, changes, context_lines)?;
+    if !outcome.rejected_specs.is_empty() {
+        tracing::warn!(
+            ?outcome.rejected_specs,
+            "Failed to commit at least one hunk"
+        );
+    }
+    outcome.rebase.materialize()?;
     Ok(())
 }
 

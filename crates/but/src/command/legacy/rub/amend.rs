@@ -1,7 +1,7 @@
-use but_core::{DiffSpec, ref_metadata::StackId};
+use but_core::DiffSpec;
 use but_ctx::{Context, access::RepoExclusive};
 use but_hunk_assignment::HunkAssignment;
-use but_workspace::commit_engine::{self, CreateCommitOutcome};
+use but_rebase::graph_rebase::{Editor, LookupStep as _};
 use gitbutler_branch_actions::update_workspace_commit;
 use gix::ObjectId;
 use nonempty::NonEmpty;
@@ -19,20 +19,16 @@ pub(crate) fn uncommitted_to_commit_with_perm(
     out: &mut OutputChannel,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<()> {
-    let first_hunk_assignment = hunk_assignments.first();
-    let stack_id = first_hunk_assignment.stack_id;
-
     let diff_specs: Vec<DiffSpec> = hunk_assignments
         .into_iter()
         .map(|assignment| assignment.to_owned().into())
         .collect();
 
-    let outcome = amend_diff_specs(ctx, diff_specs, stack_id, oid, perm)?;
+    let new_commit = amend_diff_specs(ctx, diff_specs, oid, perm)?;
     update_workspace_commit(ctx, false)?;
     if let Some(out) = out.for_human() {
         let repo = ctx.repo.get()?;
-        let new_commit = outcome
-            .new_commit
+        let new_commit = new_commit
             .map(|c| {
                 let short = shorten_object_id(&repo, c);
                 let (lead, rest) = split_short_id(&short, 2);
@@ -44,7 +40,7 @@ pub(crate) fn uncommitted_to_commit_with_perm(
     } else if let Some(out) = out.for_json() {
         out.write_value(serde_json::json!({
             "ok": true,
-            "new_commit_id": outcome.new_commit.map(|c| c.to_string()),
+            "new_commit_id": new_commit.map(|c| c.to_string()),
         }))?;
     }
     Ok(())
@@ -53,20 +49,28 @@ pub(crate) fn uncommitted_to_commit_with_perm(
 fn amend_diff_specs(
     ctx: &mut Context,
     diff_specs: Vec<DiffSpec>,
-    stack_id: Option<StackId>,
     oid: ObjectId,
     perm: &mut RepoExclusive,
-) -> anyhow::Result<CreateCommitOutcome> {
-    but_workspace::legacy::commit_engine::create_commit_and_update_refs_with_project(
-        &*ctx.repo.get()?,
-        &ctx.project_data_dir(),
-        stack_id,
-        commit_engine::Destination::AmendCommit {
-            commit_id: oid,
-            new_message: None,
-        },
+) -> anyhow::Result<Option<ObjectId>> {
+    let mut meta = ctx.meta()?;
+    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
+    let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+    let outcome = but_workspace::commit::commit_amend(
+        editor,
+        oid,
         but_workspace::flatten_diff_specs(diff_specs),
         ctx.settings.context_lines,
-        perm,
-    )
+    )?;
+    if !outcome.rejected_specs.is_empty() {
+        tracing::warn!(
+            ?outcome.rejected_specs,
+            "Failed to commit at least one hunk"
+        );
+    }
+    let new_commit = outcome
+        .commit_selector
+        .map(|selector| outcome.rebase.lookup_pick(selector))
+        .transpose()?;
+    outcome.rebase.materialize()?;
+    Ok(new_commit)
 }

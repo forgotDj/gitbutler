@@ -9,7 +9,6 @@ use but_ctx::Context;
 use gitbutler_stack::VirtualBranchesHandle;
 use serde::{Deserialize, Serialize};
 
-pub mod commit_engine;
 pub mod head;
 mod integrated;
 mod stacks;
