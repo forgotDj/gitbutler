@@ -82,14 +82,15 @@ pub fn merge_worktree_changes_into_destination_or_keep_snapshot(
             )
         }
         let mut checkout_deletions_lut = super::tree::Lut::default();
-        let mut checkout_writes_tree_entries = false;
+        let mut checkout_writes_lut = super::tree::Lut::default();
         for (kind, path) in files_to_checkout {
             if matches!(kind, ChangeKind::Deletion) {
                 checkout_deletions_lut.track_file(path.as_ref());
             } else {
-                checkout_writes_tree_entries = true;
+                checkout_writes_lut.track_file(path.as_ref());
             }
         }
+        let checkout_writes_tree_entries = !checkout_writes_lut.nodes_is_empty();
         let destination_tree = checkout_writes_tree_entries
             .then(|| destination_tree_id.attach(repo).object()?.peel_to_tree())
             .transpose()?;
@@ -121,33 +122,70 @@ pub fn merge_worktree_changes_into_destination_or_keep_snapshot(
                         wt_change.path.as_ref(),
                         &mut checkout_deletion_intersections,
                     );
-                    let destination_entry_kind = destination_tree
-                        .as_ref()
-                        .map(|tree| {
-                            tree.lookup_entry(
-                                super::tree::to_components(wt_change.path.as_ref())
-                                    .map(ToOwned::to_owned),
-                            )
-                            .map(|entry| entry.map(|entry| entry.mode().kind()))
-                        })
-                        .transpose()?
-                        .flatten();
-                    let mut worktree_content_intersections = BTreeSet::new();
-                    change_lut.get_intersecting(
+                    let mut checkout_write_intersections = BTreeSet::new();
+                    checkout_writes_lut.get_intersecting(
                         wt_change.path.as_ref(),
-                        &mut worktree_content_intersections,
+                        &mut checkout_write_intersections,
                     );
-                    let destination_needs_checkout = match destination_entry_kind {
-                        Some(gix::object::tree::EntryKind::Tree) => {
-                            !worktree_content_intersections.is_empty()
-                        }
-                        Some(_) => true,
-                        None => false,
+
+                    // Look up the destination entry kind only when at least one
+                    // intersection set is non-empty — otherwise we already know
+                    // no pathspec will be added.
+                    let destination_entry_kind = if !checkout_deletion_intersections.is_empty()
+                        || !checkout_write_intersections.is_empty()
+                    {
+                        destination_tree
+                            .as_ref()
+                            .map(|tree| {
+                                tree.lookup_entry(
+                                    super::tree::to_components(wt_change.path.as_ref())
+                                        .map(ToOwned::to_owned),
+                                )
+                                .map(|entry| entry.map(|entry| entry.mode().kind()))
+                            })
+                            .transpose()?
+                            .flatten()
+                    } else {
+                        None
                     };
-                    // Add an explicit pathspec for deleted worktree paths when it either constrains
-                    // a checkout deletion, restores a file that still exists in the destination, or
-                    // checks out a destination subtree with preserved worktree content underneath.
-                    if !checkout_deletion_intersections.is_empty() || destination_needs_checkout {
+
+                    // Only consider restoring a worktree-deleted file from the destination
+                    // tree when the checkout would actually write to that path (or a path
+                    // underneath it). Without this guard, *every* uncommitted deletion whose
+                    // file still exists in the destination tree would be unconditionally
+                    // restored, even if the checkout doesn't touch that path at all.
+                    let destination_needs_checkout = if checkout_write_intersections.is_empty() {
+                        false
+                    } else {
+                        match destination_entry_kind {
+                            Some(gix::object::tree::EntryKind::Tree) => {
+                                let mut worktree_content_intersections = BTreeSet::new();
+                                change_lut.get_intersecting(
+                                    wt_change.path.as_ref(),
+                                    &mut worktree_content_intersections,
+                                );
+                                !worktree_content_intersections.is_empty()
+                            }
+                            Some(_) => true,
+                            None => false,
+                        }
+                    };
+
+                    // Add an explicit pathspec for deleted worktree paths when it either
+                    // constrains a checkout deletion or restores a file from the destination.
+                    //
+                    // When the destination entry is a tree (directory), we must NOT add the
+                    // pathspec: `git2` with `disable_pathspec_match` treats it as a literal
+                    // blob path, which can trigger a "null OID" error when it encounters a
+                    // tree instead of a blob. The checkout of files *under* that directory
+                    // is already covered by the non-deletion pathspecs in `safe_checkout`.
+                    let is_destination_tree = matches!(
+                        destination_entry_kind,
+                        Some(gix::object::tree::EntryKind::Tree)
+                    );
+                    if (!checkout_deletion_intersections.is_empty() && !is_destination_tree)
+                        || destination_needs_checkout
+                    {
                         checkout_opts.path(wt_change.path.as_bytes());
                         added_deleted_worktree_pathspec = true;
                     }
