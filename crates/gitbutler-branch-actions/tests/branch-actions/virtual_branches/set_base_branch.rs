@@ -243,3 +243,42 @@ mod go_back_to_workspace {
         assert_eq!(base_two, base);
     }
 }
+
+mod behind_count {
+    use super::*;
+
+    #[test]
+    fn behind_reflects_farthest_behind_stack() {
+        let Test { ctx, .. } = &mut Test::from_fixture("scenario/stacks-with-different-bases.sh");
+
+        // HEAD is on branch A (forks from base, 3 behind origin/master).
+        // set_base_branch picks up A as a workspace stack automatically.
+        let mut guard = ctx.exclusive_worktree_access();
+        gitbutler_branch_actions::set_base_branch(
+            ctx,
+            &"refs/remotes/origin/master".parse().unwrap(),
+            guard.write_permission(),
+        )
+        .unwrap();
+        drop(guard);
+
+        // Apply C (forks from M2, 1 behind).
+        let mut guard = ctx.exclusive_worktree_access();
+        gitbutler_branch_actions::create_virtual_branch_from_branch_with_perm(
+            ctx,
+            &"refs/heads/C".parse().unwrap(),
+            None,
+            guard.write_permission(),
+        )
+        .unwrap();
+        drop(guard);
+
+        // Stack A is farthest behind (3 commits behind origin/master).
+        // Stack C is 1 commit behind. The behind count should reflect the max.
+        let base = gitbutler_branch_actions::base::get_base_branch_data(ctx).unwrap();
+        assert_eq!(
+            base.behind, 3,
+            "behind count should match the farthest-behind stack (A, which is 3 commits behind)"
+        );
+    }
+}
