@@ -17,15 +17,10 @@ pub use head::{
     merge_worktree_with_workspace, remerged_workspace_commit_v2, remerged_workspace_tree_v2,
 };
 
-pub mod tree_manipulation;
 // TODO: _v3 versions are specifically for the UI, so import them into `ui` instead.
 #[expect(deprecated, reason = "re-exports stacks_v3 and stack_details_v3")]
 pub use stacks::{
     local_and_remote_commits, stack_branches, stack_details_v3, stack_heads_info, stacks_v3,
-};
-pub use tree_manipulation::{
-    MoveChangesResult,
-    split_branch::{split_branch, split_into_dependent_branch},
 };
 
 /// Various types for the frontend.
