@@ -43,6 +43,14 @@ impl Backstack {
         self.stack.pop_front()
     }
 
+    pub(super) fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(BackstackEntry) -> bool,
+    {
+        self.stack.retain(|entry| f(*entry));
+    }
+
+    #[expect(dead_code)]
     pub(super) fn clear(&mut self) {
         self.stack.clear();
     }
