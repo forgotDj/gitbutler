@@ -41,9 +41,9 @@ import { Group, Separator, useDefaultLayout } from "react-resizable-panels";
 import { branchOperand, changesSectionOperand, type BranchOperand } from "#ui/operands.ts";
 import { PickerDialog, type PickerDialogGroup } from "#ui/ui/PickerDialog/PickerDialog.tsx";
 import { DetailsPanel } from "./DetailsPanel.tsx";
-import { OutlinePanel } from "./OutlinePanel.tsx";
 import styles from "./WorkspacePage.module.css";
 import type { CommandGroup } from "#ui/commands/groups.ts";
+import { OutlinePanel } from "#ui/routes/project/$id/workspace/OutlinePanel.tsx";
 
 declare module "@tanstack/react-hotkeys" {
 	interface HotkeyMeta {
@@ -175,8 +175,9 @@ const BranchPicker: FC<{
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onSelectBranch: (branch: BranchOperand) => void;
-	stacks: Array<Stack>;
-}> = ({ open, onOpenChange, onSelectBranch, stacks }) => {
+}> = ({ open, onOpenChange, onSelectBranch }) => {
+	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 	const selectBranch = (option: BranchPickerOption) => {
 		onOpenChange(false);
 		onSelectBranch(option.branch);
@@ -194,7 +195,7 @@ const BranchPicker: FC<{
 			items={[
 				{
 					value: "Branches",
-					items: stacks.flatMap(stackToBranchPickerOptions),
+					items: headInfo.stacks.flatMap(stackToBranchPickerOptions),
 				},
 			]}
 			open={open}
@@ -278,7 +279,7 @@ const ApplyBranchPicker: FC<{
 	);
 };
 
-const TopBarActions: FC<{ focusPanel: (panel: PanelType) => void }> = ({ focusPanel }) => {
+const TopBarActions: FC = () => {
 	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
@@ -428,9 +429,6 @@ const WorkspacePage: FC = () => {
 		panelIds: panelsState.visiblePanels,
 	});
 
-	// TODO: handle project not found error. or only run when project is not null? waterfall.
-	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-
 	const selectBranch = (branch: BranchOperand) => {
 		dispatch(
 			projectActions.selectOutline({
@@ -475,7 +473,7 @@ const WorkspacePage: FC = () => {
 	return (
 		<>
 			<TopBarActionsPortal>
-				<TopBarActions focusPanel={focusPanel} />
+				<TopBarActions />
 			</TopBarActionsPortal>
 
 			<ShortcutsBarPortal>
@@ -491,7 +489,6 @@ const WorkspacePage: FC = () => {
 					tabIndex={0}
 					className={styles.panel}
 					elementRef={(el) => el?.focus({ focusVisible: false })}
-					focusPanel={focusPanel}
 					onAbsorbChanges={openAbsorptionDialog}
 				/>
 				{isPanelVisible(panelsState, "files") && (
@@ -504,7 +501,6 @@ const WorkspacePage: FC = () => {
 							groupResizeBehavior="preserve-pixel-size"
 							tabIndex={0}
 							className={styles.panel}
-							focusPanel={focusPanel}
 							onAbsorbChanges={openAbsorptionDialog}
 						/>
 					</>
@@ -517,7 +513,6 @@ const WorkspacePage: FC = () => {
 							minSize={400}
 							tabIndex={0}
 							className={styles.panel}
-							focusPanel={focusPanel}
 						/>
 					</>
 				)}
@@ -548,7 +543,6 @@ const WorkspacePage: FC = () => {
 								Match.when("commitChanges", () => commitChangesToBranch),
 								Match.exhaustive,
 							)}
-							stacks={headInfo.stacks}
 						/>
 					),
 					CommandPalette: () => <CommandPalette open onOpenChange={setCommandPaletteOpen} />,

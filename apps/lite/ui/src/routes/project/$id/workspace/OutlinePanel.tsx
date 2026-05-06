@@ -27,12 +27,8 @@ import {
 	type CommitOperand,
 	type Operand,
 } from "#ui/operands.ts";
-import { filterNavigationIndexForOperationMode } from "#ui/outline/mode.ts";
-import {
-	Panel as PanelType,
-	useFocusedProjectPanel,
-	useNavigationIndexHotkeys,
-} from "#ui/panels.ts";
+import { filterNavigationIndexForOutlineMode } from "#ui/outline/mode.ts";
+import { focusPanel, useFocusedProjectPanel, useNavigationIndexHotkeys } from "#ui/panels.ts";
 import {
 	projectActions,
 	selectProjectHighlightedCommitIds,
@@ -40,7 +36,6 @@ import {
 	selectProjectOutlineModeState,
 	selectProjectSelectionOutline,
 } from "#ui/projects/state.ts";
-import { CommitLabel } from "#ui/routes/project/$id/CommitLabel.tsx";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import { OperationSourceLabel } from "#ui/routes/project/$id/workspace/OperationSourceLabel.tsx";
 import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
@@ -73,6 +68,7 @@ import {
 	ComponentProps,
 	FC,
 	Fragment,
+	Suspense,
 	useEffect,
 	useOptimistic,
 	useRef,
@@ -85,6 +81,7 @@ import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.ts
 import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
 import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
+import { defaultOutlineSelection } from "#ui/projects/workspace/state.ts";
 
 const sections = (headInfo: RefInfo): NonEmptyArray<Section> => {
 	const changesSection: Section = {
@@ -134,7 +131,7 @@ const sections = (headInfo: RefInfo): NonEmptyArray<Section> => {
 	];
 };
 
-const useNavigationIndex = (projectId: string, focusPanel: (panel: PanelType) => void) => {
+const useNavigationIndex = (projectId: string) => {
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
 
 	const dispatch = useAppDispatch();
@@ -143,6 +140,8 @@ const useNavigationIndex = (projectId: string, focusPanel: (panel: PanelType) =>
 
 	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
 
+	// Reset selection when it's no longer part of the workspace.
+	//
 	// React allows state updates on render, but not for external stores.
 	// https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
 	useEffect(() => {
@@ -150,21 +149,17 @@ const useNavigationIndex = (projectId: string, focusPanel: (panel: PanelType) =>
 			dispatch(
 				projectActions.selectOutline({
 					projectId,
-					selection: changesSectionOperand,
+					selection: defaultOutlineSelection,
 				}),
 			);
 	}, [navigationIndexUnfiltered, selection, projectId, dispatch]);
 
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
-	const operationMode = useAppSelector((state) =>
-		selectProjectOperationModeState(state, projectId),
-	);
 
-	const navigationIndex = filterNavigationIndexForOperationMode({
+	const navigationIndex = filterNavigationIndexForOutlineMode({
 		navigationIndex: navigationIndexUnfiltered,
 		selection,
 		outlineMode,
-		operationMode,
 	});
 
 	const focusedPanel = useFocusedProjectPanel(projectId);
@@ -178,7 +173,6 @@ const useNavigationIndex = (projectId: string, focusPanel: (panel: PanelType) =>
 		projectId,
 		group: "Outline",
 		panel: "outline",
-		focusPanel,
 		select,
 		selection,
 	});
@@ -188,14 +182,23 @@ const useNavigationIndex = (projectId: string, focusPanel: (panel: PanelType) =>
 
 export const OutlinePanel: FC<
 	{
-		focusPanel: (panel: PanelType) => void;
 		onAbsorbChanges: (target: AbsorptionTarget) => void;
 	} & PanelProps
-> = ({ focusPanel, onAbsorbChanges, ...panelProps }) => {
+> = ({ onAbsorbChanges, ...panelProps }) => (
+	<Suspense fallback={<Panel {...panelProps}>Loading outline…</Panel>}>
+		<OutlineTreePanel onAbsorbChanges={onAbsorbChanges} {...panelProps} />
+	</Suspense>
+);
+
+const OutlineTreePanel: FC<
+	{
+		onAbsorbChanges: (target: AbsorptionTarget) => void;
+	} & PanelProps
+> = ({ onAbsorbChanges, ...panelProps }) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const dispatch = useAppDispatch();
 
-	const navigationIndex = useNavigationIndex(projectId, focusPanel);
+	const navigationIndex = useNavigationIndex(projectId);
 
 	const selection = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
 
@@ -253,7 +256,6 @@ export const OutlinePanel: FC<
 					projectId={projectId}
 					stack={stack}
 					navigationIndex={navigationIndex}
-					focusPanel={focusPanel}
 				/>
 			))}
 
@@ -431,9 +433,8 @@ const CommitRow: FC<
 		projectId: string;
 		stackId: string;
 		navigationIndex: NavigationIndex;
-		focusPanel: (panel: PanelType) => void;
 	} & ComponentProps<"div">
-> = ({ commit, projectId, stackId, navigationIndex, focusPanel, ...restProps }) => {
+> = ({ commit, projectId, stackId, navigationIndex, ...restProps }) => {
 	const isHighlighted = useAppSelector((state) =>
 		selectProjectHighlightedCommitIds(state, projectId).includes(commit.id),
 	);
@@ -449,13 +450,7 @@ const CommitRow: FC<
 	const isRewording =
 		isSelected &&
 		outlineMode._tag === "RewordCommit" &&
-		operandEquals(
-			operand,
-			commitOperand({
-				stackId: outlineMode.stackId,
-				commitId: outlineMode.commitId,
-			}),
-		);
+		operandEquals(operand, commitOperand(outlineMode.operand));
 	const [optimisticMessage, setOptimisticMessage] = useOptimistic(
 		commit.message,
 		(_currentMessage, nextMessage: string) => nextMessage,
@@ -712,7 +707,8 @@ const CommitRow: FC<
 								: undefined
 						}
 					>
-						<CommitLabel commit={commitWithOptimisticMessage} />
+						{commitTitle(commitWithOptimisticMessage.message)}
+						{commitWithOptimisticMessage.hasConflicts && " ⚠️"}
 					</div>
 					{outlineMode._tag === "Default" && (
 						<WorkspaceItemRowToolbar aria-label="Commit actions">
@@ -739,8 +735,7 @@ const CommitC: FC<{
 	projectId: string;
 	stackId: string;
 	navigationIndex: NavigationIndex;
-	focusPanel: (panel: PanelType) => void;
-}> = ({ commit, projectId, stackId, navigationIndex, focusPanel }) => {
+}> = ({ commit, projectId, stackId, navigationIndex }) => {
 	const operand = commitOperand({ stackId, commitId: commit.id });
 
 	return (
@@ -755,7 +750,6 @@ const CommitC: FC<{
 				projectId={projectId}
 				stackId={stackId}
 				navigationIndex={navigationIndex}
-				focusPanel={focusPanel}
 			/>
 		</TreeItem>
 	);
@@ -967,9 +961,8 @@ const BranchRow: FC<
 		branchRef: Array<number>;
 		stackId: string;
 		navigationIndex: NavigationIndex;
-		focusPanel: (panel: PanelType) => void;
 	} & ComponentProps<"div">
-> = ({ projectId, branchName, branchRef, stackId, navigationIndex, focusPanel, ...restProps }) => {
+> = ({ projectId, branchName, branchRef, stackId, navigationIndex, ...restProps }) => {
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 	const dispatch = useAppDispatch();
 	const branchOperandV: BranchOperand = {
@@ -979,13 +972,7 @@ const BranchRow: FC<
 	const operand = branchOperand(branchOperandV);
 	const isRenaming =
 		outlineMode._tag === "RenameBranch" &&
-		operandEquals(
-			operand,
-			branchOperand({
-				stackId: outlineMode.stackId,
-				branchRef: outlineMode.branchRef,
-			}),
-		);
+		operandEquals(operand, branchOperand(outlineMode.operand));
 	const [optimisticBranchName, setOptimisticBranchName] = useOptimistic(
 		branchName,
 		(_currentBranchName, nextBranchName: string) => nextBranchName,
@@ -1197,8 +1184,7 @@ const BranchSegment: FC<{
 	segment: Segment;
 	refName: BranchReference;
 	stackId: string;
-	focusPanel: (panel: PanelType) => void;
-}> = ({ navigationIndex, projectId, segment, refName, stackId, focusPanel }) => {
+}> = ({ navigationIndex, projectId, segment, refName, stackId }) => {
 	const operand = branchOperand({ stackId, branchRef: refName.fullNameBytes });
 
 	return (
@@ -1219,7 +1205,6 @@ const BranchSegment: FC<{
 						branchRef={refName.fullNameBytes}
 						stackId={stackId}
 						navigationIndex={navigationIndex}
-						focusPanel={focusPanel}
 					/>
 				}
 			/>
@@ -1235,7 +1220,6 @@ const BranchSegment: FC<{
 							projectId={projectId}
 							stackId={stackId}
 							navigationIndex={navigationIndex}
-							focusPanel={focusPanel}
 						/>
 					))}
 				</div>
@@ -1249,8 +1233,7 @@ const BranchlessSegment: FC<{
 	projectId: string;
 	segment: Segment;
 	stackId: string;
-	focusPanel: (panel: PanelType) => void;
-}> = ({ navigationIndex, projectId, segment, stackId, focusPanel }) => (
+}> = ({ navigationIndex, projectId, segment, stackId }) => (
 	<div className={classes(workspaceItemRowStyles.section, styles.segment)}>
 		{segment.commits.map((commit) => (
 			<CommitC
@@ -1259,7 +1242,6 @@ const BranchlessSegment: FC<{
 				projectId={projectId}
 				stackId={stackId}
 				navigationIndex={navigationIndex}
-				focusPanel={focusPanel}
 			/>
 		))}
 	</div>
@@ -1269,8 +1251,7 @@ const StackC: FC<{
 	projectId: string;
 	stack: Stack;
 	navigationIndex: NavigationIndex;
-	focusPanel: (panel: PanelType) => void;
-}> = ({ projectId, stack, navigationIndex, focusPanel }) => {
+}> = ({ projectId, stack, navigationIndex }) => {
 	// From Caleb:
 	// > There shouldn't be a way within GitButler to end up with a stack without a
 	//   StackId. Users can disrupt our matching against our metadata by playing
@@ -1303,7 +1284,6 @@ const StackC: FC<{
 							segment={segment}
 							refName={segment.refName}
 							stackId={stackId}
-							focusPanel={focusPanel}
 						/>
 					) : (
 						// A segment should always either have a branch reference or at
@@ -1315,7 +1295,6 @@ const StackC: FC<{
 								projectId={projectId}
 								segment={segment}
 								stackId={stackId}
-								focusPanel={focusPanel}
 							/>
 						)
 					),

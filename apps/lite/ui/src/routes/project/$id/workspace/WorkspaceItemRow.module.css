@@ -34,11 +34,6 @@
 	color: var(--color-text);
 }
 
-.section {
-	border-radius: 8px;
-	background-color: var(--color-section-selected-bg);
-}
-
 .itemRowToolbar {
 	display: none;
 	align-items: stretch;
@@ -82,6 +77,11 @@
 	line-height: var(--row-line-height);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.section {
+	border-radius: 8px;
+	background-color: var(--color-section-selected-bg);
 }
 
 .sectionLabel {

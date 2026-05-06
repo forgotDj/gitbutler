@@ -1,5 +1,12 @@
 import { Match } from "effect";
-import { branchOperand, commitOperand, operandEquals, type Operand } from "#ui/operands.ts";
+import {
+	BranchOperand,
+	branchOperand,
+	CommitOperand,
+	commitOperand,
+	operandEquals,
+	type Operand,
+} from "#ui/operands.ts";
 import { getOperation, getOperations, OperationType } from "#ui/operations/operation.ts";
 import { filterNavigationIndex, NavigationIndex } from "#ui/workspace/navigation-index.ts";
 
@@ -46,9 +53,9 @@ export const dragAndDropOperationMode = ({
 });
 
 /** @public */
-export type RewordCommitOutlineMode = { stackId: string; commitId: string };
+export type RewordCommitOutlineMode = { operand: CommitOperand };
 /** @public */
-export type RenameBranchOutlineMode = { stackId: string; branchRef: Array<number> };
+export type RenameBranchOutlineMode = { operand: BranchOperand };
 export type OutlineMode =
 	| { _tag: "Default" }
 	| ({ _tag: "RewordCommit" } & RewordCommitOutlineMode)
@@ -67,23 +74,15 @@ export const operationOutlineMode = (value: OperationMode): OutlineMode => ({
 });
 
 /** @public */
-export const rewordCommitOutlineMode = ({
-	stackId,
-	commitId,
-}: RewordCommitOutlineMode): OutlineMode => ({
+export const rewordCommitOutlineMode = ({ operand }: RewordCommitOutlineMode): OutlineMode => ({
 	_tag: "RewordCommit",
-	stackId,
-	commitId,
+	operand,
 });
 
 /** @public */
-export const renameBranchOutlineMode = ({
-	stackId,
-	branchRef,
-}: RenameBranchOutlineMode): OutlineMode => ({
+export const renameBranchOutlineMode = ({ operand }: RenameBranchOutlineMode): OutlineMode => ({
 	_tag: "RenameBranch",
-	stackId,
-	branchRef,
+	operand,
 });
 
 export const getOperationMode = (mode: OutlineMode): OperationMode | null =>
@@ -117,22 +116,8 @@ export const isValidOutlineModeForSelection = ({
 		Match.tagsExhaustive({
 			Default: () => true,
 			Operation: () => true,
-			RewordCommit: (mode) =>
-				operandEquals(
-					selection,
-					commitOperand({
-						stackId: mode.stackId,
-						commitId: mode.commitId,
-					}),
-				),
-			RenameBranch: (mode) =>
-				operandEquals(
-					selection,
-					branchOperand({
-						stackId: mode.stackId,
-						branchRef: mode.branchRef,
-					}),
-				),
+			RewordCommit: (mode) => operandEquals(selection, commitOperand(mode.operand)),
+			RenameBranch: (mode) => operandEquals(selection, branchOperand(mode.operand)),
 		}),
 	);
 
@@ -141,76 +126,64 @@ const hasAnyOperation = (source: Operand, target: Operand) => {
 	return !!operations.rub || !!operations.moveAbove || !!operations.moveBelow;
 };
 
-const includeOperandForOutlineMode = ({
+const operationModeHasOperation = ({
 	mode,
 	operand,
 }: {
-	mode: OutlineMode;
+	mode: OperationMode;
 	operand: Operand;
 }): boolean =>
 	Match.value(mode).pipe(
 		Match.tagsExhaustive({
-			Default: () => true,
-			Operation: ({ value }) =>
-				Match.value(value).pipe(
-					Match.tagsExhaustive({
-						DragAndDrop: ({ source }) => hasAnyOperation(source, operand),
-						Cut: ({ source }) => hasAnyOperation(source, operand),
-						Move: (mode) =>
-							!!getOperation({
-								source: mode.source,
-								target: operand,
-								operationType: operationModeToOperationType(mode),
-							}),
-						Rub: (mode) =>
-							!!getOperation({
-								source: mode.source,
-								target: operand,
-								operationType: operationModeToOperationType(mode),
-							}),
-					}),
-				),
-			RenameBranch: (mode) =>
-				operandEquals(
-					operand,
-					branchOperand({
-						stackId: mode.stackId,
-						branchRef: mode.branchRef,
-					}),
-				),
-			RewordCommit: (mode) =>
-				operandEquals(
-					operand,
-					commitOperand({
-						stackId: mode.stackId,
-						commitId: mode.commitId,
-					}),
-				),
+			DragAndDrop: ({ source }) => hasAnyOperation(source, operand),
+			Cut: ({ source }) => hasAnyOperation(source, operand),
+			Move: (mode) =>
+				!!getOperation({
+					source: mode.source,
+					target: operand,
+					operationType: operationModeToOperationType(mode),
+				}),
+			Rub: (mode) =>
+				!!getOperation({
+					source: mode.source,
+					target: operand,
+					operationType: operationModeToOperationType(mode),
+				}),
 		}),
 	);
 
-export const filterNavigationIndexForOperationMode = ({
+export const filterNavigationIndexForOutlineMode = ({
 	navigationIndex: navigationIndexUnfiltered,
 	selection,
 	outlineMode,
-	operationMode,
 }: {
 	navigationIndex: NavigationIndex;
 	selection: Operand;
 	outlineMode: OutlineMode;
-	operationMode: OperationMode | null;
 }) =>
-	outlineMode._tag !== "Default"
-		? filterNavigationIndex(
-				navigationIndexUnfiltered,
-				(operand) =>
-					// When entering operation mode, the selection must still be
-					// selectable otherwise the details panel will suddenly appear to
-					// change and the user may lose sight of their source operand (e.g.
-					// hunk).
-					operandEquals(selection, operand) ||
-					// After selection moves, allow returning selection to the source operand.
-					(operationMode?.source && operandEquals(operationMode.source, operand)) ||
-					includeOperandForOutlineMode({ mode: outlineMode, operand }),
-			)
-		: navigationIndexUnfiltered;
+	Match.value(outlineMode).pipe(
+		Match.tagsExhaustive({
+			Default: () => navigationIndexUnfiltered,
+			Operation: (operationMode) =>
+				filterNavigationIndex(
+					navigationIndexUnfiltered,
+					(operand) =>
+						// When entering operation mode, the selection must still be
+						// selectable otherwise the details panel will suddenly appear to
+						// change and the user may lose sight of their source operand (e.g.
+						// hunk).
+						operandEquals(selection, operand) ||
+						// After selection moves, allow returning selection to the source operand.
+						operandEquals(operationMode.value.source, operand) ||
+						operationModeHasOperation({ mode: operationMode.value, operand }),
+				),
+			RenameBranch: (x) =>
+				filterNavigationIndex(navigationIndexUnfiltered, (operand) =>
+					operandEquals(operand, branchOperand(x.operand)),
+				),
+			RewordCommit: (x) =>
+				filterNavigationIndex(navigationIndexUnfiltered, (operand) =>
+					operandEquals(operand, commitOperand(x.operand)),
+				),
+		}),
+	);

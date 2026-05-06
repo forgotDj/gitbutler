@@ -46,7 +46,6 @@ export const useNavigationIndexHotkeys = ({
 	projectId,
 	group,
 	panel,
-	focusPanel,
 	select,
 	selection,
 }: {
@@ -55,7 +54,6 @@ export const useNavigationIndexHotkeys = ({
 	projectId: string;
 	group: CommandGroup;
 	panel: Panel;
-	focusPanel: (panel: Panel) => void;
 	select: (newItem: Operand) => void;
 	selection: Operand;
 }) => {

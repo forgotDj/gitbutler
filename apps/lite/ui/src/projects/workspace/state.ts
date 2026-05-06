@@ -22,26 +22,28 @@ import {
 	type OutlineMode,
 } from "#ui/outline/mode.ts";
 
-type WorkspaceSelectionState = {
+type SelectionState = {
 	outline: Operand;
 	files: Operand;
 };
 
-const createInitialWorkspaceSelectionState = (): WorkspaceSelectionState => ({
-	outline: changesSectionOperand,
-	files: changesSectionOperand,
+export const defaultOutlineSelection = changesSectionOperand;
+
+const createInitialSelectionState = (): SelectionState => ({
+	outline: defaultOutlineSelection,
+	files: defaultOutlineSelection,
 });
 
 export type WorkspaceState = {
 	highlightedCommitIds: Array<string>;
 	mode: OutlineMode;
-	selection: WorkspaceSelectionState;
+	selection: SelectionState;
 };
 
 export const createInitialState = (): WorkspaceState => ({
 	highlightedCommitIds: [],
 	mode: defaultOutlineMode,
-	selection: createInitialWorkspaceSelectionState(),
+	selection: createInitialSelectionState(),
 });
 
 export const initialState: WorkspaceState = createInitialState();
@@ -67,19 +69,10 @@ export const updateDragAndDropMode = (
 	operationType: OperationType | null,
 ) => {
 	Match.value(state.mode).pipe(
-		Match.tags({
-			Operation: ({ value }) => {
-				Match.value(value).pipe(
-					Match.tags({
-						DragAndDrop: (mode) => {
-							state.mode = operationOutlineMode(
-								dragAndDropOperationMode({ source: mode.source, operationType }),
-							);
-						},
-					}),
-					Match.orElse(() => {}),
-				);
-			},
+		Match.when({ _tag: "Operation", value: { _tag: "DragAndDrop" } }, (mode) => {
+			state.mode = operationOutlineMode(
+				dragAndDropOperationMode({ source: mode.value.source, operationType }),
+			);
 		}),
 		Match.orElse(() => {}),
 	);
@@ -107,18 +100,12 @@ export const setHighlightedCommitIds = (state: WorkspaceState, commitIds: Array<
 
 export const startRenameBranch = (state: WorkspaceState, branch: BranchOperand) => {
 	selectOutline(state, branchOperand(branch));
-	state.mode = renameBranchOutlineMode({
-		stackId: branch.stackId,
-		branchRef: branch.branchRef,
-	});
+	state.mode = renameBranchOutlineMode({ operand: branch });
 };
 
 export const startRewordCommit = (state: WorkspaceState, commit: CommitOperand) => {
 	selectOutline(state, commitOperand(commit));
-	state.mode = rewordCommitOutlineMode({
-		stackId: commit.stackId,
-		commitId: commit.commitId,
-	});
+	state.mode = rewordCommitOutlineMode({ operand: commit });
 };
 
 export const selectSelectionOutlineState = (state: WorkspaceState): Operand =>
