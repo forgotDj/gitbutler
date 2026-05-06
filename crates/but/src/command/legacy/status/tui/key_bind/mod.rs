@@ -568,6 +568,7 @@ impl KeyBindsBuilder<'_> {
             Message::Reword(RewordMessage::WithEditor),
         )
         .long_description("Reword commit with the configured editor")
+        .hide_from_hotbar()
     }
 
     fn files(&mut self) -> KeyBindsInModesBuilder<'_> {
