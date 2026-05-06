@@ -758,6 +758,9 @@ impl App {
             Message::SetHasFocus(has_focus) => {
                 self.has_focus = has_focus;
             }
+            Message::Undo => {
+                self.handle_undo(ctx)?;
+            }
         }
 
         ensure_cursor_visible(self, visible_height);
@@ -1359,7 +1362,7 @@ impl App {
                 let drop_to_be_discarded =
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
                 Confirm::new(
-                    "Discard unassigned changes?",
+                    "Discard unassigned changes?".into(),
                     self.theme,
                     move |ctx, messages| {
                         operations::discard_unassigned_legacy(ctx)?;
@@ -1394,7 +1397,7 @@ impl App {
                 let drop_to_be_discarded =
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
                 Confirm::new(
-                    format!("Discard {}?", uncommitted.describe()),
+                    format!("Discard {}?", uncommitted.describe()).into(),
                     self.theme,
                     move |ctx, messages| {
                         let hunk_assignments = uncommitted
@@ -1418,7 +1421,7 @@ impl App {
                 let drop_to_be_discarded =
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
                 Confirm::new(
-                    "Discard staged changes in this stack?",
+                    "Discard staged changes in this stack?".into(),
                     self.theme,
                     move |ctx, messages| {
                         operations::discard_stack(ctx, stack_id)?;
@@ -1437,7 +1440,7 @@ impl App {
                 let drop_to_be_discarded =
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
                 Confirm::new(
-                    format!("Discard commit {}?", commit_id.to_hex_with_len(7)),
+                    format!("Discard commit {}?", commit_id.to_hex_with_len(7)).into(),
                     self.theme,
                     move |ctx, messages| {
                         let discard_result = operations::commit_discard(ctx, commit_id)?;
@@ -1473,7 +1476,7 @@ impl App {
                 let drop_to_be_discarded =
                     message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
                 Confirm::new(
-                    format!("Discard branch {name}?"),
+                    format!("Discard branch {name}?").into(),
                     self.theme,
                     move |ctx, messages| {
                         operations::remove_branch_legacy(ctx, stack_id, name)?;
@@ -2526,6 +2529,50 @@ impl App {
     fn marks(&self) -> Option<&Marks> {
         self.mode.marks()
     }
+
+    fn handle_undo(&mut self, ctx: &mut Context) -> anyhow::Result<()> {
+        let snapshots = but_api::legacy::oplog::list_snapshots(ctx, 1, None, None, None)?;
+
+        if snapshots.is_empty() {
+            return Ok(());
+        }
+
+        let target_snapshot = snapshots.first().unwrap();
+
+        let text = {
+            let time = target_snapshot
+                .created_at
+                .format_or_unix(gix::date::time::format::DEFAULT);
+
+            let commit = target_snapshot.commit_id.to_hex_with_len(7);
+
+            Line::from_iter(
+                [
+                    Span::raw("Undo "),
+                    Span::raw(commit.to_string()).style(self.theme.cli_id),
+                ]
+                .into_iter()
+                .chain([Span::raw(" "), Span::raw(time).style(self.theme.time)])
+                .chain(target_snapshot.details.iter().flat_map(|details| {
+                    let op_type = details.operation.as_str();
+                    [
+                        Span::raw(" "),
+                        Span::raw(op_type).style(self.theme.attention),
+                    ]
+                }))
+                .chain([Span::raw("?")]),
+            )
+        };
+
+        let commit = target_snapshot.commit_id;
+        self.confirm = Some(Confirm::new(text, self.theme, move |ctx, messages| {
+            but_api::legacy::oplog::restore_snapshot(ctx, commit)?;
+            messages.push(Message::Reload(None));
+            Ok(())
+        }));
+
+        Ok(())
+    }
 }
 
 fn event_to_messages(
@@ -2779,6 +2826,7 @@ enum Message {
     NewBranch,
     ToggleHelp,
     Mark,
+    Undo,
 
     // Utilities
     CopySelection,
