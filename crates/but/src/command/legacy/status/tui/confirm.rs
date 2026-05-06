@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use but_ctx::Context;
 use ratatui::{
     Frame,
@@ -7,29 +5,24 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, BorderType, Clear, List, ListItem, Padding},
 };
-use unicode_width::UnicodeWidthStr;
 
 use crate::{command::legacy::status::tui::Message, theme::Theme, utils::DebugAsType};
 
 #[derive(Debug)]
 pub(super) struct Confirm {
-    text: Cow<'static, str>,
+    text: Line<'static>,
     yes_selected: bool,
     on_yes: DebugAsType<Box<dyn FnOnce(&mut Context, &mut Vec<Message>) -> anyhow::Result<()>>>,
     theme: &'static Theme,
 }
 
 impl Confirm {
-    pub(super) fn new<F>(
-        text: impl Into<Cow<'static, str>>,
-        theme: &'static Theme,
-        on_yes: F,
-    ) -> Self
+    pub(super) fn new<F>(text: Line<'static>, theme: &'static Theme, on_yes: F) -> Self
     where
         F: FnOnce(&mut Context, &mut Vec<Message>) -> anyhow::Result<()> + 'static,
     {
         Self {
-            text: text.into(),
+            text,
             yes_selected: true,
             on_yes: DebugAsType(Box::new(on_yes)),
             theme,
@@ -44,7 +37,7 @@ impl Confirm {
         let space_taken_up_by_border: u16 = 2;
 
         let items = Vec::from([
-            ListItem::new(&*self.text),
+            ListItem::new(self.text.clone()),
             ListItem::new(""),
             ListItem::new(Line::from_iter([
                 style_button(

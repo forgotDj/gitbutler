@@ -436,6 +436,13 @@ impl KeyBindsBuilder<'_> {
         .show_only_in_normal_mode_help_section()
     }
 
+    fn undo(&mut self) -> KeyBindsInModesBuilder<'_> {
+        self.key_bind("undo", press().code(KeyCode::Char('u')), Message::Undo)
+            .show_only_in_normal_mode_help_section()
+            .hide_from_hotbar()
+            .long_description("Undo the last operation")
+    }
+
     fn mark(&mut self) -> KeyBindsInModesBuilder<'_> {
         self.key_bind("mark", press().code(KeyCode::Char(' ')), Message::Mark)
             .show_only_in_normal_mode_help_section()
@@ -828,6 +835,8 @@ fn register_normal_mode_key_binds(builder: &mut KeyBindsBuilder<'_>, without_mar
     }
 
     builder.mark().register();
+
+    builder.undo().register();
 
     builder.branch_picker().register();
     builder.unassigned().register();

@@ -205,6 +205,7 @@ impl Details {
             | Message::WithOneFrameDelay(_)
             | Message::Back
             | Message::UnfocusDetails
+            | Message::Undo
             | Message::EnterNormalModeAfterConfirmingOperation => false,
 
             Message::MoveCursorUp

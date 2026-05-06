@@ -80,34 +80,7 @@ pub(crate) fn show_oplog(
             let commit_id = t.cli_id.paint(short.to_string());
 
             let (operation_type, title) = if let Some(details) = &snapshot.details {
-                let op_type = match details.operation {
-                    OperationKind::CreateCommit => "CREATE",
-                    OperationKind::CreateBranch => "BRANCH",
-                    OperationKind::AmendCommit => "AMEND",
-                    OperationKind::Absorb => "ABSORB",
-                    OperationKind::AutoCommit => "AUTO_COMMIT",
-                    OperationKind::UndoCommit => "UNDO",
-                    OperationKind::DiscardCommit => "DISCARD_COMMIT",
-                    OperationKind::SquashCommit => "SQUASH",
-                    OperationKind::UpdateCommitMessage => "REWORD",
-                    OperationKind::MoveCommit => "MOVE",
-                    OperationKind::RestoreFromSnapshot => "RESTORE",
-                    OperationKind::ReorderCommit => "REORDER",
-                    OperationKind::InsertBlankCommit => "INSERT",
-                    OperationKind::MoveHunk => "MOVE_HUNK",
-                    OperationKind::ReorderBranches => "REORDER_BRANCH",
-                    OperationKind::UpdateWorkspaceBase => "UPDATE_BASE",
-                    OperationKind::UpdateBranchName => "RENAME",
-                    OperationKind::GenericBranchUpdate => "BRANCH_UPDATE",
-                    OperationKind::ApplyBranch => "APPLY",
-                    OperationKind::UnapplyBranch => "UNAPPLY",
-                    OperationKind::DeleteBranch => "DELETE",
-                    OperationKind::DiscardChanges => "DISCARD",
-                    OperationKind::Discard => "DISCARD",
-                    OperationKind::CleanWorkspace => "CLEAN",
-                    OperationKind::OnDemandSnapshot => "SNAPSHOT",
-                    _ => "OTHER",
-                };
+                let op_type = details.operation.as_str();
                 // For OnDemandSnapshot, show the message (body) if available
                 // For Discard, show file names from trailers if available
                 let display_title = if details.operation == OperationKind::OnDemandSnapshot {
@@ -141,10 +114,11 @@ pub(crate) fn show_oplog(
                 ("UNKNOWN", "Unknown operation".to_string())
             };
 
+            // TODO(david): don't use strings here, use the `OperationKind`
             let operation_colored = match operation_type {
-                "CREATE" => t.success.paint(operation_type),
+                "COMMIT" => t.success.paint(operation_type),
                 "AMEND" | "REWORD" => t.attention.paint(operation_type),
-                "UNDO" | "RESTORE" => t.error.paint(operation_type),
+                "UNDO_COMMIT" | "RESTORE" => t.error.paint(operation_type),
                 "DISCARD" => t.error.paint(operation_type),
                 "BRANCH" | "CHECKOUT" => t.local_branch.paint(operation_type),
                 "MOVE" | "REORDER" | "MOVE_HUNK" => t.info.paint(operation_type),

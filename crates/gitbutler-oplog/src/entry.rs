@@ -178,6 +178,62 @@ pub enum OperationKind {
     Unknown,
 }
 
+impl OperationKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            OperationKind::CreateCommit => "COMMIT",
+            OperationKind::CreateBranch => "BRANCH",
+            OperationKind::AmendCommit => "AMEND",
+            OperationKind::Absorb => "ABSORB",
+            OperationKind::AutoCommit => "AUTO_COMMIT",
+            OperationKind::UndoCommit => "UNDO_COMMIT",
+            OperationKind::DiscardCommit => "DISCARD_COMMIT",
+            OperationKind::SquashCommit => "SQUASH",
+            OperationKind::UpdateCommitMessage => "REWORD",
+            OperationKind::MoveCommit => "MOVE",
+            OperationKind::RestoreFromSnapshot => "RESTORE",
+            OperationKind::ReorderCommit => "REORDER",
+            OperationKind::InsertBlankCommit => "INSERT_COMMIT",
+            OperationKind::MoveHunk => "MOVE_HUNK",
+            OperationKind::ReorderBranches => "REORDER_BRANCH",
+            OperationKind::UpdateWorkspaceBase => "UPDATE_BASE",
+            OperationKind::UpdateBranchName => "RENAME",
+            OperationKind::GenericBranchUpdate => "BRANCH_UPDATE",
+            OperationKind::ApplyBranch => "APPLY",
+            OperationKind::UnapplyBranch => "UNAPPLY",
+            OperationKind::DeleteBranch => "DELETE",
+            OperationKind::DiscardChanges => "DISCARD",
+            OperationKind::Discard => "DISCARD",
+            OperationKind::CleanWorkspace => "CLEAN",
+            OperationKind::OnDemandSnapshot => "SNAPSHOT",
+            OperationKind::DiscardLines => "DISCARD_LINES",
+            OperationKind::DiscardHunk => "DISCARD_HUNK",
+            OperationKind::DiscardFile => "DISCARD_FILE",
+            OperationKind::CherryPick => "CHERRY_PICK",
+            OperationKind::MoveBranch => "MOVE_BRANCH",
+            OperationKind::TearOffBranch => "UNSTACK_BRANCH",
+            OperationKind::MoveCommitFile => "MOVE_FILE",
+            OperationKind::CreateDependentBranch => "CREATE_BRANCH",
+            OperationKind::RemoveDependentBranch => "REMOVE_BRANCH",
+            OperationKind::UpdateDependentBranchName
+            | OperationKind::UpdateDependentBranchDescription
+            | OperationKind::UpdateDependentBranchPrNumber => "UPDATE_BRANCH",
+            OperationKind::SplitBranch => "SPLIT_BRANCH",
+            OperationKind::StashIntoBranch
+            | OperationKind::SetBaseBranch
+            | OperationKind::MergeUpstream
+            | OperationKind::UpdateBranchNotes
+            | OperationKind::UpdateBranchRemoteName
+            | OperationKind::FileChanges
+            | OperationKind::EnterEditMode
+            | OperationKind::SyncWorkspace
+            | OperationKind::AutoHandleChangesBefore
+            | OperationKind::AutoHandleChangesAfter
+            | OperationKind::Unknown => "OTHER",
+        }
+    }
+}
+
 impl From<OperationKind> for SnapshotDetails {
     fn from(value: OperationKind) -> Self {
         SnapshotDetails::new(value)

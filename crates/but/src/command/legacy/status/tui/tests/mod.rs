@@ -127,6 +127,31 @@ fn help_popup_scrolls() {
 }
 
 #[test]
+fn undo_opens_confirm_for_latest_snapshot() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+    let mut tui = test_tui(env);
+
+    tui.env().file("test.txt", "content");
+    tui.input_then_render('c');
+    tui.input_then_render(KeyCode::Down);
+    tui.input_then_render('i');
+    tui.input_then_render(KeyCode::Enter);
+    tui.input_then_render("commit for undo prompt test");
+    tui.input_then_render(KeyCode::Enter);
+
+    tui.input_then_render('u')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/undo_opens_confirm_for_latest_snapshot_001.svg"
+        ]);
+
+    tui.input_then_render(KeyCode::Enter)
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/undo_opens_confirm_for_latest_snapshot_002.svg"
+        ]);
+}
+
+#[test]
 fn format_error_for_tui_shows_cause_chain_without_backtrace() {
     let err = anyhow!("root-cause")
         .context("context-level-1")
