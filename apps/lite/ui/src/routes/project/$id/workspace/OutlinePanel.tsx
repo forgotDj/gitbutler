@@ -294,7 +294,7 @@ const ItemRow: FC<
 		operand: Operand;
 		navigationIndex: NavigationIndex;
 	} & Omit<ComponentProps<typeof WorkspaceItemRow>, "inert" | "isSelected">
-> = ({ projectId, operand, navigationIndex, onClick, ...props }) => {
+> = ({ projectId, operand, navigationIndex, ...props }) => {
 	const dispatch = useAppDispatch();
 	const isSelected = useIsSelected({ projectId, operand });
 
@@ -304,7 +304,7 @@ const ItemRow: FC<
 			inert={!navigationIndexIncludes(navigationIndex, operand)}
 			isSelected={isSelected}
 			onClick={(event) => {
-				onClick?.(event);
+				props.onClick?.(event);
 				if (!event.defaultPrevented)
 					dispatch(projectActions.selectOutline({ projectId, selection: operand }));
 			}}
