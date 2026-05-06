@@ -52,37 +52,12 @@ describe.concurrent("DefaultforgeFactory", () => {
 					owner: "test-owner",
 				},
 				baseBranch: "some-base",
-				detectedForgeProvider: undefined,
-				forgeOverride: undefined,
+				forgeType: "github",
 			}),
 		).instanceOf(GitHub);
 	});
 
-	test("Create self hosted Gitlab service", async () => {
-		const factory = new DefaultForgeFactory({
-			gitHubClient,
-			gitHubApi,
-			backendApi,
-			gitLabClient,
-			gitLabApi,
-			posthog,
-			dispatch,
-		});
-		expect(
-			factory.build({
-				repo: {
-					domain: "gitlab.domain.com",
-					name: "test-repo",
-					owner: "test-owner",
-				},
-				baseBranch: "some-base",
-				detectedForgeProvider: undefined,
-				forgeOverride: undefined,
-			}),
-		).instanceOf(GitLab);
-	});
-
-	test("Create Gitlab service", async () => {
+	test("Create GitLab service", async () => {
 		const factory = new DefaultForgeFactory({
 			gitHubClient,
 			gitHubApi,
@@ -100,13 +75,12 @@ describe.concurrent("DefaultforgeFactory", () => {
 					owner: "test-owner",
 				},
 				baseBranch: "some-base",
-				detectedForgeProvider: undefined,
-				forgeOverride: undefined,
+				forgeType: "gitlab",
 			}),
 		).instanceOf(GitLab);
 	});
 
-	test("Respects detectedForgeProvider: GitHub", async () => {
+	test("setConfig uses detectedForgeProvider when present", async () => {
 		const factory = new DefaultForgeFactory({
 			gitHubClient,
 			gitHubApi,
@@ -116,39 +90,72 @@ describe.concurrent("DefaultforgeFactory", () => {
 			posthog,
 			dispatch,
 		});
-		const result = factory.build({
-			repo: {
-				domain: "gitlab.com",
-				name: "test-repo",
-				owner: "test-owner",
-			},
+		factory.setConfig({
+			repo: { domain: "github.example.net", name: "test-repo", owner: "test-owner" },
 			baseBranch: "main",
 			detectedForgeProvider: "github",
 			forgeOverride: undefined,
 		});
-		expect(result).instanceOf(GitHub);
+		expect(factory.current).instanceOf(GitHub);
+		expect(factory.determinedForgeType).toBe("github");
 	});
 
-	test("Respects detectedForgeProvider: GitLab", async () => {
+	test("setConfig falls back to detectedForgeProvider when forgeOverride is absent", async () => {
 		const factory = new DefaultForgeFactory({
 			gitHubClient,
 			gitHubApi,
-			gitLabClient,
 			backendApi,
+			gitLabClient,
 			gitLabApi,
 			posthog,
 			dispatch,
 		});
-		const result = factory.build({
-			repo: {
-				domain: "github.com",
-				name: "test-repo",
-				owner: "test-owner",
-			},
+		factory.setConfig({
+			repo: { domain: "github.example.net", name: "test-repo", owner: "test-owner" },
 			baseBranch: "main",
-			detectedForgeProvider: "gitlab",
+			detectedForgeProvider: "github",
 			forgeOverride: undefined,
 		});
-		expect(result).instanceOf(GitLab);
+		expect(factory.current).instanceOf(GitHub);
+		expect(factory.determinedForgeType).toBe("github");
+	});
+
+	test("setConfig resolves to default when both detectedForgeProvider and forgeOverride are absent", async () => {
+		const factory = new DefaultForgeFactory({
+			gitHubClient,
+			gitHubApi,
+			backendApi,
+			gitLabClient,
+			gitLabApi,
+			posthog,
+			dispatch,
+		});
+		factory.setConfig({
+			repo: { domain: "custom.example.com", name: "test-repo", owner: "test-owner" },
+			baseBranch: "main",
+			detectedForgeProvider: undefined,
+			forgeOverride: undefined,
+		});
+		expect(factory.determinedForgeType).toBe("default");
+	});
+
+	test("forgeOverride takes precedence over detectedForgeProvider", async () => {
+		const factory = new DefaultForgeFactory({
+			gitHubClient,
+			gitHubApi,
+			backendApi,
+			gitLabClient,
+			gitLabApi,
+			posthog,
+			dispatch,
+		});
+		factory.setConfig({
+			repo: { domain: "github.com", name: "test-repo", owner: "test-owner" },
+			baseBranch: "main",
+			detectedForgeProvider: "github",
+			forgeOverride: "gitlab",
+		});
+		expect(factory.current).instanceOf(GitLab);
+		expect(factory.determinedForgeType).toBe("gitlab");
 	});
 });
