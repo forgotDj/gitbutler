@@ -49,6 +49,7 @@ commands.allow = [
   "commit_move",
   "commit_move_changes_between",
   "commit_reword",
+  "commit_squash",
   "commit_uncommit",
   "commit_uncommit_changes",
   "create_branch",
