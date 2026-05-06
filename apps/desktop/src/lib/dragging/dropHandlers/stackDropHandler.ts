@@ -10,7 +10,6 @@ import { unstackPRs, updateStackPrs } from "$lib/forge/shared/prFooter";
 import StackMacros from "$lib/stacks/macros";
 import { toMoveBranchWarning } from "$lib/stacks/stack";
 import { ensureValue } from "$lib/utils/validation";
-import { chipToasts } from "@gitbutler/ui";
 import type { DropResult } from "$lib/dragging/dropResult";
 import type { DropzoneHandler } from "$lib/dragging/handler";
 import type { ForgePrService } from "$lib/forge/interface/forgePrService";
@@ -43,6 +42,7 @@ export class OutsideLaneDzHandler implements DropzoneHandler {
 	private acceptsChangeDropData(data: unknown): data is ChangeDropData {
 		if (!(data instanceof FileChangeDropData || data instanceof FolderChangeDropData)) return false;
 		if (data.selectionId.type === "commit" && data.stackId === undefined) return false;
+		if (data.selectionId.type === "branch") return false;
 		return true;
 	}
 
@@ -71,43 +71,6 @@ export class OutsideLaneDzHandler implements DropzoneHandler {
 
 	async ondropChangeData(data: ChangeDropData) {
 		switch (data.selectionId.type) {
-			case "branch": {
-				const newBranchName = await this.stackService.fetchNewBranchName(this.projectId);
-
-				if (!newBranchName) {
-					throw new Error("Failed to generate a new branch name.");
-				}
-
-				if (!data.stackId) {
-					throw new Error("Change drop data must specify the source stackId");
-				}
-
-				const sourceStackId = data.stackId;
-				const sourceBranchName = data.selectionId.branchName;
-
-				await chipToasts.promise(
-					(async () => {
-						const fileNames = await data
-							.treeChanges()
-							.then((changes) => changes.map((c) => c.path));
-
-						await this.stackService.splitBranchMutation({
-							projectId: this.projectId,
-							sourceStackId,
-							sourceBranchName,
-							fileChangesToSplitOff: fileNames,
-							newBranchName: newBranchName,
-						});
-					})(),
-					{
-						loading: "Splitting branch into a new branch...",
-						success: "Branch split successfully",
-						error: "Failed to split branch",
-					},
-				);
-
-				break;
-			}
 			case "commit": {
 				const { stack, outcome, branchName } = await this.macros.createNewStackAndCommit();
 

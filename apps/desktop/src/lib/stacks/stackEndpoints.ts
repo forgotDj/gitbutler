@@ -904,44 +904,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			transformResponse: (commits: Commit[]) =>
 				commitAdapter.addMany(commitAdapter.getInitialState(), commits),
 		}),
-		splitBranch: build.mutation<
-			{ replacedCommits: [string, string][] },
-			{
-				projectId: string;
-				sourceStackId: string;
-				sourceBranchName: string;
-				newBranchName: string;
-				fileChangesToSplitOff: string[];
-			}
-		>({
-			extraOptions: {
-				command: "split_branch",
-			},
-			query: (args) => args,
-			invalidatesTags: (_result, _error, args) => [
-				invalidatesList(ReduxTag.HeadSha),
-				invalidatesItem(ReduxTag.BranchChanges, args.sourceStackId),
-			],
-		}),
-		splitBranchIntoDependentBranch: build.mutation<
-			{ replacedCommits: [string, string][] },
-			{
-				projectId: string;
-				sourceStackId: string;
-				sourceBranchName: string;
-				newBranchName: string;
-				fileChangesToSplitOff: string[];
-			}
-		>({
-			extraOptions: {
-				command: "split_branch_into_dependent_branch",
-			},
-			query: (args) => args,
-			invalidatesTags: (_result, _error, args) => [
-				invalidatesList(ReduxTag.HeadSha),
-				invalidatesItem(ReduxTag.BranchChanges, args.sourceStackId),
-			],
-		}),
 		createReference: build.mutation<
 			void,
 			{ projectId: string; stackId: string; request: CreateRefRequest }
