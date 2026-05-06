@@ -2,6 +2,10 @@ use anyhow::{Context as _, Result};
 use but_core::{DiffSpec, RepositoryExt, ref_metadata::StackId};
 use but_ctx::access::RepoExclusive;
 use but_oxidize::ObjectIdExt;
+use but_rebase::graph_rebase::{
+    Editor,
+    mutate::{InsertSide, RelativeToRef},
+};
 use gitbutler_repo_actions::RepoActionsExt;
 use tracing::instrument;
 
@@ -36,17 +40,30 @@ impl BranchManager<'_> {
 
         // Commit any assigned diffspecs if such exist so that it will be part of the unapplied branch.
         if !assigned_diffspec.is_empty()
-            && let Some(head) = stack.heads.last().map(|h| h.name.to_string())
+            && let Some(head) = stack.heads.last()
         {
-            but_workspace::legacy::commit_engine::create_commit_simple(
-                self.ctx,
-                stack_id,
-                None,
+            let full_ref_name = head.full_name()?;
+            let mut meta = self.ctx.meta()?;
+            let (repo, mut ws, _) = self.ctx.workspace_mut_and_db_with_perm(perm)?;
+            let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+            let outcome = but_workspace::commit::commit_create(
+                editor,
                 assigned_diffspec,
-                "WIP Assignments".to_string(),
-                head.to_owned(),
-                perm,
+                RelativeToRef::Reference(full_ref_name.as_ref()),
+                InsertSide::Below,
+                "WIP Assignments",
+                self.ctx.settings.context_lines,
             )?;
+            if !outcome.rejected_specs.is_empty() {
+                tracing::warn!(
+                    ?outcome.rejected_specs,
+                    "Failed to commit at least one hunk"
+                );
+            }
+            if outcome.commit_selector.is_some() {
+                outcome.rebase.materialize()?;
+                stack.sync_heads_with_references(&mut vb_state, &repo)?;
+            }
         }
 
         // doing this earlier in the flow, in case any of the steps that follow fail
