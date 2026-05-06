@@ -14,7 +14,7 @@
 	grid-area: topBar;
 	align-items: center;
 	padding: 4px;
-	border-bottom: 1px solid var(--color-separator);
+	border-bottom: 1px solid var(--border-2);
 }
 
 .topBarActions {
