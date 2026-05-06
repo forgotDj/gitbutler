@@ -1538,6 +1538,7 @@ dependencies = [
  "but-db",
  "but-graph",
  "but-hunk-assignment",
+ "but-rebase",
  "but-workspace",
  "chrono",
  "gix",
@@ -1546,6 +1547,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_regex",
+ "tracing",
  "uuid",
 ]
 

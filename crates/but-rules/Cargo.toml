@@ -20,6 +20,7 @@ but-db.workspace = true
 but-core.workspace = true
 but-hunk-assignment.workspace = true
 but-graph.workspace = true
+but-rebase.workspace = true
 but-workspace = { workspace = true, features = ["legacy"] }
 but-ctx.workspace = true
 
@@ -31,6 +32,7 @@ gix = { workspace = true }
 chrono.workspace = true
 serde_regex = "1.1.0"
 serde_json.workspace = true
+tracing.workspace = true
 uuid.workspace = true
 
 [lints]
