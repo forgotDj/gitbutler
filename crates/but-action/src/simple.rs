@@ -3,6 +3,10 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use but_core::{DiffSpec, ref_metadata::StackId};
 use but_ctx::{Context, access::RepoExclusive};
+use but_rebase::graph_rebase::{
+    Editor, LookupStep as _,
+    mutate::{InsertSide, RelativeToRef},
+};
 use gitbutler_operating_modes::OperatingMode;
 use gitbutler_oplog::{
     OplogExt,
@@ -160,18 +164,34 @@ fn handle_changes_simple_inner(
             .find(|s| s.id == Some(stack_id))
             .and_then(|s| s.heads.first().map(|h| h.name.to_string()))
             .ok_or(anyhow!("Could not find associated reference name"))?;
+        let full_ref_name: gix::refs::FullName =
+            format!("refs/heads/{stack_branch_name}").try_into()?;
 
-        let outcome = but_workspace::legacy::commit_engine::create_commit_simple(
-            ctx,
-            stack_id,
-            None,
+        let mut meta = ctx.meta()?;
+        let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
+        let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+        let outcome = but_workspace::commit::commit_create(
+            editor,
             diff_specs,
-            commit_message.clone(),
-            stack_branch_name.clone(),
-            perm,
+            RelativeToRef::Reference(full_ref_name.as_ref()),
+            InsertSide::Below,
+            &commit_message,
+            ctx.settings.context_lines,
         )?;
 
-        if let Some(new_commit) = outcome.new_commit {
+        if !outcome.rejected_specs.is_empty() {
+            tracing::warn!(
+                ?outcome.rejected_specs,
+                "Failed to commit at least one hunk"
+            );
+        }
+
+        if let Some(new_commit) = outcome
+            .commit_selector
+            .map(|selector| outcome.rebase.lookup_pick(selector))
+            .transpose()?
+        {
+            outcome.rebase.materialize()?;
             updated_branches.push(crate::UpdatedBranch {
                 stack_id,
                 branch_name: stack_branch_name,
