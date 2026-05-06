@@ -807,14 +807,6 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(legacy::workspace::discard_worktree_changes_cmd),
         )
         .route(
-            "/split_branch",
-            but_post(legacy::workspace::split_branch_cmd),
-        )
-        .route(
-            "/split_branch_into_dependent_branch",
-            but_post(legacy::workspace::split_branch_into_dependent_branch_cmd),
-        )
-        .route(
             "/stash_into_branch",
             but_post(legacy::workspace::stash_into_branch_cmd),
         )

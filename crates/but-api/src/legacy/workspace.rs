@@ -8,44 +8,15 @@ use but_workspace::{
     commit_engine::{self, StackSegmentId},
     legacy::{StacksFilter, ui::StackEntry},
 };
-use gitbutler_branch_actions::{BranchManagerExt, update_workspace_commit};
+use gitbutler_branch_actions::BranchManagerExt;
 use gitbutler_commit::commit_ext::CommitExt;
 use gitbutler_oplog::{
     OplogExt, SnapshotExt,
     entry::{OperationKind, SnapshotDetails},
 };
-use gitbutler_reference::{LocalRefname, Refname};
 use tracing::instrument;
 
 use crate::json::HexHash;
-
-mod json {
-    use but_workspace::legacy::MoveChangesResult as LegacyMoveChangesResult;
-    use serde::Serialize;
-
-    use crate::json::HexHash;
-
-    /// JSON transport type for moving changes between commits.
-    #[derive(Debug, Serialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct MoveChangesResult {
-        /// Commits that have been mapped from one thing to another
-        pub replaced_commits: Vec<(HexHash, HexHash)>,
-    }
-
-    impl From<LegacyMoveChangesResult> for MoveChangesResult {
-        fn from(value: LegacyMoveChangesResult) -> Self {
-            let LegacyMoveChangesResult { replaced_commits } = value;
-
-            Self {
-                replaced_commits: replaced_commits
-                    .into_iter()
-                    .map(|(x, y)| (x.into(), y.into()))
-                    .collect(),
-            }
-        }
-    }
-}
 
 #[but_api(napi, try_from = but_workspace::ui::RefInfo)]
 #[instrument(err(Debug))]
@@ -343,75 +314,6 @@ pub fn discard_worktree_changes(
         tracing::warn!(?refused, "Failed to discard at least one hunk");
     }
     Ok(refused)
-}
-
-#[but_api(json::MoveChangesResult)]
-#[instrument(err(Debug))]
-pub fn split_branch(
-    ctx: &mut Context,
-    source_stack_id: StackId,
-    source_branch_name: String,
-    new_branch_name: String,
-    file_changes_to_split_off: Vec<String>,
-) -> Result<but_workspace::legacy::MoveChangesResult> {
-    let mut guard = ctx.exclusive_worktree_access();
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::SplitBranch),
-        guard.write_permission(),
-    );
-
-    let (_, move_changes_result) = but_workspace::legacy::split_branch(
-        ctx,
-        source_stack_id,
-        source_branch_name,
-        new_branch_name.clone(),
-        &file_changes_to_split_off,
-        guard.write_permission(),
-    )?;
-
-    // TODO(ctx): remove this, it's done above
-    update_workspace_commit(ctx, false)?;
-
-    let refname = Refname::Local(LocalRefname::new(&new_branch_name, None));
-    let branch_manager = ctx.branch_manager();
-    branch_manager.create_virtual_branch_from_branch(&refname, None, guard.write_permission())?;
-
-    // TODO(ctx): use new branch creation, which would update the ctx workspace as well.
-    let meta = ctx.meta()?;
-    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(guard.write_permission())?;
-    ws.refresh_from_head(&repo, &meta)?;
-
-    Ok(move_changes_result)
-}
-
-#[but_api(json::MoveChangesResult)]
-#[instrument(err(Debug))]
-pub fn split_branch_into_dependent_branch(
-    ctx: &mut but_ctx::Context,
-    source_stack_id: StackId,
-    source_branch_name: String,
-    new_branch_name: String,
-    file_changes_to_split_off: Vec<String>,
-) -> Result<but_workspace::legacy::MoveChangesResult> {
-    let mut guard = ctx.exclusive_worktree_access();
-
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::SplitBranch),
-        guard.write_permission(),
-    );
-
-    let move_changes_result = but_workspace::legacy::split_into_dependent_branch(
-        ctx,
-        source_stack_id,
-        source_branch_name,
-        new_branch_name.clone(),
-        &file_changes_to_split_off,
-        guard.write_permission(),
-    )?;
-
-    update_workspace_commit(ctx, false)?;
-
-    Ok(move_changes_result)
 }
 
 /// This API allows the user to quickly "stash" a bunch of uncommitted changes - getting them out of the worktree.
