@@ -45,6 +45,37 @@ fn rub_api_unassigned_to_commit() {
         .assert_rendered_term_svg_eq(file!["snapshots/rub_api_unassigned_to_commit.svg"]);
 }
 
+#[test]
+fn rub_api_unassigned_to_commit_preserves_global_file_list() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack").unwrap();
+    env.setup_metadata(&["A"]).unwrap();
+
+    let mut tui = test_tui(env);
+
+    tui.env().file("test.txt", "content");
+
+    tui.input_then_render(None)
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes]"]);
+
+    tui.input_then_render((KeyModifiers::SHIFT, KeyCode::Char('F')))
+        .assert_current_line_eq(str!["╭┄zz [unassigned changes]"]);
+
+    tui.input_then_render(KeyCode::Down)
+        .assert_current_line_eq(str!["┊   vo A test.txt"]);
+
+    tui.input_then_render('r')
+        .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
+
+    tui.input_then_render(KeyCode::Down)
+        .assert_current_line_eq(str!["┊●   << amend >> 9477ae7 add A"]);
+
+    tui.input_then_render(KeyCode::Enter)
+        .assert_current_line_eq(str!["┊●   [..] add A"])
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/rub_api_unassigned_to_commit_preserves_global_file_list_final.svg"
+        ]);
+}
+
 // Tests RubOperation::UnassignUncommitted.
 #[test]
 fn rub_api_unassign_uncommitted_operation() {

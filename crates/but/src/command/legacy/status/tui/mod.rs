@@ -617,7 +617,7 @@ impl App {
                 self.handle_unfocus_details(messages);
             }
             Message::EnterNormalModeAfterConfirmingOperation => {
-                self.handle_enter_normal_mode_after_confirming_operation();
+                self.handle_enter_normal_mode_after_confirming_operation(messages);
             }
             Message::EnterDetailsMode => {
                 self.handle_enter_details_mode(messages);
@@ -788,53 +788,70 @@ impl App {
         messages.push(Message::Details(DetailsMessage::Deselect));
     }
 
-    fn handle_enter_normal_mode_after_confirming_operation(&mut self) {
+    fn handle_enter_normal_mode_after_confirming_operation(&mut self, messages: &mut Vec<Message>) {
+        let mut entries_to_handle = Vec::new();
         self.mode.update(&mut self.backstack, |backstack, mode| {
             *mode = Mode::Normal(NormalMode::default());
-            backstack.clear();
+
+            backstack.retain(|entry| match entry {
+                BackstackEntry::ShowFileList => true,
+                BackstackEntry::LeaveNormalMode | BackstackEntry::Mark => {
+                    entries_to_handle.push(entry);
+                    false
+                }
+            });
         });
+
+        for entry in entries_to_handle {
+            self.handle_backstack_entry(entry, messages);
+        }
+
         self.maybe_move_cursor_into_file_list();
     }
 
     fn handle_back(&mut self, messages: &mut Vec<Message>) {
         if let Some(entry) = self.backstack.pop() {
-            match entry {
-                BackstackEntry::LeaveNormalMode => {
+            self.handle_backstack_entry(entry, messages);
+        }
+    }
+
+    fn handle_backstack_entry(&mut self, entry: BackstackEntry, messages: &mut Vec<Message>) {
+        match entry {
+            BackstackEntry::LeaveNormalMode => {
+                *self
+                    .mode
+                    .get_mut_without_updating_backstack_and_i_promise_not_to_change_state() =
+                    Mode::Normal(NormalMode {
+                        marks: self.marks().cloned().unwrap_or_default(),
+                    });
+                self.maybe_move_cursor_into_file_list();
+            }
+            BackstackEntry::ShowFileList => {
+                self.flags.show_files = FilesStatusFlag::None;
+                messages.push(Message::Reload(None));
+            }
+            BackstackEntry::Mark => match self
+                .mode
+                .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
+            {
+                Mode::Normal(normal_mode) => {
+                    normal_mode.marks.clear();
+                }
+                Mode::Rub(..) => {
                     *self
                         .mode
                         .get_mut_without_updating_backstack_and_i_promise_not_to_change_state() =
-                        Mode::Normal(NormalMode {
-                            marks: self.marks().cloned().unwrap_or_default(),
-                        });
+                        Mode::Normal(NormalMode::default());
+                    self.backstack.remove_mark();
+                    self.backstack.remove_leave_normal_mode();
                     self.maybe_move_cursor_into_file_list();
                 }
-                BackstackEntry::ShowFileList => {
-                    self.flags.show_files = FilesStatusFlag::None;
-                    messages.push(Message::Reload(None));
-                }
-                BackstackEntry::Mark => match self
-                    .mode
-                    .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
-                {
-                    Mode::Normal(normal_mode) => {
-                        normal_mode.marks.clear();
-                    }
-                    Mode::Rub(..) => {
-                        *self
-                            .mode
-                            .get_mut_without_updating_backstack_and_i_promise_not_to_change_state(
-                            ) = Mode::Normal(NormalMode::default());
-                        self.backstack.remove_mark();
-                        self.backstack.remove_leave_normal_mode();
-                        self.maybe_move_cursor_into_file_list();
-                    }
-                    Mode::InlineReword(..)
-                    | Mode::Command(..)
-                    | Mode::Commit(..)
-                    | Mode::Move(..)
-                    | Mode::Details => {}
-                },
-            }
+                Mode::InlineReword(..)
+                | Mode::Command(..)
+                | Mode::Commit(..)
+                | Mode::Move(..)
+                | Mode::Details => {}
+            },
         }
     }
 
@@ -1231,7 +1248,13 @@ impl App {
             | Mode::Move(..) => None,
         };
 
-        self.flags.show_files = FilesStatusFlag::None;
+        match self.flags.show_files {
+            FilesStatusFlag::Commit(..) => {
+                self.backstack.remove_show_file_list();
+                self.flags.show_files = FilesStatusFlag::None;
+            }
+            FilesStatusFlag::None | FilesStatusFlag::All => {}
+        }
 
         messages.extend([
             Message::EnterNormalModeAfterConfirmingOperation,
