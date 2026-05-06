@@ -89,6 +89,15 @@
 	flex-direction: column;
 }
 
+.commitTextarea {
+	padding-inline: var(--row-inline-padding);
+	padding-block: var(--row-block-padding);
+	field-sizing: content;
+	box-sizing: content-box;
+	min-height: calc(2lh);
+	border-radius: 8px;
+}
+
 .commitControls {
 	display: flex;
 	gap: 4px;

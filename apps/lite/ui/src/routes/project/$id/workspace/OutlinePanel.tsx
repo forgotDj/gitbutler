@@ -914,6 +914,8 @@ const Changes: FC<{
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const operand = changesSectionOperand;
+	const commitTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+	const focusedPanel = useFocusedProjectPanel(projectId);
 
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
@@ -952,14 +954,22 @@ const Changes: FC<{
 		});
 		if (!changes) return;
 
-		commitCreate.mutate({
-			projectId,
-			relativeTo: { type: "referenceBytes", subject: branch.branch.branchRef },
-			side: "below",
-			changes,
-			message: "",
-			dryRun: false,
-		});
+		commitCreate.mutate(
+			{
+				projectId,
+				relativeTo: { type: "referenceBytes", subject: branch.branch.branchRef },
+				side: "below",
+				changes,
+				message: commitTextareaRef.current?.value ?? "",
+				dryRun: false,
+			},
+			{
+				onSuccess: (response) => {
+					if (response.newCommit !== null && commitTextareaRef.current)
+						commitTextareaRef.current.value = "";
+				},
+			},
+		);
 		focusPanel("outline");
 	};
 
@@ -969,6 +979,14 @@ const Changes: FC<{
 		setBranch(option);
 		setOpen(false);
 	};
+
+	const isSelected = useIsSelected({ projectId, operand });
+
+	useHotkey("Enter", () => commitTextareaRef.current?.focus(), {
+		conflictBehavior: "allow",
+		enabled: isSelected && focusedPanel === "outline" && outlineMode._tag === "Default",
+		meta: { group: "Changes", name: "Compose commit message" },
+	});
 
 	return (
 		<TreeItem
@@ -983,6 +1001,19 @@ const Changes: FC<{
 				navigationIndex={navigationIndex}
 				onAbsorbChanges={onAbsorbChanges}
 				projectId={projectId}
+			/>
+
+			<textarea
+				ref={commitTextareaRef}
+				aria-label="Compose commit message"
+				disabled={outlineMode._tag !== "Default"}
+				placeholder="Commit message (optional)"
+				className={styles.commitTextarea}
+				onKeyDown={(event) => {
+					if (event.key !== "Escape") return;
+					event.preventDefault();
+					focusPanel("outline");
+				}}
 			/>
 
 			<div className={styles.commitControls}>
