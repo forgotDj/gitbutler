@@ -107,8 +107,8 @@ export const useNavigationIndexHotkeys = ({
 		focusPanel("outline");
 	};
 
-	const enterRubMode = () => {
-		dispatch(projectActions.enterRubMode({ projectId, source: selection }));
+	const enterRubMode = (source: Operand) => () => {
+		dispatch(projectActions.enterRubMode({ projectId, source }));
 		focusPanel("outline");
 	};
 
@@ -291,8 +291,13 @@ export const useNavigationIndexHotkeys = ({
 			},
 			{
 				hotkey: "R",
-				callback: enterRubMode,
+				callback: enterRubMode(selection),
 				options: { meta: { group, name: "Rub" } },
+			},
+			{
+				hotkey: "Shift+R",
+				callback: enterRubMode(changesSectionOperand),
+				options: { meta: { group, name: "Rub changes" } },
 			},
 			{
 				hotkey: "C",
