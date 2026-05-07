@@ -1269,12 +1269,7 @@ fn dlib_rs_auto_fix() -> anyhow::Result<()> {
     // AND: all of the above was before the `name` field was removed which served to help with ordering, so maybe the whole
     // test was tuned for a certain outcome and now this becomes more obvious. But whatever, it's legacy and
     // it doesn't fail anymore.
-    insta::assert_snapshot!(but_testsupport::graph_workspace_determinisitcally(&graph.into_workspace()?), @"
-    📕🏘️:0:gitbutler/workspace <> ✓refs/remotes/origin/main on 3183e43
-    └── ≡📙:5:main[🌳] <> origin/main →:1: on 3183e43 {1}
-        └── 📙:5:main[🌳] <> origin/main →:1:
-            └── ❄️bce0c5e (🏘️|✓)
-    ");
+    insta::assert_snapshot!(but_testsupport::graph_workspace_determinisitcally(&graph.into_workspace()?), @"📕🏘️:0:gitbutler/workspace <> ✓refs/remotes/origin/main on bce0c5e");
 
     let path = store.path().to_owned();
     store.write_reconciled(&repo)?;
@@ -1290,7 +1285,7 @@ fn dlib_rs_auto_fix() -> anyhow::Result<()> {
                 branch: "main",
             },
             remote_url: "https://github.com/A2va/dlib-rs",
-            sha: Sha1(3183e43ff482a2c4c8ff531d595453b64f58d90b),
+            sha: Sha1(39b41821d90a6445815f32777ec5dbebb716897f),
             push_remote_name: Some(
                 "origin",
             ),
@@ -1305,12 +1300,7 @@ fn dlib_rs_auto_fix() -> anyhow::Result<()> {
         &store,
         but_graph::init::Options::limited(),
     )?;
-    insta::assert_snapshot!(but_testsupport::graph_workspace_determinisitcally(&graph.into_workspace()?), @"
-    📕🏘️:0:gitbutler/workspace <> ✓refs/remotes/origin/main on 3183e43
-    └── ≡📙:2:main[🌳] <> origin/main →:1: on 3183e43 {1}
-        └── 📙:2:main[🌳] <> origin/main →:1:
-            └── ❄️bce0c5e (🏘️|✓)
-    ");
+    insta::assert_snapshot!(but_testsupport::graph_workspace_determinisitcally(&graph.into_workspace()?), @"📕🏘️:0:gitbutler/workspace <> ✓refs/remotes/origin/main on bce0c5e");
 
     let (actual, _uuids) = sanitize_uuids_and_timestamps_with_mapping(debug_str(&ws.stacks));
     // Reconciliation now preserves the explicitly-written stack layout instead of allowing the
@@ -1329,16 +1319,6 @@ fn dlib_rs_auto_fix() -> anyhow::Result<()> {
                     archived: false,
                 },
             ],
-            workspacecommit_relation: Merged,
-        },
-        WorkspaceStack {
-            id: 2,
-            branches: [
-                WorkspaceStackBranch {
-                    ref_name: "refs/heads/main",
-                    archived: false,
-                },
-            ],
             workspacecommit_relation: Outside,
         },
     ]
@@ -1349,8 +1329,8 @@ fn dlib_rs_auto_fix() -> anyhow::Result<()> {
         .data_mut()
         .branches
         .values_mut()
-        .find(|stack| stack.in_workspace && stack.heads.iter().any(|head| head.name == "main"))
-        .expect("a reconciled in-workspace stack with 'main' exists")
+        .find(|stack| stack.heads.iter().any(|head| head.name == "main"))
+        .expect("a reconciled stack with 'main' exists")
         .id = StackId::from_number_for_testing(8);
     // Now the ID and the ID used for storage are out of sync.
     let mismatched_stack = store

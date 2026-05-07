@@ -755,25 +755,47 @@ impl WorkspaceState {
         }
     }
 
-    /// Truncate each stack to only show commits above its fork point with the
-    /// target, then remove empty branches and stacks.
-    ///
-    /// The fork point is the first commit on the first-parent chain (walked via
-    /// the graph's `CommitFlags::Integrated`) that is reachable from the target.
-    ///
-    /// Stacks explicitly tracked in workspace metadata are never pruned —
-    /// their integrated branches and commits must remain visible so that
-    /// `integrate_upstream` can detect and remove them.
+    /// Remove integrated commits and empty branches at the bottom of each
+    /// stack, but only those at or below the workspace's target commit.
+    /// Integrated commits above the target are kept until the user advances
+    /// the target via upstream integration.
     fn prune_integrated_segments(&mut self, graph: &Graph) {
         if self.extra_target.is_some() || self.target_ref.is_none() {
             return;
         }
+        let (target_segment_index, target_commit_id) = if let Some(tc) = self.target_commit.as_ref()
+        {
+            (tc.segment_index, Some(tc.commit_id))
+        } else if let Some(tr) = self.target_ref.as_ref() {
+            (tr.segment_index, None)
+        } else {
+            return;
+        };
+
+        // Collect all commit IDs that are the target itself or ancestors
+        // of it by walking the graph toward its ancestors
+        // (Direction::Outgoing). In the target segment itself, only
+        // include commits from the target position downward — commits
+        // above it in the same segment are not reachable from the target.
+        let mut is_target_or_below = HashSet::new();
+        graph.visit_all_segments_excluding_start_until(
+            target_segment_index,
+            Direction::Outgoing,
+            |s| {
+                is_target_or_below.extend(s.commits.iter().map(|c| c.id));
+                false
+            },
+        );
+        // For the target segment, include commits from the target onward.
+        let target_seg = &graph[target_segment_index];
+        let start = target_commit_id
+            .and_then(|id| target_seg.commits.iter().position(|c| c.id == id))
+            .unwrap_or(0);
+        is_target_or_below.extend(target_seg.commits[start..].iter().map(|c| c.id));
+
         let metadata = self.metadata.as_ref();
         for stack in &mut self.stacks {
-            if is_metadata_tracked(stack, metadata) {
-                continue;
-            }
-            truncate_at_fork_point(stack, graph);
+            truncate_at_fork_point(stack, &is_target_or_below);
             remove_empty_branches(stack, metadata);
         }
         self.stacks.retain(|stack| !stack.segments.is_empty());
@@ -967,54 +989,57 @@ impl WorkspaceState {
     }
 }
 
-/// Truncate the stack at the fork point: the first commit whose graph-level
-/// `CommitFlags::Integrated` flag is set, walking top-down through each
-/// segment's `commits_by_segment` entries.
-///
-/// If the very first commit is already integrated, the entire stack is
-/// integrated and we leave it untouched — pruning is only for partially
-/// integrated stacks where the bottom portion has been merged upstream.
-fn truncate_at_fork_point(stack: &mut Stack, graph: &Graph) {
-    let mut is_first = true;
-    for seg_idx in 0..stack.segments.len() {
+/// Truncate the stack by removing integrated commits at the bottom, but
+/// only those that are the target commit itself or ancestors of it.
+/// Integrated commits above the target are kept — they represent branch
+/// work that was merged upstream but whose target hasn't moved forward
+/// yet. Once the user integrates upstream and the target advances past
+/// them, they will be pruned.
+fn truncate_at_fork_point(stack: &mut Stack, is_target_or_below: &HashSet<gix::ObjectId>) {
+    // Walk segments bottom-up, then commits bottom-up within each segment.
+    // Find the contiguous integrated tail whose commits are all in the
+    // `is_target_or_below` set. Stop at the first commit that is either
+    // not integrated or above the target.
+    let mut cut: Option<(usize, usize)> = None;
+    'outer: for seg_idx in (0..stack.segments.len()).rev() {
         let seg = &stack.segments[seg_idx];
-        for &(graph_sidx, ofs) in &seg.commits_by_segment {
-            for (i, commit) in graph[graph_sidx].commits.iter().enumerate() {
-                if commit.flags.contains(CommitFlags::Integrated) {
-                    if is_first {
-                        // Fully integrated — leave the stack as-is.
-                        return;
-                    }
-                    let cut = ofs + i;
-                    stack.segments[seg_idx].commits.truncate(cut);
-                    stack.segments[seg_idx]
-                        .commits_by_segment
-                        .retain(|(_, o)| *o < cut);
-                    // Clear commits in all segments below the cutoff, but keep
-                    // the segments themselves so that `remove_empty_branches`
-                    // can decide whether to retain metadata-tracked branches.
-                    for seg in &mut stack.segments[seg_idx + 1..] {
-                        seg.commits.clear();
-                        seg.commits_by_segment.clear();
-                    }
-                    return;
-                }
-                is_first = false;
+        for (commit_idx, commit) in seg.commits.iter().enumerate().rev() {
+            if !is_target_or_below.contains(&commit.id) {
+                break 'outer;
+            }
+            if commit.flags.contains(StackCommitFlags::Integrated) {
+                cut = Some((seg_idx, commit_idx));
+            } else {
+                break 'outer;
             }
         }
     }
+
+    let Some((cut_seg_idx, cut_offset)) = cut else {
+        return;
+    };
+
+    // Truncate commits in the cut segment.
+    stack.segments[cut_seg_idx].commits.truncate(cut_offset);
+    stack.segments[cut_seg_idx]
+        .commits_by_segment
+        .retain(|(_, o)| *o < cut_offset);
+    // Remove all segments below the cut — their branch refs pointed into
+    // integrated territory, not the fork point.
+    // Also remove the cut segment itself if it became empty, UNLESS it is
+    // the topmost segment (index 0).  Keeping an empty topmost segment
+    // lets `remove_empty_branches` decide whether the branch ref should
+    // be preserved (e.g. a metadata-tracked branch at the fork point).
+    let keep = if stack.segments[cut_seg_idx].commits.is_empty() && cut_seg_idx > 0 {
+        cut_seg_idx
+    } else {
+        cut_seg_idx + 1
+    };
+    stack.segments.truncate(keep);
 }
 
-/// Returns `true` if the stack is explicitly tracked in workspace metadata.
-fn is_metadata_tracked(
-    stack: &Stack,
-    metadata: Option<&but_core::ref_metadata::Workspace>,
-) -> bool {
-    stack.id.is_some_and(|stack_id| {
-        metadata.is_some_and(|meta| meta.stacks(Applied).any(|ms| ms.id == stack_id))
-    })
-}
-
+/// Remove empty segments unless they are mentioned in workspace metadata
+/// (e.g. a branch the user just added at the fork point with no commits yet).
 fn remove_empty_branches(stack: &mut Stack, metadata: Option<&but_core::ref_metadata::Workspace>) {
     let own_metadata_stack = stack.id.and_then(|stack_id| {
         metadata.and_then(|meta| meta.stacks(Applied).find(|ms| ms.id == stack_id))
@@ -1024,7 +1049,15 @@ fn remove_empty_branches(stack: &mut Stack, metadata: Option<&but_core::ref_meta
             || own_metadata_stack.is_some_and(|ms| {
                 seg.ref_info
                     .as_ref()
-                    .is_some_and(|ri| ms.branches.iter().any(|b| b.ref_name == ri.ref_name))
+                    // NOTE: `!b.archived` compensates for `prune_archived_segments`
+                    // running *before* integrated-commit pruning — archived segments
+                    // that still had commits are skipped there, then emptied here.
+                    // Once metadata is kept trimmed and up-to-date we can drop this.
+                    .is_some_and(|ri| {
+                        ms.branches
+                            .iter()
+                            .any(|b| b.ref_name == ri.ref_name && !b.archived)
+                    })
             })
     });
 }

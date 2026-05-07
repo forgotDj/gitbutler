@@ -172,7 +172,7 @@ pub struct TargetCommit {
     /// The hash of the commit that was once included in the [target ref](TargetRef), and that we remember to expand
     /// the reach of the workspace.
     pub commit_id: gix::ObjectId,
-    /// The index to the respective segment in the graph for which [`Self::commit_id`] is the first commit.
+    /// The index to the respective segment in the graph that contains [`Self::commit_id`].
     pub segment_index: SegmentIndex,
 }
 
@@ -180,12 +180,13 @@ impl TargetCommit {
     /// Find `target_commit_id` in the `graph` and store its segment in this instance, or return `None` if not found.
     fn from_commit(target_commit_id: gix::ObjectId, graph: &Graph) -> Option<Self> {
         graph.node_weights().find_map(|s| {
-            s.commits.first().and_then(|c| {
-                (c.id == target_commit_id).then_some(TargetCommit {
+            s.commits
+                .iter()
+                .any(|c| c.id == target_commit_id)
+                .then_some(TargetCommit {
                     commit_id: target_commit_id,
                     segment_index: s.id,
                 })
-            })
         })
     }
 }

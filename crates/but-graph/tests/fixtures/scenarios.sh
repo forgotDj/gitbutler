@@ -1618,4 +1618,34 @@ EOF
 
      create_workspace_commit_once my-branch
   )
+
+  # A branch whose commits are integrated (merged upstream via origin/main)
+  # but the workspace target hasn't advanced past them yet.
+  # The target_commit_id will be set to "init" in the test, while origin/main
+  # has moved forward to include the branch's commits via a merge.
+  #
+  # History:
+  #   gitbutler/workspace ─ B ─ A ─ init   (my-branch at B)
+  #   origin/main: merge(my-branch) ─ B ─ A ─ init
+  #
+  # With target at "init", A and B are above the target and should be kept
+  # even though they're marked integrated.
+  git init integrated-above-target
+  (cd integrated-above-target
+     commit init
+
+     # Branch with two commits
+     git checkout -b my-branch
+       commit A
+       commit B
+
+     # Simulate upstream merging the branch
+     git checkout main
+       git merge --no-ff -m "Merge branch my-branch" my-branch
+       setup_target_to_match_main
+
+     # Back to branch for workspace
+     git checkout my-branch
+     create_workspace_commit_once my-branch
+  )
 )
