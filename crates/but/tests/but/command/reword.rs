@@ -23,10 +23,10 @@ Updated commit message for [..] (now [..])
 
 "#]]);
 
-    insta::assert_snapshot!(env.git_log()?, @r"
+    insta::assert_snapshot!(env.git_log()?, @"
     * 0bd57a4 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
     * 2f7c570 (A) Updated commit message
-    * 0dc3733 (origin/main, origin/HEAD, main) add M
+    * 0dc3733 (origin/main, origin/HEAD, main, gitbutler/target) add M
     ");
 
     Ok(())
@@ -53,10 +53,10 @@ Updated commit message for [..] (now [..])
 "#]]);
 
     // Verify the commit message was updated with multiline content
-    insta::assert_snapshot!(env.git_log()?, @r"
+    insta::assert_snapshot!(env.git_log()?, @"
     * 5996541 (HEAD -> gitbutler/workspace) GitButler Workspace Commit
     * cdf2c74 (A) First line
-    * 0dc3733 (origin/main, origin/HEAD, main) add M
+    * 0dc3733 (origin/main, origin/HEAD, main, gitbutler/target) add M
     ");
 
     let repo = env.open_repo()?;

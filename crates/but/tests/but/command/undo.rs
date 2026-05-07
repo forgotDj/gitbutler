@@ -138,9 +138,26 @@ fn can_undo_clean_apply() -> anyhow::Result<()> {
             .stderr_eq("");
 
         Ok(())
-    };
+    })?;
 
-    run_mutate_undo_roundtrip_test(&env, mutate)?;
+    Ok(())
+}
+
+#[test]
+fn can_undo_rewording_commit() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack-two-commits")?;
+    env.setup_metadata(&["A"])?;
+
+    run_mutate_undo_roundtrip_test(&env, |env| {
+        env.but("reword")
+            .args(["9ac4652", "-m", "reworded"])
+            .assert()
+            .success()
+            .stdout_eq("Updated commit message for [..] (now [..])\n")
+            .stderr_eq("");
+
+        Ok(())
+    })?;
 
     Ok(())
 }
