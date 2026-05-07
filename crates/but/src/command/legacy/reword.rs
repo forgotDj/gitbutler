@@ -194,7 +194,7 @@ fn edit_commit_message_by_id_and_reword_commit(
     .filter(|new_message| should_update_commit_message(&current_message, new_message));
 
     if let Some(new_message) = new_message {
-        let new_commit_oid = but_api::commit::reword::commit_reword_only_with_perm(
+        let new_commit_oid = but_api::commit::reword::commit_reword_with_perm(
             ctx,
             commit_oid,
             BString::from(new_message),
