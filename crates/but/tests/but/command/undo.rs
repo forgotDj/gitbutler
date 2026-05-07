@@ -172,3 +172,22 @@ fn can_undo_rewording_commit() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn can_undo_rewording_branch() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack-two-commits")?;
+    env.setup_metadata(&["A"])?;
+
+    run_mutate_undo_roundtrip_test(&env, |env| {
+        env.but("reword")
+            .args(["A", "-m", "reworded-branch"])
+            .assert()
+            .success()
+            .stdout_eq("Renamed branch 'A' to 'reworded-branch'\n")
+            .stderr_eq("");
+
+        Ok(())
+    })?;
+
+    Ok(())
+}
