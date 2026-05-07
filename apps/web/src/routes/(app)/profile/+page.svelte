@@ -2,10 +2,8 @@
 	import ExperimentalSettings from "./components/ExperimentalSettings.svelte";
 	import NotificationSettings from "./components/NotificationSettings.svelte";
 	import ProfileHeader from "./components/ProfileHeader.svelte";
-	import SshKeysSection from "./components/SshKeysSection.svelte";
 	import SupporterCard from "./components/SupporterCard.svelte";
 	import linksJson from "$lib/data/links.json";
-	import { SSH_KEY_SERVICE } from "$lib/sshKeyService";
 	import { USER_SERVICE } from "$lib/user/userService";
 	import { getOS } from "$lib/utils/getOS";
 	import { inject } from "@gitbutler/core/context";
@@ -22,7 +20,6 @@
 	const userService = inject(USER_SERVICE);
 	const appState = inject(APP_STATE);
 	const notificationSettingsService = inject(NOTIFICATION_SETTINGS_SERVICE);
-	const sshKeyService = inject(SSH_KEY_SERVICE);
 	const recentProjects = getRecentlyPushedProjects();
 	const loginService = inject(LOGIN_SERVICE);
 
@@ -99,8 +96,6 @@
 			<ProfileHeader user={$user} {userService} />
 
 			{#if recentProjects.current.length > 0}
-				<SshKeysSection {sshKeyService} {userService} />
-
 				<Loading loadable={notificationSettings.current}>
 					{#snippet children(notificationSettings)}
 						<NotificationSettings {notificationSettings} {notificationSettingsService} />

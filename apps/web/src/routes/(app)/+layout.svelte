@@ -7,7 +7,6 @@
 	import Navigation from "$lib/components/Navigation.svelte";
 	import { OwnerService, OWNER_SERVICE } from "$lib/owner/ownerService";
 	import { WebState, WEB_STATE } from "$lib/redux/store.svelte";
-	import { SshKeyService, SSH_KEY_SERVICE } from "$lib/sshKeyService";
 	import { UserService, USER_SERVICE } from "$lib/user/userService";
 	import { provide } from "@gitbutler/core/context";
 	import { BranchService, BRANCH_SERVICE } from "@gitbutler/shared/branches/branchService";
@@ -138,8 +137,6 @@
 		},
 	} satisfies ExternalLinkService);
 
-	const sshKeyService = new SshKeyService(httpClient);
-	provide(SSH_KEY_SERVICE, sshKeyService);
 	const uploadsService = new UploadsService(httpClient);
 	provide(UPLOADS_SERVICE, uploadsService);
 
