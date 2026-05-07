@@ -231,6 +231,8 @@ pub(crate) struct CommittedFileToUnassignedOperation<'a> {
 
 /// Represents the operation to perform for a given source and target combination.
 /// This enum serves as the single source of truth for valid rub operations.
+// NOTE: Remember to update crates/but/tests/but/command/undo/undo_rub.rs with an undo test when
+// adding new operations
 #[derive(Debug, strum::EnumDiscriminants)]
 pub(crate) enum RubOperation<'a> {
     UnassignUncommitted(UnassignUncommittedOperation<'a>),

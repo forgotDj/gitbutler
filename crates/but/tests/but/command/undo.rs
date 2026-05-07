@@ -1,5 +1,7 @@
 use crate::utils::Sandbox;
 
+mod undo_rub;
+
 /// Run an undo test tests a roundtrip `mutate` -> `but undo`, and asserts that the status output is
 /// the same before and after the roundtrip.
 fn run_mutate_undo_roundtrip_test<F>(env: &Sandbox, mutate: F) -> anyhow::Result<()>
@@ -87,26 +89,6 @@ fn can_undo_commit() -> anyhow::Result<()> {
             .assert()
             .success()
             .stdout_eq("✓ Created commit [..] on branch A\n")
-            .stderr_eq("");
-
-        Ok(())
-    })?;
-
-    Ok(())
-}
-
-#[test]
-fn can_undo_rubbing_commits() -> anyhow::Result<()> {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack-two-commits")?;
-    env.setup_metadata(&["A"])?;
-
-    run_mutate_undo_roundtrip_test(&env, |env| {
-        env.but("rub")
-            .arg("9a")
-            .arg("fe")
-            .assert()
-            .success()
-            .stdout_eq("Squashed 9ac4652 → f66c907\n")
             .stderr_eq("");
 
         Ok(())

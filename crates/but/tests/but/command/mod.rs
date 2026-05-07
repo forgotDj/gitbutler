@@ -113,6 +113,56 @@ mod util {
         serde_json::from_slice(&output.stdout).context("status output should be valid JSON")
     }
 
+    /// Return `but status -f` JSON output as a parsed value.
+    pub fn status_json_with_files(env: &Sandbox) -> anyhow::Result<serde_json::Value> {
+        let output = env.but("--json status -f").allow_json().output()?;
+        serde_json::from_slice(&output.stdout).context("status output should be valid JSON")
+    }
+
+    /// Return the CLI ids for all commits on `branch_name` in `status` output.
+    pub fn branch_commit_ids(status: &serde_json::Value, branch_name: &str) -> Vec<String> {
+        status["stacks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|stack| stack["branches"].as_array().unwrap().iter())
+            .find(|branch| branch["name"].as_str().unwrap() == branch_name)
+            .unwrap()["commits"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|commit| commit["cliId"].as_str().unwrap().to_string())
+            .collect()
+    }
+
+    /// Return the CLI id of the commit on `branch_name` containing `file_path` in `status` output.
+    pub fn branch_commit_id_for_file(
+        status: &serde_json::Value,
+        branch_name: &str,
+        file_path: &str,
+    ) -> Option<String> {
+        status["stacks"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .flat_map(|stack| stack["branches"].as_array().unwrap().iter())
+            .find(|branch| branch["name"].as_str().unwrap() == branch_name)
+            .and_then(|branch| {
+                branch["commits"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find_map(|commit| {
+                        let has_file = commit["changes"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .any(|change| change["filePath"].as_str().unwrap() == file_path);
+                        has_file.then(|| commit["cliId"].as_str().unwrap().to_string())
+                    })
+            })
+    }
+
     /// Build an isolated `std::process::Command` for `but` with the same environment as the Sandbox.
     pub fn but_std_cmd(env: &Sandbox, args: &str) -> std::process::Command {
         let mut cmd = std::process::Command::new(snapbox::cmd::cargo_bin!("but"));
