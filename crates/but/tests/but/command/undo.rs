@@ -8,8 +8,27 @@ where
 {
     // Arrange
     let status_output_before = env.but("status").output()?;
+
+    {
+        eprintln!("Status before mutation:");
+        let output = String::from_utf8(status_output_before.stdout.clone()).unwrap();
+        for line in output.lines() {
+            eprintln!("    {line}");
+        }
+    }
+
     mutate(env)?;
     let status_output_after_mutate = env.but("status").output()?;
+
+    {
+        eprintln!();
+        eprintln!("Status after mutation:");
+        let output = String::from_utf8(status_output_after_mutate.stdout.clone()).unwrap();
+        for line in output.lines() {
+            eprintln!("    {line}");
+        }
+    }
+
     assert_ne!(
         status_output_before, status_output_after_mutate,
         "mutate must visibly change state"
@@ -40,7 +59,7 @@ fn can_undo_discard() -> anyhow::Result<()> {
     let path = "new-file.txt";
     env.file(path, "content");
 
-    let mutate = |env: &Sandbox| -> anyhow::Result<()> {
+    run_mutate_undo_roundtrip_test(&env, |env| {
         env.but("discard")
             .arg(path)
             .assert()
@@ -49,9 +68,7 @@ fn can_undo_discard() -> anyhow::Result<()> {
             .stderr_eq("");
 
         Ok(())
-    };
-
-    run_mutate_undo_roundtrip_test(&env, mutate)?;
+    })?;
 
     Ok(())
 }
@@ -63,7 +80,7 @@ fn can_undo_commit() -> anyhow::Result<()> {
     let path = "new-file.txt";
     env.file(path, "content");
 
-    let mutate = |env: &Sandbox| -> anyhow::Result<()> {
+    run_mutate_undo_roundtrip_test(&env, |env| {
         env.file("new-file.txt", "content");
 
         env.but("commit -m 'Add file'")
@@ -73,9 +90,7 @@ fn can_undo_commit() -> anyhow::Result<()> {
             .stderr_eq("");
 
         Ok(())
-    };
-
-    run_mutate_undo_roundtrip_test(&env, mutate)?;
+    })?;
 
     Ok(())
 }
@@ -85,7 +100,7 @@ fn can_undo_rubbing_commits() -> anyhow::Result<()> {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack-two-commits")?;
     env.setup_metadata(&["A"])?;
 
-    let mutate = |env: &Sandbox| -> anyhow::Result<()> {
+    run_mutate_undo_roundtrip_test(&env, |env| {
         env.but("rub")
             .arg("9a")
             .arg("fe")
@@ -95,9 +110,7 @@ fn can_undo_rubbing_commits() -> anyhow::Result<()> {
             .stderr_eq("");
 
         Ok(())
-    };
-
-    run_mutate_undo_roundtrip_test(&env, mutate)?;
+    })?;
 
     Ok(())
 }
@@ -108,7 +121,7 @@ fn can_undo_unapply() -> anyhow::Result<()> {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack")?;
     env.setup_metadata(&["A"])?;
 
-    let mutate = |env: &Sandbox| -> anyhow::Result<()> {
+    run_mutate_undo_roundtrip_test(&env, |env| {
         env.but("unapply A")
             .assert()
             .success()
@@ -116,9 +129,7 @@ fn can_undo_unapply() -> anyhow::Result<()> {
             .stderr_eq("");
 
         Ok(())
-    };
-
-    run_mutate_undo_roundtrip_test(&env, mutate)?;
+    })?;
 
     Ok(())
 }
@@ -130,7 +141,7 @@ fn can_undo_clean_apply() -> anyhow::Result<()> {
     env.setup_metadata(&["A"])?;
     env.but("unapply A").assert().success();
 
-    let mutate = |env: &Sandbox| -> anyhow::Result<()> {
+    run_mutate_undo_roundtrip_test(&env, |env| {
         env.but("apply A")
             .assert()
             .success()
