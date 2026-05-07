@@ -357,7 +357,7 @@ const ShortcutsBar: FC = () => {
 			{visibleHotkeys.map((hotkey) => (
 				<div key={hotkey.id} className={styles.shortcutsBarItem}>
 					<kbd className={styles.shortcutsBarKeys}>{formatForDisplay(hotkey.hotkey)}</kbd>
-					<span>{hotkey.options.meta?.name}</span>
+					<span className={styles.shortcutsBarName}>{hotkey.options.meta?.name}</span>
 				</div>
 			))}
 		</div>

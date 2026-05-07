@@ -36,7 +36,6 @@
 	padding: 4px var(--panel-padding);
 	border-top: 1px solid var(--border-2);
 	color: var(--text-2);
-	text-transform: lowercase;
 }
 
 .shortcutsBarScope {
@@ -48,6 +47,10 @@
 	display: flex;
 	column-gap: 4px;
 	align-items: baseline;
+}
+
+.shortcutsBarName {
+	text-transform: lowercase;
 }
 
 .shortcutsBarKeys {
