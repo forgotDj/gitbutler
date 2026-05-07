@@ -69,7 +69,7 @@
 	margin: 0;
 	padding: 1rem;
 	border: none;
-	border-bottom: 1px solid var(--border-3);
+	border-bottom: 1px solid var(--border-2);
 	border-radius: 0;
 	outline: none;
 	background-color: transparent;
@@ -84,7 +84,6 @@
 	}
 
 	&:focus {
-		border-bottom-color: var(--border-2);
 		outline: none;
 	}
 }
