@@ -374,15 +374,43 @@ pub(crate) fn target_to_base_branch(ctx: &Context, target: &Target) -> Result<Ba
     // if there are commits ahead of the base branch consider it diverged
     let diverged = !diverged_ahead.is_empty();
 
-    // gather a list of commits between oid and target.sha
-    let upstream_commits = first_parent_commit_ids_until(repo, target_commit_id, target.sha)
+    // Compute the lowest merge base across all workspace stacks and the target.
+    // Read the workspace ref directly rather than HEAD, since HEAD may not point
+    // at the workspace commit in all code paths.
+    let lowest_merge_base = {
+        let heads: Vec<_> = repo
+            .find_reference(WORKSPACE_REF_NAME)?
+            .peel_to_commit()?
+            .parent_ids()
+            .map(|id| id.detach())
+            .collect();
+        if heads.is_empty() {
+            // No workspace commit parents — fall back to stored target SHA.
+            Some(target.sha)
+        } else {
+            let base = repo
+                .merge_base_octopus([heads.as_slice(), &[target_commit_id]].concat())
+                .context("failed to compute octopus merge-base for workspace stacks")?;
+            Some(base.object()?.id().detach())
+        }
+    };
+
+    // Commits on the target branch between its tip and the lowest merge base.
+    let upstream_commit_ids = lowest_merge_base
+        .map(|lb| first_parent_commit_ids_until(repo, target_commit_id, lb))
+        .transpose()
         .context("failed to get upstream commits")?
+        .unwrap_or_default();
+
+    let upstream_commits = upstream_commit_ids
         .iter()
         .map(|id| {
             let commit = repo.find_commit(*id)?;
             commit_to_remote_commit(&commit)
         })
         .collect::<Result<Vec<_>>>()?;
+
+    let behind = upstream_commits.len();
 
     // get some recent commits
     let recent_commits = first_parent_commit_ids_with_limit(repo, target.sha, 20)
@@ -429,7 +457,7 @@ pub(crate) fn target_to_base_branch(ctx: &Context, target: &Target) -> Result<Ba
         push_remote_url,
         base_sha: target.sha,
         current_sha: target_commit_id,
-        behind: upstream_commits.len(),
+        behind,
         upstream_commits,
         recent_commits,
         last_fetched_ms: ctx
