@@ -220,14 +220,9 @@ pub(super) fn reword_commit_with_editor_with_message_legacy(
         return Ok(None);
     }
 
-    but_api::commit::reword::commit_reword_only(
-        ctx,
-        commit_id,
-        BString::from(new_message),
-        DryRun::No,
-    )
-    .with_context(|| format!("failed to reword {}", commit_id.to_hex_with_len(7)))
-    .map(Some)
+    but_api::commit::reword::commit_reword(ctx, commit_id, BString::from(new_message), DryRun::No)
+        .with_context(|| format!("failed to reword {}", commit_id.to_hex_with_len(7)))
+        .map(Some)
 }
 
 pub(super) fn current_commit_message(
@@ -256,14 +251,9 @@ pub(super) fn reword_commit_legacy(
         return Ok(None);
     }
 
-    but_api::commit::reword::commit_reword_only(
-        ctx,
-        commit_id,
-        BString::from(new_message),
-        DryRun::No,
-    )
-    .with_context(|| format!("failed to reword {}", commit_id.to_hex_with_len(7)))
-    .map(Some)
+    but_api::commit::reword::commit_reword(ctx, commit_id, BString::from(new_message), DryRun::No)
+        .with_context(|| format!("failed to reword {}", commit_id.to_hex_with_len(7)))
+        .map(Some)
 }
 
 pub(super) fn move_commit_to_branch(
