@@ -11,6 +11,7 @@ import {
 	type MoveBranchParams,
 	type TearOffBranchParams,
 	CommitSquashParams,
+	CommitUncommitParams,
 } from "#electron/ipc.ts";
 import { rejectedChangesToastOptions } from "#ui/operations/rejectedChangesToastOptions.tsx";
 import {
@@ -24,7 +25,6 @@ import {
 	commitUncommitMutationOptions,
 	moveBranchMutationOptions,
 	tearOffBranchMutationOptions,
-	CommitUncommitParams,
 } from "#ui/api/mutations.ts";
 import { InsertSide, RelativeTo } from "@gitbutler/but-sdk";
 import { Operand, operandEquals, operandFileParent } from "#ui/operands.ts";
@@ -262,8 +262,9 @@ export const useRunOperation = () => {
 				CommitUncommit: (operation) => {
 					commitUncommit.mutate({
 						projectId,
-						commitId: operation.commitId,
+						subjectCommitIds: operation.subjectCommitIds,
 						assignTo: operation.assignTo,
+						dryRun: false,
 					});
 				},
 				CommitUncommitChanges: (operation) => {
@@ -387,7 +388,7 @@ const rubOperation = ({ source, target }: { source: Operand; target: Operand }):
 			},
 			({ source }) =>
 				commitUncommitOperation({
-					commitId: source.commitId,
+					subjectCommitIds: [source.commitId],
 					assignTo: null,
 				}),
 		),

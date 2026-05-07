@@ -22,6 +22,7 @@ import type {
 	UnifiedPatch,
 	WatcherEvent,
 	WorktreeChanges,
+	UncommitResult,
 } from "@gitbutler/but-sdk";
 
 /**
@@ -74,6 +75,8 @@ const api: LiteElectronApi = {
 			"workspace:commit-move-changes-between",
 			params,
 		) as Promise<MoveChangesResult>,
+	commitUncommit: (params) =>
+		ipcRenderer.invoke("workspace:commit-uncommit", params) as Promise<UncommitResult>,
 	commitUncommitChanges: (params) =>
 		ipcRenderer.invoke("workspace:commit-uncommit-changes", params) as Promise<MoveChangesResult>,
 	getVersion: () => ipcRenderer.invoke("lite:get-version") as Promise<string>,
