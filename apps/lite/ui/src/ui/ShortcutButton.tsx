@@ -1,3 +1,4 @@
+import styles from "./ShortcutButton.module.css";
 import { classes } from "#ui/ui/classes.ts";
 import uiStyles from "#ui/ui/ui.module.css";
 import { Tooltip } from "@base-ui/react";
@@ -34,7 +35,8 @@ export const ShortcutButton: FC<
 			/>
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8}>
-					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>
+					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip, styles.tooltip)}>
+						{hotkeyOptions?.meta?.name}
 						<kbd>{formatForDisplay(hotkey)}</kbd>
 					</Tooltip.Popup>
 				</Tooltip.Positioner>
