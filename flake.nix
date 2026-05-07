@@ -37,6 +37,7 @@
           pkgs.pnpm
           pkgs.playwright-driver.browsers
           pkgs.cargo-flamegraph
+          pkgs.cargo-insta
         ];
 
         env = {
