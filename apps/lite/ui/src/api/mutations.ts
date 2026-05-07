@@ -1,12 +1,5 @@
 import { mutationOptions } from "@tanstack/react-query";
 
-// TODO: replace with generated type when it becomes available
-export type CommitUncommitParams = {
-	projectId: string;
-	commitId: string;
-	assignTo: string | null;
-};
-
 /** @public */
 export const applyBranchMutationOptions = mutationOptions({
 	mutationFn: window.lite.apply,
@@ -58,8 +51,9 @@ export const commitSquashMutationOptions = mutationOptions({
 });
 
 export const commitUncommitMutationOptions = mutationOptions({
-	mutationFn: async (_input: CommitUncommitParams) => {
-		throw new Error("Uncommitting has not been implemented yet.");
+	mutationFn: window.lite.commitUncommit,
+	onSuccess: async (_data, _input, _ctx, { client }) => {
+		await client.invalidateQueries();
 	},
 });
 

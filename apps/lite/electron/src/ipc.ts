@@ -26,6 +26,7 @@ import type {
 	UnifiedPatch,
 	WatcherEvent,
 	WorktreeChanges,
+	UncommitResult,
 } from "@gitbutler/but-sdk";
 import type { UpdateDownloadedEvent } from "electron-updater";
 
@@ -121,6 +122,13 @@ export interface CommitSquashParams {
 	projectId: string;
 	sourceCommitIds: Array<string>;
 	destinationCommitId: string;
+	dryRun: boolean;
+}
+
+export interface CommitUncommitParams {
+	projectId: string;
+	subjectCommitIds: Array<string>;
+	assignTo: string | null;
 	dryRun: boolean;
 }
 
@@ -224,6 +232,7 @@ export interface LiteElectronApi {
 	commitSquash: (params: CommitSquashParams) => Promise<CommitSquashResult>;
 	commitReword: (params: CommitRewordParams) => Promise<CommitRewordResult>;
 	commitMoveChangesBetween: (params: CommitMoveChangesBetweenParams) => Promise<MoveChangesResult>;
+	commitUncommit: (params: CommitUncommitParams) => Promise<UncommitResult>;
 	commitUncommitChanges: (params: CommitUncommitChangesParams) => Promise<MoveChangesResult>;
 	getVersion: () => Promise<string>;
 	headInfo: (projectId: string) => Promise<RefInfo>;
@@ -264,6 +273,7 @@ export const liteIpcChannels = {
 	commitSquash: "workspace:commit-squash",
 	commitReword: "workspace:commit-reword",
 	commitMoveChangesBetween: "workspace:commit-move-changes-between",
+	commitUncommit: "workspace:commit-uncommit",
 	commitUncommitChanges: "workspace:commit-uncommit-changes",
 	getVersion: "lite:get-version",
 	headInfo: "workspace:head-info",

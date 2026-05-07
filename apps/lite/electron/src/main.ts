@@ -28,6 +28,7 @@ import {
 	WatcherSubscribeParams,
 	WatcherUnsubscribeParams,
 	NativeMenuPopupItem,
+	CommitUncommitParams,
 } from "./ipc.js";
 import {
 	absorb,
@@ -57,6 +58,7 @@ import {
 	unapplyStack,
 	updateBranchName,
 	BranchListingFilter,
+	commitUncommit,
 } from "@gitbutler/but-sdk";
 import {
 	app,
@@ -251,6 +253,11 @@ const registerIpcHandlers = (): void => {
 				dryRun,
 			}: CommitMoveChangesBetweenParams,
 		) => commitMoveChangesBetween(projectId, sourceCommitId, destinationCommitId, changes, dryRun),
+	);
+	ipcMain.handle(
+		liteIpcChannels.commitUncommit,
+		(_e, { projectId, subjectCommitIds: commitIds, assignTo, dryRun }: CommitUncommitParams) =>
+			commitUncommit(projectId, commitIds, assignTo, dryRun),
 	);
 	ipcMain.handle(
 		liteIpcChannels.commitUncommitChanges,
