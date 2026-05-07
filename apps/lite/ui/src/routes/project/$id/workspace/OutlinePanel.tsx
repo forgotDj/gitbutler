@@ -916,6 +916,7 @@ const Changes: FC<{
 	const operand = changesSectionOperand;
 	const commitTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const focusedPanel = useFocusedProjectPanel(projectId);
+	const dispatch = useAppDispatch();
 
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
@@ -981,6 +982,10 @@ const Changes: FC<{
 	};
 
 	const isSelected = useIsSelected({ projectId, operand });
+	const selectChanges = () => {
+		if (isSelected) return;
+		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
+	};
 
 	useHotkey("Enter", () => commitTextareaRef.current?.focus(), {
 		conflictBehavior: "allow",
@@ -1009,6 +1014,7 @@ const Changes: FC<{
 				disabled={outlineMode._tag !== "Default"}
 				placeholder="Commit message (optional)"
 				className={styles.commitTextarea}
+				onFocus={selectChanges}
 				onKeyDown={(event) => {
 					if (event.key !== "Escape") return;
 					event.preventDefault();
