@@ -45,6 +45,7 @@ import { DetailsPanel } from "./DetailsPanel.tsx";
 import styles from "./WorkspacePage.module.css";
 import type { CommandGroup } from "#ui/commands/groups.ts";
 import { OutlinePanel } from "#ui/routes/project/$id/workspace/OutlinePanel.tsx";
+import { classes } from "#ui/ui/classes.ts";
 
 declare module "@tanstack/react-hotkeys" {
 	interface HotkeyMeta {
@@ -485,7 +486,7 @@ const WorkspacePage: FC = () => {
 							defaultSize={400}
 							groupResizeBehavior="preserve-pixel-size"
 							tabIndex={0}
-							className={styles.panel}
+							className={classes(styles.panel, styles.panelPadding)}
 							onAbsorbChanges={openAbsorptionDialog}
 						/>
 					</>
@@ -497,7 +498,7 @@ const WorkspacePage: FC = () => {
 							id={"details" satisfies PanelType}
 							minSize={400}
 							tabIndex={0}
-							className={styles.panel}
+							className={classes(styles.panel, styles.panelPadding)}
 						/>
 					</>
 				)}

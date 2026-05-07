@@ -212,14 +212,7 @@ const OutlineTreePanel: FC<
 		selectProjectOperationModeState(state, projectId),
 	);
 
-	const select = (newItem: Operand) =>
-		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
-
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-	const selectChanges = () => {
-		select(changesSectionOperand);
-		focusPanel("outline");
-	};
 
 	const openBranchPicker = () => {
 		dispatch(projectActions.openBranchPicker({ projectId }));
@@ -231,11 +224,6 @@ const OutlineTreePanel: FC<
 			callback: openBranchPicker,
 			options: { meta: { group: "Outline", name: "Branch" } },
 		},
-		{
-			hotkey: "Z",
-			callback: selectChanges,
-			options: { meta: { group: "Outline", name: "Changes" } },
-		},
 	]);
 
 	return (
@@ -244,28 +232,32 @@ const OutlineTreePanel: FC<
 			tabIndex={0}
 			role="tree"
 			aria-activedescendant={treeItemId(selection)}
-			className={classes(panelProps.className, styles.tree)}
+			className={classes(panelProps.className, styles.panel)}
 		>
-			<Changes
-				projectId={projectId}
-				onAbsorbChanges={onAbsorbChanges}
-				navigationIndex={navigationIndex}
-			/>
-
-			{headInfo.stacks.map((stack) => (
-				<StackC
-					key={stack.id}
+			<div className={styles.changesContainer}>
+				<Changes
 					projectId={projectId}
-					stack={stack}
+					onAbsorbChanges={onAbsorbChanges}
 					navigationIndex={navigationIndex}
 				/>
-			))}
+			</div>
 
-			<BaseCommit
-				projectId={projectId}
-				commitId={getCommonBaseCommitId(headInfo)}
-				navigationIndex={navigationIndex}
-			/>
+			<div className={styles.scroller}>
+				{headInfo.stacks.map((stack) => (
+					<StackC
+						key={stack.id}
+						projectId={projectId}
+						stack={stack}
+						navigationIndex={navigationIndex}
+					/>
+				))}
+
+				<BaseCommit
+					projectId={projectId}
+					commitId={getCommonBaseCommitId(headInfo)}
+					navigationIndex={navigationIndex}
+				/>
+			</div>
 
 			{Match.value(operationMode).pipe(
 				Match.when(null, () => null),
@@ -916,6 +908,7 @@ const Changes: FC<{
 	const operand = changesSectionOperand;
 	const commitTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const focusedPanel = useFocusedProjectPanel(projectId);
+	const dispatch = useAppDispatch();
 
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
@@ -981,6 +974,31 @@ const Changes: FC<{
 	};
 
 	const isSelected = useIsSelected({ projectId, operand });
+	const selectChanges = () => {
+		if (isSelected) return;
+		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
+	};
+	const selectChangesAndFocusOutline = () => {
+		selectChanges();
+		focusPanel("outline");
+	};
+	const composeCommitMessage = () => {
+		selectChanges();
+		commitTextareaRef.current?.focus();
+	};
+
+	useHotkeys([
+		{
+			hotkey: "Z",
+			callback: selectChangesAndFocusOutline,
+			options: { meta: { group: "Outline", name: "Changes" } },
+		},
+		{
+			hotkey: "Shift+Z",
+			callback: composeCommitMessage,
+			options: { meta: { group: "Outline", name: "Compose commit message" } },
+		},
+	]);
 
 	useHotkey("Enter", () => commitTextareaRef.current?.focus(), {
 		conflictBehavior: "allow",
@@ -1009,6 +1027,7 @@ const Changes: FC<{
 				disabled={outlineMode._tag !== "Default"}
 				placeholder="Commit message (optional)"
 				className={styles.commitTextarea}
+				onFocus={selectChanges}
 				onKeyDown={(event) => {
 					if (event.key !== "Escape") return;
 					event.preventDefault();
