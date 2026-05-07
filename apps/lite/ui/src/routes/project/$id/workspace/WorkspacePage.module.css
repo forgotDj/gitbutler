@@ -55,4 +55,6 @@
 
 .shortcutsBarKeys {
 	color: var(--text-1);
+	font-size: 14px;
+	font-family: inherit;
 }

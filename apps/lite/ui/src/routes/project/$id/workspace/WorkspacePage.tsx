@@ -22,6 +22,7 @@ import {
 } from "#ui/projects/state.ts";
 import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/AbsorptionDialog.tsx";
 import { ShortcutsBarPortal, TopBarActionsPortal } from "#ui/portals.tsx";
+import { Keys } from "#ui/ui/Keys.tsx";
 import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { isInputElement } from "#ui/commands/hotkeys.ts";
@@ -129,7 +130,7 @@ const CommandPalette: FC<{
 			emptyLabel="No commands found."
 			getItemKey={(x) => x.id}
 			getItemLabel={(x) => x.name}
-			getItemType={(x) => (x.hotkey !== undefined ? formatForDisplay(x.hotkey) : undefined)}
+			getItemType={(x) => (x.hotkey !== undefined ? <Keys hotkey={x.hotkey} /> : undefined)}
 			items={items}
 			open={open}
 			onOpenChange={onOpenChange}

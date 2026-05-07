@@ -5,7 +5,7 @@
 import { Autocomplete } from "@base-ui/react/autocomplete";
 import { Dialog } from "@base-ui/react/dialog";
 import { ScrollArea } from "@base-ui/react/scroll-area";
-import { useRef } from "react";
+import { ReactNode, useRef } from "react";
 import styles from "./PickerDialog.module.css";
 
 /** @public */
@@ -34,7 +34,7 @@ export const PickerDialog = <Item,>({
 	emptyLabel: string;
 	getItemKey: (item: Item) => string;
 	getItemLabel: (item: Item) => string;
-	getItemType: (item: Item, group: PickerDialogGroup<Item>) => string | undefined;
+	getItemType: (item: Item, group: PickerDialogGroup<Item>) => ReactNode;
 	itemToStringValue?: (item: Item) => string;
 	items: Array<PickerDialogGroup<Item>>;
 	onOpenChange: (open: boolean) => void;
