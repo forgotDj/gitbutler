@@ -22,6 +22,7 @@ import {
 } from "#ui/projects/state.ts";
 import { AbsorptionDialog } from "#ui/routes/project/$id/workspace/AbsorptionDialog.tsx";
 import { ShortcutsBarPortal, TopBarActionsPortal } from "#ui/portals.tsx";
+import { Keys } from "#ui/ui/Keys.tsx";
 import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { isInputElement } from "#ui/commands/hotkeys.ts";
@@ -38,7 +39,7 @@ import { useParams } from "@tanstack/react-router";
 import { Match, pipe } from "effect";
 import { FC, useState } from "react";
 import { Group, Separator, useDefaultLayout } from "react-resizable-panels";
-import { branchOperand, changesSectionOperand, type BranchOperand } from "#ui/operands.ts";
+import { branchOperand, type BranchOperand } from "#ui/operands.ts";
 import { PickerDialog, type PickerDialogGroup } from "#ui/ui/PickerDialog/PickerDialog.tsx";
 import { DetailsPanel } from "./DetailsPanel.tsx";
 import styles from "./WorkspacePage.module.css";
@@ -129,7 +130,7 @@ const CommandPalette: FC<{
 			emptyLabel="No commands found."
 			getItemKey={(x) => x.id}
 			getItemLabel={(x) => x.name}
-			getItemType={(x) => (x.hotkey !== undefined ? formatForDisplay(x.hotkey) : undefined)}
+			getItemType={(x) => (x.hotkey !== undefined ? <Keys hotkey={x.hotkey} /> : undefined)}
 			items={items}
 			open={open}
 			onOpenChange={onOpenChange}
@@ -357,7 +358,7 @@ const ShortcutsBar: FC = () => {
 			{visibleHotkeys.map((hotkey) => (
 				<div key={hotkey.id} className={styles.shortcutsBarItem}>
 					<kbd className={styles.shortcutsBarKeys}>{formatForDisplay(hotkey.hotkey)}</kbd>
-					<span>{hotkey.options.meta?.name}</span>
+					<span className={styles.shortcutsBarName}>{hotkey.options.meta?.name}</span>
 				</div>
 			))}
 		</div>
@@ -439,24 +440,8 @@ const WorkspacePage: FC = () => {
 		focusPanel("outline");
 	};
 
-	const commitChangesToBranch = (branch: BranchOperand) => {
-		dispatch(
-			projectActions.selectOutline({
-				projectId,
-				selection: branchOperand(branch),
-			}),
-		);
-		dispatch(
-			projectActions.enterMoveMode({
-				projectId,
-				source: changesSectionOperand,
-			}),
-		);
-		focusPanel("outline");
-	};
-
 	const setBranchPickerOpen = (open: boolean) => {
-		if (open) dispatch(projectActions.openBranchPicker({ projectId, intent: "selectBranch" }));
+		if (open) dispatch(projectActions.openBranchPicker({ projectId }));
 		else dispatch(projectActions.closePickerDialog({ projectId }));
 	};
 
@@ -534,16 +519,8 @@ const WorkspacePage: FC = () => {
 					ApplyBranchPicker: () => (
 						<ApplyBranchPicker open onOpenChange={setApplyBranchPickerOpen} projectId={projectId} />
 					),
-					BranchPicker: ({ intent }) => (
-						<BranchPicker
-							open
-							onOpenChange={setBranchPickerOpen}
-							onSelectBranch={Match.value(intent).pipe(
-								Match.when("selectBranch", () => selectBranch),
-								Match.when("commitChanges", () => commitChangesToBranch),
-								Match.exhaustive,
-							)}
-						/>
+					BranchPicker: () => (
+						<BranchPicker open onOpenChange={setBranchPickerOpen} onSelectBranch={selectBranch} />
 					),
 					CommandPalette: () => <CommandPalette open onOpenChange={setCommandPaletteOpen} />,
 				}),

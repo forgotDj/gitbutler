@@ -1,4 +1,6 @@
+import uiStyles from "#ui/ui/ui.module.css";
 import {
+	commitCreateMutationOptions,
 	commitDiscardMutationOptions,
 	commitInsertBlankMutationOptions,
 	commitMoveMutationOptions,
@@ -48,7 +50,8 @@ import {
 	Section,
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
-import { mergeProps, useRender } from "@base-ui/react";
+import { mergeProps, Toast, useRender } from "@base-ui/react";
+import { Combobox } from "@base-ui/react/combobox";
 import { Toolbar } from "@base-ui/react/toolbar";
 import {
 	AbsorptionTarget,
@@ -60,7 +63,7 @@ import {
 	TreeChange,
 } from "@gitbutler/but-sdk";
 import { formatForDisplay, useHotkey, useHotkeys } from "@tanstack/react-hotkeys";
-import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { Match } from "effect";
 
@@ -72,6 +75,7 @@ import {
 	useEffect,
 	useOptimistic,
 	useRef,
+	useState,
 	useTransition,
 } from "react";
 import { Panel, PanelProps } from "react-resizable-panels";
@@ -80,8 +84,10 @@ import workspaceItemRowStyles from "./WorkspaceItemRow.module.css";
 import { WorkspaceItemRow, WorkspaceItemRowToolbar } from "./WorkspaceItemRow.tsx";
 import { moveOperation, useRunOperation } from "#ui/operations/operation.ts";
 import { isNonEmptyArray, NonEmptyArray } from "effect/Array";
-import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
 import { defaultOutlineSelection } from "#ui/projects/workspace/state.ts";
+import { ShortcutButton } from "#ui/ui/ShortcutButton.tsx";
+import { resolveDiffSpecs } from "#ui/operations/diff-specs.ts";
+import { rejectedChangesToastOptions } from "#ui/operations/rejectedChangesToastOptions.tsx";
 
 const sections = (headInfo: RefInfo): NonEmptyArray<Section> => {
 	const changesSection: Section = {
@@ -210,16 +216,13 @@ const OutlineTreePanel: FC<
 		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
 
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-	const commit = () =>
-		dispatch(projectActions.openBranchPicker({ projectId, intent: "commitChanges" }));
-
 	const selectChanges = () => {
 		select(changesSectionOperand);
 		focusPanel("outline");
 	};
 
 	const openBranchPicker = () => {
-		dispatch(projectActions.openBranchPicker({ projectId, intent: "selectBranch" }));
+		dispatch(projectActions.openBranchPicker({ projectId }));
 	};
 
 	useHotkeys([
@@ -246,7 +249,6 @@ const OutlineTreePanel: FC<
 			<Changes
 				projectId={projectId}
 				onAbsorbChanges={onAbsorbChanges}
-				onCommit={commit}
 				navigationIndex={navigationIndex}
 			/>
 
@@ -760,9 +762,8 @@ const ChangesSectionRow: FC<{
 	changes: Array<TreeChange>;
 	navigationIndex: NavigationIndex;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	onCommit: () => void;
 	projectId: string;
-}> = ({ changes, navigationIndex, onAbsorbChanges, onCommit, projectId }) => {
+}> = ({ changes, navigationIndex, onAbsorbChanges, projectId }) => {
 	const operand = changesSectionOperand;
 	const isSelected = useIsSelected({ projectId, operand });
 	const focusedPanel = useFocusedProjectPanel(projectId);
@@ -806,22 +807,6 @@ const ChangesSectionRow: FC<{
 			</div>
 			{outlineMode._tag === "Default" && (
 				<WorkspaceItemRowToolbar aria-label="Changes actions">
-					<Toolbar.Button
-						type="button"
-						className={workspaceItemRowStyles.itemRowToolbarButton}
-						render={
-							<ShortcutButton
-								onClick={onCommit}
-								hotkey="Shift+C"
-								hotkeyOptions={{
-									conflictBehavior: "allow",
-									meta: { group: "Changes", name: "Commit" },
-								}}
-							/>
-						}
-					>
-						Commit
-					</Toolbar.Button>
 					<Toolbar.Button
 						type="button"
 						className={workspaceItemRowStyles.itemRowToolbarButton}
@@ -876,31 +861,209 @@ const BaseCommit: FC<{
 	);
 };
 
+type CommitBranchComboboxItem = {
+	id: string;
+	label: string;
+	branch: BranchOperand;
+};
+
+const CommitBranchComboboxPopup: FC = () => (
+	<Combobox.Popup className={classes(uiStyles.popup, styles.commitBranchComboboxPopup)}>
+		<Combobox.Input
+			aria-label="Search branches"
+			placeholder="Search branches…"
+			className={styles.commitBranchComboboxInput}
+		/>
+		<Combobox.Empty>
+			<div className={styles.commitBranchComboboxEmpty}>No branches found.</div>
+		</Combobox.Empty>
+		<Combobox.List className={styles.commitBranchComboboxList}>
+			{(item: CommitBranchComboboxItem) => (
+				<Combobox.Item key={item.id} value={item} className={styles.commitBranchComboboxItem}>
+					{item.label}
+				</Combobox.Item>
+			)}
+		</Combobox.List>
+	</Combobox.Popup>
+);
+
 const Changes: FC<{
 	projectId: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
-	onCommit: () => void;
 	navigationIndex: NavigationIndex;
-}> = ({ projectId, onAbsorbChanges, onCommit, navigationIndex }) => {
+}> = ({ projectId, onAbsorbChanges, navigationIndex }) => {
+	const toastManager = Toast.useToastManager();
+
+	const commitCreate = useMutation({
+		...commitCreateMutationOptions,
+		onSuccess: async (response, input, context, mutation) => {
+			await commitCreateMutationOptions.onSuccess?.(response, input, context, mutation);
+
+			if (response.rejectedChanges.length > 0)
+				toastManager.add(
+					rejectedChangesToastOptions({
+						newCommit: response.newCommit,
+						rejectedChanges: response.rejectedChanges,
+					}),
+				);
+		},
+	});
+
+	const queryClient = useQueryClient();
+
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const operand = changesSectionOperand;
+	const commitTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+	const focusedPanel = useFocusedProjectPanel(projectId);
+
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+
+	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+	const branchComboboxItems = headInfo.stacks.flatMap((stack): Array<CommitBranchComboboxItem> => {
+		// oxlint-disable-next-line typescript/no-non-null-assertion -- [ref:stack-id-required]
+		const stackId = stack.id!;
+		return stack.segments.flatMap((segment): Array<CommitBranchComboboxItem> => {
+			const refName = segment.refName;
+			if (!refName) return [];
+
+			return [
+				{
+					id: JSON.stringify([stackId, refName.fullNameBytes]),
+					label: refName.displayName,
+					branch: { stackId, branchRef: refName.fullNameBytes },
+				},
+			];
+		});
+	});
+
+	const [branchState, setBranch] = useState<CommitBranchComboboxItem | null>(null);
+
+	if (branchState && !branchComboboxItems.some((item) => item.id === branchState.id))
+		setBranch(null);
+
+	const branch = branchState ?? branchComboboxItems[0];
+
+	const commit = () => {
+		if (!branch) return;
+
+		const changes = resolveDiffSpecs({
+			source: changesSectionOperand,
+			queryClient,
+			projectId,
+		});
+		if (!changes) return;
+
+		commitCreate.mutate(
+			{
+				projectId,
+				relativeTo: { type: "referenceBytes", subject: branch.branch.branchRef },
+				side: "below",
+				changes,
+				message: commitTextareaRef.current?.value ?? "",
+				dryRun: false,
+			},
+			{
+				onSuccess: (response) => {
+					if (response.newCommit !== null && commitTextareaRef.current)
+						commitTextareaRef.current.value = "";
+				},
+			},
+		);
+		focusPanel("outline");
+	};
+
+	const [open, setOpen] = useState(false);
+
+	const selectBranch = (option: CommitBranchComboboxItem | null) => {
+		setBranch(option);
+		setOpen(false);
+	};
+
+	const isSelected = useIsSelected({ projectId, operand });
+
+	useHotkey("Enter", () => commitTextareaRef.current?.focus(), {
+		conflictBehavior: "allow",
+		enabled: isSelected && focusedPanel === "outline" && outlineMode._tag === "Default",
+		meta: { group: "Changes", name: "Compose commit message" },
+	});
 
 	return (
 		<TreeItem
 			projectId={projectId}
 			operand={operand}
 			label={`Changes (${worktreeChanges.changes.length})`}
-			className={workspaceItemRowStyles.section}
+			className={classes(workspaceItemRowStyles.section, styles.changesSection)}
 			render={<OperandC projectId={projectId} operand={operand} />}
 		>
 			<ChangesSectionRow
 				changes={worktreeChanges.changes}
 				navigationIndex={navigationIndex}
 				onAbsorbChanges={onAbsorbChanges}
-				onCommit={onCommit}
 				projectId={projectId}
 			/>
+
+			<textarea
+				ref={commitTextareaRef}
+				aria-label="Compose commit message"
+				disabled={outlineMode._tag !== "Default"}
+				placeholder="Commit message (optional)"
+				className={styles.commitTextarea}
+				onKeyDown={(event) => {
+					if (event.key !== "Escape") return;
+					event.preventDefault();
+					focusPanel("outline");
+				}}
+			/>
+
+			<div className={styles.commitControls}>
+				<Combobox.Root<CommitBranchComboboxItem>
+					items={branchComboboxItems}
+					open={open}
+					onOpenChange={setOpen}
+					value={branch}
+					onValueChange={selectBranch}
+					itemToStringLabel={(x) => x.label}
+					itemToStringValue={(x) => x.id}
+					isItemEqualToValue={(a, b) => a.id === b.id}
+					autoHighlight
+					disabled={outlineMode._tag !== "Default"}
+				>
+					<Combobox.Trigger
+						className={classes(uiStyles.button, styles.commitBranchComboboxTrigger)}
+						aria-label="Select branch"
+						render={
+							<ShortcutButton
+								hotkey="Mod+Shift+B"
+								hotkeyOptions={{
+									conflictBehavior: "allow",
+									meta: { group: "Changes", name: "Select commit branch" },
+								}}
+							/>
+						}
+					>
+						<Combobox.Value placeholder="Select branch" />
+					</Combobox.Trigger>
+					<Combobox.Portal>
+						<Combobox.Positioner align="start" sideOffset={8}>
+							<CommitBranchComboboxPopup />
+						</Combobox.Positioner>
+					</Combobox.Portal>
+				</Combobox.Root>
+
+				<ShortcutButton
+					hotkey="Mod+Enter"
+					hotkeyOptions={{
+						conflictBehavior: "allow",
+						meta: { group: "Changes", name: "Commit" },
+					}}
+					className={classes(uiStyles.button, styles.changesSectionCommitButton)}
+					onClick={commit}
+					disabled={outlineMode._tag !== "Default" || !branch}
+				>
+					Commit
+				</ShortcutButton>
+			</div>
 		</TreeItem>
 	);
 };
