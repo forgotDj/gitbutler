@@ -384,21 +384,20 @@ const ItemRow: FC<
 		projectId: string;
 		operand: Operand;
 		navigationIndex: NavigationIndex;
-	} & Omit<ComponentProps<typeof WorkspaceItemRow>, "inert" | "isSelected">
-> = ({ projectId, operand, navigationIndex, onClick, ...props }) => {
+	} & Omit<ComponentProps<typeof WorkspaceItemRow>, "inert" | "isSelected" | "onSelect">
+> = ({ projectId, operand, navigationIndex, ...props }) => {
 	const dispatch = useAppDispatch();
 	const isSelected = useIsSelected({ projectId, operand });
+	const selectItem = () => {
+		dispatch(projectActions.selectFiles({ projectId, selection: operand }));
+	};
 
 	return (
 		<WorkspaceItemRow
 			{...props}
 			inert={!navigationIndexIncludes(navigationIndex, operand)}
 			isSelected={isSelected}
-			onClick={(event) => {
-				onClick?.(event);
-				if (!event.defaultPrevented)
-					dispatch(projectActions.selectFiles({ projectId, selection: operand }));
-			}}
+			onSelect={selectItem}
 		/>
 	);
 };

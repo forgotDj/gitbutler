@@ -22,19 +22,13 @@ import {
 	type FileParent,
 	type Operand,
 } from "#ui/operands.ts";
-import { focusPanel, useFocusedProjectPanel } from "#ui/panels.ts";
-import {
-	projectActions,
-	selectProjectPanelsState,
-	selectProjectSelectionFiles,
-} from "#ui/projects/state.ts";
+import { selectProjectSelectionFiles } from "#ui/projects/state.ts";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
-import { useAppDispatch, useAppSelector } from "#ui/store.ts";
+import { useAppSelector } from "#ui/store.ts";
 import { classes } from "#ui/ui/classes.ts";
 import { DependencyIcon } from "#ui/ui/icons.tsx";
 import { DiffHunk, HunkHeader, TreeChange, UnifiedPatch } from "@gitbutler/but-sdk";
 import { PatchDiff, Virtualizer } from "@pierre/diffs/react";
-import { useHotkey } from "@tanstack/react-hotkeys";
 import { useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
 import { Array, Match, pipe } from "effect";
@@ -359,28 +353,9 @@ export const DetailsPanel: FC<
 		className?: string;
 	} & Omit<PanelProps, "className">
 > = ({ className, ...panelProps }) => {
-	const dispatch = useAppDispatch();
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const urgentSelection = useAppSelector((state) => selectProjectSelectionFiles(state, projectId));
 	const selection = useDeferredValue(urgentSelection);
-	const focusedPanel = useFocusedProjectPanel(projectId);
-	const panelsState = useAppSelector((state) => selectProjectPanelsState(state, projectId));
-
-	useHotkey(
-		"Escape",
-		() => {
-			const detailsPanelIndex = panelsState.visiblePanels.indexOf("details");
-			const nextPanel = panelsState.visiblePanels[detailsPanelIndex - 1];
-			if (nextPanel !== undefined) focusPanel(nextPanel);
-
-			dispatch(projectActions.hidePanel({ projectId, panel: "details" }));
-		},
-		{
-			conflictBehavior: "allow",
-			enabled: focusedPanel === "details",
-			meta: { group: "Details", name: "Close", commandPalette: false },
-		},
-	);
 
 	return (
 		<Panel

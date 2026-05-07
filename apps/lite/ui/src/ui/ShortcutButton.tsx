@@ -11,28 +11,27 @@ import {
 import { ComponentProps, FC, useRef } from "react";
 
 export const ShortcutButton: FC<
-	Omit<ComponentProps<"button">, "children"> & {
-		children?: string;
+	ComponentProps<"button"> & {
 		hotkey: RegisterableHotkey;
 		hotkeyOptions?: UseHotkeyOptions;
 	}
-> = ({ children, hotkey, hotkeyOptions, ...props }) => {
+> = ({ hotkey, hotkeyOptions, ...props }) => {
 	const buttonRef = useRef<HTMLButtonElement>(null);
+
+	const hotkeyEnabled = !props.disabled && hotkeyOptions?.enabled !== false;
 
 	useHotkey(hotkey, () => buttonRef.current?.click(), {
 		...hotkeyOptions,
-		enabled: !props.disabled && hotkeyOptions?.enabled !== false,
+		enabled: hotkeyEnabled,
 	});
 
 	return (
-		<Tooltip.Root>
+		<Tooltip.Root disabled={!hotkeyEnabled}>
 			<Tooltip.Trigger
 				{...props}
 				ref={useMergedRefs(buttonRef, props.ref)}
 				render={<button type="button" disabled={props.disabled} />}
-			>
-				{children}
-			</Tooltip.Trigger>
+			/>
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8}>
 					<Tooltip.Popup className={classes(uiStyles.popup, uiStyles.tooltip)}>

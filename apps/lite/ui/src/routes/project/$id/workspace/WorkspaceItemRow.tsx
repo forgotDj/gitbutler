@@ -7,8 +7,9 @@ import styles from "./WorkspaceItemRow.module.css";
 export const WorkspaceItemRow: FC<
 	{
 		isSelected?: boolean;
-	} & ComponentProps<"div">
-> = ({ className, isSelected, ref: refProp, ...props }) => {
+		onSelect?: () => void;
+	} & Omit<ComponentProps<"div">, "onSelect">
+> = ({ className, isSelected, onSelect, ref: refProp, ...props }) => {
 	const rowRef = useRef<HTMLDivElement | null>(null);
 	const mergedRef = useMergedRefs(rowRef, refProp);
 
@@ -21,10 +22,20 @@ export const WorkspaceItemRow: FC<
 	}, [isSelected]);
 
 	return (
+		// This is safe because the tree is focusable.
+		// oxlint-disable-next-line jsx_a11y/click-events-have-key-events, jsx_a11y/no-static-element-interactions
 		<div
 			{...props}
 			ref={mergedRef}
 			className={classes(className, styles.itemRow, isSelected && styles.itemRowSelected)}
+			onClick={(event) => {
+				props.onClick?.(event);
+				if (!event.defaultPrevented) onSelect?.();
+			}}
+			onContextMenu={(event) => {
+				props.onContextMenu?.(event);
+				onSelect?.();
+			}}
 		/>
 	);
 };

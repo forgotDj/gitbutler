@@ -293,21 +293,20 @@ const ItemRow: FC<
 		projectId: string;
 		operand: Operand;
 		navigationIndex: NavigationIndex;
-	} & Omit<ComponentProps<typeof WorkspaceItemRow>, "inert" | "isSelected">
-> = ({ projectId, operand, navigationIndex, onClick, ...props }) => {
+	} & Omit<ComponentProps<typeof WorkspaceItemRow>, "inert" | "isSelected" | "onSelect">
+> = ({ projectId, operand, navigationIndex, ...props }) => {
 	const dispatch = useAppDispatch();
 	const isSelected = useIsSelected({ projectId, operand });
+	const selectItem = () => {
+		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
+	};
 
 	return (
 		<WorkspaceItemRow
 			{...props}
 			inert={!navigationIndexIncludes(navigationIndex, operand)}
 			isSelected={isSelected}
-			onClick={(event) => {
-				onClick?.(event);
-				if (!event.defaultPrevented)
-					dispatch(projectActions.selectOutline({ projectId, selection: operand }));
-			}}
+			onSelect={selectItem}
 		/>
 	);
 };
@@ -533,6 +532,7 @@ const CommitRow: FC<
 	};
 
 	const startEditing = () => {
+		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
 		dispatch(projectActions.startRewordCommit({ projectId, commit: commitOperandV }));
 	};
 	const focusedPanel = useFocusedProjectPanel(projectId);
@@ -699,6 +699,7 @@ const CommitRow: FC<
 				<>
 					<div
 						className={workspaceItemRowStyles.itemRowLabel}
+						onDoubleClick={outlineMode._tag === "Default" ? startEditing : undefined}
 						onContextMenu={
 							outlineMode._tag === "Default"
 								? (event) => {
@@ -982,6 +983,7 @@ const BranchRow: FC<
 	const updateBranchName = useMutation(updateBranchNameMutationOptions);
 
 	const startEditing = () => {
+		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
 		dispatch(projectActions.startRenameBranch({ projectId, branch: branchOperandV }));
 	};
 	const isSelected = useIsSelected({ projectId, operand });
@@ -1056,6 +1058,7 @@ const BranchRow: FC<
 							workspaceItemRowStyles.itemRowLabel,
 							workspaceItemRowStyles.sectionLabel,
 						)}
+						onDoubleClick={outlineMode._tag === "Default" ? startEditing : undefined}
 						onContextMenu={
 							outlineMode._tag === "Default"
 								? (event) => {

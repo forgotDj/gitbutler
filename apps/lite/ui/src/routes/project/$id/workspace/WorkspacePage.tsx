@@ -244,7 +244,7 @@ const ApplyBranchPicker: FC<{
 	const statusLabel =
 		items.length === 0
 			? branchesQuery.isPending
-				? "Loading branches..."
+				? "Loading branches…"
 				: branchesQuery.isError
 					? "Unable to load branches."
 					: undefined
