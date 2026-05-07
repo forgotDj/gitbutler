@@ -103,7 +103,7 @@
 		}
 	},
 	"dependencies": {
-		"@gitbutler/design-core": "3.2.0",
+		"@gitbutler/design-core": "3.2.1",
 		"@atlaskit/pragmatic-drag-and-drop": "^1.7.9",
 		"@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.1.0",
 		"@base-ui/react": "^1.4.0",
