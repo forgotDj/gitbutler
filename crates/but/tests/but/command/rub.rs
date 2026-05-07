@@ -2,7 +2,9 @@ use snapbox::str;
 
 use crate::{
     command::util::{
+        branch_commit_id_for_file, branch_commit_ids,
         commit_file_with_worktree_changes_as_two_hunks, commit_two_files_as_two_hunks_each,
+        status_json_with_files as status_json,
     },
     utils::{CommandExt, Sandbox},
 };
@@ -35,27 +37,6 @@ fn assigned_uncommitted_file_env() -> anyhow::Result<Sandbox> {
     env.file("a.txt", "arbitrary text\n");
     env.but("rub zz:a.txt A").assert().success();
     Ok(env)
-}
-
-fn status_json(env: &Sandbox) -> anyhow::Result<serde_json::Value> {
-    let output = env.but("--json status -f").allow_json().output()?;
-    assert!(output.status.success());
-    Ok(serde_json::from_slice(&output.stdout)?)
-}
-
-fn branch_commit_ids(status: &serde_json::Value, branch_name: &str) -> Vec<String> {
-    status["stacks"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .flat_map(|stack| stack["branches"].as_array().unwrap().iter())
-        .find(|branch| branch["name"].as_str().unwrap() == branch_name)
-        .unwrap()["commits"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|commit| commit["cliId"].as_str().unwrap().to_string())
-        .collect()
 }
 
 fn stack_assigned_contains_file(
@@ -111,37 +92,6 @@ fn branch_commits_contain_file(
         .flat_map(|branch| branch["commits"].as_array().unwrap().iter())
         .flat_map(|commit| commit["changes"].as_array().unwrap().iter())
         .any(|change| change["filePath"].as_str().unwrap() == file_path)
-}
-
-fn branch_commit_id_for_file(
-    status: &serde_json::Value,
-    branch_name: &str,
-    file_path: &str,
-) -> Option<String> {
-    status["stacks"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .flat_map(|stack| stack["branches"].as_array().unwrap().iter())
-        .find(|branch| branch["name"].as_str().unwrap() == branch_name)
-        .and_then(|branch| {
-            branch["commits"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .find_map(|commit| {
-                    let has_file = commit["changes"]
-                        .as_array()
-                        .unwrap()
-                        .iter()
-                        .any(|change| change["filePath"].as_str().unwrap() == file_path);
-                    if has_file {
-                        Some(commit["cliId"].as_str().unwrap().to_string())
-                    } else {
-                        None
-                    }
-                })
-        })
 }
 
 fn committed_file_id_for_file(

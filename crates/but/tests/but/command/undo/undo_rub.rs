@@ -1,58 +1,13 @@
 use crate::{
     command::{
         undo::run_mutate_undo_roundtrip_test,
-        util::{commit_two_files_as_two_hunks_each, status_json},
+        util::{
+            branch_commit_id_for_file, branch_commit_ids, commit_two_files_as_two_hunks_each,
+            status_json, status_json_with_files,
+        },
     },
-    utils::{CommandExt as _, Sandbox},
+    utils::Sandbox,
 };
-
-fn status_json_with_files(env: &Sandbox) -> anyhow::Result<serde_json::Value> {
-    let output = env.but("--json status -f").allow_json().output()?;
-    assert!(output.status.success());
-    Ok(serde_json::from_slice(&output.stdout)?)
-}
-
-fn branch_commit_ids(status: &serde_json::Value, branch_name: &str) -> Vec<String> {
-    status["stacks"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .flat_map(|stack| stack["branches"].as_array().unwrap().iter())
-        .find(|branch| branch["name"].as_str().unwrap() == branch_name)
-        .unwrap()["commits"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|commit| commit["cliId"].as_str().unwrap().to_string())
-        .collect()
-}
-
-fn branch_commit_id_for_file(
-    status: &serde_json::Value,
-    branch_name: &str,
-    file_path: &str,
-) -> Option<String> {
-    status["stacks"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .flat_map(|stack| stack["branches"].as_array().unwrap().iter())
-        .find(|branch| branch["name"].as_str().unwrap() == branch_name)
-        .and_then(|branch| {
-            branch["commits"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .find_map(|commit| {
-                    let has_file = commit["changes"]
-                        .as_array()
-                        .unwrap()
-                        .iter()
-                        .any(|change| change["filePath"].as_str().unwrap() == file_path);
-                    has_file.then(|| commit["cliId"].as_str().unwrap().to_string())
-                })
-        })
-}
 
 // RubOperation::SquashCommits
 #[test]
