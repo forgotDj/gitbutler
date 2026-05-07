@@ -59,7 +59,7 @@ impl WorkspaceState {
     ) -> anyhow::Result<WorkspaceState> {
         Self::from_workspace(
             &rebase.overlayed_graph()?.into_workspace()?,
-            rebase.repository(),
+            rebase.repo(),
             replaced_commits,
         )
     }

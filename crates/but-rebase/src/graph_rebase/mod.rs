@@ -269,7 +269,7 @@ impl<'ws, 'meta, M: RefMetadata> SuccessfulRebase<'ws, 'meta, M> {
     ///
     /// This repository may contain objects that have not been persisted yet,
     /// which makes it suitable for dry-run inspection of [`Self::overlayed_graph`].
-    pub fn repository(&self) -> &gix::Repository {
+    pub fn repo(&self) -> &gix::Repository {
         &self.repo
     }
 

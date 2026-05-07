@@ -163,7 +163,7 @@ pub fn commit_uncommit_only_with_perm(
         (
             &mut graph.into_workspace()?,
             rebase.history.commit_mappings(),
-            rebase.repository(),
+            rebase.repo(),
         )
     } else {
         let materialized = rebase.materialize_without_checkout()?;
@@ -293,7 +293,7 @@ pub fn commit_uncommit_changes_only_with_perm(
         (
             &mut graph.into_workspace()?,
             outcome.rebase.history.commit_mappings(),
-            outcome.rebase.repository(),
+            outcome.rebase.repo(),
         )
     } else {
         let materialized = outcome.rebase.materialize_without_checkout()?;
