@@ -72,6 +72,7 @@ import {
 	FC,
 	Fragment,
 	Suspense,
+	type RefObject,
 	useEffect,
 	useOptimistic,
 	useRef,
@@ -216,9 +217,14 @@ const OutlineTreePanel: FC<
 		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
 
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
+	const commitTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const selectChanges = () => {
 		select(changesSectionOperand);
 		focusPanel("outline");
+	};
+	const composeCommitMessage = () => {
+		select(changesSectionOperand);
+		commitTextareaRef.current?.focus();
 	};
 
 	const openBranchPicker = () => {
@@ -236,6 +242,11 @@ const OutlineTreePanel: FC<
 			callback: selectChanges,
 			options: { meta: { group: "Outline", name: "Changes" } },
 		},
+		{
+			hotkey: "Shift+Z",
+			callback: composeCommitMessage,
+			options: { meta: { group: "Outline", name: "Compose commit message" } },
+		},
 	]);
 
 	return (
@@ -250,6 +261,7 @@ const OutlineTreePanel: FC<
 				projectId={projectId}
 				onAbsorbChanges={onAbsorbChanges}
 				navigationIndex={navigationIndex}
+				commitTextareaRef={commitTextareaRef}
 			/>
 
 			{headInfo.stacks.map((stack) => (
@@ -891,7 +903,8 @@ const Changes: FC<{
 	projectId: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	navigationIndex: NavigationIndex;
-}> = ({ projectId, onAbsorbChanges, navigationIndex }) => {
+	commitTextareaRef: RefObject<HTMLTextAreaElement | null>;
+}> = ({ projectId, onAbsorbChanges, navigationIndex, commitTextareaRef }) => {
 	const toastManager = Toast.useToastManager();
 
 	const commitCreate = useMutation({
@@ -914,7 +927,6 @@ const Changes: FC<{
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const operand = changesSectionOperand;
-	const commitTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const focusedPanel = useFocusedProjectPanel(projectId);
 	const dispatch = useAppDispatch();
 
