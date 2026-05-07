@@ -72,7 +72,6 @@ import {
 	FC,
 	Fragment,
 	Suspense,
-	type RefObject,
 	useEffect,
 	useOptimistic,
 	useRef,
@@ -213,19 +212,7 @@ const OutlineTreePanel: FC<
 		selectProjectOperationModeState(state, projectId),
 	);
 
-	const select = (newItem: Operand) =>
-		dispatch(projectActions.selectOutline({ projectId, selection: newItem }));
-
 	const { data: headInfo } = useSuspenseQuery(headInfoQueryOptions(projectId));
-	const commitTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-	const selectChanges = () => {
-		select(changesSectionOperand);
-		focusPanel("outline");
-	};
-	const composeCommitMessage = () => {
-		select(changesSectionOperand);
-		commitTextareaRef.current?.focus();
-	};
 
 	const openBranchPicker = () => {
 		dispatch(projectActions.openBranchPicker({ projectId }));
@@ -236,16 +223,6 @@ const OutlineTreePanel: FC<
 			hotkey: "T",
 			callback: openBranchPicker,
 			options: { meta: { group: "Outline", name: "Branch" } },
-		},
-		{
-			hotkey: "Z",
-			callback: selectChanges,
-			options: { meta: { group: "Outline", name: "Changes" } },
-		},
-		{
-			hotkey: "Shift+Z",
-			callback: composeCommitMessage,
-			options: { meta: { group: "Outline", name: "Compose commit message" } },
 		},
 	]);
 
@@ -261,7 +238,6 @@ const OutlineTreePanel: FC<
 				projectId={projectId}
 				onAbsorbChanges={onAbsorbChanges}
 				navigationIndex={navigationIndex}
-				commitTextareaRef={commitTextareaRef}
 			/>
 
 			{headInfo.stacks.map((stack) => (
@@ -903,8 +879,7 @@ const Changes: FC<{
 	projectId: string;
 	onAbsorbChanges: (target: AbsorptionTarget) => void;
 	navigationIndex: NavigationIndex;
-	commitTextareaRef: RefObject<HTMLTextAreaElement | null>;
-}> = ({ projectId, onAbsorbChanges, navigationIndex, commitTextareaRef }) => {
+}> = ({ projectId, onAbsorbChanges, navigationIndex }) => {
 	const toastManager = Toast.useToastManager();
 
 	const commitCreate = useMutation({
@@ -927,6 +902,7 @@ const Changes: FC<{
 	const { data: worktreeChanges } = useSuspenseQuery(changesInWorktreeQueryOptions(projectId));
 
 	const operand = changesSectionOperand;
+	const commitTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const focusedPanel = useFocusedProjectPanel(projectId);
 	const dispatch = useAppDispatch();
 
@@ -998,6 +974,27 @@ const Changes: FC<{
 		if (isSelected) return;
 		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
 	};
+	const selectChangesAndFocusOutline = () => {
+		selectChanges();
+		focusPanel("outline");
+	};
+	const composeCommitMessage = () => {
+		selectChanges();
+		commitTextareaRef.current?.focus();
+	};
+
+	useHotkeys([
+		{
+			hotkey: "Z",
+			callback: selectChangesAndFocusOutline,
+			options: { meta: { group: "Outline", name: "Changes" } },
+		},
+		{
+			hotkey: "Shift+Z",
+			callback: composeCommitMessage,
+			options: { meta: { group: "Outline", name: "Compose commit message" } },
+		},
+	]);
 
 	useHotkey("Enter", () => commitTextareaRef.current?.focus(), {
 		conflictBehavior: "allow",
