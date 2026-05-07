@@ -232,28 +232,32 @@ const OutlineTreePanel: FC<
 			tabIndex={0}
 			role="tree"
 			aria-activedescendant={treeItemId(selection)}
-			className={classes(panelProps.className, styles.tree)}
+			className={classes(panelProps.className, styles.panel)}
 		>
-			<Changes
-				projectId={projectId}
-				onAbsorbChanges={onAbsorbChanges}
-				navigationIndex={navigationIndex}
-			/>
-
-			{headInfo.stacks.map((stack) => (
-				<StackC
-					key={stack.id}
+			<div className={styles.changesContainer}>
+				<Changes
 					projectId={projectId}
-					stack={stack}
+					onAbsorbChanges={onAbsorbChanges}
 					navigationIndex={navigationIndex}
 				/>
-			))}
+			</div>
 
-			<BaseCommit
-				projectId={projectId}
-				commitId={getCommonBaseCommitId(headInfo)}
-				navigationIndex={navigationIndex}
-			/>
+			<div className={styles.scroller}>
+				{headInfo.stacks.map((stack) => (
+					<StackC
+						key={stack.id}
+						projectId={projectId}
+						stack={stack}
+						navigationIndex={navigationIndex}
+					/>
+				))}
+
+				<BaseCommit
+					projectId={projectId}
+					commitId={getCommonBaseCommitId(headInfo)}
+					navigationIndex={navigationIndex}
+				/>
+			</div>
 
 			{Match.value(operationMode).pipe(
 				Match.when(null, () => null),

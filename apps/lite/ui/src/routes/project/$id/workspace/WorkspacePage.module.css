@@ -13,13 +13,15 @@
 }
 
 .panel {
-	padding: var(--panel-padding);
-
 	border-top: 2px solid transparent;
 
 	[data-panel]:focus-within & {
 		border-top-color: var(--fill-gray-bg);
 	}
+}
+
+.panelPadding {
+	padding: var(--panel-padding);
 }
 
 .panelResizeHandle {
