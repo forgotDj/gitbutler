@@ -712,8 +712,10 @@ pub fn apply_with_perm(
 /// Creates a new branch named `new_ref` at `placement`.
 ///
 /// This acquires exclusive worktree access from `ctx`, creates the branch,
-/// and records an oplog snapshot on success. For lower-level implementation
-/// details, see [`but_workspace::branch::create_reference()`].
+/// records an oplog snapshot on success, and in ad-hoc/single-branch mode
+/// checks out the new branch when it was created directly above the currently
+/// checked-out local branch. For lower-level implementation details, see
+/// [`but_workspace::branch::create_reference()`].
 #[but_api(napi, try_from = json::BranchCreateResult)]
 #[instrument(err(Debug))]
 pub fn branch_create(
@@ -730,8 +732,11 @@ pub fn branch_create(
 ///
 /// It prepares a best-effort create-branch oplog snapshot, creates the
 /// reference along with its workspace metadata, and commits the snapshot only
-/// if the creation succeeds. The returned [`BranchCreateResult`] contains the
-/// post-operation workspace view. For lower-level implementation details, see
+/// if the creation succeeds. In ad-hoc/single-branch mode, if the placement is
+/// `Above` the exact symbolic `HEAD` branch, this also checks out the newly
+/// created branch after metadata has been persisted. The returned
+/// [`BranchCreateResult`] contains the post-operation workspace view. For
+/// lower-level implementation details, see
 /// [`but_workspace::branch::create_reference()`].
 pub fn branch_create_with_perm(
     ctx: &mut but_ctx::Context,
@@ -764,6 +769,16 @@ pub fn branch_create_with_perm(
         }
     };
 
+    let checkout_anchor_ref = match &anchor {
+        Some(Anchor::AtReference { ref_name, position })
+            if matches!(position, Position::Above)
+                && ref_name.category() == Some(gix::refs::Category::LocalBranch) =>
+        {
+            Some(ref_name.as_ref().to_owned())
+        }
+        _ => None,
+    };
+
     let new_ref = if let Some(new_ref) = new_ref {
         new_ref
     } else {
@@ -781,6 +796,13 @@ pub fn branch_create_with_perm(
 
     let mut meta = ctx.meta()?;
     let (repo, mut ws, _db) = ctx.workspace_mut_and_db_with_perm(perm)?;
+    let checkout_after_create = checkout_anchor_ref.as_ref().is_some_and(|anchor_ref| {
+        repo.head_name()
+            .ok()
+            .flatten()
+            .as_ref()
+            .is_some_and(|head_ref| head_ref.as_ref() == anchor_ref.as_ref())
+    });
     let new_ws = but_workspace::branch::create_reference(
         new_ref.as_ref(),
         anchor,
@@ -796,6 +818,17 @@ pub fn branch_create_with_perm(
 
     let workspace = WorkspaceState::from_workspace(&new_ws, &mut meta, &repo, BTreeMap::new())?;
     *ws = new_ws.into_owned();
+    drop(ws);
+    drop(repo);
+    drop(_db);
+    drop(meta);
+    if checkout_after_create {
+        let checkout = branch_checkout_with_perm(ctx, new_ref.clone(), perm)?;
+        return Ok(BranchCreateResult {
+            workspace: checkout.workspace,
+            new_ref,
+        });
+    }
     Ok(BranchCreateResult { workspace, new_ref })
 }
 
@@ -1218,7 +1251,8 @@ fn branch_workspace_from_rebase<M: but_core::RefMetadata>(
 mod tests {
     use std::path::Path;
 
-    use but_core::ref_metadata::ProjectMeta;
+    use but_core::{RefMetadata, ref_metadata::ProjectMeta};
+    use but_rebase::graph_rebase::mutate::InsertSide;
     use but_testsupport::{CommandExt, git_at_dir, open_repo};
 
     fn repo_with_feature_branch() -> anyhow::Result<(gix::Repository, tempfile::TempDir)> {
@@ -1375,6 +1409,73 @@ mod tests {
             }),
             "checked out branch '{expected}' appears in the graph workspace"
         );
+    }
+
+    #[test]
+    fn branch_create_above_checked_out_ref_checks_out_new_ref_in_ad_hoc_workspace()
+    -> anyhow::Result<()> {
+        let (repo, _tmp) = repo_with_feature_branch()?;
+        let mut ctx = but_ctx::Context::from_repo_for_testing(repo)?.with_memory_app_cache();
+        let new_ref = gix::refs::FullName::try_from("refs/heads/top")?;
+        let anchor_ref = gix::refs::FullName::try_from("refs/heads/main")?;
+
+        let result = super::branch_create(
+            &mut ctx,
+            Some(new_ref.clone()),
+            super::json::BranchCreatePlacement::Dependent {
+                relative_to: crate::commit::json::RelativeTo::Reference(anchor_ref.clone()),
+                side: InsertSide::Above,
+            },
+        )?;
+
+        let repo = ctx.repo.get()?;
+        let head_name = repo
+            .head_name()?
+            .expect("creating above checked-out branch checks out the new ref");
+        assert_eq!(head_name.as_ref(), new_ref.as_ref());
+        assert_workspace_ref(&result.workspace, "refs/heads/top");
+
+        let order = ctx
+            .meta()?
+            .branch_stack_order(anchor_ref.as_ref())?
+            .expect("ad-hoc branch creation above a local ref persists branch order");
+        assert_eq!(order, vec![new_ref, anchor_ref]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn branch_create_below_checked_out_ref_keeps_head_in_ad_hoc_workspace() -> anyhow::Result<()> {
+        let (repo, _tmp) = repo_with_feature_branch()?;
+        let mut ctx = but_ctx::Context::from_repo_for_testing(repo)?.with_memory_app_cache();
+        let new_ref = gix::refs::FullName::try_from("refs/heads/bottom")?;
+        let anchor_ref = gix::refs::FullName::try_from("refs/heads/main")?;
+
+        let result = super::branch_create(
+            &mut ctx,
+            Some(new_ref.clone()),
+            super::json::BranchCreatePlacement::Dependent {
+                relative_to: crate::commit::json::RelativeTo::Reference(anchor_ref.clone()),
+                side: InsertSide::Below,
+            },
+        )?;
+
+        // Creating below the checked-out branch checks nothing out: HEAD stays on the anchor.
+        let repo = ctx.repo.get()?;
+        let head_name = repo
+            .head_name()?
+            .expect("HEAD remains symbolic after create-below");
+        assert_eq!(head_name.as_ref(), anchor_ref.as_ref());
+        assert_workspace_ref(&result.workspace, "refs/heads/main");
+        assert!(repo.try_find_reference(new_ref.as_ref())?.is_some());
+
+        let order = ctx
+            .meta()?
+            .branch_stack_order(anchor_ref.as_ref())?
+            .expect("ad-hoc branch creation below a local ref persists branch order");
+        assert_eq!(order, vec![anchor_ref, new_ref]);
+
+        Ok(())
     }
 
     #[test]
