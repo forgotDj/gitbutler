@@ -56,6 +56,8 @@ import type {
 	StackEntryNoOpt,
 	BottomUpdate,
 	WorkspaceIntegrateUpstreamOutcome,
+	BranchCreatePlacement,
+	BranchCreateResult,
 } from "@gitbutler/but-sdk";
 
 export type BranchParams = {
@@ -490,6 +492,22 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.BranchListing),
 			],
 		}),
+		branchCreate: build.mutation<
+			BranchCreateResult,
+			{ projectId: string; newRef: string | null; placement: BranchCreatePlacement }
+		>({
+			extraOptions: {
+				command: "branch_create",
+				actionName: "Create Branch",
+			},
+			query: (args) => args,
+			invalidatesTags: [
+				invalidatesList(ReduxTag.HeadSha),
+				invalidatesList(ReduxTag.Stacks),
+				invalidatesList(ReduxTag.StackDetails),
+				invalidatesList(ReduxTag.BranchListing),
+			],
+		}),
 		uncommit: build.mutation<
 			UncommitResult,
 			{ projectId: string; stackId?: string; commitIds: string[] }
@@ -721,6 +739,7 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.Stacks), // Removing a branch can remove a stack
 				// Removing a branch won't change the sha if the branch is empty
 				invalidatesItem(ReduxTag.StackDetails, args.stackId),
+				invalidatesList(ReduxTag.StackDetails),
 				invalidatesList(ReduxTag.HeadSha),
 				invalidatesList(ReduxTag.BranchListing),
 			],
@@ -1009,8 +1028,12 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				actionName: "Create Reference",
 			},
 			query: (args) => ({ projectId: args.projectId, request: args.request }),
-			invalidatesTags: (_result, _error, args) =>
-				args.stackId ? [invalidatesItem(ReduxTag.StackDetails, args.stackId)] : [],
+			invalidatesTags: (_result, _error, args) => [
+				invalidatesList(ReduxTag.Stacks),
+				invalidatesList(ReduxTag.StackDetails),
+				invalidatesList(ReduxTag.BranchListing),
+				...(args.stackId ? [invalidatesItem(ReduxTag.StackDetails, args.stackId)] : []),
+			],
 		}),
 		templates: build.query<string[], { projectId: string; forge: string }>({
 			extraOptions: { command: "pr_templates" },

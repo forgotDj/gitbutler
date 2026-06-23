@@ -153,20 +153,17 @@
 		}
 	}
 
-	async function handleCreateNewRef(stackId: string, position: AnchorPosition) {
+	async function handleCreateNewRef(stackId: string, position: "above" | "below") {
 		if (!branchName) return;
-		const newName = await stackService.fetchNewBranchName(projectId);
-		await createRef({
+		const branchReference = `refs/heads/${branchName}`;
+		await createBranch({
 			projectId,
-			stackId,
-			request: {
-				newName,
-				anchor: {
-					type: "atSegment",
-					subject: {
-						short_name: branchName,
-						position,
-					},
+			newRef: null,
+			placement: {
+				type: "dependent",
+				subject: {
+					relativeTo: { type: "reference", subject: branchReference },
+					side: position,
 				},
 			},
 		});
@@ -209,7 +206,7 @@
 				disabled={!branchName}
 			/>
 		</ContextMenuSection>
-		{#if stackId && isOpenWorkspace}
+		{#if stackId}
 			<ContextMenuSection>
 				<ContextMenuItemSubmenu
 					label="Create branch"

@@ -558,6 +558,10 @@ export class StackService {
 		return this.backendApi.endpoints.newBranch.useMutation();
 	}
 
+	get branchCreate() {
+		return this.backendApi.endpoints.branchCreate.useMutation();
+	}
+
 	async uncommit(args: { projectId: string; stackId?: string; commitIds: string[] }) {
 		const result = await this.backendApi.endpoints.uncommit.mutate(args);
 		if (args.stackId) {
