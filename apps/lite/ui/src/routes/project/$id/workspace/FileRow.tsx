@@ -1,3 +1,4 @@
+import { FileIcon } from "#ui/components/FileIcon.tsx";
 import rowStyles from "./Row.module.css";
 import { showNativeContextMenu, showNativeMenuFromTrigger } from "#ui/native-menu.ts";
 import { FileParent } from "#ui/operands.ts";
@@ -65,7 +66,7 @@ export const FileRow: FC<
 				}
 			>
 				<div className={styles.fileIconWithCheckbox}>
-					<Icon name="file" />
+					<FileIcon fileName={fileName} />
 					<Tooltip.Root
 						// This gets in the way when the user tries to move their hover to a
 						// sibling row.
