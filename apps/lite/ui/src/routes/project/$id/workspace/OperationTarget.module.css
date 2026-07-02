@@ -1,7 +1,6 @@
 .target {
-	display: flex;
+	display: grid;
 	position: relative;
-	flex-direction: column;
 }
 
 .activeTarget {
