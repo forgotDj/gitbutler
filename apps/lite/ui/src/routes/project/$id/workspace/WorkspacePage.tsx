@@ -38,7 +38,6 @@ import {
 	type BranchOperand,
 	type Operand,
 	uncommittedChangesFileParent,
-	uncommittedChangesOperand,
 } from "#ui/operands.ts";
 import { Details } from "./Details.tsx";
 import styles from "./WorkspacePage.module.css";
@@ -165,7 +164,6 @@ const buildOutlineNavigationIndex = ({
 	absorptionTargetCommitIds: ReadonlySet<string>;
 }): NavigationIndex<Operand> => {
 	const allItems = (): Array<Operand> => [
-		uncommittedChangesOperand,
 		...(worktreeChanges?.changes.map((change) =>
 			fileOperand({ parent: uncommittedChangesFileParent, path: change.path }),
 		) ?? []),

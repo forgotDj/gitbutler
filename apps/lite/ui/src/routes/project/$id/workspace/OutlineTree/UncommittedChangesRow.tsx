@@ -17,8 +17,14 @@ import { Toolbar } from "@base-ui/react";
 import { AbsorptionTarget, TreeChange, UnifiedPatch } from "@gitbutler/but-sdk";
 import { FC } from "react";
 import { getRowButtonClassName } from "../Row-utils.ts";
-import { RowBubble, RowBubbleGroup, RowLabel, RowLabelContainer, RowToolbar } from "../Row.tsx";
-import { ItemRow } from "./ItemRow.tsx";
+import {
+	Row,
+	RowBubble,
+	RowBubbleGroup,
+	RowLabel,
+	RowLabelContainer,
+	RowToolbar,
+} from "../Row.tsx";
 import { useQueries } from "@tanstack/react-query";
 import { treeChangeDiffsQueryOptions } from "#ui/api/queries.ts";
 
@@ -100,12 +106,11 @@ export const UncommittedChangesRow: FC<{
 	];
 
 	return (
-		<ItemRow
-			projectId={projectId}
-			operand={operand}
+		<Row
 			onContextMenu={(event) => {
 				void showNativeContextMenu(event, menuItems);
 			}}
+			interactive={false}
 		>
 			<RowLabelContainer>
 				<RowLabel heading>Uncommitted changes</RowLabel>
@@ -137,6 +142,6 @@ export const UncommittedChangesRow: FC<{
 					</Toolbar.Button>
 				</Toolbar.Root>
 			)}
-		</ItemRow>
+		</Row>
 	);
 };

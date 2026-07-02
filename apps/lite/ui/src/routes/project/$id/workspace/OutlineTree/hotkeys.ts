@@ -402,8 +402,7 @@ export const useOutlineTreeHotkeys = ({
 			);
 			return checkedCommits.length > 0 ? checkedCommits : [operand];
 		},
-		selectSectionPredicate: (operand) =>
-			operand._tag === "Branch" || operand._tag === "UncommittedChanges",
+		selectSectionPredicate: (operand) => operand._tag === "Branch",
 	});
 
 	useHotkeys([

@@ -743,14 +743,22 @@ export const OutlineTree: FC<
 						minSize={120}
 						groupResizeBehavior="preserve-pixel-size"
 					>
-						<OperandC
+						<OperationSourceC
 							projectId={projectId}
-							operand={uncommittedChangesOperand}
+							source={uncommittedChangesOperand}
 							outline="inside"
 							render={
-								<div className={styles.panel}>
-									<UncommittedChanges projectId={projectId} checkCommit={checkCommit} />
-								</div>
+								<OperationTarget
+									enabled
+									projectId={projectId}
+									operand={uncommittedChangesOperand}
+									outline="inside"
+									render={
+										<div className={styles.panel}>
+											<UncommittedChanges projectId={projectId} checkCommit={checkCommit} />
+										</div>
+									}
+								/>
 							}
 						/>
 					</Panel>
