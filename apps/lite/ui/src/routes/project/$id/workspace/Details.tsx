@@ -1042,7 +1042,6 @@ const Diff: FC<{
 						>
 							<FilesTree
 								data-selection-scope={"files" satisfies SelectionScope}
-								tabIndex={0}
 								className={classes(styles.diffFiles, uiStyles.scrollerWithSeparator)}
 								onFileSelection={selectFileAndNavigateDiff}
 								projectId={projectId}
