@@ -1,6 +1,7 @@
 .container {
 	--single-line-row-height: 28px;
 	--single-line-row-label-line-height: 16px;
+	--button-height: 20px;
 
 	display: flex;
 	column-gap: 8px;
@@ -44,7 +45,7 @@
 	&.toolbarForceVisible {
 		display: flex;
 		column-gap: 8px;
-		padding-block: 4px;
+		padding-block: calc((var(--single-line-row-height) - var(--button-height)) / 2);
 	}
 
 	button:has([data-icon]) {
