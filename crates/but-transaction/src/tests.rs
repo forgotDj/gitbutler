@@ -46,7 +46,7 @@ fn squashing_three_commits() {
     let [three, two, one] = find_commits(&env, ["1e25c58", "9b3b3d5", "dbdbcea"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -99,7 +99,7 @@ fn rollback() {
     let [three, two, one] = find_commits(&env, ["1e25c58", "9b3b3d5", "dbdbcea"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -145,7 +145,7 @@ fn create_reference_without_creating_commits() {
     let [three] = find_commits(&env, ["1e25c58"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -187,7 +187,7 @@ fn create_reference_relative_to_various_anchors() {
     let [three, two, base] = find_commits(&env, ["1e25c58", "9b3b3d5", "6674d4f"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -254,7 +254,7 @@ fn create_reference_then_remove_it_in_same_transaction() {
     let [three] = find_commits(&env, ["1e25c58"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -297,7 +297,7 @@ fn create_reference_then_commit_below_anchor_keeps_commit_in_workspace() {
     let [three, base] = find_commits(&env, ["1e25c58", "6674d4f"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -368,7 +368,7 @@ fn move_commits_then_commit_relative_to_moved_commit() {
     let [three, one] = find_commits(&env, ["1e25c58", "dbdbcea"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -424,7 +424,7 @@ fn move_commits_reorders_multiple_subjects() {
     let [three, two, one] = find_commits(&env, ["1e25c58", "9b3b3d5", "dbdbcea"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -466,7 +466,7 @@ fn create_reference_then_commit_relative_to_it() {
     let [three] = find_commits(&env, ["1e25c58"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -513,7 +513,7 @@ fn create_reference_is_removed_on_rollback() {
     let [three] = find_commits(&env, ["1e25c58"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -556,7 +556,7 @@ fn dynamic_rollback() {
     let [three, two, one] = find_commits(&env, ["1e25c58", "9b3b3d5", "dbdbcea"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -620,7 +620,7 @@ fn discarding_three_commits() {
     let [three, two, one] = find_commits(&env, ["1e25c58", "9b3b3d5", "dbdbcea"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
@@ -676,7 +676,7 @@ fn remove_references() {
     let [three, two, one] = find_commits(&env, ["1e25c58", "9b3b3d5", "dbdbcea"]);
 
     let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
-    let mut ctx = Context::from_repo(repo)
+    let mut ctx = Context::from_repo_for_testing(repo)
         .map(Context::with_memory_app_cache)
         .unwrap();
 
