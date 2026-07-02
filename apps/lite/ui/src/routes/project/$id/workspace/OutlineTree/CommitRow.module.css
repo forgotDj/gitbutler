@@ -8,7 +8,8 @@
 }
 
 .checkbox {
-	margin-block-start: 7px;
+	--checkbox-height: 14px;
+	margin-block-start: calc((var(--single-line-row-height) - var(--checkbox-height)) / 2);
 	opacity: 0;
 
 	:global([data-has-checked-commits]) &,
