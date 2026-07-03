@@ -21,6 +21,10 @@
 	}
 }
 
+.uncommittedChangesPanel {
+	display: grid;
+}
+
 .uncommittedChangesContainer {
 	padding-inline: var(--panel-padding-inline);
 	padding-block: var(--panel-padding-block);

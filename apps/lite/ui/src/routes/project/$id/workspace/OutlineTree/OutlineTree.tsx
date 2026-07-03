@@ -176,7 +176,6 @@ const UncommittedChanges: FC<{
 			operand={operand}
 			aria-label={`Uncommitted changes (${worktreeChanges?.changes.length ?? 0})`}
 			className={styles.section}
-			render={<OperandC projectId={projectId} operand={operand} outline="outside" />}
 		>
 			<UncommittedChangesRow changes={worktreeChanges?.changes ?? []} projectId={projectId} />
 
@@ -576,12 +575,19 @@ export const OutlineTree: FC<
 					>
 						<Panel
 							id={"uncommitted-changes-panel" satisfies PanelId}
-							className={styles.uncommittedChangesContainer}
+							className={styles.uncommittedChangesPanel}
 							defaultSize={200}
 							minSize={120}
 							groupResizeBehavior="preserve-pixel-size"
 						>
-							<UncommittedChanges projectId={projectId} />
+							<OperandC
+								projectId={projectId}
+								operand={uncommittedChangesOperand}
+								className={styles.uncommittedChangesContainer}
+								outline="inside"
+							>
+								<UncommittedChanges projectId={projectId} />
+							</OperandC>
 						</Panel>
 
 						<Separator className={styles.resizeHandle} />
