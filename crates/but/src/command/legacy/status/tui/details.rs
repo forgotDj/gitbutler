@@ -108,13 +108,6 @@ impl Details {
         }
     }
 
-    pub fn is_finished_rendering(&self) -> bool {
-        match &self.line_reader {
-            ChannelLineReader::NotStarted | ChannelLineReader::Started { .. } => false,
-            ChannelLineReader::Finished | ChannelLineReader::Failed => true,
-        }
-    }
-
     pub fn is_polling_thread(&self) -> bool {
         match &self.line_reader {
             ChannelLineReader::NotStarted
