@@ -7,7 +7,6 @@ import {
 } from "#ui/components/Button.tsx";
 import { classes } from "#ui/components/classes.ts";
 import { Icon } from "#ui/components/Icon.tsx";
-import { Kbd } from "#ui/components/Kbd.tsx";
 import React from "react";
 
 const meta = preview.meta({});
