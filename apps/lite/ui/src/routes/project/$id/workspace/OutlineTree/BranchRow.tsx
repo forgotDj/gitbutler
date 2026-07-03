@@ -29,7 +29,6 @@ import {
 	showNativeMenuFromTrigger,
 	type NativeMenuItem,
 } from "#ui/native-menu.ts";
-import { keyboardTransferOperationMode } from "#ui/outline/mode.ts";
 import { branchOperand, operandEquals, type BranchOperand } from "#ui/operands.ts";
 import { projectActions, selectProjectOutlineModeState } from "#ui/projects/state.ts";
 import { focusSelectionScope } from "#ui/selection-scopes.ts";
@@ -224,12 +223,9 @@ export const BranchRow: FC<
 
 	const cutBranch = () => {
 		dispatch(
-			projectActions.enterTransferMode({
+			projectActions.enterKeyboardTransferMode({
 				projectId,
-				mode: keyboardTransferOperationMode({
-					source: operand,
-					operationType: "into",
-				}),
+				source: operand,
 			}),
 		);
 		focusSelectionScope("outline");

@@ -1,7 +1,6 @@
 import { operandEquals, type Operand } from "#ui/operands.ts";
 import { parseDragData } from "./DragData.ts";
 import styles from "./OperationTarget.module.css";
-import { OperationTooltip } from "./OperationTooltip.tsx";
 import {
 	getOperation,
 	getOperations,
@@ -16,9 +15,29 @@ import {
 	attachInstruction,
 	extractInstruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
-import { mergeProps, useRender } from "@base-ui/react";
+import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
-import { FC, useEffect, useEffectEvent, useRef } from "react";
+import { FC, ReactNode, useEffect, useEffectEvent, useRef } from "react";
+import { TooltipPopup } from "#ui/components/Tooltip.tsx";
+
+const OperationTooltip: FC<
+	{
+		tooltip?: ReactNode | null;
+	} & useRender.ComponentProps<"div">
+> = ({ tooltip, render, ...props }) => {
+	const trigger = useRender({ render, props });
+
+	return (
+		<Tooltip.Root open={tooltip != null} disableHoverablePopup>
+			<Tooltip.Trigger render={trigger} />
+			<Tooltip.Portal>
+				<Tooltip.Positioner sideOffset={8} side="right">
+					<Tooltip.Popup render={<TooltipPopup />}>{tooltip}</Tooltip.Popup>
+				</Tooltip.Positioner>
+			</Tooltip.Portal>
+		</Tooltip.Root>
+	);
+};
 
 type DropTargetParams = Parameters<typeof dropTargetForElements>[0];
 type GetDataArgs = Parameters<NonNullable<DropTargetParams["getData"]>>[0];
@@ -147,74 +166,76 @@ export const OperationTarget: FC<
 	} & useRender.ComponentProps<"div">
 > = ({ enabled, target, projectId, isSelected, isAbsorptionTarget, render, ...props }) => {
 	const { dropRef } = useOperationDropTarget({ enabled, target, projectId });
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
-	const insertTargetOperationType = Match.value(outlineMode).pipe(
-		Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
-			mode.target &&
-			operandEquals(mode.target, target) &&
-			(mode.operationType === "above" || mode.operationType === "below")
-				? mode.operationType
-				: null,
-		),
-		Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) =>
-			isSelected && (mode.operationType === "above" || mode.operationType === "below")
-				? mode.operationType
-				: null,
-		),
-		Match.orElse(() => null),
-	);
+	const activeTargetOperationType = useAppSelector((state) => {
+		const outlineMode = selectProjectOutlineModeState(state, projectId);
 
-	const isMainTargetActive = Match.value(outlineMode).pipe(
-		Match.withReturnType<boolean>(),
-		Match.when(
-			{
-				_tag: "Absorb",
-			},
-			() => isAbsorptionTarget,
-		),
-		Match.when(
-			{ _tag: "Transfer", value: { _tag: "Pointer" } },
-			({ value: mode }) =>
-				!!mode.target &&
+		return Match.value(outlineMode).pipe(
+			Match.withReturnType<OperationType | null>(),
+			Match.when({ _tag: "Absorb" }, () => (isAbsorptionTarget ? "into" : null)),
+			Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
+				mode.target &&
 				operandEquals(mode.target, target) &&
-				mode.operationType === "into" &&
-				!operandEquals(mode.source, target),
-		),
-		Match.when(
-			{ _tag: "Transfer", value: { _tag: "Keyboard" } },
-			({ value: mode }) =>
-				isSelected && mode.operationType === "into" && !operandEquals(mode.source, target),
-		),
-		Match.orElse(() => false),
-	);
+				(mode.operationType !== "into" || !operandEquals(mode.source, target))
+					? mode.operationType
+					: null,
+			),
+			Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) =>
+				isSelected && (mode.operationType !== "into" || !operandEquals(mode.source, target))
+					? mode.operationType
+					: null,
+			),
+			Match.orElse(() => null),
+		);
+	});
 
 	const targetEl = useRender({
 		render,
 		ref: dropRef,
 		props: mergeProps<"div">(props, {
-			className: classes(isMainTargetActive && styles.activeTarget),
+			className: classes(activeTargetOperationType === "into" && styles.activeTarget),
 		}),
 	});
+
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+
+	const tooltip = Match.value(outlineMode).pipe(
+		Match.when({ _tag: "Absorb" }, () => <>Absorb target</>),
+		Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
+			mode.target && mode.operationType !== null
+				? getOperation({
+						source: mode.source,
+						target: mode.target,
+						operationType: mode.operationType,
+					})?.label
+				: null,
+		),
+		Match.when(
+			{ _tag: "Transfer", value: { _tag: "Keyboard" } },
+			({ value: mode }) =>
+				getOperation({
+					source: mode.source,
+					target,
+					operationType: mode.operationType,
+				})?.label,
+		),
+		Match.orElse(() => null),
+	);
 
 	return (
 		<div className={styles.target}>
 			<OperationTooltip
-				target={target}
-				isActive={isMainTargetActive}
-				outlineMode={outlineMode}
+				tooltip={activeTargetOperationType === "into" ? tooltip : null}
 				render={targetEl}
 			/>
 
-			{insertTargetOperationType !== null && (
+			{(activeTargetOperationType === "above" || activeTargetOperationType === "below") && (
 				<OperationTooltip
-					target={target}
-					isActive
-					outlineMode={outlineMode}
+					tooltip={tooltip}
 					className={classes(
 						styles.insertionTarget,
 						pipe(
-							insertTargetOperationType,
+							activeTargetOperationType,
 							Match.value,
 							Match.when("above", () => styles.insertionTargetAbove),
 							Match.when("below", () => styles.insertionTargetBelow),
