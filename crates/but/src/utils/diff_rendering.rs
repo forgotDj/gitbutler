@@ -418,6 +418,16 @@ pub fn render_commit(
         )?;
         out.write_selectable_text(
             header_id,
+            Line::from_iter([
+                Span::raw(format!("{:<11}", "Change ID:")),
+                Span::styled(
+                    commit_details.commit.change_id().to_string(),
+                    theme.change_id,
+                ),
+            ]),
+        )?;
+        out.write_selectable_text(
+            header_id,
             Line::from_iter(
                 once(Span::raw(format!("{:<11}", "Author:")))
                     .chain(render_signature(&commit_details.commit.author, theme)),
