@@ -8,7 +8,7 @@
 	z-index: 1;
 	border-radius: 8px;
 	outline: 2px dashed var(--fill-gray-bg);
-	outline-offset: 1px;
+	outline-offset: 2px;
 }
 
 .insertionTarget {
