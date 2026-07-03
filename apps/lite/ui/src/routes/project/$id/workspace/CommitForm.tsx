@@ -250,17 +250,25 @@ export const CommitForm: FC<{
 					</Combobox.Portal>
 				</Combobox.Root>
 
-				{/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- New lint violation. */}
-				<div role="group" className={styles.dropdownButton}>
-					<Button
-						focusableWhenDisabled
-						type="submit"
-						disabled={!canCommit}
-						className={getButtonClassName({ variant: "pop" })}
-					>
-						Commit
-						<Kbd hotkey={changesHotkeys.commit.hotkey} />
-					</Button>
+				<div className={styles.dropdownButton}>
+					<Tooltip.Root>
+						<Tooltip.Trigger
+							className={getButtonClassName({ variant: "pop" })}
+							// We pass `disabled` here because we want to disable the button, not
+							// the tooltip. Other props should be passed above.
+							render={<Button focusableWhenDisabled type="submit" disabled={!canCommit} />}
+						>
+							Commit
+							<Kbd hotkey={changesHotkeys.commit.hotkey} />
+						</Tooltip.Trigger>
+						<Tooltip.Portal>
+							<Tooltip.Positioner sideOffset={4}>
+								<Tooltip.Popup render={<TooltipPopup kbd={changesHotkeys.commit.hotkey} />}>
+									{changesHotkeys.commit.meta.name}
+								</Tooltip.Popup>
+							</Tooltip.Positioner>
+						</Tooltip.Portal>
+					</Tooltip.Root>
 					<div aria-hidden className={styles.dropdownButtonSeparator} />
 					<Button
 						focusableWhenDisabled
