@@ -147,25 +147,28 @@ export const OperationTarget: FC<
 	} & useRender.ComponentProps<"div">
 > = ({ enabled, target, projectId, isSelected, isAbsorptionTarget, render, ...props }) => {
 	const { dropRef } = useOperationDropTarget({ enabled, target, projectId });
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
-	const activeTargetOperationType = Match.value(outlineMode).pipe(
-		Match.withReturnType<OperationType | null>(),
-		Match.when({ _tag: "Absorb" }, () => (isAbsorptionTarget ? "into" : null)),
-		Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
-			mode.target &&
-			operandEquals(mode.target, target) &&
-			(mode.operationType !== "into" || !operandEquals(mode.source, target))
-				? mode.operationType
-				: null,
-		),
-		Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) =>
-			isSelected && (mode.operationType !== "into" || !operandEquals(mode.source, target))
-				? mode.operationType
-				: null,
-		),
-		Match.orElse(() => null),
-	);
+	const activeTargetOperationType = useAppSelector((state) => {
+		const outlineMode = selectProjectOutlineModeState(state, projectId);
+
+		return Match.value(outlineMode).pipe(
+			Match.withReturnType<OperationType | null>(),
+			Match.when({ _tag: "Absorb" }, () => (isAbsorptionTarget ? "into" : null)),
+			Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
+				mode.target &&
+				operandEquals(mode.target, target) &&
+				(mode.operationType !== "into" || !operandEquals(mode.source, target))
+					? mode.operationType
+					: null,
+			),
+			Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) =>
+				isSelected && (mode.operationType !== "into" || !operandEquals(mode.source, target))
+					? mode.operationType
+					: null,
+			),
+			Match.orElse(() => null),
+		);
+	});
 
 	const targetEl = useRender({
 		render,
