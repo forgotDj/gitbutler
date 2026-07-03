@@ -481,8 +481,10 @@ impl Details {
             && let ChannelLineReader::Started { start, .. } = &self.line_reader
             && start.elapsed() > Duration::from_millis(500)
         {
-            let n = (start.elapsed().as_millis() % 4) as usize;
-            frame.render_widget(format!("Loading diff{}", ".".repeat(n)).dim(), area);
+            frame.render_widget(
+                format!("Loading diff ({:.1}s)", start.elapsed().as_secs_f32()).dim(),
+                area,
+            );
             return;
         }
 
