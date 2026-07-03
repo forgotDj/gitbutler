@@ -362,7 +362,7 @@ export const CommitRow: FC<
 			className={classes(restProps.className, styles.row)}
 			isCommitTarget={isCommitTarget}
 		>
-			<div className={styles.graphSegmentWithCheckbox}>
+			<div className={styles.iconWithCheckbox}>
 				<GraphSegment
 					glyph="commit"
 					status={commitIsDiverged(commit) ? "Diverged" : commit.state.type}

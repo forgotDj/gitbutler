@@ -58,14 +58,14 @@ export const FileRow: FC<
 				render={
 					<Row
 						{...restProps}
-						className={classes(restProps.className, styles.fileRow)}
+						className={classes(restProps.className, styles.row)}
 						onContextMenu={(event) => {
 							void showNativeContextMenu(event, menuItems);
 						}}
 					/>
 				}
 			>
-				<div className={styles.fileIconWithCheckbox}>
+				<div className={styles.iconWithCheckbox}>
 					<FileIcon fileName={fileName} />
 					<Tooltip.Root
 						// This gets in the way when the user tries to move their hover to a
@@ -75,7 +75,7 @@ export const FileRow: FC<
 						<Checkbox
 							disabled={hasCheckedCommits || outlineMode._tag !== "Default"}
 							aria-label={`Check file ${relativePath}`}
-							className={styles.fileCheckbox}
+							className={styles.checkbox}
 							nativeButton
 							render={<Tooltip.Trigger />}
 						/>
@@ -134,7 +134,7 @@ export const FileRow: FC<
 				{item._tag === "Change" && (
 					<Tooltip.Root disableHoverablePopup>
 						<Tooltip.Trigger
-							className={styles.fileStatusBadge}
+							className={styles.statusBadge}
 							aria-label={item.change.status.type}
 							data-status-type={item.change.status.type}
 							// By default it's a button, but we don't want this to be
