@@ -180,7 +180,7 @@ export const OperationTarget: FC<
 			<OperationTooltip
 				target={target}
 				isActive={activeTargetOperationType === "into"}
-				outlineMode={outlineMode}
+				projectId={projectId}
 				render={targetEl}
 			/>
 
@@ -188,7 +188,7 @@ export const OperationTarget: FC<
 				<OperationTooltip
 					target={target}
 					isActive
-					outlineMode={outlineMode}
+					projectId={projectId}
 					className={classes(
 						styles.insertionTarget,
 						pipe(

@@ -1,7 +1,8 @@
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
 import { Operand } from "#ui/operands.ts";
 import { getOperation } from "#ui/operations/operation.ts";
-import { type OutlineMode } from "#ui/outline/mode.ts";
+import { selectProjectOutlineModeState } from "#ui/projects/state.ts";
+import { useAppSelector } from "#ui/store.ts";
 import { Tooltip, useRender } from "@base-ui/react";
 import { Match } from "effect";
 import { FC } from "react";
@@ -9,10 +10,12 @@ import { FC } from "react";
 export const OperationTooltip: FC<
 	{
 		target: Operand;
-		outlineMode: OutlineMode;
 		isActive: boolean;
+		projectId: string;
 	} & useRender.ComponentProps<"div">
-> = ({ target, outlineMode, isActive, render, ...props }) => {
+> = ({ target, isActive, projectId, render, ...props }) => {
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+
 	const tooltip = isActive
 		? Match.value(outlineMode).pipe(
 				Match.when({ _tag: "Absorb" }, () => <>Absorb target</>),
