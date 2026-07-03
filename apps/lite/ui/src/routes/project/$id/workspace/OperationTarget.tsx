@@ -149,46 +149,29 @@ export const OperationTarget: FC<
 	const { dropRef } = useOperationDropTarget({ enabled, target, projectId });
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 
-	const insertTargetOperationType = Match.value(outlineMode).pipe(
+	const activeTargetOperationType = Match.value(outlineMode).pipe(
+		Match.withReturnType<OperationType | null>(),
+		Match.when({ _tag: "Absorb" }, () => (isAbsorptionTarget ? "into" : null)),
 		Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
 			mode.target &&
 			operandEquals(mode.target, target) &&
-			(mode.operationType === "above" || mode.operationType === "below")
+			(mode.operationType !== "into" || !operandEquals(mode.source, target))
 				? mode.operationType
 				: null,
 		),
 		Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) =>
-			isSelected && (mode.operationType === "above" || mode.operationType === "below")
+			isSelected && (mode.operationType !== "into" || !operandEquals(mode.source, target))
 				? mode.operationType
 				: null,
 		),
 		Match.orElse(() => null),
 	);
 
-	const isMainTargetActive = Match.value(outlineMode).pipe(
-		Match.withReturnType<boolean>(),
-		Match.when({ _tag: "Absorb" }, () => isAbsorptionTarget),
-		Match.when(
-			{ _tag: "Transfer", value: { _tag: "Pointer" } },
-			({ value: mode }) =>
-				!!mode.target &&
-				operandEquals(mode.target, target) &&
-				mode.operationType === "into" &&
-				!operandEquals(mode.source, target),
-		),
-		Match.when(
-			{ _tag: "Transfer", value: { _tag: "Keyboard" } },
-			({ value: mode }) =>
-				isSelected && mode.operationType === "into" && !operandEquals(mode.source, target),
-		),
-		Match.orElse(() => false),
-	);
-
 	const targetEl = useRender({
 		render,
 		ref: dropRef,
 		props: mergeProps<"div">(props, {
-			className: classes(isMainTargetActive && styles.activeTarget),
+			className: classes(activeTargetOperationType === "into" && styles.activeTarget),
 		}),
 	});
 
@@ -196,12 +179,12 @@ export const OperationTarget: FC<
 		<div className={styles.target}>
 			<OperationTooltip
 				target={target}
-				isActive={isMainTargetActive}
+				isActive={activeTargetOperationType === "into"}
 				outlineMode={outlineMode}
 				render={targetEl}
 			/>
 
-			{insertTargetOperationType !== null && (
+			{(activeTargetOperationType === "above" || activeTargetOperationType === "below") && (
 				<OperationTooltip
 					target={target}
 					isActive
@@ -209,7 +192,7 @@ export const OperationTarget: FC<
 					className={classes(
 						styles.insertionTarget,
 						pipe(
-							insertTargetOperationType,
+							activeTargetOperationType,
 							Match.value,
 							Match.when("above", () => styles.insertionTargetAbove),
 							Match.when("below", () => styles.insertionTargetBelow),
