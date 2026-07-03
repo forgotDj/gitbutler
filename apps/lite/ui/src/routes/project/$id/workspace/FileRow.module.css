@@ -29,7 +29,6 @@
 
 .iconWithCheckbox {
 	display: grid;
-	justify-items: center;
 
 	& > * {
 		grid-area: 1 / 1;
