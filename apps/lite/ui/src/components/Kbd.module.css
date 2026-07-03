@@ -5,6 +5,10 @@
 }
 
 .key {
+	--outline-color: light-dark(
+		color-mix(in srgb, var(--text-1) 10%, transparent),
+		color-mix(in srgb, var(--text-1) 20%, transparent)
+	);
 	display: inline-flex;
 	position: relative;
 	align-items: center;
@@ -14,7 +18,7 @@
 	background-color: var(--bg-1);
 	box-shadow:
 		0 1px 3px 0 rgba(0, 0, 0, 0.18),
-		0 0 0 1px color-mix(in srgb, var(--text-1) 10%, transparent);
+		0 0 0 1px var(--outline-color);
 	color: color-mix(in srgb, var(--text-1) 60%, transparent);
 	font-size: clamp(10px, 80%, 14px);
 	line-height: 1.2;
