@@ -34,7 +34,6 @@ import {
 	Segment,
 	Stack,
 	PushStatus,
-	WorktreeChanges,
 	WorkspaceState,
 } from "@gitbutler/but-sdk";
 import { useQuery } from "@tanstack/react-query";
@@ -58,8 +57,7 @@ import { useOutlineTreeHotkeys } from "./hotkeys.ts";
 import { partialStackStatesFromSegments, type PartialStackState } from "./partialStackState.ts";
 import { UncommittedChangesRow } from "./UncommittedChangesRow.tsx";
 import { FileRow } from "../FileRow.tsx";
-import { changeFileRowItem, type FileRowItem } from "../file-row.ts";
-import { getDependencyCommitIds, getHunkDependencyDiffsByPath } from "#ui/hunk.ts";
+import { getChangesFileRowItems, type FileRowItem } from "../file-row.ts";
 
 const DryRunWorkspaceContext = createContext<WorkspaceState | null>(null);
 
@@ -191,25 +189,6 @@ const UncommittedChanges: FC<{
 			)}
 		</TreeItem>
 	);
-};
-
-const getChangesFileRowItems = (worktreeChanges: WorktreeChanges): Array<FileRowItem> => {
-	const hunkDependencyDiffsByPath = getHunkDependencyDiffsByPath(
-		worktreeChanges.dependencies?.diffs ?? [],
-	);
-
-	return worktreeChanges.changes.map((change) => {
-		const hunkDependencyDiffs = hunkDependencyDiffsByPath.get(change.path);
-		const dependencyCommitIds = hunkDependencyDiffs
-			? getDependencyCommitIds({ hunkDependencyDiffs })
-			: undefined;
-
-		return changeFileRowItem({
-			change,
-			dependencyCommitIds,
-			path: change.path,
-		});
-	});
 };
 
 const UncommittedFileRow: FC<{
