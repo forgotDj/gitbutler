@@ -156,6 +156,8 @@ const useOperationDropTarget = ({
 	return { dropRef };
 };
 
+export type OperationTargetOutline = "inside" | "outside";
+
 export const OperationTarget: FC<
 	{
 		enabled: boolean;
@@ -163,8 +165,9 @@ export const OperationTarget: FC<
 		projectId: string;
 		isSelected: boolean;
 		isAbsorptionTarget: boolean;
+		outline: OperationTargetOutline;
 	} & useRender.ComponentProps<"div">
-> = ({ enabled, target, projectId, isSelected, isAbsorptionTarget, render, ...props }) => {
+> = ({ enabled, target, projectId, isSelected, isAbsorptionTarget, outline, render, ...props }) => {
 	const { dropRef } = useOperationDropTarget({ enabled, target, projectId });
 
 	const activeTargetOperationType = useAppSelector((state) => {
@@ -193,7 +196,17 @@ export const OperationTarget: FC<
 		render,
 		ref: dropRef,
 		props: mergeProps<"div">(props, {
-			className: classes(activeTargetOperationType === "into" && styles.activeTarget),
+			className: classes(
+				activeTargetOperationType === "into" &&
+					classes(
+						styles.activeTarget,
+						Match.value(outline).pipe(
+							Match.when("inside", () => styles.activeTargetInside),
+							Match.when("outside", () => styles.activeTargetOutside),
+							Match.exhaustive,
+						),
+					),
+			),
 		}),
 	});
 

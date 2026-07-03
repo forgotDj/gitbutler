@@ -8,6 +8,13 @@
 	z-index: 1;
 	border-radius: 8px;
 	outline: 2px dashed var(--fill-gray-bg);
+}
+
+.activeTargetInside {
+	outline-offset: -4px;
+}
+
+.activeTargetOutside {
 	outline-offset: 2px;
 }
 

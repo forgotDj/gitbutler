@@ -20,7 +20,10 @@ import {
 	selectProjectOutlineModeState,
 } from "#ui/projects/state.ts";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
-import { OperationTarget } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
+import {
+	OperationTarget,
+	OperationTargetOutline,
+} from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { NavigationIndexContext } from "#ui/routes/project/$id/workspace/OutlineNavigationIndexContext.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { classes } from "#ui/components/classes.ts";
@@ -93,8 +96,9 @@ const OperandC: FC<
 	{
 		projectId: string;
 		operand: Operand;
+		outline: OperationTargetOutline;
 	} & useRender.ComponentProps<"div">
-> = ({ projectId, operand, render, ...props }) => {
+> = ({ projectId, operand, outline, render, ...props }) => {
 	const isSelected = useIsSelected({ projectId, operand });
 	const absorptionTargetKeys = assert(use(AbsorptionTargetKeysContext));
 	const isAbsorptionTarget = absorptionTargetKeys.has(operandIdentityKey(operand));
@@ -105,6 +109,7 @@ const OperandC: FC<
 			<OperationSourceC
 				projectId={projectId}
 				source={operand}
+				outline={outline}
 				render={
 					<OperationTarget
 						enabled={navigationIndexIncludes(navigationIndex, operand, operandIdentityKey)}
@@ -112,6 +117,7 @@ const OperandC: FC<
 						target={operand}
 						isSelected={isSelected}
 						isAbsorptionTarget={isAbsorptionTarget}
+						outline={outline}
 						render={render}
 					/>
 				}
@@ -140,6 +146,7 @@ const CommitC: FC<{
 				<OperandC
 					projectId={projectId}
 					operand={operand}
+					outline="outside"
 					render={
 						<CommitRow
 							commit={commit}
@@ -169,7 +176,7 @@ const UncommittedChanges: FC<{
 			operand={operand}
 			aria-label={`Uncommitted changes (${worktreeChanges?.changes.length ?? 0})`}
 			className={styles.section}
-			render={<OperandC projectId={projectId} operand={operand} />}
+			render={<OperandC projectId={projectId} operand={operand} outline="outside" />}
 		>
 			<UncommittedChangesRow changes={worktreeChanges?.changes ?? []} projectId={projectId} />
 
@@ -212,6 +219,7 @@ const UncommittedFileRow: FC<{
 				<OperandC
 					projectId={projectId}
 					operand={operand}
+					outline="outside"
 					render={
 						<FileRow
 							item={item}
@@ -273,7 +281,7 @@ const BranchSegment: FC<{
 			operand={operand}
 			aria-label={refName.displayName}
 			aria-expanded
-			render={<OperandC projectId={projectId} operand={operand} />}
+			render={<OperandC projectId={projectId} operand={operand} outline="outside" />}
 		>
 			<BranchRow
 				projectId={projectId}
@@ -408,7 +416,7 @@ const StackC: FC<{
 			aria-label="Stack"
 			aria-expanded
 			className={classes(styles.section, styles.stack)}
-			render={<OperandC projectId={projectId} operand={operand} />}
+			render={<OperandC projectId={projectId} operand={operand} outline="outside" />}
 		>
 			<StackRow projectId={projectId} stack={stack} />
 
