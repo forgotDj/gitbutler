@@ -16,13 +16,13 @@ import {
 	absorbOutlineMode,
 	defaultOutlineMode,
 	isValidOutlineModeForSelection,
-	keyboardTransferOperationMode,
-	pointerTransferOperationMode,
+	keyboardTransferMode,
+	pointerTransferMode,
 	renameBranchOutlineMode,
 	rewordCommitOutlineMode,
 	transferOutlineMode,
 	type OutlineMode,
-	type TransferOperationMode,
+	type TransferMode,
 } from "#ui/outline/mode.ts";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 import { mapKeys } from "effect/Record";
@@ -55,7 +55,7 @@ export const createInitialState = (): WorkspaceState => ({
 	selection: createInitialSelectionState(),
 });
 
-export const enterTransferMode = (state: WorkspaceState, mode: TransferOperationMode) => {
+export const enterTransferMode = (state: WorkspaceState, mode: TransferMode) => {
 	state.mode = transferOutlineMode(mode);
 };
 
@@ -65,7 +65,7 @@ export const enterKeyboardTransferMode = (
 	operationType?: OperationType,
 ) => {
 	state.mode = transferOutlineMode(
-		keyboardTransferOperationMode({
+		keyboardTransferMode({
 			source,
 			operationType: operationType ?? "into",
 			restoreSelection: {
@@ -107,7 +107,7 @@ export const updatePointerTransfer = (
 			if (sameTarget && mode.operationType === operationType) return;
 
 			state.mode = transferOutlineMode(
-				pointerTransferOperationMode({
+				pointerTransferMode({
 					source: mode.source,
 					target,
 					operationType,
@@ -125,7 +125,7 @@ export const updateTransferOperationType = (
 	Match.value(state.mode).pipe(
 		Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) => {
 			state.mode = transferOutlineMode(
-				keyboardTransferOperationMode({
+				keyboardTransferMode({
 					source: mode.source,
 					operationType,
 					restoreSelection: mode.restoreSelection,

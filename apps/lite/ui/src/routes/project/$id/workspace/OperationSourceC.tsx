@@ -1,5 +1,5 @@
 import { Operand, operandEquals } from "#ui/operands.ts";
-import { getOperationSource, pointerTransferOperationMode } from "#ui/outline/mode.ts";
+import { getOperationSource, pointerTransferMode } from "#ui/outline/mode.ts";
 import styles from "./OperationSourceC.module.css";
 import { operandLabel } from "./operandLabel.ts";
 import { headInfoQueryOptions } from "#ui/api/queries.ts";
@@ -58,7 +58,7 @@ export const OperationSourceC: FC<
 		dispatch(
 			projectActions.enterTransferMode({
 				projectId,
-				mode: pointerTransferOperationMode({
+				mode: pointerTransferMode({
 					source,
 					target: null,
 					operationType: null,

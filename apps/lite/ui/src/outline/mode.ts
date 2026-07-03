@@ -19,30 +19,30 @@ export type AbsorbMode = {
 };
 
 /** @public */
-export type KeyboardTransferOperationMode = {
+export type KeyboardTransferMode = {
 	source: Operand;
 	operationType: OperationType;
 	restoreSelection: SelectionState;
 };
 
 /** @public */
-export type PointerTransferOperationMode = {
+export type PointerTransferMode = {
 	source: Operand;
 	target: Operand | null;
 	operationType: OperationType | null;
 };
 
 /** @public */
-export type TransferOperationMode =
-	| ({ _tag: "Keyboard" } & KeyboardTransferOperationMode)
-	| ({ _tag: "Pointer" } & PointerTransferOperationMode);
+export type TransferMode =
+	| ({ _tag: "Keyboard" } & KeyboardTransferMode)
+	| ({ _tag: "Pointer" } & PointerTransferMode);
 
 /** @public */
-export const keyboardTransferOperationMode = ({
+export const keyboardTransferMode = ({
 	source,
 	operationType,
 	restoreSelection,
-}: KeyboardTransferOperationMode): TransferOperationMode => ({
+}: KeyboardTransferMode): TransferMode => ({
 	_tag: "Keyboard",
 	source,
 	operationType,
@@ -50,11 +50,11 @@ export const keyboardTransferOperationMode = ({
 });
 
 /** @public */
-export const pointerTransferOperationMode = ({
+export const pointerTransferMode = ({
 	source,
 	target,
 	operationType,
-}: PointerTransferOperationMode): TransferOperationMode => ({
+}: PointerTransferMode): TransferMode => ({
 	_tag: "Pointer",
 	source,
 	target,
@@ -74,7 +74,7 @@ export const absorbOutlineMode = ({
 });
 
 /** @public */
-export const transferOutlineMode = (mode: TransferOperationMode): OutlineMode => ({
+export const transferOutlineMode = (mode: TransferMode): OutlineMode => ({
 	_tag: "Transfer",
 	value: mode,
 });
@@ -88,7 +88,7 @@ export type OutlineMode =
 	| ({ _tag: "RewordCommit" } & RewordCommitOutlineMode)
 	| ({ _tag: "RenameBranch" } & RenameBranchOutlineMode)
 	| ({ _tag: "Absorb" } & AbsorbMode)
-	| { _tag: "Transfer"; value: TransferOperationMode };
+	| { _tag: "Transfer"; value: TransferMode };
 
 /** @public */
 export const defaultOutlineMode: OutlineMode = {
