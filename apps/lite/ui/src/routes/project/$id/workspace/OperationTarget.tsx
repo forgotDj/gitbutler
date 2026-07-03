@@ -17,43 +17,14 @@ import {
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
-import { FC, useEffect, useEffectEvent, useRef } from "react";
+import { FC, ReactNode, useEffect, useEffectEvent, useRef } from "react";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
 
 const OperationTooltip: FC<
 	{
-		target: Operand;
-		isActive: boolean;
-		projectId: string;
+		tooltip?: ReactNode | null;
 	} & useRender.ComponentProps<"div">
-> = ({ target, isActive, projectId, render, ...props }) => {
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
-
-	const tooltip = isActive
-		? Match.value(outlineMode).pipe(
-				Match.when({ _tag: "Absorb" }, () => <>Absorb target</>),
-				Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
-					mode.target && mode.operationType !== null
-						? getOperation({
-								source: mode.source,
-								target: mode.target,
-								operationType: mode.operationType,
-							})?.label
-						: null,
-				),
-				Match.when(
-					{ _tag: "Transfer", value: { _tag: "Keyboard" } },
-					({ value: mode }) =>
-						getOperation({
-							source: mode.source,
-							target,
-							operationType: mode.operationType,
-						})?.label,
-				),
-				Match.orElse(() => null),
-			)
-		: null;
-
+> = ({ tooltip, render, ...props }) => {
 	const trigger = useRender({ render, props });
 
 	return (
@@ -226,20 +197,41 @@ export const OperationTarget: FC<
 		}),
 	});
 
+	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+
+	const tooltip = Match.value(outlineMode).pipe(
+		Match.when({ _tag: "Absorb" }, () => <>Absorb target</>),
+		Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
+			mode.target && mode.operationType !== null
+				? getOperation({
+						source: mode.source,
+						target: mode.target,
+						operationType: mode.operationType,
+					})?.label
+				: null,
+		),
+		Match.when(
+			{ _tag: "Transfer", value: { _tag: "Keyboard" } },
+			({ value: mode }) =>
+				getOperation({
+					source: mode.source,
+					target,
+					operationType: mode.operationType,
+				})?.label,
+		),
+		Match.orElse(() => null),
+	);
+
 	return (
 		<div className={styles.target}>
 			<OperationTooltip
-				target={target}
-				isActive={activeTargetOperationType === "into"}
-				projectId={projectId}
+				tooltip={activeTargetOperationType === "into" ? tooltip : null}
 				render={targetEl}
 			/>
 
 			{(activeTargetOperationType === "above" || activeTargetOperationType === "below") && (
 				<OperationTooltip
-					target={target}
-					isActive
-					projectId={projectId}
+					tooltip={tooltip}
 					className={classes(
 						styles.insertionTarget,
 						pipe(
