@@ -56,9 +56,7 @@ export const createInitialState = (): WorkspaceState => ({
 });
 
 export const enterTransferMode = (state: WorkspaceState, mode: TransferOperationMode) => {
-	state.mode = transferOutlineMode({
-		value: mode,
-	});
+	state.mode = transferOutlineMode(mode);
 };
 
 export const enterKeyboardTransferMode = (
@@ -66,8 +64,8 @@ export const enterKeyboardTransferMode = (
 	source: Operand,
 	operationType?: OperationType,
 ) => {
-	state.mode = transferOutlineMode({
-		value: keyboardTransferOperationMode({
+	state.mode = transferOutlineMode(
+		keyboardTransferOperationMode({
 			source,
 			operationType: operationType ?? "into",
 			restoreSelection: {
@@ -76,7 +74,7 @@ export const enterKeyboardTransferMode = (
 				diff: state.selection.diff,
 			},
 		}),
-	});
+	);
 };
 
 export const enterAbsorbMode = (
@@ -101,20 +99,20 @@ export const updatePointerTransfer = (
 	operationType: OperationType | null,
 ) => {
 	Match.value(state.mode).pipe(
-		Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, (mode) => {
+		Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) => {
 			const sameTarget =
 				target === null
-					? mode.value.target === null
-					: mode.value.target !== null && operandEquals(mode.value.target, target);
-			if (sameTarget && mode.value.operationType === operationType) return;
+					? mode.target === null
+					: mode.target !== null && operandEquals(mode.target, target);
+			if (sameTarget && mode.operationType === operationType) return;
 
-			state.mode = transferOutlineMode({
-				value: pointerTransferOperationMode({
-					source: mode.value.source,
+			state.mode = transferOutlineMode(
+				pointerTransferOperationMode({
+					source: mode.source,
 					target,
 					operationType,
 				}),
-			});
+			);
 		}),
 		Match.orElse(() => {}),
 	);
@@ -125,14 +123,14 @@ export const updateTransferOperationType = (
 	operationType: OperationType,
 ) => {
 	Match.value(state.mode).pipe(
-		Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, (mode) => {
-			state.mode = transferOutlineMode({
-				value: keyboardTransferOperationMode({
-					source: mode.value.source,
+		Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) => {
+			state.mode = transferOutlineMode(
+				keyboardTransferOperationMode({
+					source: mode.source,
 					operationType,
-					restoreSelection: mode.value.restoreSelection,
+					restoreSelection: mode.restoreSelection,
 				}),
-			});
+			);
 		}),
 		Match.orElse(() => {}),
 	);
