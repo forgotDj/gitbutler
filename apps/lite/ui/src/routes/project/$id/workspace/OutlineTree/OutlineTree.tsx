@@ -1,5 +1,5 @@
 import rowStyles from "../Row.module.css";
-import { changesInWorktreeQueryOptions } from "#ui/api/queries.ts";
+import { changesInWorktreeQueryOptions, headInfoQueryOptions } from "#ui/api/queries.ts";
 import { relativeToEquals } from "#ui/api/relative-to.ts";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 import { commitIsDiverged, commitTitle } from "#ui/commit.ts";
@@ -170,6 +170,9 @@ const UncommittedChanges: FC<{
 
 	const operand = uncommittedChangesOperand;
 
+	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
+	const headInfoIndex = headInfo ? getHeadInfoIndex(headInfo) : null;
+
 	return (
 		<TreeItem
 			projectId={projectId}
@@ -189,7 +192,14 @@ const UncommittedChanges: FC<{
 				// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Tree items need ARIA group semantics.
 				<div role="group">
 					{fileRowItems.map((item) => (
-						<UncommittedFileRow key={item.path} item={item} projectId={projectId} />
+						<UncommittedFileRow
+							key={item.path}
+							item={item}
+							projectId={projectId}
+							branchNameByCommitId={(cid) =>
+								headInfoIndex?.commitContextById(cid)?.segment.refName?.displayName
+							}
+						/>
 					))}
 				</div>
 			)}
@@ -200,7 +210,8 @@ const UncommittedChanges: FC<{
 const UncommittedFileRow: FC<{
 	item: FileRowItem;
 	projectId: string;
-}> = ({ item, projectId }) => {
+	branchNameByCommitId: (commitId: string) => string | undefined;
+}> = ({ item, projectId, branchNameByCommitId }) => {
 	const operand = fileOperand({
 		parent: uncommittedChangesFileParent,
 		path: item.path,
@@ -224,6 +235,7 @@ const UncommittedFileRow: FC<{
 							item={item}
 							projectId={projectId}
 							fileParent={uncommittedChangesFileParent}
+							branchNameByCommitId={branchNameByCommitId}
 							inert={!navigationIndexIncludes(navigationIndex, operand, operandIdentityKey)}
 							isSelected={isSelected}
 							onSelect={() => {
