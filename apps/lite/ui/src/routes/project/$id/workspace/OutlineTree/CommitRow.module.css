@@ -1,6 +1,5 @@
 .iconWithCheckbox {
 	display: grid;
-	justify-items: center;
 
 	& > * {
 		grid-area: 1 / 1;
@@ -9,6 +8,7 @@
 
 .checkbox {
 	--checkbox-height: 14px;
+	justify-self: center;
 	margin-block-start: calc((var(--single-line-row-height) - var(--checkbox-height)) / 2);
 	opacity: 0;
 
