@@ -648,7 +648,7 @@ fn print_hint(
     } else if !status_ctx.has_branches {
         "Hint: run `but branch new` to create a new branch to work on"
     } else if has_uncommitted_files {
-        "Hint: run `but diff` to see uncommitted changes and `but stage <file>` to stage them to a branch"
+        "Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m \"message\" --changes <id>` to commit them"
     } else {
         "Hint: run `but help` for all commands"
     };
