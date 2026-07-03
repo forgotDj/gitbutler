@@ -559,7 +559,7 @@ const DiffFileHeader: FC<DiffFileHeaderProps> = (p) => {
 	const collapseLabel = collapseHotkey.meta.name;
 
 	return (
-		<OperationSourceC projectId={p.projectId} source={fileOperand(p.operand)} outline="outside">
+		<OperationSourceC projectId={p.projectId} source={fileOperand(p.operand)} outline="inside">
 			<header
 				onContextMenu={(event) => {
 					void showNativeContextMenu(event, menuItems);
