@@ -1,4 +1,5 @@
 import { classes } from "#ui/components/classes.ts";
+import { Checkbox } from "#ui/components/Checkbox.tsx";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import { ComponentProps, FC, MouseEvent, useLayoutEffect, useRef } from "react";
 import styles from "./Row.module.css";
@@ -68,8 +69,24 @@ export const Row: FC<
 	);
 };
 
+export const RowCheckbox: FC<ComponentProps<typeof Checkbox>> = (props) => (
+	<Checkbox
+		{...props}
+		className={(state) =>
+			classes(
+				styles.rowCheckbox,
+				typeof props.className === "function" ? props.className(state) : props.className,
+			)
+		}
+	/>
+);
+
 export const RowLabelContainer: FC<ComponentProps<"div">> = (props) => (
 	<div {...props} className={classes(props.className, styles.labelContainer)} />
+);
+
+export const RowLabelFooter: FC<ComponentProps<"div">> = (props) => (
+	<div {...props} className={classes(props.className, styles.labelFooter)} />
 );
 
 export const RowLabel: FC<

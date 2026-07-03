@@ -1,5 +1,5 @@
 export const symbolFileExtensionsToIcons: { [key: string]: string } = {
-	"YAML-tmLanguage": "yaml",
+	"yaml-tmlanguage": "yaml",
 	accdb: "database",
 	afphoto: "image",
 	aiff: "audio",
@@ -358,7 +358,7 @@ export const symbolFileExtensionsToIcons: { [key: string]: string } = {
 };
 
 export const symbolFileNamesToIcons: { [key: string]: string } = {
-	".Rhistory": "r",
+	".rhistory": "r",
 	".angular-cli.json": "angular",
 	".babelrc": "babel",
 	".d.ts": "dts",

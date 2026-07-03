@@ -559,7 +559,7 @@ const DiffFileHeader: FC<DiffFileHeaderProps> = (p) => {
 	const collapseLabel = collapseHotkey.meta.name;
 
 	return (
-		<OperationSourceC projectId={p.projectId} source={fileOperand(p.operand)}>
+		<OperationSourceC projectId={p.projectId} source={fileOperand(p.operand)} outline="inside">
 			<header
 				onContextMenu={(event) => {
 					void showNativeContextMenu(event, menuItems);
@@ -1042,7 +1042,6 @@ const Diff: FC<{
 						>
 							<FilesTree
 								data-selection-scope={"files" satisfies SelectionScope}
-								tabIndex={0}
 								className={classes(styles.diffFiles, uiStyles.scrollerWithSeparator)}
 								onFileSelection={selectFileAndNavigateDiff}
 								projectId={projectId}
