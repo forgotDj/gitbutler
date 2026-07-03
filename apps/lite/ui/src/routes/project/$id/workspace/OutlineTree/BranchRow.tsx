@@ -34,7 +34,7 @@ import { projectActions, selectProjectOutlineModeState } from "#ui/projects/stat
 import { focusSelectionScope } from "#ui/selection-scopes.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { prForgeUrl } from "#ui/pr.ts";
-import { RowBubble, RowLabel, RowLabelContainer, RowToolbar } from "../Row.tsx";
+import { RowBubble, RowLabel, RowLabelContainer, RowLabelFooter, RowToolbar } from "../Row.tsx";
 import { getRowButtonClassName } from "../Row-utils.ts";
 import { InlineEditor } from "./InlineEditor.tsx";
 import { commitMessageInputId } from "../CommitForm.tsx";
@@ -423,7 +423,7 @@ export const BranchRow: FC<
 						<RowLabel heading>{optimisticBranchDisplayName}</RowLabel>
 					</RowLabelContainer>
 
-					<div className={classes("text-13", styles.labelMeta)}>
+					<RowLabelFooter className={classes("text-13", styles.labelMeta)}>
 						<span className={classes(rowStyles.fadedText, styles.labelMetaItem)}>
 							{Match.value(pushStatus).pipe(
 								Match.when("nothingToPush", () => "Nothing to push"),
@@ -514,7 +514,7 @@ export const BranchRow: FC<
 									</Tooltip.Root>
 								);
 							})()}
-					</div>
+					</RowLabelFooter>
 				</div>
 			)}
 

@@ -7,9 +7,6 @@
 .labelMeta {
 	display: flex;
 	align-items: center;
-	padding-block-end: calc(
-		(var(--single-line-row-height) - var(--single-line-row-label-line-height)) / 2
-	);
 	gap: 8px;
 }
 

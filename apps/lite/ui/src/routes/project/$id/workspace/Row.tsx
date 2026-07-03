@@ -72,6 +72,10 @@ export const RowLabelContainer: FC<ComponentProps<"div">> = (props) => (
 	<div {...props} className={classes(props.className, styles.labelContainer)} />
 );
 
+export const RowLabelFooter: FC<ComponentProps<"div">> = (props) => (
+	<div {...props} className={classes(props.className, styles.labelFooter)} />
+);
+
 export const RowLabel: FC<
 	{ heading?: boolean; singleLine?: boolean } & useRender.ComponentProps<"div">
 > = ({ heading, singleLine, render, ...props }) =>
