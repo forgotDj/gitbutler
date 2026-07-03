@@ -108,9 +108,20 @@ export const listCIChecksQueryOptions = ({
 	queryOptions({
 		queryKey: [QueryKey.CIChecks, projectId, reference],
 		queryFn: async () => {
-			const data = await window.lite.listCiChecks({ projectId, reference, cacheConfig: "noCache" });
-			// This is needed in queryFn to adjust refetching behaviour below.
-			return { data, aggregate: aggregateCIChecks(data) };
+			// Aggregated data is needed in queryFn to adjust refetching behaviour. Aggregating here, for
+			// use as mentioned and also at call sites, is more efficient.
+			//
+			// listCiChecks will reject with a message citing HTTP 422 once the branch is merged.
+			try {
+				const data = await window.lite.listCiChecks({
+					projectId,
+					reference,
+					cacheConfig: "noCache",
+				});
+				return { data, aggregate: aggregateCIChecks(data) };
+			} catch {
+				return { data: [], aggregate: null };
+			}
 		},
 		// Refetch periodically, being mindful of rate limiting. Similarly tweak stale time for
 		// prioritised queries so that fresh data is likely fetched when the user would see/expect it
