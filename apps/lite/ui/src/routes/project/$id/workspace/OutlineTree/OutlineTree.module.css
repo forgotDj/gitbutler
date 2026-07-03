@@ -22,8 +22,6 @@
 }
 
 .uncommittedChangesContainer {
-	display: flex;
-	flex-direction: column;
 	padding-inline: var(--panel-padding-inline);
 	padding-block: var(--panel-padding-block);
 }
