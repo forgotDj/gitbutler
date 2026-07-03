@@ -25,7 +25,6 @@ import {
 	showNativeMenuFromTrigger,
 	type NativeMenuItem,
 } from "#ui/native-menu.ts";
-import { keyboardTransferOperationMode } from "#ui/outline/mode.ts";
 import { branchOperand, commitOperand, operandEquals, type CommitOperand } from "#ui/operands.ts";
 import {
 	projectActions,
@@ -184,12 +183,9 @@ export const CommitRow: FC<
 
 	const cutCommit = () => {
 		dispatch(
-			projectActions.enterTransferMode({
+			projectActions.enterKeyboardTransferMode({
 				projectId,
-				mode: keyboardTransferOperationMode({
-					source: operand,
-					operationType: "into",
-				}),
+				source: operand,
 			}),
 		);
 		focusSelectionScope("outline");

@@ -21,13 +21,13 @@ export type AbsorbMode = {
 /** @public */
 export type TransferMode = {
 	value: TransferOperationMode;
-	restoreSelection: SelectionState;
 };
 
 /** @public */
 export type KeyboardTransferOperationMode = {
 	source: Operand;
 	operationType: OperationType;
+	restoreSelection: SelectionState;
 };
 
 /** @public */
@@ -46,10 +46,12 @@ export type TransferOperationMode =
 export const keyboardTransferOperationMode = ({
 	source,
 	operationType,
+	restoreSelection,
 }: KeyboardTransferOperationMode): TransferOperationMode => ({
 	_tag: "Keyboard",
 	source,
 	operationType,
+	restoreSelection,
 });
 
 /** @public */
@@ -77,9 +79,8 @@ export const absorbOutlineMode = ({
 });
 
 /** @public */
-export const transferOutlineMode = ({ value, restoreSelection }: TransferMode): OutlineMode => ({
+export const transferOutlineMode = ({ value }: TransferMode): OutlineMode => ({
 	_tag: "Transfer",
-	restoreSelection,
 	value,
 });
 

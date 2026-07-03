@@ -58,11 +58,24 @@ export const createInitialState = (): WorkspaceState => ({
 export const enterTransferMode = (state: WorkspaceState, mode: TransferOperationMode) => {
 	state.mode = transferOutlineMode({
 		value: mode,
-		restoreSelection: {
-			outline: state.selection.outline,
-			files: state.selection.files,
-			diff: state.selection.diff,
-		},
+	});
+};
+
+export const enterKeyboardTransferMode = (
+	state: WorkspaceState,
+	source: Operand,
+	operationType?: OperationType,
+) => {
+	state.mode = transferOutlineMode({
+		value: keyboardTransferOperationMode({
+			source,
+			operationType: operationType ?? "into",
+			restoreSelection: {
+				outline: state.selection.outline,
+				files: state.selection.files,
+				diff: state.selection.diff,
+			},
+		}),
 	});
 };
 
@@ -101,7 +114,6 @@ export const updatePointerTransfer = (
 					target,
 					operationType,
 				}),
-				restoreSelection: mode.restoreSelection,
 			});
 		}),
 		Match.orElse(() => {}),
@@ -118,8 +130,8 @@ export const updateTransferOperationType = (
 				value: keyboardTransferOperationMode({
 					source: mode.value.source,
 					operationType,
+					restoreSelection: mode.value.restoreSelection,
 				}),
-				restoreSelection: mode.restoreSelection,
 			});
 		}),
 		Match.orElse(() => {}),
@@ -134,7 +146,7 @@ export const cancelMode = (state: WorkspaceState) => {
 	const restoreSelection = Match.value(state.mode).pipe(
 		Match.tags({
 			Absorb: (mode) => mode.restoreSelection,
-			Transfer: (mode) => mode.restoreSelection,
+			Transfer: (mode) => (mode.value._tag === "Keyboard" ? mode.value.restoreSelection : null),
 		}),
 		Match.orElse(() => null),
 	);

@@ -125,6 +125,14 @@ const projectSlice = createSlice({
 			const projectState = ensureProjectState(state, projectId);
 			workspace.enterTransferMode(projectState.workspace, mode);
 		},
+		enterKeyboardTransferMode: (
+			state,
+			action: PayloadAction<{ projectId: string; source: Operand; operationType?: OperationType }>,
+		) => {
+			const { projectId, source, operationType } = action.payload;
+			const projectState = ensureProjectState(state, projectId);
+			workspace.enterKeyboardTransferMode(projectState.workspace, source, operationType);
+		},
 		enterAbsorbMode: (
 			state,
 			action: PayloadAction<{
