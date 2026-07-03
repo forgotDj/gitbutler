@@ -8,14 +8,13 @@ import {
 } from "#ui/projects/state.ts";
 import { useAppSelector } from "#ui/store.ts";
 import { Icon } from "#ui/components/Icon.tsx";
-import { Checkbox } from "#ui/components/Checkbox.tsx";
 import { classes } from "#ui/components/classes.ts";
 import { Tooltip } from "@base-ui/react";
 import { Toolbar } from "@base-ui/react/toolbar";
 import { Match } from "effect";
 import { ComponentProps, FC } from "react";
 import styles from "./FileRow.module.css";
-import { Row, RowLabel, RowLabelContainer, RowToolbar } from "./Row.tsx";
+import { Row, RowCheckbox, RowLabel, RowLabelContainer, RowToolbar } from "./Row.tsx";
 import { getRowButtonClassName } from "./Row-utils.ts";
 import { DependencyIndicator } from "#ui/routes/project/$id/workspace/DependencyIndicator.tsx";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
@@ -72,7 +71,7 @@ export const FileRow: FC<
 						// sibling row.
 						disableHoverablePopup
 					>
-						<Checkbox
+						<RowCheckbox
 							disabled={hasCheckedCommits || outlineMode._tag !== "Default"}
 							aria-label={`Check file ${relativePath}`}
 							className={styles.checkbox}
