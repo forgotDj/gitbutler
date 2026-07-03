@@ -66,7 +66,7 @@ export const FileRow: FC<
 				}
 			>
 				<div className={styles.iconWithCheckbox}>
-					<FileIcon fileName={fileName} />
+					<FileIcon fileName={fileName} className={styles.icon} />
 					<Tooltip.Root
 						// This gets in the way when the user tries to move their hover to a
 						// sibling row.
