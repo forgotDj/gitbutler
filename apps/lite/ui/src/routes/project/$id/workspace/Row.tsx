@@ -87,7 +87,7 @@ export const RowLabel: FC<
 		}),
 	});
 
-type RowBubbleVariant = "fillGray" | "safe" | "danger";
+type RowBubbleVariant = "fillGray" | "lightGray" | "safe" | "warn" | "danger";
 
 export const RowBubble: FC<
 	{
@@ -103,7 +103,9 @@ export const RowBubble: FC<
 			styles.bubble,
 			Match.value(variant).pipe(
 				Match.when("fillGray", () => styles.bubbleFillGray),
+				Match.when("lightGray", () => styles.bubbleLightGray),
 				Match.when("safe", () => styles.bubbleClrSafe),
+				Match.when("warn", () => styles.bubbleClrWarn),
 				Match.when("danger", () => styles.bubbleClrDanger),
 				Match.exhaustive,
 			),

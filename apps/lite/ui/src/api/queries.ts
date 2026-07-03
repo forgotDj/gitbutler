@@ -5,14 +5,17 @@ import type {
 	CommitDetailsWithLineStatsParams,
 	GetReviewParams,
 	ListBranchesParams,
+	ListCiChecksParams,
 	TreeChangeDiffParams,
 } from "#electron/ipc.ts";
+import { aggregateCIChecks } from "#ui/ci.ts";
 import { queryOptions } from "@tanstack/react-query";
 
 export enum QueryKey {
 	BranchDetails = "branchDetails",
 	BranchDiff = "branchDiff",
 	ChangesInWorktree = "changesInWorktree",
+	CIChecks = "ciChecks",
 	CommitDetailsWithLineStats = "commitDetailsWithLineStats",
 	ForgeInfo = "forgeInfo",
 	HeadInfo = "headInfo",
@@ -93,6 +96,59 @@ export const listEditorsQueryOptions = queryOptions({
 	queryKey: [QueryKey.Editors],
 	queryFn: () => window.lite.listEditors(),
 });
+
+// There is no watcher event that could invalidate this query.
+export const listCIChecksQueryOptions = ({
+	projectId,
+	reference,
+	polling,
+}: Omit<ListCiChecksParams, "cacheConfig"> & {
+	polling: "passive" | "priority";
+}) =>
+	queryOptions({
+		queryKey: [QueryKey.CIChecks, projectId, reference],
+		queryFn: async () => {
+			const data = await window.lite.listCiChecks({ projectId, reference, cacheConfig: "noCache" });
+			// This is needed in queryFn to adjust refetching behaviour below.
+			return { data, aggregate: aggregateCIChecks(data) };
+		},
+		// Refetch periodically, being mindful of rate limiting. Similarly tweak stale time for
+		// prioritised queries so that fresh data is likely fetched when the user would see/expect it
+		// e.g. window refocus.
+		refetchInterval: ({ state: { data: checks } }): number => {
+			const prio = polling === "priority";
+
+			switch (checks?.aggregate?.status) {
+				case "in_progress":
+					return prio ? 5_000 : 15_000;
+				case "action_required":
+					return prio ? 10_000 : 45_000;
+				case "success":
+				case "cancelled":
+				case "failure":
+				case "unknown":
+				case undefined:
+					return prio ? 20_000 : 120_000;
+			}
+		},
+		staleTime: ({ state: { data: checks } }): number => {
+			// Our global default.
+			if (polling === "passive") return Number.POSITIVE_INFINITY;
+
+			switch (checks?.aggregate?.status) {
+				case "in_progress":
+					return 5_000;
+				case "action_required":
+					return 10_000;
+				case "success":
+				case "cancelled":
+				case "failure":
+				case "unknown":
+				case undefined:
+					return 30_000;
+			}
+		},
+	});
 
 export const treeChangeDiffsQueryOptions = ({ projectId, change }: TreeChangeDiffParams) =>
 	queryOptions({

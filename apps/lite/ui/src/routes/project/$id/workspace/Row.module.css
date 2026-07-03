@@ -110,7 +110,7 @@
 }
 
 .bubble {
-	display: inline-flex;
+	display: flex;
 	align-items: center;
 	justify-content: center;
 	min-width: 20px;
@@ -120,7 +120,7 @@
 }
 
 .bubbleGroup {
-	display: inline-flex;
+	display: flex;
 
 	& > :not(:first-child) {
 		border-start-start-radius: 0;
@@ -143,6 +143,16 @@
 	}
 }
 
+.bubbleLightGray {
+	background-color: light-dark(hsl(0 0% 83.9% / 0.45), hsl(0 0% 0% / 0.5));
+	color: var(--text-1);
+
+	[data-selection-focus-styles="true"] [data-selection-scope]:focus .containerSelected & {
+		background-color: light-dark(hsl(0 0% 0% / 0.5), hsl(0 0% 83.9% / 0.45));
+		color: var(--text-1-invert);
+	}
+}
+
 .bubbleClrSafe {
 	--background-color: light-dark(var(--clr-safe-50), var(--clr-safe-30));
 	background-color: color-mix(in srgb, var(--background-color) 25%, var(--bg-1));
@@ -151,6 +161,16 @@
 	[data-selection-focus-styles="true"] [data-selection-scope]:focus .containerSelected & {
 		background-color: color-mix(in srgb, var(--background-color) 37%, transparent);
 		color: light-dark(var(--clr-safe-70), var(--clr-safe-30));
+	}
+}
+
+.bubbleClrWarn {
+	background-color: color-mix(in srgb, var(--clr-warn-50) 18%, transparent);
+	color: var(--clr-warn-40);
+
+	[data-selection-focus-styles="true"] [data-selection-scope]:focus .containerSelected & {
+		background-color: color-mix(in srgb, var(--clr-warn-50) 22%, transparent);
+		color: var(--clr-warn-60);
 	}
 }
 
