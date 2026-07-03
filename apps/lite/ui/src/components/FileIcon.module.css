@@ -1,4 +1,5 @@
 .fileIcon {
+	display: inline-grid;
 	width: 14px;
 	height: 14px;
 
