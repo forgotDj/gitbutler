@@ -167,12 +167,7 @@ export const OperationTarget: FC<
 
 	const isMainTargetActive = Match.value(outlineMode).pipe(
 		Match.withReturnType<boolean>(),
-		Match.when(
-			{
-				_tag: "Absorb",
-			},
-			() => isAbsorptionTarget,
-		),
+		Match.when({ _tag: "Absorb" }, () => isAbsorptionTarget),
 		Match.when(
 			{ _tag: "Transfer", value: { _tag: "Pointer" } },
 			({ value: mode }) =>
