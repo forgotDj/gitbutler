@@ -310,36 +310,42 @@ const BranchSegment: FC<{
 	);
 };
 
+const EmptySegmentContent: FC<{
+	segment: Segment;
+	stackId: string;
+}> = ({ segment, stackId }) => {
+	const navigationIndex = assert(use(NavigationIndexContext));
+
+	const refName = assert(segment.refName);
+	const inert = !navigationIndexIncludes(
+		navigationIndex,
+		branchOperand({ stackId, branchRef: refName.fullNameBytes }),
+		operandIdentityKey,
+	);
+
+	return (
+		<div>
+			<Row interactive={false} inert={inert}>
+				<GraphSegment
+					glyph="parent"
+					status={segmentPushStatusToGraphSegmentStatus(segment.pushStatus)}
+				/>
+				<RowLabelContainer>
+					<RowLabel className={rowStyles.fadedText}>No commits.</RowLabel>
+				</RowLabelContainer>
+			</Row>
+		</div>
+	);
+};
+
 const SegmentContent: FC<{
 	projectId: string;
 	segment: Segment;
 	stackId: string;
 	commitTarget: RelativeTo | null;
 }> = ({ projectId, segment, stackId, commitTarget }) => {
-	const navigationIndex = assert(use(NavigationIndexContext));
-
-	if (segment.commits.length === 0) {
-		const refName = assert(segment.refName);
-		const inert = !navigationIndexIncludes(
-			navigationIndex,
-			branchOperand({ stackId, branchRef: refName.fullNameBytes }),
-			operandIdentityKey,
-		);
-
-		return (
-			<div>
-				<Row interactive={false} inert={inert}>
-					<GraphSegment
-						glyph="parent"
-						status={segmentPushStatusToGraphSegmentStatus(segment.pushStatus)}
-					/>
-					<RowLabelContainer>
-						<RowLabel className={rowStyles.fadedText}>No commits.</RowLabel>
-					</RowLabelContainer>
-				</Row>
-			</div>
-		);
-	}
+	if (segment.commits.length === 0)
+		return <EmptySegmentContent segment={segment} stackId={stackId} />;
 
 	const dryRunWorkspace = use(DryRunWorkspaceContext);
 	const dryRunHeadInfoIndex = dryRunWorkspace ? getHeadInfoIndex(dryRunWorkspace.headInfo) : null;
