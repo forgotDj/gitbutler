@@ -543,7 +543,7 @@ export const OutlineTree: FC<
 	const dryRunOperationQuery = useDryRunOperation({ projectId, operation: dryRunOperation });
 	const dryRunWorkspace = dryRunOperationQuery.data?.workspace ?? null;
 
-	const ref = useRef<HTMLDivElement>(null);
+	const hotkeysRef = useRef<HTMLDivElement>(null);
 	const layoutId = `project=${projectId}:outline-tree`;
 	const outlineLayout = useDefaultLayout({
 		id: layoutId,
@@ -553,7 +553,7 @@ export const OutlineTree: FC<
 	useOutlineTreeHotkeys({
 		navigationIndex,
 		projectId,
-		ref,
+		ref: hotkeysRef,
 	});
 
 	return (
@@ -571,7 +571,7 @@ export const OutlineTree: FC<
 						className={classes(props.className, styles.tree)}
 						defaultLayout={outlineLayout.defaultLayout}
 						onLayoutChanged={outlineLayout.onLayoutChanged}
-						elementRef={useMergedRefs(refProp, ref)}
+						elementRef={useMergedRefs(refProp, hotkeysRef)}
 					>
 						<Panel
 							id={"uncommitted-changes-panel" satisfies PanelId}
