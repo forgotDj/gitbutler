@@ -204,7 +204,7 @@ export const OperationTarget: FC<
 									target: mode.target,
 									operationType: mode.operationType,
 								})?.label
-							: null,
+							: undefined,
 					),
 					Match.when(
 						{ _tag: "Transfer", value: { _tag: "Keyboard" } },
@@ -215,12 +215,12 @@ export const OperationTarget: FC<
 								operationType: mode.operationType,
 							})?.label,
 					),
-					Match.orElse(() => null),
+					Match.orElse(() => undefined),
 				)
-			: null;
+			: undefined;
 
 	return (
-		<Tooltip.Root open={tooltip != null} disableHoverablePopup>
+		<Tooltip.Root open={tooltip !== undefined} disableHoverablePopup>
 			<Tooltip.Trigger
 				render={targetEl}
 				className={pipe(
