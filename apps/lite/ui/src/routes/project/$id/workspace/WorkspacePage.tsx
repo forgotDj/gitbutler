@@ -31,13 +31,11 @@ import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panel
 import {
 	branchOperand,
 	commitOperand,
-	fileOperand,
 	operandContains,
 	operandEquals,
 	operandIdentityKey,
 	type BranchOperand,
 	type Operand,
-	uncommittedChangesFileParent,
 } from "#ui/operands.ts";
 import { Details } from "./Details.tsx";
 import styles from "./WorkspacePage.module.css";
@@ -152,23 +150,26 @@ const hasAnyOperation = (sources: Array<Operand>, target: Operand) => {
 	return !!operations.into || !!operations.above || !!operations.below;
 };
 
+const buildUncommittedFilesNavigationIndex = ({
+	worktreeChanges,
+}: {
+	worktreeChanges: WorktreeChanges | undefined;
+}): NavigationIndex<string> => {
+	const items = worktreeChanges?.changes.map((change) => change.path) ?? [];
+	return { items, indexByKey: buildIndexByKey(items, (path) => path) };
+};
+
 const buildOutlineNavigationIndex = ({
 	headInfo,
-	worktreeChanges,
 	outlineMode,
 	absorptionTargetCommitIds,
 }: {
 	headInfo: RefInfo | undefined;
-	worktreeChanges: WorktreeChanges | undefined;
 	outlineMode: OutlineMode;
 	absorptionTargetCommitIds: ReadonlySet<string>;
 }): NavigationIndex<Operand> => {
-	const allItems = (): Array<Operand> => [
-		...(worktreeChanges?.changes.map((change) =>
-			fileOperand({ parent: uncommittedChangesFileParent, path: change.path }),
-		) ?? []),
-
-		...(headInfo?.stacks
+	const allItems = (): Array<Operand> =>
+		headInfo?.stacks
 			.toReversed()
 			.flatMap((stack) =>
 				stack.segments.flatMap(
@@ -179,8 +180,7 @@ const buildOutlineNavigationIndex = ({
 						...segment.commits.map((commit) => commitOperand({ commitId: commit.id })),
 					],
 				),
-			) ?? []),
-	];
+			) ?? [];
 
 	const filteredItems = Match.value(outlineMode).pipe(
 		Match.tagsExhaustive({
@@ -354,7 +354,6 @@ const WorkspacePage: FC = () => {
 		Match.orElse(() => null),
 	);
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
-	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
 	const [absorptionPlanQuery] = useQueries({
 		queries: (absorptionPlanTarget ? [absorptionPlanTarget] : []).map((target) =>
 			absorptionPlanQueryOptions({ projectId, target }),
@@ -366,7 +365,6 @@ const WorkspacePage: FC = () => {
 
 	const outlineNavigationIndex = buildOutlineNavigationIndex({
 		headInfo,
-		worktreeChanges,
 		outlineMode,
 		absorptionTargetCommitIds,
 	});
@@ -374,6 +372,9 @@ const WorkspacePage: FC = () => {
 	const outlineSelection = useAppSelector((state) =>
 		projectSlice.selectors.selectSelectionOutline(state, projectId, outlineNavigationIndex),
 	);
+
+	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
+	const uncommittedFilesNavigationIndex = buildUncommittedFilesNavigationIndex({ worktreeChanges });
 
 	const deferredOutlineSelection = useDeferredValue(outlineSelection);
 
@@ -419,6 +420,7 @@ const WorkspacePage: FC = () => {
 							projectId={projectId}
 							project={selectedProject}
 							navigationIndex={outlineNavigationIndex}
+							uncommittedFilesNavigationIndex={uncommittedFilesNavigationIndex}
 							absorptionTargetCommitIds={absorptionTargetCommitIds}
 						/>
 					</Panel>

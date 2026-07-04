@@ -8,7 +8,6 @@ import {
 	uncommittedChangesOperand,
 	uncommittedChangesFileParent,
 	commitOperand,
-	fileOperand,
 	operandIdentityKey,
 	stackOperand,
 	type Operand,
@@ -25,11 +24,7 @@ import { useOperationDropTarget } from "#ui/routes/project/$id/workspace/useOper
 import { NavigationIndexContext } from "#ui/routes/project/$id/workspace/OutlineNavigationIndexContext.ts";
 import { useAppDispatch, useAppSelector, useAppStore } from "#ui/store.ts";
 import { classes } from "#ui/components/classes.ts";
-import {
-	buildIndexByKey,
-	navigationIndexIncludes,
-	type NavigationIndex,
-} from "#ui/workspace/navigation-index.ts";
+import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import {
 	BranchReference,
@@ -206,28 +201,17 @@ const OperandC: FC<
 };
 
 const UncommittedChanges: FC<{
+	navigationIndex: NavigationIndex<string>;
 	projectId: string;
-}> = ({ projectId }) => {
-	const outlineNavigationIndex = assert(use(NavigationIndexContext));
+}> = ({ navigationIndex, projectId }) => {
 	const dispatch = useAppDispatch();
 
 	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
 	const fileRowItems = worktreeChanges ? getChangesFileRowItems(worktreeChanges) : [];
 
-	const selection = useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionOutline(state, projectId, outlineNavigationIndex),
+	const fileSelection = useAppSelector((state) =>
+		projectSlice.selectors.selectSelectionUncommittedFiles(state, projectId, navigationIndex),
 	);
-	const fileSelection =
-		selection?._tag === "File" && selection.parent._tag === "UncommittedChanges"
-			? selection.path
-			: null;
-	const navigationItems = outlineNavigationIndex.items.flatMap((item) =>
-		item._tag === "File" && item.parent._tag === "UncommittedChanges" ? [item.path] : [],
-	);
-	const navigationIndex: NavigationIndex<string> = {
-		items: navigationItems,
-		indexByKey: buildIndexByKey(navigationItems, (path) => path),
-	};
 
 	return (
 		<div>
@@ -240,12 +224,7 @@ const UncommittedChanges: FC<{
 				items={fileRowItems}
 				navigationIndex={navigationIndex}
 				onFileSelection={(selection) =>
-					dispatch(
-						projectSlice.actions.selectOutline({
-							projectId,
-							selection: fileOperand({ parent: uncommittedChangesFileParent, path: selection }),
-						}),
-					)
+					dispatch(projectSlice.actions.selectUncommittedFiles({ projectId, selection }))
 				}
 				projectId={projectId}
 				ref={(el) => {
@@ -599,6 +578,7 @@ export const OutlineTree: FC<
 		projectId: string;
 		commitTarget: RelativeTo | null;
 		navigationIndex: NavigationIndex<Operand>;
+		uncommittedFilesNavigationIndex: NavigationIndex<string>;
 		absorptionTargetCommitIds: ReadonlySet<string>;
 		headInfoIndex: HeadInfoIndex | undefined;
 	} & ComponentProps<"div">
@@ -606,6 +586,7 @@ export const OutlineTree: FC<
 	projectId,
 	commitTarget,
 	navigationIndex,
+	uncommittedFilesNavigationIndex,
 	absorptionTargetCommitIds,
 	headInfoIndex,
 	...props
@@ -692,7 +673,10 @@ export const OutlineTree: FC<
 									outline="inside"
 									render={
 										<div className={styles.panel}>
-											<UncommittedChanges projectId={projectId} />
+											<UncommittedChanges
+												navigationIndex={uncommittedFilesNavigationIndex}
+												projectId={projectId}
+											/>
 										</div>
 									}
 								/>

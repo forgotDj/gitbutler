@@ -38,6 +38,7 @@ export type Dialog =
 	| { _tag: "Settings" };
 
 export type SelectionState = {
+	uncommittedFiles: string | null;
 	outline: Operand | null;
 	files: string | null;
 	diff: HunkOperand | null;
@@ -52,6 +53,7 @@ type WorkspaceState = {
 };
 
 const createInitialSelectionState = (): SelectionState => ({
+	uncommittedFiles: null,
 	outline: null,
 	files: null,
 	diff: null,
@@ -92,6 +94,12 @@ const hunkOperandIdentityKey = (operand: HunkOperand): string =>
 	operandIdentityKey(hunkOperand(operand));
 
 export const projectReducers = {
+	selectUncommittedFiles: (state: ProjectState, { selection }: { selection: string | null }) => {
+		const workspaceState = state.workspace;
+		if (workspaceState.selection.uncommittedFiles === selection) return;
+
+		workspaceState.selection.uncommittedFiles = selection;
+	},
 	selectOutline: (state: ProjectState, { selection }: { selection: Operand | null }) => {
 		const workspaceState = state.workspace;
 		if (
@@ -200,6 +208,7 @@ export const projectReducers = {
 				sources,
 				operationType: operationType ?? "into",
 				restoreSelection: {
+					uncommittedFiles: workspaceState.selection.uncommittedFiles,
 					outline: workspaceState.selection.outline,
 					files: workspaceState.selection.files,
 					diff: workspaceState.selection.diff,
@@ -215,6 +224,7 @@ export const projectReducers = {
 		workspaceState.mode = absorbOutlineMode({
 			source,
 			restoreSelection: {
+				uncommittedFiles: workspaceState.selection.uncommittedFiles,
 				outline: workspaceState.selection.outline,
 				files: workspaceState.selection.files,
 				diff: workspaceState.selection.diff,
@@ -388,6 +398,15 @@ export const projectSelectors = {
 	selectFilesVisible: (state: ProjectState) => state.filesVisible,
 	selectDetailsFullWindow: (state: ProjectState) => state.detailsFullWindow,
 	selectDialogState: (state: ProjectState) => state.dialog,
+	selectSelectionUncommittedFiles: (
+		state: ProjectState,
+		navigationIndex: NavigationIndex<string>,
+	) =>
+		resolveNavigationIndexSelection(
+			navigationIndex,
+			state.workspace.selection.uncommittedFiles,
+			(path) => path,
+		),
 	selectIsSelectedOutline: (
 		state: ProjectState,
 		navigationIndex: NavigationIndex<Operand>,

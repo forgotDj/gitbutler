@@ -93,10 +93,18 @@ export const Outline: FC<
 	{
 		absorptionTargetCommitIds: ReadonlySet<string>;
 		navigationIndex: NavigationIndex<Operand>;
+		uncommittedFilesNavigationIndex: NavigationIndex<string>;
 		project: ProjectForFrontend;
 		projectId: string;
 	} & ComponentProps<"div">
-> = ({ absorptionTargetCommitIds, navigationIndex, project, projectId, ...restProps }) => {
+> = ({
+	absorptionTargetCommitIds,
+	navigationIndex,
+	uncommittedFilesNavigationIndex,
+	project,
+	projectId,
+	...restProps
+}) => {
 	const dispatch = useAppDispatch();
 	const toastManager = Toast.useToastManager();
 	const isDefaultMode = useAppSelector(
@@ -384,6 +392,7 @@ export const Outline: FC<
 			<OutlineTree
 				className={styles.outlineTree}
 				navigationIndex={navigationIndex}
+				uncommittedFilesNavigationIndex={uncommittedFilesNavigationIndex}
 				absorptionTargetCommitIds={absorptionTargetCommitIds}
 				headInfoIndex={headInfoIndex}
 				projectId={projectId}
