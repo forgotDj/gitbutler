@@ -1,11 +1,3 @@
-.target {
-	/* Stretch/shrink single child element to fit this element. */
-	display: grid;
-	position: relative;
-	grid-template-rows: minmax(0, 1fr);
-	grid-template-columns: minmax(0, 1fr);
-}
-
 .activeTarget {
 	border-radius: 8px;
 	outline: 2px dashed var(--fill-gray-bg);
@@ -22,19 +14,28 @@
 .insertionTarget {
 	--indicator-height: 3px;
 
-	position: absolute;
-	height: var(--indicator-height);
-	inset-inline: 0;
-	background-color: var(--clr-pop-70);
-	pointer-events: none;
+	position: relative;
+
+	&:before {
+		position: absolute;
+		height: var(--indicator-height);
+		inset-inline: 0;
+		background-color: var(--clr-pop-70);
+		content: "";
+		pointer-events: none;
+	}
 }
 
 .insertionTargetAbove {
-	top: 0;
-	transform: translateY(calc(var(--indicator-height) / -2));
+	&:before {
+		top: 0;
+		transform: translateY(calc(var(--indicator-height) / -2));
+	}
 }
 
 .insertionTargetBelow {
-	bottom: 0;
-	transform: translateY(calc(var(--indicator-height) / 2));
+	&:before {
+		bottom: 0;
+		transform: translateY(calc(var(--indicator-height) / 2));
+	}
 }

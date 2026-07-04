@@ -236,27 +236,17 @@ export const OperationTarget: FC<
 	);
 
 	return (
-		<div className={styles.target}>
-			<OperationTooltip
-				tooltip={activeTargetOperationType === "into" ? tooltip : null}
-				render={targetEl}
-			/>
-
-			{(activeTargetOperationType === "above" || activeTargetOperationType === "below") && (
-				<OperationTooltip
-					tooltip={tooltip}
-					className={classes(
-						styles.insertionTarget,
-						pipe(
-							activeTargetOperationType,
-							Match.value,
-							Match.when("above", () => styles.insertionTargetAbove),
-							Match.when("below", () => styles.insertionTargetBelow),
-							Match.exhaustive,
-						),
-					)}
-				/>
+		<OperationTooltip
+			tooltip={activeTargetOperationType !== null ? tooltip : null}
+			render={targetEl}
+			className={pipe(
+				activeTargetOperationType,
+				Match.value,
+				Match.when("above", () => classes(styles.insertionTarget, styles.insertionTargetAbove)),
+				Match.when("below", () => classes(styles.insertionTarget, styles.insertionTargetBelow)),
+				Match.whenOr("into", null, () => undefined),
+				Match.exhaustive,
 			)}
-		</div>
+		/>
 	);
 };
