@@ -1,4 +1,4 @@
-import { changesInWorktreeQueryOptions, type QueryKey } from "#ui/api/queries.ts";
+import type { QueryKey } from "#ui/api/queries.ts";
 import { WatcherEvent } from "@gitbutler/but-sdk";
 import { QueryClient } from "@tanstack/react-query";
 
@@ -30,7 +30,7 @@ export const handleWatcher = (
 		case "worktreeChanges":
 			const workspaceChanges = event.payload.subject.changes;
 			client.setQueryData(
-				changesInWorktreeQueryOptions(projectId).queryKey,
+				["changesInWorktree" satisfies QueryKey, projectId],
 				() => workspaceChanges,
 			);
 			void client.invalidateQueries({ queryKey: ["absorptionPlan" satisfies QueryKey, projectId] });
