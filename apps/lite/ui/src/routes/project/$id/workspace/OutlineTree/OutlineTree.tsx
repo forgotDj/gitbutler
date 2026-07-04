@@ -543,13 +543,13 @@ export const OutlineTree: FC<
 	const dryRunOperationQuery = useDryRunOperation({ projectId, operation: dryRunOperation });
 	const dryRunWorkspace = dryRunOperationQuery.data?.workspace ?? null;
 
-	const hotkeysRef = useRef<HTMLDivElement>(null);
 	const layoutId = `project=${projectId}:outline-tree`;
 	const outlineLayout = useDefaultLayout({
 		id: layoutId,
 		panelIds: ["uncommitted-changes-panel", "stacks-panel"] satisfies Array<PanelId>,
 	});
 
+	const hotkeysRef = useRef<HTMLDivElement>(null);
 	useOutlineTreeHotkeys({
 		navigationIndex,
 		projectId,
