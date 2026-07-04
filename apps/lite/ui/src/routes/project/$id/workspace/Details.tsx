@@ -1385,125 +1385,126 @@ export const Details: FC<
 						/>
 					);
 					return Match.value(outlineSelection).pipe(
-						Match.tag("Commit", (commit) => (
-							<SuspenseQuery
-								{...commitDetailsWithLineStatsQueryOptions({
-									projectId,
-									commitId: commit.commitId,
-								})}
-							>
-								{({ data: commitDetails }) =>
-									renderDiff({
-										changes: commitDetails.changes,
-										filesItems: getCommitFileRowItems({ commitDetails }),
-									})
-								}
-							</SuspenseQuery>
-						)),
-						Match.tag("UncommittedChanges", () => (
-							<SuspenseQuery {...changesInWorktreeQueryOptions(projectId)}>
-								{({ data: worktreeChanges }) =>
-									renderDiff({
-										changes: worktreeChanges.changes,
-										filesItems: getChangesFileRowItems(worktreeChanges),
-									})
-								}
-							</SuspenseQuery>
-						)),
-						Match.tag("File", (file) => {
-							if (file.parent._tag !== "UncommittedChanges") return null;
-
-							return (
-								<SuspenseQuery {...changesInWorktreeQueryOptions(projectId)}>
-									{({ data: worktreeChanges }) => {
-										const filesItems = getChangesFileRowItems(worktreeChanges).filter(
-											(item) => item.path === file.path,
-										);
-										const changes = filesItems.flatMap((item) =>
-											item._tag === "Change" ? [item.change] : [],
-										);
-
-										if (changes.length === 0) return null;
-
-										return renderDiff({
-											changes,
-											filesItems,
-										});
-									}}
-								</SuspenseQuery>
-							);
-						}),
-						Match.tag("Branch", ({ branchRef }) =>
-							branchTab === "pr" ? (
+						Match.tags({
+							Commit: (commit) => (
 								<SuspenseQuery
-									{...listReviewsQueryOptions({
+									{...commitDetailsWithLineStatsQueryOptions({
 										projectId,
-										cacheConfig: "noCache",
+										commitId: commit.commitId,
 									})}
 								>
-									{({ data: { reviewsBySourceBranch } }) => {
-										// Use push status of segment, not branch details; something about remote
-										// tracking refs.
-										const branchCtx = headInfoIndex?.branchContextByRefBytes(branchRef);
-										const sourceBranch = branchCtx?.segment.refName?.displayName;
-										const parentSegment = branchCtx?.stack.segments[branchCtx.segmentIndex + 1];
-										const targetBranch =
-											!parentSegment || parentSegment.pushStatus === "integrated"
-												? headInfo?.target?.remoteTrackingRef.displayName
-												: parentSegment.pushStatus === "completelyUnpushed"
-													? undefined
-													: parentSegment.refName?.displayName;
-
-										const review =
-											sourceBranch !== undefined
-												? reviewsBySourceBranch.get(sourceBranch)
-												: undefined;
-
-										return (
-											<div className={styles.prTab}>
-												{targetBranch === undefined ? (
-													<p className="text-13">No remote target branch.</p>
-												) : sourceBranch === undefined ? (
-													<p className="text-13">No source branch.</p>
-												) : branchCtx?.segment.pushStatus === "completelyUnpushed" ? (
-													<p className="text-13">Branch must be pushed to create PR.</p>
-												) : review === undefined ? (
-													<PullRequestForm
-														body={null}
-														projectId={projectId}
-														reviewId={null}
-														sourceBranch={sourceBranch}
-														targetBranch={targetBranch}
-														title={null}
-													/>
-												) : (
-													<PullRequestForm
-														key={review.number}
-														body={review.body}
-														projectId={projectId}
-														reviewId={review.number}
-														sourceBranch={sourceBranch}
-														targetBranch={targetBranch}
-														title={review.title}
-													/>
-												)}
-											</div>
-										);
-									}}
-								</SuspenseQuery>
-							) : (
-								<SuspenseQuery
-									{...branchDiffQueryOptions({ projectId, branch: decodeBytes(branchRef) })}
-								>
-									{({ data: branchDiff }) =>
+									{({ data: commitDetails }) =>
 										renderDiff({
-											changes: branchDiff.changes,
-											filesItems: getBranchFileRowItems({ branchDiff }),
+											changes: commitDetails.changes,
+											filesItems: getCommitFileRowItems({ commitDetails }),
 										})
 									}
 								</SuspenseQuery>
 							),
-						),
+							UncommittedChanges: () => (
+								<SuspenseQuery {...changesInWorktreeQueryOptions(projectId)}>
+									{({ data: worktreeChanges }) =>
+										renderDiff({
+											changes: worktreeChanges.changes,
+											filesItems: getChangesFileRowItems(worktreeChanges),
+										})
+									}
+								</SuspenseQuery>
+							),
+							File: (file) => {
+								if (file.parent._tag !== "UncommittedChanges") return null;
+
+								return (
+									<SuspenseQuery {...changesInWorktreeQueryOptions(projectId)}>
+										{({ data: worktreeChanges }) => {
+											const filesItems = getChangesFileRowItems(worktreeChanges).filter(
+												(item) => item.path === file.path,
+											);
+											const changes = filesItems.flatMap((item) =>
+												item._tag === "Change" ? [item.change] : [],
+											);
+
+											if (changes.length === 0) return null;
+
+											return renderDiff({
+												changes,
+												filesItems,
+											});
+										}}
+									</SuspenseQuery>
+								);
+							},
+							Branch: ({ branchRef }) =>
+								branchTab === "pr" ? (
+									<SuspenseQuery
+										{...listReviewsQueryOptions({
+											projectId,
+											cacheConfig: "noCache",
+										})}
+									>
+										{({ data: { reviewsBySourceBranch } }) => {
+											// Use push status of segment, not branch details; something about remote
+											// tracking refs.
+											const branchCtx = headInfoIndex?.branchContextByRefBytes(branchRef);
+											const sourceBranch = branchCtx?.segment.refName?.displayName;
+											const parentSegment = branchCtx?.stack.segments[branchCtx.segmentIndex + 1];
+											const targetBranch =
+												!parentSegment || parentSegment.pushStatus === "integrated"
+													? headInfo?.target?.remoteTrackingRef.displayName
+													: parentSegment.pushStatus === "completelyUnpushed"
+														? undefined
+														: parentSegment.refName?.displayName;
+
+											const review =
+												sourceBranch !== undefined
+													? reviewsBySourceBranch.get(sourceBranch)
+													: undefined;
+
+											return (
+												<div className={styles.prTab}>
+													{targetBranch === undefined ? (
+														<p className="text-13">No remote target branch.</p>
+													) : sourceBranch === undefined ? (
+														<p className="text-13">No source branch.</p>
+													) : branchCtx?.segment.pushStatus === "completelyUnpushed" ? (
+														<p className="text-13">Branch must be pushed to create PR.</p>
+													) : review === undefined ? (
+														<PullRequestForm
+															body={null}
+															projectId={projectId}
+															reviewId={null}
+															sourceBranch={sourceBranch}
+															targetBranch={targetBranch}
+															title={null}
+														/>
+													) : (
+														<PullRequestForm
+															key={review.number}
+															body={review.body}
+															projectId={projectId}
+															reviewId={review.number}
+															sourceBranch={sourceBranch}
+															targetBranch={targetBranch}
+															title={review.title}
+														/>
+													)}
+												</div>
+											);
+										}}
+									</SuspenseQuery>
+								) : (
+									<SuspenseQuery
+										{...branchDiffQueryOptions({ projectId, branch: decodeBytes(branchRef) })}
+									>
+										{({ data: branchDiff }) =>
+											renderDiff({
+												changes: branchDiff.changes,
+												filesItems: getBranchFileRowItems({ branchDiff }),
+											})
+										}
+									</SuspenseQuery>
+								),
+						}),
 						Match.orElse(() => null),
 					);
 				})()}

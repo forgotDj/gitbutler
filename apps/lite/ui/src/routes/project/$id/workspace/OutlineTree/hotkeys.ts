@@ -422,9 +422,8 @@ export const useOutlineTreeHotkeys = ({
 		},
 		...Match.value(selection).pipe(
 			Match.withReturnType<Array<UseHotkeyDefinition>>(),
-			Match.tag(
-				"Commit",
-				(selection): Array<UseHotkeyDefinition> => [
+			Match.tags({
+				Commit: (selection): Array<UseHotkeyDefinition> => [
 					{
 						hotkey: outlineHotkeys.rewordCommit.hotkey,
 						callback: () => {
@@ -438,10 +437,7 @@ export const useOutlineTreeHotkeys = ({
 						},
 					},
 				],
-			),
-			Match.tag(
-				"Branch",
-				(selection): Array<UseHotkeyDefinition> => [
+				Branch: (selection): Array<UseHotkeyDefinition> => [
 					{
 						hotkey: outlineHotkeys.renameBranch.hotkey,
 						callback: () => {
@@ -455,10 +451,7 @@ export const useOutlineTreeHotkeys = ({
 						},
 					},
 				],
-			),
-			Match.tag(
-				"UncommittedChanges",
-				(): Array<UseHotkeyDefinition> => [
+				UncommittedChanges: (): Array<UseHotkeyDefinition> => [
 					{
 						hotkey: outlineHotkeys.composeCommitMessageFromChanges.hotkey,
 						callback: focusCommitMessageInput,
@@ -469,7 +462,7 @@ export const useOutlineTreeHotkeys = ({
 						},
 					},
 				],
-			),
+			}),
 			Match.orElse(() => []),
 		),
 		{
