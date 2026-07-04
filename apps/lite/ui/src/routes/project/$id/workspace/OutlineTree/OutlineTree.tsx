@@ -51,7 +51,6 @@ import { GraphSegment, GraphSegmentStatus } from "#ui/components/GraphSegment.ts
 import { segmentBottomRelativeTo } from "#ui/api/stack.ts";
 import { assert } from "#ui/assert.ts";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
-import { type CommitTargetComboboxItem } from "../CommitForm.tsx";
 import { useIsSelected } from "./useIsSelected.ts";
 import { CommitRow } from "./CommitRow.tsx";
 import { BranchRow } from "./BranchRow.tsx";
@@ -510,7 +509,7 @@ export const OutlineTree: FC<
 	{
 		projectId: string;
 		headInfo: RefInfo | undefined;
-		commitTarget: CommitTargetComboboxItem | null;
+		commitTarget: RelativeTo | null;
 		navigationIndex: NavigationIndex<Operand>;
 		absorptionTargetKeys: ReadonlySet<string>;
 	} & ComponentProps<"div">
@@ -610,7 +609,7 @@ export const OutlineTree: FC<
 									key={stack.id}
 									projectId={projectId}
 									stack={stack}
-									commitTarget={commitTarget?.relativeTo ?? null}
+									commitTarget={commitTarget}
 								/>
 							))}
 						</DryRunWorkspaceContext>

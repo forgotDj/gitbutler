@@ -290,7 +290,7 @@ export const Outline: FC<
 				absorptionTargetKeys={absorptionTargetKeys}
 				projectId={projectId}
 				headInfo={headInfo}
-				commitTarget={commitTarget}
+				commitTarget={commitTarget?.relativeTo ?? null}
 				// Focus on page load.
 				ref={(el) => {
 					// Don't steal focus if this component is mounted later on.
