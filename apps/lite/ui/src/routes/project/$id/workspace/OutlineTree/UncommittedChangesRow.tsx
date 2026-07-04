@@ -1,7 +1,6 @@
 import { useDiscardWorktreeChanges } from "#ui/api/mutations.ts";
 import { Icon } from "#ui/components/Icon.tsx";
 import { createDiffSpec } from "#ui/operations/diff-specs.ts";
-import { outlineHotkeys, selectionOperationHotkeys, toElectronAccelerator } from "#ui/hotkeys.ts";
 import {
 	nativeMenuItem,
 	nativeMenuSeparator,
@@ -90,12 +89,10 @@ export const UncommittedChangesRow: FC<{
 			label: "Cut Changes",
 			enabled: changes.length > 0,
 			onSelect: cutChanges,
-			accelerator: toElectronAccelerator(selectionOperationHotkeys.cut.hotkey),
 		}),
 		nativeMenuSeparator,
 		nativeMenuItem({
 			label: "Absorb",
-			accelerator: toElectronAccelerator(outlineHotkeys.absorb.hotkey),
 			onSelect: absorb,
 		}),
 		nativeMenuItem({

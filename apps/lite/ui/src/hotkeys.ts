@@ -139,10 +139,6 @@ export const workspaceHotkeys = {
 } satisfies Record<string, HotkeyWithMeta>;
 
 export const outlineHotkeys = {
-	absorb: {
-		hotkey: "A",
-		meta: { group: "Uncommitted changes", name: "Absorb" },
-	},
 	amendCommit: {
 		hotkey: "Shift+A",
 		meta: { group: "Commit", name: "Amend commit" },
@@ -188,9 +184,6 @@ export const outlineHotkeys = {
 		hotkey: globalThis.window.lite.platform === "darwin" ? "Mod+Backspace" : "Delete",
 		meta: { group: "Commit", name: "Delete commit" },
 	},
-	composeCommitMessageFromChanges: {
-		hotkey: "R",
-	},
 	moveCommitDown: {
 		hotkey: "Alt+ArrowDown",
 		meta: { group: "Commit", name: "Move commit down" },
@@ -218,9 +211,6 @@ export const outlineHotkeys = {
 	selectBranch: {
 		hotkey: "T",
 		meta: { group: "Workspace", name: "Jump to branch" },
-	},
-	selectChanges: {
-		hotkey: "Z",
 	},
 } satisfies Record<string, HotkeyWithMeta>;
 
