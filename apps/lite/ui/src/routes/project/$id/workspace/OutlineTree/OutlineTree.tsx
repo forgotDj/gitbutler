@@ -60,6 +60,7 @@ import {
 } from "#ui/segment.ts";
 import { checkedRange, navigationIndexRange } from "#ui/checking.ts";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
+import { SelectionScope } from "#ui/selection-scopes.ts";
 
 const DryRunWorkspaceContext = createContext<WorkspaceState | null>(null);
 
@@ -203,7 +204,10 @@ const OperandC: FC<
 
 const UncommittedChanges: FC<{
 	projectId: string;
-}> = ({ projectId }) => {
+	checkCommit: (evt: { commitId: string; shiftKey: boolean }) => void;
+}> = ({ projectId, checkCommit }) => {
+	const navigationIndex = assert(use(NavigationIndexContext));
+
 	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
 	const fileRowItems = worktreeChanges ? getChangesFileRowItems(worktreeChanges) : [];
 
@@ -211,39 +215,65 @@ const UncommittedChanges: FC<{
 
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
 	const headInfoIndex = headInfo ? getHeadInfoIndex(headInfo) : null;
+	const selection = useAppSelector((state) =>
+		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
+	);
+
+	const uncommittedFilesHotkeysRef = useRef<HTMLDivElement>(null);
+	useOutlineTreeHotkeys({
+		navigationIndex,
+		projectId,
+		ref: uncommittedFilesHotkeysRef,
+		checkCommit,
+	});
 
 	return (
-		<TreeItem
-			projectId={projectId}
-			operand={operand}
-			aria-label={`Uncommitted changes (${worktreeChanges?.changes.length ?? 0})`}
-			className={styles.section}
-		>
-			<UncommittedChangesRow changes={worktreeChanges?.changes ?? []} projectId={projectId} />
+		<div
+			tabIndex={0}
+			role="tree"
+			aria-activedescendant={selection ? treeItemId(selection) : undefined}
+			className={styles.tree}
+			data-selection-scope={"uncommitted-files" satisfies SelectionScope}
+			// Focus on page load.
+			ref={useMergedRefs(uncommittedFilesHotkeysRef, (el) => {
+				// Don't steal focus if this component is mounted later on.
+				if (document.activeElement !== document.body) return;
 
-			{(worktreeChanges?.changes.length ?? 0) === 0 ? (
-				<Row interactive={false}>
-					<RowLabelContainer>
-						<RowLabel className={rowStyles.fadedText}>Nothing to commit</RowLabel>
-					</RowLabelContainer>
-				</Row>
-			) : (
-				// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Tree items need ARIA group semantics.
-				<div role="group">
-					{fileRowItems.map((item) => (
-						<UncommittedFileRow
-							key={item.path}
-							item={item}
-							projectId={projectId}
-							headInfoIndex={headInfoIndex ?? undefined}
-							branchNameByCommitId={(cid) =>
-								headInfoIndex?.commitContextById(cid)?.segment.refName?.displayName
-							}
-						/>
-					))}
-				</div>
-			)}
-		</TreeItem>
+				el?.focus({ focusVisible: false });
+			})}
+		>
+			<TreeItem
+				projectId={projectId}
+				operand={operand}
+				aria-label={`Uncommitted changes (${worktreeChanges?.changes.length ?? 0})`}
+				className={styles.section}
+			>
+				<UncommittedChangesRow changes={worktreeChanges?.changes ?? []} projectId={projectId} />
+
+				{(worktreeChanges?.changes.length ?? 0) === 0 ? (
+					<Row interactive={false}>
+						<RowLabelContainer>
+							<RowLabel className={rowStyles.fadedText}>Nothing to commit</RowLabel>
+						</RowLabelContainer>
+					</Row>
+				) : (
+					// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Tree items need ARIA group semantics.
+					<div role="group">
+						{fileRowItems.map((item) => (
+							<UncommittedFileRow
+								key={item.path}
+								item={item}
+								projectId={projectId}
+								headInfoIndex={headInfoIndex ?? undefined}
+								branchNameByCommitId={(cid) =>
+									headInfoIndex?.commitContextById(cid)?.segment.refName?.displayName
+								}
+							/>
+						))}
+					</div>
+				)}
+			</TreeItem>
+		</div>
 	);
 };
 
@@ -563,12 +593,10 @@ const Stacks: FC<{
 }> = ({ projectId, commitTarget, checkCommit }) => {
 	const navigationIndex = assert(use(NavigationIndexContext));
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
+	const selection = useAppSelector((state) =>
+		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
+	);
 	const dryRunOperation = useAppSelector((state) => {
-		const selection = projectSlice.selectors.selectSelectionOutline(
-			state,
-			projectId,
-			navigationIndex,
-		);
 		const outlineMode = projectSlice.selectors.selectOutlineModeState(state, projectId);
 
 		return Match.value(outlineMode).pipe(
@@ -597,9 +625,24 @@ const Stacks: FC<{
 	});
 	const dryRunWorkspace = dryRunOperationResult?.workspace ?? null;
 
+	const hotkeysRef = useRef<HTMLDivElement>(null);
+	useOutlineTreeHotkeys({
+		navigationIndex,
+		projectId,
+		ref: hotkeysRef,
+		checkCommit,
+	});
+
 	return (
 		<DryRunWorkspaceContext value={dryRunWorkspace}>
-			<div className={styles.stacks}>
+			<div
+				tabIndex={0}
+				role="tree"
+				aria-activedescendant={selection ? treeItemId(selection) : undefined}
+				className={classes(styles.tree, styles.stacks)}
+				data-selection-scope={"outline" satisfies SelectionScope}
+				ref={hotkeysRef}
+			>
 				{(headInfo?.stacks.toReversed() ?? []).map((stack) => (
 					<StackC
 						key={stack.id}
@@ -628,12 +671,8 @@ export const OutlineTree: FC<
 	navigationIndex,
 	absorptionTargetCommitIds,
 	headInfoIndex,
-	ref: refProp,
 	...props
 }) => {
-	const selection = useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
-	);
 	const hasCheckedCommits = useAppSelector((state) =>
 		headInfoIndex
 			? projectSlice.selectors.selectHasCheckedCommits(state, projectId, headInfoIndex)
@@ -685,14 +724,6 @@ export const OutlineTree: FC<
 		panelIds: ["uncommitted-changes-panel", "stacks-panel"] satisfies Array<PanelId>,
 	});
 
-	const hotkeysRef = useRef<HTMLDivElement>(null);
-	useOutlineTreeHotkeys({
-		navigationIndex,
-		projectId,
-		ref: hotkeysRef,
-		checkCommit,
-	});
-
 	return (
 		<NavigationIndexContext value={navigationIndex}>
 			<AbsorptionTargetCommitIdsContext value={absorptionTargetCommitIds}>
@@ -700,14 +731,10 @@ export const OutlineTree: FC<
 					{...props}
 					id={layoutId}
 					orientation="vertical"
-					tabIndex={0}
-					role="tree"
-					aria-activedescendant={selection ? treeItemId(selection) : undefined}
 					data-has-checked-commits={hasCheckedCommits || undefined}
 					className={classes(props.className, styles.tree)}
 					defaultLayout={outlineLayout.defaultLayout}
 					onLayoutChanged={outlineLayout.onLayoutChanged}
-					elementRef={useMergedRefs(refProp, hotkeysRef)}
 				>
 					<Panel
 						id={"uncommitted-changes-panel" satisfies PanelId}
@@ -722,7 +749,7 @@ export const OutlineTree: FC<
 							outline="inside"
 							render={
 								<div className={styles.panel}>
-									<UncommittedChanges projectId={projectId} />
+									<UncommittedChanges projectId={projectId} checkCommit={checkCommit} />
 								</div>
 							}
 						/>

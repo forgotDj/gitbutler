@@ -7,8 +7,8 @@ import { getAdjacent, type NavigationIndex } from "#ui/workspace/navigation-inde
 import { useHotkeySequences, useHotkeys } from "@tanstack/react-hotkeys";
 import { assert } from "#ui/assert.ts";
 
-export type SelectionScope = "outline" | "files" | "diff";
-const allSelectionScopes: Array<SelectionScope> = ["outline", "files", "diff"];
+export type SelectionScope = "uncommitted-files" | "outline" | "files" | "diff";
+const allSelectionScopes: Array<SelectionScope> = ["uncommitted-files", "outline", "files", "diff"];
 
 const isSelectionScope = (id: string): id is SelectionScope =>
 	allSelectionScopes.includes(id as SelectionScope);
@@ -39,7 +39,7 @@ export const focusAdjacentSelectionScope = ({
 	const currentSelectionScope = getFocusedSelectionScope(document.activeElement);
 
 	const orderedSelectionScopes: Array<SelectionScope> = [
-		...(outlineVisible ? (["outline"] satisfies Array<SelectionScope>) : []),
+		...(outlineVisible ? (["uncommitted-files", "outline"] satisfies Array<SelectionScope>) : []),
 		...(filesVisible ? (["files"] satisfies Array<SelectionScope>) : []),
 		"diff",
 	];

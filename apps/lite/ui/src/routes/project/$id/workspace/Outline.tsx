@@ -15,7 +15,7 @@ import { TooltipPopup } from "#ui/components/Tooltip.tsx";
 import { globalHotkeys, workspaceHotkeys } from "#ui/hotkeys.ts";
 import { branchOperand, type BranchOperand, type Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
-import { focusSelectionScope, type SelectionScope } from "#ui/selection-scopes.ts";
+import { focusSelectionScope } from "#ui/selection-scopes.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { formatRelativeTime } from "#ui/time.ts";
 import type { NavigationIndex } from "#ui/workspace/navigation-index.ts";
@@ -383,19 +383,11 @@ export const Outline: FC<
 
 			<OutlineTree
 				className={styles.outlineTree}
-				data-selection-scope={"outline" satisfies SelectionScope}
 				navigationIndex={navigationIndex}
 				absorptionTargetCommitIds={absorptionTargetCommitIds}
 				headInfoIndex={headInfoIndex}
 				projectId={projectId}
 				commitTarget={commitTarget?.relativeTo ?? null}
-				// Focus on page load.
-				ref={(el) => {
-					// Don't steal focus if this component is mounted later on.
-					if (document.activeElement !== document.body) return;
-
-					el?.focus({ focusVisible: false });
-				}}
 			/>
 		</div>
 	);
