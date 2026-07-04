@@ -504,28 +504,14 @@ const StackC: FC<{
 	);
 };
 
-export const OutlineTree: FC<
-	{
-		projectId: string;
-		commitTarget: RelativeTo | null;
-		navigationIndex: NavigationIndex<Operand>;
-		absorptionTargetKeys: ReadonlySet<string>;
-	} & ComponentProps<"div">
-> = ({
-	projectId,
-	commitTarget,
-	navigationIndex,
-	absorptionTargetKeys,
-	ref: refProp,
-	...props
-}) => {
+const Stacks: FC<{
+	projectId: string;
+	commitTarget: RelativeTo | null;
+}> = ({ projectId, commitTarget }) => {
+	const navigationIndex = assert(use(NavigationIndexContext));
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
-
 	const selection = useOutlineSelection({ projectId, navigationIndex });
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
-	const hasCheckedCommits = useAppSelector((state) =>
-		selectProjectHasCheckedCommits(state, projectId),
-	);
 
 	const dryRunOperation = Match.value(outlineMode).pipe(
 		Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
@@ -552,6 +538,37 @@ export const OutlineTree: FC<
 	// TODO: debounce?
 	const dryRunOperationQuery = useDryRunOperation({ projectId, operation: dryRunOperation });
 	const dryRunWorkspace = dryRunOperationQuery.data?.workspace ?? null;
+
+	return (
+		<DryRunWorkspaceContext value={dryRunWorkspace}>
+			<div className={styles.stacks}>
+				{reverse(headInfo?.stacks ?? []).map((stack) => (
+					<StackC key={stack.id} projectId={projectId} stack={stack} commitTarget={commitTarget} />
+				))}
+			</div>
+		</DryRunWorkspaceContext>
+	);
+};
+
+export const OutlineTree: FC<
+	{
+		projectId: string;
+		commitTarget: RelativeTo | null;
+		navigationIndex: NavigationIndex<Operand>;
+		absorptionTargetKeys: ReadonlySet<string>;
+	} & ComponentProps<"div">
+> = ({
+	projectId,
+	commitTarget,
+	navigationIndex,
+	absorptionTargetKeys,
+	ref: refProp,
+	...props
+}) => {
+	const selection = useOutlineSelection({ projectId, navigationIndex });
+	const hasCheckedCommits = useAppSelector((state) =>
+		selectProjectHasCheckedCommits(state, projectId),
+	);
 
 	const layoutId = `project=${projectId}:outline-tree`;
 	const outlineLayout = useDefaultLayout({
@@ -592,28 +609,19 @@ export const OutlineTree: FC<
 						<OperandC
 							projectId={projectId}
 							operand={uncommittedChangesOperand}
-							className={styles.uncommittedChangesInnerPanel}
 							outline="inside"
-						>
-							<UncommittedChanges projectId={projectId} />
-						</OperandC>
+							render={
+								<div className={styles.uncommittedChangesInnerPanel}>
+									<UncommittedChanges projectId={projectId} />
+								</div>
+							}
+						/>
 					</Panel>
 
 					<Separator className={styles.resizeHandle} />
 
 					<Panel id={"stacks-panel" satisfies PanelId} className={styles.stacksPanel} minSize={120}>
-						<DryRunWorkspaceContext value={dryRunWorkspace}>
-							<div className={styles.stacks}>
-								{reverse(headInfo?.stacks ?? []).map((stack) => (
-									<StackC
-										key={stack.id}
-										projectId={projectId}
-										stack={stack}
-										commitTarget={commitTarget}
-									/>
-								))}
-							</div>
-						</DryRunWorkspaceContext>
+						<Stacks projectId={projectId} commitTarget={commitTarget} />
 					</Panel>
 				</Group>
 			</AbsorptionTargetKeysContext>
