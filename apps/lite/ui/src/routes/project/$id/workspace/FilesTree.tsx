@@ -129,6 +129,7 @@ export const FilesTree: FC<
 		onFileSelection: (selection: string) => void;
 		navigationIndex: NavigationIndex<string>;
 		fileParent: FileParent;
+		emptyLabel?: string;
 	} & ComponentProps<"div">
 > = ({
 	items,
@@ -137,6 +138,7 @@ export const FilesTree: FC<
 	projectId,
 	navigationIndex,
 	fileParent,
+	emptyLabel = "No changes.",
 	ref: refProp,
 	...props
 }) => {
@@ -169,7 +171,7 @@ export const FilesTree: FC<
 				{items.length === 0 ? (
 					<Row interactive={false}>
 						<RowLabelContainer>
-							<RowLabel className={rowStyles.fadedText}>No changes.</RowLabel>
+							<RowLabel className={rowStyles.fadedText}>{emptyLabel}</RowLabel>
 						</RowLabelContainer>
 					</Row>
 				) : (
