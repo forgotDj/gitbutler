@@ -289,7 +289,6 @@ export const Outline: FC<
 				navigationIndex={navigationIndex}
 				absorptionTargetKeys={absorptionTargetKeys}
 				projectId={projectId}
-				headInfo={headInfo}
 				commitTarget={commitTarget?.relativeTo ?? null}
 				// Focus on page load.
 				ref={(el) => {

@@ -32,7 +32,6 @@ import { mergeProps, useRender } from "@base-ui/react";
 import {
 	BranchReference,
 	Commit,
-	RefInfo,
 	RelativeTo,
 	Segment,
 	Stack,
@@ -508,20 +507,20 @@ const StackC: FC<{
 export const OutlineTree: FC<
 	{
 		projectId: string;
-		headInfo: RefInfo | undefined;
 		commitTarget: RelativeTo | null;
 		navigationIndex: NavigationIndex<Operand>;
 		absorptionTargetKeys: ReadonlySet<string>;
 	} & ComponentProps<"div">
 > = ({
 	projectId,
-	headInfo,
 	commitTarget,
 	navigationIndex,
 	absorptionTargetKeys,
 	ref: refProp,
 	...props
 }) => {
+	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
+
 	const selection = useOutlineSelection({ projectId, navigationIndex });
 	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
 	const hasCheckedCommits = useAppSelector((state) =>
