@@ -601,16 +601,18 @@ export const OutlineTree: FC<
 
 					<Separator className={styles.resizeHandle} />
 
-					<Panel id={"stacks-panel" satisfies PanelId} className={styles.stacks} minSize={120}>
+					<Panel id={"stacks-panel" satisfies PanelId} className={styles.stacksPanel} minSize={120}>
 						<DryRunWorkspaceContext value={dryRunWorkspace}>
-							{reverse(headInfo?.stacks ?? []).map((stack) => (
-								<StackC
-									key={stack.id}
-									projectId={projectId}
-									stack={stack}
-									commitTarget={commitTarget}
-								/>
-							))}
+							<div className={styles.stacks}>
+								{reverse(headInfo?.stacks ?? []).map((stack) => (
+									<StackC
+										key={stack.id}
+										projectId={projectId}
+										stack={stack}
+										commitTarget={commitTarget}
+									/>
+								))}
+							</div>
 						</DryRunWorkspaceContext>
 					</Panel>
 				</Group>
