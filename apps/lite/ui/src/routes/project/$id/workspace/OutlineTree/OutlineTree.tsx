@@ -601,7 +601,7 @@ export const OutlineTree: FC<
 				>
 					<Panel
 						id={"uncommitted-changes-panel" satisfies PanelId}
-						className={styles.uncommittedChangesPanel}
+						className={styles.uncommittedChangesOuterPanel}
 						defaultSize={200}
 						minSize={120}
 						groupResizeBehavior="preserve-pixel-size"
@@ -611,7 +611,7 @@ export const OutlineTree: FC<
 							operand={uncommittedChangesOperand}
 							outline="inside"
 							render={
-								<div className={styles.uncommittedChangesInnerPanel}>
+								<div className={styles.panel}>
 									<UncommittedChanges projectId={projectId} />
 								</div>
 							}
@@ -620,7 +620,7 @@ export const OutlineTree: FC<
 
 					<Separator className={styles.resizeHandle} />
 
-					<Panel id={"stacks-panel" satisfies PanelId} className={styles.stacksPanel} minSize={120}>
+					<Panel id={"stacks-panel" satisfies PanelId} className={styles.panel} minSize={120}>
 						<Stacks projectId={projectId} commitTarget={commitTarget} />
 					</Panel>
 				</Group>
