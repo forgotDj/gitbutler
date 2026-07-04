@@ -27,7 +27,6 @@ import { decodeBytes } from "#ui/api/bytes.ts";
 import { commitBody, commitTitle, shortCommitId } from "#ui/commit.ts";
 import {
 	branchFileParent,
-	uncommittedChangesFileParent,
 	commitFileParent,
 	FileOperand,
 	fileOperand,
@@ -708,12 +707,6 @@ const Title: FC<{
 					)}
 				</SuspenseQuery>
 			),
-			UncommittedChanges: () => (
-				<div className={styles.title}>
-					<Icon name="file-diff" />
-					<h3 className={classes("text-15", "text-semibold")}>Uncommitted changes</h3>
-				</div>
-			),
 			File: ({ path }) => (
 				<div className={styles.title}>
 					<Icon name="file" />
@@ -981,7 +974,6 @@ const Diff: FC<{
 	const changesetKey = Match.value(outlineSelection).pipe(
 		Match.tags({
 			Branch: ({ branchRef }) => decodeBytes(branchRef),
-			UncommittedChanges: () => "uncommittedChanges",
 			File: ({ path }) => path,
 			Commit: ({ commitId }) => commitId,
 		}),
@@ -990,7 +982,6 @@ const Diff: FC<{
 	const fileParent = Match.value(outlineSelection).pipe(
 		Match.tags({
 			Branch: ({ branchRef }) => branchFileParent({ branchRef }),
-			UncommittedChanges: () => uncommittedChangesFileParent,
 			File: ({ parent }) => parent,
 			Commit: ({ commitId }) => commitFileParent({ commitId }),
 		}),
@@ -1625,16 +1616,6 @@ export const Details: FC<
 										renderDiff({
 											changes: commitDetails.changes,
 											filesItems: getCommitFileRowItems({ commitDetails }),
-										})
-									}
-								</SuspenseQuery>
-							),
-							UncommittedChanges: () => (
-								<SuspenseQuery {...changesInWorktreeQueryOptions(projectId)}>
-									{({ data: worktreeChanges }) =>
-										renderDiff({
-											changes: worktreeChanges.changes,
-											filesItems: getChangesFileRowItems(worktreeChanges),
 										})
 									}
 								</SuspenseQuery>
