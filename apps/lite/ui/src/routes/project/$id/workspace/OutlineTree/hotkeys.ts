@@ -385,7 +385,7 @@ export const useOutlineTreeHotkeys = ({
 		ref,
 		navigationIndex,
 		projectId,
-		group: "Workspace",
+		group: "Outline",
 		select: (newItem) => dispatch(projectActions.selectOutline({ projectId, selection: newItem })),
 		selection,
 		getKey: operandIdentityKey,
