@@ -25,7 +25,11 @@ import { useOperationDropTarget } from "#ui/routes/project/$id/workspace/useOper
 import { NavigationIndexContext } from "#ui/routes/project/$id/workspace/OutlineNavigationIndexContext.ts";
 import { useAppDispatch, useAppSelector, useAppStore } from "#ui/store.ts";
 import { classes } from "#ui/components/classes.ts";
-import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
+import {
+	buildIndexByKey,
+	navigationIndexIncludes,
+	type NavigationIndex,
+} from "#ui/workspace/navigation-index.ts";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import {
 	BranchReference,
@@ -45,14 +49,12 @@ import { getOperation, OperationType, useDryRunOperation } from "#ui/operations/
 import { GraphSegment, GraphSegmentStatus } from "#ui/components/GraphSegment.tsx";
 import { segmentBottomRelativeTo } from "#ui/api/stack.ts";
 import { assert } from "#ui/assert.ts";
-import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import { CommitRow } from "./CommitRow.tsx";
 import { BranchRow } from "./BranchRow.tsx";
 import { StackRow } from "./StackRow.tsx";
 import { useOutlineTreeHotkeys } from "./hotkeys.ts";
 import { UncommittedChangesRow } from "./UncommittedChangesRow.tsx";
-import { FileRow } from "../FileRow.tsx";
-import { getChangesFileRowItems, type FileRowItem } from "../file-row.ts";
+import { getChangesFileRowItems } from "../file-row.ts";
 import {
 	canRemoveBranchReference,
 	downstackPushStatusesFromSegments,
@@ -61,6 +63,7 @@ import {
 import { checkedRange, navigationIndexRange } from "#ui/checking.ts";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
 import { SelectionScope } from "#ui/selection-scopes.ts";
+import { FilesTree } from "#ui/routes/project/$id/workspace/FilesTree.tsx";
 
 const DryRunWorkspaceContext = createContext<WorkspaceState | null>(null);
 
@@ -204,115 +207,56 @@ const OperandC: FC<
 
 const UncommittedChanges: FC<{
 	projectId: string;
-	checkCommit: (evt: { commitId: string; shiftKey: boolean }) => void;
-}> = ({ projectId, checkCommit }) => {
-	const navigationIndex = assert(use(NavigationIndexContext));
+}> = ({ projectId }) => {
+	const outlineNavigationIndex = assert(use(NavigationIndexContext));
+	const dispatch = useAppDispatch();
 
 	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
 	const fileRowItems = worktreeChanges ? getChangesFileRowItems(worktreeChanges) : [];
 
-	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
-	const headInfoIndex = headInfo ? getHeadInfoIndex(headInfo) : null;
 	const selection = useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
+		projectSlice.selectors.selectSelectionOutline(state, projectId, outlineNavigationIndex),
 	);
-
-	const uncommittedFilesHotkeysRef = useRef<HTMLDivElement>(null);
-	useOutlineTreeHotkeys({
-		navigationIndex,
-		projectId,
-		ref: uncommittedFilesHotkeysRef,
-		checkCommit,
-	});
+	const fileSelection =
+		selection?._tag === "File" && selection.parent._tag === "UncommittedChanges"
+			? selection.path
+			: null;
+	const navigationItems = outlineNavigationIndex.items.flatMap((item) =>
+		item._tag === "File" && item.parent._tag === "UncommittedChanges" ? [item.path] : [],
+	);
+	const navigationIndex: NavigationIndex<string> = {
+		items: navigationItems,
+		indexByKey: buildIndexByKey(navigationItems, (path) => path),
+	};
 
 	return (
 		<div>
 			<UncommittedChangesRow changes={worktreeChanges?.changes ?? []} projectId={projectId} />
 
-			<div
-				tabIndex={0}
-				role="tree"
-				aria-activedescendant={selection ? treeItemId(selection) : undefined}
-				className={styles.tree}
+			<FilesTree
 				data-selection-scope={"uncommitted-files" satisfies SelectionScope}
-				// Focus on page load.
-				ref={useMergedRefs(uncommittedFilesHotkeysRef, (el) => {
+				emptyLabel="Nothing to commit"
+				fileParent={uncommittedChangesFileParent}
+				items={fileRowItems}
+				navigationIndex={navigationIndex}
+				onFileSelection={(selection) =>
+					dispatch(
+						projectSlice.actions.selectOutline({
+							projectId,
+							selection: fileOperand({ parent: uncommittedChangesFileParent, path: selection }),
+						}),
+					)
+				}
+				projectId={projectId}
+				ref={(el) => {
 					// Don't steal focus if this component is mounted later on.
 					if (document.activeElement !== document.body) return;
 
 					el?.focus({ focusVisible: false });
-				})}
-			>
-				{(worktreeChanges?.changes.length ?? 0) === 0 ? (
-					<Row interactive={false}>
-						<RowLabelContainer>
-							<RowLabel className={rowStyles.fadedText}>Nothing to commit</RowLabel>
-						</RowLabelContainer>
-					</Row>
-				) : (
-					// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Tree items need ARIA group semantics.
-					<div role="group">
-						{fileRowItems.map((item) => (
-							<UncommittedFileRow
-								key={item.path}
-								item={item}
-								projectId={projectId}
-								headInfoIndex={headInfoIndex ?? undefined}
-								branchNameByCommitId={(cid) =>
-									headInfoIndex?.commitContextById(cid)?.segment.refName?.displayName
-								}
-							/>
-						))}
-					</div>
-				)}
-			</div>
+				}}
+				selection={fileSelection}
+			/>
 		</div>
-	);
-};
-
-const UncommittedFileRow: FC<{
-	item: FileRowItem;
-	projectId: string;
-	headInfoIndex: HeadInfoIndex | undefined;
-	branchNameByCommitId: (commitId: string) => string | undefined;
-}> = ({ item, projectId, headInfoIndex, branchNameByCommitId }) => {
-	const operand = fileOperand({
-		parent: uncommittedChangesFileParent,
-		path: item.path,
-	});
-	const navigationIndex = assert(use(NavigationIndexContext));
-	const isSelected = useAppSelector((state) =>
-		projectSlice.selectors.selectIsSelectedOutline(state, projectId, navigationIndex, operand),
-	);
-	const dispatch = useAppDispatch();
-
-	return (
-		<TreeItem
-			projectId={projectId}
-			operand={operand}
-			aria-label={item.path}
-			render={
-				<OperandC
-					projectId={projectId}
-					operand={operand}
-					outline="outside"
-					render={
-						<FileRow
-							item={item}
-							projectId={projectId}
-							fileParent={uncommittedChangesFileParent}
-							headInfoIndex={headInfoIndex}
-							branchNameByCommitId={branchNameByCommitId}
-							inert={!navigationIndexIncludes(navigationIndex, operand, operandIdentityKey)}
-							isSelected={isSelected}
-							onSelect={() => {
-								dispatch(projectSlice.actions.selectOutline({ projectId, selection: operand }));
-							}}
-						/>
-					}
-				/>
-			}
-		/>
 	);
 };
 
@@ -748,7 +692,7 @@ export const OutlineTree: FC<
 									outline="inside"
 									render={
 										<div className={styles.panel}>
-											<UncommittedChanges projectId={projectId} checkCommit={checkCommit} />
+											<UncommittedChanges projectId={projectId} />
 										</div>
 									}
 								/>
