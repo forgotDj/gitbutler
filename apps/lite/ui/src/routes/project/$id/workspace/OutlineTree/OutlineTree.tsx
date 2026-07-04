@@ -211,8 +211,6 @@ const UncommittedChanges: FC<{
 	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
 	const fileRowItems = worktreeChanges ? getChangesFileRowItems(worktreeChanges) : [];
 
-	const operand = uncommittedChangesOperand;
-
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
 	const headInfoIndex = headInfo ? getHeadInfoIndex(headInfo) : null;
 	const selection = useAppSelector((state) =>
@@ -228,28 +226,23 @@ const UncommittedChanges: FC<{
 	});
 
 	return (
-		<div
-			tabIndex={0}
-			role="tree"
-			aria-activedescendant={selection ? treeItemId(selection) : undefined}
-			className={styles.tree}
-			data-selection-scope={"uncommitted-files" satisfies SelectionScope}
-			// Focus on page load.
-			ref={useMergedRefs(uncommittedFilesHotkeysRef, (el) => {
-				// Don't steal focus if this component is mounted later on.
-				if (document.activeElement !== document.body) return;
+		<div>
+			<UncommittedChangesRow changes={worktreeChanges?.changes ?? []} projectId={projectId} />
 
-				el?.focus({ focusVisible: false });
-			})}
-		>
-			<TreeItem
-				projectId={projectId}
-				operand={operand}
-				aria-label={`Uncommitted changes (${worktreeChanges?.changes.length ?? 0})`}
-				className={styles.section}
+			<div
+				tabIndex={0}
+				role="tree"
+				aria-activedescendant={selection ? treeItemId(selection) : undefined}
+				className={classes(styles.section, styles.tree)}
+				data-selection-scope={"uncommitted-files" satisfies SelectionScope}
+				// Focus on page load.
+				ref={useMergedRefs(uncommittedFilesHotkeysRef, (el) => {
+					// Don't steal focus if this component is mounted later on.
+					if (document.activeElement !== document.body) return;
+
+					el?.focus({ focusVisible: false });
+				})}
 			>
-				<UncommittedChangesRow changes={worktreeChanges?.changes ?? []} projectId={projectId} />
-
 				{(worktreeChanges?.changes.length ?? 0) === 0 ? (
 					<Row interactive={false}>
 						<RowLabelContainer>
@@ -272,7 +265,7 @@ const UncommittedChanges: FC<{
 						))}
 					</div>
 				)}
-			</TreeItem>
+			</div>
 		</div>
 	);
 };
