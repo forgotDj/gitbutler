@@ -559,40 +559,40 @@ export const OutlineTree: FC<
 	return (
 		<NavigationIndexContext value={navigationIndex}>
 			<AbsorptionTargetKeysContext value={absorptionTargetKeys}>
-				<DryRunWorkspaceContext value={dryRunWorkspace}>
-					<Group
-						{...props}
-						id={layoutId}
-						orientation="vertical"
-						tabIndex={0}
-						role="tree"
-						aria-activedescendant={selection ? treeItemId(selection) : undefined}
-						data-has-checked-commits={hasCheckedCommits || undefined}
-						className={classes(props.className, styles.tree)}
-						defaultLayout={outlineLayout.defaultLayout}
-						onLayoutChanged={outlineLayout.onLayoutChanged}
-						elementRef={useMergedRefs(refProp, hotkeysRef)}
+				<Group
+					{...props}
+					id={layoutId}
+					orientation="vertical"
+					tabIndex={0}
+					role="tree"
+					aria-activedescendant={selection ? treeItemId(selection) : undefined}
+					data-has-checked-commits={hasCheckedCommits || undefined}
+					className={classes(props.className, styles.tree)}
+					defaultLayout={outlineLayout.defaultLayout}
+					onLayoutChanged={outlineLayout.onLayoutChanged}
+					elementRef={useMergedRefs(refProp, hotkeysRef)}
+				>
+					<Panel
+						id={"uncommitted-changes-panel" satisfies PanelId}
+						className={styles.uncommittedChangesPanel}
+						defaultSize={200}
+						minSize={120}
+						groupResizeBehavior="preserve-pixel-size"
 					>
-						<Panel
-							id={"uncommitted-changes-panel" satisfies PanelId}
-							className={styles.uncommittedChangesPanel}
-							defaultSize={200}
-							minSize={120}
-							groupResizeBehavior="preserve-pixel-size"
+						<OperandC
+							projectId={projectId}
+							operand={uncommittedChangesOperand}
+							className={styles.uncommittedChangesContainer}
+							outline="inside"
 						>
-							<OperandC
-								projectId={projectId}
-								operand={uncommittedChangesOperand}
-								className={styles.uncommittedChangesContainer}
-								outline="inside"
-							>
-								<UncommittedChanges projectId={projectId} />
-							</OperandC>
-						</Panel>
+							<UncommittedChanges projectId={projectId} />
+						</OperandC>
+					</Panel>
 
-						<Separator className={styles.resizeHandle} />
+					<Separator className={styles.resizeHandle} />
 
-						<Panel id={"stacks-panel" satisfies PanelId} className={styles.stacks} minSize={120}>
+					<Panel id={"stacks-panel" satisfies PanelId} className={styles.stacks} minSize={120}>
+						<DryRunWorkspaceContext value={dryRunWorkspace}>
 							{reverse(headInfo?.stacks ?? []).map((stack) => (
 								<StackC
 									key={stack.id}
@@ -601,9 +601,9 @@ export const OutlineTree: FC<
 									commitTarget={commitTarget?.relativeTo ?? null}
 								/>
 							))}
-						</Panel>
-					</Group>
-				</DryRunWorkspaceContext>
+						</DryRunWorkspaceContext>
+					</Panel>
+				</Group>
 			</AbsorptionTargetKeysContext>
 		</NavigationIndexContext>
 	);
