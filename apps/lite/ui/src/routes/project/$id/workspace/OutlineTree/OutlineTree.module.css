@@ -28,7 +28,7 @@
 	grid-template-columns: minmax(0, 1fr);
 }
 
-.uncommittedChangesContainer {
+.uncommittedChangesInnerPanel {
 	padding-inline: var(--panel-padding-inline);
 	padding-block: var(--panel-padding-block);
 }

@@ -592,7 +592,7 @@ export const OutlineTree: FC<
 						<OperandC
 							projectId={projectId}
 							operand={uncommittedChangesOperand}
-							className={styles.uncommittedChangesContainer}
+							className={styles.uncommittedChangesInnerPanel}
 							outline="inside"
 						>
 							<UncommittedChanges projectId={projectId} />
