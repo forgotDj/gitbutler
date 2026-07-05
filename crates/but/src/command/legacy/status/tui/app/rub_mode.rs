@@ -14,7 +14,7 @@ use crate::{
             output::StatusOutputLineData,
             tui::{
                 App, Message, NOOP, ReloadCause, SelectAfterReload, cursor,
-                marking::{MarkClasses, Markable, Marks},
+                marking::{MarkableRef, Marks},
                 mode::Mode,
                 nonempty_from_refs, operations,
                 render::{ModeRender, RenderSingleLineSpans, SpanExt, source_span},
@@ -33,16 +33,14 @@ pub struct RubMode {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RubSource {
-    Marks(Marks),
+    Marks(Box<Marks>),
     CliId(Arc<CliId>),
 }
 
 impl RubSource {
     pub fn contains(&self, other: &CliId) -> bool {
         match self {
-            RubSource::Marks(marks) => {
-                Markable::try_from_cli_id(other).is_some_and(|markable| marks.contains(&markable))
-            }
+            RubSource::Marks(marks) => marks.contains_cli_id(other),
             RubSource::CliId(source) => &**source == other,
         }
     }
@@ -71,8 +69,7 @@ impl ModeRender for RubMode {
             RubSource::Marks(marks) => {
                 let sources = marks
                     .iter()
-                    .cloned()
-                    .map(Markable::into_cli_id)
+                    .map(|m| m.to_owned().into_cli_id())
                     .collect::<Vec<_>>();
                 let mut sources = sources.iter();
                 let Some(sources) = sources
@@ -162,7 +159,9 @@ impl App {
         if normal_mode.marks.is_empty() {
             self.handle_rub_start_with_source(RubSource::CliId(Arc::clone(cli_id)));
         } else {
-            self.handle_rub_start_with_source(RubSource::Marks(normal_mode.marks.clone()));
+            self.handle_rub_start_with_source(RubSource::Marks(Box::new(
+                normal_mode.marks.clone(),
+            )));
         }
     }
 
@@ -186,8 +185,7 @@ impl App {
             RubSource::Marks(marks) => {
                 let marks = marks
                     .iter()
-                    .cloned()
-                    .map(|mark| mark.into_cli_id())
+                    .map(|mark| mark.to_owned().into_cli_id())
                     .collect::<Vec<_>>();
                 self.status_lines
                     .iter()
@@ -218,16 +216,12 @@ impl App {
                 }
             }
             RubSource::Marks(marks) => {
-                let MarkClasses {
-                    marked_commits,
-                    marked_uncommitted,
-                } = marks.classify();
-                if marked_commits && marked_uncommitted {
+                if marks.marked_commits() && marks.marked_uncommitted() {
                     return;
                 }
 
-                for mark in marks {
-                    if !mark_supports_rubbing(mark) {
+                for mark in marks.iter() {
+                    if !mark_supports_being_rub_source(mark) {
                         return;
                     }
                 }
@@ -399,8 +393,7 @@ impl App {
             RubSource::Marks(marks) => {
                 let sources = marks
                     .iter()
-                    .cloned()
-                    .map(|mark| mark.into_cli_id())
+                    .map(|mark| mark.to_owned().into_cli_id())
                     .filter(|source| source != &**target)
                     .collect::<Vec<_>>();
                 let mut iter = sources.iter();
@@ -484,9 +477,9 @@ pub fn supports_rubbing(id: &CliId) -> bool {
     }
 }
 
-pub fn mark_supports_rubbing(mark: &Markable) -> bool {
+pub fn mark_supports_being_rub_source(mark: MarkableRef<'_>) -> bool {
     match mark {
-        Markable::Commit { .. } | Markable::Uncommitted(..) => true,
+        MarkableRef::Commit { .. } | MarkableRef::Uncommitted(..) => true,
     }
 }
 
