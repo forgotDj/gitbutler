@@ -48,7 +48,7 @@ use super::{
 
 mod details_layout;
 mod discard;
-mod mark;
+pub mod mark;
 mod undo_redo;
 
 mod command_mode;
@@ -514,7 +514,8 @@ impl App {
             Mode::PickChanges(PickChangesMode { marks }) => {
                 let ids = marks
                     .iter()
-                    .map(|mark| mark.to_owned().into_cli_id())
+                    .cloned()
+                    .map(CliId::UncommittedHunkOrFile)
                     .collect();
                 Some(TuiOutcome::CliIds(ids))
             }
@@ -564,7 +565,7 @@ impl App {
                     && !self.restore_mode_before_jump()
                     && !self.restore_cursor_before_move_stack(messages)
                 {
-                    let marks = self.marks().cloned().unwrap_or_default();
+                    let marks = self.marks_ref().to_marks();
                     self.mode.update(&mut self.backstack, |backstack, mode| {
                         let _ = backstack;
                         *mode = Mode::Normal(NormalMode { marks });
@@ -659,8 +660,7 @@ impl App {
         messages: &mut Vec<Message>,
     ) -> anyhow::Result<()> {
         if let Mode::Normal(normal_mode) = &*self.mode
-            && !normal_mode.marks.is_empty()
-            && normal_mode.marks.marked_commits()
+            && normal_mode.marks.as_commits().is_some()
         {
             match self.flags.show_files {
                 FilesStatusFlag::None => {

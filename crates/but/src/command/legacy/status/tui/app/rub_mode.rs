@@ -13,15 +13,16 @@ use crate::{
             FilesStatusFlag,
             output::StatusOutputLineData,
             tui::{
-                App, Message, NOOP, ReloadCause, SelectAfterReload, cursor,
-                marking::{MarkableRef, Marks},
+                App, Message, NOOP, ReloadCause, SelectAfterReload,
+                app::mark::{MarkedCommit, Marks, MarksRef},
+                cursor,
                 mode::Mode,
                 nonempty_from_refs, operations,
                 render::{ModeRender, RenderSingleLineSpans, SpanExt, source_span},
             },
         },
     },
-    id::UNCOMMITTED,
+    id::{UNCOMMITTED, UncommittedHunkOrFile},
 };
 
 #[derive(Debug, Clone)]
@@ -32,9 +33,16 @@ pub struct RubMode {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[expect(clippy::large_enum_variant)]
 pub enum RubSource {
-    Marks(Box<Marks>),
+    Marks(RubMarks),
     CliId(Arc<CliId>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum RubMarks {
+    Hunks(NonEmpty<UncommittedHunkOrFile>),
+    Commits(NonEmpty<MarkedCommit>),
 }
 
 impl RubSource {
@@ -42,6 +50,43 @@ impl RubSource {
         match self {
             RubSource::Marks(marks) => marks.contains_cli_id(other),
             RubSource::CliId(source) => &**source == other,
+        }
+    }
+}
+
+impl RubMarks {
+    pub fn as_ref(&self) -> MarksRef<'_> {
+        match self {
+            Self::Hunks(hunks) => MarksRef::from_hunks(hunks),
+            Self::Commits(commits) => MarksRef::from_commits(commits),
+        }
+    }
+
+    pub fn into_marks(self) -> Marks {
+        match self {
+            Self::Hunks(hunks) => Marks::Hunks(hunks),
+            Self::Commits(commits) => Marks::Commits(commits),
+        }
+    }
+
+    fn contains_cli_id(&self, other: &CliId) -> bool {
+        self.as_ref().contains_cli_id(other)
+    }
+
+    fn to_cli_ids(&self) -> Vec<CliId> {
+        match self {
+            Self::Hunks(hunks) => hunks
+                .iter()
+                .cloned()
+                .map(CliId::UncommittedHunkOrFile)
+                .collect(),
+            Self::Commits(commits) => commits
+                .iter()
+                .map(|MarkedCommit { commit_id, id }| CliId::Commit {
+                    commit_id: *commit_id,
+                    id: id.clone(),
+                })
+                .collect(),
         }
     }
 }
@@ -67,10 +112,7 @@ impl ModeRender for RubMode {
                     .unwrap_or("invalid"),
             ),
             RubSource::Marks(marks) => {
-                let sources = marks
-                    .iter()
-                    .map(|m| m.to_owned().into_cli_id())
-                    .collect::<Vec<_>>();
+                let sources = marks.to_cli_ids();
                 let mut sources = sources.iter();
                 let Some(sources) = sources
                     .next()
@@ -156,12 +198,18 @@ impl App {
         let Some(cli_id) = selected_line.data.cli_id() else {
             return;
         };
-        if normal_mode.marks.is_empty() {
-            self.handle_rub_start_with_source(RubSource::CliId(Arc::clone(cli_id)));
-        } else {
-            self.handle_rub_start_with_source(RubSource::Marks(Box::new(
-                normal_mode.marks.clone(),
-            )));
+        match &normal_mode.marks {
+            Marks::Empty => {
+                self.handle_rub_start_with_source(RubSource::CliId(Arc::clone(cli_id)));
+            }
+            Marks::Hunks(hunks) => {
+                self.handle_rub_start_with_source(RubSource::Marks(RubMarks::Hunks(hunks.clone())));
+            }
+            Marks::Commits(commits) => {
+                self.handle_rub_start_with_source(RubSource::Marks(RubMarks::Commits(
+                    commits.clone(),
+                )));
+            }
         }
     }
 
@@ -183,10 +231,7 @@ impl App {
                 .cloned()
                 .collect::<Vec<_>>(),
             RubSource::Marks(marks) => {
-                let marks = marks
-                    .iter()
-                    .map(|mark| mark.to_owned().into_cli_id())
-                    .collect::<Vec<_>>();
+                let marks = marks.to_cli_ids();
                 self.status_lines
                     .iter()
                     .filter_map(|line| line.data.cli_id())
@@ -215,17 +260,7 @@ impl App {
                     return;
                 }
             }
-            RubSource::Marks(marks) => {
-                if marks.marked_commits() && marks.marked_uncommitted() {
-                    return;
-                }
-
-                for mark in marks.iter() {
-                    if !mark_supports_being_rub_source(mark) {
-                        return;
-                    }
-                }
-            }
+            RubSource::Marks(..) => {}
         }
 
         let available_targets = self.available_targets_for_rub_mode(&source);
@@ -391,11 +426,8 @@ impl App {
                 }
             }
             RubSource::Marks(marks) => {
-                let sources = marks
-                    .iter()
-                    .map(|mark| mark.to_owned().into_cli_id())
-                    .filter(|source| source != &**target)
-                    .collect::<Vec<_>>();
+                let mut sources = marks.to_cli_ids();
+                sources.retain(|source| source != &**target);
                 let mut iter = sources.iter();
                 if let Some(sources) = iter.next().map(|first| nonempty_from_refs(first, iter))
                     && let Some(operation) =
@@ -474,12 +506,6 @@ pub fn supports_rubbing(id: &CliId) -> bool {
         | CliId::Commit { .. }
         | CliId::Uncommitted { .. }
         | CliId::Stack { .. } => true,
-    }
-}
-
-pub fn mark_supports_being_rub_source(mark: MarkableRef<'_>) -> bool {
-    match mark {
-        MarkableRef::Commit { .. } | MarkableRef::Uncommitted(..) => true,
     }
 }
 

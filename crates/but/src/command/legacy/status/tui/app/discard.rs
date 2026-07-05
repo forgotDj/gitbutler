@@ -10,10 +10,10 @@ use crate::{
     CliId,
     command::legacy::status::tui::{
         Message, ReloadCause, SelectAfterReload,
+        app::mark::MarkableRef,
         app::{App, Modal, mark::commits_on_branch},
         confirm::Confirm,
         key_bind::confirm_key_binds,
-        marking::MarkableRef,
         message_on_drop,
         mode::Mode,
         operations,
@@ -46,7 +46,7 @@ impl App {
         ctx: &mut Context,
         messages: &mut Vec<Message>,
     ) -> anyhow::Result<()> {
-        if self.marks().is_none_or(|marks| marks.is_empty()) {
+        if self.marks_ref().is_empty() {
             self.handle_discard_selection(ctx, messages)
         } else {
             self.handle_discard_marks(ctx, messages)

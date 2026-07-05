@@ -519,7 +519,7 @@ fn render_status_list_item(
     if let Some(connector) = connector {
         if data
             .cli_id()
-            .is_some_and(|id| app.marks().is_some_and(|marks| marks.contains_cli_id(id)))
+            .is_some_and(|id| app.marks_ref().contains_cli_id(id))
         {
             for (idx, span) in connector.iter().enumerate() {
                 if idx == 1 {

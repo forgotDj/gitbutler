@@ -10,8 +10,8 @@ use crate::{
         output::StatusOutputLineData,
         tui::{
             Mode, NormalMode, PickChangesMode, SelectAfterReload,
+            app::mark::Marks,
             app::{CommitSource, prefix_match},
-            marking::Marks,
             render::{
                 commit_operation_display, move_operation_display, reorder_operation_display,
                 stack_operation_display,
@@ -801,25 +801,35 @@ pub fn is_selectable_in_mode(
 
     // don't allow mixing marks
     match mode {
-        Mode::Normal(NormalMode { marks }) | Mode::PickChanges(PickChangesMode { marks }) => {
-            if !marks.is_empty() {
-                if marks.marked_commits()
-                    && !matches!(
-                        &line.data,
-                        StatusOutputLineData::Branch { .. } | StatusOutputLineData::Commit { .. }
-                    )
-                {
+        Mode::Normal(NormalMode { marks }) => match marks {
+            Marks::Empty => {}
+            Marks::Hunks(..) => {
+                if !matches!(
+                    &line.data,
+                    StatusOutputLineData::UncommittedChanges { .. }
+                        | StatusOutputLineData::UncommittedFile { .. },
+                ) {
                     return false;
                 }
-                if marks.marked_uncommitted()
-                    && !matches!(
-                        &line.data,
-                        StatusOutputLineData::UncommittedChanges { .. }
-                            | StatusOutputLineData::UncommittedFile { .. },
-                    )
-                {
+            }
+            Marks::Commits(..) => {
+                if !matches!(
+                    &line.data,
+                    StatusOutputLineData::Branch { .. } | StatusOutputLineData::Commit { .. }
+                ) {
                     return false;
                 }
+            }
+        },
+        Mode::PickChanges(PickChangesMode { marks }) => {
+            if !marks.is_empty()
+                && !matches!(
+                    &line.data,
+                    StatusOutputLineData::UncommittedChanges { .. }
+                        | StatusOutputLineData::UncommittedFile { .. },
+                )
+            {
+                return false;
             }
         }
         Mode::Rub(..)
