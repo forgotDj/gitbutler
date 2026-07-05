@@ -17,6 +17,8 @@ use crate::{
         tui::{
             App, Cursor, FuzzyPicker, Message, Modal, Mode, ReloadCause, SelectAfterReload,
             ToastKind,
+            app::NormalMode,
+            cursor::is_selectable_in_mode,
             fuzzy_picker::{Col, FuzzyPickerItem, SearchableToken},
             fuzzy_picker_key_binds,
             render::{
@@ -570,5 +572,22 @@ impl App {
         self.cursor
             .selected_line(&self.status_lines)
             .is_some_and(line_uses_top_stack_for_stack_mode)
+    }
+
+    pub fn restore_cursor_before_move_stack(&mut self, messages: &mut Vec<Message>) -> bool {
+        if matches!(&*self.mode, Mode::MoveStack(_)) {
+            self.mode.update(&mut self.backstack, |backstack, mode| {
+                let _ = backstack;
+                *mode = Mode::Normal(NormalMode::default());
+            });
+            if let Some(line) = self.cursor.selected_line(&self.status_lines)
+                && !is_selectable_in_mode(line, &self.mode, self.flags.show_files)
+            {
+                messages.push(Message::MoveCursorDown(1));
+            }
+            return true;
+        }
+
+        false
     }
 }

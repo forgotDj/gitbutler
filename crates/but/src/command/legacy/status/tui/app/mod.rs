@@ -562,7 +562,10 @@ impl App {
     fn handle_backstack_entry(&mut self, entry: BackstackEntry, messages: &mut Vec<Message>) {
         match entry {
             BackstackEntry::LeaveNormalMode => {
-                if !self.restore_mode_before_details(messages) && !self.restore_mode_before_jump() {
+                if !self.restore_mode_before_details(messages)
+                    && !self.restore_mode_before_jump()
+                    && !self.restore_cursor_before_move_stack(messages)
+                {
                     let marks = self.marks().cloned().unwrap_or_default();
                     self.mode.update(&mut self.backstack, |backstack, mode| {
                         let _ = backstack;
