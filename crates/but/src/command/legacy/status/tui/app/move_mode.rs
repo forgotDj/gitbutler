@@ -3,6 +3,7 @@ use std::sync::Arc;
 use but_core::ref_metadata::StackId;
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::InsertSide;
+use ratatui::prelude::Span;
 
 use crate::{
     CliId,
@@ -12,6 +13,9 @@ use crate::{
             App, Message, Mode, ReloadCause, SelectAfterReload,
             marking::{MarkClasses, Markable, Marks},
             operations,
+            render::{
+                ModeRender, RenderSingleLineSpans, render_move_operation_target_marker, source_span,
+            },
         },
     },
     id::ShortId,
@@ -42,6 +46,36 @@ enum MoveTarget<'a> {
     Branch { name: &'a str },
     Commit { commit_id: gix::ObjectId },
     MergeBase,
+}
+
+impl ModeRender for MoveMode {
+    fn render_operation_target_marker(
+        &self,
+        app: &App,
+        data: &StatusOutputLineData,
+        line: &mut RenderSingleLineSpans<'_, '_>,
+    ) {
+        if data
+            .cli_id()
+            .is_some_and(|target| self.source.contains(target))
+            || matches!(data, StatusOutputLineData::MergeBase)
+        {
+            render_move_operation_target_marker(app, data, self, line);
+        }
+    }
+
+    fn render_operation_source_marker(
+        &self,
+        app: &App,
+        data: &StatusOutputLineData,
+        line: &mut RenderSingleLineSpans<'_, '_>,
+    ) {
+        if let Some(cli_id) = data.cli_id()
+            && self.source.contains(cli_id)
+        {
+            line.extend([source_span(app.theme), Span::raw(" ")]);
+        }
+    }
 }
 
 impl MoveSource {

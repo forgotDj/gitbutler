@@ -5,7 +5,7 @@ use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::InsertSide;
 use gix::refs::Category;
 use nonempty::NonEmpty;
-use ratatui::backend::Backend;
+use ratatui::{backend::Backend, prelude::Span};
 
 use crate::{
     CliId,
@@ -15,6 +15,10 @@ use crate::{
             output::StatusOutputLineData,
             tui::{
                 App, Markable, Marks, Message, Mode, ReloadCause, RewordMessage, SelectAfterReload,
+                render::{
+                    ModeRender, RenderSingleLineSpans, render_commit_operation_target_marker,
+                    source_span,
+                },
                 stack_has_assigned_changes,
             },
         },
@@ -66,6 +70,35 @@ pub struct UncommittedAreaCommitSource {
 #[derive(Debug)]
 pub struct StackCommitSource {
     pub stack_id: StackId,
+}
+
+impl ModeRender for CommitMode {
+    fn render_operation_target_marker(
+        &self,
+        app: &App,
+        data: &StatusOutputLineData,
+        line: &mut RenderSingleLineSpans<'_, '_>,
+    ) {
+        if data
+            .cli_id()
+            .is_some_and(|target| self.source.contains(target))
+        {
+            render_commit_operation_target_marker(app, data, self, line);
+        }
+    }
+
+    fn render_operation_source_marker(
+        &self,
+        app: &App,
+        data: &StatusOutputLineData,
+        line: &mut RenderSingleLineSpans<'_, '_>,
+    ) {
+        if let Some(cli_id) = data.cli_id()
+            && self.source.contains(cli_id)
+        {
+            line.extend([source_span(app.theme), Span::raw(" ")]);
+        }
+    }
 }
 
 impl CommitSource {
