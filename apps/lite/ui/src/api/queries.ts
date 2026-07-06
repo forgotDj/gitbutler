@@ -80,6 +80,7 @@ export const getReviewMergeStatusQueryOptions = ({ projectId, reviewId }: GetRev
 	queryOptions({
 		queryKey: ["reviewMergeStatus" satisfies QueryKey, projectId, reviewId],
 		queryFn: () => window.lite.getReviewMergeStatus({ projectId, reviewId }),
+		staleTime: ({ state: { data } }) => (data?.isMergeable ? 30_000 : 10_000),
 	});
 
 export const listReviewsQueryOptions = ({ projectId, ...params }: ListReviewsParams) =>
