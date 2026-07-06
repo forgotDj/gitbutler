@@ -631,25 +631,17 @@ fn moves_cursor_back_into_file_list() {
     tui.input_then_render('j');
     tui.input_then_render('j');
     tui.input_then_render('j')
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/moves_cursor_back_into_file_list_001.svg"
-        ]);
+        .assert_rendered_term_svg_eq(file!["snapshots/moves_cursor_back_into_file_list_001.svg"]);
 
     tui.input_then_render('f')
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/moves_cursor_back_into_file_list_002.svg"
-        ]);
+        .assert_rendered_term_svg_eq(file!["snapshots/moves_cursor_back_into_file_list_002.svg"]);
 
     tui.input_then_render('r');
     tui.input_then_render('g')
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/moves_cursor_back_into_file_list_003.svg"
-        ]);
+        .assert_rendered_term_svg_eq(file!["snapshots/moves_cursor_back_into_file_list_003.svg"]);
 
     tui.input_then_render(KeyCode::Esc)
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/moves_cursor_back_into_file_list_004.svg"
-        ]);
+        .assert_rendered_term_svg_eq(file!["snapshots/moves_cursor_back_into_file_list_004.svg"]);
 }
 
 #[test]

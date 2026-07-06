@@ -1,5 +1,5 @@
 use but_api::WorkspaceState;
-use but_core::DryRun;
+use but_core::{DiffSpec, DryRun};
 use but_ctx::Context;
 use but_oplog::legacy::{OperationKind, SnapshotDetails};
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
@@ -26,6 +26,14 @@ fn ref_target(env: &Sandbox, ref_name: &gix::refs::FullNameRef) -> Option<Object
 fn find_commits<const N: usize>(env: &Sandbox, commits: [&str; N]) -> [ObjectId; N] {
     let repo = env.open_repo();
     commits.map(|commit| repo.rev_parse_single(commit).unwrap().detach())
+}
+
+fn diff_spec_for_file(path: &str) -> DiffSpec {
+    DiffSpec {
+        previous_path: None,
+        path: path.into(),
+        hunk_headers: vec![],
+    }
 }
 
 #[track_caller]
@@ -653,6 +661,63 @@ fn discarding_three_commits() {
 "#]]
     );
 
+    assert_num_snapshots(&ctx, 1);
+}
+
+#[test]
+fn discard_changes_from_commit() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    let [two] = find_commits(&env, ["9b3b3d5"]);
+
+    let repo = but_testsupport::open_repo(env.projects_root()).unwrap();
+    let mut ctx = Context::from_repo_for_testing(repo)
+        .map(Context::with_memory_app_cache)
+        .unwrap();
+
+    assert_num_snapshots(&ctx, 0);
+
+    let mut meta = ctx.meta().unwrap();
+    let snapshot_details = SnapshotDetails::new(OperationKind::DiscardChanges);
+
+    let outcome = with_transaction(
+        &mut ctx,
+        &mut meta,
+        snapshot_details,
+        DryRun::No,
+        |mut tx| {
+            let new_two =
+                tx.discard_changes_from_commit(two, vec![diff_spec_for_file("file-two")])?;
+
+            Ok(DynamicOutcome::<_, ()>::Commit(new_two))
+        },
+    )
+    .unwrap();
+
+    let DynamicOutcome::Commit((new_two, _workspace)) = outcome else {
+        panic!("transaction should commit");
+    };
+
+    let repo = env.open_repo();
+    let new_two_tree_id = repo
+        .find_commit(new_two)
+        .unwrap()
+        .tree_id()
+        .unwrap()
+        .detach();
+    let new_two_tree = repo.find_tree(new_two_tree_id).unwrap();
+    assert!(
+        new_two_tree
+            .lookup_entry_by_path("file-two")
+            .unwrap()
+            .is_none(),
+        "discarded file should be removed from the rewritten commit"
+    );
+    assert!(
+        !env.projects_root().join("file-two").exists(),
+        "discarded file should be removed from the worktree"
+    );
     assert_num_snapshots(&ctx, 1);
 }
 
