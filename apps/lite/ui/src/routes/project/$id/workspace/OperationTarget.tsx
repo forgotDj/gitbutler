@@ -139,6 +139,8 @@ const useOperationDropTarget = ({
 
 export type OperationTargetOutline = "inside" | "outside";
 
+type ActiveOperation = { operationType: OperationType; tooltip?: string | undefined };
+
 export const OperationTarget: FC<
 	{
 		enabled: boolean;
@@ -151,51 +153,43 @@ export const OperationTarget: FC<
 > = ({ enabled, target, projectId, isSelected, isAbsorptionTarget, outline, render, ...props }) => {
 	const { dropRef } = useOperationDropTarget({ enabled, target, projectId });
 
-	const activeTargetOperationType = useAppSelector((state) => {
+	const activeOperation = useAppSelector((state) => {
 		const outlineMode = selectProjectOutlineModeState(state, projectId);
 
 		return Match.value(outlineMode).pipe(
-			Match.withReturnType<OperationType | null>(),
-			Match.when({ _tag: "Absorb" }, () => (isAbsorptionTarget ? "into" : null)),
-			Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
-				mode.target && mode.operationType !== null && operandEquals(mode.target, target)
-					? mode.operationType
-					: null,
+			Match.when({ _tag: "Absorb" }, (): ActiveOperation | null =>
+				isAbsorptionTarget ? { operationType: "into", tooltip: "Absorb target" } : null,
 			),
-			Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) =>
-				isSelected ? mode.operationType : null,
-			),
-			Match.orElse(() => null),
-		);
-	});
-
-	const tooltip = useAppSelector((state) => {
-		const outlineMode = selectProjectOutlineModeState(state, projectId);
-
-		return activeTargetOperationType !== null
-			? Match.value(outlineMode).pipe(
-					Match.when({ _tag: "Absorb" }, () => "Absorb target"),
-					Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
-						mode.target && mode.operationType !== null
-							? getOperation({
+			Match.when(
+				{ _tag: "Transfer", value: { _tag: "Pointer" } },
+				({ value: mode }): ActiveOperation | null =>
+					mode.target && mode.operationType !== null && operandEquals(mode.target, target)
+						? {
+								operationType: mode.operationType,
+								tooltip: getOperation({
 									source: mode.source,
 									target: mode.target,
 									operationType: mode.operationType,
-								})?.label
-							: undefined,
-					),
-					Match.when(
-						{ _tag: "Transfer", value: { _tag: "Keyboard" } },
-						({ value: mode }) =>
-							getOperation({
-								source: mode.source,
-								target,
+								})?.label,
+							}
+						: null,
+			),
+			Match.when(
+				{ _tag: "Transfer", value: { _tag: "Keyboard" } },
+				({ value: mode }): ActiveOperation | null =>
+					isSelected
+						? {
 								operationType: mode.operationType,
-							})?.label,
-					),
-					Match.orElse(() => undefined),
-				)
-			: undefined;
+								tooltip: getOperation({
+									source: mode.source,
+									target,
+									operationType: mode.operationType,
+								})?.label,
+							}
+						: null,
+			),
+			Match.orElse(() => null),
+		);
 	});
 
 	const targetEl = useRender({
@@ -205,11 +199,11 @@ export const OperationTarget: FC<
 	});
 
 	return (
-		<Tooltip.Root open={tooltip !== undefined} disableHoverablePopup>
+		<Tooltip.Root open={activeOperation?.tooltip !== undefined} disableHoverablePopup>
 			<Tooltip.Trigger
 				render={targetEl}
 				className={pipe(
-					activeTargetOperationType,
+					activeOperation?.operationType,
 					Match.value,
 					Match.when("above", () => classes(styles.insertionTarget, styles.insertionTargetAbove)),
 					Match.when("below", () => classes(styles.insertionTarget, styles.insertionTargetBelow)),
@@ -223,13 +217,13 @@ export const OperationTarget: FC<
 							),
 						),
 					),
-					Match.when(null, () => undefined),
+					Match.when(undefined, () => undefined),
 					Match.exhaustive,
 				)}
 			/>
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8} side="right">
-					<Tooltip.Popup render={<TooltipPopup />}>{tooltip}</Tooltip.Popup>
+					<Tooltip.Popup render={<TooltipPopup />}>{activeOperation?.tooltip}</Tooltip.Popup>
 				</Tooltip.Positioner>
 			</Tooltip.Portal>
 		</Tooltip.Root>
