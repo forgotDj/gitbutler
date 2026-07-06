@@ -160,34 +160,25 @@ export const OperationTarget: FC<
 			Match.when({ _tag: "Absorb" }, (): ActiveOperation | null =>
 				isAbsorptionTarget ? { operationType: "into", tooltip: "Absorb target" } : null,
 			),
-			Match.when(
-				{ _tag: "Transfer", value: { _tag: "Pointer" } },
-				({ value: mode }): ActiveOperation | null =>
-					mode.target && mode.operationType !== null && operandEquals(mode.target, target)
-						? {
+			Match.when({ _tag: "Transfer" }, ({ value: mode }): ActiveOperation | null => {
+				const isActive = Match.value(mode).pipe(
+					Match.tagsExhaustive({
+						Pointer: (mode) => mode.target !== null && operandEquals(mode.target, target),
+						Keyboard: () => isSelected,
+					}),
+				);
+
+				return isActive && mode.operationType !== null
+					? {
+							operationType: mode.operationType,
+							tooltip: getOperation({
+								source: mode.source,
+								target,
 								operationType: mode.operationType,
-								tooltip: getOperation({
-									source: mode.source,
-									target: mode.target,
-									operationType: mode.operationType,
-								})?.label,
-							}
-						: null,
-			),
-			Match.when(
-				{ _tag: "Transfer", value: { _tag: "Keyboard" } },
-				({ value: mode }): ActiveOperation | null =>
-					isSelected
-						? {
-								operationType: mode.operationType,
-								tooltip: getOperation({
-									source: mode.source,
-									target,
-									operationType: mode.operationType,
-								})?.label,
-							}
-						: null,
-			),
+							})?.label,
+						}
+					: null;
+			}),
 			Match.orElse(() => null),
 		);
 	});
