@@ -1,4 +1,4 @@
-import { operandEquals, type Operand } from "#ui/operands.ts";
+import { type Operand } from "#ui/operands.ts";
 import { parseDragData } from "./DragData.ts";
 import styles from "./OperationTarget.module.css";
 import {
@@ -8,8 +8,8 @@ import {
 	useRunOperation,
 } from "#ui/operations/operation.ts";
 import { classes } from "#ui/components/classes.ts";
-import { projectActions, selectProjectOutlineModeState } from "#ui/projects/state.ts";
-import { useAppDispatch, useAppSelector } from "#ui/store.ts";
+import { projectActions } from "#ui/projects/state.ts";
+import { useAppDispatch } from "#ui/store.ts";
 import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import {
 	attachInstruction,
@@ -139,49 +139,18 @@ const useOperationDropTarget = ({
 
 export type OperationTargetOutline = "inside" | "outside";
 
-type ActiveOperation = { operationType: OperationType; tooltip?: string | undefined };
+export type ActiveOperation = { operationType: OperationType; tooltip?: string | undefined };
 
 export const OperationTarget: FC<
 	{
 		enabled: boolean;
 		target: Operand;
 		projectId: string;
-		isSelected: boolean;
-		isAbsorptionTarget: boolean;
+		activeOperation?: ActiveOperation | null;
 		outline: OperationTargetOutline;
 	} & useRender.ComponentProps<"div">
-> = ({ enabled, target, projectId, isSelected, isAbsorptionTarget, outline, render, ...props }) => {
+> = ({ enabled, target, projectId, activeOperation, outline, render, ...props }) => {
 	const { dropRef } = useOperationDropTarget({ enabled, target, projectId });
-
-	const activeOperation = useAppSelector((state) => {
-		const outlineMode = selectProjectOutlineModeState(state, projectId);
-
-		return Match.value(outlineMode).pipe(
-			Match.when({ _tag: "Absorb" }, (): ActiveOperation | null =>
-				isAbsorptionTarget ? { operationType: "into", tooltip: "Absorb target" } : null,
-			),
-			Match.when({ _tag: "Transfer" }, ({ value: mode }): ActiveOperation | null => {
-				const isActive = Match.value(mode).pipe(
-					Match.tagsExhaustive({
-						Pointer: (mode) => mode.target !== null && operandEquals(mode.target, target),
-						Keyboard: () => isSelected,
-					}),
-				);
-
-				return isActive && mode.operationType !== null
-					? {
-							operationType: mode.operationType,
-							tooltip: getOperation({
-								source: mode.source,
-								target,
-								operationType: mode.operationType,
-							})?.label,
-						}
-					: null;
-			}),
-			Match.orElse(() => null),
-		);
-	});
 
 	const targetEl = useRender({
 		render,
