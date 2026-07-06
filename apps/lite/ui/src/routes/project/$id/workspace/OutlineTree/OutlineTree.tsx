@@ -101,16 +101,16 @@ const OperandC: FC<
 > = ({ projectId, operand, outline, render, ...props }) => {
 	const isSelected = useIsSelected({ projectId, operand });
 	const absorptionTargetKeys = assert(use(AbsorptionTargetKeysContext));
-	const isAbsorptionTarget = absorptionTargetKeys.has(operandIdentityKey(operand));
 	const navigationIndex = assert(use(NavigationIndexContext));
 
 	const activeOperation = useAppSelector((state) => {
 		const outlineMode = selectProjectOutlineModeState(state, projectId);
 
 		return Match.value(outlineMode).pipe(
-			Match.when({ _tag: "Absorb" }, (): ActiveOperation | null =>
-				isAbsorptionTarget ? { operationType: "into", tooltip: "Absorb target" } : null,
-			),
+			Match.when({ _tag: "Absorb" }, (): ActiveOperation | null => {
+				const isAbsorptionTarget = absorptionTargetKeys.has(operandIdentityKey(operand));
+				return isAbsorptionTarget ? { operationType: "into", tooltip: "Absorb target" } : null;
+			}),
 			Match.when({ _tag: "Transfer" }, ({ value: mode }): ActiveOperation | null => {
 				const isActive = Match.value(mode).pipe(
 					Match.tagsExhaustive({
