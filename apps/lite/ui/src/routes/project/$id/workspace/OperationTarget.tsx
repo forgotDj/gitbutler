@@ -191,10 +191,10 @@ export const OperationTarget: FC<
 		}),
 	});
 
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const tooltip = useAppSelector((state) => {
+		const outlineMode = selectProjectOutlineModeState(state, projectId);
 
-	const tooltip =
-		activeTargetOperationType !== null
+		return activeTargetOperationType !== null
 			? Match.value(outlineMode).pipe(
 					Match.when({ _tag: "Absorb" }, () => "Absorb target"),
 					Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
@@ -218,6 +218,7 @@ export const OperationTarget: FC<
 					Match.orElse(() => undefined),
 				)
 			: undefined;
+	});
 
 	return (
 		<Tooltip.Root open={tooltip !== undefined} disableHoverablePopup>
