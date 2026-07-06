@@ -158,17 +158,12 @@ export const OperationTarget: FC<
 			Match.withReturnType<OperationType | null>(),
 			Match.when({ _tag: "Absorb" }, () => (isAbsorptionTarget ? "into" : null)),
 			Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
-				mode.target &&
-				mode.operationType !== null &&
-				operandEquals(mode.target, target) &&
-				(mode.operationType !== "into" || !operandEquals(mode.source, target))
+				mode.target && mode.operationType !== null && operandEquals(mode.target, target)
 					? mode.operationType
 					: null,
 			),
 			Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) =>
-				isSelected && (mode.operationType !== "into" || !operandEquals(mode.source, target))
-					? mode.operationType
-					: null,
+				isSelected ? mode.operationType : null,
 			),
 			Match.orElse(() => null),
 		);
