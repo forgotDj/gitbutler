@@ -212,6 +212,25 @@ export const useUpdateReview = () => {
 	});
 };
 
+export const useSetReviewAutoMerge = () => {
+	const toastManager = Toast.useToastManager();
+
+	return useMutation({
+		mutationFn: window.lite.setReviewAutoMerge,
+		onError: (error, input) => {
+			// oxlint-disable-next-line no-console
+			console.error(error);
+
+			toastManager.add({
+				type: "error",
+				title: `Failed to ${input.enable ? "enable" : "disable"} pull request auto-merge`,
+				description: errorMessageForToast(error),
+				priority: "high",
+			});
+		},
+	});
+};
+
 export const useMergeReview = () => {
 	const toastManager = Toast.useToastManager();
 

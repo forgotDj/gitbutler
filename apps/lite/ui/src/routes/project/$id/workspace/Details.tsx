@@ -3,6 +3,7 @@ import { SuspenseQuery } from "@suspensive/react-query";
 import {
 	useMergeReview,
 	usePublishReview,
+	useSetReviewAutoMerge,
 	useSetReviewDraftiness,
 	useUpdateReview,
 } from "#ui/api/mutations.ts";
@@ -1222,8 +1223,10 @@ const PullRequestPrimaryAction: FC<{
 
 	const mergeReview = useMergeReview();
 	const setReviewDraftiness = useSetReviewDraftiness();
+	const setReviewAutoMerge = useSetReviewAutoMerge();
 
-	const isAnyPending = mergeReview.isPending || setReviewDraftiness.isPending;
+	const isAnyPending =
+		mergeReview.isPending || setReviewDraftiness.isPending || setReviewAutoMerge.isPending;
 
 	return (
 		<div className={styles.prActions}>
@@ -1238,15 +1241,28 @@ const PullRequestPrimaryAction: FC<{
 			</button>
 
 			{!isDraft && (
-				<button
-					className={getButtonClassName({ variant: "pop" })}
-					disabled={isAnyPending || mergeStatus?.isMergeable !== true}
-					onClick={() => mergeReview.mutate({ projectId, reviewId, mergeMethod: null })}
-					type="button"
-				>
-					{mergeReview.isPending && <Icon name="spinner" />}
-					Merge
-				</button>
+				<>
+					<button
+						className={getButtonClassName({ variant: "outline" })}
+						// Currently missing automerge state from SDK.
+						disabled
+						onClick={() => setReviewAutoMerge.mutate({ projectId, reviewId, enable: true })}
+						type="button"
+					>
+						{setReviewAutoMerge.isPending && <Icon name="spinner" />}
+						Enable auto-merge
+					</button>
+
+					<button
+						className={getButtonClassName({ variant: "pop" })}
+						disabled={isAnyPending || mergeStatus?.isMergeable !== true}
+						onClick={() => mergeReview.mutate({ projectId, reviewId, mergeMethod: null })}
+						type="button"
+					>
+						{mergeReview.isPending && <Icon name="spinner" />}
+						Merge
+					</button>
+				</>
 			)}
 		</div>
 	);
