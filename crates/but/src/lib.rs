@@ -157,9 +157,11 @@ pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
         return Ok(());
     }
 
-    // Handle `but help -h` and `but help --help` to show the grouped help output
-    if args_vec.iter().any(|arg| arg == "help")
-        && args_vec.iter().any(|arg| arg == "--help" || arg == "-h")
+    // Handle bare `but help -h` and `but help --help` to show the grouped help output.
+    // Topic help flags, like `but help cli-ids --help`, are left to clap.
+    if args_vec.len() == 3
+        && args_vec[1] == "help"
+        && matches!(args_vec[2].as_str(), "--help" | "-h")
     {
         let mut out = OutputChannel::new(early_help_format(&args));
         command::help::print_grouped(&mut out)?;
@@ -412,8 +414,8 @@ async fn match_subcommand(
                 .emit_metrics(metrics_ctx)
                 .map_err(CliError::from)
         }
-        Subcommands::Help => {
-            command::help::print_grouped(out)?;
+        Subcommands::Help { topic } => {
+            command::help::print(out, topic)?;
             Ok(())
         }
         Subcommands::Onboarding => command::onboarding::handle(out).map_err(CliError::from),
