@@ -15,7 +15,6 @@ import { commitBody, commitTitle, shortCommitId } from "#ui/commit.ts";
 import {
 	branchFileParent,
 	uncommittedChangesFileParent,
-	uncommittedChangesOperand,
 	commitFileParent,
 	FileOperand,
 	fileOperand,
@@ -902,6 +901,7 @@ const Diff: FC<{
 		Match.tags({
 			Branch: ({ branchRef }) => decodeBytes(branchRef),
 			UncommittedChanges: () => "uncommittedChanges",
+			File: ({ path }) => path,
 			Commit: ({ commitId }) => commitId,
 		}),
 		Match.orElseAbsurd,
@@ -910,6 +910,7 @@ const Diff: FC<{
 		Match.tags({
 			Branch: ({ branchRef, stackId }) => branchFileParent({ branchRef, stackId }),
 			UncommittedChanges: () => uncommittedChangesFileParent,
+			File: ({ parent }) => parent,
 			Commit: ({ commitId, stackId }) => commitFileParent({ commitId, stackId }),
 		}),
 		Match.orElseAbsurd,
@@ -1304,7 +1305,6 @@ export const Details: FC<
 					const renderDiff = ({
 						changes,
 						filesItems,
-						outlineSelection: diffOutlineSelection = outlineSelection,
 					}: {
 						changes: Array<TreeChange>;
 						filesItems: Array<FileRowItem>;
@@ -1315,7 +1315,7 @@ export const Details: FC<
 							filesVisible={filesVisible}
 							filesItems={filesItems}
 							onFileSelection={selectFile}
-							outlineSelection={diffOutlineSelection}
+							outlineSelection={outlineSelection}
 							projectId={projectId}
 						/>
 					);
@@ -1363,7 +1363,6 @@ export const Details: FC<
 										return renderDiff({
 											changes,
 											filesItems,
-											outlineSelection: uncommittedChangesOperand,
 										});
 									}}
 								</SuspenseQuery>

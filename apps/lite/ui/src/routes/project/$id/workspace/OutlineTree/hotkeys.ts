@@ -414,7 +414,6 @@ export const useOutlineTreeHotkeys = ({
 		{
 			hotkey: outlineHotkeys.composeCommitMessage.hotkey,
 			callback: () => {
-				dispatch(projectActions.selectOutline({ projectId, selection: uncommittedChangesOperand }));
 				focusCommitMessageInput();
 			},
 			options: {
