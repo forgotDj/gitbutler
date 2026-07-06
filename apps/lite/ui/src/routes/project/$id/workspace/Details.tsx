@@ -110,6 +110,7 @@ import { showNativeContextMenu, showNativeMenuFromTrigger } from "#ui/native-men
 import { useFileMenuItems } from "#ui/routes/project/$id/workspace/useFileMenuItems.ts";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
+import { Checkbox } from "#ui/components/Checkbox.tsx";
 
 type BranchTab = "diff" | "pr";
 
@@ -1108,6 +1109,7 @@ const PullRequestForm: FC<{
 	const formRef = useRef<HTMLFormElement | null>(null);
 	const [draftTitle, setDraftTitle] = useState<string | null>(null);
 	const [draftBody, setDraftBody] = useState<string | null>(null);
+	const [newIsDraft, setNewIsDraft] = useState(false);
 
 	const derivedTitle = draftTitle ?? title ?? "";
 	const derivedBody = draftBody ?? body ?? "";
@@ -1131,7 +1133,7 @@ const PullRequestForm: FC<{
 				params: {
 					title: derivedTitle,
 					body: derivedBody,
-					draft: true,
+					draft: newIsDraft,
 					sourceBranch,
 					targetBranch,
 				},
@@ -1177,6 +1179,13 @@ const PullRequestForm: FC<{
 				/>
 			</Field.Root>
 
+			{isNew && (
+				<Field.Root render={<FieldRootStyles />}>
+					<Field.Label render={<FieldLabelStyles />}>Draft</Field.Label>
+					<Checkbox checked={newIsDraft} onCheckedChange={(checked) => setNewIsDraft(checked)} />
+				</Field.Root>
+			)}
+
 			<div className={styles.prFormActions}>
 				<button
 					className={getButtonClassName({})}
@@ -1186,6 +1195,7 @@ const PullRequestForm: FC<{
 				>
 					Reset
 				</button>
+
 				<button
 					className={getButtonClassName({ variant: "pop" })}
 					disabled={!canSubmit}
