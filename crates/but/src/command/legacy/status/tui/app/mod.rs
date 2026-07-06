@@ -587,16 +587,8 @@ impl App {
                 Mode::PickChanges(pick_uncommitted_mode) => {
                     pick_uncommitted_mode.marks.clear();
                 }
-                Mode::Rub(..) => {
-                    *self
-                        .mode
-                        .get_mut_without_updating_backstack_and_i_promise_not_to_change_state() =
-                        Mode::Normal(NormalMode::default());
-                    self.backstack.remove_mark();
-                    self.backstack.remove_leave_normal_mode();
-                    self.maybe_move_cursor_into_file_list();
-                }
                 Mode::InlineReword(..)
+                | Mode::Rub(..)
                 | Mode::Command(..)
                 | Mode::Commit(..)
                 | Mode::Move(..)

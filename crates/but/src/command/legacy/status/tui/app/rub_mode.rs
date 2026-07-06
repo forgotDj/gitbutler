@@ -62,13 +62,6 @@ impl RubMarks {
         }
     }
 
-    pub fn into_marks(self) -> Marks {
-        match self {
-            Self::Hunks(hunks) => Marks::Hunks(hunks),
-            Self::Commits(commits) => Marks::Commits(commits),
-        }
-    }
-
     fn contains_cli_id(&self, other: &CliId) -> bool {
         self.as_ref().contains_cli_id(other)
     }

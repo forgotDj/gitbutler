@@ -583,3 +583,38 @@ fn rub_multiple_commits_into_uncommitted_area() {
             "snapshots/rub_multiple_commits_into_uncommitted_final.svg"
         ]);
 }
+
+#[test]
+fn marks_are_maintained_after_leaving_rub_mode() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    let mut tui = test_tui(env);
+
+    tui.reload();
+
+    tui.input_then_render('j');
+    tui.input_then_render('n');
+    tui.input_then_render('n');
+    tui.input_then_render('n')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/marks_are_maintained_after_leaving_rub_mode_001.svg"
+        ]);
+
+    tui.input_then_render(' ');
+    tui.input_then_render(' ');
+    tui.input_then_render(' ')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/marks_are_maintained_after_leaving_rub_mode_002.svg"
+        ]);
+
+    tui.input_then_render('r')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/marks_are_maintained_after_leaving_rub_mode_003.svg"
+        ]);
+
+    tui.input_then_render(KeyCode::Esc)
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/marks_are_maintained_after_leaving_rub_mode_004.svg"
+        ]);
+}

@@ -1,4 +1,4 @@
-use std::{convert::Infallible, ops::Deref, sync::Arc};
+use std::{convert::Infallible, ops::Deref};
 
 use anyhow::Context as _;
 use but_core::ref_metadata::StackId;
@@ -13,12 +13,7 @@ use crate::{
         StatusOutputLine,
         output::StatusOutputLineData,
         tui::{
-            app::{
-                App,
-                normal_mode::NormalMode,
-                pick_changes_mode::PickChangesMode,
-                rub_mode::{RubMarks, RubSource},
-            },
+            app::{App, normal_mode::NormalMode, pick_changes_mode::PickChangesMode},
             mode::Mode,
         },
     },
@@ -524,12 +519,8 @@ fn handle_mark_cli_id(commit: &CliId, mode: &mut Mode) -> anyhow::Result<bool> {
             };
             let Ok(()) = toggle_markables(&mut pick_uncommitted_mode.marks, [hunk.clone()]);
         }
-        Mode::Rub(rub_mode) => {
-            if !handle_mark_rub_source(&mut rub_mode.source, markable)? {
-                return Ok(false);
-            }
-        }
         Mode::InlineReword(..)
+        | Mode::Rub(..)
         | Mode::Command(..)
         | Mode::Commit(..)
         | Mode::Move(..)
@@ -544,65 +535,10 @@ fn handle_mark_cli_id(commit: &CliId, mode: &mut Mode) -> anyhow::Result<bool> {
     Ok(true)
 }
 
-fn handle_mark_rub_source(
-    source: &mut RubSource,
-    markable: MarkableRef<'_>,
-) -> anyhow::Result<bool> {
-    match source {
-        RubSource::CliId(cli_id) => {
-            let Some(previous_source) = MarkableRef::try_from_cli_id(cli_id) else {
-                return Ok(false);
-            };
-            let MarkableRef::Commit(previous_commit) = previous_source else {
-                return Ok(false);
-            };
-            let MarkableRef::Commit(markable_commit) = markable else {
-                return Ok(false);
-            };
-
-            let mut commits = NonEmpty::new(previous_commit.to_marked_commit());
-            if markable_commit != previous_commit {
-                commits.push(markable_commit.to_marked_commit());
-            }
-            *source = RubSource::Marks(RubMarks::Commits(commits));
-        }
-        RubSource::Marks(marks) => {
-            let toggled_cli_id = cli_id_from_markable_ref(markable);
-            let mut updated_marks = marks.clone().into_marks();
-            toggle_markable_ref(&mut updated_marks, markable)?;
-
-            *source = match updated_marks {
-                Marks::Empty => RubSource::CliId(Arc::new(toggled_cli_id)),
-                Marks::Hunks(hunks) if hunks.len() == 1 => {
-                    RubSource::CliId(Arc::new(CliId::UncommittedHunkOrFile(hunks.head)))
-                }
-                Marks::Commits(commits) if commits.len() == 1 => {
-                    let MarkedCommit { commit_id, id } = commits.head;
-                    RubSource::CliId(Arc::new(CliId::Commit { commit_id, id }))
-                }
-                Marks::Hunks(hunks) => RubSource::Marks(RubMarks::Hunks(hunks)),
-                Marks::Commits(commits) => RubSource::Marks(RubMarks::Commits(commits)),
-            };
-        }
-    }
-
-    Ok(true)
-}
-
 fn toggle_markable_ref(marks: &mut Marks, markable: MarkableRef<'_>) -> anyhow::Result<()> {
     match markable {
         MarkableRef::Uncommitted(hunk) => toggle_markables(marks, [hunk.clone()]),
         MarkableRef::Commit(commit) => toggle_markables(marks, [commit.to_marked_commit()]),
-    }
-}
-
-fn cli_id_from_markable_ref(markable: MarkableRef<'_>) -> CliId {
-    match markable {
-        MarkableRef::Uncommitted(hunk) => CliId::UncommittedHunkOrFile(hunk.clone()),
-        MarkableRef::Commit(commit) => CliId::Commit {
-            commit_id: commit.commit_id,
-            id: commit.id.to_owned(),
-        },
     }
 }
 
