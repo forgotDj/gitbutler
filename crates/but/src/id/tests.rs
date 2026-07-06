@@ -1,6 +1,6 @@
 use anyhow::bail;
 use bstr::BString;
-use but_core::ref_metadata::StackId;
+use but_core::{ChangeId, ref_metadata::StackId};
 use but_graph::workspace::Stack;
 use but_hunk_assignment::HunkAssignment;
 use but_testsupport::{hex_to_id, hunk_header};
@@ -2363,6 +2363,172 @@ fn dedupe_does_not_hide_ambiguity_between_unmanaged_branches_with_same_name() ->
         "the two unmanaged branches must stay distinct"
     );
     Ok(())
+}
+
+#[test]
+fn find_commits_by_change_id() {
+    let id1 = id(1);
+    let id2 = id(2);
+    let stacks = vec![stack([segment("not-important", [id1, id2], None, [])])];
+
+    let commit_id_to_change_id: gix::hashtable::HashMap<gix::ObjectId, ChangeId> = [
+        (id1, ChangeId::from_bytes("sv".as_bytes())), // swstzzzz...
+        (id2, ChangeId::from_bytes("sx".as_bytes())), // swsrzzzz...
+    ]
+    .into_iter()
+    .collect();
+
+    let id_map = IdMap::new(stacks, Vec::new(), commit_id_to_change_id).unwrap();
+    snapbox::assert_data_eq!(
+        id_map.debug_state().to_debug(),
+        snapbox::str![[r#"
+workspace_and_remote_commits_count: 2
+branches: [ no ]
+
+
+"#]]
+    );
+    let changed_paths_fn = |commit_id: gix::ObjectId,
+                            parent_id: Option<gix::ObjectId>|
+     -> anyhow::Result<Vec<but_core::TreeChange>> {
+        bail!("unexpected IDs {commit_id} {parent_id:?}");
+    };
+
+    // Should match both commits if we use a common prefix
+    snapbox::assert_data_eq!(
+        id_map
+            .parse("sws", Box::new(changed_paths_fn))
+            .unwrap()
+            .to_debug(),
+        snapbox::str![[r#"
+[
+    Commit {
+        commit_id: Sha1(0101010101010101010101010101010101010101),
+        id: "01",
+    },
+    Commit {
+        commit_id: Sha1(0202020202020202020202020202020202020202),
+        id: "02",
+    },
+]
+
+"#]],
+    );
+
+    snapbox::assert_data_eq!(
+        id_map
+            .parse("swst", Box::new(changed_paths_fn))
+            .unwrap()
+            .to_debug(),
+        snapbox::str![[r#"
+[
+    Commit {
+        commit_id: Sha1(0101010101010101010101010101010101010101),
+        id: "01",
+    },
+]
+
+"#]],
+    );
+
+    snapbox::assert_data_eq!(
+        id_map
+            .parse("swsr", Box::new(changed_paths_fn))
+            .unwrap()
+            .to_debug(),
+        snapbox::str![[r#"
+[
+    Commit {
+        commit_id: Sha1(0202020202020202020202020202020202020202),
+        id: "02",
+    },
+]
+
+"#]],
+    )
+}
+
+#[test]
+fn change_ids_are_disambiguated_on_collision() {
+    let id1 = id(1);
+    let id2 = id(2);
+    let stacks = vec![stack([segment("not-important", [id1, id2], None, [])])];
+
+    let commit_id_to_change_id: gix::hashtable::HashMap<gix::ObjectId, ChangeId> = [
+        (id1, ChangeId::from_bytes("sv".as_bytes())), // swstzzzz...
+        (id2, ChangeId::from_bytes("sv".as_bytes())), // swstzzzz...
+    ]
+    .into_iter()
+    .collect();
+
+    let id_map = IdMap::new(stacks, Vec::new(), commit_id_to_change_id).unwrap();
+    snapbox::assert_data_eq!(
+        id_map.debug_state().to_debug(),
+        snapbox::str![[r#"
+workspace_and_remote_commits_count: 2
+branches: [ no ]
+
+
+"#]]
+    );
+    let changed_paths_fn = |commit_id: gix::ObjectId,
+                            parent_id: Option<gix::ObjectId>|
+     -> anyhow::Result<Vec<but_core::TreeChange>> {
+        bail!("unexpected IDs {commit_id} {parent_id:?}");
+    };
+
+    // Should match both commits if we use a common prefix
+    snapbox::assert_data_eq!(
+        id_map
+            .parse("sws", Box::new(changed_paths_fn))
+            .unwrap()
+            .to_debug(),
+        snapbox::str![[r#"
+[
+    Commit {
+        commit_id: Sha1(0101010101010101010101010101010101010101),
+        id: "01",
+    },
+    Commit {
+        commit_id: Sha1(0202020202020202020202020202020202020202),
+        id: "02",
+    },
+]
+
+"#]],
+    );
+
+    snapbox::assert_data_eq!(
+        id_map
+            .parse("s#0", Box::new(changed_paths_fn))
+            .unwrap()
+            .to_debug(),
+        snapbox::str![[r#"
+[
+    Commit {
+        commit_id: Sha1(0101010101010101010101010101010101010101),
+        id: "01",
+    },
+]
+
+"#]],
+    );
+
+    snapbox::assert_data_eq!(
+        id_map
+            .parse("s#1", Box::new(changed_paths_fn))
+            .unwrap()
+            .to_debug(),
+        snapbox::str![[r#"
+[
+    Commit {
+        commit_id: Sha1(0202020202020202020202020202020202020202),
+        id: "02",
+    },
+]
+
+"#]],
+    )
 }
 
 mod util {
