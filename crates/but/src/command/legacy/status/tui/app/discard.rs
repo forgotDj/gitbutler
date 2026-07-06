@@ -10,8 +10,10 @@ use crate::{
     CliId,
     command::legacy::status::tui::{
         Message, ReloadCause, SelectAfterReload,
-        app::mark::MarkableRef,
-        app::{App, Modal, mark::commits_on_branch},
+        app::{
+            App, Modal,
+            mark::{MarkableRef, commits_on_branch},
+        },
         confirm::Confirm,
         key_bind::confirm_key_binds,
         message_on_drop,
@@ -233,7 +235,67 @@ impl App {
                         },
                     )
                 }
-                CliId::PathPrefix { .. } | CliId::CommittedFile { .. } => return Ok(()),
+                CliId::CommittedFile {
+                    commit_id,
+                    path,
+                    id: _,
+                } => {
+                    let commit_id = *commit_id;
+                    let path = path.to_owned();
+
+                    self.to_be_discarded = Vec::from([Arc::clone(cli_id)]);
+                    let drop_to_be_discarded =
+                        message_on_drop::message_on_drop(Message::DropToBeDiscarded, messages);
+
+                    Confirm::new(
+                        NonEmpty::new(format!("Discard changes to {path}?").into()),
+                        self.theme,
+                        move |ctx, messages| {
+                            let mut perm = ctx.exclusive_worktree_access();
+                            let mut meta = ctx.meta()?;
+                            let snapshot_details = SnapshotDetails::new(OperationKind::DiscardFile);
+
+                            let changes = {
+                                let context_lines = ctx.settings.context_lines;
+                                let (repo, ws, mut db) =
+                                    ctx.workspace_and_db_mut_with_perm(perm.read_permission())?;
+                                let mut builder =
+                                    DiffSpecBuilder::new(&mut db, &repo, &ws, context_lines);
+                                builder
+                                    .push_changes_from_committed_file(commit_id, path.as_ref())?;
+                                builder.into_diff_specs()
+                            };
+
+                            let (new_commit, _ws) = but_transaction::with_transaction_with_perm(
+                                ctx,
+                                &mut meta,
+                                perm.write_permission(),
+                                snapshot_details,
+                                DryRun::No,
+                                |mut tx| {
+                                    let new_commit =
+                                        tx.discard_changes_from_commit(commit_id, changes)?;
+                                    Ok(but_transaction::Commit(new_commit))
+                                },
+                            )?;
+
+                            let select_after_reload =
+                                if operations::commit_is_empty(ctx, new_commit)? {
+                                    SelectAfterReload::Commit(new_commit)
+                                } else {
+                                    SelectAfterReload::FirstFileInCommit(new_commit)
+                                };
+                            messages.push(Message::Reload(
+                                Some(select_after_reload),
+                                ReloadCause::Mutation,
+                            ));
+
+                            drop(drop_to_be_discarded);
+                            Ok(())
+                        },
+                    )
+                }
+                CliId::PathPrefix { .. } => return Ok(()),
             },
             key_binds: confirm_key_binds(),
         });

@@ -345,8 +345,8 @@ impl App {
                 FilesMessage::ToggleGlobalFilesList => {
                     self.handle_files_toggle_global_files_list(messages)
                 }
-                FilesMessage::ToggleFilesForCommit => {
-                    self.handle_files_toggle_files_for_commit(ctx, messages)?
+                FilesMessage::ToggleFilesForSelectedCommit => {
+                    self.handle_files_toggle_files_for_selected_commit(ctx, messages)?
                 }
             },
             Message::Reload(select_after_reload, cause) => {
@@ -675,7 +675,7 @@ impl App {
         messages.push(Message::Reload(None, ReloadCause::ViewOnly));
     }
 
-    fn handle_files_toggle_files_for_commit(
+    fn handle_files_toggle_files_for_selected_commit(
         &mut self,
         ctx: &mut Context,
         messages: &mut Vec<Message>,
@@ -734,6 +734,33 @@ impl App {
         select_after_reload: Option<SelectAfterReload>,
         cause: ReloadCause,
     ) -> anyhow::Result<()> {
+        if let Some(select_after_reload) = &select_after_reload {
+            match select_after_reload {
+                SelectAfterReload::FirstFileInCommit(commit_to_select) => {
+                    if let FilesStatusFlag::Commit(commit_shown) = self.flags.show_files
+                        && *commit_to_select != commit_shown
+                    {
+                        self.flags.show_files = FilesStatusFlag::Commit(*commit_to_select);
+                    }
+                }
+                SelectAfterReload::Commit(commit_to_select) => {
+                    if matches!(
+                        self.flags.show_files,
+                        FilesStatusFlag::Commit(_) | FilesStatusFlag::All
+                    ) && operations::commit_is_empty(ctx, *commit_to_select)?
+                    {
+                        self.flags.show_files = FilesStatusFlag::None;
+                        self.backstack.remove_show_file_list();
+                    }
+                }
+                SelectAfterReload::Branch(_)
+                | SelectAfterReload::Uncommitted
+                | SelectAfterReload::UncommittedFile { .. }
+                | SelectAfterReload::Stack(_)
+                | SelectAfterReload::CliId(_) => {}
+            }
+        }
+
         let new_lines = operations::reload_legacy(ctx, out, mode, self.flags, self.launch_options)?;
 
         self.cursor = if let Some(select_after_reload) = select_after_reload {

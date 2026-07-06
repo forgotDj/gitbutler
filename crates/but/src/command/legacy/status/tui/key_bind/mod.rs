@@ -718,7 +718,7 @@ impl KeyBindsBuilder<'_> {
         self.key_bind(
             "files",
             press().code(KeyCode::Char('f')),
-            Message::Files(FilesMessage::ToggleFilesForCommit),
+            Message::Files(FilesMessage::ToggleFilesForSelectedCommit),
         )
         .long_description("Show files in commit")
     }

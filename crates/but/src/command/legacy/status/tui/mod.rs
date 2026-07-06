@@ -678,7 +678,7 @@ enum ReloadCause {
 #[derive(Debug, Clone)]
 enum FilesMessage {
     ToggleGlobalFilesList,
-    ToggleFilesForCommit,
+    ToggleFilesForSelectedCommit,
 }
 
 /// What to select after reloading
