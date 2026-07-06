@@ -159,6 +159,7 @@ export const OperationTarget: FC<
 			Match.when({ _tag: "Absorb" }, () => (isAbsorptionTarget ? "into" : null)),
 			Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
 				mode.target &&
+				mode.operationType !== null &&
 				operandEquals(mode.target, target) &&
 				(mode.operationType !== "into" || !operandEquals(mode.source, target))
 					? mode.operationType
