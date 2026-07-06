@@ -489,3 +489,55 @@ fn discard_marked_committed_files_from_global_file_list() {
             "snapshots/discard_marked_committed_files_from_global_file_list_005.svg"
         ]);
 }
+
+#[test]
+fn global_file_list_stays_open_after_discarding_the_last_file_in_a_commit() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks");
+    env.setup_metadata(&["A", "B"]);
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render((KeyModifiers::SHIFT, 'F'))
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/global_file_list_stays_open_after_discarding_the_last_file_in_a_commit_001.svg"
+        ]);
+
+    // discard the file in the top commit
+    tui.input_then_render('j');
+    tui.input_then_render('j');
+    tui.input_then_render('j')
+        .assert_current_line_eq(str![["┊│     94:tm A A"]]);
+    tui.input_then_render('x');
+    tui.input_then_render('y');
+
+    // after discarding the last file in the commit the global file list should still be open
+    tui.input_then_render('g')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/global_file_list_stays_open_after_discarding_the_last_file_in_a_commit_002.svg"
+        ])
+        .assert_backstack_eq([BackstackEntry::ShowFileList]);
+}
+
+#[test]
+fn global_file_list_stays_open_after_marking_and_discarding_all_files_in_a_commit() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks");
+    env.setup_metadata(&["A", "B"]);
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render((KeyModifiers::SHIFT, 'F'));
+
+    tui.input_then_render('j');
+    tui.input_then_render('j');
+    tui.input_then_render('j');
+    tui.input_then_render(' ');
+    tui.input_then_render('x')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/global_file_list_stays_open_after_marking_and_discarding_all_files_in_a_commit_001.svg"
+        ]);
+    tui.input_then_render('y')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/global_file_list_stays_open_after_marking_and_discarding_all_files_in_a_commit_002.svg"
+        ])
+        .assert_backstack_eq([BackstackEntry::ShowFileList]);
+}

@@ -734,6 +734,11 @@ impl App {
         select_after_reload: Option<SelectAfterReload>,
         cause: ReloadCause,
     ) -> anyhow::Result<()> {
+        let close_empty_global_file_list_after_reload = matches!(
+            (&self.flags.show_files, &select_after_reload),
+            (FilesStatusFlag::All, Some(SelectAfterReload::Commit(_)))
+        );
+
         if let Some(select_after_reload) = &select_after_reload {
             match select_after_reload {
                 SelectAfterReload::FirstFileInCommit(commit_to_select) => {
@@ -744,10 +749,8 @@ impl App {
                     }
                 }
                 SelectAfterReload::Commit(commit_to_select) => {
-                    if matches!(
-                        self.flags.show_files,
-                        FilesStatusFlag::Commit(_) | FilesStatusFlag::All
-                    ) && operations::commit_is_empty(ctx, *commit_to_select)?
+                    if matches!(self.flags.show_files, FilesStatusFlag::Commit(_))
+                        && operations::commit_is_empty(ctx, *commit_to_select)?
                     {
                         self.flags.show_files = FilesStatusFlag::None;
                         self.backstack.remove_show_file_list();
@@ -800,6 +803,19 @@ impl App {
             }
         }
         .unwrap_or_else(|| Cursor::new(&new_lines));
+
+        if close_empty_global_file_list_after_reload
+            && !new_lines.iter().any(|line| {
+                matches!(
+                    &line.data,
+                    StatusOutputLineData::File { cli_id }
+                        if matches!(&**cli_id, CliId::CommittedFile { .. })
+                )
+            })
+        {
+            self.flags.show_files = FilesStatusFlag::None;
+            self.backstack.remove_show_file_list();
+        }
 
         self.status_lines = new_lines;
 
