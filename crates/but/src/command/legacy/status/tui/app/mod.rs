@@ -569,7 +569,7 @@ impl App {
                     && !self.restore_mode_before_jump()
                     && !self.restore_cursor_before_move_stack(messages)
                 {
-                    let marks = self.marks_ref().to_marks();
+                    let marks = self.marks_ref().to_owned();
                     self.mode.update(&mut self.backstack, |backstack, mode| {
                         let _ = backstack;
                         *mode = Mode::Normal(NormalMode { marks });

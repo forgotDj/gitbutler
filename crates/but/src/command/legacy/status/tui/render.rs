@@ -985,6 +985,14 @@ fn render_debug(app: &App, area: Rect, frame: &mut Frame) {
             .map(|line| ListItem::new(line.to_owned())),
     );
 
+    let marks = format!("{:#?}", app.marks_ref());
+    let marks = once(ListItem::new("Marks").black().on_blue()).chain(
+        marks
+            .lines()
+            .take(100)
+            .map(|line| ListItem::new(line.to_owned())),
+    );
+
     let details_selection = String::new();
     let details_worker_busy = format!("Worker busy: {}", app.details.worker_is_busy());
     let details_cache_size = format!("Cache size: {} lines", app.details.cache_size());
@@ -1009,6 +1017,8 @@ fn render_debug(app: &App, area: Rect, frame: &mut Frame) {
         renders
             .chain(once(ListItem::new("")))
             .chain(backstack)
+            .chain(once(ListItem::new("")))
+            .chain(marks)
             .chain(once(ListItem::new("")))
             .chain(details_selection)
             .chain(once(ListItem::new("")))

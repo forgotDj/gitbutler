@@ -399,3 +399,93 @@ fn discard_individual_committed_files_from_global_file_list() {
         ])
         .assert_backstack_eq([]);
 }
+
+#[test]
+fn discard_marked_committed_files_from_local_file_list() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("one", "");
+    env.file("two", "");
+    env.file("three", "");
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render('c');
+    tui.input_then_render('e');
+    tui.input_then_render('b');
+    tui.input_then_render('f')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_marked_committed_files_from_local_file_list_001.svg"
+        ]);
+
+    tui.input_then_render(' ');
+    tui.input_then_render(' ')
+        .assert_backstack_eq([BackstackEntry::Mark, BackstackEntry::ShowFileList])
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_marked_committed_files_from_local_file_list_002.svg"
+        ]);
+
+    tui.input_then_render('x')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_marked_committed_files_from_local_file_list_003.svg"
+        ]);
+    tui.input_then_render('y')
+        .assert_current_line_eq(str![["┊│     c0:tw A two"]])
+        .assert_backstack_eq([BackstackEntry::ShowFileList])
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_marked_committed_files_from_local_file_list_004.svg"
+        ]);
+
+    tui.input_then_render(' ')
+        .assert_backstack_eq([BackstackEntry::Mark, BackstackEntry::ShowFileList]);
+
+    tui.input_then_render('x');
+    tui.input_then_render('y')
+        .assert_current_line_eq(str![["┊●   0b42c46 (no commit message) (no changes)"]])
+        .assert_backstack_eq([])
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_marked_committed_files_from_local_file_list_005.svg"
+        ]);
+}
+
+#[test]
+fn discard_marked_committed_files_from_global_file_list() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("one", "");
+    env.file("two", "");
+    env.file("three", "");
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render('c');
+    tui.input_then_render('e');
+    tui.input_then_render('b');
+    tui.input_then_render((KeyModifiers::SHIFT, 'F'))
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_marked_committed_files_from_global_file_list_001.svg"
+        ]);
+
+    tui.input_then_render('j');
+    tui.input_then_render(' ');
+    tui.input_then_render(' ')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_marked_committed_files_from_global_file_list_002.svg"
+        ]);
+
+    tui.input_then_render('x')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_marked_committed_files_from_global_file_list_003.svg"
+        ]);
+    tui.input_then_render('y')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_marked_committed_files_from_global_file_list_004.svg"
+        ]);
+
+    tui.input_then_render('k')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_marked_committed_files_from_global_file_list_005.svg"
+        ]);
+}

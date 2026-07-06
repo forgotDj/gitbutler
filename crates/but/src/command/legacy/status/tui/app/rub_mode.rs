@@ -203,6 +203,7 @@ impl App {
                     commits.clone(),
                 )));
             }
+            Marks::CommittedFiles(..) => {}
         }
     }
 

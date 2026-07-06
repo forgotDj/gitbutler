@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use but_core::{DryRun, ref_metadata::StackId};
+use but_core::{DiffSpec, DryRun, ref_metadata::StackId};
 use but_ctx::Context;
 use gitbutler_oplog::entry::{OperationKind, SnapshotDetails};
-use gix::refs::Category;
+use gix::{ObjectId, refs::Category};
 use nonempty::NonEmpty;
 
 use crate::{
@@ -22,6 +22,8 @@ use crate::{
     },
     utils::diff_specs::DiffSpecBuilder,
 };
+
+use super::mark::Marks;
 
 impl App {
     pub fn select_top_branch_for_stack_after_reload(
@@ -316,30 +318,53 @@ impl App {
             return Ok(());
         }
 
-        let commits = normal_mode
+        let commits_to_discard = normal_mode
             .marks
             .iter()
             .filter_map(|mark| match mark {
                 MarkableRef::Commit(mark) => Some(mark.commit_id),
-                MarkableRef::Uncommitted(..) => None,
+                _ => None,
             })
             .collect::<Vec<_>>();
 
-        let uncommitted_diff_specs = {
+        enum ChangesToDiscard {
+            Uncommitted(Vec<DiffSpec>),
+            CommittedFiles(ObjectId, Vec<DiffSpec>),
+        }
+
+        let changes_to_discard = {
             let context_lines = ctx.settings.context_lines;
             let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
             let mut builder = DiffSpecBuilder::new(&mut db, &repo, &ws, context_lines);
 
-            for mark in normal_mode.marks.iter() {
-                match mark {
-                    MarkableRef::Uncommitted(uncommitted) => {
-                        builder.push_changes_from_uncommitted(uncommitted)?;
+            match &normal_mode.marks {
+                Marks::Empty | Marks::Commits(..) => None,
+                Marks::Hunks(hunks) => {
+                    for hunk in hunks {
+                        builder.push_changes_from_uncommitted(hunk)?;
                     }
-                    MarkableRef::Commit { .. } => {}
+                    Some(ChangesToDiscard::Uncommitted(builder.into_diff_specs()))
+                }
+                Marks::CommittedFiles(files) => {
+                    let commit = files.head.commit_id;
+                    for file in files {
+                        // One day the API will support this but it doesn't right now.
+                        //
+                        // Linear ticket: https://linear.app/gitbutler/issue/GB-1684/missing-api-moving-hunks-between-commits-with-multiple-sources
+                        anyhow::ensure!(
+                            commit == file.commit_id,
+                            "BUG: it should not be possible to mark commits from multiple sources"
+                        );
+
+                        builder
+                            .push_changes_from_committed_file(file.commit_id, file.path.as_ref())?;
+                    }
+                    Some(ChangesToDiscard::CommittedFiles(
+                        commit,
+                        builder.into_diff_specs(),
+                    ))
                 }
             }
-
-            builder.into_diff_specs()
         };
 
         self.to_be_discarded = normal_mode
@@ -367,16 +392,27 @@ impl App {
                     snapshot_details,
                     DryRun::No,
                     |mut tx| {
-                        if !commits.is_empty() {
-                            tx.discard_commits(commits)?;
+                        if !commits_to_discard.is_empty() {
+                            tx.discard_commits(commits_to_discard)?;
                         }
 
-                        if !uncommitted_diff_specs.is_empty() {
-                            but_workspace::discard_workspace_changes(
-                                tx.repo(),
-                                uncommitted_diff_specs,
-                                tx.context_lines(),
-                            )?;
+                        if let Some(changes_to_discard) = changes_to_discard {
+                            match changes_to_discard {
+                                ChangesToDiscard::Uncommitted(changes) => {
+                                    if !changes.is_empty() {
+                                        but_workspace::discard_workspace_changes(
+                                            tx.repo(),
+                                            changes,
+                                            tx.context_lines(),
+                                        )?;
+                                    }
+                                }
+                                ChangesToDiscard::CommittedFiles(commit, changes) => {
+                                    if !changes.is_empty() {
+                                        tx.discard_changes_from_commit(commit, changes)?;
+                                    }
+                                }
+                            }
                         }
 
                         Ok(())
@@ -390,6 +426,14 @@ impl App {
                             .copied()
                             .unwrap_or(target_commit_id);
                         SelectAfterReload::Commit(remapped_target_commit_id)
+                    }
+                    SelectAfterReload::FirstFileInCommit(target_commit_id) => {
+                        let remapped_target_commit_id = workspace
+                            .replaced_commits
+                            .get(&target_commit_id)
+                            .copied()
+                            .unwrap_or(target_commit_id);
+                        SelectAfterReload::FirstFileInCommit(remapped_target_commit_id)
                     }
                     other => other,
                 });

@@ -148,7 +148,8 @@ where
     for markable in markables {
         match markable {
             MarkableRef::Uncommitted(hunk) => marks.insert_mark(hunk.clone()).unwrap(),
-            MarkableRef::Commit(commit) => marks.insert_mark(commit.to_marked_commit()).unwrap(),
+            MarkableRef::Commit(commit) => marks.insert_mark(commit.to_owned()).unwrap(),
+            MarkableRef::CommittedFile(file) => marks.insert_mark(file.to_owned()).unwrap(),
         }
     }
     marks
