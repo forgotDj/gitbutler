@@ -173,24 +173,6 @@ export const OperationTarget: FC<
 		);
 	});
 
-	const targetEl = useRender({
-		render,
-		ref: dropRef,
-		props: mergeProps<"div">(props, {
-			className: classes(
-				activeTargetOperationType === "into" &&
-					classes(
-						styles.activeTarget,
-						Match.value(outline).pipe(
-							Match.when("inside", () => styles.activeTargetInside),
-							Match.when("outside", () => styles.activeTargetOutside),
-							Match.exhaustive,
-						),
-					),
-			),
-		}),
-	});
-
 	const tooltip = useAppSelector((state) => {
 		const outlineMode = selectProjectOutlineModeState(state, projectId);
 
@@ -218,6 +200,24 @@ export const OperationTarget: FC<
 					Match.orElse(() => undefined),
 				)
 			: undefined;
+	});
+
+	const targetEl = useRender({
+		render,
+		ref: dropRef,
+		props: mergeProps<"div">(props, {
+			className: classes(
+				activeTargetOperationType === "into" &&
+					classes(
+						styles.activeTarget,
+						Match.value(outline).pipe(
+							Match.when("inside", () => styles.activeTargetInside),
+							Match.when("outside", () => styles.activeTargetOutside),
+							Match.exhaustive,
+						),
+					),
+			),
+		}),
 	});
 
 	return (
