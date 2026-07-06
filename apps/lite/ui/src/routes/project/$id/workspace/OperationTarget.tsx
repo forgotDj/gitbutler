@@ -15,7 +15,7 @@ import {
 	attachInstruction,
 	extractInstruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
-import { mergeProps, Tooltip, useRender } from "@base-ui/react";
+import { Tooltip, useRender } from "@base-ui/react";
 import { Match, pipe } from "effect";
 import { FC, useEffect, useEffectEvent, useRef } from "react";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
@@ -205,19 +205,7 @@ export const OperationTarget: FC<
 	const targetEl = useRender({
 		render,
 		ref: dropRef,
-		props: mergeProps<"div">(props, {
-			className: classes(
-				activeTargetOperationType === "into" &&
-					classes(
-						styles.activeTarget,
-						Match.value(outline).pipe(
-							Match.when("inside", () => styles.activeTargetInside),
-							Match.when("outside", () => styles.activeTargetOutside),
-							Match.exhaustive,
-						),
-					),
-			),
-		}),
+		props,
 	});
 
 	return (
@@ -229,7 +217,17 @@ export const OperationTarget: FC<
 					Match.value,
 					Match.when("above", () => classes(styles.insertionTarget, styles.insertionTargetAbove)),
 					Match.when("below", () => classes(styles.insertionTarget, styles.insertionTargetBelow)),
-					Match.whenOr("into", null, () => undefined),
+					Match.when("into", () =>
+						classes(
+							styles.activeTarget,
+							Match.value(outline).pipe(
+								Match.when("inside", () => styles.activeTargetInside),
+								Match.when("outside", () => styles.activeTargetOutside),
+								Match.exhaustive,
+							),
+						),
+					),
+					Match.when(null, () => undefined),
 					Match.exhaustive,
 				)}
 			/>
