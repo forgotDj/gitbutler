@@ -196,7 +196,7 @@ export const OperationTarget: FC<
 	const tooltip =
 		activeTargetOperationType !== null
 			? Match.value(outlineMode).pipe(
-					Match.when({ _tag: "Absorb" }, () => <>Absorb target</>),
+					Match.when({ _tag: "Absorb" }, () => "Absorb target"),
 					Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
 						mode.target && mode.operationType !== null
 							? getOperation({
