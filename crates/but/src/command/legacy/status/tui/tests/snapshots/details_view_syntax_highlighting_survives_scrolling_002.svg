@@ -654,7 +654,7 @@
   <text x="762" y="42" style="fill:#66D9EF;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">3</text>
   <text x="770" y="42" style="fill:#66D9EF;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">2</text>
   <text x="786" y="42" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">{</text>
-  <text x="802" y="42" style="fill:#66D9EF;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">l</text>
+  <text x="802" y="42" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">█</text>
   <text x="10" y="60" style="fill:#CCCCCC;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
   <text x="410" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
   <text x="434" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>

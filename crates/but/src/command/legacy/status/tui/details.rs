@@ -17,6 +17,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Stylize as _},
     text::Line,
+    widgets::{Scrollbar, ScrollbarOrientation, ScrollbarState},
 };
 use syntect::{easy::HighlightLines, highlighting, parsing::SyntaxSet};
 
@@ -119,6 +120,15 @@ impl Details {
             | ChannelLineReader::Finished
             | ChannelLineReader::Failed => false,
             ChannelLineReader::Started { .. } => true,
+        }
+    }
+
+    pub fn started_polling_thread_at(&self) -> Option<Instant> {
+        match &self.line_reader {
+            ChannelLineReader::Started { start, .. } => Some(*start),
+            ChannelLineReader::NotStarted
+            | ChannelLineReader::Finished
+            | ChannelLineReader::Failed => None,
         }
     }
 
@@ -495,8 +505,9 @@ impl Details {
         let mut layout_cache = self.layout_cache.borrow_mut();
         layout_cache.update(area.width, &self.lines);
 
-        let total_display_lines = layout_cache.total_display_lines();
         let viewport_height = area.height as usize;
+        let total_display_lines = layout_cache.total_display_lines();
+        let show_scrollbar = total_display_lines > viewport_height;
         let max_scroll_top = total_display_lines.saturating_sub(viewport_height);
 
         match self.scroll.take_pending() {
@@ -549,6 +560,38 @@ impl Details {
                 break;
             }
         }
+
+        // Draw the scrollbar over the content instead of reserving a column for it.
+        // Reserving a column changes the text width, so the layout cache would need
+        // to recompute wrapped line heights when the scrollbar appears, which is
+        // expensive for large diffs.
+        if show_scrollbar && max_scroll_top > 0 {
+            self.render_scrollbar(area, scroll_top, max_scroll_top, frame);
+        }
+    }
+
+    fn render_scrollbar(
+        &self,
+        area: Rect,
+        scroll_top: usize,
+        max_scroll_top: usize,
+        frame: &mut Frame,
+    ) {
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(None)
+            .end_symbol(None)
+            .thumb_symbol("█")
+            .track_symbol(None)
+            .style(self.theme.border);
+        let mut scrollbar_state =
+            ScrollbarState::new(max_scroll_top.saturating_add(1)).position(scroll_top);
+        let scrollbar_area = Rect {
+            x: area.right().saturating_sub(1),
+            y: area.y,
+            width: 1,
+            height: area.height,
+        };
+        frame.render_stateful_widget(scrollbar, scrollbar_area, &mut scrollbar_state);
     }
 
     #[allow(clippy::ptr_arg)]
@@ -1023,26 +1066,28 @@ struct LayoutCache {
 
 impl LayoutCache {
     fn update(&mut self, width: u16, lines: &[DetailsLine]) {
-        if self.width != width || self.line_count > lines.len() {
-            self.rebuild(width, lines);
-            return;
-        }
+        count_allocations("update_cache", || {
+            if self.width != width || self.line_count > lines.len() {
+                self.rebuild(width, lines);
+                return;
+            }
 
-        if self.line_count == lines.len() {
-            return;
-        }
+            if self.line_count == lines.len() {
+                return;
+            }
 
-        if self.prefix_sum.is_empty() {
-            self.prefix_sum.push(0);
-        }
+            if self.prefix_sum.is_empty() {
+                self.prefix_sum.push(0);
+            }
 
-        for line in &lines[self.line_count..] {
-            let height = display_height(line, width);
-            self.heights.push(height);
-            let next = self.prefix_sum.last().copied().unwrap_or_default() + height;
-            self.prefix_sum.push(next);
-        }
-        self.line_count = lines.len();
+            for line in &lines[self.line_count..] {
+                let height = display_height(line, width);
+                self.heights.push(height);
+                let next = self.prefix_sum.last().copied().unwrap_or_default() + height;
+                self.prefix_sum.push(next);
+            }
+            self.line_count = lines.len();
+        });
     }
 
     fn rebuild(&mut self, width: u16, lines: &[DetailsLine]) {

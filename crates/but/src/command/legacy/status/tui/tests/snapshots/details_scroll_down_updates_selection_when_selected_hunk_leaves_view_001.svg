@@ -847,6 +847,7 @@
   <text x="122" y="60" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">-</text>
   <text x="130" y="60" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">0</text>
   <text x="138" y="60" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">3</text>
+  <text x="802" y="60" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">█</text>
   <text x="26" y="78" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
   <text x="42" y="78" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">4</text>
   <text x="58" y="78" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
@@ -859,6 +860,7 @@
   <text x="122" y="78" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">-</text>
   <text x="130" y="78" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">0</text>
   <text x="138" y="78" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">4</text>
+  <text x="802" y="78" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">█</text>
   <text x="26" y="96" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
   <text x="42" y="96" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">5</text>
   <text x="58" y="96" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
@@ -871,6 +873,7 @@
   <text x="122" y="96" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">-</text>
   <text x="130" y="96" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">0</text>
   <text x="138" y="96" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">5</text>
+  <text x="802" y="96" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">█</text>
   <text x="26" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
   <text x="42" y="114" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">6</text>
   <text x="58" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
@@ -883,6 +886,7 @@
   <text x="122" y="114" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">-</text>
   <text x="130" y="114" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">0</text>
   <text x="138" y="114" style="fill:#F8F8F2;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">6</text>
+  <text x="802" y="114" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">█</text>
   <text x="26" y="132" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">┊</text>
   <text x="42" y="132" style="fill:#00AA00;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">7</text>
   <text x="58" y="132" style="fill:#555555;" font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">│</text>
