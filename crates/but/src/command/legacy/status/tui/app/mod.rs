@@ -549,7 +549,11 @@ impl App {
             self.handle_backstack_entry(entry, messages);
         }
 
-        self.maybe_move_cursor_into_file_list();
+        if !self.maybe_move_cursor_into_file_list() {
+            // the cursor didn't move back into a file list but thats fine since all lines are
+            // selectable in normal mode. So we don't need to worry about the cursor being in an
+            // invalid position
+        }
     }
 
     fn handle_back(&mut self, messages: &mut Vec<Message>) {
@@ -571,7 +575,9 @@ impl App {
                         *mode = Mode::Normal(NormalMode { marks });
                     });
                 }
-                self.maybe_move_cursor_into_file_list();
+                if !self.maybe_move_cursor_into_file_list() {
+                    self.ensure_cursor_is_on_selectable_line();
+                }
             }
             BackstackEntry::ShowFileList => {
                 self.flags.show_files = FilesStatusFlag::None;
@@ -605,7 +611,8 @@ impl App {
         }
     }
 
-    fn maybe_move_cursor_into_file_list(&mut self) {
+    #[must_use]
+    fn maybe_move_cursor_into_file_list(&mut self) -> bool {
         match self.flags.show_files {
             FilesStatusFlag::Commit(object_id) => {
                 // When viewing files in a commit cursor movement is constrained to only those
@@ -614,7 +621,7 @@ impl App {
                 // (perhaps from cancelling the rub) we need to potentially move the cursor back to
                 // the file list.
                 let Some(selection) = self.cursor.selected_line(&self.status_lines) else {
-                    return;
+                    return false;
                 };
 
                 if let Some(cli_id) = selection.data.cli_id()
@@ -622,13 +629,35 @@ impl App {
                     && *commit_id == object_id
                 {
                     // cursor is already within the file list
+                    true
                 } else {
                     self.cursor =
                         Cursor::select_first_file_in_commit(object_id, &self.status_lines)
                             .unwrap_or(self.cursor);
+                    true
                 }
             }
-            FilesStatusFlag::None | FilesStatusFlag::All => {}
+            FilesStatusFlag::None | FilesStatusFlag::All => false,
+        }
+    }
+
+    fn ensure_cursor_is_on_selectable_line(&mut self) {
+        let Some(line) = self.cursor.selected_line(&self.status_lines) else {
+            return;
+        };
+
+        if !is_selectable_in_mode(line, &self.mode, self.flags.show_files) {
+            if let Some(new_cursor) =
+                self.cursor
+                    .move_down(&self.status_lines, &self.mode, self.flags.show_files)
+            {
+                self.cursor = new_cursor;
+            } else if let Some(new_cursor) =
+                self.cursor
+                    .move_up(&self.status_lines, &self.mode, self.flags.show_files)
+            {
+                self.cursor = new_cursor;
+            }
         }
     }
 

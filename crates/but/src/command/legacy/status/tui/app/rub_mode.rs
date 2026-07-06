@@ -277,17 +277,7 @@ impl App {
             return;
         }
 
-        if let Some(new_cursor) =
-            self.cursor
-                .move_down(&self.status_lines, &self.mode, self.flags.show_files)
-        {
-            self.cursor = new_cursor;
-        } else if let Some(new_cursor) =
-            self.cursor
-                .move_up(&self.status_lines, &self.mode, self.flags.show_files)
-        {
-            self.cursor = new_cursor;
-        }
+        self.ensure_cursor_is_on_selectable_line();
     }
 
     fn handle_rub_start_reverse(&mut self, ctx: &mut Context) -> anyhow::Result<()> {
