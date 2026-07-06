@@ -117,17 +117,11 @@
 					{/snippet}
 
 					{#snippet caption()}
-						Bitbucket Cloud authenticates with an Atlassian API token (with scopes). Use your
-						Atlassian account email and a token created from
+						Requires an API token with read/write access to repositories and pull requests.
+						<br />
 						<Link href="https://id.atlassian.com/manage-profile/security/api-tokens"
-							>id.atlassian.com</Link
-						>, choose “Create API token with scopes”, select Bitbucket, and grant:
-						<span class="bitbucket-scopes">
-							<code>read:user:bitbucket</code> — sign in & identify your account<br />
-							<code>read:repository:bitbucket</code> — repository metadata<br />
-							<code>read:pullrequest:bitbucket</code> — list pull requests<br />
-							<code>write:pullrequest:bitbucket</code> — create, update & merge
-						</span>
+							>Create one on id.atlassian.com</Link
+						>
 					{/snippet}
 
 					<Textbox
@@ -189,18 +183,5 @@
 
 	.bitbucket-integration-settings__text {
 		color: var(--text-2);
-	}
-
-	.bitbucket-scopes {
-		display: inline-block;
-		margin-top: 6px;
-		line-height: 1.6;
-
-		& code {
-			padding: 1px 4px;
-			border-radius: var(--radius-s);
-			background-color: var(--bg-2);
-			font-family: var(--font-mono, monospace);
-		}
 	}
 </style>
