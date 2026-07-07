@@ -175,7 +175,7 @@ impl TestTui {
     }
 
     #[track_caller]
-    pub fn input_then_render<E>(&mut self, event: E) -> TestTuiInputThenRenderResult<'_>
+    pub fn input<E>(&mut self, event: E) -> TestTuiInputThenRenderResult<'_>
     where
         E: InputEventPolling,
     {
