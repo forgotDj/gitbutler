@@ -47,6 +47,22 @@ fn details_view_updates_with_selection_changes() {
 }
 
 #[test]
+fn manual_reload_does_not_highlight_details_when_status_is_focused() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+    env.file("uncommitted.txt", "changed\n");
+
+    let mut tui = test_tui(env);
+
+    tui.input('d');
+
+    tui.input((KeyModifiers::CONTROL, 'r'))
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/manual_reload_does_not_highlight_details_when_status_is_focused_001.svg"
+        ]);
+}
+
+#[test]
 fn details_view_supports_scroll_controls() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
     env.setup_metadata(&["A"]);
