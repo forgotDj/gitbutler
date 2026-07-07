@@ -617,3 +617,113 @@ fn viewing_empty_file() {
     tui.input_then_render('d')
         .assert_rendered_term_svg_eq(file!["snapshots/viewing_empty_file_001.svg"]);
 }
+
+#[test]
+fn discard_hunk_from_detail_view_via_uncommitted() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("one", "content of one");
+    env.file("two", "content of two");
+    env.file("three", "content of three");
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render('d');
+    tui.input_then_render('l');
+    tui.input_then_render((KeyModifiers::SHIFT, 'G'))
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_hunk_from_detail_view_via_uncommitted_001.svg"
+        ]);
+
+    tui.input_then_render('x')
+        .assert_rendered_contains("Discard hunk twop:b two?")
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_hunk_from_detail_view_via_uncommitted_002.svg"
+        ]);
+    tui.input_then_render('y')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_hunk_from_detail_view_via_uncommitted_003.svg"
+        ]);
+
+    tui.input_then_render('x')
+        .assert_rendered_contains("Discard hunk or:f three?")
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_hunk_from_detail_view_via_uncommitted_004.svg"
+        ]);
+    tui.input_then_render('y')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_hunk_from_detail_view_via_uncommitted_005.svg"
+        ]);
+
+    tui.input_then_render('x')
+        .assert_rendered_contains("Discard hunk kl:f one?")
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_hunk_from_detail_view_via_uncommitted_006.svg"
+        ]);
+    tui.input_then_render('y')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_hunk_from_detail_view_via_uncommitted_007.svg"
+        ]);
+}
+
+#[test]
+fn discard_hunk_from_detail_view_via_file() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("one", "content of one");
+    env.file("two", "content of two");
+    env.file("three", "content of three");
+
+    env.file(
+        "x-file",
+        Vec::from([
+            "line 1", "line 2", "line 3", "line 4", "line 5", "line 6", "line 7", "line 8",
+            "line 9",
+        ])
+        .join("\n"),
+    );
+
+    let mut tui = test_tui(env);
+
+    tui.input_then_render('j');
+    tui.input_then_render('j');
+    tui.input_then_render('j');
+    tui.input_then_render('j');
+    tui.input_then_render('c');
+    tui.input_then_render('e');
+    tui.input_then_render('b');
+
+    tui.env().prepend_file("x-file", "new first line");
+    tui.env().append_file("x-file", "new first line");
+
+    tui.reload().assert_rendered_term_svg_eq(file![
+        "snapshots/discard_hunk_from_detail_view_via_file_001.svg"
+    ]);
+
+    tui.input_then_render('g');
+    tui.input_then_render('j');
+    tui.input_then_render('j');
+    tui.input_then_render('j');
+    tui.input_then_render('j')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_hunk_from_detail_view_via_file_002.svg"
+        ]);
+    tui.input_then_render('d');
+    tui.input_then_render('l');
+
+    tui.input_then_render((KeyModifiers::SHIFT, 'G'));
+    tui.input_then_render('x')
+        .assert_rendered_contains("Discard hunk px:0 x-file?");
+    tui.input_then_render('y')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_hunk_from_detail_view_via_file_003.svg"
+        ]);
+
+    tui.input_then_render('x');
+    tui.input_then_render('y')
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/discard_hunk_from_detail_view_via_file_004.svg"
+        ]);
+}

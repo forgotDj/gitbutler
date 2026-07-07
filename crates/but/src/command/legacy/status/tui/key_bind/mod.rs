@@ -65,6 +65,9 @@ pub fn default_key_binds() -> KeyBinds {
                 builder.details_scroll_down().register();
                 builder.details_next_hunk().register();
                 builder.details_prev_hunk().register();
+
+                builder.details_discard().register();
+
                 builder.details_jump_up().register();
                 builder.details_jump_down().register();
 
@@ -891,6 +894,12 @@ impl KeyBindsBuilder<'_> {
             press().code(KeyCode::Char('j')).alt_code(KeyCode::Down),
             || Message::Details(DetailsMessage::ScrollDown(1)),
         )
+    }
+
+    fn details_discard(&mut self) -> KeyBindsInModesBuilder<'_> {
+        self.key_bind("discard", press().code(KeyCode::Char('x')), || {
+            Message::Details(DetailsMessage::Discard)
+        })
     }
 
     fn details_jump_up(&mut self) -> KeyBindsInModesBuilder<'_> {

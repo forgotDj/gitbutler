@@ -737,10 +737,35 @@ impl App {
         select_after_reload: Option<SelectAfterReload>,
         cause: ReloadCause,
     ) -> anyhow::Result<()> {
+        tracing::debug!("handle_reload");
+
         let close_empty_global_file_list_after_reload = matches!(
             (&self.flags.show_files, &select_after_reload),
             (FilesStatusFlag::All, Some(SelectAfterReload::Commit(_)))
         );
+
+        let select_details_section_after_reload = match &select_after_reload {
+            Some(SelectAfterReload::UncommittedDetailsSection { index, direction }) => {
+                Some((*index, *direction))
+            }
+            Some(SelectAfterReload::Commit(_))
+            | Some(SelectAfterReload::FirstFileInCommit(_))
+            | Some(SelectAfterReload::UncommittedFile { .. })
+            | Some(SelectAfterReload::Branch(_))
+            | Some(SelectAfterReload::Stack(_))
+            | Some(SelectAfterReload::CliId(_))
+            | Some(SelectAfterReload::Uncommitted)
+            | None => None,
+        };
+
+        let status_selection_before_details_reload = select_details_section_after_reload
+            .is_some()
+            .then(|| {
+                self.cursor
+                    .selection_cli_id_for_reload(&self.status_lines, self.flags.show_files)
+                    .cloned()
+            })
+            .flatten();
 
         if let Some(select_after_reload) = &select_after_reload {
             match select_after_reload {
@@ -762,6 +787,7 @@ impl App {
                 SelectAfterReload::Branch(_)
                 | SelectAfterReload::Uncommitted
                 | SelectAfterReload::UncommittedFile { .. }
+                | SelectAfterReload::UncommittedDetailsSection { .. }
                 | SelectAfterReload::Stack(_)
                 | SelectAfterReload::CliId(_) => {}
             }
@@ -776,6 +802,12 @@ impl App {
                 }
                 SelectAfterReload::Branch(branch) => Cursor::select_branch(&branch, &new_lines),
                 SelectAfterReload::Uncommitted => Cursor::select_uncommitted(&new_lines),
+                SelectAfterReload::UncommittedDetailsSection { .. } => {
+                    status_selection_before_details_reload
+                        .as_deref()
+                        .and_then(|cli_id| Cursor::restore(cli_id, &new_lines))
+                        .or_else(|| Cursor::select_uncommitted(&new_lines))
+                }
                 SelectAfterReload::UncommittedFile { path, stack_id } => {
                     Cursor::select_uncommitted_file(path.as_ref(), stack_id, &new_lines)
                 }
@@ -826,6 +858,9 @@ impl App {
             match cause {
                 ReloadCause::Mutation | ReloadCause::Watcher | ReloadCause::Manual => {
                     self.details.clear_selection();
+                    if let Some((index, direction)) = select_details_section_after_reload {
+                        self.details.select_section_when_available(index, direction);
+                    }
                 }
                 ReloadCause::ViewOnly => {}
             }

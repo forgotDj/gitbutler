@@ -28,7 +28,7 @@ use crate::{
             backstack::{Backstack, BackstackEntry},
             confirm::ConfirmMessage,
             cursor::Cursor,
-            details::DetailsMessage,
+            details::{DetailsMessage, ScrollDirection},
             event_polling::{CrosstermEventPolling, EventPolling, NoopEventPolling},
             fuzzy_picker::{
                 Col, FuzzyPicker, FuzzyPickerItem, FuzzyPickerMessage, SearchableToken,
@@ -331,7 +331,7 @@ where
         app.should_render = true;
     }
 
-    if app.details.highlights.update() {
+    if app.details.update_highlights() {
         app.should_render = true;
     }
 
@@ -606,7 +606,6 @@ enum Message {
     ClearNormalModeMarks,
     Undo,
     Redo,
-    #[expect(dead_code)]
     ShowModal(Modal),
 
     // Utilities
@@ -691,6 +690,10 @@ enum SelectAfterReload {
     UncommittedFile {
         path: BString,
         stack_id: Option<StackId>,
+    },
+    UncommittedDetailsSection {
+        index: usize,
+        direction: ScrollDirection,
     },
     Branch(String),
     Stack(StackId),
