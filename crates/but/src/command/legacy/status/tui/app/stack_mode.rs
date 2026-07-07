@@ -112,7 +112,7 @@ impl ReorderStackSource {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum StackMessage {
     Enter,
     ShowApplyPicker,

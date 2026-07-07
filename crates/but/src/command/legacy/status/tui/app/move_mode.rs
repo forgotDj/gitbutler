@@ -149,7 +149,7 @@ impl TryFrom<CliId> for MoveSource {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum MoveMessage {
     Start,
     ToggleInsertSide,

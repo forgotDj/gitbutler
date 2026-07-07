@@ -597,7 +597,7 @@ fn select_after_discarded_marks_keeps_unmarked_current_uncommitted_selected() {
 
     assert!(matches!(
         Cursor(2).select_after_discarded_marks(&lines, &discarded_marks),
-        Some(SelectAfterReload::CliId(cli_id)) if *cli_id == **current_cli_id
+        Some(SelectAfterReload::CliId(cli_id)) if cli_id.as_ref() == &**current_cli_id
     ));
 }
 
@@ -615,7 +615,7 @@ fn select_after_discarded_marks_selects_unmarked_uncommitted_below_marked_top_un
 
     assert!(matches!(
         Cursor(1).select_after_discarded_marks(&lines, &discarded_marks),
-        Some(SelectAfterReload::CliId(cli_id)) if *cli_id == **below_cli_id
+        Some(SelectAfterReload::CliId(cli_id)) if cli_id.as_ref() == &**below_cli_id
     ));
 }
 
@@ -634,7 +634,7 @@ fn select_after_discarded_marks_selects_unmarked_uncommitted_below_marked_middle
 
     assert!(matches!(
         Cursor(2).select_after_discarded_marks(&lines, &discarded_marks),
-        Some(SelectAfterReload::CliId(cli_id)) if *cli_id == **below_cli_id
+        Some(SelectAfterReload::CliId(cli_id)) if cli_id.as_ref() == &**below_cli_id
     ));
 }
 
@@ -652,7 +652,7 @@ fn select_after_discarded_marks_selects_unmarked_uncommitted_above_marked_bottom
 
     assert!(matches!(
         Cursor(2).select_after_discarded_marks(&lines, &discarded_marks),
-        Some(SelectAfterReload::CliId(cli_id)) if *cli_id == **above_cli_id
+        Some(SelectAfterReload::CliId(cli_id)) if cli_id.as_ref() == &**above_cli_id
     ));
 }
 
@@ -669,7 +669,7 @@ fn select_after_discarded_marks_selects_header_above_marked_uncommitted() {
 
     assert!(matches!(
         Cursor(1).select_after_discarded_marks(&lines, &discarded_marks),
-        Some(SelectAfterReload::CliId(cli_id)) if *cli_id == **header_cli_id
+        Some(SelectAfterReload::CliId(cli_id)) if cli_id.as_ref() == &**header_cli_id
     ));
 }
 

@@ -38,7 +38,7 @@ impl App {
             } = &**cli_id
                 && *branch_stack_id == stack_id
             {
-                Some(SelectAfterReload::CliId(Arc::clone(cli_id)))
+                Some(SelectAfterReload::CliId(Box::new((**cli_id).clone())))
             } else {
                 None
             }
