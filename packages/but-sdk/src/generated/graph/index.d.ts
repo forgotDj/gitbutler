@@ -52,7 +52,7 @@ export declare function assignHunk(projectId: string, assignments: Array<HunkAss
  * Checks out an existing local branch and returns the resulting workspace state.
  *
  * This acquires exclusive worktree access from `ctx`, updates the worktree and
- * index through [`but_core::worktree::safe_checkout()`], then points `HEAD`
+ * index through [`but_core::worktree::safe_checkout_from_head()`], then points `HEAD`
  * symbolically at `branch`. The branch must be an existing full local branch
  * name under `refs/heads/`.
  */
