@@ -31,7 +31,6 @@ use crate::{
         count_allocations,
         details::worker::Worker,
         highlight::{self, Highlights},
-        key_bind::confirm_key_binds,
         message_on_drop::message_on_drop,
         render::available_lines_in_area,
     },
@@ -1106,10 +1105,7 @@ impl Details {
             },
         );
 
-        messages.push(Message::ShowModal(Modal::Confirm {
-            confirm,
-            key_binds: confirm_key_binds(),
-        }));
+        messages.push(Message::ShowModal(Modal::Confirm { confirm }));
     }
 }
 

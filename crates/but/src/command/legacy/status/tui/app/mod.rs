@@ -38,7 +38,7 @@ use super::{
     help::Help,
     highlight::Highlights,
     key_bind::{
-        KeyBinds, default_key_binds, fuzzy_picker_key_binds, help_key_binds,
+        KeyBinds, confirm_key_binds, default_key_binds, fuzzy_picker_key_binds, help_key_binds,
         normal_with_marks_key_binds,
     },
     mode::Mode,
@@ -134,6 +134,7 @@ impl App {
         let app_key_binds = AppKeyBinds {
             key_binds: default_key_binds(),
             normal_with_marks_key_binds: normal_with_marks_key_binds(),
+            confirm_key_binds: confirm_key_binds(),
         };
 
         let mode = RememberToUpdateBackstack::new(match run_options {
@@ -175,8 +176,8 @@ impl App {
 
     pub fn active_key_binds(&self) -> &KeyBinds {
         match &self.modal {
-            Some(Modal::Confirm { key_binds, .. })
-            | Some(Modal::GotoBranchPicker { key_binds, .. })
+            Some(Modal::Confirm { .. }) => &self.app_key_binds.confirm_key_binds,
+            Some(Modal::GotoBranchPicker { key_binds, .. })
             | Some(Modal::ApplyStackPicker { key_binds, .. })
             | Some(Modal::CopySelectionPicker { key_binds, .. })
             | Some(Modal::Help { key_binds, .. }) => key_binds,
@@ -376,10 +377,10 @@ impl App {
                 self.toasts.insert(kind, text);
             }
             Message::Confirm(confirm_message) => match self.modal.take() {
-                Some(Modal::Confirm { confirm, key_binds }) => {
+                Some(Modal::Confirm { confirm }) => {
                     self.modal = confirm
                         .handle_message(confirm_message, ctx, messages)?
-                        .map(|confirm| Modal::Confirm { confirm, key_binds });
+                        .map(|confirm| Modal::Confirm { confirm });
                 }
                 modal => self.modal = modal,
             },
@@ -1216,13 +1217,13 @@ impl StatusScroll {
 pub struct AppKeyBinds {
     key_binds: KeyBinds,
     normal_with_marks_key_binds: KeyBinds,
+    confirm_key_binds: KeyBinds,
 }
 
 #[derive(Debug)]
 pub enum Modal {
     Confirm {
         confirm: Confirm,
-        key_binds: KeyBinds,
     },
     CopySelectionPicker {
         picker: Box<FuzzyPicker<CopySelectionItem>>,
