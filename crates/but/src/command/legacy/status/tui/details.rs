@@ -156,13 +156,15 @@ impl Details {
         self.reset_line_reader();
     }
 
-    pub fn clear_selection(&mut self) {
+    pub fn clear_selection_for_reload(&mut self, select_first_section_when_available: bool) {
         self.selection = None;
         self.reset_line_reader();
         self.clear_lines();
         self.reset_scroll();
-        self.pending_section_selection
-            .set(PendingSectionSelection::First);
+        if select_first_section_when_available {
+            self.pending_section_selection
+                .set(PendingSectionSelection::First);
+        }
     }
 
     pub fn update_highlights(&mut self) -> bool {

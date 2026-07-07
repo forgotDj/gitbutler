@@ -858,7 +858,8 @@ impl App {
         if self.is_details_visible {
             match cause {
                 ReloadCause::Mutation | ReloadCause::Watcher | ReloadCause::Manual => {
-                    self.details.clear_selection();
+                    let details_focused = matches!(&*self.mode, Mode::Details(..));
+                    self.details.clear_selection_for_reload(details_focused);
                     if let Some((index, direction)) = select_details_section_after_reload {
                         self.details.select_section_when_available(index, direction);
                     }
