@@ -146,6 +146,10 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+// Do this early before any APIs that depend upon it are called. Likewise take care in imported
+// modules.
+if (!app.isPackaged) app.setName("GitButler Lite Dev");
+
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = path.dirname(currentFilePath);
 
