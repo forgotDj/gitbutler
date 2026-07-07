@@ -1,6 +1,9 @@
 use but_core::RefMetadata;
 
-use crate::support::{assert_workspace_ref, create_empty_branch_above, repo_with_feature_branch};
+use crate::support::{
+    assert_workspace_ref, checkout_branch_in_linked_worktree, create_empty_branch_above,
+    repo_with_feature_branch,
+};
 
 #[test]
 fn branch_remove_deletes_middle_empty_branch_and_keeps_head() -> anyhow::Result<()> {
@@ -84,6 +87,40 @@ fn branch_remove_rejects_checked_out_branch_with_commits() -> anyhow::Result<()>
     assert_eq!(
         repo.head_name()?.expect("HEAD is symbolic").as_ref(),
         main.as_ref()
+    );
+
+    Ok(())
+}
+
+#[test]
+fn branch_remove_refuses_when_checked_out_in_another_worktree() -> anyhow::Result<()> {
+    let (repo, tmp) = repo_with_feature_branch()?;
+    let mut ctx = but_ctx::Context::from_repo_for_testing(repo)?.with_memory_app_cache();
+    let main = gix::refs::FullName::try_from("refs/heads/main")?;
+    let middle = gix::refs::FullName::try_from("refs/heads/middle")?;
+    let tip = gix::refs::FullName::try_from("refs/heads/tip")?;
+
+    // Keep `middle` in the primary worktree's projection while checking it out in a linked
+    // worktree: [tip, middle, main], with the primary worktree on `tip`.
+    create_empty_branch_above(&mut ctx, &middle, &main)?;
+    create_empty_branch_above(&mut ctx, &tip, &middle)?;
+    let _worktree = checkout_branch_in_linked_worktree(tmp.path(), "middle")?;
+
+    let err = but_api::branch::branch_remove(&mut ctx, middle.clone())
+        .expect_err("cannot remove a branch checked out in another worktree");
+    assert!(
+        err.to_string().contains("checked out"),
+        "unexpected error: {err}"
+    );
+
+    let repo = ctx.repo.get()?;
+    assert!(
+        repo.try_find_reference(middle.as_ref())?.is_some(),
+        "the checked-out branch must remain"
+    );
+    assert_eq!(
+        repo.head_name()?.expect("HEAD is symbolic").as_ref(),
+        tip.as_ref()
     );
 
     Ok(())
