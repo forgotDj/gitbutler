@@ -41,7 +41,7 @@ mod worker;
 
 const CHANNEL_SIZE: usize = 1024;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum DetailsMessage {
     Deselect,
     SelectFirstSection,
@@ -430,7 +430,7 @@ impl Details {
                             }
                             Err(err) if err.downcast_ref::<SendErrorCode>().is_none() => {
                                 tracing::error!("{err:#}");
-                                _ = error_tx.send(Message::ShowError(Arc::new(err)));
+                                _ = error_tx.send(Message::ShowError(err));
                                 _ = line_writer.tx.send(RenderThreadMessage::Failed);
                             }
                             Err(_) => {}

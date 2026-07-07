@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use anyhow::anyhow;
 use but_testsupport::Sandbox;
 use crossterm::event::*;
@@ -37,9 +35,9 @@ fn shows_full_error_when_message_wraps() {
         None,
         Vec::from([
             Message::Reload(None, ReloadCause::Mutation),
-            Message::ShowError(Arc::new(anyhow!(
+            Message::ShowError(anyhow!(
                 "error-with-end-marker: this is a deliberately long error message that should wrap over multiple lines without clipping and it must include END-MARKER"
-            ))),
+            )),
         ]),
     )
     .assert_rendered_term_svg_eq(file!["snapshots/shows_full_error_when_message_wraps_001.svg"]);
@@ -61,7 +59,7 @@ fn shows_full_error_cause_chain_with_multiple_contexts() {
         None,
         Vec::from([
             Message::Reload(None, ReloadCause::Mutation),
-            Message::ShowError(Arc::new(err)),
+            Message::ShowError(err),
         ]),
     )
     .assert_rendered_term_svg_eq(file![

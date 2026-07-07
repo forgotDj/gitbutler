@@ -205,7 +205,7 @@ impl App {
         anyhow::Error: From<<T::Backend as Backend>::Error>,
     {
         if let Err(err) = self.try_handle_message(ctx, out, mode, terminal_guard, messages, msg) {
-            messages.push(Message::ShowError(Arc::new(err)));
+            messages.push(Message::ShowError(err));
         }
     }
 
@@ -429,7 +429,7 @@ impl App {
                 self.details.try_handle_message(details_message, messages)?;
             }
             Message::RegisterOutOfBandMessage(rx) => {
-                self.incoming_out_of_band_messages.push(rx.0);
+                self.incoming_out_of_band_messages.push(rx);
             }
             Message::WithOneFrameDelay(msg) => {
                 self.delayed_messages.push(*msg);
@@ -488,6 +488,9 @@ impl App {
             }
             Message::Stack(stack_message) => self.handle_stack(stack_message, ctx, messages)?,
             Message::Jump(jump_message) => self.handle_jump(jump_message, messages),
+            Message::ShowModal(modal) => {
+                self.modal = Some(modal);
+            }
         }
 
         self.status_scroll.to_cursor();
@@ -839,7 +842,7 @@ impl App {
     }
 
     /// Handles showing a transient UI error.
-    fn handle_show_error(&mut self, err: Arc<anyhow::Error>, messages: &mut Vec<Message>) {
+    fn handle_show_error(&mut self, err: anyhow::Error, messages: &mut Vec<Message>) {
         self.toasts
             .insert(ToastKind::Error, format_error_for_tui(&err));
 

@@ -157,7 +157,7 @@ impl CommitSource {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum CommitMessage {
     CreateEmpty,
     Start,
