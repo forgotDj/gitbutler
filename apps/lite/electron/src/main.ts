@@ -145,6 +145,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { type GUISettings, readSettings, writeSettings } from "./settings.js";
 
 // Do this early before any APIs that depend upon it are called. Likewise take care in imported
 // modules.
@@ -713,6 +714,10 @@ const registerIpcHandlers = (): void => {
 	);
 	senderValidatingHandle(liteIpcChannels.watcherStopAll, () =>
 		WatcherManager.getInstance().stopAllWatchersForShutdown(),
+	);
+	senderValidatingHandle(liteIpcChannels.readGUISettings, (_e) => readSettings());
+	senderValidatingHandle(liteIpcChannels.writeGUISettings, (_e, settings: GUISettings) =>
+		writeSettings(settings),
 	);
 };
 
