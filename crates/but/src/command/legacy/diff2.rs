@@ -145,8 +145,9 @@ impl DiffLineWriter for DiffWriter<'_> {
                     .as_ref()
                     .expect("WithSyntaxHighlighting ensures the line is highlighted");
 
+                let line_style = syntax_highlighted_line.style;
                 for span in syntax_highlighted_line {
-                    let rendered = span.style.paint(&span.content);
+                    let rendered = line_style.patch(span.style).paint(&span.content);
                     write!(self.out, "{rendered}")?;
                 }
                 writeln!(self.out)?;

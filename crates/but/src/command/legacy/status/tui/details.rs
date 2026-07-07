@@ -837,6 +837,8 @@ impl Details {
                                 .map(|span| span.crossed_out())
                                 .collect::<Line<'_>>()
                                 .bg(section_selected_bg)
+                        } else if line.line_numbers.kind.bg(self.theme).is_some() {
+                            syntax_highlighted_line.clone()
                         } else {
                             syntax_highlighted_line.clone().bg(section_selected_bg)
                         };
