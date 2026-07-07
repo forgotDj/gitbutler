@@ -100,10 +100,9 @@ fn narrow_hotbar_keeps_help_and_quit_visible_in_modal_modes() {
         },
     );
 
-    tui.input_then_render('r')
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/narrow_hotbar_keeps_help_and_quit_visible_in_modal_modes.svg"
-        ]);
+    tui.input('r').assert_rendered_term_svg_eq(file![
+        "snapshots/narrow_hotbar_keeps_help_and_quit_visible_in_modal_modes.svg"
+    ]);
 }
 
 #[test]
@@ -113,10 +112,10 @@ fn help_popup_opens_over_status_view() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render('?')
+    tui.input('?')
         .assert_rendered_term_svg_eq(file!["snapshots/help_popup_opens_over_status_view_001.svg"]);
 
-    tui.input_then_render(KeyCode::Esc)
+    tui.input(KeyCode::Esc)
         .assert_rendered_term_svg_eq(file!["snapshots/help_popup_opens_over_status_view_002.svg"]);
 }
 
@@ -134,16 +133,16 @@ fn help_popup_scrolls() {
         },
     );
 
-    tui.input_then_render('?')
+    tui.input('?')
         .assert_rendered_term_svg_eq(file!["snapshots/help_popup_scrolls_001.svg"]);
 
-    tui.input_then_render((KeyModifiers::CONTROL, 'd'))
+    tui.input((KeyModifiers::CONTROL, 'd'))
         .assert_rendered_term_svg_eq(file!["snapshots/help_popup_scrolls_002.svg"]);
 
-    tui.input_then_render((KeyModifiers::CONTROL, 'u'))
+    tui.input((KeyModifiers::CONTROL, 'u'))
         .assert_rendered_term_svg_eq(file!["snapshots/help_popup_scrolls_003.svg"]);
 
-    tui.input_then_render(KeyCode::Esc)
+    tui.input(KeyCode::Esc)
         .assert_rendered_term_svg_eq(file!["snapshots/help_popup_scrolls_004.svg"]);
 }
 
@@ -154,17 +153,16 @@ fn undo_opens_confirm_for_latest_snapshot() {
     let mut tui = test_tui(env);
 
     tui.env().file("test.txt", "content");
-    tui.input_then_render('c');
-    tui.input_then_render(KeyCode::Down);
-    tui.input_then_render('i');
-    tui.input_then_render(KeyCode::Enter);
-    tui.input_then_render("commit for undo prompt test");
-    tui.input_then_render(KeyCode::Enter);
+    tui.input('c');
+    tui.input(KeyCode::Down);
+    tui.input('i');
+    tui.input(KeyCode::Enter);
+    tui.input("commit for undo prompt test");
+    tui.input(KeyCode::Enter);
 
-    tui.input_then_render('u')
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/undo_opens_confirm_for_latest_snapshot_001.svg"
-        ]);
+    tui.input('u').assert_rendered_term_svg_eq(file![
+        "snapshots/undo_opens_confirm_for_latest_snapshot_001.svg"
+    ]);
 }
 
 #[test]
@@ -203,16 +201,16 @@ fn basic_cursor_movement() {
         .assert_rendered_term_svg_eq(file!["snapshots/basic_cursor_movement_001.svg"])
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┴ 0dc3733 (common base) 2000-01-02 add M"]);
 
-    tui.input_then_render([
+    tui.input([
         KeyCode::Down,
         KeyCode::Down,
         KeyCode::Down,
@@ -222,7 +220,7 @@ fn basic_cursor_movement() {
     ])
     .assert_current_line_eq(str!["┴ 0dc3733 (common base) 2000-01-02 add M"]);
 
-    tui.input_then_render([
+    tui.input([
         KeyCode::Up,
         KeyCode::Up,
         KeyCode::Up,
@@ -243,16 +241,14 @@ fn movement_aliases_j_k() {
     tui.reload()
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 
-    tui.input_then_render('j')
-        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
+    tui.input('j').assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render('j')
+    tui.input('j')
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render('k')
-        .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
+    tui.input('k').assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render('k')
+    tui.input('k')
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 }
 
@@ -266,16 +262,16 @@ fn section_jumps_shift_j_k() {
     tui.reload()
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┴ 0dc3733 (common base) 2000-01-02 add M"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'K'))
+    tui.input((KeyModifiers::SHIFT, 'K'))
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'K'))
+    tui.input((KeyModifiers::SHIFT, 'K'))
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 }
 
@@ -289,13 +285,13 @@ fn shift_k_from_commit_moves_to_current_section_header_first() {
     tui.reload()
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'K'))
+    tui.input((KeyModifiers::SHIFT, 'K'))
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'K'))
+    tui.input((KeyModifiers::SHIFT, 'K'))
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 }
 
@@ -309,16 +305,16 @@ fn shift_k_from_second_stack_commit_moves_to_its_header() {
     tui.reload()
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┊╭┄h0 [B]"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊●   d3e2ba3 add B"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'K'))
+    tui.input((KeyModifiers::SHIFT, 'K'))
         .assert_current_line_eq(str!["┊╭┄h0 [B]"]);
 }
 
@@ -342,7 +338,7 @@ fn cursor_movement_scrolls_viewport_down() {
         ])
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down, KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down, KeyCode::Down, KeyCode::Down])
         .assert_rendered_term_svg_eq(file![
             "snapshots/cursor_movement_scrolls_viewport_down_002.svg"
         ])
@@ -363,13 +359,13 @@ fn cursor_movement_scrolls_viewport_up() {
         },
     );
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down, KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down, KeyCode::Down, KeyCode::Down])
         .assert_rendered_term_svg_eq(file![
             "snapshots/cursor_movement_scrolls_viewport_up_001.svg"
         ])
         .assert_current_line_eq(str!["┊●   d3e2ba3 add B"]);
 
-    tui.input_then_render([KeyCode::Up, KeyCode::Up, KeyCode::Up, KeyCode::Up])
+    tui.input([KeyCode::Up, KeyCode::Up, KeyCode::Up, KeyCode::Up])
         .assert_rendered_term_svg_eq(file![
             "snapshots/cursor_movement_scrolls_viewport_up_002.svg"
         ])
@@ -390,19 +386,19 @@ fn section_jumps_scroll_viewport_when_target_is_offscreen() {
         },
     );
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_rendered_term_svg_eq(file![
             "snapshots/section_jumps_scroll_viewport_when_target_is_offscreen_001.svg"
         ])
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_rendered_term_svg_eq(file![
             "snapshots/section_jumps_scroll_viewport_when_target_is_offscreen_002.svg"
         ])
         .assert_current_line_eq(str!["┊╭┄h0 [B]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'K'))
+    tui.input((KeyModifiers::SHIFT, 'K'))
         .assert_rendered_term_svg_eq(file![
             "snapshots/section_jumps_scroll_viewport_when_target_is_offscreen_003.svg"
         ])
@@ -423,13 +419,13 @@ fn moving_to_merge_base_scrolls_to_keep_selection_visible() {
         },
     );
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┊╭┄h0 [B]"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┴ 0dc3733 (common base) 2000-01-02 add M"]);
 }
 
@@ -447,7 +443,7 @@ fn reload_preserves_visible_selection_when_scrolled() {
         },
     );
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down, KeyCode::Down, KeyCode::Down]);
+    tui.input([KeyCode::Down, KeyCode::Down, KeyCode::Down, KeyCode::Down]);
 
     tui.render_with_messages(
         None,
@@ -473,7 +469,7 @@ fn inline_reword_renders_on_visible_row_when_scrolled() {
         },
     );
 
-    tui.input_then_render([
+    tui.input([
         KeyCode::Down,
         KeyCode::Down,
         KeyCode::Down,
@@ -497,14 +493,14 @@ fn creating_empty_commits() {
         .assert_rendered_term_svg_eq(file!["snapshots/creating_empty_commits_001.svg"])
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render('n')
+    tui.input('n')
         .assert_rendered_term_svg_eq(file!["snapshots/creating_empty_commits_002.svg"])
         .assert_current_line_eq(str!["┊●   f184fc7 (no commit message) (no changes)"]);
 
-    tui.input_then_render('n')
+    tui.input('n')
         .assert_rendered_term_svg_eq(file!["snapshots/creating_empty_commits_003.svg"])
         .assert_current_line_eq(str!["┊●   9638f28 (no commit message) (no changes)"]);
 }
@@ -520,20 +516,20 @@ fn inline_reword() {
         .assert_rendered_term_svg_eq(file!["snapshots/inline_reword_001.svg"])
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render('n')
+    tui.input('n')
         .assert_rendered_term_svg_eq(file!["snapshots/inline_reword_002.svg"])
         .assert_current_line_eq(str!["┊●   f184fc7 (no commit message) (no changes)"]);
 
-    tui.input_then_render(KeyCode::Enter)
+    tui.input(KeyCode::Enter)
         .assert_rendered_term_svg_eq(file!["snapshots/inline_reword_003.svg"]);
 
-    tui.input_then_render("foo")
+    tui.input("foo")
         .assert_rendered_term_svg_eq(file!["snapshots/inline_reword_004.svg"]);
 
-    tui.input_then_render(KeyCode::Enter)
+    tui.input(KeyCode::Enter)
         .assert_rendered_term_svg_eq(file!["snapshots/inline_reword_005.svg"])
         .assert_current_line_eq(str!["┊●   cb96911 foo (no changes)"]);
 }
@@ -549,15 +545,15 @@ fn inline_reword_open_editor_keeps_inline_message_when_editor_makes_no_changes()
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render(KeyCode::Enter);
-    tui.input_then_render(" updated")
+    tui.input(KeyCode::Enter);
+    tui.input(" updated")
         .assert_rendered_contains("add A updated");
 
     with_var("GIT_EDITOR", Some(editor_command), || {
-        tui.input_then_render((KeyModifiers::ALT, 'e'))
+        tui.input((KeyModifiers::ALT, 'e'))
             .assert_current_line_eq(str!["┊●   711ccd7 add A updated"]);
     });
 }
@@ -577,13 +573,13 @@ fn esc_leaves_rub_mode() {
     tui.reload()
         .assert_current_line_eq(str!["╭┄zz [uncommitted]"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 
-    tui.input_then_render('r')
+    tui.input('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
 
-    tui.input_then_render(KeyCode::Esc)
+    tui.input(KeyCode::Esc)
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 }
 
@@ -598,16 +594,16 @@ fn mode_key_r_enters_and_escape_leaves_rub_mode() {
 
     tui.reload();
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 
-    tui.input_then_render('r')
+    tui.input('r')
         .assert_rendered_term_svg_eq(file![
             "snapshots/mode_toggle_key_r_enters_and_leaves_rub_mode_001.svg"
         ])
         .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
 
-    tui.input_then_render(KeyCode::Esc)
+    tui.input(KeyCode::Esc)
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 }
 
@@ -622,13 +618,13 @@ fn rub_mode_shift_j_lands_on_first_selectable_in_next_branch() {
 
     tui.reload();
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 
-    tui.input_then_render('r')
+    tui.input('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┊●   << amend >> 9477ae7 add A"]);
 }
 
@@ -643,16 +639,16 @@ fn rub_mode_shift_j_can_jump_between_branches() {
 
     tui.reload();
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 
-    tui.input_then_render('r')
+    tui.input('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┊●   << amend >> 9477ae7 add A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┊●   << amend >> d3e2ba3 add B"]);
 }
 
@@ -667,19 +663,19 @@ fn rub_mode_shift_k_jumps_to_first_selectable_in_previous_branch() {
 
     tui.reload();
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 
-    tui.input_then_render('r')
+    tui.input('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┊●   << amend >> 9477ae7 add A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┊●   << amend >> d3e2ba3 add B"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'K'))
+    tui.input((KeyModifiers::SHIFT, 'K'))
         .assert_current_line_eq(str!["┊●   << amend >> 9477ae7 add A"]);
 }
 
@@ -694,13 +690,13 @@ fn mode_key_c_enters_and_escape_leaves_commit_mode() {
 
     tui.reload();
 
-    tui.input_then_render('c')
+    tui.input('c')
         .assert_rendered_term_svg_eq(file![
             "snapshots/mode_toggle_key_c_enters_and_leaves_commit_mode_001.svg"
         ])
         .assert_current_line_eq(str!["╭┄<< source >> << noop >> zz [uncommitted]"]);
 
-    tui.input_then_render(KeyCode::Esc)
+    tui.input(KeyCode::Esc)
         .assert_current_line_eq(str!["╭┄zz [uncommitted]"]);
 }
 
@@ -711,16 +707,16 @@ fn mode_key_m_enters_and_escape_leaves_move_mode() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render('m')
+    tui.input('m')
         .assert_rendered_term_svg_eq(file![
             "snapshots/mode_toggle_key_m_enters_and_leaves_move_mode_001.svg"
         ])
         .assert_current_line_eq(str!["┊╭┄<< source >> << noop >> g0 [A]"]);
 
-    tui.input_then_render(KeyCode::Esc)
+    tui.input(KeyCode::Esc)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 }
 
@@ -731,10 +727,10 @@ fn key_b_creates_new_branch_from_selected_branch() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render('b')
+    tui.input('b')
         .assert_current_line_eq(str!["┊╭┄br [c-branch-1] (no commits)"]);
 }
 
@@ -755,33 +751,32 @@ fn rubbing() {
         .assert_rendered_term_svg_eq(file!["snapshots/rubbing_002.svg"])
         .assert_current_line_eq(str!["╭┄zz [uncommitted]"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
-    tui.input_then_render('n')
+    tui.input('n')
         .assert_current_line_eq(str!["┊●   f184fc7 (no commit message) (no changes)"]);
 
-    tui.input_then_render([KeyCode::Up, KeyCode::Up])
+    tui.input([KeyCode::Up, KeyCode::Up])
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 
-    tui.input_then_render('r')
+    tui.input('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
 
-    tui.input_then_render(KeyCode::Down)
-        .assert_current_line_eq(str![
-            "┊●   << amend >> f184fc7 (no commit message) (no changes)"
-        ]);
+    tui.input(KeyCode::Down).assert_current_line_eq(str![
+        "┊●   << amend >> f184fc7 (no commit message) (no changes)"
+    ]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊●   << amend >> 9477ae7 add A"]);
 
-    tui.input_then_render(KeyCode::Enter);
+    tui.input(KeyCode::Enter);
     // that you end up on zz is a bug but requires moving the rub implementation to use but-api
     // that work is in progress
-    tui.input_then_render([
+    tui.input([
         KeyCode::Up,
         KeyCode::Up,
         KeyCode::Up,
@@ -793,7 +788,7 @@ fn rubbing() {
     ])
     .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'F'))
+    tui.input((KeyModifiers::SHIFT, 'F'))
         .assert_rendered_term_svg_eq(file!["snapshots/rubbing_003.svg"]);
 }
 
@@ -804,16 +799,16 @@ fn global_file_list_does_not_restrict_cursor() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'F'))
+    tui.input((KeyModifiers::SHIFT, 'F'))
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'J'))
+    tui.input((KeyModifiers::SHIFT, 'J'))
         .assert_current_line_eq(str!["┊╭┄h0 [B]"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/global_file_list_does_not_restrict_cursor_final.svg"
@@ -827,16 +822,16 @@ fn commit_file_list_scopes_cursor_to_files_in_selected_commit() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render('f')
+    tui.input('f')
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
-    tui.input_then_render(KeyCode::Up)
+    tui.input(KeyCode::Up)
         .assert_current_line_eq(str!["┊│     94:tm A A"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/commit_file_list_scopes_cursor_to_files_in_selected_commit_final.svg"
@@ -857,20 +852,20 @@ fn commit_file_toggle_on_commit_without_files_is_noop() {
         },
     );
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
 
     with_var("GIT_AUTHOR_DATE", Some("2000-01-01T00:00:00Z"), || {
         with_var("GIT_COMMITTER_DATE", Some("2000-01-01T00:00:00Z"), || {
-            tui.input_then_render('n')
+            tui.input('n')
                 .assert_current_line_eq(str!["┊●   f184fc7 (no commit message) (no changes)"]);
         });
     });
 
-    tui.input_then_render('f')
+    tui.input('f')
         .assert_current_line_eq(str!["┊●   f184fc7 (no commit message) (no changes)"]);
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┴ 0dc3733 (common base) 2000-01-02 add M"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/commit_file_toggle_on_commit_without_files_is_noop_final.svg"
@@ -884,19 +879,19 @@ fn commit_file_list_rub_esc_leaves_rub_and_closes_file_list() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render('f')
+    tui.input('f')
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'R'))
+    tui.input((KeyModifiers::SHIFT, 'R'))
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
-    tui.input_then_render(KeyCode::Up)
+    tui.input(KeyCode::Up)
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
-    tui.input_then_render(KeyCode::Esc)
+    tui.input(KeyCode::Esc)
         .assert_current_line_eq(str!["┊●   9477ae7 add A"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/commit_file_list_rub_esc_leaves_rub_and_closes_file_list_final.svg"
@@ -910,19 +905,19 @@ fn confirm_rub_keeps_commit_file_list_open() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render('f')
+    tui.input('f')
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'R'))
+    tui.input((KeyModifiers::SHIFT, 'R'))
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
-    tui.input_then_render(KeyCode::Enter)
+    tui.input(KeyCode::Enter)
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 }
 
@@ -933,16 +928,16 @@ fn esc_in_normal_mode_closes_global_file_list() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'F'))
+    tui.input((KeyModifiers::SHIFT, 'F'))
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render(KeyCode::Down)
+    tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
-    tui.input_then_render(KeyCode::Esc)
+    tui.input(KeyCode::Esc)
         .assert_current_line_eq(str!["┊●   9477ae7 add A"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/esc_in_normal_mode_closes_global_file_list_final.svg"
@@ -956,13 +951,13 @@ fn esc_in_normal_mode_closes_commit_file_list() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render('f')
+    tui.input('f')
         .assert_current_line_eq(str!["┊│     94:tm A A"]);
 
-    tui.input_then_render(KeyCode::Esc)
+    tui.input(KeyCode::Esc)
         .assert_current_line_eq(str!["┊●   9477ae7 add A"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/esc_in_normal_mode_closes_commit_file_list_final.svg"
@@ -976,13 +971,13 @@ fn commit_file_toggle_off_from_commit_row_preserves_commit_selection() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render([KeyCode::Down, KeyCode::Down])
+    tui.input([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'F'))
+    tui.input((KeyModifiers::SHIFT, 'F'))
         .assert_current_line_eq(str!["┊●   9477ae7 add A"]);
 
-    tui.input_then_render('f')
+    tui.input('f')
         .assert_current_line_eq(str!["┊●   9477ae7 add A"])
         .assert_rendered_term_svg_eq(file![
             "snapshots/commit_file_toggle_off_from_commit_row_preserves_commit_selection_final.svg"
@@ -1008,13 +1003,10 @@ fn pick_changes_mode() {
     tui.reload()
         .assert_rendered_term_svg_eq(file!["snapshots/pick_changes_mode_001.svg"]);
 
-    tui.input_then_render('j');
-    tui.input_then_render(' ')
+    tui.input('j');
+    tui.input(' ')
         .assert_rendered_term_svg_eq(file!["snapshots/pick_changes_mode_002.svg"]);
-    let outcome = tui
-        .input_then_render(KeyCode::Enter)
-        .take_outcome()
-        .unwrap();
+    let outcome = tui.input(KeyCode::Enter).take_outcome().unwrap();
 
     let cli_ids = match outcome {
         TuiOutcome::CliIds(cli_ids) => cli_ids,
@@ -1050,14 +1042,14 @@ fn stays_in_pick_change_mode_after_full_screen_details() {
         .assert_backstack_eq([]);
 
     // mark some changes
-    tui.input_then_render('j');
-    tui.input_then_render(' ')
+    tui.input('j');
+    tui.input(' ')
         .assert_backstack_eq([BackstackEntry::Mark])
         .assert_rendered_term_svg_eq(file![
             "snapshots/stays_in_pick_change_mode_after_full_screen_details_002.svg"
         ]);
 
-    tui.input_then_render((KeyModifiers::SHIFT, 'D'))
+    tui.input((KeyModifiers::SHIFT, 'D'))
         .assert_rendered_term_svg_eq(file![
             "snapshots/stays_in_pick_change_mode_after_full_screen_details_003.svg"
         ])
@@ -1067,17 +1059,14 @@ fn stays_in_pick_change_mode_after_full_screen_details() {
             BackstackEntry::Mark,
         ]);
 
-    tui.input_then_render(KeyCode::Esc)
+    tui.input(KeyCode::Esc)
         .assert_rendered_term_svg_eq(file![
             "snapshots/stays_in_pick_change_mode_after_full_screen_details_004.svg"
         ])
         .assert_backstack_eq([BackstackEntry::Mark]);
 
     // ensure the changes are still marked after returning from details mode
-    let outcome = tui
-        .input_then_render(KeyCode::Enter)
-        .take_outcome()
-        .unwrap();
+    let outcome = tui.input(KeyCode::Enter).take_outcome().unwrap();
 
     let cli_ids = match outcome {
         TuiOutcome::CliIds(cli_ids) => cli_ids,
@@ -1106,10 +1095,9 @@ fn pick_changes_mode_supports_focusing_details_view() {
         },
     );
 
-    tui.input_then_render('l')
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/pick_changes_mode_supports_focusing_details_view_001.svg"
-        ]);
+    tui.input('l').assert_rendered_term_svg_eq(file![
+        "snapshots/pick_changes_mode_supports_focusing_details_view_001.svg"
+    ]);
 }
 
 #[test]
@@ -1119,8 +1107,8 @@ fn consistent_commit_shas_in_tests() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render('b');
-    tui.input_then_render('n')
+    tui.input('b');
+    tui.input('n')
         .assert_current_line_eq("┊●   0b42c46 (no commit message) (no changes)");
 }
 
@@ -1131,20 +1119,20 @@ fn jumping_up_down() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render('j');
+    tui.input('j');
     for n in 1..=30 {
-        tui.input_then_render('n');
-        tui.input_then_render(KeyCode::Enter);
-        tui.input_then_render(format!("commit #{n}"));
-        tui.input_then_render(KeyCode::Enter);
+        tui.input('n');
+        tui.input(KeyCode::Enter);
+        tui.input(format!("commit #{n}"));
+        tui.input(KeyCode::Enter);
     }
 
     tui.reload()
         .assert_current_line_eq("┊●   1a89cbc commit #30 (no changes)");
 
-    tui.input_then_render((KeyModifiers::CONTROL, 'd'))
+    tui.input((KeyModifiers::CONTROL, 'd'))
         .assert_current_line_eq("┊●   90ce384 commit #20 (no changes)");
-    tui.input_then_render((KeyModifiers::CONTROL, 'u'))
+    tui.input((KeyModifiers::CONTROL, 'u'))
         .assert_current_line_eq("┊●   1a89cbc commit #30 (no changes)");
 }
 
@@ -1157,21 +1145,21 @@ fn jumping_up_down_non_normal_mode() {
 
     let mut tui = test_tui(env);
 
-    tui.input_then_render('j');
-    tui.input_then_render('j');
+    tui.input('j');
+    tui.input('j');
     for n in 1..=30 {
-        tui.input_then_render('n');
-        tui.input_then_render(KeyCode::Enter);
-        tui.input_then_render(format!("commit #{n}"));
-        tui.input_then_render(KeyCode::Enter);
+        tui.input('n');
+        tui.input(KeyCode::Enter);
+        tui.input(format!("commit #{n}"));
+        tui.input(KeyCode::Enter);
     }
 
-    tui.input_then_render('g');
-    tui.input_then_render('r');
+    tui.input('g');
+    tui.input('r');
 
-    tui.input_then_render((KeyModifiers::CONTROL, 'd'))
+    tui.input((KeyModifiers::CONTROL, 'd'))
         .assert_current_line_eq("┊●   << amend >> 9d9282f commit #21 (no changes)");
-    tui.input_then_render((KeyModifiers::CONTROL, 'u'))
+    tui.input((KeyModifiers::CONTROL, 'u'))
         .assert_current_line_eq("╭┄<< source >> << noop >> zz [uncommitted]");
 }
 
@@ -1183,15 +1171,13 @@ fn pressing_l_doesnt_unfocus_the_detail_view() {
     let mut tui = test_tui(env);
 
     // open and focus the detail view
-    tui.input_then_render('d');
-    tui.input_then_render('l')
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/pressing_l_doesnt_unfocus_the_detail_view_001.svg"
-        ]);
+    tui.input('d');
+    tui.input('l').assert_rendered_term_svg_eq(file![
+        "snapshots/pressing_l_doesnt_unfocus_the_detail_view_001.svg"
+    ]);
 
     // pressing `l` again should do nothing since we're already focused on the detail view
-    tui.input_then_render('l')
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/pressing_l_doesnt_unfocus_the_detail_view_001.svg"
-        ]);
+    tui.input('l').assert_rendered_term_svg_eq(file![
+        "snapshots/pressing_l_doesnt_unfocus_the_detail_view_001.svg"
+    ]);
 }

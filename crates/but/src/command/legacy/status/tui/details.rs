@@ -31,7 +31,6 @@ use crate::{
         count_allocations,
         details::worker::Worker,
         highlight::{self, Highlights},
-        key_bind::confirm_key_binds,
         message_on_drop::message_on_drop,
         render::available_lines_in_area,
     },
@@ -554,7 +553,7 @@ impl Details {
         let syntax_theme = self.syntax_theme.get().unwrap();
         let mut highlight_lines = None;
 
-        let section_selected_bg = self.theme.discrete_selection_highlight.bg.unwrap();
+        let section_selected_bg = self.theme.selection_highlight.bg.unwrap();
 
         let mut layout_cache = self.layout_cache.borrow_mut();
         layout_cache.update(area.width, &self.lines);
@@ -1106,10 +1105,7 @@ impl Details {
             },
         );
 
-        messages.push(Message::ShowModal(Modal::Confirm {
-            confirm,
-            key_binds: confirm_key_binds(),
-        }));
+        messages.push(Message::ShowModal(Modal::Confirm { confirm }));
     }
 }
 
