@@ -261,7 +261,7 @@ impl App {
                     source: Arc::new(source),
                 }
             }
-            StatusOutputLineData::Branch { cli_id } => {
+            StatusOutputLineData::Branch { cli_id, .. } => {
                 let CliId::Branch { stack_id, .. } = &**cli_id else {
                     return Ok(());
                 };

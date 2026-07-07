@@ -899,7 +899,7 @@ impl App {
         };
 
         match &selection.data {
-            StatusOutputLineData::Branch { cli_id } => {
+            StatusOutputLineData::Branch { cli_id, .. } => {
                 let CliId::Branch { name, .. } = &**cli_id else {
                     return Ok(());
                 };
@@ -954,7 +954,7 @@ impl App {
         };
 
         let new_name = match &selection.data {
-            StatusOutputLineData::Branch { cli_id } => {
+            StatusOutputLineData::Branch { cli_id, .. } => {
                 let CliId::Branch { name, .. } = &**cli_id else {
                     return Ok(());
                 };

@@ -1,6 +1,6 @@
 use but_testsupport::Sandbox;
 use crossterm::event::*;
-use snapbox::str;
+use snapbox::{file, str};
 
 use crate::command::legacy::status::tui::tests::utils::test_tui;
 
@@ -224,4 +224,20 @@ fn inline_branch_reword_space_before_close_bracket() {
     // dont show a space when the cursor isn't at the end
     tui.input(KeyCode::Left)
         .assert_current_line_eq(str!["┊╭┄g0 [A]"]);
+}
+
+#[test]
+fn cannot_select_merged_branches() {
+    let env =
+        Sandbox::init_scenario_with_target_and_default_settings("upstream-integrated-with-updates");
+    env.setup_metadata(&["A", "B"]);
+    env.set_target_sha("refs/heads/base");
+
+    let mut tui = test_tui(env);
+
+    tui.reload()
+        .assert_rendered_term_svg_eq(file!["snapshots/cannot_select_merged_branches_001.svg"]);
+
+    tui.input('j')
+        .assert_rendered_term_svg_eq(file!["snapshots/cannot_select_merged_branches_002.svg"]);
 }
