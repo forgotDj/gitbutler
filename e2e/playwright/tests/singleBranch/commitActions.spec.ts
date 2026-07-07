@@ -234,23 +234,28 @@ test("surfaces an error and creates nothing when a dependent branch name collide
 	expect(localBranches(localClone)).toEqual(branchesBefore);
 });
 
-test.skip("can remove an empty branch from the top of a two-branch stack", async ({
+test("can remove the checked-out empty branch from the top of a two-branch stack", async ({
 	page,
 	gitbutler,
 }) => {
 	const localClone = await setupSingleBranchProject(gitbutler, page);
 
+	// `empty-top` is created above the base and becomes the checked-out tip.
 	await createDependentBranch(page, "empty-top");
 	const emptyBottom = await createGeneratedBranch(page, localClone, "empty-top", "below");
+	await expectCurrentBranchChip(page, "empty-top");
 
 	await deleteBranchFromHeader(page, "empty-top");
 
+	// Removing the checked-out empty tip lands HEAD on the branch directly below it.
 	await expect(branchHeader(page, "empty-top")).toBeHidden();
+	await expectCurrentBranchChip(page, emptyBottom);
+	await assertBranch(emptyBottom, localClone);
 	await expectBranchHeaderOrder(page, [emptyBottom, SINGLE_BRANCH_NAME]);
 	expect(localBranches(localClone)).not.toContain("empty-top");
 });
 
-test.skip("can remove an empty branch from the middle of a three-branch stack", async ({
+test("can remove an empty branch from the middle of a three-branch stack", async ({
 	page,
 	gitbutler,
 }) => {
@@ -259,15 +264,19 @@ test.skip("can remove an empty branch from the middle of a three-branch stack", 
 	await createDependentBranch(page, "empty-top");
 	const emptyMiddle = await createGeneratedBranch(page, localClone, "empty-top", "below");
 	const emptyBottom = await createGeneratedBranch(page, localClone, emptyMiddle, "below");
+	await expectCurrentBranchChip(page, "empty-top");
 
 	await deleteBranchFromHeader(page, emptyMiddle);
 
+	// Removing a branch that isn't checked out relinks the order and leaves HEAD on the tip.
 	await expect(branchHeader(page, emptyMiddle)).toBeHidden();
+	await expectCurrentBranchChip(page, "empty-top");
+	await assertBranch("empty-top", localClone);
 	await expectBranchHeaderOrder(page, ["empty-top", emptyBottom, SINGLE_BRANCH_NAME]);
 	expect(localBranches(localClone)).not.toContain(emptyMiddle);
 });
 
-test.skip("can remove an empty branch from the bottom of a two-branch stack", async ({
+test("can remove an empty branch from the bottom of a two-branch stack", async ({
 	page,
 	gitbutler,
 }) => {
@@ -275,10 +284,13 @@ test.skip("can remove an empty branch from the bottom of a two-branch stack", as
 
 	await createDependentBranch(page, "empty-top");
 	const emptyBottom = await createGeneratedBranch(page, localClone, "empty-top", "below");
+	await expectCurrentBranchChip(page, "empty-top");
 
 	await deleteBranchFromHeader(page, emptyBottom);
 
 	await expect(branchHeader(page, emptyBottom)).toBeHidden();
+	await expectCurrentBranchChip(page, "empty-top");
+	await assertBranch("empty-top", localClone);
 	await expectBranchHeaderOrder(page, ["empty-top", SINGLE_BRANCH_NAME]);
 	expect(localBranches(localClone)).not.toContain(emptyBottom);
 });

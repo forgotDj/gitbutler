@@ -562,6 +562,10 @@ export class StackService {
 		return this.backendApi.endpoints.branchCreate.useMutation();
 	}
 
+	get branchRemove() {
+		return this.backendApi.endpoints.branchRemove.useMutation();
+	}
+
 	async uncommit(args: { projectId: string; stackId?: string; commitIds: string[] }) {
 		const result = await this.backendApi.endpoints.uncommit.mutate(args);
 		if (args.stackId) {
@@ -679,10 +683,6 @@ export class StackService {
 				});
 			},
 		});
-	}
-
-	get removeBranch() {
-		return this.backendApi.endpoints.removeBranch.useMutation();
 	}
 
 	get commitMove() {

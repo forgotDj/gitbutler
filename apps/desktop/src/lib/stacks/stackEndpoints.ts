@@ -58,6 +58,7 @@ import type {
 	WorkspaceIntegrateUpstreamOutcome,
 	BranchCreatePlacement,
 	BranchCreateResult,
+	BranchRemoveResult,
 } from "@gitbutler/but-sdk";
 
 export type BranchParams = {
@@ -508,6 +509,19 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.BranchListing),
 			],
 		}),
+		branchRemove: build.mutation<BranchRemoveResult, { projectId: string; refName: number[] }>({
+			extraOptions: {
+				command: "branch_remove",
+				actionName: "Remove Branch",
+			},
+			query: (args) => args,
+			invalidatesTags: [
+				invalidatesList(ReduxTag.HeadSha),
+				invalidatesList(ReduxTag.Stacks), // Removing a branch can remove a stack
+				invalidatesList(ReduxTag.StackDetails),
+				invalidatesList(ReduxTag.BranchListing),
+			],
+		}),
 		uncommit: build.mutation<
 			UncommitResult,
 			{ projectId: string; stackId?: string; commitIds: string[] }
@@ -719,28 +733,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			invalidatesTags: (_r, _e, args) => [
 				invalidatesList(ReduxTag.Stacks), // Probably still needed
 				invalidatesItem(ReduxTag.StackDetails, args.stackId), // This probably is still needed as well
-				invalidatesList(ReduxTag.BranchListing),
-			],
-		}),
-		removeBranch: build.mutation<
-			void,
-			{
-				projectId: string;
-				stackId?: string;
-				branchName: string;
-			}
-		>({
-			extraOptions: {
-				command: "remove_branch",
-				actionName: "Remove Branch",
-			},
-			query: (args) => args,
-			invalidatesTags: (_result, _error, args) => [
-				invalidatesList(ReduxTag.Stacks), // Removing a branch can remove a stack
-				// Removing a branch won't change the sha if the branch is empty
-				invalidatesItem(ReduxTag.StackDetails, args.stackId),
-				invalidatesList(ReduxTag.StackDetails),
-				invalidatesList(ReduxTag.HeadSha),
 				invalidatesList(ReduxTag.BranchListing),
 			],
 		}),
