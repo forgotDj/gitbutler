@@ -11,7 +11,7 @@ use but_core::{
     sync::RepoExclusive,
     ui::TreeChanges,
     update_head_reference,
-    worktree::{checkout, safe_checkout},
+    worktree::{checkout, safe_checkout_from_head},
 };
 use but_ctx::Context;
 use but_oplog::legacy::{OperationKind, SnapshotDetails, Trailer};
@@ -802,7 +802,7 @@ pub fn branch_create_with_perm(
 /// Checks out an existing local branch and returns the resulting workspace state.
 ///
 /// This acquires exclusive worktree access from `ctx`, updates the worktree and
-/// index through [`but_core::worktree::safe_checkout()`], then points `HEAD`
+/// index through [`but_core::worktree::safe_checkout_from_head()`], then points `HEAD`
 /// symbolically at `branch`. The branch must be an existing full local branch
 /// name under `refs/heads/`.
 #[but_api(napi, try_from = json::BranchCheckoutResult)]
@@ -929,8 +929,7 @@ fn checkout_ref_with_perm(
             )
         })?;
 
-        safe_checkout(
-            current_head,
+        safe_checkout_from_head(
             target,
             &repo,
             checkout::Options {
