@@ -29,7 +29,8 @@ export type QueryKey =
 	| "projects"
 	| "treeChangeDiffs"
 	| "absorptionPlan"
-	| "dryRun";
+	| "dryRun"
+	| "gui-settings";
 
 export const branchDetailsQueryOptions = ({ projectId, ...params }: BranchDetailsParams) =>
 	queryOptions({
@@ -200,4 +201,10 @@ export const absorptionPlanQueryOptions = ({ projectId, target }: AbsorptionPlan
 	queryOptions({
 		queryKey: ["absorptionPlan" satisfies QueryKey, projectId, target],
 		queryFn: () => window.lite.absorptionPlan({ projectId, target }),
+	});
+
+export const getGUISettingsQueryOptions = () =>
+	queryOptions({
+		queryKey: ["gui-settings" satisfies QueryKey],
+		queryFn: () => window.lite.readGUISettings(),
 	});
