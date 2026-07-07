@@ -1221,12 +1221,16 @@ const PullRequestPrimaryAction: FC<{
 		enabled: !isDraft,
 	});
 
+	const updateReview = useUpdateReview();
 	const mergeReview = useMergeReview();
 	const setReviewDraftiness = useSetReviewDraftiness();
 	const setReviewAutoMerge = useSetReviewAutoMerge();
 
 	const isAnyPending =
-		mergeReview.isPending || setReviewDraftiness.isPending || setReviewAutoMerge.isPending;
+		updateReview.isPending ||
+		mergeReview.isPending ||
+		setReviewDraftiness.isPending ||
+		setReviewAutoMerge.isPending;
 
 	return (
 		<div className={styles.prActions}>
@@ -1238,6 +1242,25 @@ const PullRequestPrimaryAction: FC<{
 			>
 				{setReviewDraftiness.isPending && <Icon name="spinner" />}
 				{isDraft ? "Mark as Ready" : "Convert to draft"}
+			</button>
+
+			<button
+				className={getButtonClassName({ variant: "danger" })}
+				disabled={isAnyPending}
+				onClick={() =>
+					updateReview.mutate({
+						projectId,
+						reviewId,
+						state: "closed",
+						title: null,
+						body: null,
+						targetBase: null,
+					})
+				}
+				type="button"
+			>
+				{updateReview.isPending && <Icon name="spinner" />}
+				Close
 			</button>
 
 			{!isDraft && (
