@@ -86,8 +86,19 @@ export const getReviewMergeStatusQueryOptions = ({ projectId, reviewId }: GetRev
 export const listReviewsQueryOptions = ({ projectId, ...params }: ListReviewsParams) =>
 	queryOptions({
 		queryKey: ["reviews" satisfies QueryKey, projectId, params],
-		queryFn: () => window.lite.listReviews({ projectId, ...params }),
+		// listReviews will throw if forge can't be determined.
+		queryFn: async () => {
+			try {
+				return await window.lite.listReviews({ projectId, ...params });
+			} catch (e) {
+				// oxlint-disable-next-line no-console
+				console.warn(e);
+				return null;
+			}
+		},
 		select: (reviews) => {
+			if (!reviews) return null;
+
 			const reviewsBySourceBranch = new Map<string, ForgeReview>();
 			for (const review of reviews) reviewsBySourceBranch.set(review.sourceBranch, review);
 			return {
