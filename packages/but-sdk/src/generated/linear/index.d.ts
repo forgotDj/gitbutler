@@ -276,6 +276,12 @@ export declare function commitUncommit(projectId: string, subjectCommitIds: Arra
 export declare function commitUncommitChanges(projectId: string, commitId: string, changes: Array<DiffSpec>, assignTo: string | null, dryRun: boolean): Promise<MoveChangesResult>
 
 /**
+ * Uncommit specific changes from multiple commits and record an oplog
+ * snapshot on success.
+ */
+export declare function commitUncommitChangesFromCommits(projectId: string, sources: Array<UncommitChangesSource>, assignTo: string | null, dryRun: boolean): Promise<UncommitChangesFromCommitsResult>
+
+/**
  * Discard all worktree changes that match the specs in `worktree_changes`.
  *
  * If whole files should be discarded, be sure to not pass any hunks
@@ -2747,6 +2753,37 @@ export type UiSettings = {
    * New code should use `appUpdatesCheckIntervalSec` instead, which will control update checks for both CLI and GUI.
    */
   checkForUpdatesIntervalInSeconds: number;
+};
+
+/** A grouped source that could not be uncommitted. */
+export type UncommitChangesFailure = {
+  /** The commit whose changes failed to uncommit. */
+  commitId: string;
+  /** All changes requested for this commit. */
+  changes: Array<DiffSpec>;
+  /** Human-readable failure reason. */
+  error: string;
+};
+
+/** JSON transport type for uncommitting changes from multiple commits. */
+export type UncommitChangesFromCommitsResult = {
+  /** Workspace state after uncommitting successful sources. */
+  workspace: WorkspaceState;
+  /** Sources that could not be uncommitted. */
+  failures: Array<UncommitChangesFailure>;
+};
+
+/**
+ * A source entry for uncommitting changes from a commit.
+ *
+ * Multiple entries may target the same commit; the backend groups them by
+ * commit id before removing the changes.
+ */
+export type UncommitChangesSource = {
+  /** The commit to remove `changes` from. */
+  commitId: string;
+  /** The changes to remove from the commit. */
+  changes: Array<DiffSpec>;
 };
 
 /** JSON transport type for uncommitting one or more commits. */
