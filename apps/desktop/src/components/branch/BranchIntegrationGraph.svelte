@@ -1,6 +1,6 @@
 <script lang="ts">
 	import BranchHeaderIcon from "$components/branch/BranchHeaderIcon.svelte";
-	import { Avatar } from "@gitbutler/ui";
+	import { Avatar, ScrollableContainer } from "@gitbutler/ui";
 	import { getTimeAgo } from "@gitbutler/ui/utils/timeAgo";
 	import type { BranchIconName } from "$lib/branches/branchIcon";
 	import type {
@@ -83,93 +83,95 @@
 	}
 </script>
 
-<div class="graph">
-	{#each rows as row, index (`${testId}-${index}`)}
-		{#if row.kind === "collapsedIntegratedLocalSummary"}
-			{@render collapsedIntegratedLocalSummaryRow(
-				row,
-				testId,
-				showIntegratedLocalCommits,
-				toggleIntegratedLocalCommits,
-			)}
-		{:else if row.kind === "join"}
-			<!-- Rendered as a curve inside the previous commit row -->
-		{:else}
-			{#if row.content.refDisplays.length > 0}
-				{#each row.content.refDisplays as ref (`${ref.kind}-${ref.name}`)}
-					{@render refRow(ref, row)}
-				{/each}
-			{/if}
-			<div
-				class="graph-row"
-				data-testid={testId}
-				data-branch-integration-row-kind={row.commitKind}
-				data-branch-integration-row-commit-id={row.content.commitId}
-				data-branch-integration-row-subject={row.content.subject}
-			>
-				{#if row.leftRail === "|"}
-					<div class="graph-rail">
-						<div
-							class={`graph-vertical-edge graph-vertical-edge--${railKindClass(leftRailKindForRow(row))}`}
-						></div>
-					</div>
+<ScrollableContainer wide>
+	<div class="graph">
+		{#each rows as row, index (`${testId}-${index}`)}
+			{#if row.kind === "collapsedIntegratedLocalSummary"}
+				{@render collapsedIntegratedLocalSummaryRow(
+					row,
+					testId,
+					showIntegratedLocalCommits,
+					toggleIntegratedLocalCommits,
+				)}
+			{:else if row.kind === "join"}
+				<!-- Rendered as a curve inside the previous commit row -->
+			{:else}
+				{#if row.content.refDisplays.length > 0}
+					{#each row.content.refDisplays as ref (`${ref.kind}-${ref.name}`)}
+						{@render refRow(ref, row)}
+					{/each}
 				{/if}
-				{#if row.node === "*"}
-					{@render commitNode(
-						row.commitKind,
-						row.content.refDisplays.length > 0 || topConnectorForRow(row, index),
-						row.content.refDisplays.length > 0 ? row.commitKind : topConnectorKindForRow(row),
-						nextRowIsJoin(index),
-					)}
-				{:else if row.node !== ""}
-					<div class={`graph-node graph-node--${row.commitKind}`}>
-						<span class="graph-rail-text">{row.node}</span>
-					</div>
-				{/if}
-				{#if row.rightRail !== ""}
-					<div class="graph-rail">
-						<span class={`graph-rail-text graph-rail-text--${row.commitKind}`}>
-							{row.rightRail}
-						</span>
-					</div>
-				{/if}
-				<div class="graph-content">
-					{#if row.content.subject === ""}
-						<div class="graph-subject text-13 text-semibold truncate clr-text-3">
-							No commit message
+				<div
+					class="graph-row"
+					data-testid={testId}
+					data-branch-integration-row-kind={row.commitKind}
+					data-branch-integration-row-commit-id={row.content.commitId}
+					data-branch-integration-row-subject={row.content.subject}
+				>
+					{#if row.leftRail === "|"}
+						<div class="graph-rail">
+							<div
+								class={`graph-vertical-edge graph-vertical-edge--${railKindClass(leftRailKindForRow(row))}`}
+							></div>
 						</div>
-					{:else}
-						<div class="graph-subject text-13 text-semibold truncate">{row.content.subject}</div>
 					{/if}
-					<div class="graph-meta text-12">
-						{#if row.content.author}
-							<div class="graph-author">
-								<Avatar
-									size="small"
-									srcUrl={row.content.author.gravatarUrl}
-									username={row.content.author.name}
-									tooltip={`${row.content.author.name} (${row.content.author.email})`}
-								/>
+					{#if row.node === "*"}
+						{@render commitNode(
+							row.commitKind,
+							row.content.refDisplays.length > 0 || topConnectorForRow(row, index),
+							row.content.refDisplays.length > 0 ? row.commitKind : topConnectorKindForRow(row),
+							nextRowIsJoin(index),
+						)}
+					{:else if row.node !== ""}
+						<div class={`graph-node graph-node--${row.commitKind}`}>
+							<span class="graph-rail-text">{row.node}</span>
+						</div>
+					{/if}
+					{#if row.rightRail !== ""}
+						<div class="graph-rail">
+							<span class={`graph-rail-text graph-rail-text--${row.commitKind}`}>
+								{row.rightRail}
+							</span>
+						</div>
+					{/if}
+					<div class="graph-content">
+						{#if row.content.subject === ""}
+							<div class="graph-subject text-13 text-semibold truncate clr-text-3">
+								No commit message
 							</div>
+						{:else}
+							<div class="graph-subject text-13 text-semibold truncate">{row.content.subject}</div>
 						{/if}
-						{#if !isPreview && row.content.createdAt > 0}
-							<span>{getTimeAgo(row.content.createdAt)}</span>
-						{/if}
-						<span>{row.content.commitId.slice(0, 7)}</span>
-						{#if row.content.changeId}
-							<span class="metadata-separator">•</span>
-							<span class="change-id">{row.content.changeId.slice(0, 4)}</span>
-						{/if}
-						{#if row.content.hasConflicts}
-							<span class="metadata-separator">•</span>
-							<span class="conflict">conflict</span>
-						{/if}
+						<div class="graph-meta text-12">
+							{#if row.content.author}
+								<div class="graph-author">
+									<Avatar
+										size="small"
+										srcUrl={row.content.author.gravatarUrl}
+										username={row.content.author.name}
+										tooltip={`${row.content.author.name} (${row.content.author.email})`}
+									/>
+								</div>
+							{/if}
+							{#if !isPreview && row.content.createdAt > 0}
+								<span>{getTimeAgo(row.content.createdAt)}</span>
+							{/if}
+							<span>{row.content.commitId.slice(0, 7)}</span>
+							{#if row.content.changeId}
+								<span class="metadata-separator">•</span>
+								<span class="change-id">{row.content.changeId.slice(0, 4)}</span>
+							{/if}
+							{#if row.content.hasConflicts}
+								<span class="metadata-separator">•</span>
+								<span class="conflict">conflict</span>
+							{/if}
+						</div>
 					</div>
 				</div>
-			</div>
-		{/if}
-	{/each}
-</div>
+			{/if}
+		{/each}
+	</div>
+</ScrollableContainer>
 
 {#snippet refRow(
 	ref: IntegrationGraphRef,
@@ -253,8 +255,6 @@
 	.graph {
 		display: flex;
 		flex-direction: column;
-		height: 100%;
-		overflow: scroll;
 	}
 
 	.graph-row {

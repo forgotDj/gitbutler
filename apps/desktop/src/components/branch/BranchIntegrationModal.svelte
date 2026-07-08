@@ -221,9 +221,9 @@
 
 <Modal
 	bind:this={modalRef}
-	title={`Update ${branchName}`}
+	title="Update local branch"
 	noPadding
-	width="full-screen"
+	width={720}
 	testId={TestId.BranchIntegrationModal}
 >
 	<ReduxResult {projectId} result={initialBranchIntegration.result}>
@@ -236,22 +236,20 @@
 				showIntegratedLocalCommits,
 			})}
 			<div class="branch-integration">
-				<div class="branch-integration__intro">
-					<p class="text-13">The local branch and its remote counterpart have diverged.</p>
-					<p class="text-13">
-						You can review the divergence between them, decide if and how to integrate the changes
-						into your local branch, preview and apply the changes.
-					</p>
-				</div>
+				<p class="text-13 text-body clr-text-2">
+					This branch and its remote have diverged.
+					<br />
+					Pick an integration strategy below to combine them.
+				</p>
 
 				<div class="branch-integration__sections">
 					<section
 						class="branch-integration__section"
 						data-testid="branch-integration-current-state"
 					>
-						<div class="branch-integration__section-header">
+						<!-- <div class="branch-integration__section-header">
 							<h3 class="text-13 text-semibold">Current state</h3>
-						</div>
+						</div> -->
 						<BranchIntegrationGraph
 							isPreview={false}
 							rows={currentDisplayRows}
@@ -262,7 +260,7 @@
 						/>
 					</section>
 
-					<section class="branch-integration__section" data-testid="branch-integration-steps">
+					<!-- <section class="branch-integration__section" data-testid="branch-integration-steps">
 						<div class="branch-integration__section-header">
 							<h3 class="text-13 text-semibold">Integration strategy</h3>
 							<div class="branch-integration__section-actions">
@@ -306,17 +304,14 @@
 								</ul>
 							</div>
 						{/if}
-					</section>
+					</section> -->
 
 					<section class="branch-integration__section" data-testid="branch-integration-preview">
-						<div class="branch-integration__section-header">
+						<!-- <div class="branch-integration__section-header">
 							<h3 class="text-13 text-semibold">Preview</h3>
-						</div>
-						{#if previewEmpty}
-							<div class="branch-integration__empty" data-testid="branch-integration-empty-state">
-								Run preview to inspect the resulting branch shape.
-							</div>
-						{:else if previewError}
+						</div> -->
+
+						{#if previewError}
 							<div class="branch-integration__error" data-testid="branch-integration-error">
 								{previewError}
 							</div>
@@ -379,8 +374,8 @@
 		display: flex;
 		flex-direction: column;
 		justify-content: start;
-		height: 70vh;
 		padding: 0 16px 16px 16px;
+		overflow: hidden;
 		gap: 12px;
 	}
 
@@ -393,22 +388,22 @@
 
 	.branch-integration__sections {
 		display: flex;
-		justify-content: stretch;
+		align-items: flex-start;
 		width: 100%;
-		height: 100%;
 		overflow: hidden;
 		gap: 12px;
 	}
 
 	.branch-integration__section {
-		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
 		width: 100%;
-		height: 100%;
+		/* Modal is capped at calc(100vh - 80px); subtract header, intro,
+		   footer and paddings so the graph scrolls instead of clipping. */
+		max-height: calc(100vh - 380px);
 		overflow: hidden;
 		border: 1px solid var(--border-2);
-		border-radius: var(--radius-ml);
+		border-radius: var(--radius-m);
 		background: var(--bg-1);
 	}
 
