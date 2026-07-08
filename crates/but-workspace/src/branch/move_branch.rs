@@ -380,19 +380,28 @@ pub(super) mod function {
     ///
     /// Mirrors the [`Position::Above`](crate::branch::create_reference::Position) case of
     /// `create_reference`'s `insert_into_branch_stack_order`: `subject` is removed and re-inserted
-    /// at `target`'s slot, pushing `target` (and everything below it) down. If `target` isn't in the
-    /// order (stale metadata), `subject` becomes the new tip.
+    /// at `target`'s slot, pushing `target` (and everything below it) down.
+    ///
+    /// If `target` isn't tracked yet (stale or empty metadata) it is appended first, so that a move
+    /// where *both* branches are missing adds them both - `subject` on top of `target` - instead of
+    /// silently clobbering the rest of the ordering down to just `subject`.
     fn reorder_empty_branch_in_stack_order(
         mut order: Vec<gix::refs::FullName>,
         target_branch_name: &FullNameRef,
         subject_branch_name: &FullNameRef,
     ) -> Vec<gix::refs::FullName> {
         order.retain(|branch| branch.as_ref() != subject_branch_name);
-        let insert_idx = order
+        let target_idx = match order
             .iter()
             .position(|branch| branch.as_ref() == target_branch_name)
-            .unwrap_or(0);
-        order.insert(insert_idx, subject_branch_name.to_owned());
+        {
+            Some(idx) => idx,
+            None => {
+                order.push(target_branch_name.to_owned());
+                order.len() - 1
+            }
+        };
+        order.insert(target_idx, subject_branch_name.to_owned());
         order
     }
 
@@ -414,6 +423,71 @@ pub(super) mod function {
                 but_core::ref_metadata::WorkspaceCommitRelation::Merged,
                 |_| StackId::generate(),
             );
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::reorder_empty_branch_in_stack_order;
+
+        fn r(name: &str) -> gix::refs::FullName {
+            gix::refs::FullName::try_from(name).expect("valid ref name")
+        }
+
+        fn names(order: &[gix::refs::FullName]) -> Vec<String> {
+            order.iter().map(|n| n.to_string()).collect()
+        }
+
+        #[test]
+        fn moves_subject_on_top_of_target_when_both_present() {
+            let order = vec![r("refs/heads/main"), r("refs/heads/a"), r("refs/heads/b")];
+            let new = reorder_empty_branch_in_stack_order(
+                order,
+                r("refs/heads/main").as_ref(),
+                r("refs/heads/b").as_ref(),
+            );
+            // `b` moves directly above `main`, `a` shifts down.
+            assert_eq!(
+                names(&new),
+                ["refs/heads/b", "refs/heads/main", "refs/heads/a"]
+            );
+        }
+
+        #[test]
+        fn adds_subject_above_target_when_only_target_is_present() {
+            let order = vec![r("refs/heads/main")];
+            let new = reorder_empty_branch_in_stack_order(
+                order,
+                r("refs/heads/main").as_ref(),
+                r("refs/heads/new").as_ref(),
+            );
+            assert_eq!(names(&new), ["refs/heads/new", "refs/heads/main"]);
+        }
+
+        #[test]
+        fn adds_both_in_order_when_neither_is_present() {
+            // Stale/empty metadata: neither branch is tracked yet. Both are added, subject on top of
+            // target, without dropping any pre-existing ordering.
+            let order = vec![r("refs/heads/main")];
+            let new = reorder_empty_branch_in_stack_order(
+                order,
+                r("refs/heads/target").as_ref(),
+                r("refs/heads/subject").as_ref(),
+            );
+            assert_eq!(
+                names(&new),
+                ["refs/heads/main", "refs/heads/subject", "refs/heads/target"]
+            );
+        }
+
+        #[test]
+        fn adds_both_in_order_from_empty_metadata() {
+            let new = reorder_empty_branch_in_stack_order(
+                Vec::new(),
+                r("refs/heads/target").as_ref(),
+                r("refs/heads/subject").as_ref(),
+            );
+            assert_eq!(names(&new), ["refs/heads/subject", "refs/heads/target"]);
         }
     }
 }
