@@ -17,6 +17,10 @@ const guiSettingsV1 = type({
 	"diffOverflow?": "'scroll' | 'wrap'",
 	"diffStyle?": '"unified" | "split"',
 	"editorId?": "string",
+	"syntaxHighlighting?": {
+		"light?": "string",
+		"dark?": "string",
+	},
 });
 
 type LegacyGUISettings = typeof guiSettingsV1.infer;
@@ -25,7 +29,7 @@ const legacyGUISettings: Type<LegacyGUISettings> = type.or(guiSettingsV1);
 
 export type GUISettings = typeof guiSettingsV1.infer;
 
-const defaultSettings: GUISettings = { version: 1 };
+const emptySettings: GUISettings = { version: 1 };
 
 /** Validate a foreign config, throwing on failure. */
 const validate: (cfg: unknown) => LegacyGUISettings = legacyGUISettings.assert;
@@ -59,7 +63,7 @@ export const readSettings = async (): Promise<GUISettings> => {
 		// oxlint-disable-next-line no-console
 		console.warn(e);
 
-		return defaultSettings;
+		return emptySettings;
 	}
 };
 
