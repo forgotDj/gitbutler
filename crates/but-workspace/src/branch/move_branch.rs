@@ -27,6 +27,7 @@ pub(super) mod function {
     use anyhow::bail;
     use but_graph::workspace::WorkspaceKind;
     use but_rebase::graph_rebase::Editor;
+    use but_rebase::graph_rebase::SuccessfulRebase;
     use gix::refs::FullNameRef;
 
     /// Remove a branch out of a stack, creating a new stack out of it, in memory.
@@ -174,21 +175,87 @@ pub(super) mod function {
         let (source, destination) =
             retrieve_branches_and_containers(&workspace, subject_branch_name, target_branch_name)?;
 
-        let Some(workspace_head) = workspace.tip_commit().map(|commit| commit.id) else {
-            bail!("Couldn't find workspace head.")
-        };
-
-        // We're currently stopping the move branch operations imperatively at this stage, in order to
-        // reduce the scope of this first iteration of moving the branches.
+        // Each kind of workspace has a very different notion of what "moving a branch" means, so we
+        // dispatch into a dedicated handler for each one.
         // TODO: Enable and test that we can move branches in any kind of workspace.
         match &workspace.kind {
-            WorkspaceKind::Managed { .. } => {}
+            WorkspaceKind::AdHoc => move_branch_in_single_branch_mode(
+                successful_rebase,
+                source,
+                destination,
+                subject_branch_name,
+                target_branch_name,
+            ),
             WorkspaceKind::ManagedMissingWorkspaceCommit { .. } => {
                 bail!("Moving branches currently need a workspace commit")
             }
-            WorkspaceKind::AdHoc => {
-                bail!("Moving branches in non-managed workspaces is not supported");
-            }
+            WorkspaceKind::Managed { .. } => move_branch_in_managed_workspace(
+                successful_rebase,
+                workspace,
+                source,
+                destination,
+                subject_branch_name,
+                target_branch_name,
+            ),
+        }
+    }
+
+    /// Move a branch in a single-branch (ad-hoc) workspace, where `HEAD` is on a plain local branch.
+    ///
+    /// In single-branch (ad-hoc) mode there is no workspace commit, and the tip-to-base order of
+    /// same-commit empty branches lives in the `branch_order` metadata table rather than in the
+    /// workspace metadata. Reordering two empty branches is therefore a pure metadata operation
+    /// with no graph rewrite - mirror `create_reference`'s ad-hoc handling and persist the new
+    /// order directly.
+    fn move_branch_in_single_branch_mode<'ws, 'meta, M: RefMetadata>(
+        mut successful_rebase: SuccessfulRebase<'ws, 'meta, M>,
+        source: WorkspaceSegmentContext,
+        destination: WorkspaceSegmentContext,
+        subject_branch_name: &FullNameRef,
+        target_branch_name: &FullNameRef,
+    ) -> anyhow::Result<Outcome<'ws, 'meta, M>> {
+        let (_, subject_segment) = &source;
+        let (_, target_segment) = &destination;
+        // The base-most segment of a single-branch stack owns the commits, so a non-empty segment
+        // means the move would change commit ownership and needs a real rebase.
+        if !(subject_segment.commits.is_empty() && target_segment.commits.is_empty()) {
+            bail!("Moving non-empty branches in single-branch mode is not yet supported");
+        }
+        let (_repo, meta) = successful_rebase.repo_and_meta_mut();
+        if !meta.can_persist_branch_stack_order() {
+            bail!(
+                "Cannot reorder '{subject_branch_name}' in single-branch mode without branch order metadata"
+            );
+        }
+        let existing_order = match meta.branch_stack_order(subject_branch_name)? {
+            Some(order) => order,
+            None => meta
+                .branch_stack_order(target_branch_name)?
+                .unwrap_or_default(),
+        };
+        let new_order = reorder_empty_branch_in_stack_order(
+            existing_order,
+            target_branch_name,
+            subject_branch_name,
+        );
+        meta.set_branch_stack_order(&new_order)?;
+        Ok(Outcome {
+            rebase: successful_rebase,
+            ws_meta: None,
+        })
+    }
+
+    /// Move a branch within a managed workspace (one backed by a workspace commit).
+    fn move_branch_in_managed_workspace<'ws, 'meta, M: RefMetadata>(
+        successful_rebase: SuccessfulRebase<'ws, 'meta, M>,
+        workspace: but_graph::Workspace,
+        source: WorkspaceSegmentContext,
+        destination: WorkspaceSegmentContext,
+        subject_branch_name: &FullNameRef,
+        target_branch_name: &FullNameRef,
+    ) -> anyhow::Result<Outcome<'ws, 'meta, M>> {
+        let Some(workspace_head) = workspace.tip_commit().map(|commit| commit.id) else {
+            bail!("Couldn't find workspace head.")
         };
 
         let mut ws_meta = workspace.metadata.clone();
@@ -307,6 +374,26 @@ pub(super) mod function {
             );
         };
         Ok((own_context(source), own_context(destination)))
+    }
+
+    /// Reorder `subject` to sit directly on top of `target` in the tip-to-base ad-hoc `order`.
+    ///
+    /// Mirrors the [`Position::Above`](crate::branch::create_reference::Position) case of
+    /// `create_reference`'s `insert_into_branch_stack_order`: `subject` is removed and re-inserted
+    /// at `target`'s slot, pushing `target` (and everything below it) down. If `target` isn't in the
+    /// order (stale metadata), `subject` becomes the new tip.
+    fn reorder_empty_branch_in_stack_order(
+        mut order: Vec<gix::refs::FullName>,
+        target_branch_name: &FullNameRef,
+        subject_branch_name: &FullNameRef,
+    ) -> Vec<gix::refs::FullName> {
+        order.retain(|branch| branch.as_ref() != subject_branch_name);
+        let insert_idx = order
+            .iter()
+            .position(|branch| branch.as_ref() == target_branch_name)
+            .unwrap_or(0);
+        order.insert(insert_idx, subject_branch_name.to_owned());
+        order
     }
 
     fn move_branch_in_metadata(

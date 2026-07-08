@@ -1267,3 +1267,186 @@ fn set_workspace_metadata(
     }
     Ok(())
 }
+
+/// Tests for `move_branch` in single-branch (ad-hoc) mode, where `HEAD` is on a plain local branch
+/// (no `gitbutler/workspace` commit) and the tip-to-base order of same-commit empty branches lives
+/// in the `branch_order` metadata table rather than in `Workspace` metadata.
+mod single_branch_mode {
+    use but_core::RefMetadata;
+    use but_core::ref_metadata::StackId;
+    use but_graph::init::Options;
+    use but_meta::BranchOrderMetadata;
+    use but_rebase::graph_rebase::Editor;
+    use but_testsupport::graph_workspace;
+    use but_workspace::branch::create_reference::{Anchor, Position};
+
+    use crate::ref_info::with_workspace_commit::utils::named_writable_scenario;
+    use crate::utils::r;
+
+    fn stack_id_for_name(rn: &gix::refs::FullNameRef) -> StackId {
+        use bstr::ByteSlice;
+        StackId::from_number_for_testing(rn.shorten().chars().map(|c| c as u128).sum())
+    }
+
+    fn branch_order_meta(repo: &gix::Repository) -> anyhow::Result<BranchOrderMetadata> {
+        BranchOrderMetadata::from_paths(repo.path().join("virtual-branches.toml"), repo.path())
+    }
+
+    /// Build a single-branch (ad-hoc) workspace on `main` (3 commits) with two empty dependent
+    /// branches `empty-top` and `empty-bottom` stacked above the commit-owning base branch.
+    ///
+    /// The tip-to-base branch order ends up as `[main, empty-top, empty-bottom, base]`, so both
+    /// `empty-top` and `empty-bottom` are empty segments that can be reordered by metadata alone.
+    fn ad_hoc_workspace_with_two_empty_branches() -> anyhow::Result<(
+        tempfile::TempDir,
+        gix::Repository,
+        BranchOrderMetadata,
+        but_core::ref_metadata::ProjectMeta,
+    )> {
+        let (tmp, repo, legacy_meta) = named_writable_scenario("single-branch-with-3-commits")?;
+        let project_meta = legacy_meta
+            .workspace(but_core::WORKSPACE_REF_NAME.try_into()?)
+            .map(|w| w.project_meta())
+            .unwrap_or_default();
+        let mut meta = branch_order_meta(&repo)?;
+
+        let main_ref = r("refs/heads/main");
+        let mut ws =
+            but_graph::Graph::from_head(&repo, &meta, project_meta.clone(), Options::limited())?
+                .into_workspace()?;
+
+        // Each branch is inserted directly below `main`, so creating them in this order yields the
+        // chain [main, empty-top, empty-bottom, base] (tip to base).
+        for name in [
+            "refs/heads/base",
+            "refs/heads/empty-bottom",
+            "refs/heads/empty-top",
+        ] {
+            ws = but_workspace::branch::create_reference(
+                r(name),
+                Anchor::at_reference(main_ref, Position::Below),
+                &repo,
+                &ws,
+                &mut meta,
+                stack_id_for_name,
+                None,
+            )?
+            .into_owned();
+        }
+
+        Ok((tmp, repo, meta, project_meta))
+    }
+
+    /// `move_branch` reorders two empty branches in single-branch (ad-hoc) mode by rewriting the
+    /// `branch_order` metadata, without any graph rewrite.
+    #[test]
+    fn reorder_empty_branches_updates_branch_order() -> anyhow::Result<()> {
+        let (_tmp, repo, mut meta, project_meta) = ad_hoc_workspace_with_two_empty_branches()?;
+        let main_ref = r("refs/heads/main");
+
+        let mut ws =
+            but_graph::Graph::from_head(&repo, &meta, project_meta.clone(), Options::limited())?
+                .into_workspace()?;
+        // Single-branch (ad-hoc) workspace: `HEAD` is on `main` directly, no `gitbutler/workspace`
+        // commit. `empty-top`/`empty-bottom` are empty segments; `base` owns the commits.
+        insta::assert_snapshot!(graph_workspace(&ws), @"
+        ⌂:1:main[🌳] <> ✓! on 281da94
+        └── ≡:1:main[🌳] {1}
+            ├── :1:main[🌳]
+            ├── 📙:2:empty-top
+            ├── 📙:3:empty-bottom
+            └── 📙:0:base
+                ├── ·281da94
+                ├── ·12995d7
+                └── ·3d57fc1
+        ");
+        assert_eq!(
+            meta.branch_stack_order(main_ref)?,
+            Some(vec![
+                r("refs/heads/main").to_owned(),
+                r("refs/heads/empty-top").to_owned(),
+                r("refs/heads/empty-bottom").to_owned(),
+                r("refs/heads/base").to_owned(),
+            ]),
+        );
+
+        // Move `empty-bottom` on top of `empty-top` (both empty) - a pure metadata reorder.
+        let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+        let but_workspace::branch::move_branch::Outcome { rebase, ws_meta } =
+            but_workspace::branch::move_branch(
+                editor,
+                r("refs/heads/empty-bottom"),
+                r("refs/heads/empty-top"),
+            )?;
+        assert!(
+            ws_meta.is_none(),
+            "ad-hoc reorder lives in branch_order, not workspace metadata"
+        );
+        rebase.materialize()?;
+
+        // The ad-hoc order is updated: `empty-bottom` now sits above `empty-top`.
+        assert_eq!(
+            meta.branch_stack_order(main_ref)?,
+            Some(vec![
+                r("refs/heads/main").to_owned(),
+                r("refs/heads/empty-bottom").to_owned(),
+                r("refs/heads/empty-top").to_owned(),
+                r("refs/heads/base").to_owned(),
+            ]),
+        );
+
+        // Re-projecting from the reloaded metadata reflects the new order, and no commit was moved.
+        let ws = but_graph::Graph::from_head(&repo, &meta, project_meta, Options::limited())?
+            .into_workspace()?;
+        insta::assert_snapshot!(graph_workspace(&ws), @"
+        ⌂:1:main[🌳] <> ✓! on 281da94
+        └── ≡:1:main[🌳] {1}
+            ├── :1:main[🌳]
+            ├── 📙:2:empty-bottom
+            ├── 📙:3:empty-top
+            └── 📙:0:base
+                ├── ·281da94
+                ├── ·12995d7
+                └── ·3d57fc1
+        ");
+
+        Ok(())
+    }
+
+    /// Moving a *non-empty* branch in single-branch mode is not supported yet: the base-most branch
+    /// of a single-branch stack owns the commits, so moving it would change commit ownership and
+    /// needs a real rebase rather than a pure metadata reorder.
+    #[test]
+    fn moving_non_empty_branch_is_unsupported() -> anyhow::Result<()> {
+        let (_tmp, repo, mut meta, project_meta) = ad_hoc_workspace_with_two_empty_branches()?;
+        let main_ref = r("refs/heads/main");
+        let order_before = meta.branch_stack_order(main_ref)?;
+
+        let mut ws = but_graph::Graph::from_head(&repo, &meta, project_meta, Options::limited())?
+            .into_workspace()?;
+
+        // `base` owns the stack's commits, so trying to move it must be rejected.
+        let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+        let err = match but_workspace::branch::move_branch(
+            editor,
+            r("refs/heads/base"),
+            r("refs/heads/empty-top"),
+        ) {
+            // `Outcome` holds the metadata backend (not `Debug`), so unwrap the error by hand.
+            Ok(_) => panic!("moving a non-empty branch in single-branch mode should be rejected"),
+            Err(err) => err,
+        };
+
+        assert_eq!(
+            err.to_string(),
+            "Moving non-empty branches in single-branch mode is not yet supported"
+        );
+        assert_eq!(
+            meta.branch_stack_order(main_ref)?,
+            order_before,
+            "the ad-hoc branch order must be untouched after the rejected move"
+        );
+
+        Ok(())
+    }
+}
