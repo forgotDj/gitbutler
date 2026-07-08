@@ -724,3 +724,17 @@ fn discard_hunk_from_detail_view_via_file() {
         "snapshots/discard_hunk_from_detail_view_via_file_004.svg"
     ]);
 }
+
+#[test]
+fn highlighting_multiline_things_work() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("one.py", include_str!("fixtures/python_with_shebang.py"));
+
+    let mut tui = test_tui(env);
+
+    tui.input('d').assert_rendered_term_svg_eq(file![
+        "snapshots/highlighting_multiline_things_work_001.svg"
+    ]);
+}

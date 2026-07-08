@@ -1193,6 +1193,10 @@ fn format_with_dot_thousands(value: u64) -> String {
     formatted.chars().rev().collect()
 }
 
+pub fn load_syntax_set() -> SyntaxSet {
+    SyntaxSet::load_defaults_nonewlines()
+}
+
 #[cfg(test)]
 mod tests {
     use super::format_with_dot_thousands;
