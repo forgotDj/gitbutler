@@ -239,6 +239,10 @@ export const changesFileHotkeys = {
 		hotkey: "A",
 		meta: { group: "File", name: "Absorb" },
 	},
+	openInEditor: {
+		hotkey: "E",
+		meta: { group: "File", name: "Open in editor" },
+	},
 } satisfies Record<string, HotkeyWithMeta>;
 
 export const pullRequestHotkeys = {
@@ -289,5 +293,9 @@ export const diffHotkeys = {
 	toggleDiffStyle: {
 		hotkey: "Mod+B",
 		meta: { group: "Diff", name: "Toggle diff style" },
+	},
+	openInEditor: {
+		hotkey: "E",
+		meta: { group: "Diff", name: "Open in editor" },
 	},
 } satisfies Record<string, HotkeyWithMeta>;

@@ -2,6 +2,7 @@ import uiStyles from "#ui/components/ui.module.css";
 import { SuspenseQuery } from "@suspensive/react-query";
 import {
 	useMergeReview,
+	useOpenInEditor,
 	usePublishReview,
 	useSaveGUISettings,
 	useSetReviewAutoMerge,
@@ -16,6 +17,7 @@ import {
 	getGUISettingsQueryOptions,
 	getReviewMergeStatusQueryOptions,
 	headInfoQueryOptions,
+	listEditorsQueryOptions,
 	listReviewsQueryOptions,
 	treeChangeDiffsQueryOptions,
 } from "#ui/api/queries.ts";
@@ -328,6 +330,12 @@ const DiffContents: FC<{
 }) => {
 	const [collapsedItems, setCollapsedItems] = useState<Set<string>>(new Set());
 	const dispatch = useAppDispatch();
+	const { data: editors } = useQuery(listEditorsQueryOptions);
+	const { data: preferredEditor } = useQuery({
+		...getGUISettingsQueryOptions(),
+		select: (cfg) => editors?.find((editor) => editor.id === cfg.editorId),
+	});
+	const openInEditor = useOpenInEditor();
 
 	const diffSelection = useDiffSelection(projectId, navigationIndex);
 	const diffSelectionFile =
@@ -385,6 +393,24 @@ const DiffContents: FC<{
 				conflictBehavior: "allow",
 				target: selectionScopeRef,
 				meta: diffHotkeys.unfoldFile.meta,
+			},
+		},
+		{
+			hotkey: diffHotkeys.openInEditor.hotkey,
+			callback: () =>
+				diffSelectionFile &&
+				preferredEditor &&
+				openInEditor.mutate({
+					projectId,
+					editorId: preferredEditor.id,
+					path: diffSelectionFile.change.path,
+					lineNr: null,
+				}),
+			options: {
+				enabled: !!diffSelectionFile && !!preferredEditor,
+				conflictBehavior: "allow",
+				target: selectionScopeRef,
+				meta: diffHotkeys.openInEditor.meta,
 			},
 		},
 	]);

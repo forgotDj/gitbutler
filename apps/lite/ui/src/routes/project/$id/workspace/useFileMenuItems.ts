@@ -67,6 +67,7 @@ export const useFileMenuItems = ({
 				? nativeMenuItem({
 						label: `Open in ${preferredEditor.name}`,
 						enabled: !openInEditor.isPending,
+						accelerator: toElectronAccelerator(changesFileHotkeys.openInEditor.hotkey),
 						onSelect: () =>
 							openInEditor.mutate({
 								projectId,
