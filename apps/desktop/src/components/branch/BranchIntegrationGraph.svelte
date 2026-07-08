@@ -80,7 +80,7 @@
 	}
 </script>
 
-<div class="branch-integration__graph">
+<div class="graph">
 	{#each rows as row, index (`${testId}-${index}`)}
 		{#if row.kind === "collapsedIntegratedLocalSummary"}
 			{@render collapsedIntegratedLocalSummaryRow(
@@ -98,18 +98,16 @@
 				{/each}
 			{/if}
 			<div
-				class="branch-integration__graph-row"
+				class="graph-row"
 				data-testid={testId}
 				data-branch-integration-row-kind={row.commitKind}
 				data-branch-integration-row-commit-id={row.content.commitId}
 				data-branch-integration-row-subject={row.content.subject}
 			>
 				{#if row.leftRail === "|"}
-					<div
-						class={`branch-integration__graph-rail branch-integration__graph-rail--${railKindClass(leftRailKindForRow(row))}`}
-					>
+					<div class={`graph-rail graph-rail--${railKindClass(leftRailKindForRow(row))}`}>
 						<div
-							class={`branch-integration__graph-vertical-edge branch-integration__graph-vertical-edge--${railKindClass(leftRailKindForRow(row))}`}
+							class={`graph-vertical-edge graph-vertical-edge--${railKindClass(leftRailKindForRow(row))}`}
 						></div>
 					</div>
 				{/if}
@@ -120,28 +118,22 @@
 						topConnectorKindForRow(row),
 					)}
 				{:else if row.node !== ""}
-					<div
-						class={`branch-integration__graph-node branch-integration__graph-node--${row.commitKind}`}
-					>
-						<span class="branch-integration__graph-rail-text">{row.node}</span>
+					<div class={`graph-node graph-node--${row.commitKind}`}>
+						<span class="graph-rail-text">{row.node}</span>
 					</div>
 				{/if}
-				<div
-					class={`branch-integration__graph-rail branch-integration__graph-rail--${row.commitKind}`}
-				>
+				<div class={`graph-rail graph-rail--${row.commitKind}`}>
 					{#if row.rightRail !== ""}
-						<span
-							class={`branch-integration__graph-rail-text branch-integration__graph-rail-text--${row.commitKind}`}
-						>
+						<span class={`graph-rail-text graph-rail-text--${row.commitKind}`}>
 							{row.rightRail}
 						</span>
 					{/if}
 				</div>
-				<div class="branch-integration__graph-content">
-					<div class="branch-integration__graph-subject">{row.content.subject}</div>
-					<div class="branch-integration__graph-meta">
+				<div class="graph-content">
+					<div class="graph-subject">{row.content.subject}</div>
+					<div class="graph-meta">
 						{#if row.content.author}
-							<div class="branch-integration__graph-author">
+							<div class="graph-author">
 								<Avatar
 									size="small"
 									srcUrl={row.content.author.gravatarUrl}
@@ -156,11 +148,11 @@
 						<span>{row.content.commitId.slice(0, 7)}</span>
 						{#if row.content.changeId}
 							<span>•</span>
-							<span class="branch-integration__change-id">{row.content.changeId.slice(0, 4)}</span>
+							<span class="change-id">{row.content.changeId.slice(0, 4)}</span>
 						{/if}
 						{#if row.content.hasConflicts}
 							<span>•</span>
-							<span class="branch-integration__conflict">conflict</span>
+							<span class="conflict">conflict</span>
 						{/if}
 					</div>
 				</div>
@@ -175,22 +167,20 @@
 )}
 	{@const branchIcon = getIconFromCommitKind(ref.kind)}
 	{@const branchColor = getColorFromCommitKind(ref.kind)}
-	<div class="branch-integration__graph-row" data-testid={testId}>
+	<div class="graph-row" data-testid={testId}>
 		{#if row.leftRail === "|"}
-			<div
-				class={`branch-integration__graph-rail branch-integration__graph-rail--${railKindClass(leftRailKindForRow(row))}`}
-			>
+			<div class={`graph-rail graph-rail--${railKindClass(leftRailKindForRow(row))}`}>
 				<div
-					class={`branch-integration__graph-vertical-edge branch-integration__graph-vertical-edge--${railKindClass(leftRailKindForRow(row))}`}
+					class={`graph-vertical-edge graph-vertical-edge--${railKindClass(leftRailKindForRow(row))}`}
 				></div>
 			</div>
 		{/if}
-		<div class="branch-integration__graph-content">
-			<div class="branch-integration__graph-content--ref">
+		<div class="graph-content">
+			<div class="graph-content--ref">
 				<BranchHeaderIcon color={branchColor} iconName={branchIcon} />
-				<div class="branch-integration__graph-subject">
+				<h3 class="graph-subject text-14 text-bold">
 					{ref.name}
-				</div>
+				</h3>
 			</div>
 		</div>
 	</div>
@@ -204,16 +194,16 @@
 )}
 	<button
 		type="button"
-		class="branch-integration__graph-row branch-integration__graph-row--interactive"
+		class="graph-row graph-row--interactive"
 		data-testid={testId}
 		data-branch-integration-row-kind="integrated"
 		data-branch-integration-row-summary="collapsed-integrated-local-commits"
 		onclick={toggleIntegratedLocalCommits}
 	>
 		{@render commitNode("integrated", row.showTopConnector, row.topConnectorKind)}
-		<div class="branch-integration__graph-rail branch-integration__graph-rail--integrated"></div>
-		<div class="branch-integration__graph-content">
-			<div class="branch-integration__graph-subject">
+		<div class="graph-rail graph-rail--integrated"></div>
+		<div class="graph-content">
+			<div class="graph-subject">
 				{showIntegratedLocalCommits ? "Hide" : "Show"}
 				{row.hiddenCount} integrated
 				{row.hiddenCount === 1 ? " commit" : " commits"}
@@ -227,44 +217,40 @@
 	showTopConnector: boolean,
 	topConnectorKind: BranchIntegrationDisplayConnectorKind,
 )}
-	<div class={`branch-integration__graph-node branch-integration__graph-node--${commitKind}`}>
+	<div class={`graph-node graph-node--${commitKind}`}>
 		{#if showTopConnector}
 			<div
-				class={`branch-integration__graph-node-connector branch-integration__graph-node-connector--top branch-integration__graph-node-connector--${topConnectorKind}`}
+				class={`graph-node-connector graph-node-connector--top graph-node-connector--${topConnectorKind}`}
 			></div>
 		{/if}
+		<div class={`graph-node-dot graph-node-dot--${commitKind}`}></div>
 		<div
-			class={`branch-integration__graph-node-dot branch-integration__graph-node-dot--${commitKind}`}
-		></div>
-		<div
-			class={`branch-integration__graph-node-connector branch-integration__graph-node-connector--bottom branch-integration__graph-node-connector--${commitKind}`}
+			class={`graph-node-connector graph-node-connector--bottom graph-node-connector--${commitKind}`}
 		></div>
 	</div>
 {/snippet}
 
 {#snippet joinRow(row: BranchIntegrationDisplayRowJoin, testId: string)}
 	<div
-		class="branch-integration__graph-row branch-integration__graph-row--join"
+		class="graph-row graph-row--join"
 		data-testid={testId}
 		data-branch-integration-row-kind="join"
 	>
 		{#if row.leftRail === "|"}
-			<div
-				class={`branch-integration__graph-rail branch-integration__graph-rail--join branch-integration__graph-rail--${railKindClass(row.leftRailKind)}`}
-			>
+			<div class={`graph-rail graph-rail--join graph-rail--${railKindClass(row.leftRailKind)}`}>
 				<div
-					class={`branch-integration__graph-vertical-edge branch-integration__graph-vertical-edge--${railKindClass(row.leftRailKind)}`}
+					class={`graph-vertical-edge graph-vertical-edge--${railKindClass(row.leftRailKind)}`}
 				></div>
 			</div>
 		{/if}
 		{#if row.node !== ""}
-			<div class="branch-integration__graph-node">
-				<span class="branch-integration__graph-rail-text">{row.node}</span>
+			<div class="graph-node">
+				<span class="graph-rail-text">{row.node}</span>
 			</div>
 		{/if}
-		<div class="branch-integration__graph-rail branch-integration__graph-rail--join--remote">
+		<div class="graph-rail graph-rail--join--remote">
 			{#if row.rightRail !== ""}
-				<div class="branch-integration__graph-remote-join"></div>
+				<div class="graph-remote-join"></div>
 			{/if}
 		</div>
 		<div></div>
@@ -272,20 +258,18 @@
 {/snippet}
 
 <style lang="postcss">
-	.branch-integration__graph {
+	.graph {
 		display: flex;
 		flex-direction: column;
 		height: 100%;
 		overflow: scroll;
 	}
 
-	.branch-integration__graph-row {
+	.graph-row {
 		display: flex;
 		column-gap: 4px;
 		flex-shrink: 0;
-		align-items: stretch;
-		height: 65px;
-		padding: 0 14px;
+		padding: 0 10px;
 		border-bottom: 1px solid var(--border-2);
 
 		&:last-child {
@@ -293,20 +277,20 @@
 		}
 	}
 
-	.branch-integration__graph-row--join {
+	.graph-row--join {
 		column-gap: 0;
 		align-items: unset;
 		gap: 0;
 	}
 
-	.branch-integration__graph-row--interactive {
+	.graph-row--interactive {
 		background-color: var(--hover-purple-bg);
 		cursor: pointer;
 		user-select: none;
 	}
 
-	.branch-integration__graph-rail,
-	.branch-integration__graph-node {
+	.graph-rail,
+	.graph-node {
 		display: flex;
 		position: relative;
 		flex-shrink: 0;
@@ -316,35 +300,35 @@
 		min-height: 18px;
 	}
 
-	.branch-integration__graph-rail--join {
+	.graph-rail--join {
 		justify-content: end;
 		width: 9px;
 		margin-left: 1px;
 	}
 
-	.branch-integration__graph-rail--join--remote {
+	.graph-rail--join--remote {
 		width: 22px;
 		margin: 0;
 		padding: 0;
 	}
 
-	.branch-integration__graph-node {
+	.graph-node {
 		--branch-integration-node-color: var(--text-2);
 	}
 
-	.branch-integration__graph-node--local {
+	.graph-node--local {
 		--branch-integration-node-color: var(--commit-local);
 	}
 
-	.branch-integration__graph-node--remote {
+	.graph-node--remote {
 		--branch-integration-node-color: var(--commit-remote);
 	}
 
-	.branch-integration__graph-node--integrated {
+	.graph-node--integrated {
 		--branch-integration-node-color: var(--commit-integrated);
 	}
 
-	.branch-integration__graph-rail-text {
+	.graph-rail-text {
 		color: var(--text-2);
 		font-family: var(--font-mono, monospace);
 		white-space: pre;
@@ -354,21 +338,21 @@
 		}
 	}
 
-	.branch-integration__graph-vertical-edge {
+	.graph-vertical-edge {
 		width: 2px;
 		height: 100%;
 		background: var(--text-2);
 	}
 
-	.branch-integration__graph-vertical-edge--local {
+	.graph-vertical-edge--local {
 		background: var(--commit-local);
 	}
 
-	.branch-integration__graph-vertical-edge--integrated {
+	.graph-vertical-edge--integrated {
 		background: var(--commit-integrated);
 	}
 
-	.branch-integration__graph-remote-join {
+	.graph-remote-join {
 		position: relative;
 		width: 100%;
 		height: 100%;
@@ -377,27 +361,27 @@
 		border-bottom-right-radius: 8px;
 	}
 
-	.branch-integration__graph-remote-join-horizontal,
-	.branch-integration__graph-remote-join-vertical {
+	.graph-remote-join-horizontal,
+	.graph-remote-join-vertical {
 		position: absolute;
 		background: var(--commit-remote);
 	}
 
-	.branch-integration__graph-remote-join-horizontal {
+	.graph-remote-join-horizontal {
 		right: 7px;
 		bottom: 7px;
 		left: 0;
 		height: 2px;
 	}
 
-	.branch-integration__graph-remote-join-vertical {
+	.graph-remote-join-vertical {
 		top: 0;
 		right: 7px;
 		bottom: 7px;
 		width: 2px;
 	}
 
-	.branch-integration__graph-node-dot {
+	.graph-node-dot {
 		box-sizing: border-box;
 		z-index: 1;
 		position: relative;
@@ -407,7 +391,7 @@
 		border-radius: 999px;
 	}
 
-	.branch-integration__graph-node-connector {
+	.graph-node-connector {
 		position: absolute;
 		left: 50%;
 		width: 2px;
@@ -415,30 +399,30 @@
 		background: var(--branch-integration-node-color);
 	}
 
-	.branch-integration__graph-node-connector--local {
+	.graph-node-connector--local {
 		background: var(--commit-local);
 	}
 
-	.branch-integration__graph-node-connector--remote {
+	.graph-node-connector--remote {
 		background: var(--commit-remote);
 	}
 
-	.branch-integration__graph-node-connector--integrated {
+	.graph-node-connector--integrated {
 		background: var(--commit-integrated);
 	}
 
-	.branch-integration__graph-node-connector--top {
+	.graph-node-connector--top {
 		top: 0;
 		bottom: calc(50% + 6px);
 	}
 
-	.branch-integration__graph-node-connector--bottom {
+	.graph-node-connector--bottom {
 		top: calc(50% + 6px);
 		bottom: 0;
 	}
 
-	.branch-integration__graph-content--ref,
-	.branch-integration__graph-content {
+	.graph-content--ref,
+	.graph-content {
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
@@ -446,20 +430,18 @@
 		gap: 2px;
 	}
 
-	.branch-integration__graph-content--ref {
+	.graph-content--ref {
 		flex-direction: row;
 		gap: 22px;
 	}
 
-	.branch-integration__graph-subject {
+	.graph-subject {
 		overflow: hidden;
-		font-weight: 600;
-		font-size: 13px;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.branch-integration__graph-meta {
+	.graph-meta {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
@@ -468,15 +450,15 @@
 		font-size: 11px;
 	}
 
-	.branch-integration__graph-author {
+	.graph-author {
 		display: flex;
 		align-items: center;
 	}
 
-	.branch-integration__change-id {
+	.change-id {
 		font-weight: bold;
 	}
-	.branch-integration__conflict {
+	.conflict {
 		padding: 1px 4px;
 		border-radius: 4px;
 		background-color: var(--bg-warn);
