@@ -14,8 +14,11 @@ import path from "node:path";
 const guiSettingsV1 = type({
 	version: "1",
 	"diffBackground?": "boolean",
+	"diffFontFamily?": "string",
+	"diffFontSize?": "number",
 	"diffOverflow?": "'scroll' | 'wrap'",
 	"diffStyle?": '"unified" | "split"',
+	"diffTabSize?": "number",
 	"editorId?": "string",
 	"syntaxHighlighting?": {
 		"light?": "string",

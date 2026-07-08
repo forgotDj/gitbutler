@@ -99,7 +99,6 @@
 }
 
 .diffContents {
-	--diffs-font-size: 12px;
 	--diffs-bg-selection-number-override: color-mix(
 		var(--fill-gray-bg) var(--opacity-bg-selected-blur),
 		transparent

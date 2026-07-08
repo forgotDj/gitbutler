@@ -335,6 +335,18 @@ const DiffContents: FC<{
 		...getGUISettingsQueryOptions(),
 		select: (cfg) => editors?.find((editor) => editor.id === cfg.editorId),
 	});
+	const { data: preferredFontFamily } = useQuery({
+		...getGUISettingsQueryOptions(),
+		select: (cfg) => cfg.diffFontFamily,
+	});
+	const { data: preferredFontSize } = useQuery({
+		...getGUISettingsQueryOptions(),
+		select: (cfg) => cfg.diffFontSize,
+	});
+	const { data: preferredTabSize } = useQuery({
+		...getGUISettingsQueryOptions(),
+		select: (cfg) => cfg.diffTabSize,
+	});
 	const openInEditor = useOpenInEditor();
 
 	const diffSelection = useDiffSelection(projectId, navigationIndex);
@@ -567,6 +579,11 @@ const DiffContents: FC<{
             --mix-selection-dark: 0%;
           }
         `,
+			}}
+			style={{
+				"--diffs-font-family": preferredFontFamily ?? "Geist Mono, Menlo, monospace",
+				"--diffs-font-size": `${preferredFontSize ?? 12}px`,
+				"--diffs-tab-size": `${preferredTabSize ?? 4}`,
 			}}
 		/>
 	);

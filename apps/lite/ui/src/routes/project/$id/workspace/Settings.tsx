@@ -19,6 +19,9 @@ const getRenderableThemes = (filter?: ThemeCollectionFilter) =>
 		}))
 		.toSorted((a, b) => a.displayName.localeCompare(b.displayName));
 
+const clamp = (value: number, min: number, max: number): number =>
+	Math.min(Math.max(value, min), max);
+
 type Props = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
@@ -114,6 +117,79 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 										</option>
 									))}
 								</select>
+							</div>
+
+							<div className={styles.input}>
+								<label htmlFor="font-family" className={styles.label}>
+									Diff font family
+								</label>
+
+								<input
+									id="font-family"
+									type="text"
+									defaultValue={settings.diffFontFamily ?? "Geist Mono, Menlo, monospace"}
+									onBlur={(evt) =>
+										saveGUISettings.mutate({
+											diffFontFamily: evt.currentTarget.value,
+										})
+									}
+									onKeyDown={(evt) =>
+										evt.key === "Escape" &&
+										saveGUISettings.mutate({
+											diffFontFamily: evt.currentTarget.value,
+										})
+									}
+								/>
+							</div>
+
+							<div className={styles.input}>
+								<label htmlFor="font-size" className={styles.label}>
+									Diff font size
+								</label>
+
+								<input
+									id="font-size"
+									type="number"
+									min={1}
+									max={32}
+									defaultValue={settings.diffFontSize ?? 12}
+									onBlur={(evt) =>
+										saveGUISettings.mutate({
+											diffFontSize: clamp(Number(evt.currentTarget.value), 1, 32),
+										})
+									}
+									onKeyDown={(evt) =>
+										evt.key === "Escape" &&
+										saveGUISettings.mutate({
+											diffFontSize: clamp(Number(evt.currentTarget.value), 1, 32),
+										})
+									}
+								/>
+							</div>
+
+							<div className={styles.input}>
+								<label htmlFor="tab-size" className={styles.label}>
+									Diff tab size
+								</label>
+
+								<input
+									id="tab-size"
+									type="number"
+									min={1}
+									max={8}
+									defaultValue={settings.diffTabSize ?? 4}
+									onBlur={(evt) =>
+										saveGUISettings.mutate({
+											diffTabSize: clamp(Number(evt.currentTarget.value), 1, 8),
+										})
+									}
+									onKeyDown={(evt) =>
+										evt.key === "Escape" &&
+										saveGUISettings.mutate({
+											diffTabSize: clamp(Number(evt.currentTarget.value), 1, 8),
+										})
+									}
+								/>
 							</div>
 						</div>
 					</Dialog.Popup>

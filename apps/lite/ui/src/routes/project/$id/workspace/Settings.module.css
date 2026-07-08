@@ -49,6 +49,7 @@
 	align-items: center;
 	justify-content: space-between;
 
+	input,
 	select {
 		padding-inline: 4px;
 		padding-block: 8px;
