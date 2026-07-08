@@ -8,6 +8,7 @@ import type { ThemeCollectionFilter } from "@pierre/theming";
 import { themes } from "@pierre/theming/themes";
 import type { ThemesType } from "@pierre/diffs/react";
 import { defaultTheme, displayName } from "#ui/syntax-highlighting.ts";
+import { classes } from "#ui/components/classes.ts";
 
 const getRenderableThemes = (filter?: ThemeCollectionFilter) =>
 	themes
@@ -48,80 +49,72 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 					<Dialog.Popup aria-labelledby="settings-heading" className={styles.popup}>
 						<h1
 							id="settings-heading"
-							className="text-15 text-semibold"
-							style={{ marginBlockEnd: 16 }}
+							className={classes("text-15", "text-semibold", styles.heading)}
 						>
 							Settings
 						</h1>
 
-						<label
-							htmlFor="editor"
-							className="text-12 text-semibold"
-							style={{ color: "var(--text-2)" }}
-						>
-							Default editor
-						</label>
-						<div className="text-12">
-							<select
-								id="editor"
-								value={settings.editorId ?? ""}
-								onChange={(evt) =>
-									saveGUISettings.mutate({
-										editorId: evt.currentTarget.value,
-									})
-								}
-							>
-								<option value="" disabled>
-									Select an editor...
-								</option>
-								{editors.map((editor) => (
-									<option key={editor.id} value={editor.id}>
-										{editor.name}
-									</option>
-								))}
-							</select>
-						</div>
+						<div className={classes("text-13", styles.inputs)}>
+							<div className={styles.input}>
+								<label htmlFor="editor" className={styles.label}>
+									Default editor
+								</label>
 
-						<label
-							htmlFor="theme-light"
-							className="text-12 text-semibold"
-							style={{ color: "var(--text-2)" }}
-						>
-							Syntax theme (light)
-						</label>
-						<div className="text-12">
-							<select
-								id="theme-light"
-								value={settings.syntaxHighlighting?.light ?? defaultTheme.light}
-								onChange={(evt) => setTheme("light", evt.currentTarget.value)}
-							>
-								{lightThemes.map((theme) => (
-									<option key={theme.name} value={theme.name}>
-										{theme.displayName}
+								<select
+									id="editor"
+									value={settings.editorId ?? ""}
+									onChange={(evt) =>
+										saveGUISettings.mutate({
+											editorId: evt.currentTarget.value,
+										})
+									}
+								>
+									<option value="" disabled>
+										Select an editor...
 									</option>
-								))}
-							</select>
-						</div>
+									{editors.map((editor) => (
+										<option key={editor.id} value={editor.id}>
+											{editor.name}
+										</option>
+									))}
+								</select>
+							</div>
 
-						<label
-							htmlFor="theme-dark"
-							className="text-12 text-semibold"
-							style={{ color: "var(--text-2)" }}
-						>
-							Syntax theme (dark)
-						</label>
-						<div className="text-12">
-							<select
-								id="theme-dark"
-								value={settings.syntaxHighlighting?.dark ?? defaultTheme.dark}
-								onChange={(evt) => setTheme("dark", evt.currentTarget.value)}
-							>
-								{darkThemes.map((theme) => (
-									<option key={theme.name} value={theme.name}>
-										{theme.displayName}
-									</option>
-								))}
-							</select>
+							<div className={styles.input}>
+								<label htmlFor="theme-light" className={styles.label}>
+									Syntax theme (light)
+								</label>
+
+								<select
+									id="theme-light"
+									value={settings.syntaxHighlighting?.light ?? defaultTheme.light}
+									onChange={(evt) => setTheme("light", evt.currentTarget.value)}
+								>
+									{lightThemes.map((theme) => (
+										<option key={theme.name} value={theme.name}>
+											{theme.displayName}
+										</option>
+									))}
+								</select>
+							</div>
+
+							<div className={styles.input}>
+								<label htmlFor="theme-dark" className={styles.label}>
+									Syntax theme (dark)
+								</label>
+
+								<select
+									id="theme-dark"
+									value={settings.syntaxHighlighting?.dark ?? defaultTheme.dark}
+									onChange={(evt) => setTheme("dark", evt.currentTarget.value)}
+								>
+									{darkThemes.map((theme) => (
+										<option key={theme.name} value={theme.name}>
+											{theme.displayName}
+										</option>
+									))}
+								</select>
+							</div>
 						</div>
 					</Dialog.Popup>
 				</Dialog.Viewport>
