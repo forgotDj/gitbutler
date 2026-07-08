@@ -105,7 +105,7 @@
 				data-branch-integration-row-subject={row.content.subject}
 			>
 				{#if row.leftRail === "|"}
-					<div class={`graph-rail graph-rail--${railKindClass(leftRailKindForRow(row))}`}>
+					<div class="graph-rail">
 						<div
 							class={`graph-vertical-edge graph-vertical-edge--${railKindClass(leftRailKindForRow(row))}`}
 						></div>
@@ -122,7 +122,7 @@
 						<span class="graph-rail-text">{row.node}</span>
 					</div>
 				{/if}
-				<div class={`graph-rail graph-rail--${row.commitKind}`}>
+				<div class="graph-rail">
 					{#if row.rightRail !== ""}
 						<span class={`graph-rail-text graph-rail-text--${row.commitKind}`}>
 							{row.rightRail}
@@ -130,7 +130,7 @@
 					{/if}
 				</div>
 				<div class="graph-content">
-					<div class="graph-subject text-13 text-semibold truncate">{row.content.subject}</div>
+					<div class="text-13 text-semibold truncate">{row.content.subject}</div>
 					<div class="graph-meta text-12">
 						{#if row.content.author}
 							<div class="graph-author">
@@ -169,7 +169,7 @@
 	{@const branchColor = getColorFromCommitKind(ref.kind)}
 	<div class="graph-row" data-testid={testId}>
 		{#if row.leftRail === "|"}
-			<div class={`graph-rail graph-rail--${railKindClass(leftRailKindForRow(row))}`}>
+			<div class="graph-rail">
 				<div
 					class={`graph-vertical-edge graph-vertical-edge--${railKindClass(leftRailKindForRow(row))}`}
 				></div>
@@ -178,7 +178,7 @@
 		<div class="graph-content">
 			<div class="graph-content--ref">
 				<BranchHeaderIcon color={branchColor} iconName={branchIcon} />
-				<h3 class="graph-subject truncate text-14 text-bold">
+				<h3 class="truncate text-14 text-bold">
 					{ref.name}
 				</h3>
 			</div>
@@ -201,9 +201,9 @@
 		onclick={toggleIntegratedLocalCommits}
 	>
 		{@render commitNode("integrated", row.showTopConnector, row.topConnectorKind)}
-		<div class="graph-rail graph-rail--integrated"></div>
+		<div class="graph-rail"></div>
 		<div class="graph-content">
-			<div class="graph-subject truncate">
+			<div class="truncate">
 				{showIntegratedLocalCommits ? "Hide" : "Show"}
 				{row.hiddenCount} integrated
 				{row.hiddenCount === 1 ? " commit" : " commits"}
@@ -223,7 +223,7 @@
 				class={`graph-node-connector graph-node-connector--top graph-node-connector--${topConnectorKind}`}
 			></div>
 		{/if}
-		<div class={`graph-node-dot graph-node-dot--${commitKind}`}></div>
+		<div class="graph-node-dot"></div>
 		<div
 			class={`graph-node-connector graph-node-connector--bottom graph-node-connector--${commitKind}`}
 		></div>
@@ -237,7 +237,7 @@
 		data-branch-integration-row-kind="join"
 	>
 		{#if row.leftRail === "|"}
-			<div class={`graph-rail graph-rail--join graph-rail--${railKindClass(row.leftRailKind)}`}>
+			<div class="graph-rail graph-rail--join">
 				<div
 					class={`graph-vertical-edge graph-vertical-edge--${railKindClass(row.leftRailKind)}`}
 				></div>
@@ -330,10 +330,10 @@
 
 	.graph-rail-text {
 		color: var(--text-2);
+	}
 
-		&.remote {
-			color: var(--hover-pop);
-		}
+	.graph-rail-text--remote {
+		color: var(--hover-pop);
 	}
 
 	.graph-vertical-edge {
@@ -357,26 +357,6 @@
 		border-right: 2px solid var(--commit-remote);
 		border-bottom: 2px solid var(--commit-remote);
 		border-bottom-right-radius: 8px;
-	}
-
-	.graph-remote-join-horizontal,
-	.graph-remote-join-vertical {
-		position: absolute;
-		background: var(--commit-remote);
-	}
-
-	.graph-remote-join-horizontal {
-		right: 7px;
-		bottom: 7px;
-		left: 0;
-		height: 2px;
-	}
-
-	.graph-remote-join-vertical {
-		top: 0;
-		right: 7px;
-		bottom: 7px;
-		width: 2px;
 	}
 
 	.graph-node-dot {
