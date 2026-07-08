@@ -109,7 +109,7 @@ import { useFileMenuItems } from "#ui/routes/project/$id/workspace/useFileMenuIt
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 import { Checkbox } from "#ui/components/Checkbox.tsx";
-import { GUISettings } from "#electron/settings.ts";
+import type { GUISettings } from "#electron/settings.ts";
 
 type BranchTab = "diff" | "pr";
 
@@ -117,13 +117,11 @@ type BranchTab = "diff" | "pr";
 // stored in local storage.
 type PanelId = "files-panel" | "diff-panel";
 
-type DiffConfig = Required<Pick<GUISettings, "diffBackground" | "diffOverflow" | "diffStyle">>;
-
-const diffDefaults: DiffConfig = {
+const diffDefaults = {
 	diffBackground: true,
 	diffOverflow: "scroll",
 	diffStyle: "split",
-};
+} satisfies Partial<GUISettings>;
 
 const codeViewItemId = ({ changesetKey, path }: { changesetKey: string; path: string }): string =>
 	`${changesetKey}:${path}`;
