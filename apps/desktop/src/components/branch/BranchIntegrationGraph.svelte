@@ -272,7 +272,9 @@
 	.graph-content {
 		display: flex;
 		flex-direction: column;
-		padding: 10px;
+		padding-block: 10px;
+		padding-left: 10px;
+		overflow: hidden;
 		gap: 6px;
 	}
 
@@ -412,7 +414,7 @@
 	}
 
 	.graph-node-connector--ref {
-		top: calc(50% + 12px);
+		top: calc(50% + 14px);
 	}
 
 	.graph-meta {
