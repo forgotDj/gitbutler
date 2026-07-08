@@ -42,12 +42,17 @@ export class MoveBranchDzHandler implements DropzoneHandler {
 	}
 
 	accepts(data: unknown): boolean {
-		return (
-			data instanceof BranchDropData &&
-			data.stackId !== this.stackId &&
-			!data.hasConflicts &&
-			data.numberOfCommits > 0 // TODO: If trying to move an empty branch, we should just delete the reference and recreate it.
-		);
+		if (!(data instanceof BranchDropData) || data.hasConflicts) {
+			return false;
+		}
+		// Dropping a (non-empty) branch onto a different stack merges it into that stack.
+		if (data.stackId !== this.stackId) {
+			return data.numberOfCommits > 0;
+		}
+		// Reordering within the same stack is a pure metadata operation only for empty branches
+		// (e.g. single-branch mode, where all branches share one stack). Don't accept a drop onto
+		// the branch's own position, which would be a no-op self-move.
+		return data.numberOfCommits === 0 && data.branchName !== this.branchName;
 	}
 	async ondrop(data: BranchDropData): Promise<DropResult | void> {
 		const sourceStackDeleted = data.numberOfBranchesInStack === 1;

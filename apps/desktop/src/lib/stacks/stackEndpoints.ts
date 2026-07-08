@@ -789,6 +789,10 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.HeadSha),
 				invalidatesList(ReduxTag.WorktreeChanges), // Moving commits can cause conflicts
 				invalidatesList(ReduxTag.BranchChanges),
+				// Reordering empty branches in single-branch mode is metadata-only and doesn't move
+				// HEAD, so the stack/branch list must be invalidated explicitly to reflect the new order.
+				invalidatesList(ReduxTag.Stacks),
+				invalidatesList(ReduxTag.StackDetails),
 			],
 		}),
 		tearOffBranch: build.mutation<
