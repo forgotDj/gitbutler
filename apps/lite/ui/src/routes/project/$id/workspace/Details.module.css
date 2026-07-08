@@ -106,6 +106,7 @@
 	--diffs-bg-selection-override: transparent;
 
 	overflow: auto;
+	font-variant-ligatures: common-ligatures;
 	user-select: text;
 
 	diffs-container {
