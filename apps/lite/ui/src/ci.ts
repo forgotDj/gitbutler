@@ -15,7 +15,7 @@ export type AggregateCIStatus =
 
 type SDKStatus = Extract<CiStatus, string> | CiConclusion;
 
-type AggregateCIChecks = {
+export type AggregateCIChecks = {
 	status: AggregateCIStatus;
 	total: number;
 } & Record<SDKStatus, Array<CiCheck>>;
