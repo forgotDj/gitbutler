@@ -16,6 +16,7 @@ const guiSettingsV1 = type({
 	"diffBackground?": "boolean",
 	"diffOverflow?": "'scroll' | 'wrap'",
 	"diffStyle?": '"unified" | "split"',
+	"editorId?": "string",
 });
 
 type LegacyGUISettings = typeof guiSettingsV1.infer;
