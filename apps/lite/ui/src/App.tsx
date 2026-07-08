@@ -9,7 +9,7 @@ import { store } from "#ui/store.ts";
 import { Toasts } from "#ui/components/Toasts.tsx";
 import { AskpassPromptDialog } from "#ui/AskpassPromptDialog.tsx";
 import { getGUISettingsQueryOptions } from "./api/queries.ts";
-import { withDefaults } from "./syntax-highlighting.ts";
+import { defaultSettings } from "./settings.ts";
 
 const workerFactory = (): Worker =>
 	new Worker(new URL("@pierre/diffs/worker/worker.js", import.meta.url), {
@@ -25,7 +25,12 @@ const ThemeSync: FC = () => {
 	});
 
 	useEffect(() => {
-		void workerPool?.setRenderOptions({ theme: withDefaults(theme) });
+		void workerPool?.setRenderOptions({
+			theme: {
+				light: theme?.light ?? defaultSettings.syntaxHighlighting.light,
+				dark: theme?.dark ?? defaultSettings.syntaxHighlighting.dark,
+			},
+		});
 	}, [workerPool, theme]);
 
 	return null;

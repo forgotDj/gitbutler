@@ -7,8 +7,9 @@ import { useSaveGUISettings } from "#ui/api/mutations.ts";
 import type { ThemeCollectionFilter } from "@pierre/theming";
 import { themes } from "@pierre/theming/themes";
 import type { ThemesType } from "@pierre/diffs/react";
-import { defaultTheme, displayName } from "#ui/syntax-highlighting.ts";
+import { displayName } from "#ui/syntax-highlighting.ts";
 import { classes } from "#ui/components/classes.ts";
+import { defaultSettings } from "#ui/settings.ts";
 
 const getRenderableThemes = (filter?: ThemeCollectionFilter) =>
 	themes
@@ -90,7 +91,9 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 
 								<select
 									id="theme-light"
-									value={settings.syntaxHighlighting?.light ?? defaultTheme.light}
+									value={
+										settings.syntaxHighlighting?.light ?? defaultSettings.syntaxHighlighting.light
+									}
 									onChange={(evt) => setTheme("light", evt.currentTarget.value)}
 								>
 									{lightThemes.map((theme) => (
@@ -108,7 +111,9 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 
 								<select
 									id="theme-dark"
-									value={settings.syntaxHighlighting?.dark ?? defaultTheme.dark}
+									value={
+										settings.syntaxHighlighting?.dark ?? defaultSettings.syntaxHighlighting.dark
+									}
 									onChange={(evt) => setTheme("dark", evt.currentTarget.value)}
 								>
 									{darkThemes.map((theme) => (
@@ -127,7 +132,7 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 								<input
 									id="font-family"
 									type="text"
-									defaultValue={settings.diffFontFamily ?? "Geist Mono, Menlo, monospace"}
+									defaultValue={settings.diffFontFamily ?? defaultSettings.diffFontFamily}
 									onBlur={(evt) =>
 										saveGUISettings.mutate({
 											diffFontFamily: evt.currentTarget.value,
@@ -152,7 +157,7 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 									type="number"
 									min={1}
 									max={32}
-									defaultValue={settings.diffFontSize ?? 12}
+									defaultValue={settings.diffFontSize ?? defaultSettings.diffFontSize}
 									onBlur={(evt) =>
 										saveGUISettings.mutate({
 											diffFontSize: clamp(Number(evt.currentTarget.value), 1, 32),
@@ -177,7 +182,7 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 									type="number"
 									min={1}
 									max={8}
-									defaultValue={settings.diffTabSize ?? 4}
+									defaultValue={settings.diffTabSize ?? defaultSettings.diffTabSize}
 									onBlur={(evt) =>
 										saveGUISettings.mutate({
 											diffTabSize: clamp(Number(evt.currentTarget.value), 1, 8),

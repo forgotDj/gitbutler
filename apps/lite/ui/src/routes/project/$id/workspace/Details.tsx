@@ -112,6 +112,7 @@ import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 import { Checkbox } from "#ui/components/Checkbox.tsx";
 import type { GUISettings } from "#electron/settings.ts";
+import { defaultSettings } from "#ui/settings.ts";
 
 type BranchTab = "diff" | "pr";
 
@@ -581,9 +582,9 @@ const DiffContents: FC<{
         `,
 			}}
 			style={{
-				"--diffs-font-family": preferredFontFamily ?? "Geist Mono, Menlo, monospace",
-				"--diffs-font-size": `${preferredFontSize ?? 12}px`,
-				"--diffs-tab-size": `${preferredTabSize ?? 4}`,
+				"--diffs-font-family": preferredFontFamily ?? defaultSettings.diffFontFamily,
+				"--diffs-font-size": `${preferredFontSize ?? defaultSettings.diffFontSize}px`,
+				"--diffs-tab-size": `${preferredTabSize ?? defaultSettings.diffTabSize}`,
 			}}
 		/>
 	);

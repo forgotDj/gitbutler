@@ -1,19 +1,4 @@
-import { GUISettings } from "#electron/settings.ts";
-import type { ThemesType } from "@pierre/diffs";
 import type { BundledTheme } from "shiki";
-
-// Pierre doesn't re-export BundledTheme from Shiki and it's not possible to extract it from the
-// union, hence importing from Shiki. See also:
-//   https://shiki.style/themes#bundled-themes
-export const defaultTheme: ThemesType = {
-	light: "github-light-default" satisfies BundledTheme,
-	dark: "github-dark-default" satisfies BundledTheme,
-};
-
-export const withDefaults = (cfg: GUISettings["syntaxHighlighting"]): ThemesType => ({
-	light: cfg?.light ?? defaultTheme.light,
-	dark: cfg?.dark ?? defaultTheme.dark,
-});
 
 type PierreTheme =
 	| "pierre-dark"
