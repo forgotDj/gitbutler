@@ -347,9 +347,6 @@ impl<'a> Node<'a> for &'a RemoteCommitWithId {
 pub struct SegmentWithId {
     /// The short ID.
     pub short_id: ShortId,
-    /// True iff `short_id` was generated from scratch (and not from a substring
-    /// of the branch name).
-    pub is_auto_id: bool,
     /// The original segment except that `commits` and `commits_on_remote` are
     /// blank to save memory.
     pub inner: StackSegment,
