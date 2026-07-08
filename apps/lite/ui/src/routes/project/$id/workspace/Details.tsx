@@ -543,7 +543,15 @@ const DiffContents: FC<{
 					paddingBottom: 9,
 				},
 				unsafeCSS: `
-					[data-code] {
+          :host {
+            background-color: transparent;
+          }
+
+          [data-diffs-header="custom"] {
+            background-color: var(--bg-1);
+          }
+
+          [data-code] {
             border-radius: 0 0 10px 10px;
           }
 
