@@ -130,8 +130,8 @@
 					{/if}
 				</div>
 				<div class="graph-content">
-					<div class="graph-subject">{row.content.subject}</div>
-					<div class="graph-meta">
+					<div class="graph-subject text-13 text-semibold truncate">{row.content.subject}</div>
+					<div class="graph-meta text-12">
 						{#if row.content.author}
 							<div class="graph-author">
 								<Avatar
@@ -178,7 +178,7 @@
 		<div class="graph-content">
 			<div class="graph-content--ref">
 				<BranchHeaderIcon color={branchColor} iconName={branchIcon} />
-				<h3 class="graph-subject text-14 text-bold">
+				<h3 class="graph-subject truncate text-14 text-bold">
 					{ref.name}
 				</h3>
 			</div>
@@ -203,7 +203,7 @@
 		{@render commitNode("integrated", row.showTopConnector, row.topConnectorKind)}
 		<div class="graph-rail graph-rail--integrated"></div>
 		<div class="graph-content">
-			<div class="graph-subject">
+			<div class="graph-subject truncate">
 				{showIntegratedLocalCommits ? "Hide" : "Show"}
 				{row.hiddenCount} integrated
 				{row.hiddenCount === 1 ? " commit" : " commits"}
@@ -330,8 +330,6 @@
 
 	.graph-rail-text {
 		color: var(--text-2);
-		font-family: var(--font-mono, monospace);
-		white-space: pre;
 
 		&.remote {
 			color: var(--hover-pop);
@@ -435,19 +433,12 @@
 		gap: 22px;
 	}
 
-	.graph-subject {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
 	.graph-meta {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 6px;
 		color: var(--text-2);
-		font-size: 11px;
 	}
 
 	.graph-author {
@@ -455,9 +446,6 @@
 		align-items: center;
 	}
 
-	.change-id {
-		font-weight: bold;
-	}
 	.conflict {
 		padding: 1px 4px;
 		border-radius: 4px;
