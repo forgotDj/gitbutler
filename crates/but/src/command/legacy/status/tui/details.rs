@@ -38,7 +38,9 @@ use crate::{
     theme::Theme,
     utils::{
         DebugAsType,
-        diff_rendering::{self, CodeLineKind, DetailsLine, DiffLineWriter, IdGen, SectionId},
+        diff_rendering::{
+            self, CodeLineKind, DetailsLine, DiffLineWriter, IdGen, SectionId, load_syntax_set,
+        },
         diff_specs::DiffSpecBuilder,
         string_interning::Strings,
     },
@@ -111,7 +113,7 @@ impl Details {
             selection: Default::default(),
             lines: Default::default(),
             sections: Default::default(),
-            syntax_set: OnDemand::new(|| Ok(SyntaxSet::load_defaults_newlines())).into(),
+            syntax_set: OnDemand::new(|| Ok(load_syntax_set())).into(),
             syntax_theme: OnDemand::new(|| theme.load_syntax_highlighting_theme()).into(),
             strings: Default::default(),
             selected_section: Default::default(),
