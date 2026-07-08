@@ -535,24 +535,24 @@ const Stacks: FC<{
 	);
 
 	const dryRunOperation = Match.value(outlineMode).pipe(
-		Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) =>
-			mode.target && mode.operationType !== null
-				? getOperation({
-						source: mode.source,
-						target: mode.target,
-						operationType: mode.operationType,
-					})?.operation
-				: undefined,
-		),
-		Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) =>
-			selection
-				? getOperation({
-						source: mode.source,
-						target: selection,
-						operationType: mode.operationType,
-					})?.operation
-				: undefined,
-		),
+		Match.tags({
+			Transfer: ({ value: mode }) => {
+				const target = Match.value(mode).pipe(
+					Match.tagsExhaustive({
+						Pointer: (mode) => mode.target,
+						Keyboard: () => selection,
+					}),
+				);
+
+				return target && mode.operationType !== null
+					? getOperation({
+							source: mode.source,
+							target,
+							operationType: mode.operationType,
+						})?.operation
+					: undefined;
+			},
+		}),
 		Match.orElse(() => undefined),
 	);
 
