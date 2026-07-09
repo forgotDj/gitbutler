@@ -40,28 +40,26 @@
 			id: "pullRebase",
 			label: "Pull rebase",
 			icon: "branch-top-up-arrow",
-			description:
-				"Rebuilds the branch picking first the commits on the remote, and then the commits on the local branch.",
+			description: "Rebuilds the branch with remote commits first, then your local commits.",
 			recommended: true,
 		},
 		{
 			id: "smartSquash",
 			label: "Smart squash",
 			icon: "branch-double-commit",
-			description:
-				"Combines matching remote and local commits (by Change ID), the rest is pull-rebased.",
+			description: "Merges matching commits (by Change ID), pull-rebases the rest.",
 		},
 		{
 			id: "merge",
 			label: "Merge",
 			icon: "branch-merge",
-			description: "Keeps your local history and merges the remote tip into it.",
+			description: "Keeps local history and merges in the remote tip.",
 		},
 		{
 			id: "pickRemote",
 			label: "Pick remote",
 			icon: "cherry-pick",
-			description: "Rebuilds the branch picking only the commits on the remote.",
+			description: "Rebuilds the branch from remote commits only.",
 		},
 	];
 	const VISIBLE_TEMPLATE_COUNT = 2;
