@@ -70,7 +70,7 @@
 	const initialBranchIntegration = $derived(
 		stackService.initialBranchIntegration(projectId, branchRef, DEFAULT_TEMPLATE),
 	);
-	const [applyBranchIntegration, integrationMutation] = stackService.applyBranchIntegration;
+	const [applyBranchIntegration] = stackService.applyBranchIntegration;
 
 	let stepDrafts = $state<IntegrationStepDraft[]>([]);
 	let previewRows = $state<IntegrationGraphRow[] | null>(null);
@@ -300,7 +300,7 @@
 							<h3 class="text-13 text-bold strategy-card__title">
 								{template.label}
 								{#if template.recommended}
-									<span class="clr-text-2">(Recommended)</span>
+									<span class="op-40">(Recommended)</span>
 								{/if}
 							</h3>
 							<p class="text-12 text-body strategy-card__caption">
@@ -346,9 +346,6 @@
 							class="branch-integration__graph"
 							data-testid="branch-integration-current-state"
 						>
-							<!-- <div class="branch-integration__section-header">
-							<h3 class="text-13 text-semibold">Current state</h3>
-						</div> -->
 							<BranchIntegrationGraph
 								isPreview={false}
 								rows={currentDisplayRows}
@@ -401,8 +398,8 @@
 							initialIntegration.integration.mergeBase,
 							initialIntegration.integration.firstLocalNotIntegrated,
 						)}
-					disabled={stepDrafts.length === 0 || integrationMutation.current.isLoading}
-					loading={integrationMutation.current.isLoading && activeAction === "apply"}
+					disabled={stepDrafts.length === 0 || activeAction === "apply"}
+					loading={activeAction === "apply"}
 				>
 					Apply integration
 				</Button>
