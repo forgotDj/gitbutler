@@ -97,8 +97,15 @@
 				<!-- Rendered as a curve inside the previous commit row -->
 			{:else}
 				{#if row.content.refDisplays.length > 0}
-					{#each row.content.refDisplays as ref (`${ref.kind}-${ref.name}`)}
-						{@render refRow(ref, row)}
+					{#each row.content.refDisplays as ref, refIndex (`${ref.kind}-${ref.name}`)}
+						{@render refRow(
+							ref,
+							row,
+							refIndex > 0 || topConnectorForRow(row, index),
+							refIndex > 0
+								? (row.content.refDisplays[refIndex - 1]?.kind ?? row.commitKind)
+								: topConnectorKindForRow(row),
+						)}
 					{/each}
 				{/if}
 				<div
@@ -176,6 +183,8 @@
 {#snippet refRow(
 	ref: IntegrationGraphRef,
 	row: IntegrationGraphRowCommit | BranchIntegrationGraphCommitRow,
+	showTopConnector: boolean,
+	topConnectorKind: BranchIntegrationDisplayConnectorKind,
 )}
 	{@const branchIcon = getIconFromCommitKind(ref.kind)}
 	{@const branchColor = getColorFromCommitKind(ref.kind)}
@@ -189,6 +198,11 @@
 		{/if}
 
 		<div class="graph-ref-node">
+			{#if showTopConnector}
+				<div
+					class={`graph-node-connector graph-node-connector--ref-top graph-node-connector--${topConnectorKind}`}
+				></div>
+			{/if}
 			<BranchHeaderIcon color={branchColor} iconName={branchIcon} />
 			<div
 				class={`graph-node-connector graph-node-connector--bottom graph-node-connector--ref graph-node-connector--${ref.kind}`}
@@ -415,6 +429,11 @@
 
 	.graph-node-connector--ref {
 		top: calc(50% + 14px);
+	}
+
+	.graph-node-connector--ref-top {
+		top: 0;
+		height: calc(50% - 14px);
 	}
 
 	.graph-meta {
