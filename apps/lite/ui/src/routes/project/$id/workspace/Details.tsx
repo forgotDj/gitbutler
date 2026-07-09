@@ -425,7 +425,7 @@ const DiffContents: FC<{
 					projectId,
 					editorId: preferredEditor.id,
 					path: diffSelectionFile.change.path,
-					lineNr: null,
+					lineNr: selectedRange?.range.start ?? null,
 				}),
 			options: {
 				enabled: !!diffSelectionFile && !!preferredEditor,
