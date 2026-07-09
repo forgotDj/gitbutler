@@ -1424,17 +1424,21 @@ mod single_branch_mode {
                 .into_workspace()?;
         // Single-branch (ad-hoc) workspace: `HEAD` is on `main` directly, no `gitbutler/workspace`
         // commit. `empty-top`/`empty-bottom` are empty segments; `base` owns the commits.
-        insta::assert_snapshot!(graph_workspace(&ws), @"
-        ⌂:1:main[🌳] <> ✓! on 281da94
-        └── ≡:1:main[🌳] {1}
-            ├── :1:main[🌳]
-            ├── 📙:2:empty-top
-            ├── 📙:3:empty-bottom
-            └── 📙:0:base
-                ├── ·281da94
-                ├── ·12995d7
-                └── ·3d57fc1
-        ");
+        snapbox::assert_data_eq!(
+            graph_workspace(&ws).to_string(),
+            snapbox::str![[r#"
+⌂:1:main[🌳] <> ✓! on 281da94
+└── ≡:1:main[🌳] {1}
+    ├── :1:main[🌳]
+    ├── 📙:2:empty-top
+    ├── 📙:3:empty-bottom
+    └── 📙:0:base
+        ├── ·281da94
+        ├── ·12995d7
+        └── ·3d57fc1
+
+"#]]
+        );
         assert_eq!(
             meta.branch_stack_order(main_ref)?,
             Some(vec![
@@ -1474,17 +1478,21 @@ mod single_branch_mode {
         // Re-projecting from the reloaded metadata reflects the new order, and no commit was moved.
         let ws = but_graph::Graph::from_head(&repo, &meta, project_meta, Options::limited())?
             .into_workspace()?;
-        insta::assert_snapshot!(graph_workspace(&ws), @"
-        ⌂:1:main[🌳] <> ✓! on 281da94
-        └── ≡:1:main[🌳] {1}
-            ├── :1:main[🌳]
-            ├── 📙:2:empty-bottom
-            ├── 📙:3:empty-top
-            └── 📙:0:base
-                ├── ·281da94
-                ├── ·12995d7
-                └── ·3d57fc1
-        ");
+        snapbox::assert_data_eq!(
+            graph_workspace(&ws).to_string(),
+            snapbox::str![[r#"
+⌂:1:main[🌳] <> ✓! on 281da94
+└── ≡:1:main[🌳] {1}
+    ├── :1:main[🌳]
+    ├── 📙:2:empty-bottom
+    ├── 📙:3:empty-top
+    └── 📙:0:base
+        ├── ·281da94
+        ├── ·12995d7
+        └── ·3d57fc1
+
+"#]]
+        );
 
         Ok(())
     }
