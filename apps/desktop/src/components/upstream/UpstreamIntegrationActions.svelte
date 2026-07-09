@@ -27,12 +27,12 @@
 		kickOffIntegration();
 	}}
 >
-	<Button
-		type="submit"
-		style="warning"
-		kind="outline"
-		testId={TestId.UpstreamCommitsIntegrateButton}
-	>
+	<p class="text-12 text-body clr-text-2">
+		This branch and its remote have diverged.
+		<br />
+		Update to integrate the remote changes.
+	</p>
+	<Button type="submit" style="warning" testId={TestId.UpstreamCommitsIntegrateButton}>
 		Update local branch...
 	</Button>
 </form>
