@@ -11,6 +11,12 @@ pub struct Outcome<'ws, 'meta, M: RefMetadata> {
     /// The updated workspace metadata that accompanies the move operation.
     /// It should replace the actual workspace metadata to configure moved 'virtual' branches segments, if `Some()`.
     pub ws_meta: Option<but_core::ref_metadata::Workspace>,
+    /// In single-branch (ad-hoc) mode, set to the reference that became the new tip when the move
+    /// placed the subject above the currently checked-out branch. `HEAD` is *not* moved by the
+    /// operation; the caller is responsible for checking this out so the moved branch stays part of
+    /// the projected workspace (mirroring [`create_reference`](crate::branch::create_reference)).
+    /// `None` when the tip is unchanged.
+    pub new_tip: Option<gix::refs::FullName>,
 }
 
 pub(super) mod function {
@@ -83,6 +89,7 @@ pub(super) mod function {
             return Ok(Outcome {
                 rebase: editor.rebase()?,
                 ws_meta,
+                new_tip: None,
             });
         }
 
@@ -143,6 +150,7 @@ pub(super) mod function {
         Ok(Outcome {
             rebase: editor.rebase()?,
             ws_meta,
+            new_tip: None,
         })
     }
 
@@ -181,6 +189,7 @@ pub(super) mod function {
         match &workspace.kind {
             WorkspaceKind::AdHoc => move_branch_in_single_branch_mode(
                 successful_rebase,
+                workspace.ref_name().map(ToOwned::to_owned),
                 source,
                 destination,
                 subject_branch_name,
@@ -209,6 +218,7 @@ pub(super) mod function {
     /// order directly.
     fn move_branch_in_single_branch_mode<'ws, 'meta, M: RefMetadata>(
         mut successful_rebase: SuccessfulRebase<'ws, 'meta, M>,
+        entrypoint: Option<gix::refs::FullName>,
         source: WorkspaceSegmentContext,
         destination: WorkspaceSegmentContext,
         subject_branch_name: &FullNameRef,
@@ -239,9 +249,18 @@ pub(super) mod function {
             subject_branch_name,
         );
         meta.set_branch_stack_order(&new_order)?;
+
+        // Moving the subject on top of the checked-out branch makes it the new tip. The workspace
+        // only projects the entrypoint and the segments below it, so unless `HEAD` moves the subject
+        // would sit above the entrypoint and drop out of the projection. Report it as the new tip so
+        // the caller can check it out (mirroring `create_reference`); we don't move `HEAD` here.
+        let new_tip = (entrypoint.as_ref().map(|name| name.as_ref()) == Some(target_branch_name))
+            .then(|| subject_branch_name.to_owned());
+
         Ok(Outcome {
             rebase: successful_rebase,
             ws_meta: None,
+            new_tip,
         })
     }
 
@@ -275,6 +294,7 @@ pub(super) mod function {
             return Ok(Outcome {
                 rebase: successful_rebase,
                 ws_meta,
+                new_tip: None,
             });
         }
 
@@ -314,6 +334,7 @@ pub(super) mod function {
         Ok(Outcome {
             rebase: editor.rebase()?,
             ws_meta,
+            new_tip: None,
         })
     }
 

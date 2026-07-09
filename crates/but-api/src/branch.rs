@@ -1297,7 +1297,7 @@ pub fn move_branch_with_perm(
     dry_run: DryRun,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<MoveBranchResult> {
-    branch_mutation_with_snapshot(
+    let (result, new_tip) = branch_mutation_with_snapshot(
         ctx,
         perm,
         OperationKind::MoveBranch,
@@ -1306,14 +1306,33 @@ pub fn move_branch_with_perm(
             let mut meta = ctx.meta()?;
             let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
             let editor = Editor::create(&mut ws, &mut meta, &repo)?;
-            let but_workspace::branch::move_branch::Outcome { rebase, ws_meta } =
-                but_workspace::branch::move_branch(editor, subject_branch, target_branch)?;
+            let but_workspace::branch::move_branch::Outcome {
+                rebase,
+                ws_meta,
+                new_tip,
+            } = but_workspace::branch::move_branch(editor, subject_branch, target_branch)?;
 
-            Ok(MoveBranchResult {
+            let result = MoveBranchResult {
                 workspace: branch_workspace_from_rebase(rebase, ws_meta, &repo, dry_run)?,
-            })
+            };
+            Ok((result, new_tip))
         },
-    )
+    )?;
+
+    // In single-branch (ad-hoc) mode a move can place the subject above the checked-out tip. The
+    // operation doesn't move `HEAD`, so check out the new tip here to keep the moved branch part of
+    // the projected workspace (mirroring `create_reference`). Skipped on dry runs.
+    let is_dry_run: bool = dry_run.into();
+    if let Some(new_tip) = new_tip
+        && !is_dry_run
+    {
+        let checkout = branch_checkout_with_perm(ctx, new_tip, perm)?;
+        return Ok(MoveBranchResult {
+            workspace: checkout.workspace,
+        });
+    }
+
+    Ok(result)
 }
 
 /// Tears off a branch using the behavior described by [`tear_off_branch_with_perm()`].
@@ -1358,8 +1377,9 @@ pub fn tear_off_branch_with_perm(
             let mut meta = ctx.meta()?;
             let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
             let editor = Editor::create(&mut ws, &mut meta, &repo)?;
-            let but_workspace::branch::move_branch::Outcome { rebase, ws_meta } =
-                but_workspace::branch::tear_off_branch(editor, subject_branch, None)?;
+            let but_workspace::branch::move_branch::Outcome {
+                rebase, ws_meta, ..
+            } = but_workspace::branch::tear_off_branch(editor, subject_branch, None)?;
 
             Ok(MoveBranchResult {
                 workspace: branch_workspace_from_rebase(rebase, ws_meta, &repo, dry_run)?,

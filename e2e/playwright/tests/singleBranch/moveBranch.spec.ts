@@ -53,6 +53,36 @@ test("can reorder empty branches by dragging within the single-branch stack", as
 	await assertBranch("empty-top", localClone);
 });
 
+test("moving an empty branch above the checked-out branch checks out the new tip", async ({
+	page,
+	gitbutler,
+}) => {
+	const localClone = await setupSingleBranchProject(gitbutler, page);
+
+	// `empty-b` is created last, so it's the checked-out tip, with `empty-a` below it.
+	await createDependentBranch(page, "empty-a");
+	await createDependentBranch(page, "empty-b");
+
+	await expect(getByTestId(page, "branch-card")).toHaveCount(3);
+	await expectBranchHeaderOrder(page, ["empty-b", "empty-a", SINGLE_BRANCH_NAME]);
+	await expectCurrentBranchChip(page, "empty-b");
+	await assertBranch("empty-b", localClone);
+
+	// Drag `empty-a` onto the dropzone above the checked-out tip `empty-b` (the top dropzone renders
+	// while the drag is active). This places `empty-a` above the entrypoint, so it becomes the new
+	// tip. Because the move can't leave the new tip above `HEAD` unprojected, the backend reports it
+	// as the new tip and the app checks it out.
+	await dragAndDropByLocator(page, branchHeader(page, "empty-a"), branchHeader(page, "empty-b"), {
+		force: true,
+		position: { x: 120, y: -10 },
+	});
+
+	// `empty-a` is now the tip and is checked out; the whole stack stays projected.
+	await expectBranchHeaderOrder(page, ["empty-a", "empty-b", SINGLE_BRANCH_NAME]);
+	await expectCurrentBranchChip(page, "empty-a");
+	await assertBranch("empty-a", localClone);
+});
+
 async function expectBranchHeaderOrder(page: Page, expectedBranchNames: string[]): Promise<void> {
 	await expect
 		.poll(
