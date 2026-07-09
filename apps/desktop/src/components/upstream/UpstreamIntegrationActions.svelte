@@ -20,22 +20,20 @@
 
 <BranchIntegrationModal bind:modalRef={integrationModal} {projectId} {branchName} {branchRef} />
 
-<form
-	class="upstream-integration-actions"
-	onsubmit={(e) => {
-		e.preventDefault();
-		kickOffIntegration();
-	}}
->
+<div class="upstream-integration-actions">
 	<p class="text-12 text-body clr-text-2">
 		This branch and its remote have diverged.
 		<br />
 		Update to integrate the remote changes.
 	</p>
-	<Button type="submit" style="warning" testId={TestId.UpstreamCommitsIntegrateButton}>
+	<Button
+		style="warning"
+		testId={TestId.UpstreamCommitsIntegrateButton}
+		onclick={kickOffIntegration}
+	>
 		Update local branch...
 	</Button>
-</form>
+</div>
 
 <style lang="postcss">
 	.upstream-integration-actions {
