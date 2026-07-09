@@ -1,11 +1,9 @@
 <script lang="ts">
 	import BranchIntegrationGraph from "$components/branch/BranchIntegrationGraph.svelte";
-	import BranchIntegrationSteps from "$components/branch/BranchIntegrationSteps.svelte";
 	import ReduxResult from "$components/shared/ReduxResult.svelte";
 	import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
 	import { buildCurrentStateDisplayRows } from "$lib/upstream/branchIntegrationCurrentStateDisplay";
 	import {
-		buildCommitPickerOptions,
 		buildIntegrationStepDrafts,
 		buildInteractiveIntegration,
 		type IntegrationStepDraft,
@@ -16,8 +14,9 @@
 		type IntegrationGraphRow,
 	} from "$lib/upstream/branchIntegrationView";
 	import { inject } from "@gitbutler/core/context";
-	import { Button, Modal, ModalFooter, SegmentControl, TestId } from "@gitbutler/ui";
+	import { Button, Icon, Modal, ModalFooter, RadioButton, TestId } from "@gitbutler/ui";
 	import type { BranchIntegrationStrategy } from "@gitbutler/but-sdk";
+	import type { IconName } from "@gitbutler/ui";
 
 	type Props = {
 		modalRef: Modal | undefined;
@@ -30,23 +29,48 @@
 
 	const stackService = inject(STACK_SERVICE);
 	const DEFAULT_TEMPLATE: BranchIntegrationStrategy = "pullRebase";
-	const integrationTemplates: Array<{ id: BranchIntegrationStrategy; label: string }> = [
-		{ id: "pullRebase", label: "Pull rebase" },
-		{ id: "smartSquash", label: "Smart squash" },
-		{ id: "merge", label: "Merge" },
-		{ id: "pickRemote", label: "Pick remote" },
+	const integrationTemplates: Array<{
+		id: BranchIntegrationStrategy;
+		label: string;
+		icon: IconName;
+		description: string;
+		recommended?: boolean;
+	}> = [
+		{
+			id: "pullRebase",
+			label: "Pull rebase",
+			icon: "branch-top-up-arrow",
+			description:
+				"Rebuilds the branch picking first the commits on the remote, and then the commits on the local branch.",
+			recommended: true,
+		},
+		{
+			id: "smartSquash",
+			label: "Smart squash",
+			icon: "branch-double-commit",
+			description:
+				"Combines matching remote and local commits (by Change ID), the rest is pull-rebased.",
+		},
+		{
+			id: "merge",
+			label: "Merge",
+			icon: "branch-merge",
+			description: "Keeps your local history and merges the remote tip into it.",
+		},
+		{
+			id: "pickRemote",
+			label: "Pick remote",
+			icon: "cherry-pick",
+			description: "Rebuilds the branch picking only the commits on the remote.",
+		},
 	];
-	const integrationTemplateDescriptions: Record<BranchIntegrationStrategy, string> = {
-		pullRebase:
-			"Rebuilds the branch picking first the commits on the remote, and then the commits on the local branch.",
-		smartSquash:
-			"Tries to fold matching remote work into related local commits. This is done through matching Change IDs, and falling back to pull-rebase ordering otherwise.",
-		merge: "Keeps your local history and merges the remote tip into it.",
-		pickRemote: "Rebuilds the branch picking only the commits on the remote.",
-	};
+	const VISIBLE_TEMPLATE_COUNT = 2;
 	let selectedTemplate = $state<BranchIntegrationStrategy>(DEFAULT_TEMPLATE);
+	// Deliberately keyed on the default template only: switching templates is
+	// handled imperatively in `selectTemplate` so the modal body (current-state
+	// graph) doesn't re-enter a loading state and flicker on every selection.
 	const initialBranchIntegration = $derived(
-		stackService.initialBranchIntegration(projectId, branchRef, selectedTemplate),
+		stackService.initialBranchIntegration(projectId, branchRef, DEFAULT_TEMPLATE),
 	);
 	const [applyBranchIntegration, integrationMutation] = stackService.applyBranchIntegration;
 
@@ -56,9 +80,16 @@
 	let previewEmpty = $state(true);
 	let activeAction = $state<"preview" | "apply" | null>(null);
 	let initializedForOpen = $state(false);
-	let showSteps = $state(false);
+	let showAllStrategies = $state(false);
 	let showIntegratedLocalCommits = $state(false);
 	let templateSelectionVersion = 0;
+
+	const visibleTemplates = $derived(
+		showAllStrategies
+			? integrationTemplates
+			: integrationTemplates.slice(0, VISIBLE_TEMPLATE_COUNT),
+	);
+	const hiddenTemplates = $derived(integrationTemplates.slice(VISIBLE_TEMPLATE_COUNT));
 
 	function closeModal() {
 		modalRef?.close();
@@ -120,18 +151,15 @@
 		}
 	}
 
-	async function previewIntegration(mergeBase: string, firstLocalNotIntegrated: string | null) {
-		await previewIntegrationWithSteps(mergeBase, firstLocalNotIntegrated, stepDrafts);
-	}
-
 	async function selectTemplate(template: BranchIntegrationStrategy) {
 		if (template === selectedTemplate) return;
 
 		selectedTemplate = template;
 		const version = ++templateSelectionVersion;
-		previewRows = null;
+		// Keep the previous preview rows visible (dimmed) while the new preview
+		// loads, so the modal doesn't jump in height on every selection.
 		previewError = null;
-		previewEmpty = true;
+		activeAction = "preview";
 
 		try {
 			const initial = await stackService.fetchInitialBranchIntegration(
@@ -150,12 +178,17 @@
 					nextStepDrafts,
 					version,
 				);
+			} else {
+				previewRows = [];
+				previewEmpty = false;
+				activeAction = null;
 			}
 		} catch (error) {
 			if (version !== templateSelectionVersion) return;
 			previewRows = null;
 			previewError = formatError(error);
 			previewEmpty = false;
+			activeAction = null;
 		}
 	}
 
@@ -188,7 +221,7 @@
 			selectedTemplate = DEFAULT_TEMPLATE;
 			templateSelectionVersion++;
 			initializedForOpen = false;
-			showSteps = false;
+			showAllStrategies = false;
 			showIntegratedLocalCommits = false;
 			previewRows = null;
 			previewError = null;
@@ -228,7 +261,6 @@
 >
 	<ReduxResult {projectId} result={initialBranchIntegration.result}>
 		{#snippet children(initialIntegration)}
-			{@const commitOptions = buildCommitPickerOptions(initialIntegration)}
 			{@const currentRows = buildCurrentStateGraphRows(initialIntegration)}
 			{@const currentDisplayRows = buildCurrentStateDisplayRows({
 				initialIntegration,
@@ -242,114 +274,126 @@
 					Pick an integration strategy below to combine them.
 				</p>
 
-				<div class="branch-integration__sections">
-					<section
-						class="branch-integration__section"
-						data-testid="branch-integration-current-state"
-					>
-						<!-- <div class="branch-integration__section-header">
-							<h3 class="text-13 text-semibold">Current state</h3>
-						</div> -->
-						<BranchIntegrationGraph
-							isPreview={false}
-							rows={currentDisplayRows}
-							testId="branch-integration-current-state-row"
-							{showIntegratedLocalCommits}
-							toggleIntegratedLocalCommits={() =>
-								(showIntegratedLocalCommits = !showIntegratedLocalCommits)}
-						/>
-					</section>
+				<div
+					class="strategy-cards"
+					class:strategy-cards_expanded={showAllStrategies}
+					role="radiogroup"
+					aria-label="Integration strategy selection"
+					data-testid="branch-integration-strategies"
+				>
+					{#each visibleTemplates as template (template.id)}
+						<label
+							for={`strategy-${template.id}`}
+							class="strategy-card"
+							class:strategy-card_selected={selectedTemplate === template.id}
+							data-testid={`branch-integration-template-${template.id}`}
+						>
+							<div class="strategy-card__header">
+								<div class="strategy-card__icon">
+									<Icon size={24} name={template.icon} />
+								</div>
+								<RadioButton
+									checked={selectedTemplate === template.id}
+									name="integration-strategy"
+									id={`strategy-${template.id}`}
+									onchange={() => selectTemplate(template.id)}
+								/>
+							</div>
+							<h3 class="text-13 text-bold strategy-card__title">
+								{template.label}
+								{#if template.recommended}
+									<span class="clr-text-2">(Recommended)</span>
+								{/if}
+							</h3>
+							<p class="text-12 text-body strategy-card__caption">
+								{template.description}
+							</p>
+						</label>
+					{/each}
 
-					<!-- <section class="branch-integration__section" data-testid="branch-integration-steps">
+					{#if !showAllStrategies}
+						<button
+							type="button"
+							class="strategy-card strategy-card_more"
+							data-testid="branch-integration-show-more-strategies"
+							onclick={() => (showAllStrategies = true)}
+						>
+							<div class="strategy-card__more-icons">
+								{#each hiddenTemplates as template (template.id)}
+									<Icon size={20} name={template.icon} />
+								{/each}
+							</div>
+							<span class="text-12 clr-text-2">
+								{hiddenTemplates.map((t) => t.label.toLowerCase()).join(", ")}
+							</span>
+							<span class="text-12 underline-dotted strategy-card__more-link">
+								Show {hiddenTemplates.length} more
+							</span>
+						</button>
+					{/if}
+				</div>
+
+				<div class="modal-divider"></div>
+
+				<div class="branch-integration__sections">
+					<div class="branch-integration__section">
 						<div class="branch-integration__section-header">
-							<h3 class="text-13 text-semibold">Integration strategy</h3>
-							<div class="branch-integration__section-actions">
-								<SegmentControl
-									size="small"
-									selected={selectedTemplate}
-									onselect={(id) => selectTemplate(id as BranchIntegrationStrategy)}
-								>
-									{#each integrationTemplates as template (template.id)}
-										<SegmentControl.Item
-											id={template.id}
-											testId={`branch-integration-template-${template.id}`}
-										>
-											{template.label}
-										</SegmentControl.Item>
-									{/each}
-								</SegmentControl>
-								<Button
-									kind="outline"
-									size="tag"
-									icon={showSteps ? "chevron-up" : "chevron-down"}
-									testId={TestId.BranchIntegrationToggleStepsButton}
-									onclick={() => (showSteps = !showSteps)}
-								>
-									{showSteps ? "Hide steps" : "Show steps"}
-								</Button>
+							<div class="branch-integration__label text-11 text-bold">Current state</div>
+							<div class="section-arrow">
+								<div class="section-arrow__line"></div>
 							</div>
 						</div>
-						{#if showSteps}
-							<BranchIntegrationSteps bind:stepDrafts {commitOptions} />
-						{:else}
-							<div class="branch-integration__collapsed-note text-12 clr-text-2">
-								Using the selected strategy steps. Expand to inspect or edit them.
-								<ul class="branch-integration__strategy-descriptions">
-									{#each integrationTemplates as template (template.id)}
-										<li>
-											<span class="text-semibold">{template.label}:</span>
-											{integrationTemplateDescriptions[template.id]}
-										</li>
-									{/each}
-								</ul>
-							</div>
-						{/if}
-					</section> -->
 
-					<section class="branch-integration__section" data-testid="branch-integration-preview">
-						<!-- <div class="branch-integration__section-header">
-							<h3 class="text-13 text-semibold">Preview</h3>
+						<section
+							class="branch-integration__graph"
+							data-testid="branch-integration-current-state"
+						>
+							<!-- <div class="branch-integration__section-header">
+							<h3 class="text-13 text-semibold">Current state</h3>
 						</div> -->
-
-						{#if previewError}
-							<div class="branch-integration__error" data-testid="branch-integration-error">
-								{previewError}
-							</div>
-						{:else if previewRows === null}
-							<div class="branch-integration__empty" data-testid="branch-integration-empty-state">
-								Preview produced no branch segment for this ref.
-							</div>
-						{:else if previewRows.length === 0}
-							<div class="branch-integration__empty" data-testid="branch-integration-empty-state">
-								The resulting branch would be empty.
-							</div>
-						{:else}
 							<BranchIntegrationGraph
-								isPreview={true}
-								rows={previewRows}
-								testId="branch-integration-preview-row"
+								isPreview={false}
+								rows={currentDisplayRows}
+								testId="branch-integration-current-state-row"
+								{showIntegratedLocalCommits}
+								toggleIntegratedLocalCommits={() =>
+									(showIntegratedLocalCommits = !showIntegratedLocalCommits)}
 							/>
-						{/if}
-					</section>
+						</section>
+					</div>
+
+					<div class="branch-integration__section">
+						<div class="branch-integration__section-header">
+							<div class="branch-integration__label text-11 text-bold">Output branch</div>
+						</div>
+
+						<section class="branch-integration__graph" data-testid="branch-integration-preview">
+							{#if previewError}
+								<div class="branch-integration__error" data-testid="branch-integration-error">
+									{previewError}
+								</div>
+							{:else if previewRows === null}
+								<div class="branch-integration__empty" data-testid="branch-integration-empty-state">
+									Preview produced no branch segment for this ref.
+								</div>
+							{:else if previewRows.length === 0}
+								<div class="branch-integration__empty" data-testid="branch-integration-empty-state">
+									The resulting branch would be empty.
+								</div>
+							{:else}
+								<BranchIntegrationGraph
+									isPreview={true}
+									rows={previewRows}
+									testId="branch-integration-preview-row"
+								/>
+							{/if}
+						</section>
+					</div>
 				</div>
 			</div>
 
 			<ModalFooter>
 				<Button kind="outline" type="reset" onclick={closeModal}>Cancel</Button>
-				<Button
-					kind="outline"
-					type="button"
-					testId={TestId.BranchIntegrationPreviewButton}
-					onclick={() =>
-						previewIntegration(
-							initialIntegration.integration.mergeBase,
-							initialIntegration.integration.firstLocalNotIntegrated,
-						)}
-					disabled={stepDrafts.length === 0 || integrationMutation.current.isLoading}
-					loading={integrationMutation.current.isLoading && activeAction === "preview"}
-				>
-					Preview
-				</Button>
 				<Button
 					style="pop"
 					type="button"
@@ -379,16 +423,16 @@
 		gap: 12px;
 	}
 
-	.branch-integration__intro {
-		display: flex;
-		flex-direction: column;
-		padding-top: 16px;
-		gap: 4px;
+	.modal-divider {
+		width: calc(100% + 32px);
+		height: 1px;
+		margin-block: 8px;
+		margin-left: -16px;
+		background: var(--border-3);
 	}
 
 	.branch-integration__sections {
 		display: flex;
-		align-items: flex-start;
 		width: 100%;
 		overflow: hidden;
 		gap: 12px;
@@ -396,8 +440,15 @@
 
 	.branch-integration__section {
 		display: flex;
+		flex: 1;
 		flex-direction: column;
-		width: 100%;
+		overflow: hidden;
+		gap: 12px;
+	}
+
+	.branch-integration__graph {
+		display: flex;
+		flex-direction: column;
 		/* Modal is capped at calc(100vh - 80px); subtract header, intro,
 		   footer and paddings so the graph scrolls instead of clipping. */
 		max-height: calc(100vh - 380px);
@@ -409,20 +460,48 @@
 
 	.branch-integration__section-header {
 		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: space-between;
-		padding: 12px 14px;
-		gap: 10px;
-		border-bottom: 1px solid var(--border-2);
 	}
 
-	.branch-integration__section-actions {
+	.branch-integration__label {
+		padding: 4px 8px;
+		border-radius: 20px;
+		background-color: var(--chip-gray-bg);
+		color: var(--text-1);
+		line-height: 1;
+		text-transform: uppercase;
+	}
+
+	.section-arrow {
 		display: flex;
-		flex-direction: column;
+		position: relative;
+		flex: 1;
 		align-items: center;
-		min-width: 0;
-		gap: 8px;
+		width: 100%;
+		margin-left: 10px;
+		color: var(--text-3);
+
+		&::before {
+			width: 6px;
+			height: 6px;
+			border-radius: 8px;
+			background-color: currentColor;
+			content: "";
+		}
+
+		&::after {
+			width: 0;
+			height: 0;
+			border-top: 4px solid transparent;
+			border-bottom: 4px solid transparent;
+			border-left: 4px solid currentColor;
+			content: "";
+		}
+	}
+
+	.section-arrow__line {
+		width: 100%;
+		height: 1px;
+		background-color: currentColor;
 	}
 
 	.branch-integration__empty,
@@ -432,19 +511,127 @@
 		font-size: 12px;
 	}
 
-	.branch-integration__collapsed-note {
-		padding: 16px 14px;
-	}
-
-	.branch-integration__strategy-descriptions {
-		margin: 8px 0 0;
-	}
-
-	.branch-integration__strategy-descriptions li + li {
-		margin-top: 8px;
-	}
-
 	.branch-integration__error {
 		color: var(--text-warn);
+	}
+
+	/* STRATEGY CARDS */
+	.strategy-cards {
+		display: flex;
+
+		/* Collapse double borders between adjacent cards. */
+		& .strategy-card + .strategy-card {
+			margin-left: -1px;
+		}
+
+		&.strategy-cards_expanded {
+			display: grid;
+			grid-template-columns: repeat(2, 1fr);
+
+			/* Collapse borders in the 2x2 grid: second column overlaps
+			   left, second row overlaps top. */
+			& .strategy-card:nth-child(2n) {
+				margin-left: -1px;
+			}
+			& .strategy-card:nth-child(2n + 1) {
+				margin-left: 0;
+			}
+			& .strategy-card:nth-child(n + 3) {
+				margin-top: -1px;
+			}
+
+			/* Round the outer corners of the 2x2 grid. */
+			& .strategy-card {
+				border-radius: 0;
+			}
+			& .strategy-card:nth-child(1) {
+				border-top-left-radius: var(--radius-m);
+			}
+			& .strategy-card:nth-child(2) {
+				border-top-right-radius: var(--radius-m);
+			}
+			& .strategy-card:nth-child(3) {
+				border-bottom-left-radius: var(--radius-m);
+			}
+			& .strategy-card:nth-child(4) {
+				border-bottom-right-radius: var(--radius-m);
+			}
+		}
+	}
+
+	.strategy-card {
+		--btn-bg: var(--btn-gray-outline-bg);
+		--btn-bg-opacity: 0%;
+		display: flex;
+		position: relative;
+		flex-direction: column;
+		padding: 16px;
+		gap: 6px;
+		border: 1px solid var(--border-2);
+		background: color-mix(
+			in srgb,
+			var(--btn-bg, transparent),
+			transparent calc(100% - var(--btn-bg-opacity))
+		);
+		text-align: left;
+		cursor: pointer;
+		transition:
+			border-color var(--transition-fast),
+			background-color var(--transition-fast);
+
+		&:first-child {
+			border-top-left-radius: var(--radius-m);
+			border-bottom-left-radius: var(--radius-m);
+		}
+
+		&:last-child {
+			border-top-right-radius: var(--radius-m);
+			border-bottom-right-radius: var(--radius-m);
+		}
+
+		&:not(.strategy-card_selected):hover {
+			z-index: 1;
+			--btn-bg-opacity: 12%;
+			border-color: var(--border-1);
+		}
+
+		&.strategy-card_selected {
+			/* Sits above neighbours so the highlighted border isn't
+			   covered by the overlapping (collapsed) borders. */
+			z-index: 2;
+			border-color: var(--fill-pop-bg);
+			background: color-mix(in srgb, var(--fill-pop-bg) 8%, transparent);
+		}
+	}
+
+	.strategy-card__header {
+		display: flex;
+		justify-content: space-between;
+		color: var(--text-2);
+	}
+
+	.strategy-card__title {
+		margin-top: 4px;
+	}
+
+	.strategy-card__caption {
+		color: var(--text-2);
+	}
+
+	.strategy-card_more {
+		justify-content: flex-end;
+		min-width: 160px;
+		background-color: var(--bg-mute);
+	}
+
+	.strategy-card__more-icons {
+		display: flex;
+		margin-bottom: 4px;
+		gap: 8px;
+		color: var(--text-3);
+	}
+
+	.strategy-card__more-link {
+		color: var(--text-2);
 	}
 </style>
