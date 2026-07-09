@@ -4,12 +4,10 @@
 
 	type Props = {
 		projectId: string;
-		stackId: string | undefined;
-		branchName: string;
 		branchRef: string;
 	};
 
-	const { projectId, branchName, branchRef }: Props = $props();
+	const { projectId, branchRef }: Props = $props();
 
 	let integrationModal = $state<Modal>();
 
@@ -18,7 +16,7 @@
 	}
 </script>
 
-<BranchIntegrationModal bind:modalRef={integrationModal} {projectId} {branchName} {branchRef} />
+<BranchIntegrationModal bind:modalRef={integrationModal} {projectId} {branchRef} />
 
 <div class="upstream-integration-actions">
 	<p class="text-12 text-body clr-text-2">

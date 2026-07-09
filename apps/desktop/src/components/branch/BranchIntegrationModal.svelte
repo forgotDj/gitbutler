@@ -21,11 +21,10 @@
 	type Props = {
 		modalRef: Modal | undefined;
 		projectId: string;
-		branchName: string;
 		branchRef: string;
 	};
 
-	let { modalRef = $bindable(), projectId, branchName, branchRef }: Props = $props();
+	let { modalRef = $bindable(), projectId, branchRef }: Props = $props();
 
 	const stackService = inject(STACK_SERVICE);
 	const DEFAULT_TEMPLATE: BranchIntegrationStrategy = "pullRebase";
@@ -75,8 +74,7 @@
 	let stepDrafts = $state<IntegrationStepDraft[]>([]);
 	let previewRows = $state<IntegrationGraphRow[] | null>(null);
 	let previewError = $state<string | null>(null);
-	let previewEmpty = $state(true);
-	let activeAction = $state<"preview" | "apply" | null>(null);
+	let applying = $state(false);
 	let initializedForOpen = $state(false);
 	let showAllStrategies = $state(false);
 	let showIntegratedLocalCommits = $state(false);
@@ -101,9 +99,8 @@
 		mergeBase: string,
 		firstLocalNotIntegrated: string | null,
 		steps: IntegrationStepDraft[],
-		expectedTemplateSelectionVersion: number | undefined = undefined,
+		expectedTemplateSelectionVersion?: number,
 	) {
-		activeAction = "preview";
 		previewError = null;
 		try {
 			const integration = buildInteractiveIntegration({
@@ -128,7 +125,6 @@
 				return;
 			}
 			previewRows = nextPreviewRows;
-			previewEmpty = false;
 		} catch (error) {
 			if (
 				expectedTemplateSelectionVersion !== undefined &&
@@ -138,14 +134,6 @@
 			}
 			previewRows = null;
 			previewError = formatError(error);
-			previewEmpty = false;
-		} finally {
-			if (
-				expectedTemplateSelectionVersion === undefined ||
-				expectedTemplateSelectionVersion === templateSelectionVersion
-			) {
-				activeAction = null;
-			}
 		}
 	}
 
@@ -154,10 +142,9 @@
 
 		selectedTemplate = template;
 		const version = ++templateSelectionVersion;
-		// Keep the previous preview rows visible (dimmed) while the new preview
-		// loads, so the modal doesn't jump in height on every selection.
+		// Keep the previous preview rows visible while the new preview loads,
+		// so the modal doesn't jump in height on every selection.
 		previewError = null;
-		activeAction = "preview";
 
 		try {
 			const initial = await stackService.fetchInitialBranchIntegration(
@@ -178,20 +165,16 @@
 				);
 			} else {
 				previewRows = [];
-				previewEmpty = false;
-				activeAction = null;
 			}
 		} catch (error) {
 			if (version !== templateSelectionVersion) return;
 			previewRows = null;
 			previewError = formatError(error);
-			previewEmpty = false;
-			activeAction = null;
 		}
 	}
 
 	async function applyIntegration(mergeBase: string, firstLocalNotIntegrated: string | null) {
-		activeAction = "apply";
+		applying = true;
 		previewError = null;
 		try {
 			const integration = buildInteractiveIntegration({
@@ -209,7 +192,7 @@
 		} catch (error) {
 			previewError = formatError(error);
 		} finally {
-			activeAction = null;
+			applying = false;
 		}
 	}
 
@@ -223,7 +206,6 @@
 			showIntegratedLocalCommits = false;
 			previewRows = null;
 			previewError = null;
-			previewEmpty = true;
 		}
 	});
 
@@ -237,7 +219,6 @@
 		stepDrafts = nextStepDrafts;
 		previewRows = null;
 		previewError = null;
-		previewEmpty = true;
 		initializedForOpen = true;
 		if (nextStepDrafts.length > 0) {
 			void previewIntegrationWithSteps(
@@ -398,8 +379,8 @@
 							initialIntegration.integration.mergeBase,
 							initialIntegration.integration.firstLocalNotIntegrated,
 						)}
-					disabled={stepDrafts.length === 0 || activeAction === "apply"}
-					loading={activeAction === "apply"}
+					disabled={stepDrafts.length === 0 || applying}
+					loading={applying}
 				>
 					Apply integration
 				</Button>
