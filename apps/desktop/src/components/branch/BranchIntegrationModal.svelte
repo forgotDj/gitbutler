@@ -476,7 +476,7 @@
 		align-items: center;
 		width: 100%;
 		margin-left: 10px;
-		color: var(--text-3);
+		color: var(--border-2);
 
 		&::before {
 			width: 6px;
