@@ -14,7 +14,7 @@
 		type IntegrationGraphRow,
 	} from "$lib/upstream/branchIntegrationView";
 	import { inject } from "@gitbutler/core/context";
-	import { Button, Icon, Modal, ModalFooter, RadioButton, TestId } from "@gitbutler/ui";
+	import { Button, Icon, Modal, ModalFooter, RadioButton, TestId, Badge } from "@gitbutler/ui";
 	import type { BranchIntegrationStrategy } from "@gitbutler/but-sdk";
 	import type { IconName } from "@gitbutler/ui";
 
@@ -317,7 +317,7 @@
 				<div class="branch-integration__sections">
 					<div class="branch-integration__section">
 						<div class="branch-integration__section-header">
-							<div class="branch-integration__label text-11 text-bold">Current state</div>
+							<Badge style="gray" kind="soft" size="tag">CURRENT STATE</Badge>
 							<div class="section-arrow">
 								<div class="section-arrow__line"></div>
 							</div>
@@ -340,7 +340,7 @@
 
 					<div class="branch-integration__section">
 						<div class="branch-integration__section-header">
-							<div class="branch-integration__label text-11 text-bold">Output branch</div>
+							<Badge style="gray" size="tag">OUTPUT BRANCH</Badge>
 						</div>
 
 						<section class="branch-integration__graph" data-testid="branch-integration-preview">
@@ -436,15 +436,6 @@
 
 	.branch-integration__section-header {
 		display: flex;
-	}
-
-	.branch-integration__label {
-		padding: 4px 8px;
-		border-radius: 20px;
-		background-color: var(--chip-gray-bg);
-		color: var(--text-1);
-		line-height: 1;
-		text-transform: uppercase;
 	}
 
 	.section-arrow {
