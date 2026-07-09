@@ -274,8 +274,8 @@ const getDiffView = ({
 		fileByItemId.set(item.id, diffViewFile);
 		fileByPath.set(change.path, diffViewFile);
 
-		if (mdiff?.type === "Patch")
-			for (const hunk of item.fileDiff.hunks)
+		if (mdiff?.type === "Patch") {
+			for (const hunk of item.fileDiff.hunks) {
 				for (const selection of contiguousSelectionsFromHunk(hunk)) {
 					const hunkOperand: HunkOperand = {
 						parent: file,
@@ -298,6 +298,8 @@ const getDiffView = ({
 					fileByHunkKey.set(hunkKey, diffViewFile);
 					hunkByKey.set(hunkKey, diffViewHunk);
 				}
+			}
+		}
 	}
 
 	return {
@@ -1199,7 +1201,7 @@ const PullRequestForm: FC<{
 		event.preventDefault();
 		if (!canSubmit) return;
 
-		if (reviewId === null)
+		if (reviewId === null) {
 			publishReview.mutate({
 				projectId,
 				params: {
@@ -1210,7 +1212,7 @@ const PullRequestForm: FC<{
 					targetBranch,
 				},
 			});
-		else
+		} else {
 			updateReview.mutate({
 				projectId,
 				reviewId,
@@ -1219,6 +1221,7 @@ const PullRequestForm: FC<{
 				state: null,
 				targetBase: null,
 			});
+		}
 	};
 
 	useHotkey(pullRequestHotkeys.update.hotkey, () => formRef.current?.requestSubmit(), {
