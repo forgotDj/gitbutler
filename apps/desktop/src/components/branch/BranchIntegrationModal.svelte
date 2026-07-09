@@ -14,7 +14,16 @@
 		type IntegrationGraphRow,
 	} from "$lib/upstream/branchIntegrationView";
 	import { inject } from "@gitbutler/core/context";
-	import { Button, Icon, Modal, ModalFooter, RadioButton, TestId, Badge } from "@gitbutler/ui";
+	import {
+		Button,
+		Icon,
+		Modal,
+		ModalFooter,
+		RadioButton,
+		TestId,
+		Badge,
+		chipToasts,
+	} from "@gitbutler/ui";
 	import type { BranchIntegrationStrategy } from "@gitbutler/but-sdk";
 	import type { IconName } from "@gitbutler/ui";
 
@@ -22,9 +31,10 @@
 		modalRef: Modal | undefined;
 		projectId: string;
 		branchRef: string;
+		branchName: string;
 	};
 
-	let { modalRef = $bindable(), projectId, branchRef }: Props = $props();
+	let { modalRef = $bindable(), projectId, branchRef, branchName }: Props = $props();
 
 	const stackService = inject(STACK_SERVICE);
 	const DEFAULT_TEMPLATE: BranchIntegrationStrategy = "pullRebase";
@@ -188,6 +198,7 @@
 				integration,
 				dryRun: false,
 			});
+			chipToasts.success(`Successfully updated "${branchName}".`);
 			closeModal();
 		} catch (error) {
 			previewError = formatError(error);

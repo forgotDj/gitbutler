@@ -305,7 +305,7 @@
 			<UpstreamActionRow testId={TestId.UpstreamCommitsCommitAction} isLast={!hasCommits}>
 				{#snippet action()}
 					{#if branchName && branchRef}
-						<UpstreamIntegrationActions {projectId} {branchRef} />
+						<UpstreamIntegrationActions {projectId} {branchRef} {branchName} />
 					{/if}
 				{/snippet}
 			</UpstreamActionRow>
