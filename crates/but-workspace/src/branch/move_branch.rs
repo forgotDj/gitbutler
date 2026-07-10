@@ -14,7 +14,7 @@ pub struct Outcome<'ws, 'meta, M: RefMetadata> {
     /// In single-branch (ad-hoc) mode, set to the reference that became the new tip when the move
     /// placed the subject above the currently checked-out branch. `HEAD` is *not* moved by the
     /// operation; the caller is responsible for checking this out so the moved branch stays part of
-    /// the projected workspace (mirroring [`create_reference`](crate::branch::create_reference)).
+    /// the projected workspace (mirroring [`create_reference`](crate::branch::create_reference())).
     /// `None` when the tip is unchanged.
     pub new_tip: Option<gix::refs::FullName>,
 }
