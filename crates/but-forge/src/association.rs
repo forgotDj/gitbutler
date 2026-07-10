@@ -58,12 +58,14 @@ pub fn reviews_by_head(db: &but_db::DbHandle) -> anyhow::Result<HashMap<String, 
 /// 2. a review whose head is in the base repo over one in a fork — a local
 ///    branch normally pushes to the base repo, so this avoids latching onto a
 ///    fork's same-named branch when a base-repo review also exists.
-fn preference(review: &ForgeReview) -> (bool, bool) {
-    (review.is_open(), !review.head_repo_is_fork)
+/// 3. the highest review number, which is deterministic and usually the newest
+///    review among otherwise equivalent matches.
+fn preference(review: &ForgeReview) -> (bool, bool, i64) {
+    (review.is_open(), !review.head_repo_is_fork, review.number)
 }
 
 /// Pick the best cached review whose `source_branch` equals `head_ref_short`,
-/// or `None` if none match. Ties resolve to the last such review in `reviews`.
+/// or `None` if none match.
 fn best_match<'a>(reviews: &'a [ForgeReview], head_ref_short: &str) -> Option<&'a ForgeReview> {
     reviews
         .iter()
@@ -149,6 +151,12 @@ mod tests {
         assert_eq!(best_match(&reviews, "feature").map(|r| r.number), Some(1));
     }
 
+    #[test]
+    fn prefers_highest_number_when_other_preferences_match() {
+        let reviews = vec![review(2, "feature"), review(1, "feature")];
+        assert_eq!(best_match(&reviews, "feature").map(|r| r.number), Some(2));
+    }
+
     fn test_db() -> (tempfile::TempDir, but_db::DbHandle) {
         let tmp = tempfile::tempdir().unwrap();
         let db = but_db::DbHandle::new_in_directory(tmp.path()).unwrap();
@@ -183,6 +191,15 @@ mod tests {
             &[merged(review(1, "feature")), review(2, "feature")],
         )
         .unwrap();
+
+        let map = reviews_by_head(&db).unwrap();
+        assert_eq!(map.get("feature").map(|r| r.number), Some(2));
+    }
+
+    #[test]
+    fn reviews_by_head_dedups_preferring_highest_number() {
+        let (_tmp, mut db) = test_db();
+        crate::db::cache_reviews(&mut db, &[review(2, "feature"), review(1, "feature")]).unwrap();
 
         let map = reviews_by_head(&db).unwrap();
         assert_eq!(map.get("feature").map(|r| r.number), Some(2));
