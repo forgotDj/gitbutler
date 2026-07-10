@@ -1,7 +1,7 @@
 import { createRoute, redirect } from "@tanstack/react-router";
 import { FC } from "react";
 import { Route as rootRoute } from "#ui/routes/__root.tsx";
-import { lastOpenedProjectKey } from "#ui/projects/last-opened.ts";
+import { lastOpenedProjectKey } from "#ui/project.ts";
 
 // oxlint-disable-next-line react/only-export-components -- False positive?
 const IndexPage: FC = () => <p>Select a project.</p>;
