@@ -17,6 +17,11 @@ pub struct Outcome<'ws, 'meta, M: RefMetadata> {
     /// the projected workspace (mirroring [`create_reference`](crate::branch::create_reference())).
     /// `None` when the tip is unchanged.
     pub new_tip: Option<gix::refs::FullName>,
+    /// In single-branch (ad-hoc) mode, the reordered tip-to-base branch chain that the caller should
+    /// persist with [`RefMetadata::set_branch_stack_order`].
+    /// It is returned rather than written here so callers can apply it only for real runs and skip
+    /// persistence for dry-run previews. `None` outside single-branch mode.
+    pub branch_stack_order: Option<Vec<gix::refs::FullName>>,
 }
 
 pub(super) mod function {
@@ -90,6 +95,7 @@ pub(super) mod function {
                 rebase: editor.rebase()?,
                 ws_meta,
                 new_tip: None,
+                branch_stack_order: None,
             });
         }
 
@@ -151,6 +157,7 @@ pub(super) mod function {
             rebase: editor.rebase()?,
             ws_meta,
             new_tip: None,
+            branch_stack_order: None,
         })
     }
 
@@ -191,7 +198,6 @@ pub(super) mod function {
                 successful_rebase,
                 workspace.ref_name().map(ToOwned::to_owned),
                 source,
-                destination,
                 subject_branch_name,
                 target_branch_name,
             ),
@@ -214,22 +220,23 @@ pub(super) mod function {
     /// In single-branch (ad-hoc) mode there is no workspace commit, and the tip-to-base order of
     /// same-commit empty branches lives in the `branch_order` metadata table rather than in the
     /// workspace metadata. Reordering two empty branches is therefore a pure metadata operation
-    /// with no graph rewrite - mirror `create_reference`'s ad-hoc handling and persist the new
-    /// order directly.
+    /// with no graph rewrite - mirror `create_reference`'s ad-hoc handling. The reordered chain is
+    /// returned in [`Outcome::branch_stack_order`] for the caller to persist (via
+    /// [`RefMetadata::set_branch_stack_order`]) rather than being written here, so callers can skip
+    /// persistence for dry-run previews.
     fn move_branch_in_single_branch_mode<'ws, 'meta, M: RefMetadata>(
         mut successful_rebase: SuccessfulRebase<'ws, 'meta, M>,
         entrypoint: Option<gix::refs::FullName>,
         source: WorkspaceSegmentContext,
-        destination: WorkspaceSegmentContext,
         subject_branch_name: &FullNameRef,
         target_branch_name: &FullNameRef,
     ) -> anyhow::Result<Outcome<'ws, 'meta, M>> {
         let (_, subject_segment) = &source;
-        let (_, target_segment) = &destination;
-        // The base-most segment of a single-branch stack owns the commits, so a non-empty segment
-        // means the move would change commit ownership and needs a real rebase.
-        if !(subject_segment.commits.is_empty() && target_segment.commits.is_empty()) {
-            bail!("Moving non-empty branches in single-branch mode is not yet supported");
+        // Only the *subject* needs to be empty: a branch that owns no commits can be reordered by
+        // metadata alone, regardless of whether the target owns commits (e.g. the base branch). A
+        // non-empty subject would change commit ownership and needs a real rebase.
+        if !subject_segment.commits.is_empty() {
+            bail!("Moving a non-empty branch in single-branch mode is not yet supported");
         }
         let (_repo, meta) = successful_rebase.repo_and_meta_mut();
         if !meta.can_persist_branch_stack_order() {
@@ -237,18 +244,28 @@ pub(super) mod function {
                 "Cannot reorder '{subject_branch_name}' in single-branch mode without branch order metadata"
             );
         }
+        // Reorder against the existing chain. A movable subject is always part of `branch_order`
+        // (that's what makes it a projected segment), so the first lookup normally succeeds. The
+        // target and entrypoint lookups are defensive fallbacks so that, should the projection ever
+        // surface a segment that isn't tracked yet, we extend the real chain instead of clobbering
+        // it down to just the moved refs.
         let existing_order = match meta.branch_stack_order(subject_branch_name)? {
             Some(order) => order,
-            None => meta
-                .branch_stack_order(target_branch_name)?
-                .unwrap_or_default(),
+            None => match meta.branch_stack_order(target_branch_name)? {
+                Some(order) => order,
+                None => entrypoint
+                    .as_ref()
+                    .map(|entrypoint| meta.branch_stack_order(entrypoint.as_ref()))
+                    .transpose()?
+                    .flatten()
+                    .unwrap_or_default(),
+            },
         };
         let new_order = reorder_empty_branch_in_stack_order(
             existing_order,
             target_branch_name,
             subject_branch_name,
         );
-        meta.set_branch_stack_order(&new_order)?;
 
         // Moving the subject on top of the checked-out branch makes it the new tip. The workspace
         // only projects the entrypoint and the segments below it, so unless `HEAD` moves the subject
@@ -261,6 +278,7 @@ pub(super) mod function {
             rebase: successful_rebase,
             ws_meta: None,
             new_tip,
+            branch_stack_order: Some(new_order),
         })
     }
 
@@ -295,6 +313,7 @@ pub(super) mod function {
                 rebase: successful_rebase,
                 ws_meta,
                 new_tip: None,
+                branch_stack_order: None,
             });
         }
 
@@ -335,6 +354,7 @@ pub(super) mod function {
             rebase: editor.rebase()?,
             ws_meta,
             new_tip: None,
+            branch_stack_order: None,
         })
     }
 

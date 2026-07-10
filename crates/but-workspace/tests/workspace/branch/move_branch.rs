@@ -1306,6 +1306,18 @@ mod single_branch_mode {
         BranchOrderMetadata::from_paths(repo.path().join("virtual-branches.toml"), repo.path())
     }
 
+    /// `move_branch` returns the reordered chain instead of persisting it (so callers can skip
+    /// persistence for dry runs); persist it here to mimic a real, non-dry-run caller.
+    fn persist_order(
+        meta: &mut BranchOrderMetadata,
+        order: &Option<Vec<gix::refs::FullName>>,
+    ) -> anyhow::Result<()> {
+        if let Some(order) = order {
+            meta.set_branch_stack_order(order)?;
+        }
+        Ok(())
+    }
+
     /// Build a single-branch (ad-hoc) workspace on `main` (3 commits) with two empty dependent
     /// branches `empty-top` and `empty-bottom` stacked above the commit-owning base branch.
     ///
@@ -1366,7 +1378,10 @@ mod single_branch_mode {
         // Move empty `empty-bottom` on top of the checked-out `main`, which makes it the new tip.
         let editor = Editor::create(&mut ws, &mut meta, &repo)?;
         let but_workspace::branch::move_branch::Outcome {
-            rebase, new_tip, ..
+            rebase,
+            new_tip,
+            branch_stack_order,
+            ..
         } = but_workspace::branch::move_branch(editor, r("refs/heads/empty-bottom"), main_ref)?;
         rebase.materialize()?;
 
@@ -1375,8 +1390,9 @@ mod single_branch_mode {
             new_tip.as_ref().map(|n| n.as_ref()),
             Some(r("refs/heads/empty-bottom"))
         );
+        // The reordered chain is returned (for the caller to persist), placing the subject on top.
         assert_eq!(
-            meta.branch_stack_order(main_ref)?,
+            branch_stack_order,
             Some(vec![
                 r("refs/heads/empty-bottom").to_owned(),
                 r("refs/heads/main").to_owned(),
@@ -1397,7 +1413,10 @@ mod single_branch_mode {
 
         let editor = Editor::create(&mut ws, &mut meta, &repo)?;
         let but_workspace::branch::move_branch::Outcome {
-            rebase, new_tip, ..
+            rebase,
+            new_tip,
+            branch_stack_order,
+            ..
         } = but_workspace::branch::move_branch(
             editor,
             r("refs/heads/empty-bottom"),
@@ -1408,6 +1427,10 @@ mod single_branch_mode {
         assert_eq!(
             new_tip, None,
             "target isn't the tip, so the tip is unchanged"
+        );
+        assert!(
+            branch_stack_order.is_some(),
+            "the reorder is still computed and returned"
         );
         Ok(())
     }
@@ -1452,7 +1475,10 @@ mod single_branch_mode {
         // Move `empty-bottom` on top of `empty-top` (both empty) - a pure metadata reorder.
         let editor = Editor::create(&mut ws, &mut meta, &repo)?;
         let but_workspace::branch::move_branch::Outcome {
-            rebase, ws_meta, ..
+            rebase,
+            ws_meta,
+            branch_stack_order,
+            ..
         } = but_workspace::branch::move_branch(
             editor,
             r("refs/heads/empty-bottom"),
@@ -1463,6 +1489,8 @@ mod single_branch_mode {
             "ad-hoc reorder lives in branch_order, not workspace metadata"
         );
         rebase.materialize()?;
+        // A real (non-dry-run) caller persists the returned order.
+        persist_order(&mut meta, &branch_stack_order)?;
 
         // The ad-hoc order is updated: `empty-bottom` now sits above `empty-top`.
         assert_eq!(
@@ -1523,7 +1551,7 @@ mod single_branch_mode {
 
         assert_eq!(
             err.to_string(),
-            "Moving non-empty branches in single-branch mode is not yet supported"
+            "Moving a non-empty branch in single-branch mode is not yet supported"
         );
         assert_eq!(
             meta.branch_stack_order(main_ref)?,
@@ -1531,6 +1559,136 @@ mod single_branch_mode {
             "the ad-hoc branch order must be untouched after the rejected move"
         );
 
+        Ok(())
+    }
+
+    /// Moving an *empty* branch onto the commit-owning base is a metadata-only reorder and must be
+    /// allowed - only a non-empty *subject* needs a real rebase, so a non-empty *target* is fine.
+    #[test]
+    fn reorder_empty_branch_onto_commit_owning_base() -> anyhow::Result<()> {
+        let (_tmp, repo, mut meta, project_meta) = ad_hoc_workspace_with_two_empty_branches()?;
+
+        let mut ws = but_graph::Graph::from_head(&repo, &meta, project_meta, Options::limited())?
+            .into_workspace()?;
+
+        // `base` owns the stack's commits; moving the empty `empty-top` on top of it is still just a
+        // metadata reorder and must succeed (previously rejected because the target owns commits).
+        let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+        let but_workspace::branch::move_branch::Outcome {
+            rebase,
+            new_tip,
+            branch_stack_order,
+            ..
+        } = but_workspace::branch::move_branch(
+            editor,
+            r("refs/heads/empty-top"),
+            r("refs/heads/base"),
+        )?;
+        rebase.materialize()?;
+
+        assert_eq!(new_tip, None, "base isn't the checked-out tip");
+        // `empty-top` is placed directly above `base`; the rest of the order is preserved.
+        assert_eq!(
+            branch_stack_order,
+            Some(vec![
+                r("refs/heads/main").to_owned(),
+                r("refs/heads/empty-bottom").to_owned(),
+                r("refs/heads/empty-top").to_owned(),
+                r("refs/heads/base").to_owned(),
+            ]),
+        );
+        Ok(())
+    }
+
+    /// Regression for the "clobbering" concern (#4): a branch is only projected as a *movable*
+    /// segment in ad-hoc mode when it's already part of `branch_order`. Refs that aren't tracked
+    /// there (e.g. stale/partial metadata, or refs created outside GitButler) are not projected as
+    /// segments, so `move_branch` fails to find them *before* reaching the reorder - it can never
+    /// overwrite the persisted order down to just untracked refs. This documents why the
+    /// "neither ref is tracked" path is unreachable in practice.
+    #[test]
+    fn untracked_refs_are_not_movable_and_never_clobber_order() -> anyhow::Result<()> {
+        use gix::refs::transaction::PreviousValue;
+
+        let (_tmp, repo, mut meta, project_meta) = ad_hoc_workspace_with_two_empty_branches()?;
+        let main_ref = r("refs/heads/main");
+        let order_before = meta.branch_stack_order(main_ref)?;
+        let tip = repo.find_reference(main_ref)?.peel_to_id()?.detach();
+
+        // Two refs at the tip that were never added to `branch_order`. They show up only as commit
+        // decorations, not as ordered stack segments.
+        repo.reference(r("refs/heads/x"), tip, PreviousValue::Any, "test")?;
+        repo.reference(r("refs/heads/y"), tip, PreviousValue::Any, "test")?;
+
+        let mut ws = but_graph::Graph::from_head(&repo, &meta, project_meta, Options::limited())?
+            .into_workspace()?;
+        snapbox::assert_data_eq!(
+            graph_workspace(&ws).to_string(),
+            snapbox::str![[r#"
+⌂:1:main[🌳] <> ✓! on 281da94
+└── ≡:1:main[🌳] {1}
+    ├── :1:main[🌳]
+    ├── 📙:2:empty-top
+    ├── 📙:3:empty-bottom
+    └── 📙:0:base
+        ├── ·281da94 ►x, ►y
+        ├── ·12995d7
+        └── ·3d57fc1
+
+"#]]
+        );
+
+        let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+        let err = match but_workspace::branch::move_branch(
+            editor,
+            r("refs/heads/x"),
+            r("refs/heads/y"),
+        ) {
+            Ok(_) => panic!("untracked refs must not be movable in single-branch mode"),
+            Err(err) => err,
+        };
+        assert_eq!(
+            err.to_string(),
+            "Couldn't find branch to move in workspace with reference name: refs/heads/x"
+        );
+        assert_eq!(
+            meta.branch_stack_order(main_ref)?,
+            order_before,
+            "the branch order must be untouched"
+        );
+        Ok(())
+    }
+
+    /// `move_branch` computes the reorder but must not persist it on its own: the caller applies it,
+    /// which is what lets the API skip persistence for dry-run previews without corrupting metadata.
+    #[test]
+    fn move_branch_does_not_persist_branch_order() -> anyhow::Result<()> {
+        let (_tmp, repo, mut meta, project_meta) = ad_hoc_workspace_with_two_empty_branches()?;
+        let main_ref = r("refs/heads/main");
+        let order_before = meta.branch_stack_order(main_ref)?;
+
+        let mut ws = but_graph::Graph::from_head(&repo, &meta, project_meta, Options::limited())?
+            .into_workspace()?;
+        let editor = Editor::create(&mut ws, &mut meta, &repo)?;
+        let but_workspace::branch::move_branch::Outcome {
+            rebase,
+            branch_stack_order,
+            ..
+        } = but_workspace::branch::move_branch(
+            editor,
+            r("refs/heads/empty-bottom"),
+            r("refs/heads/empty-top"),
+        )?;
+        rebase.materialize()?;
+
+        // A reorder is computed and returned...
+        assert!(branch_stack_order.is_some());
+        // ...but nothing is written to metadata until the caller persists it.
+        assert_eq!(
+            meta.branch_stack_order(main_ref)?,
+            order_before,
+            "move_branch must not persist branch order on its own"
+        );
         Ok(())
     }
 }

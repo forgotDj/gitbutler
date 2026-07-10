@@ -1307,10 +1307,19 @@ pub fn move_branch_with_perm(
             let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
             let editor = Editor::create(&mut ws, &mut meta, &repo)?;
             let but_workspace::branch::move_branch::Outcome {
-                rebase,
+                mut rebase,
                 ws_meta,
                 new_tip,
+                branch_stack_order,
             } = but_workspace::branch::move_branch(editor, subject_branch, target_branch)?;
+
+            // In single-branch mode the reorder is returned rather than persisted. Only write it for
+            // real runs so a dry-run preview never mutates the user's branch-order metadata.
+            let is_dry_run: bool = dry_run.into();
+            if let Some(order) = branch_stack_order.filter(|_| !is_dry_run) {
+                let (_repo, meta) = rebase.repo_and_meta_mut();
+                meta.set_branch_stack_order(&order)?;
+            }
 
             let result = MoveBranchResult {
                 workspace: branch_workspace_from_rebase(rebase, ws_meta, &repo, dry_run)?,

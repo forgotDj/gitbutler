@@ -64,7 +64,9 @@ export class MoveBranchDzHandler implements DropzoneHandler {
 		});
 
 		if (this.prService && this.baseBranchName) {
-			if (!sourceStackDeleted) {
+			// For a same-stack reorder the source and target stacks are identical, so the refresh
+			// below already covers it - only refresh the source stack when it's a different stack.
+			if (!sourceStackDeleted && data.stackId !== this.stackId) {
 				const branchDetails = await this.stackService.fetchBranches(this.projectId, data.stackId);
 				await updateStackPrs(
 					this.prService,
