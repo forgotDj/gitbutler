@@ -61,6 +61,7 @@ import { partialStackStatesFromSegments, type PartialStackState } from "./partia
 import { UncommittedChangesRow } from "./UncommittedChangesRow.tsx";
 import { FileRow } from "../FileRow.tsx";
 import { getChangesFileRowItems, type FileRowItem } from "../file-row.ts";
+import { canRemoveBranchReference } from "#ui/segment.ts";
 
 const DryRunWorkspaceContext = createContext<WorkspaceState | null>(null);
 
@@ -441,12 +442,7 @@ const StackC: FC<{
 	const stackId = stack.id!;
 	const operand = stackOperand({ stackId });
 	const canTearOffBranch = stack.segments.length > 1;
-
 	const partialStackStates = partialStackStatesFromSegments(stack.segments);
-	// This should never fail because we always have at least one segment.
-	const stackState = assert(partialStackStates[0]);
-	const topBranchIndex = stack.segments.findIndex((segment) => segment.refName);
-
 	const navigationIndex = assert(use(NavigationIndexContext));
 
 	return (
@@ -464,14 +460,6 @@ const StackC: FC<{
 			<div role="group" className={styles.segments}>
 				{stack.segments.map((segment, index) => {
 					const partialStackState = assert(partialStackStates[index]);
-					const canRemoveBranch =
-						segment.commits.length === 0 ||
-						// We disallow deleting the top branch reference inside a stack of
-						// multiple branches because (1) the backend misbehaves (2) and we
-						// want to discourage users from creating branchless segments. See
-						// discussion in
-						// https://github.com/gitbutlerapp/gitbutler/pull/14059.
-						(stackState.branchCount > 1 && index !== topBranchIndex);
 
 					const key = segment.refName
 						? JSON.stringify(segment.refName.fullNameBytes)
@@ -490,7 +478,7 @@ const StackC: FC<{
 										stackId={stackId}
 										commitTarget={commitTarget}
 										canTearOffBranch={canTearOffBranch}
-										canRemoveBranch={canRemoveBranch}
+										canRemoveBranch={canRemoveBranchReference(stack, index)}
 										partialStackState={partialStackState}
 										isTopSegment={index === 0}
 									/>
