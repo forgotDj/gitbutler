@@ -57,11 +57,14 @@ import { CommitRow } from "./CommitRow.tsx";
 import { BranchRow } from "./BranchRow.tsx";
 import { StackRow } from "./StackRow.tsx";
 import { useOutlineTreeHotkeys } from "./hotkeys.ts";
-import { partialStackStatesFromSegments, type PartialStackState } from "./partialStackState.ts";
 import { UncommittedChangesRow } from "./UncommittedChangesRow.tsx";
 import { FileRow } from "../FileRow.tsx";
 import { getChangesFileRowItems, type FileRowItem } from "../file-row.ts";
-import { canRemoveBranchReference } from "#ui/segment.ts";
+import {
+	canRemoveBranchReference,
+	downstackPushStatusesFromSegments,
+	type DownstackPushStatus,
+} from "#ui/segment.ts";
 
 const DryRunWorkspaceContext = createContext<WorkspaceState | null>(null);
 
@@ -301,7 +304,7 @@ const BranchSegment: FC<{
 	commitTarget: RelativeTo | null;
 	canTearOffBranch: boolean;
 	canRemoveBranch: boolean;
-	partialStackState: PartialStackState;
+	downstackPushStatus: DownstackPushStatus;
 	isTopSegment: boolean;
 }> = ({
 	projectId,
@@ -311,7 +314,7 @@ const BranchSegment: FC<{
 	commitTarget,
 	canTearOffBranch,
 	canRemoveBranch,
-	partialStackState,
+	downstackPushStatus,
 	isTopSegment,
 }) => {
 	const operand = branchOperand({ stackId, branchRef: refName.fullNameBytes });
@@ -330,7 +333,7 @@ const BranchSegment: FC<{
 				stackId={stackId}
 				canTearOffBranch={canTearOffBranch}
 				canRemoveBranch={canRemoveBranch}
-				partialStackState={partialStackState}
+				downstackPushStatus={downstackPushStatus}
 				isCommitTarget={
 					commitTarget
 						? relativeToEquals(commitTarget, {
@@ -442,7 +445,7 @@ const StackC: FC<{
 	const stackId = stack.id!;
 	const operand = stackOperand({ stackId });
 	const canTearOffBranch = stack.segments.length > 1;
-	const partialStackStates = partialStackStatesFromSegments(stack.segments);
+	const downstackPushStatuses = downstackPushStatusesFromSegments(stack.segments);
 	const navigationIndex = assert(use(NavigationIndexContext));
 
 	return (
@@ -459,7 +462,7 @@ const StackC: FC<{
 			{/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Tree items need ARIA group semantics. */}
 			<div role="group" className={styles.segments}>
 				{stack.segments.map((segment, index) => {
-					const partialStackState = assert(partialStackStates[index]);
+					const downstackPushStatus = assert(downstackPushStatuses[index]);
 
 					const key = segment.refName
 						? JSON.stringify(segment.refName.fullNameBytes)
@@ -479,7 +482,7 @@ const StackC: FC<{
 										commitTarget={commitTarget}
 										canTearOffBranch={canTearOffBranch}
 										canRemoveBranch={canRemoveBranchReference(stack, index)}
-										partialStackState={partialStackState}
+										downstackPushStatus={downstackPushStatus}
 										isTopSegment={index === 0}
 									/>
 								) : (
