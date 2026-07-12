@@ -73,7 +73,7 @@ import {
 import { CodeView, type CodeViewHandle } from "@pierre/diffs/react";
 import { useQuery, useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query";
 import { useParams } from "@tanstack/react-router";
-import { Hash, identity, Match } from "effect";
+import { Hash, Match } from "effect";
 import {
 	ComponentProps,
 	FC,
@@ -170,6 +170,7 @@ const getCommitFileRowItems = ({
 				changeFileRowItem({
 					change,
 					path: change.path,
+					dependencyCommitIds: [],
 				}),
 			),
 	];
@@ -180,6 +181,7 @@ const getBranchFileRowItems = ({ branchDiff }: { branchDiff: TreeChanges }): Arr
 		changeFileRowItem({
 			change,
 			path: change.path,
+			dependencyCommitIds: [],
 		}),
 	);
 
@@ -968,7 +970,7 @@ const Diff: FC<{
 	const files = filesItems.map((item) => item.path);
 	const filesNavigationIndex: NavigationIndex<string> = {
 		items: files,
-		indexByKey: buildIndexByKey(files, identity),
+		indexByKey: buildIndexByKey(files, (path) => path),
 	};
 	const filesSelection = useFilesSelection(projectId, filesNavigationIndex);
 

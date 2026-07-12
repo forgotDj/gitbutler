@@ -47,7 +47,6 @@ import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panel
 import styles from "./OutlineTree.module.css";
 import { Row, RowLabel, RowLabelContainer } from "../Row.tsx";
 import { getOperation, useDryRunOperation } from "#ui/operations/operation.ts";
-import { reverse } from "effect/Array";
 import { GraphSegment, GraphSegmentStatus } from "#ui/components/GraphSegment.tsx";
 import { segmentBottomRelativeTo } from "#ui/api/stack.ts";
 import { assert } from "#ui/assert.ts";
@@ -564,7 +563,7 @@ const Stacks: FC<{
 	return (
 		<DryRunWorkspaceContext value={dryRunWorkspace}>
 			<div className={styles.stacks}>
-				{reverse(headInfo?.stacks ?? []).map((stack) => (
+				{(headInfo?.stacks.toReversed() ?? []).map((stack) => (
 					<StackC key={stack.id} projectId={projectId} stack={stack} commitTarget={commitTarget} />
 				))}
 			</div>

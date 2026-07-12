@@ -1,5 +1,4 @@
 import type { PushStatus, Segment, Stack } from "@gitbutler/but-sdk";
-import { initNonEmpty, scanRight } from "effect/Array";
 
 export const canRemoveBranchReference = (stack: Stack, segmentIndex: number): boolean => {
 	const segment = stack.segments[segmentIndex];
@@ -20,7 +19,7 @@ export type DownstackPushStatus = {
 	downstackBranches: number;
 };
 
-const downstackPushStatus: DownstackPushStatus = {
+const emptyDownstackPushStatus: DownstackPushStatus = {
 	anyRequiresPush: false,
 	anyPushRequiresForce: false,
 	anyHasConflicts: false,
@@ -32,24 +31,39 @@ const pushStatusRequiresPush = (pushStatus: PushStatus): boolean =>
 	pushStatus === "unpushedCommitsRequiringForce" ||
 	pushStatus === "completelyUnpushed";
 
-const addSegmentToDownstackPushStatus = (
-	state: DownstackPushStatus,
-	segment: Segment,
+const concatDownstackPushStatus = (
+	x: DownstackPushStatus,
+	y: DownstackPushStatus,
 ): DownstackPushStatus => ({
-	anyRequiresPush: state.anyRequiresPush || pushStatusRequiresPush(segment.pushStatus),
-	anyPushRequiresForce:
-		state.anyPushRequiresForce || segment.pushStatus === "unpushedCommitsRequiringForce",
-	anyHasConflicts: state.anyHasConflicts || segment.commits.some((commit) => commit.hasConflicts),
-	downstackBranches: segment.refName ? state.downstackBranches + 1 : state.downstackBranches,
+	anyRequiresPush: x.anyRequiresPush || y.anyRequiresPush,
+	anyPushRequiresForce: x.anyPushRequiresForce || y.anyPushRequiresForce,
+	anyHasConflicts: x.anyHasConflicts || y.anyHasConflicts,
+	downstackBranches: x.downstackBranches + y.downstackBranches,
+});
+
+const toDownstackPushStatus = (segment: Segment): DownstackPushStatus => ({
+	anyRequiresPush: pushStatusRequiresPush(segment.pushStatus),
+	anyPushRequiresForce: segment.pushStatus === "unpushedCommitsRequiringForce",
+	anyHasConflicts: segment.commits.some((commit) => commit.hasConflicts),
+	downstackBranches: segment.refName ? 1 : 0,
 });
 
 export const downstackPushStatusDisabled = (dps: DownstackPushStatus): boolean =>
 	!dps.anyRequiresPush || dps.anyHasConflicts;
 
 export const downstackPushStatusFromSegments = (segments: Array<Segment>): DownstackPushStatus =>
-	segments.reduce(addSegmentToDownstackPushStatus, downstackPushStatus);
+	segments.reduce(
+		(acc, segment) => concatDownstackPushStatus(acc, toDownstackPushStatus(segment)),
+		emptyDownstackPushStatus,
+	);
 
 export const downstackPushStatusesFromSegments = (
 	segments: Array<Segment>,
 ): Array<DownstackPushStatus> =>
-	initNonEmpty(scanRight(segments, downstackPushStatus, addSegmentToDownstackPushStatus));
+	segments.reduceRight((acc, segment, idx) => {
+		acc[idx] = concatDownstackPushStatus(
+			acc[idx + 1] ?? emptyDownstackPushStatus,
+			toDownstackPushStatus(segment),
+		);
+		return acc;
+	}, [] as Array<DownstackPushStatus>);
