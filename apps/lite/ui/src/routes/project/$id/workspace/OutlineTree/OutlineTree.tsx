@@ -106,28 +106,30 @@ const OperandC: FC<
 		const outlineMode = projectSlice.selectors.selectOutlineModeState(state, projectId);
 
 		return Match.value(outlineMode).pipe(
-			Match.when({ _tag: "Absorb" }, (): ActiveOperation | null => {
-				const isAbsorptionTarget = absorptionTargetKeys.has(operandIdentityKey(operand));
-				return isAbsorptionTarget ? { operationType: "into", tooltip: "Absorb target" } : null;
-			}),
-			Match.when({ _tag: "Transfer" }, ({ value: mode }): ActiveOperation | null => {
-				const isActive = Match.value(mode).pipe(
-					Match.tagsExhaustive({
-						Pointer: (mode) => mode.target !== null && operandEquals(mode.target, operand),
-						Keyboard: () => isSelected,
-					}),
-				);
+			Match.tags({
+				Absorb: (): ActiveOperation | null => {
+					const isAbsorptionTarget = absorptionTargetKeys.has(operandIdentityKey(operand));
+					return isAbsorptionTarget ? { operationType: "into", tooltip: "Absorb target" } : null;
+				},
+				Transfer: ({ value: mode }): ActiveOperation | null => {
+					const isActive = Match.value(mode).pipe(
+						Match.tagsExhaustive({
+							Pointer: (mode) => mode.target !== null && operandEquals(mode.target, operand),
+							Keyboard: () => isSelected,
+						}),
+					);
 
-				return isActive && mode.operationType !== null
-					? {
-							operationType: mode.operationType,
-							tooltip: getOperation({
-								source: mode.source,
-								target: operand,
+					return isActive && mode.operationType !== null
+						? {
 								operationType: mode.operationType,
-							})?.label,
-						}
-					: null;
+								tooltip: getOperation({
+									source: mode.source,
+									target: operand,
+									operationType: mode.operationType,
+								})?.label,
+							}
+						: null;
+				},
 			}),
 			Match.orElse(() => null),
 		);
