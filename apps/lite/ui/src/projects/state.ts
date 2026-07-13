@@ -7,7 +7,6 @@ import {
 import { type OperationType } from "#ui/operations/operation.ts";
 import { type TransferMode } from "#ui/outline/mode.ts";
 import * as workspace from "#ui/projects/workspace/state.ts";
-import type { RootState } from "#ui/store.ts";
 import { type AbsorptionTarget, type RefInfo, type RelativeTo } from "@gitbutler/but-sdk";
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
@@ -51,6 +50,12 @@ const ensureProjectState = (state: ProjectSliceState, projectId: string): Projec
 	state.byProjectId[projectId] = projectState;
 	return projectState;
 };
+
+const selectProjectState = (state: ProjectSliceState, projectId: string): ProjectState =>
+	state.byProjectId[projectId] ?? initialProjectState;
+
+const selectProjectWorkspaceState = (state: ProjectSliceState, projectId: string) =>
+	selectProjectState(state, projectId).workspace;
 
 const projectSlice = createSlice({
 	name: "project",
@@ -238,49 +243,47 @@ const projectSlice = createSlice({
 			ensureProjectState(state, action.payload.projectId).dialog = { _tag: "None" };
 		},
 	},
+	selectors: {
+		selectProjectFilesVisible: (state, projectId: string) =>
+			selectProjectState(state, projectId).filesVisible,
+		selectProjectDetailsFullWindow: (state, projectId: string) =>
+			selectProjectState(state, projectId).detailsFullWindow,
+		selectProjectDialogState: (state, projectId: string) =>
+			selectProjectState(state, projectId).dialog,
+		selectProjectSelectionOutline: (state, projectId: string) =>
+			workspace.selectSelectionOutlineState(selectProjectWorkspaceState(state, projectId)),
+		selectProjectSelectionFiles: (state, projectId: string) =>
+			workspace.selectSelectionFilesState(selectProjectWorkspaceState(state, projectId)),
+		selectProjectSelectionDiff: (state, projectId: string) =>
+			workspace.selectSelectionDiffState(selectProjectWorkspaceState(state, projectId)),
+		selectProjectOutlineModeState: (state, projectId: string) =>
+			workspace.selectMode(selectProjectWorkspaceState(state, projectId)),
+		selectProjectHighlightedCommitIds: (state, projectId: string) =>
+			workspace.selectHighlightedCommitIds(selectProjectWorkspaceState(state, projectId)),
+		selectProjectCommitChecked: (state, projectId: string, commitId: string) =>
+			workspace.selectCommitChecked(selectProjectWorkspaceState(state, projectId), commitId),
+		selectProjectCheckedCommitCount: (state, projectId: string) =>
+			workspace.selectCheckedCommitCount(selectProjectWorkspaceState(state, projectId)),
+		selectProjectHasCheckedCommits: (state, projectId: string) =>
+			workspace.selectHasCheckedCommits(selectProjectWorkspaceState(state, projectId)),
+		selectProjectCommitTarget: (state, projectId: string) =>
+			workspace.selectCommitTarget(selectProjectWorkspaceState(state, projectId)),
+	},
 });
 
 export const projectActions = projectSlice.actions;
 export const projectReducer = projectSlice.reducer;
-
-const selectProjectState = (state: RootState, projectId: string): ProjectState =>
-	state.project.byProjectId[projectId] ?? initialProjectState;
-
-export const selectProjectFilesVisible = (state: RootState, projectId: string) =>
-	selectProjectState(state, projectId).filesVisible;
-
-export const selectProjectDetailsFullWindow = (state: RootState, projectId: string) =>
-	selectProjectState(state, projectId).detailsFullWindow;
-
-export const selectProjectDialogState = (state: RootState, projectId: string) =>
-	selectProjectState(state, projectId).dialog;
-
-const selectProjectWorkspaceState = (state: RootState, projectId: string) =>
-	selectProjectState(state, projectId).workspace;
-
-export const selectProjectSelectionOutline = (state: RootState, projectId: string) =>
-	workspace.selectSelectionOutlineState(selectProjectWorkspaceState(state, projectId));
-
-export const selectProjectSelectionFiles = (state: RootState, projectId: string) =>
-	workspace.selectSelectionFilesState(selectProjectWorkspaceState(state, projectId));
-
-export const selectProjectSelectionDiff = (state: RootState, projectId: string) =>
-	workspace.selectSelectionDiffState(selectProjectWorkspaceState(state, projectId));
-
-export const selectProjectOutlineModeState = (state: RootState, projectId: string) =>
-	workspace.selectMode(selectProjectWorkspaceState(state, projectId));
-
-export const selectProjectHighlightedCommitIds = (state: RootState, projectId: string) =>
-	workspace.selectHighlightedCommitIds(selectProjectWorkspaceState(state, projectId));
-
-export const selectProjectCommitChecked = (state: RootState, projectId: string, commitId: string) =>
-	workspace.selectCommitChecked(selectProjectWorkspaceState(state, projectId), commitId);
-
-export const selectProjectCheckedCommitCount = (state: RootState, projectId: string) =>
-	workspace.selectCheckedCommitCount(selectProjectWorkspaceState(state, projectId));
-
-export const selectProjectHasCheckedCommits = (state: RootState, projectId: string) =>
-	workspace.selectHasCheckedCommits(selectProjectWorkspaceState(state, projectId));
-
-export const selectProjectCommitTarget = (state: RootState, projectId: string) =>
-	workspace.selectCommitTarget(selectProjectWorkspaceState(state, projectId));
+export const {
+	selectProjectFilesVisible,
+	selectProjectDetailsFullWindow,
+	selectProjectDialogState,
+	selectProjectSelectionOutline,
+	selectProjectSelectionFiles,
+	selectProjectSelectionDiff,
+	selectProjectOutlineModeState,
+	selectProjectHighlightedCommitIds,
+	selectProjectCommitChecked,
+	selectProjectCheckedCommitCount,
+	selectProjectHasCheckedCommits,
+	selectProjectCommitTarget,
+} = projectSlice.selectors;
