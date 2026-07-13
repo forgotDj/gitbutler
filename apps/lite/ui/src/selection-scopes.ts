@@ -1,13 +1,9 @@
 import { selectionOperationHotkeys, type CommandGroup } from "#ui/hotkeys.ts";
 import { type OperationType } from "#ui/operations/operation.ts";
-import { hunkOperand, HunkOperand, operandIdentityKey, type Operand } from "#ui/operands.ts";
+import { type Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
-import {
-	getAdjacent,
-	navigationIndexIncludes,
-	type NavigationIndex,
-} from "#ui/workspace/navigation-index.ts";
+import { getAdjacent, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import { useHotkeySequences, useHotkeys } from "@tanstack/react-hotkeys";
 
 export type SelectionScope = "outline" | "files" | "diff";
@@ -61,48 +57,6 @@ export const focusAdjacentSelectionScope = ({
 
 		focusSelectionScope(nextSelectionScope);
 	}
-};
-
-export const resolveNavigationIndexSelection = <T>(
-	navigationIndex: NavigationIndex<T>,
-	selection: T | null,
-	getKey: (item: T) => string,
-): T | null =>
-	selection !== null && navigationIndexIncludes(navigationIndex, selection, getKey)
-		? selection
-		: (navigationIndex.items[0] ?? null);
-
-export const useFilesSelection = (projectId: string, navigationIndex: NavigationIndex<string>) => {
-	const selection = useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionFiles(state, projectId),
-	);
-	return resolveNavigationIndexSelection(navigationIndex, selection, (item) => item);
-};
-
-export const useOutlineSelection = ({
-	projectId,
-	navigationIndex,
-}: {
-	projectId: string;
-	navigationIndex: NavigationIndex<Operand>;
-}) => {
-	const selectionState = useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionOutline(state, projectId),
-	);
-	return resolveNavigationIndexSelection(navigationIndex, selectionState, operandIdentityKey);
-};
-
-const hunkOperandIdentityKey = (operand: HunkOperand): string =>
-	operandIdentityKey(hunkOperand(operand));
-
-export const useDiffSelection = (
-	projectId: string,
-	navigationIndex: NavigationIndex<HunkOperand>,
-) => {
-	const selection = useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionDiff(state, projectId),
-	);
-	return resolveNavigationIndexSelection(navigationIndex, selection, hunkOperandIdentityKey);
 };
 
 export const useNavigationIndexHotkeys = <T>({
