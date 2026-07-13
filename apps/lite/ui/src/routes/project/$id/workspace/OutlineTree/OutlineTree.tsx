@@ -111,8 +111,8 @@ const OperandC: FC<
 		return Match.value(outlineMode).pipe(
 			Match.tags({
 				Absorb: (): ActiveOperation | null => {
-					const isAbsorptionTarget = absorptionTargetKeys.has(operandIdentityKey(operand));
-					return isAbsorptionTarget ? { operationType: "into", tooltip: "Absorb target" } : null;
+					const isActive = absorptionTargetKeys.has(operandIdentityKey(operand));
+					return isActive ? { operationType: "into", tooltip: "Absorb target" } : null;
 				},
 				Transfer: ({ value: mode }): ActiveOperation | null => {
 					const isActive = Match.value(mode).pipe(
