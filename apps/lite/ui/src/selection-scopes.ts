@@ -1,6 +1,6 @@
 import { selectionOperationHotkeys, type CommandGroup } from "#ui/hotkeys.ts";
 import { type OperationType } from "#ui/operations/operation.ts";
-import { operandEquals, type HunkOperand, type Operand } from "#ui/operands.ts";
+import { type HunkOperand, type Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
 import { NavigationIndexContext } from "#ui/routes/project/$id/workspace/OutlineNavigationIndexContext.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
@@ -86,15 +86,9 @@ export const useOutlineIsSelected = ({
 	operand: Operand;
 }): boolean => {
 	const navigationIndex = assert(use(NavigationIndexContext));
-	return useAppSelector((state) => {
-		const selection = projectSlice.selectors.selectSelectionOutline(
-			state,
-			projectId,
-			navigationIndex,
-		);
-
-		return selection ? operandEquals(selection, operand) : false;
-	});
+	return useAppSelector((state) =>
+		projectSlice.selectors.selectIsSelectedOutline(state, projectId, navigationIndex, operand),
+	);
 };
 
 export const useDiffSelection = (

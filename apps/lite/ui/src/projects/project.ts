@@ -367,6 +367,18 @@ export const projectSelectors = {
 	selectFilesVisible: (state: ProjectState) => state.filesVisible,
 	selectDetailsFullWindow: (state: ProjectState) => state.detailsFullWindow,
 	selectDialogState: (state: ProjectState) => state.dialog,
+	selectIsSelectedOutline: (
+		state: ProjectState,
+		navigationIndex: NavigationIndex<Operand>,
+		operand: Operand,
+	) => {
+		const selection = resolveNavigationIndexSelection(
+			navigationIndex,
+			state.workspace.selection.outline,
+			operandIdentityKey,
+		);
+		return selection !== null && operandEquals(selection, operand);
+	},
 	selectSelectionOutline: (state: ProjectState, navigationIndex: NavigationIndex<Operand>) =>
 		resolveNavigationIndexSelection(
 			navigationIndex,
