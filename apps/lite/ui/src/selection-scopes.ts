@@ -1,7 +1,7 @@
 import { selectionOperationHotkeys, type CommandGroup } from "#ui/hotkeys.ts";
 import { type OperationType } from "#ui/operations/operation.ts";
 import { hunkOperand, HunkOperand, operandIdentityKey, type Operand } from "#ui/operands.ts";
-import { projectActions, projectSelectors } from "#ui/projects/state.ts";
+import { projectSlice } from "#ui/projects/state.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import {
 	getAdjacent,
@@ -74,7 +74,7 @@ export const resolveNavigationIndexSelection = <T>(
 
 export const useFilesSelection = (projectId: string, navigationIndex: NavigationIndex<string>) => {
 	const selection = useAppSelector((state) =>
-		projectSelectors.selectSelectionFiles(state, projectId),
+		projectSlice.selectors.selectSelectionFiles(state, projectId),
 	);
 	return resolveNavigationIndexSelection(navigationIndex, selection, (item) => item);
 };
@@ -87,7 +87,7 @@ export const useOutlineSelection = ({
 	navigationIndex: NavigationIndex<Operand>;
 }) => {
 	const selectionState = useAppSelector((state) =>
-		projectSelectors.selectSelectionOutline(state, projectId),
+		projectSlice.selectors.selectSelectionOutline(state, projectId),
 	);
 	return resolveNavigationIndexSelection(navigationIndex, selectionState, operandIdentityKey);
 };
@@ -100,7 +100,7 @@ export const useDiffSelection = (
 	navigationIndex: NavigationIndex<HunkOperand>,
 ) => {
 	const selection = useAppSelector((state) =>
-		projectSelectors.selectSelectionDiff(state, projectId),
+		projectSlice.selectors.selectSelectionDiff(state, projectId),
 	);
 	return resolveNavigationIndexSelection(navigationIndex, selection, hunkOperandIdentityKey);
 };
@@ -306,7 +306,7 @@ export const useNavigationIndexHotkeys = <T>({
 	]);
 
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectOutlineModeState(state, projectId),
+		projectSlice.selectors.selectOutlineModeState(state, projectId),
 	);
 
 	const operationEnabled = outlineMode._tag === "Default" && selection !== null;
@@ -317,7 +317,7 @@ export const useNavigationIndexHotkeys = <T>({
 		const source = operationSourceForItem(selection);
 
 		dispatch(
-			projectActions.enterKeyboardTransferMode({
+			projectSlice.actions.enterKeyboardTransferMode({
 				projectId,
 				source,
 				operationType,

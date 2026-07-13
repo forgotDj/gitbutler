@@ -15,7 +15,7 @@ import {
 	operandEquals,
 } from "#ui/operands.ts";
 import { useOutlineSelection } from "#ui/selection-scopes.ts";
-import { projectActions, projectSelectors } from "#ui/projects/state.ts";
+import { projectSlice } from "#ui/projects/state.ts";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import {
 	ActiveOperation,
@@ -103,7 +103,7 @@ const OperandC: FC<
 	const navigationIndex = assert(use(NavigationIndexContext));
 
 	const activeOperation = useAppSelector((state) => {
-		const outlineMode = projectSelectors.selectOutlineModeState(state, projectId);
+		const outlineMode = projectSlice.selectors.selectOutlineModeState(state, projectId);
 
 		return Match.value(outlineMode).pipe(
 			Match.when({ _tag: "Absorb" }, (): ActiveOperation | null => {
@@ -267,7 +267,7 @@ const UncommittedFileRow: FC<{
 							inert={!navigationIndexIncludes(navigationIndex, operand, operandIdentityKey)}
 							isSelected={isSelected}
 							onSelect={() => {
-								dispatch(projectActions.selectOutline({ projectId, selection: operand }));
+								dispatch(projectSlice.actions.selectOutline({ projectId, selection: operand }));
 							}}
 						/>
 					}
@@ -529,7 +529,7 @@ const Stacks: FC<{
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
 	const selection = useOutlineSelection({ projectId, navigationIndex });
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectOutlineModeState(state, projectId),
+		projectSlice.selectors.selectOutlineModeState(state, projectId),
 	);
 
 	const dryRunOperation = Match.value(outlineMode).pipe(
@@ -586,7 +586,7 @@ export const OutlineTree: FC<
 }) => {
 	const selection = useOutlineSelection({ projectId, navigationIndex });
 	const hasCheckedCommits = useAppSelector((state) =>
-		projectSelectors.selectHasCheckedCommits(state, projectId),
+		projectSlice.selectors.selectHasCheckedCommits(state, projectId),
 	);
 
 	const layoutId = `project=${projectId}:outline-tree`;

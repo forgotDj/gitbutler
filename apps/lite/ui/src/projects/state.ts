@@ -57,7 +57,7 @@ const selectProjectState = (state: ProjectSliceState, projectId: string): Projec
 const selectProjectWorkspaceState = (state: ProjectSliceState, projectId: string) =>
 	selectProjectState(state, projectId).workspace;
 
-const projectSlice = createSlice({
+export const projectSlice = createSlice({
 	name: "project",
 	initialState,
 	reducers: {
@@ -269,7 +269,3 @@ const projectSlice = createSlice({
 			workspace.selectCommitTarget(selectProjectWorkspaceState(state, projectId)),
 	},
 });
-
-export const projectActions = projectSlice.actions;
-export const projectReducer = projectSlice.reducer;
-export const projectSelectors = projectSlice.selectors;

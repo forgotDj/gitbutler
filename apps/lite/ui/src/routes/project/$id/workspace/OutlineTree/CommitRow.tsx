@@ -25,7 +25,7 @@ import {
 	type NativeMenuItem,
 } from "#ui/native-menu.ts";
 import { branchOperand, commitOperand, operandEquals, type CommitOperand } from "#ui/operands.ts";
-import { projectActions, projectSelectors } from "#ui/projects/state.ts";
+import { projectSlice } from "#ui/projects/state.ts";
 import { rewrittenCommitSelection } from "#ui/projects/workspace/state.ts";
 import { focusSelectionScope } from "#ui/selection-scopes.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
@@ -61,10 +61,10 @@ export const CommitRow: FC<
 	const mforgeUrl = forgeInfo && commitForgeUrl(commit, forgeInfo);
 
 	const isHighlighted = useAppSelector((state) =>
-		projectSelectors.selectHighlightedCommitIds(state, projectId).includes(commit.id),
+		projectSlice.selectors.selectHighlightedCommitIds(state, projectId).includes(commit.id),
 	);
 	const isChecked = useAppSelector((state) =>
-		projectSelectors.selectCommitChecked(state, projectId, commit.id),
+		projectSlice.selectors.selectCommitChecked(state, projectId, commit.id),
 	);
 
 	const dispatch = useAppDispatch();
@@ -75,10 +75,10 @@ export const CommitRow: FC<
 	};
 	const operand = commitOperand(commitOperandV);
 	const isDefaultMode = useAppSelector(
-		(state) => projectSelectors.selectOutlineModeState(state, projectId)._tag === "Default",
+		(state) => projectSlice.selectors.selectOutlineModeState(state, projectId)._tag === "Default",
 	);
 	const isRewording = useAppSelector((state) => {
-		const outlineMode = projectSelectors.selectOutlineModeState(state, projectId);
+		const outlineMode = projectSlice.selectors.selectOutlineModeState(state, projectId);
 		return (
 			outlineMode._tag === "RewordCommit" &&
 			operandEquals(operand, commitOperand(outlineMode.operand))
@@ -133,7 +133,7 @@ export const CommitRow: FC<
 
 					if (newBranchStack && newBranchStack.id !== null) {
 						dispatch(
-							projectActions.selectOutline({
+							projectSlice.actions.selectOutline({
 								projectId,
 								selection: branchOperand({
 									stackId: newBranchStack.id,
@@ -162,7 +162,7 @@ export const CommitRow: FC<
 			{
 				onSuccess: (response) => {
 					dispatch(
-						projectActions.selectOutline({
+						projectSlice.actions.selectOutline({
 							projectId,
 							selection: rewrittenCommitSelection({
 								selection: selectionAfterDiscard,
@@ -178,7 +178,7 @@ export const CommitRow: FC<
 
 	const cutCommit = () => {
 		dispatch(
-			projectActions.enterKeyboardTransferMode({
+			projectSlice.actions.enterKeyboardTransferMode({
 				projectId,
 				source: operand,
 			}),
@@ -187,12 +187,12 @@ export const CommitRow: FC<
 	};
 
 	const startEditing = () => {
-		dispatch(projectActions.startRewordCommit({ projectId, commit: commitOperandV }));
+		dispatch(projectSlice.actions.startRewordCommit({ projectId, commit: commitOperandV }));
 	};
 
 	const endEditing = () => {
-		dispatch(projectActions.exitMode({ projectId }));
-		dispatch(projectActions.selectOutline({ projectId, selection: operand }));
+		dispatch(projectSlice.actions.exitMode({ projectId }));
+		dispatch(projectSlice.actions.selectOutline({ projectId, selection: operand }));
 		focusSelectionScope("outline");
 	};
 
@@ -232,7 +232,7 @@ export const CommitRow: FC<
 	};
 
 	const setCommitTarget = () => {
-		dispatch(projectActions.setCommitTarget({ projectId, commitTarget: relativeTo }));
+		dispatch(projectSlice.actions.setCommitTarget({ projectId, commitTarget: relativeTo }));
 	};
 
 	const composeCommitHere = () => {
@@ -376,7 +376,7 @@ export const CommitRow: FC<
 						render={<Tooltip.Trigger />}
 						onCheckedChange={(checked) => {
 							dispatch(
-								projectActions.setCommitChecked({ projectId, commitId: commit.id, checked }),
+								projectSlice.actions.setCommitChecked({ projectId, commitId: commit.id, checked }),
 							);
 						}}
 					/>

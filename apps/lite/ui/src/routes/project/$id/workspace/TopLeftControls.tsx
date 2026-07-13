@@ -1,7 +1,7 @@
 import { getButtonClassName } from "#ui/components/Button.tsx";
 import { Icon } from "#ui/components/Icon.tsx";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
-import { projectActions, projectSelectors } from "#ui/projects/state.ts";
+import { projectSlice } from "#ui/projects/state.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { workspaceHotkeys } from "#ui/hotkeys.ts";
 import { Toggle, Tooltip } from "@base-ui/react";
@@ -15,7 +15,7 @@ const FullWindowToggle: FC<
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const dispatch = useAppDispatch();
 	const fullWindow = useAppSelector((state) =>
-		projectSelectors.selectDetailsFullWindow(state, projectId),
+		projectSlice.selectors.selectDetailsFullWindow(state, projectId),
 	);
 
 	return (
@@ -27,7 +27,7 @@ const FullWindowToggle: FC<
 						aria-label={workspaceHotkeys.toggleOutline.meta.name}
 						pressed={fullWindow}
 						onPressedChange={(fullWindow) =>
-							dispatch(projectActions.setDetailsFullWindow({ projectId, fullWindow }))
+							dispatch(projectSlice.actions.setDetailsFullWindow({ projectId, fullWindow }))
 						}
 					/>
 				}
@@ -48,7 +48,7 @@ const isMac = window.lite.platform === "darwin";
 export const TopLeftControls: FC = () => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const fullWindow = useAppSelector((state) =>
-		projectSelectors.selectDetailsFullWindow(state, projectId),
+		projectSlice.selectors.selectDetailsFullWindow(state, projectId),
 	);
 	return (
 		<div className={styles.container}>

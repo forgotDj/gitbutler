@@ -5,7 +5,7 @@ import { operandLabel } from "./operandLabel.ts";
 import { headInfoQueryOptions } from "#ui/api/queries.ts";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 import { classes } from "#ui/components/classes.ts";
-import { projectActions, projectSelectors } from "#ui/projects/state.ts";
+import { projectSlice } from "#ui/projects/state.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { centerUnderPointer } from "@atlaskit/pragmatic-drag-and-drop/element/center-under-pointer";
@@ -35,7 +35,7 @@ export const OperationSourceC: FC<
 		select: getHeadInfoIndex,
 	});
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectOutlineModeState(state, projectId),
+		projectSlice.selectors.selectOutlineModeState(state, projectId),
 	);
 
 	const dispatch = useAppDispatch();
@@ -62,7 +62,7 @@ export const OperationSourceC: FC<
 	);
 	const onDragStart = useEffectEvent(() => {
 		dispatch(
-			projectActions.enterTransferMode({
+			projectSlice.actions.enterTransferMode({
 				projectId,
 				mode: pointerTransferMode({
 					source,
@@ -88,7 +88,7 @@ export const OperationSourceC: FC<
 			onDrop: ({ location }) => {
 				if (location.current.dropTargets.length > 0) return;
 
-				dispatch(projectActions.cancelMode({ projectId }));
+				dispatch(projectSlice.actions.cancelMode({ projectId }));
 			},
 		});
 	}, [dispatch, projectId]);

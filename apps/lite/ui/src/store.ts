@@ -1,10 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
-import { projectReducer } from "#ui/projects/state.ts";
+import { projectSlice } from "#ui/projects/state.ts";
 
 export const store = configureStore({
 	reducer: {
-		project: projectReducer,
+		project: projectSlice.reducer,
 	},
 });
 
