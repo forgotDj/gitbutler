@@ -10,7 +10,7 @@ import {
 import { forgeInfoOptions, headInfoQueryOptions } from "#ui/api/queries.ts";
 import { decodeBytes } from "#ui/api/bytes.ts";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
-import { commitForgeUrl } from "#ui/commit.ts";
+import { commitForgeUrl, rewrittenCommitSelection } from "#ui/commit.ts";
 import { outlineHotkeys } from "#ui/hotkeys.ts";
 import {
 	branchOperand,
@@ -20,7 +20,6 @@ import {
 	type Operand,
 } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
-import { rewrittenCommitSelection } from "#ui/projects/workspace/state.ts";
 import {
 	focusSelectionScope,
 	useNavigationIndexHotkeys,

@@ -14,7 +14,13 @@ import { GraphSegment } from "#ui/components/GraphSegment.tsx";
 import { Icon } from "#ui/components/Icon.tsx";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
 import { assert } from "#ui/assert.ts";
-import { commitBody, commitForgeUrl, commitIsDiverged, commitTitle } from "#ui/commit.ts";
+import {
+	commitBody,
+	commitForgeUrl,
+	commitIsDiverged,
+	commitTitle,
+	rewrittenCommitSelection,
+} from "#ui/commit.ts";
 import { errorMessageForToast } from "#ui/errors.ts";
 import { outlineHotkeys, selectionOperationHotkeys, toElectronAccelerator } from "#ui/hotkeys.ts";
 import {
@@ -26,7 +32,6 @@ import {
 } from "#ui/native-menu.ts";
 import { branchOperand, commitOperand, operandEquals, type CommitOperand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
-import { rewrittenCommitSelection } from "#ui/projects/workspace/state.ts";
 import { focusSelectionScope } from "#ui/selection-scopes.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { RelativeTo, type Commit } from "@gitbutler/but-sdk";
