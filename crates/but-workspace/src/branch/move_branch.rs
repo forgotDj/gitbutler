@@ -192,12 +192,12 @@ pub(super) mod function {
 
         // Each kind of workspace has a very different notion of what "moving a branch" means, so we
         // dispatch into a dedicated handler for each one.
-        // TODO: Enable and test that we can move branches in any kind of workspace.
         match &workspace.kind {
             WorkspaceKind::AdHoc => move_branch_in_single_branch_mode(
                 successful_rebase,
-                workspace.ref_name().map(ToOwned::to_owned),
+                workspace,
                 source,
+                destination,
                 subject_branch_name,
                 target_branch_name,
             ),
@@ -226,40 +226,45 @@ pub(super) mod function {
     /// persistence for dry-run previews.
     fn move_branch_in_single_branch_mode<'ws, 'meta, M: RefMetadata>(
         mut successful_rebase: SuccessfulRebase<'ws, 'meta, M>,
-        entrypoint: Option<gix::refs::FullName>,
+        workspace: but_graph::Workspace,
         source: WorkspaceSegmentContext,
+        destination: WorkspaceSegmentContext,
         subject_branch_name: &FullNameRef,
         target_branch_name: &FullNameRef,
     ) -> anyhow::Result<Outcome<'ws, 'meta, M>> {
-        let (_, subject_segment) = &source;
-        // Only the *subject* needs to be empty: a branch that owns no commits can be reordered by
-        // metadata alone, regardless of whether the target owns commits (e.g. the base branch). A
-        // non-empty subject would change commit ownership and needs a real rebase.
-        if !subject_segment.commits.is_empty() {
+        let (source_stack, subject_segment) = &source;
+        let (destination_stack, _) = &destination;
+        let entrypoint = workspace.ref_name().map(ToOwned::to_owned);
+        // A branch that owns commits can only be reordered within its current stack in
+        // single-branch mode. Moving it across stacks would change commit ownership and needs a
+        // real rebase.
+        if !subject_segment.commits.is_empty() && !same_stack(source_stack, destination_stack) {
             bail!("Moving a non-empty branch in single-branch mode is not yet supported");
         }
-        let (_repo, meta) = successful_rebase.repo_and_meta_mut();
-        if !meta.can_persist_branch_stack_order() {
-            bail!(
-                "Cannot reorder '{subject_branch_name}' in single-branch mode without branch order metadata"
-            );
-        }
-        // Reorder against the existing chain. A movable subject is always part of `branch_order`
-        // (that's what makes it a projected segment), so the first lookup normally succeeds. The
-        // target and entrypoint lookups are defensive fallbacks so that, should the projection ever
-        // surface a segment that isn't tracked yet, we extend the real chain instead of clobbering
-        // it down to just the moved refs.
-        let existing_order = match meta.branch_stack_order(subject_branch_name)? {
-            Some(order) => order,
-            None => match meta.branch_stack_order(target_branch_name)? {
+        let existing_order = {
+            let (_repo, meta) = successful_rebase.repo_and_meta_mut();
+            if !meta.can_persist_branch_stack_order() {
+                bail!(
+                    "Cannot reorder '{subject_branch_name}' in single-branch mode without branch order metadata"
+                );
+            }
+            // Reorder against the existing chain. A movable subject is always part of `branch_order`
+            // (that's what makes it a projected segment), so the first lookup normally succeeds. The
+            // target and entrypoint lookups are defensive fallbacks so that, should the projection ever
+            // surface a segment that isn't tracked yet, we extend the real chain instead of clobbering
+            // it down to just the moved refs.
+            match meta.branch_stack_order(subject_branch_name)? {
                 Some(order) => order,
-                None => entrypoint
-                    .as_ref()
-                    .map(|entrypoint| meta.branch_stack_order(entrypoint.as_ref()))
-                    .transpose()?
-                    .flatten()
-                    .unwrap_or_default(),
-            },
+                None => match meta.branch_stack_order(target_branch_name)? {
+                    Some(order) => order,
+                    None => entrypoint
+                        .as_ref()
+                        .map(|entrypoint| meta.branch_stack_order(entrypoint.as_ref()))
+                        .transpose()?
+                        .flatten()
+                        .unwrap_or_else(|| stack_branch_order(source_stack)),
+                },
+            }
         };
         let new_order = reorder_empty_branch_in_stack_order(
             existing_order,
@@ -273,6 +278,46 @@ pub(super) mod function {
         // the caller can check it out (mirroring `create_reference`); we don't move `HEAD` here.
         let new_tip = (entrypoint.as_ref().map(|name| name.as_ref()) == Some(target_branch_name))
             .then(|| subject_branch_name.to_owned());
+
+        if !subject_segment.commits.is_empty() {
+            let workspace_head = workspace
+                .tip_commit()
+                .map(|commit| commit.id)
+                .context("Couldn't find workspace head.")?;
+            let (_, target_segment) = destination;
+            let target_segment_ref_name = target_segment
+                .ref_name()
+                .context("Target segment doesn't have a ref")?;
+            let mut editor = successful_rebase.into_editor();
+            let target_selector = editor
+                .select_reference(target_segment_ref_name)
+                .context("Failed to find target reference in graph.")?;
+
+            let DisconnectParameters {
+                delimiter: subject_delimiter,
+                children_to_disconnect,
+                parents_to_disconnect,
+            } = get_disconnect_parameters(&editor, source_stack, subject_segment, workspace_head)?;
+
+            editor.disconnect_segment_from(
+                subject_delimiter.clone(),
+                children_to_disconnect,
+                parents_to_disconnect,
+                false,
+            )?;
+            editor.insert_segment(
+                target_selector,
+                subject_delimiter,
+                but_rebase::graph_rebase::mutate::InsertSide::Above,
+            )?;
+
+            return Ok(Outcome {
+                rebase: editor.rebase()?,
+                ws_meta: None,
+                new_tip,
+                branch_stack_order: Some(new_order),
+            });
+        }
 
         Ok(Outcome {
             rebase: successful_rebase,
@@ -371,6 +416,23 @@ pub(super) mod function {
 
     fn own_context<'a>(ctx: WorkspaceSegmentContextRef<'a>) -> WorkspaceSegmentContext {
         (ctx.0.to_owned(), ctx.1.to_owned())
+    }
+
+    fn same_stack(left: &but_graph::workspace::Stack, right: &but_graph::workspace::Stack) -> bool {
+        left.segments.len() == right.segments.len()
+            && left
+                .segments
+                .iter()
+                .zip(&right.segments)
+                .all(|(left, right)| left.id == right.id)
+    }
+
+    fn stack_branch_order(stack: &but_graph::workspace::Stack) -> Vec<gix::refs::FullName> {
+        stack
+            .segments
+            .iter()
+            .filter_map(|segment| segment.ref_name().map(ToOwned::to_owned))
+            .collect()
     }
 
     /// Determine the surrounding context of the subject and target branches.

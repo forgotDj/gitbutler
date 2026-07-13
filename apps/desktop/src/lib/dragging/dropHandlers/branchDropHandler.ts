@@ -1,10 +1,12 @@
 import { FileChangeDropData, FolderChangeDropData, HunkDropDataV3 } from "$lib/dragging/draggables";
 import { updateStackPrs } from "$lib/forge/shared/prFooter";
 import { UNCOMMITTED_SERVICE } from "$lib/selection/uncommittedService.svelte";
+import { SETTINGS_SERVICE } from "$lib/settings/appSettings";
 import { normalizeReferenceSubject } from "$lib/stacks/commitMovePlacement";
 import { STACK_SERVICE } from "$lib/stacks/stackService.svelte";
 import { UI_STATE } from "$lib/state/uiState.svelte";
 import { inject } from "@gitbutler/core/context";
+import { get } from "svelte/store";
 import type { DropResult } from "$lib/dragging/dropResult";
 import type { DropzoneHandler } from "$lib/dragging/handler";
 import type { PrService } from "$lib/forge/prService.svelte";
@@ -25,8 +27,17 @@ export class BranchDropData {
 	}
 }
 
+export function acceptsSameStackBranchDrop(
+	data: BranchDropData,
+	targetBranchName: string,
+	singleBranchMode: boolean,
+): boolean {
+	return data.branchName !== targetBranchName && (data.numberOfCommits === 0 || singleBranchMode);
+}
+
 export class MoveBranchDzHandler implements DropzoneHandler {
 	private readonly stackService = inject(STACK_SERVICE);
+	private readonly settingsService = inject(SETTINGS_SERVICE);
 
 	constructor(
 		private readonly prService: PrService | undefined,
@@ -49,10 +60,13 @@ export class MoveBranchDzHandler implements DropzoneHandler {
 		if (data.stackId !== this.stackId) {
 			return data.numberOfCommits > 0;
 		}
-		// Reordering within the same stack is a pure metadata operation only for empty branches
-		// (e.g. single-branch mode, where all branches share one stack). Don't accept a drop onto
-		// the branch's own position, which would be a no-op self-move.
-		return data.numberOfCommits === 0 && data.branchName !== this.branchName;
+		// In managed workspaces keep the existing empty-branch same-stack restriction; single-branch
+		// mode also allows branches that own commits.
+		return acceptsSameStackBranchDrop(
+			data,
+			this.branchName,
+			get(this.settingsService.appSettings)?.featureFlags.singleBranch === true,
+		);
 	}
 	async ondrop(data: BranchDropData): Promise<DropResult | void> {
 		const sourceStackDeleted = data.numberOfBranchesInStack === 1;
