@@ -305,11 +305,7 @@ export const useNavigationIndexHotkeys = <T>({
 		},
 	]);
 
-	const outlineMode = useAppSelector((state) =>
-		projectSlice.selectors.selectOutlineModeState(state, projectId),
-	);
-
-	const operationEnabled = outlineMode._tag === "Default" && selection !== null;
+	const operationEnabled = selection !== null;
 
 	const enterTransferModeForSelection = (operationType: OperationType) => {
 		if (selection === null) return;
