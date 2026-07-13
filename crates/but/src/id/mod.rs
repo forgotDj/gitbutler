@@ -7,7 +7,7 @@
 #![forbid(missing_docs)]
 
 use std::collections::{BTreeMap, HashMap};
-use std::str::FromStr as _;
+use std::str::{self, FromStr as _};
 
 use bstr::{BStr, BString, ByteSlice};
 use but_core::sync::RepoShared;
@@ -38,7 +38,7 @@ pub(crate) type ShortId = String;
 
 pub(crate) const UNCOMMITTED: &str = "zz";
 
-const INDEX_SEPARATOR: &str = "#";
+const INDEX_SEPARATOR: char = '#';
 
 /// The ID of a hunk, without its namespace (file).
 #[derive(Debug, Clone, Default)]
@@ -120,25 +120,63 @@ fn create_reverse_hex_id(
     Ok(change_id)
 }
 
-/// Assign short IDs to each `Some` entry such that they are unambiguous with
-/// respect to every other entry. `reverse_hex_short_ids` must already be
-/// sorted.
+/// Assign short IDs to each `Some` entry such that they are unambiguous with respect to every other
+/// entry.
+///
+/// `None` entries represent reserved IDs that cannot be changed, such as filenames. They are only
+/// there to cause disambiguation with other IDs that we can change. There is currently no mechanism
+/// to deal with multiple colliding `None` entries. These will simply slip through.
+///
+/// Short IDs are disambiguated in two ways:
+///
+/// 1. By lengthening if the IDs match by prefix but are not identical.
+/// 2. By appending an index for collisions.
+///
+/// These two mechanisms interact. For example, given three IDs 123, 123 and 132, the output short
+/// IDs will be 12#0, 12#1 and 13. 123 and 132 are disambiguated against each other by lengthening
+/// both, and the duplicate 123 entries are then internally disambiguated by index.
+///
+/// Note that the algorithm only guarantees that the exact short IDs are distinct. Prefix matching
+/// with short IDs is therefore only advisable if the underlying IDs are known to not have cases
+/// where one ID is a prefix of another ID.
+///
+/// TODO Index disambiguation should be structured data. Right now we just append it to the short ID
+/// as a string, but that is rather inconvenient when it comes to rendering and matching. The
+/// [`ShortId`] type needs to carry collision information in the same way that [`UnqualifiedHunkId`]
+/// does.
 fn assign_short_ids(
-    reverse_hex_short_ids: &mut [(ChangeId, Option<&mut ShortId>)],
+    reverse_hex_short_ids: BTreeMap<ChangeId, Vec<Option<&mut ShortId>>>,
 ) -> anyhow::Result<()> {
     let mut common_with_previous_len = 0;
-    let mut remaining = reverse_hex_short_ids;
-    while let Some(((reverse_hex, short_id), rest)) = remaining.split_first_mut() {
+    let mut reverse_hex_short_ids: Vec<_> = reverse_hex_short_ids.into_iter().collect();
+    let mut remaining = reverse_hex_short_ids.as_mut_slice();
+
+    while let Some(((reverse_hex, short_ids), rest)) = remaining.split_first_mut() {
+        // TODO should compare UTF8 chars instead of bytes once we start putting full branch names
+        // in here. Otherwise we risk splitting in the middle of a UTF8 character.
         let common_with_next_len = rest
             .first()
             .map_or(0, |(next_reverse_hex, _next_short_id)| {
                 common_prefix_len(reverse_hex, next_reverse_hex)
             });
-        if let Some(short_id) = short_id {
+
+        let min_disambiguation_len = 1 + common_with_previous_len.max(common_with_next_len);
+
+        let num_conflicting_ids = short_ids.len();
+        for (i, short_id) in short_ids.iter_mut().flatten().enumerate() {
             short_id.clear();
-            short_id.push_str(str::from_utf8(
-                &reverse_hex[..(1 + common_with_previous_len.max(common_with_next_len))],
-            )?);
+
+            let reverse_hex_utf8 = str::from_utf8(reverse_hex)?;
+            if min_disambiguation_len > reverse_hex.len() {
+                short_id.push_str(reverse_hex_utf8);
+            } else {
+                short_id.push_str(str::from_utf8(&reverse_hex[..min_disambiguation_len])?);
+            }
+
+            if num_conflicting_ids > 1 {
+                short_id.push(INDEX_SEPARATOR);
+                short_id.push_str(&i.to_string());
+            }
         }
         common_with_previous_len = common_with_next_len;
         remaining = rest;
@@ -158,12 +196,16 @@ fn short_ids_from_tree_changes(
             ShortId::default(),
         ));
     }
-    let mut reverse_hex_short_ids: Vec<(ChangeId, Option<&mut ShortId>)> = short_ids
-        .iter_mut()
-        .map(|(_changes, reverse_hex, short_id)| (reverse_hex.clone(), Some(short_id)))
-        .collect();
-    reverse_hex_short_ids.sort();
-    assign_short_ids(reverse_hex_short_ids.as_mut_slice())?;
+    let mut reverse_hex_short_ids = BTreeMap::<ChangeId, Vec<_>>::new();
+
+    for (_, reverse_hex, short_id) in short_ids.iter_mut() {
+        reverse_hex_short_ids
+            .entry(reverse_hex.clone())
+            .or_default()
+            .push(Some(short_id));
+    }
+
+    assign_short_ids(reverse_hex_short_ids)?;
     Ok(short_ids)
 }
 
@@ -602,8 +644,15 @@ impl IdMap {
             reverse_hex_short_ids.push((change_id.change_id.clone(), Some(&mut change_id.short_id)))
         }
 
-        reverse_hex_short_ids.sort();
-        assign_short_ids(&mut reverse_hex_short_ids)?;
+        let mut mapped_reverse_hex_short_ids =
+            BTreeMap::<ChangeId, Vec<Option<&mut ShortId>>>::new();
+        for (id, short_id) in reverse_hex_short_ids {
+            mapped_reverse_hex_short_ids
+                .entry(id)
+                .or_default()
+                .push(short_id);
+        }
+        assign_short_ids(mapped_reverse_hex_short_ids)?;
 
         let mut uncommitted_hunks = HashMap::new();
         for uncommitted_file in uncommitted_files.values_mut() {
@@ -800,9 +849,7 @@ impl IdMap {
                             .map(|c| (c.id, c.change_id)),
                     )
             })
-            .filter_map(|(commit_id, change_id)| {
-                change_id.map(|change_id| (commit_id, change_id))
-            })
+            .filter_map(|(commit_id, change_id)| change_id.map(|change_id| (commit_id, change_id)))
             .collect();
 
         Self::new(ws.stacks.clone(), hunk_assignments, commit_id_to_change_id)
@@ -914,24 +961,30 @@ impl IdMap {
             None
         };
 
-        let matches_commit = |id: gix::ObjectId, maybe_change_id: Option<&ChangeId>| {
-            maybe_hex_prefix
-                .map(|hex_prefix| hex_prefix.cmp_oid(&id).is_eq())
-                .unwrap_or(false)
-                || maybe_change_id
-                    .map(|change_id| change_id.starts_with_str(element))
-                    .unwrap_or(false)
-        };
+        let element_matches_commit =
+            |id: gix::ObjectId, maybe_change_id: Option<&ChangeIdWithShortId>| {
+                if let Some(element_hex_prefix) = maybe_element_hex_prefix
+                    && element_hex_prefix.cmp_oid(&id).is_eq()
+                {
+                    return true;
+                }
+
+                if let Some(change_id) = maybe_change_id
+                    && (change_id.change_id.starts_with_str(element)
+                        || element == change_id.short_id)
+                {
+                    return true;
+                }
+
+                false
+            };
 
         for stack_with_id in self.indexed_stacks.borrow_owner().iter() {
             for segment_with_id in stack_with_id.segments.iter() {
                 for workspace_commit_with_id in segment_with_id.workspace_commits.iter() {
-                    if matches_commit(
+                    if element_matches_commit(
                         workspace_commit_with_id.commit_id(),
-                        workspace_commit_with_id
-                            .change_id
-                            .as_ref()
-                            .map(|cid| &cid.change_id),
+                        workspace_commit_with_id.change_id.as_ref(),
                     ) {
                         matches.push(Box::new(workspace_commit_with_id))
                     }
@@ -940,10 +993,7 @@ impl IdMap {
                 for remote_commit_with_id in segment_with_id.remote_commits.iter() {
                     if element_matches_commit(
                         remote_commit_with_id.commit_id(),
-                        remote_commit_with_id
-                            .change_id
-                            .as_ref()
-                            .map(|cid| &cid.change_id),
+                        remote_commit_with_id.change_id.as_ref(),
                     ) {
                         matches.push(Box::new(remote_commit_with_id))
                     }
