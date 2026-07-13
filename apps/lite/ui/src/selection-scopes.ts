@@ -305,8 +305,6 @@ export const useNavigationIndexHotkeys = <T>({
 		},
 	]);
 
-	const operationEnabled = selection !== null;
-
 	const enterTransferModeForSelection = (operationType: OperationType) => {
 		if (selection === null) return;
 
@@ -328,7 +326,7 @@ export const useNavigationIndexHotkeys = <T>({
 			callback: () => enterTransferModeForSelection("above"),
 			options: {
 				conflictBehavior: "allow",
-				enabled: operationEnabled,
+				enabled: selection !== null,
 				target: ref,
 				meta: { group, name: "Move" },
 			},
@@ -338,7 +336,7 @@ export const useNavigationIndexHotkeys = <T>({
 			callback: () => enterTransferModeForSelection("into"),
 			options: {
 				conflictBehavior: "allow",
-				enabled: operationEnabled,
+				enabled: selection !== null,
 				target: ref,
 				ignoreInputs: true,
 				meta: { group, name: "Cut" },
