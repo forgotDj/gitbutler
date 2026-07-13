@@ -42,19 +42,29 @@ echo "C" > C.txt
 git add C.txt
 git commit -m "C: first commit"
 
-sqlite3 .git/gitbutler/but.sqlite <<SQL
-CREATE TABLE IF NOT EXISTS branch_order(
-  branch_ref_name TEXT NOT NULL PRIMARY KEY,
-  parent_ref_name TEXT UNIQUE,
-  CHECK (parent_ref_name IS NULL OR branch_ref_name != parent_ref_name)
-);
-CREATE INDEX IF NOT EXISTS idx_branch_order_parent_ref_name ON branch_order(parent_ref_name);
-DELETE FROM branch_order WHERE branch_ref_name IN ('refs/heads/C', 'refs/heads/B', 'refs/heads/A');
-INSERT INTO branch_order (branch_ref_name, parent_ref_name) VALUES
-  ('refs/heads/C', 'refs/heads/B'),
-  ('refs/heads/B', 'refs/heads/A'),
-  ('refs/heads/A', NULL);
-SQL
+python3 - .git/gitbutler/but.sqlite <<'PYTHON'
+import sqlite3
+import sys
+
+with sqlite3.connect(sys.argv[1]) as database:
+    database.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS branch_order(
+          branch_ref_name TEXT NOT NULL PRIMARY KEY,
+          parent_ref_name TEXT UNIQUE,
+          CHECK (parent_ref_name IS NULL OR branch_ref_name != parent_ref_name)
+        );
+        CREATE INDEX IF NOT EXISTS idx_branch_order_parent_ref_name
+          ON branch_order(parent_ref_name);
+        DELETE FROM branch_order
+          WHERE branch_ref_name IN ('refs/heads/C', 'refs/heads/B', 'refs/heads/A');
+        INSERT INTO branch_order (branch_ref_name, parent_ref_name) VALUES
+          ('refs/heads/C', 'refs/heads/B'),
+          ('refs/heads/B', 'refs/heads/A'),
+          ('refs/heads/A', NULL);
+        """
+    )
+PYTHON
 
 git checkout "$head_branch"
 popd

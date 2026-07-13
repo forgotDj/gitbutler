@@ -1581,13 +1581,21 @@ pub fn move_branch_with_perm(
             // In single-branch mode the reorder is returned rather than persisted. Only write it for
             // real runs so a dry-run preview never mutates the user's branch-order metadata.
             let is_dry_run: bool = dry_run.into();
-            if let Some(order) = branch_stack_order.filter(|_| !is_dry_run) {
+            if let Some(order) = branch_stack_order.as_deref().filter(|_| !is_dry_run) {
                 let (_repo, meta) = rebase.repo_and_meta_mut();
-                meta.set_branch_stack_order(&order)?;
+                meta.set_branch_stack_order(order)?;
             }
 
             let result = MoveBranchResult {
-                workspace: branch_workspace_from_rebase(rebase, ws_meta, &repo, dry_run, &db)?,
+                workspace: branch_workspace_from_rebase(
+                    rebase,
+                    ws_meta,
+                    new_tip.as_ref(),
+                    branch_stack_order.as_deref(),
+                    &repo,
+                    dry_run,
+                    &db,
+                )?,
             };
             Ok((result, new_tip))
         },
@@ -1656,7 +1664,9 @@ pub fn tear_off_branch_with_perm(
             } = but_workspace::branch::tear_off_branch(editor, subject_branch, None)?;
 
             Ok(MoveBranchResult {
-                workspace: branch_workspace_from_rebase(rebase, ws_meta, &repo, dry_run, &db)?,
+                workspace: branch_workspace_from_rebase(
+                    rebase, ws_meta, None, None, &repo, dry_run, &db,
+                )?,
             })
         },
     )
@@ -1690,14 +1700,32 @@ where
 }
 
 fn branch_workspace_from_rebase<M: but_core::RefMetadata>(
-    rebase: SuccessfulRebase<'_, '_, M>,
+    mut rebase: SuccessfulRebase<'_, '_, M>,
     ws_meta: Option<but_core::ref_metadata::Workspace>,
+    new_tip: Option<&gix::refs::FullName>,
+    branch_stack_order: Option<&[gix::refs::FullName]>,
     repo: &gix::Repository,
     dry_run: DryRun,
     db: &but_db::DbHandle,
 ) -> anyhow::Result<WorkspaceState> {
     if dry_run.into() {
-        return WorkspaceState::from_successful_rebase_with_db(rebase, repo, dry_run, db);
+        let entrypoint = new_tip
+            .map(|new_tip| -> anyhow::Result<_> {
+                Ok((rebase.reference_target(new_tip.as_ref())?, new_tip.clone()))
+            })
+            .transpose()?;
+        let replaced_commits = rebase.history.commit_mappings();
+        let workspace = rebase
+            .overlayed_graph_with_workspace_overrides(entrypoint, branch_stack_order)?
+            .into_workspace()?;
+        let (repo, meta) = rebase.repo_and_meta_mut();
+        return WorkspaceState::from_workspace_with_db(
+            &workspace,
+            meta,
+            repo,
+            replaced_commits,
+            db,
+        );
     }
 
     let materialized = rebase.materialize()?;

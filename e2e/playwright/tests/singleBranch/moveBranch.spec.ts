@@ -164,11 +164,15 @@ async function dragBranchToInsertionDropzone(
 
 	await page.mouse.down();
 	await page.mouse.move(box.x + 16, box.y + 16);
-	await page.evaluate(async () => await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+	await page.evaluate(
+		async () => await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+	);
 
 	const target = page.getByTestId("BranchListInsertionDropzone").nth(dropzoneIndex);
 	await target.hover({ force: true, position: { x: 120, y: 6 } });
-	await page.evaluate(async () => await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+	await page.evaluate(
+		async () => await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+	);
 	await page.mouse.up();
 }
 

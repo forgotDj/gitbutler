@@ -9,23 +9,21 @@ function branchDropData(branchName: string, numberOfCommits: number): BranchDrop
 }
 
 describe("acceptsSameStackBranchDrop", () => {
-	test("accepts empty branch reorders in managed and single-branch mode", () => {
+	test("accepts empty branch reorders", () => {
 		const data = branchDropData("source", 0);
 
-		expect(acceptsSameStackBranchDrop(data, "target", false)).toBe(true);
-		expect(acceptsSameStackBranchDrop(data, "target", true)).toBe(true);
+		expect(acceptsSameStackBranchDrop(data, "target")).toBe(true);
 	});
 
-	test("accepts non-empty branch reorders only in single-branch mode", () => {
+	test("accepts non-empty branch reorders", () => {
 		const data = branchDropData("source", 1);
 
-		expect(acceptsSameStackBranchDrop(data, "target", false)).toBe(false);
-		expect(acceptsSameStackBranchDrop(data, "target", true)).toBe(true);
+		expect(acceptsSameStackBranchDrop(data, "target")).toBe(true);
 	});
 
 	test("rejects self moves", () => {
 		const data = branchDropData("source", 1);
 
-		expect(acceptsSameStackBranchDrop(data, "source", true)).toBe(false);
+		expect(acceptsSameStackBranchDrop(data, "source")).toBe(false);
 	});
 });
