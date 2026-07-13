@@ -99,230 +99,8 @@ const ensureProjectState = (state: ProjectSliceState, projectId: string): Projec
 const selectProjectState = (state: ProjectSliceState, projectId: string): ProjectState =>
 	state.byProjectId[projectId] ?? initialProjectState;
 
-const selectProjectWorkspaceState = (state: ProjectSliceState, projectId: string) =>
+const selectProjectWorkspaceState = (state: ProjectSliceState, projectId: string): WorkspaceState =>
 	selectProjectState(state, projectId).workspace;
-
-const enterTransferMode = (state: WorkspaceState, mode: TransferMode) => {
-	state.mode = transferOutlineMode(mode);
-};
-
-const enterKeyboardTransferMode = (
-	state: WorkspaceState,
-	source: Operand,
-	operationType?: OperationType,
-) => {
-	state.mode = transferOutlineMode(
-		keyboardTransferMode({
-			source,
-			operationType: operationType ?? "into",
-			restoreSelection: {
-				outline: state.selection.outline,
-				files: state.selection.files,
-				diff: state.selection.diff,
-			},
-		}),
-	);
-};
-
-const enterAbsorbMode = (
-	state: WorkspaceState,
-	source: Operand,
-	sourceTarget: AbsorptionTarget,
-) => {
-	state.mode = absorbOutlineMode({
-		source,
-		restoreSelection: {
-			outline: state.selection.outline,
-			files: state.selection.files,
-			diff: state.selection.diff,
-		},
-		sourceTarget,
-	});
-};
-
-const updatePointerTransfer = (
-	state: WorkspaceState,
-	target: Operand | null,
-	operationType: OperationType | null,
-) => {
-	Match.value(state.mode).pipe(
-		Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) => {
-			const sameTarget =
-				target === null
-					? mode.target === null
-					: mode.target !== null && operandEquals(mode.target, target);
-			if (sameTarget && mode.operationType === operationType) return;
-
-			state.mode = transferOutlineMode(
-				pointerTransferMode({
-					source: mode.source,
-					target,
-					operationType,
-				}),
-			);
-		}),
-		Match.orElse(() => {}),
-	);
-};
-
-const updateTransferOperationType = (state: WorkspaceState, operationType: OperationType) => {
-	Match.value(state.mode).pipe(
-		Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) => {
-			state.mode = transferOutlineMode(
-				keyboardTransferMode({
-					source: mode.source,
-					operationType,
-					restoreSelection: mode.restoreSelection,
-				}),
-			);
-		}),
-		Match.orElse(() => {}),
-	);
-};
-
-const exitMode = (state: WorkspaceState) => {
-	state.mode = defaultOutlineMode;
-};
-
-const cancelMode = (state: WorkspaceState) => {
-	const restoreSelection = Match.value(state.mode).pipe(
-		Match.tags({
-			Absorb: (mode) => mode.restoreSelection,
-			Transfer: (mode) => (mode.value._tag === "Keyboard" ? mode.value.restoreSelection : null),
-		}),
-		Match.orElse(() => null),
-	);
-	exitMode(state);
-
-	if (!restoreSelection) return;
-
-	state.selection = restoreSelection;
-};
-
-const selectOutline = (state: WorkspaceState, selection: Operand | null) => {
-	if (selection && state.selection.outline && operandEquals(state.selection.outline, selection))
-		return;
-
-	state.selection.outline = selection;
-	state.selection.files = null;
-	state.selection.diff = null;
-
-	if (!selection || !isValidOutlineModeForSelection({ mode: state.mode, selection }))
-		exitMode(state);
-};
-
-const selectFiles = (state: WorkspaceState, selection: string | null) => {
-	if (state.selection.files === selection) return;
-
-	state.selection.files = selection;
-};
-
-const selectDiff = (state: WorkspaceState, selection: HunkOperand | null) => {
-	if (
-		selection &&
-		state.selection.diff &&
-		operandEquals(hunkOperand(state.selection.diff), hunkOperand(selection))
-	)
-		return;
-
-	state.selection.diff = selection;
-};
-
-const setHighlightedCommitIds = (state: WorkspaceState, commitIds: Array<string> | null) => {
-	state.highlightedCommitIds = commitIds ?? [];
-};
-
-const setCommitChecked = (state: WorkspaceState, commitId: string, checked: boolean) => {
-	if (checked) state.checkedCommitIds[commitId] = true;
-	else delete state.checkedCommitIds[commitId];
-};
-
-const setCommitsChecked = (state: WorkspaceState, commitIds: Array<string>, checked: boolean) => {
-	for (const commitId of commitIds) {
-		if (checked) state.checkedCommitIds[commitId] = true;
-		else delete state.checkedCommitIds[commitId];
-	}
-};
-
-const clearCheckedCommits = (state: WorkspaceState) => {
-	state.checkedCommitIds = {};
-};
-
-const setCommitTarget = (state: WorkspaceState, commitTarget: RelativeTo | null) => {
-	state.commitTarget = commitTarget;
-};
-
-const updateRewrittenCommitReferences = (
-	state: WorkspaceState,
-	replacedCommits: Record<string, string>,
-	headInfo: RefInfo,
-) => {
-	const commit = rewrittenCommitSelection({
-		selection: state.selection.outline,
-		replacedCommits,
-		headInfo,
-	});
-	if (commit) state.selection.outline = commit;
-
-	if (state.commitTarget?.type === "commit") {
-		const commitId = replacedCommits[state.commitTarget.subject];
-		if (commitId !== undefined) state.commitTarget = { type: "commit", subject: commitId };
-	}
-
-	for (const oldId of Object.keys(state.checkedCommitIds)) {
-		const newId = replacedCommits[oldId];
-		if (newId !== undefined) {
-			delete state.checkedCommitIds[oldId];
-			state.checkedCommitIds[newId] = true;
-		}
-	}
-
-	if (state.mode._tag === "RewordCommit") {
-		const commit = rewrittenCommitOperand({
-			commit: state.mode.operand,
-			replacedCommits,
-			headInfo,
-		});
-		if (commit) state.mode = rewordCommitOutlineMode({ operand: commit });
-	}
-};
-
-const startRenameBranch = (state: WorkspaceState, branch: BranchOperand) => {
-	selectOutline(state, branchOperand(branch));
-	state.mode = renameBranchOutlineMode({ operand: branch });
-};
-
-const updateRewrittenBranchReferences = (
-	state: WorkspaceState,
-	oldBranch: BranchOperand,
-	newBranch: BranchOperand,
-) => {
-	const oldBranchOperand = branchOperand(oldBranch);
-	const newBranchOperand = branchOperand(newBranch);
-
-	if (
-		state.selection.outline?._tag === "Branch" &&
-		operandEquals(state.selection.outline, oldBranchOperand)
-	)
-		state.selection.outline = newBranchOperand;
-
-	if (
-		state.commitTarget?.type === "referenceBytes" &&
-		bytesEqual(state.commitTarget.subject, oldBranch.branchRef)
-	)
-		state.commitTarget = { type: "referenceBytes", subject: newBranch.branchRef };
-
-	if (
-		state.mode._tag === "RenameBranch" &&
-		operandEquals(branchOperand(state.mode.operand), oldBranchOperand)
-	)
-		state.mode = renameBranchOutlineMode({ operand: newBranch });
-};
-
-const startRewordCommit = (state: WorkspaceState, commit: CommitOperand) => {
-	selectOutline(state, commitOperand(commit));
-	state.mode = rewordCommitOutlineMode({ operand: commit });
-};
 
 export const projectSlice = createSlice({
 	name: "project",
@@ -333,40 +111,85 @@ export const projectSlice = createSlice({
 			action: PayloadAction<{ projectId: string; selection: Operand | null }>,
 		) => {
 			const { projectId, selection } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			selectOutline(projectState.workspace, selection);
+			const workspaceState = ensureProjectState(state, projectId).workspace;
+			if (
+				selection &&
+				workspaceState.selection.outline &&
+				operandEquals(workspaceState.selection.outline, selection)
+			)
+				return;
+
+			workspaceState.selection.outline = selection;
+			workspaceState.selection.files = null;
+			workspaceState.selection.diff = null;
+
+			if (!selection || !isValidOutlineModeForSelection({ mode: workspaceState.mode, selection }))
+				workspaceState.mode = defaultOutlineMode;
 		},
 		selectFiles: (
 			state,
 			action: PayloadAction<{ projectId: string; selection: string | null }>,
 		) => {
 			const { projectId, selection } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			selectFiles(projectState.workspace, selection);
+			const workspaceState = ensureProjectState(state, projectId).workspace;
+			if (workspaceState.selection.files === selection) return;
+
+			workspaceState.selection.files = selection;
 		},
 		selectDiff: (
 			state,
 			action: PayloadAction<{ projectId: string; selection: HunkOperand | null }>,
 		) => {
 			const { projectId, selection } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			selectDiff(projectState.workspace, selection);
+			const workspaceState = ensureProjectState(state, projectId).workspace;
+			if (
+				selection &&
+				workspaceState.selection.diff &&
+				operandEquals(hunkOperand(workspaceState.selection.diff), hunkOperand(selection))
+			)
+				return;
+
+			workspaceState.selection.diff = selection;
 		},
 		startRewordCommit: (
 			state,
 			action: PayloadAction<{ projectId: string; commit: CommitOperand }>,
 		) => {
 			const { projectId, commit } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			startRewordCommit(projectState.workspace, commit);
+			const workspaceState = ensureProjectState(state, projectId).workspace;
+			const selection = commitOperand(commit);
+			if (
+				!workspaceState.selection.outline ||
+				!operandEquals(workspaceState.selection.outline, selection)
+			) {
+				workspaceState.selection.outline = selection;
+				workspaceState.selection.files = null;
+				workspaceState.selection.diff = null;
+				if (!isValidOutlineModeForSelection({ mode: workspaceState.mode, selection }))
+					workspaceState.mode = defaultOutlineMode;
+			}
+
+			workspaceState.mode = rewordCommitOutlineMode({ operand: commit });
 		},
 		startRenameBranch: (
 			state,
 			action: PayloadAction<{ projectId: string; branch: BranchOperand }>,
 		) => {
 			const { projectId, branch } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			startRenameBranch(projectState.workspace, branch);
+			const workspaceState = ensureProjectState(state, projectId).workspace;
+			const selection = branchOperand(branch);
+			if (
+				!workspaceState.selection.outline ||
+				!operandEquals(workspaceState.selection.outline, selection)
+			) {
+				workspaceState.selection.outline = selection;
+				workspaceState.selection.files = null;
+				workspaceState.selection.diff = null;
+				if (!isValidOutlineModeForSelection({ mode: workspaceState.mode, selection }))
+					workspaceState.mode = defaultOutlineMode;
+			}
+
+			workspaceState.mode = renameBranchOutlineMode({ operand: branch });
 		},
 		updateRewrittenBranchReferences: (
 			state,
@@ -377,24 +200,56 @@ export const projectSlice = createSlice({
 			}>,
 		) => {
 			const { projectId, oldBranch, newBranch } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			updateRewrittenBranchReferences(projectState.workspace, oldBranch, newBranch);
+			const workspaceState = ensureProjectState(state, projectId).workspace;
+			const oldBranchOperand = branchOperand(oldBranch);
+			const newBranchOperand = branchOperand(newBranch);
+
+			if (
+				workspaceState.selection.outline?._tag === "Branch" &&
+				operandEquals(workspaceState.selection.outline, oldBranchOperand)
+			)
+				workspaceState.selection.outline = newBranchOperand;
+
+			if (
+				workspaceState.commitTarget?.type === "referenceBytes" &&
+				bytesEqual(workspaceState.commitTarget.subject, oldBranch.branchRef)
+			) {
+				workspaceState.commitTarget = {
+					type: "referenceBytes",
+					subject: newBranch.branchRef,
+				};
+			}
+
+			if (
+				workspaceState.mode._tag === "RenameBranch" &&
+				operandEquals(branchOperand(workspaceState.mode.operand), oldBranchOperand)
+			)
+				workspaceState.mode = renameBranchOutlineMode({ operand: newBranch });
 		},
 		enterTransferMode: (
 			state,
 			action: PayloadAction<{ projectId: string; mode: TransferMode }>,
 		) => {
 			const { projectId, mode } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			enterTransferMode(projectState.workspace, mode);
+			ensureProjectState(state, projectId).workspace.mode = transferOutlineMode(mode);
 		},
 		enterKeyboardTransferMode: (
 			state,
 			action: PayloadAction<{ projectId: string; source: Operand; operationType?: OperationType }>,
 		) => {
 			const { projectId, source, operationType } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			enterKeyboardTransferMode(projectState.workspace, source, operationType);
+			const workspaceState = ensureProjectState(state, projectId).workspace;
+			workspaceState.mode = transferOutlineMode(
+				keyboardTransferMode({
+					source,
+					operationType: operationType ?? "into",
+					restoreSelection: {
+						outline: workspaceState.selection.outline,
+						files: workspaceState.selection.files,
+						diff: workspaceState.selection.diff,
+					},
+				}),
+			);
 		},
 		enterAbsorbMode: (
 			state,
@@ -405,8 +260,16 @@ export const projectSlice = createSlice({
 			}>,
 		) => {
 			const { projectId, source, sourceTarget } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			enterAbsorbMode(projectState.workspace, source, sourceTarget);
+			const workspaceState = ensureProjectState(state, projectId).workspace;
+			workspaceState.mode = absorbOutlineMode({
+				source,
+				restoreSelection: {
+					outline: workspaceState.selection.outline,
+					files: workspaceState.selection.files,
+					diff: workspaceState.selection.diff,
+				},
+				sourceTarget,
+			});
 		},
 		updatePointerTransfer: (
 			state,
@@ -417,8 +280,25 @@ export const projectSlice = createSlice({
 			}>,
 		) => {
 			const { projectId, target, operationType } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			updatePointerTransfer(projectState.workspace, target, operationType);
+			const workspaceState = ensureProjectState(state, projectId).workspace;
+			Match.value(workspaceState.mode).pipe(
+				Match.when({ _tag: "Transfer", value: { _tag: "Pointer" } }, ({ value: mode }) => {
+					const sameTarget =
+						target === null
+							? mode.target === null
+							: mode.target !== null && operandEquals(mode.target, target);
+					if (sameTarget && mode.operationType === operationType) return;
+
+					workspaceState.mode = transferOutlineMode(
+						pointerTransferMode({
+							source: mode.source,
+							target,
+							operationType,
+						}),
+					);
+				}),
+				Match.orElse(() => {}),
+			);
 		},
 		updateTransferOperationType: (
 			state,
@@ -428,45 +308,74 @@ export const projectSlice = createSlice({
 			}>,
 		) => {
 			const { projectId, operationType } = action.payload;
-			const projectState = ensureProjectState(state, projectId);
-			updateTransferOperationType(projectState.workspace, operationType);
+			const workspaceState = ensureProjectState(state, projectId).workspace;
+			Match.value(workspaceState.mode).pipe(
+				Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) => {
+					workspaceState.mode = transferOutlineMode(
+						keyboardTransferMode({
+							source: mode.source,
+							operationType,
+							restoreSelection: mode.restoreSelection,
+						}),
+					);
+				}),
+				Match.orElse(() => {}),
+			);
 		},
 		exitMode: (state, action: PayloadAction<{ projectId: string }>) => {
-			exitMode(ensureProjectState(state, action.payload.projectId).workspace);
+			ensureProjectState(state, action.payload.projectId).workspace.mode = defaultOutlineMode;
 		},
 		cancelMode: (state, action: PayloadAction<{ projectId: string }>) => {
-			cancelMode(ensureProjectState(state, action.payload.projectId).workspace);
+			const workspaceState = ensureProjectState(state, action.payload.projectId).workspace;
+			const restoreSelection = Match.value(workspaceState.mode).pipe(
+				Match.tags({
+					Absorb: (mode) => mode.restoreSelection,
+					Transfer: (mode) => (mode.value._tag === "Keyboard" ? mode.value.restoreSelection : null),
+				}),
+				Match.orElse(() => null),
+			);
+			workspaceState.mode = defaultOutlineMode;
+
+			if (!restoreSelection) return;
+
+			workspaceState.selection = restoreSelection;
 		},
 		setHighlightedCommitIds: (
 			state,
 			action: PayloadAction<{ projectId: string; commitIds: Array<string> | null }>,
 		) => {
 			const { projectId, commitIds } = action.payload;
-			setHighlightedCommitIds(ensureProjectState(state, projectId).workspace, commitIds);
+			ensureProjectState(state, projectId).workspace.highlightedCommitIds = commitIds ?? [];
 		},
 		setCommitChecked: (
 			state,
 			action: PayloadAction<{ projectId: string; commitId: string; checked: boolean }>,
 		) => {
 			const { projectId, commitId, checked } = action.payload;
-			setCommitChecked(ensureProjectState(state, projectId).workspace, commitId, checked);
+			const checkedCommitIds = ensureProjectState(state, projectId).workspace.checkedCommitIds;
+			if (checked) checkedCommitIds[commitId] = true;
+			else delete checkedCommitIds[commitId];
 		},
 		setCommitsChecked: (
 			state,
 			action: PayloadAction<{ projectId: string; commitIds: Array<string>; checked: boolean }>,
 		) => {
 			const { projectId, commitIds, checked } = action.payload;
-			setCommitsChecked(ensureProjectState(state, projectId).workspace, commitIds, checked);
+			const checkedCommitIds = ensureProjectState(state, projectId).workspace.checkedCommitIds;
+			for (const commitId of commitIds) {
+				if (checked) checkedCommitIds[commitId] = true;
+				else delete checkedCommitIds[commitId];
+			}
 		},
 		clearCheckedCommits: (state, action: PayloadAction<{ projectId: string }>) => {
-			clearCheckedCommits(ensureProjectState(state, action.payload.projectId).workspace);
+			ensureProjectState(state, action.payload.projectId).workspace.checkedCommitIds = {};
 		},
 		setCommitTarget: (
 			state,
 			action: PayloadAction<{ projectId: string; commitTarget: RelativeTo | null }>,
 		) => {
 			const { projectId, commitTarget } = action.payload;
-			setCommitTarget(ensureProjectState(state, projectId).workspace, commitTarget);
+			ensureProjectState(state, projectId).workspace.commitTarget = commitTarget;
 		},
 		updateRewrittenCommitReferences: (
 			state,
@@ -477,11 +386,36 @@ export const projectSlice = createSlice({
 			}>,
 		) => {
 			const { projectId, replacedCommits, headInfo } = action.payload;
-			updateRewrittenCommitReferences(
-				ensureProjectState(state, projectId).workspace,
+			const workspaceState = ensureProjectState(state, projectId).workspace;
+			const commit = rewrittenCommitSelection({
+				selection: workspaceState.selection.outline,
 				replacedCommits,
 				headInfo,
-			);
+			});
+			if (commit) workspaceState.selection.outline = commit;
+
+			if (workspaceState.commitTarget?.type === "commit") {
+				const commitId = replacedCommits[workspaceState.commitTarget.subject];
+				if (commitId !== undefined)
+					workspaceState.commitTarget = { type: "commit", subject: commitId };
+			}
+
+			for (const oldId of Object.keys(workspaceState.checkedCommitIds)) {
+				const newId = replacedCommits[oldId];
+				if (newId !== undefined) {
+					delete workspaceState.checkedCommitIds[oldId];
+					workspaceState.checkedCommitIds[newId] = true;
+				}
+			}
+
+			if (workspaceState.mode._tag === "RewordCommit") {
+				const commit = rewrittenCommitOperand({
+					commit: workspaceState.mode.operand,
+					replacedCommits,
+					headInfo,
+				});
+				if (commit) workspaceState.mode = rewordCommitOutlineMode({ operand: commit });
+			}
 		},
 		toggleFiles: (state, action: PayloadAction<{ projectId: string }>) => {
 			const projectState = ensureProjectState(state, action.payload.projectId);
