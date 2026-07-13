@@ -22,7 +22,7 @@ import {
 import { PickerDialog } from "#ui/components/PickerDialog.tsx";
 import { globalHotkeys, workspaceHotkeys } from "#ui/hotkeys.ts";
 import { writeLastOpenedProject } from "#ui/project.ts";
-import { type AppThunk, useAppDispatch, useAppSelector } from "#ui/store.ts";
+import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { ProjectForFrontend, RefInfo, Segment } from "@gitbutler/but-sdk";
 import { useHotkey, useHotkeys } from "@tanstack/react-hotkeys";
 import {
@@ -63,25 +63,6 @@ import { Settings } from "./Settings.tsx";
 // This must be unique as to not collide with other IDs, and stable because it's
 // stored in local storage.
 type PanelId = "outline-panel" | "details-panel";
-
-const toggleFiles =
-	({
-		projectId,
-		focusedSelectionScope,
-		outlineVisible,
-	}: {
-		projectId: string;
-		focusedSelectionScope: SelectionScope | null;
-		outlineVisible: boolean;
-	}): AppThunk =>
-	(dispatch, getState) => {
-		const filesVisible = selectProjectFilesVisible(getState(), projectId);
-
-		if (focusedSelectionScope === "files" && filesVisible)
-			focusSelectionScope(outlineVisible ? "outline" : "diff");
-
-		dispatch(projectActions.toggleFiles({ projectId }));
-	};
 
 const useWorkspaceHotkeys = (projectId: string) => {
 	const dispatch = useAppDispatch();
@@ -129,7 +110,10 @@ const useWorkspaceHotkeys = (projectId: string) => {
 		{
 			hotkey: workspaceHotkeys.toggleFiles.hotkey,
 			callback: () => {
-				dispatch(toggleFiles({ projectId, focusedSelectionScope, outlineVisible }));
+				if (focusedSelectionScope === "files" && filesVisible)
+					focusSelectionScope(outlineVisible ? "outline" : "diff");
+
+				dispatch(projectActions.toggleFiles({ projectId }));
 			},
 			options: {
 				conflictBehavior: "allow",
