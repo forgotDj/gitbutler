@@ -112,26 +112,29 @@ const OperandC: FC<
 			Match.tags({
 				Absorb: (): ActiveOperation | null => {
 					const isActive = absorptionTargetKeys.has(operandIdentityKey(operand));
-					return isActive ? { operationType: "into", tooltip: "Absorb target" } : null;
+					if (!isActive) return null;
+
+					return { operationType: "into", tooltip: "Absorb target" };
 				},
 				Transfer: ({ value: mode }): ActiveOperation | null => {
+					if (mode.operationType === null) return null;
+
 					const isActive = Match.value(mode).pipe(
 						Match.tagsExhaustive({
 							Pointer: (mode) => mode.target !== null && operandEquals(mode.target, operand),
 							Keyboard: () => isSelected,
 						}),
 					);
+					if (!isActive) return null;
 
-					return isActive && mode.operationType !== null
-						? {
-								operationType: mode.operationType,
-								tooltip: getOperation({
-									source: mode.source,
-									target: operand,
-									operationType: mode.operationType,
-								})?.label,
-							}
-						: null;
+					return {
+						operationType: mode.operationType,
+						tooltip: getOperation({
+							source: mode.source,
+							target: operand,
+							operationType: mode.operationType,
+						})?.label,
+					};
 				},
 			}),
 			Match.orElse(() => null),
@@ -545,20 +548,21 @@ const Stacks: FC<{
 		return Match.value(outlineMode).pipe(
 			Match.tags({
 				Transfer: ({ value: mode }) => {
+					if (mode.operationType === null) return;
+
 					const target = Match.value(mode).pipe(
 						Match.tagsExhaustive({
 							Pointer: (mode) => mode.target,
 							Keyboard: () => selection,
 						}),
 					);
+					if (!target) return;
 
-					return target && mode.operationType !== null
-						? getOperation({
-								source: mode.source,
-								target,
-								operationType: mode.operationType,
-							})?.operation
-						: undefined;
+					return getOperation({
+						source: mode.source,
+						target,
+						operationType: mode.operationType,
+					})?.operation;
 				},
 			}),
 			Match.orElse(() => undefined),
