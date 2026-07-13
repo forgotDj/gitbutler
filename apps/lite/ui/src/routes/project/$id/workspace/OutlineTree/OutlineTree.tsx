@@ -534,34 +534,36 @@ const Stacks: FC<{
 }> = ({ projectId, commitTarget }) => {
 	const navigationIndex = assert(use(NavigationIndexContext));
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
-	const selection = useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
-	);
-	const outlineMode = useAppSelector((state) =>
-		projectSlice.selectors.selectOutlineModeState(state, projectId),
-	);
+	const dryRunOperation = useAppSelector((state) => {
+		const selection = projectSlice.selectors.selectSelectionOutline(
+			state,
+			projectId,
+			navigationIndex,
+		);
+		const outlineMode = projectSlice.selectors.selectOutlineModeState(state, projectId);
 
-	const dryRunOperation = Match.value(outlineMode).pipe(
-		Match.tags({
-			Transfer: ({ value: mode }) => {
-				const target = Match.value(mode).pipe(
-					Match.tagsExhaustive({
-						Pointer: (mode) => mode.target,
-						Keyboard: () => selection,
-					}),
-				);
+		return Match.value(outlineMode).pipe(
+			Match.tags({
+				Transfer: ({ value: mode }) => {
+					const target = Match.value(mode).pipe(
+						Match.tagsExhaustive({
+							Pointer: (mode) => mode.target,
+							Keyboard: () => selection,
+						}),
+					);
 
-				return target && mode.operationType !== null
-					? getOperation({
-							source: mode.source,
-							target,
-							operationType: mode.operationType,
-						})?.operation
-					: undefined;
-			},
-		}),
-		Match.orElse(() => undefined),
-	);
+					return target && mode.operationType !== null
+						? getOperation({
+								source: mode.source,
+								target,
+								operationType: mode.operationType,
+							})?.operation
+						: undefined;
+				},
+			}),
+			Match.orElse(() => undefined),
+		);
+	});
 
 	// TODO: debounce?
 	const dryRunOperationQuery = useDryRunOperation({ projectId, operation: dryRunOperation });
