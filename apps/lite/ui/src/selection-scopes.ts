@@ -1,13 +1,10 @@
 import { selectionOperationHotkeys, type CommandGroup } from "#ui/hotkeys.ts";
 import { type OperationType } from "#ui/operations/operation.ts";
-import { type HunkOperand, type Operand } from "#ui/operands.ts";
+import { type Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
-import { NavigationIndexContext } from "#ui/routes/project/$id/workspace/OutlineNavigationIndexContext.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
-import { assert } from "#ui/assert.ts";
 import { getAdjacent, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import { useHotkeySequences, useHotkeys } from "@tanstack/react-hotkeys";
-import { use } from "react";
 
 export type SelectionScope = "outline" | "files" | "diff";
 const allSelectionScopes: Array<SelectionScope> = ["outline", "files", "diff"];
@@ -61,43 +58,6 @@ export const focusAdjacentSelectionScope = ({
 		focusSelectionScope(nextSelectionScope);
 	}
 };
-
-export const useFilesSelection = (projectId: string, navigationIndex: NavigationIndex<string>) =>
-	useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionFiles(state, projectId, navigationIndex),
-	);
-
-export const useOutlineSelection = ({
-	projectId,
-	navigationIndex,
-}: {
-	projectId: string;
-	navigationIndex: NavigationIndex<Operand>;
-}) =>
-	useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
-	);
-
-export const useOutlineIsSelected = ({
-	projectId,
-	operand,
-}: {
-	projectId: string;
-	operand: Operand;
-}): boolean => {
-	const navigationIndex = assert(use(NavigationIndexContext));
-	return useAppSelector((state) =>
-		projectSlice.selectors.selectIsSelectedOutline(state, projectId, navigationIndex, operand),
-	);
-};
-
-export const useDiffSelection = (
-	projectId: string,
-	navigationIndex: NavigationIndex<HunkOperand>,
-) =>
-	useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionDiff(state, projectId, navigationIndex),
-	);
 
 export const useNavigationIndexHotkeys = <T>({
 	navigationIndex,

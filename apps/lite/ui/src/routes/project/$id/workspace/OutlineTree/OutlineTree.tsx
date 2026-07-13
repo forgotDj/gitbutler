@@ -14,7 +14,6 @@ import {
 	type Operand,
 	operandEquals,
 } from "#ui/operands.ts";
-import { useOutlineIsSelected, useOutlineSelection } from "#ui/selection-scopes.ts";
 import { projectSlice } from "#ui/projects/state.ts";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import {
@@ -77,7 +76,10 @@ const TreeItem: FC<
 		operand: Operand;
 	} & useRender.ComponentProps<"div">
 > = ({ projectId, operand, render, ...props }) => {
-	const isSelected = useOutlineIsSelected({ projectId, operand });
+	const navigationIndex = assert(use(NavigationIndexContext));
+	const isSelected = useAppSelector((state) =>
+		projectSlice.selectors.selectIsSelectedOutline(state, projectId, navigationIndex, operand),
+	);
 
 	return useRender({
 		render,
@@ -97,9 +99,11 @@ const OperandC: FC<
 		outline: OperationTargetOutline;
 	} & useRender.ComponentProps<"div">
 > = ({ projectId, operand, outline, render, ...props }) => {
-	const isSelected = useOutlineIsSelected({ projectId, operand });
 	const absorptionTargetKeys = assert(use(AbsorptionTargetKeysContext));
 	const navigationIndex = assert(use(NavigationIndexContext));
+	const isSelected = useAppSelector((state) =>
+		projectSlice.selectors.selectIsSelectedOutline(state, projectId, navigationIndex, operand),
+	);
 
 	const activeOperation = useAppSelector((state) => {
 		const outlineMode = projectSlice.selectors.selectOutlineModeState(state, projectId);
@@ -246,7 +250,9 @@ const UncommittedFileRow: FC<{
 		path: item.path,
 	});
 	const navigationIndex = assert(use(NavigationIndexContext));
-	const isSelected = useOutlineIsSelected({ projectId, operand });
+	const isSelected = useAppSelector((state) =>
+		projectSlice.selectors.selectIsSelectedOutline(state, projectId, navigationIndex, operand),
+	);
 	const dispatch = useAppDispatch();
 
 	return (
@@ -528,7 +534,9 @@ const Stacks: FC<{
 }> = ({ projectId, commitTarget }) => {
 	const navigationIndex = assert(use(NavigationIndexContext));
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
-	const selection = useOutlineSelection({ projectId, navigationIndex });
+	const selection = useAppSelector((state) =>
+		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
+	);
 	const outlineMode = useAppSelector((state) =>
 		projectSlice.selectors.selectOutlineModeState(state, projectId),
 	);
@@ -585,7 +593,9 @@ export const OutlineTree: FC<
 	ref: refProp,
 	...props
 }) => {
-	const selection = useOutlineSelection({ projectId, navigationIndex });
+	const selection = useAppSelector((state) =>
+		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
+	);
 	const hasCheckedCommits = useAppSelector((state) =>
 		projectSlice.selectors.selectHasCheckedCommits(state, projectId),
 	);
