@@ -30,7 +30,7 @@ import {
 	type NativeMenuItem,
 } from "#ui/native-menu.ts";
 import { branchOperand, operandEquals, type BranchOperand } from "#ui/operands.ts";
-import { projectActions, selectProjectOutlineModeState } from "#ui/projects/state.ts";
+import { projectActions, projectSelectors } from "#ui/projects/state.ts";
 import { focusSelectionScope } from "#ui/selection-scopes.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { prForgeUrl } from "#ui/pr.ts";
@@ -154,10 +154,10 @@ export const BranchRow: FC<
 	};
 	const operand = branchOperand(branchOperandV);
 	const isDefaultMode = useAppSelector(
-		(state) => selectProjectOutlineModeState(state, projectId)._tag === "Default",
+		(state) => projectSelectors.selectProjectOutlineModeState(state, projectId)._tag === "Default",
 	);
 	const isRenaming = useAppSelector((state) => {
-		const outlineMode = selectProjectOutlineModeState(state, projectId);
+		const outlineMode = projectSelectors.selectProjectOutlineModeState(state, projectId);
 		return (
 			outlineMode._tag === "RenameBranch" &&
 			operandEquals(operand, branchOperand(outlineMode.operand))

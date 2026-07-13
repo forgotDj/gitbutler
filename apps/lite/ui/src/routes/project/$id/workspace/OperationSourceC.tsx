@@ -5,7 +5,7 @@ import { operandLabel } from "./operandLabel.ts";
 import { headInfoQueryOptions } from "#ui/api/queries.ts";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 import { classes } from "#ui/components/classes.ts";
-import { projectActions, selectProjectOutlineModeState } from "#ui/projects/state.ts";
+import { projectActions, projectSelectors } from "#ui/projects/state.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { draggable } from "@atlaskit/pragmatic-drag-and-drop/element/adapter";
 import { centerUnderPointer } from "@atlaskit/pragmatic-drag-and-drop/element/center-under-pointer";
@@ -34,7 +34,9 @@ export const OperationSourceC: FC<
 		...headInfoQueryOptions(projectId),
 		select: getHeadInfoIndex,
 	});
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const outlineMode = useAppSelector((state) =>
+		projectSelectors.selectProjectOutlineModeState(state, projectId),
+	);
 
 	const dispatch = useAppDispatch();
 	const dragRef = useRef<HTMLElement>(null);

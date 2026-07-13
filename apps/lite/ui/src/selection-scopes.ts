@@ -1,13 +1,7 @@
 import { selectionOperationHotkeys, type CommandGroup } from "#ui/hotkeys.ts";
 import { type OperationType } from "#ui/operations/operation.ts";
 import { hunkOperand, HunkOperand, operandIdentityKey, type Operand } from "#ui/operands.ts";
-import {
-	projectActions,
-	selectProjectOutlineModeState,
-	selectProjectSelectionDiff,
-	selectProjectSelectionFiles,
-	selectProjectSelectionOutline,
-} from "#ui/projects/state.ts";
+import { projectActions, projectSelectors } from "#ui/projects/state.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import {
 	getAdjacent,
@@ -79,7 +73,9 @@ export const resolveNavigationIndexSelection = <T>(
 		: (navigationIndex.items[0] ?? null);
 
 export const useFilesSelection = (projectId: string, navigationIndex: NavigationIndex<string>) => {
-	const selection = useAppSelector((state) => selectProjectSelectionFiles(state, projectId));
+	const selection = useAppSelector((state) =>
+		projectSelectors.selectProjectSelectionFiles(state, projectId),
+	);
 	return resolveNavigationIndexSelection(navigationIndex, selection, (item) => item);
 };
 
@@ -90,7 +86,9 @@ export const useOutlineSelection = ({
 	projectId: string;
 	navigationIndex: NavigationIndex<Operand>;
 }) => {
-	const selectionState = useAppSelector((state) => selectProjectSelectionOutline(state, projectId));
+	const selectionState = useAppSelector((state) =>
+		projectSelectors.selectProjectSelectionOutline(state, projectId),
+	);
 	return resolveNavigationIndexSelection(navigationIndex, selectionState, operandIdentityKey);
 };
 
@@ -101,7 +99,9 @@ export const useDiffSelection = (
 	projectId: string,
 	navigationIndex: NavigationIndex<HunkOperand>,
 ) => {
-	const selection = useAppSelector((state) => selectProjectSelectionDiff(state, projectId));
+	const selection = useAppSelector((state) =>
+		projectSelectors.selectProjectSelectionDiff(state, projectId),
+	);
 	return resolveNavigationIndexSelection(navigationIndex, selection, hunkOperandIdentityKey);
 };
 
@@ -305,7 +305,9 @@ export const useNavigationIndexHotkeys = <T>({
 		},
 	]);
 
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const outlineMode = useAppSelector((state) =>
+		projectSelectors.selectProjectOutlineModeState(state, projectId),
+	);
 
 	const operationEnabled = outlineMode._tag === "Default" && selection !== null;
 

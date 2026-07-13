@@ -12,13 +12,7 @@ import {
 	SelectionScope,
 	useOutlineSelection,
 } from "#ui/selection-scopes.ts";
-import {
-	projectActions,
-	selectProjectDetailsFullWindow,
-	selectProjectDialogState,
-	selectProjectFilesVisible,
-	selectProjectOutlineModeState,
-} from "#ui/projects/state.ts";
+import { projectActions, projectSelectors } from "#ui/projects/state.ts";
 import { PickerDialog } from "#ui/components/PickerDialog.tsx";
 import { globalHotkeys, workspaceHotkeys } from "#ui/hotkeys.ts";
 import { writeLastOpenedProject } from "#ui/project.ts";
@@ -67,13 +61,19 @@ type PanelId = "outline-panel" | "details-panel";
 const useWorkspaceHotkeys = (projectId: string) => {
 	const dispatch = useAppDispatch();
 	const detailsFullWindow = useAppSelector((state) =>
-		selectProjectDetailsFullWindow(state, projectId),
+		projectSelectors.selectProjectDetailsFullWindow(state, projectId),
 	);
-	const dialog = useAppSelector((state) => selectProjectDialogState(state, projectId));
-	const filesVisible = useAppSelector((state) => selectProjectFilesVisible(state, projectId));
+	const dialog = useAppSelector((state) =>
+		projectSelectors.selectProjectDialogState(state, projectId),
+	);
+	const filesVisible = useAppSelector((state) =>
+		projectSelectors.selectProjectFilesVisible(state, projectId),
+	);
 	const activeElement = useActiveElement();
 	const focusedSelectionScope = getFocusedSelectionScope(activeElement);
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const outlineMode = useAppSelector((state) =>
+		projectSelectors.selectProjectOutlineModeState(state, projectId),
+	);
 	const outlineVisible = !detailsFullWindow;
 
 	const restoreSnapshotMutation = useRestoreSnapshot({ projectId });
@@ -184,7 +184,9 @@ const useOutlineNavigationIndex = ({
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
 	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
 
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const outlineMode = useAppSelector((state) =>
+		projectSelectors.selectProjectOutlineModeState(state, projectId),
+	);
 
 	const items = outlineNavigationItems({
 		headInfo,
@@ -264,10 +266,14 @@ const WorkspacePage: FC = () => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 
 	const detailsFullWindow = useAppSelector((state) =>
-		selectProjectDetailsFullWindow(state, projectId),
+		projectSelectors.selectProjectDetailsFullWindow(state, projectId),
 	);
-	const dialog = useAppSelector((state) => selectProjectDialogState(state, projectId));
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const dialog = useAppSelector((state) =>
+		projectSelectors.selectProjectDialogState(state, projectId),
+	);
+	const outlineMode = useAppSelector((state) =>
+		projectSelectors.selectProjectOutlineModeState(state, projectId),
+	);
 
 	useWorkspaceHotkeys(projectId);
 

@@ -14,11 +14,7 @@ import {
 	type OperationType,
 	type OperationsByType,
 } from "#ui/operations/operation.ts";
-import {
-	projectActions,
-	selectProjectCheckedCommitCount,
-	selectProjectOutlineModeState,
-} from "#ui/projects/state.ts";
+import { projectActions, projectSelectors } from "#ui/projects/state.ts";
 import { operandLabel } from "#ui/routes/project/$id/workspace/operandLabel.ts";
 import { focusSelectionScope, useOutlineSelection } from "#ui/selection-scopes.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
@@ -352,13 +348,15 @@ export const OperationControls: FC<{ outlineNavigationIndex: NavigationIndex<Ope
 	outlineNavigationIndex,
 }) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const outlineMode = useAppSelector((state) =>
+		projectSelectors.selectProjectOutlineModeState(state, projectId),
+	);
 	const { data: headInfoIndex } = useQuery({
 		...headInfoQueryOptions(projectId),
 		select: getHeadInfoIndex,
 	});
 	const checkedCommitCount = useAppSelector((state) =>
-		selectProjectCheckedCommitCount(state, projectId),
+		projectSelectors.selectProjectCheckedCommitCount(state, projectId),
 	);
 
 	return Match.value(outlineMode).pipe(

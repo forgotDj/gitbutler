@@ -273,17 +273,4 @@ const projectSlice = createSlice({
 
 export const projectActions = projectSlice.actions;
 export const projectReducer = projectSlice.reducer;
-export const {
-	selectProjectFilesVisible,
-	selectProjectDetailsFullWindow,
-	selectProjectDialogState,
-	selectProjectSelectionOutline,
-	selectProjectSelectionFiles,
-	selectProjectSelectionDiff,
-	selectProjectOutlineModeState,
-	selectProjectHighlightedCommitIds,
-	selectProjectCommitChecked,
-	selectProjectCheckedCommitCount,
-	selectProjectHasCheckedCommits,
-	selectProjectCommitTarget,
-} = projectSlice.selectors;
+export const projectSelectors = projectSlice.selectors;

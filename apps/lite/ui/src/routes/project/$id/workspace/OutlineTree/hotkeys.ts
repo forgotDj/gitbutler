@@ -19,11 +19,7 @@ import {
 	uncommittedChangesOperand,
 	type Operand,
 } from "#ui/operands.ts";
-import {
-	projectActions,
-	selectProjectCommitChecked,
-	selectProjectOutlineModeState,
-} from "#ui/projects/state.ts";
+import { projectActions, projectSelectors } from "#ui/projects/state.ts";
 import { rewrittenCommitSelection } from "#ui/projects/workspace/state.ts";
 import {
 	focusSelectionScope,
@@ -93,7 +89,7 @@ export const useOutlineTreeHotkeys = ({
 	const { data: forgeInfo } = useQuery(forgeInfoOptions(projectId));
 	const selection = useOutlineSelection({ projectId, navigationIndex });
 	const isDefaultMode = useAppSelector(
-		(state) => selectProjectOutlineModeState(state, projectId)._tag === "Default",
+		(state) => projectSelectors.selectProjectOutlineModeState(state, projectId)._tag === "Default",
 	);
 
 	const selectedStack =
@@ -108,13 +104,13 @@ export const useOutlineTreeHotkeys = ({
 	const selectedBranchCommitsChecked = useAppSelector((state) =>
 		selectedBranchSegment && selectedBranchSegment.commits.length > 0
 			? selectedBranchSegment.commits.every((commit) =>
-					selectProjectCommitChecked(state, projectId, commit.id),
+					projectSelectors.selectProjectCommitChecked(state, projectId, commit.id),
 				)
 			: false,
 	);
 	const selectedCommitChecked = useAppSelector((state) =>
 		selection?._tag === "Commit"
-			? selectProjectCommitChecked(state, projectId, selection.commitId)
+			? projectSelectors.selectProjectCommitChecked(state, projectId, selection.commitId)
 			: false,
 	);
 	const selectedCommit =

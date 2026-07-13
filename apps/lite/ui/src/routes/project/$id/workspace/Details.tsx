@@ -37,11 +37,7 @@ import {
 	type HunkOperand,
 	type Operand,
 } from "#ui/operands.ts";
-import {
-	projectActions,
-	selectProjectDetailsFullWindow,
-	selectProjectFilesVisible,
-} from "#ui/projects/state.ts";
+import { projectActions, projectSelectors } from "#ui/projects/state.ts";
 import { getButtonClassName } from "#ui/components/Button.tsx";
 import { Icon } from "#ui/components/Icon.tsx";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
@@ -773,7 +769,9 @@ const FilesToggle: FC<
 > = (toggleProps) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const dispatch = useAppDispatch();
-	const filesVisible = useAppSelector((state) => selectProjectFilesVisible(state, projectId));
+	const filesVisible = useAppSelector((state) =>
+		projectSelectors.selectProjectFilesVisible(state, projectId),
+	);
 
 	return (
 		<Tooltip.Root>
@@ -1495,9 +1493,11 @@ export const Details: FC<
 	const headInfoIndex = headInfo ? getHeadInfoIndex(headInfo) : null;
 	const dispatch = useAppDispatch();
 	const detailsFullWindow = useAppSelector((state) =>
-		selectProjectDetailsFullWindow(state, projectId),
+		projectSelectors.selectProjectDetailsFullWindow(state, projectId),
 	);
-	const filesVisible = useAppSelector((state) => selectProjectFilesVisible(state, projectId));
+	const filesVisible = useAppSelector((state) =>
+		projectSelectors.selectProjectFilesVisible(state, projectId),
+	);
 	const [commitBodyCollapsed, setCommitBodyCollapsed] = useState(true);
 	const [branchTab, setBranchTab] = useState<BranchTab>("diff");
 	const commitBodyId = useId();

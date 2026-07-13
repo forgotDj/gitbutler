@@ -10,7 +10,7 @@ import {
 	type NativeMenuItem,
 } from "#ui/native-menu.ts";
 import { uncommittedChangesOperand, type Operand } from "#ui/operands.ts";
-import { projectActions, selectProjectOutlineModeState } from "#ui/projects/state.ts";
+import { projectActions, projectSelectors } from "#ui/projects/state.ts";
 import { focusSelectionScope } from "#ui/selection-scopes.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { Toolbar } from "@base-ui/react/toolbar";
@@ -48,7 +48,7 @@ export const UncommittedChangesRow: FC<{
 
 	const operand = uncommittedChangesOperand;
 	const isDefaultMode = useAppSelector(
-		(state) => selectProjectOutlineModeState(state, projectId)._tag === "Default",
+		(state) => projectSelectors.selectProjectOutlineModeState(state, projectId)._tag === "Default",
 	);
 	const discardWorktreeChanges = useDiscardWorktreeChanges();
 

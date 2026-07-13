@@ -25,12 +25,7 @@ import {
 	type NativeMenuItem,
 } from "#ui/native-menu.ts";
 import { branchOperand, commitOperand, operandEquals, type CommitOperand } from "#ui/operands.ts";
-import {
-	projectActions,
-	selectProjectCommitChecked,
-	selectProjectHighlightedCommitIds,
-	selectProjectOutlineModeState,
-} from "#ui/projects/state.ts";
+import { projectActions, projectSelectors } from "#ui/projects/state.ts";
 import { rewrittenCommitSelection } from "#ui/projects/workspace/state.ts";
 import { focusSelectionScope } from "#ui/selection-scopes.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
@@ -66,10 +61,10 @@ export const CommitRow: FC<
 	const mforgeUrl = forgeInfo && commitForgeUrl(commit, forgeInfo);
 
 	const isHighlighted = useAppSelector((state) =>
-		selectProjectHighlightedCommitIds(state, projectId).includes(commit.id),
+		projectSelectors.selectProjectHighlightedCommitIds(state, projectId).includes(commit.id),
 	);
 	const isChecked = useAppSelector((state) =>
-		selectProjectCommitChecked(state, projectId, commit.id),
+		projectSelectors.selectProjectCommitChecked(state, projectId, commit.id),
 	);
 
 	const dispatch = useAppDispatch();
@@ -80,10 +75,10 @@ export const CommitRow: FC<
 	};
 	const operand = commitOperand(commitOperandV);
 	const isDefaultMode = useAppSelector(
-		(state) => selectProjectOutlineModeState(state, projectId)._tag === "Default",
+		(state) => projectSelectors.selectProjectOutlineModeState(state, projectId)._tag === "Default",
 	);
 	const isRewording = useAppSelector((state) => {
-		const outlineMode = selectProjectOutlineModeState(state, projectId);
+		const outlineMode = projectSelectors.selectProjectOutlineModeState(state, projectId);
 		return (
 			outlineMode._tag === "RewordCommit" &&
 			operandEquals(operand, commitOperand(outlineMode.operand))

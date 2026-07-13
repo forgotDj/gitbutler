@@ -7,7 +7,7 @@ import {
 } from "#ui/api/queries.ts";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 import { uncommittedChangesFileParent, fileOperand, FileParent } from "#ui/operands.ts";
-import { projectActions, selectProjectOutlineModeState } from "#ui/projects/state.ts";
+import { projectActions, projectSelectors } from "#ui/projects/state.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { classes } from "#ui/components/classes.ts";
 import { mergeProps, useRender } from "@base-ui/react";
@@ -40,7 +40,9 @@ const useFilesTreeHotkeys = ({
 	fileParent: FileParent;
 	selection: string | null;
 }) => {
-	const outlineMode = useAppSelector((state) => selectProjectOutlineModeState(state, projectId));
+	const outlineMode = useAppSelector((state) =>
+		projectSelectors.selectProjectOutlineModeState(state, projectId),
+	);
 	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
 	const { data: editors } = useQuery(listEditorsQueryOptions);
 	const { data: preferredEditor } = useQuery({
