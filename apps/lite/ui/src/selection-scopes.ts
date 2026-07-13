@@ -1,14 +1,23 @@
 import { selectionOperationHotkeys, type CommandGroup } from "#ui/hotkeys.ts";
 import { type OperationType } from "#ui/operations/operation.ts";
-import { hunkOperand, HunkOperand, operandIdentityKey, type Operand } from "#ui/operands.ts";
+import {
+	hunkOperand,
+	HunkOperand,
+	operandEquals,
+	operandIdentityKey,
+	type Operand,
+} from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
+import { NavigationIndexContext } from "#ui/routes/project/$id/workspace/OutlineNavigationIndexContext.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
+import { assert } from "#ui/assert.ts";
 import {
 	getAdjacent,
 	navigationIndexIncludes,
 	type NavigationIndex,
 } from "#ui/workspace/navigation-index.ts";
 import { useHotkeySequences, useHotkeys } from "@tanstack/react-hotkeys";
+import { use } from "react";
 
 export type SelectionScope = "outline" | "files" | "diff";
 const allSelectionScopes: Array<SelectionScope> = ["outline", "files", "diff"];
@@ -63,7 +72,7 @@ export const focusAdjacentSelectionScope = ({
 	}
 };
 
-export const resolveNavigationIndexSelection = <T>(
+const resolveNavigationIndexSelection = <T>(
 	navigationIndex: NavigationIndex<T>,
 	selection: T | null,
 	getKey: (item: T) => string,
@@ -90,6 +99,26 @@ export const useOutlineSelection = ({
 		projectSlice.selectors.selectSelectionOutline(state, projectId),
 	);
 	return resolveNavigationIndexSelection(navigationIndex, selectionState, operandIdentityKey);
+};
+
+export const useOutlineIsSelected = ({
+	projectId,
+	operand,
+}: {
+	projectId: string;
+	operand: Operand;
+}): boolean => {
+	const navigationIndex = assert(use(NavigationIndexContext));
+	return useAppSelector((state) => {
+		const selectionState = projectSlice.selectors.selectSelectionOutline(state, projectId);
+		const selection = resolveNavigationIndexSelection(
+			navigationIndex,
+			selectionState,
+			operandIdentityKey,
+		);
+
+		return selection ? operandEquals(selection, operand) : false;
+	});
 };
 
 const hunkOperandIdentityKey = (operand: HunkOperand): string =>

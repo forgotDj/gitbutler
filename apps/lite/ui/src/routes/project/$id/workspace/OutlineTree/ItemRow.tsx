@@ -8,7 +8,7 @@ import { Tooltip } from "@base-ui/react";
 import { ComponentProps, FC, use } from "react";
 import { assert } from "#ui/assert.ts";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
-import { useIsSelected } from "./useIsSelected.ts";
+import { useOutlineIsSelected } from "#ui/selection-scopes.ts";
 import styles from "./ItemRow.module.css";
 
 const CommitTargetIndicator: FC = () => (
@@ -47,7 +47,7 @@ export const ItemRow: FC<
 > = ({ projectId, operand, isCommitTarget, ...props }) => {
 	const dispatch = useAppDispatch();
 	const navigationIndex = assert(use(NavigationIndexContext));
-	const isSelected = useIsSelected({ projectId, operand });
+	const isSelected = useOutlineIsSelected({ projectId, operand });
 	const selectItem = () => {
 		dispatch(projectSlice.actions.selectOutline({ projectId, selection: operand }));
 	};

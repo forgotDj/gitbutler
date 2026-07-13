@@ -14,7 +14,7 @@ import {
 	type Operand,
 	operandEquals,
 } from "#ui/operands.ts";
-import { useOutlineSelection } from "#ui/selection-scopes.ts";
+import { useOutlineIsSelected, useOutlineSelection } from "#ui/selection-scopes.ts";
 import { projectSlice } from "#ui/projects/state.ts";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import {
@@ -47,7 +47,6 @@ import { GraphSegment, GraphSegmentStatus } from "#ui/components/GraphSegment.ts
 import { segmentBottomRelativeTo } from "#ui/api/stack.ts";
 import { assert } from "#ui/assert.ts";
 import { useMergedRefs } from "@base-ui/utils/useMergedRefs";
-import { useIsSelected } from "./useIsSelected.ts";
 import { CommitRow } from "./CommitRow.tsx";
 import { BranchRow } from "./BranchRow.tsx";
 import { StackRow } from "./StackRow.tsx";
@@ -78,7 +77,7 @@ const TreeItem: FC<
 		operand: Operand;
 	} & useRender.ComponentProps<"div">
 > = ({ projectId, operand, render, ...props }) => {
-	const isSelected = useIsSelected({ projectId, operand });
+	const isSelected = useOutlineIsSelected({ projectId, operand });
 
 	return useRender({
 		render,
@@ -98,7 +97,7 @@ const OperandC: FC<
 		outline: OperationTargetOutline;
 	} & useRender.ComponentProps<"div">
 > = ({ projectId, operand, outline, render, ...props }) => {
-	const isSelected = useIsSelected({ projectId, operand });
+	const isSelected = useOutlineIsSelected({ projectId, operand });
 	const absorptionTargetKeys = assert(use(AbsorptionTargetKeysContext));
 	const navigationIndex = assert(use(NavigationIndexContext));
 
@@ -247,7 +246,7 @@ const UncommittedFileRow: FC<{
 		path: item.path,
 	});
 	const navigationIndex = assert(use(NavigationIndexContext));
-	const isSelected = useIsSelected({ projectId, operand });
+	const isSelected = useOutlineIsSelected({ projectId, operand });
 	const dispatch = useAppDispatch();
 
 	return (
