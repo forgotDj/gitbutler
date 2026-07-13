@@ -1,21 +1,11 @@
 import { selectionOperationHotkeys, type CommandGroup } from "#ui/hotkeys.ts";
 import { type OperationType } from "#ui/operations/operation.ts";
-import {
-	hunkOperand,
-	HunkOperand,
-	operandEquals,
-	operandIdentityKey,
-	type Operand,
-} from "#ui/operands.ts";
+import { operandEquals, type HunkOperand, type Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
 import { NavigationIndexContext } from "#ui/routes/project/$id/workspace/OutlineNavigationIndexContext.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { assert } from "#ui/assert.ts";
-import {
-	getAdjacent,
-	navigationIndexIncludes,
-	type NavigationIndex,
-} from "#ui/workspace/navigation-index.ts";
+import { getAdjacent, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import { useHotkeySequences, useHotkeys } from "@tanstack/react-hotkeys";
 import { use } from "react";
 
@@ -72,21 +62,10 @@ export const focusAdjacentSelectionScope = ({
 	}
 };
 
-const resolveNavigationIndexSelection = <T>(
-	navigationIndex: NavigationIndex<T>,
-	selection: T | null,
-	getKey: (item: T) => string,
-): T | null =>
-	selection !== null && navigationIndexIncludes(navigationIndex, selection, getKey)
-		? selection
-		: (navigationIndex.items[0] ?? null);
-
-export const useFilesSelection = (projectId: string, navigationIndex: NavigationIndex<string>) => {
-	const selection = useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionFiles(state, projectId),
+export const useFilesSelection = (projectId: string, navigationIndex: NavigationIndex<string>) =>
+	useAppSelector((state) =>
+		projectSlice.selectors.selectSelectionFiles(state, projectId, navigationIndex),
 	);
-	return resolveNavigationIndexSelection(navigationIndex, selection, (item) => item);
-};
 
 export const useOutlineSelection = ({
 	projectId,
@@ -94,12 +73,10 @@ export const useOutlineSelection = ({
 }: {
 	projectId: string;
 	navigationIndex: NavigationIndex<Operand>;
-}) => {
-	const selectionState = useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionOutline(state, projectId),
+}) =>
+	useAppSelector((state) =>
+		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
 	);
-	return resolveNavigationIndexSelection(navigationIndex, selectionState, operandIdentityKey);
-};
 
 export const useOutlineIsSelected = ({
 	projectId,
@@ -110,29 +87,23 @@ export const useOutlineIsSelected = ({
 }): boolean => {
 	const navigationIndex = assert(use(NavigationIndexContext));
 	return useAppSelector((state) => {
-		const selectionState = projectSlice.selectors.selectSelectionOutline(state, projectId);
-		const selection = resolveNavigationIndexSelection(
+		const selection = projectSlice.selectors.selectSelectionOutline(
+			state,
+			projectId,
 			navigationIndex,
-			selectionState,
-			operandIdentityKey,
 		);
 
 		return selection ? operandEquals(selection, operand) : false;
 	});
 };
 
-const hunkOperandIdentityKey = (operand: HunkOperand): string =>
-	operandIdentityKey(hunkOperand(operand));
-
 export const useDiffSelection = (
 	projectId: string,
 	navigationIndex: NavigationIndex<HunkOperand>,
-) => {
-	const selection = useAppSelector((state) =>
-		projectSlice.selectors.selectSelectionDiff(state, projectId),
+) =>
+	useAppSelector((state) =>
+		projectSlice.selectors.selectSelectionDiff(state, projectId, navigationIndex),
 	);
-	return resolveNavigationIndexSelection(navigationIndex, selection, hunkOperandIdentityKey);
-};
 
 export const useNavigationIndexHotkeys = <T>({
 	navigationIndex,
