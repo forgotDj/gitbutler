@@ -101,7 +101,7 @@ const useWorkspaceHotkeys = (projectId: string) => {
 			hotkey: globalHotkeys.commandPalette.hotkey,
 			callback: () => {
 				if (dialog._tag === "CommandPalette") dispatch(projectActions.closeDialog({ projectId }));
-				else dispatch(projectActions.openCommandPalette({ projectId }));
+				else dispatch(projectActions.openDialog({ projectId, dialog: { _tag: "CommandPalette" } }));
 			},
 			options: {
 				conflictBehavior: "allow",
@@ -282,32 +282,34 @@ const WorkspacePage: FC = () => {
 	};
 
 	const setBranchPickerOpen = (open: boolean) => {
-		if (open) dispatch(projectActions.openBranchPicker({ projectId }));
+		if (open) dispatch(projectActions.openDialog({ projectId, dialog: { _tag: "BranchPicker" } }));
 		else dispatch(projectActions.closeDialog({ projectId }));
 	};
 
 	const setApplyBranchPickerOpen = (open: boolean) => {
-		if (open) dispatch(projectActions.openApplyBranchPicker({ projectId }));
+		if (open)
+			dispatch(projectActions.openDialog({ projectId, dialog: { _tag: "ApplyBranchPicker" } }));
 		else dispatch(projectActions.closeDialog({ projectId }));
 	};
 
 	const setCommandPaletteOpen = (open: boolean) => {
-		if (open) dispatch(projectActions.openCommandPalette({ projectId }));
+		if (open)
+			dispatch(projectActions.openDialog({ projectId, dialog: { _tag: "CommandPalette" } }));
 		else dispatch(projectActions.closeDialog({ projectId }));
 	};
 
 	const setProjectPickerOpen = (open: boolean) => {
-		if (open) dispatch(projectActions.openProjectPicker({ projectId }));
+		if (open) dispatch(projectActions.openDialog({ projectId, dialog: { _tag: "ProjectPicker" } }));
 		else dispatch(projectActions.closeDialog({ projectId }));
 	};
 
 	const setSettingsOpen = (open: boolean) => {
-		if (open) dispatch(projectActions.openSettings({ projectId }));
+		if (open) dispatch(projectActions.openDialog({ projectId, dialog: { _tag: "Settings" } }));
 		else dispatch(projectActions.closeDialog({ projectId }));
 	};
 
 	const openProjectPicker = () => {
-		dispatch(projectActions.openProjectPicker({ projectId }));
+		dispatch(projectActions.openDialog({ projectId, dialog: { _tag: "ProjectPicker" } }));
 	};
 
 	const toggleDetailsFullWindow = () => {

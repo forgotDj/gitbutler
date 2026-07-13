@@ -140,7 +140,7 @@ export const useOutlineTreeHotkeys = ({
 	const branchCreateMutation = useBranchCreate();
 
 	const openBranchPicker = () => {
-		dispatch(projectActions.openBranchPicker({ projectId }));
+		dispatch(projectActions.openDialog({ projectId, dialog: { _tag: "BranchPicker" } }));
 	};
 
 	const enterAbsorbMode = (source: Operand, sourceTarget: AbsorptionTarget) => {

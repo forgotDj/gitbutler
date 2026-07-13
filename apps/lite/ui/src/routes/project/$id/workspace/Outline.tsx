@@ -71,15 +71,15 @@ export const Outline: FC<
 	};
 
 	const openApplyBranchPicker = () => {
-		dispatch(projectActions.openApplyBranchPicker({ projectId }));
+		dispatch(projectActions.openDialog({ projectId, dialog: { _tag: "ApplyBranchPicker" } }));
 	};
 
 	const openProjectPicker = () => {
-		dispatch(projectActions.openProjectPicker({ projectId }));
+		dispatch(projectActions.openDialog({ projectId, dialog: { _tag: "ProjectPicker" } }));
 	};
 
 	const openSettings = () => {
-		dispatch(projectActions.openSettings({ projectId }));
+		dispatch(projectActions.openDialog({ projectId, dialog: { _tag: "Settings" } }));
 	};
 
 	const branchCreateMutation = useBranchCreate();

@@ -230,38 +230,10 @@ const projectSlice = createSlice({
 			const projectState = ensureProjectState(state, action.payload.projectId);
 			projectState.detailsFullWindow = !projectState.detailsFullWindow;
 		},
-		openCommandPalette: (
-			state,
-			action: PayloadAction<{
-				projectId: string;
-			}>,
-		) => {
-			const { projectId } = action.payload;
-			ensureProjectState(state, projectId).dialog = {
-				_tag: "CommandPalette",
-			};
+		openDialog: (state, action: PayloadAction<{ projectId: string; dialog: Dialog }>) => {
+			const { projectId, dialog } = action.payload;
+			ensureProjectState(state, projectId).dialog = dialog;
 		},
-		openBranchPicker: (state, action: PayloadAction<{ projectId: string }>) => {
-			ensureProjectState(state, action.payload.projectId).dialog = {
-				_tag: "BranchPicker",
-			};
-		},
-		openApplyBranchPicker: (state, action: PayloadAction<{ projectId: string }>) => {
-			ensureProjectState(state, action.payload.projectId).dialog = {
-				_tag: "ApplyBranchPicker",
-			};
-		},
-		openProjectPicker: (state, action: PayloadAction<{ projectId: string }>) => {
-			ensureProjectState(state, action.payload.projectId).dialog = {
-				_tag: "ProjectPicker",
-			};
-		},
-		openSettings: (state, action: PayloadAction<{ projectId: string }>) => {
-			ensureProjectState(state, action.payload.projectId).dialog = {
-				_tag: "Settings",
-			};
-		},
-
 		closeDialog: (state, action: PayloadAction<{ projectId: string }>) => {
 			ensureProjectState(state, action.payload.projectId).dialog = { _tag: "None" };
 		},
