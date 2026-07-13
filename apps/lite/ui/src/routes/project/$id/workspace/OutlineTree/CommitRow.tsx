@@ -61,10 +61,10 @@ export const CommitRow: FC<
 	const mforgeUrl = forgeInfo && commitForgeUrl(commit, forgeInfo);
 
 	const isHighlighted = useAppSelector((state) =>
-		projectSelectors.selectProjectHighlightedCommitIds(state, projectId).includes(commit.id),
+		projectSelectors.selectHighlightedCommitIds(state, projectId).includes(commit.id),
 	);
 	const isChecked = useAppSelector((state) =>
-		projectSelectors.selectProjectCommitChecked(state, projectId, commit.id),
+		projectSelectors.selectCommitChecked(state, projectId, commit.id),
 	);
 
 	const dispatch = useAppDispatch();
@@ -75,10 +75,10 @@ export const CommitRow: FC<
 	};
 	const operand = commitOperand(commitOperandV);
 	const isDefaultMode = useAppSelector(
-		(state) => projectSelectors.selectProjectOutlineModeState(state, projectId)._tag === "Default",
+		(state) => projectSelectors.selectOutlineModeState(state, projectId)._tag === "Default",
 	);
 	const isRewording = useAppSelector((state) => {
-		const outlineMode = projectSelectors.selectProjectOutlineModeState(state, projectId);
+		const outlineMode = projectSelectors.selectOutlineModeState(state, projectId);
 		return (
 			outlineMode._tag === "RewordCommit" &&
 			operandEquals(operand, commitOperand(outlineMode.operand))

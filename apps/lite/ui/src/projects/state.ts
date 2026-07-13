@@ -244,29 +244,28 @@ const projectSlice = createSlice({
 		},
 	},
 	selectors: {
-		selectProjectFilesVisible: (state, projectId: string) =>
+		selectFilesVisible: (state, projectId: string) =>
 			selectProjectState(state, projectId).filesVisible,
-		selectProjectDetailsFullWindow: (state, projectId: string) =>
+		selectDetailsFullWindow: (state, projectId: string) =>
 			selectProjectState(state, projectId).detailsFullWindow,
-		selectProjectDialogState: (state, projectId: string) =>
-			selectProjectState(state, projectId).dialog,
-		selectProjectSelectionOutline: (state, projectId: string) =>
+		selectDialogState: (state, projectId: string) => selectProjectState(state, projectId).dialog,
+		selectSelectionOutline: (state, projectId: string) =>
 			workspace.selectSelectionOutlineState(selectProjectWorkspaceState(state, projectId)),
-		selectProjectSelectionFiles: (state, projectId: string) =>
+		selectSelectionFiles: (state, projectId: string) =>
 			workspace.selectSelectionFilesState(selectProjectWorkspaceState(state, projectId)),
-		selectProjectSelectionDiff: (state, projectId: string) =>
+		selectSelectionDiff: (state, projectId: string) =>
 			workspace.selectSelectionDiffState(selectProjectWorkspaceState(state, projectId)),
-		selectProjectOutlineModeState: (state, projectId: string) =>
+		selectOutlineModeState: (state, projectId: string) =>
 			workspace.selectMode(selectProjectWorkspaceState(state, projectId)),
-		selectProjectHighlightedCommitIds: (state, projectId: string) =>
+		selectHighlightedCommitIds: (state, projectId: string) =>
 			workspace.selectHighlightedCommitIds(selectProjectWorkspaceState(state, projectId)),
-		selectProjectCommitChecked: (state, projectId: string, commitId: string) =>
+		selectCommitChecked: (state, projectId: string, commitId: string) =>
 			workspace.selectCommitChecked(selectProjectWorkspaceState(state, projectId), commitId),
-		selectProjectCheckedCommitCount: (state, projectId: string) =>
+		selectCheckedCommitCount: (state, projectId: string) =>
 			workspace.selectCheckedCommitCount(selectProjectWorkspaceState(state, projectId)),
-		selectProjectHasCheckedCommits: (state, projectId: string) =>
+		selectHasCheckedCommits: (state, projectId: string) =>
 			workspace.selectHasCheckedCommits(selectProjectWorkspaceState(state, projectId)),
-		selectProjectCommitTarget: (state, projectId: string) =>
+		selectCommitTarget: (state, projectId: string) =>
 			workspace.selectCommitTarget(selectProjectWorkspaceState(state, projectId)),
 	},
 });

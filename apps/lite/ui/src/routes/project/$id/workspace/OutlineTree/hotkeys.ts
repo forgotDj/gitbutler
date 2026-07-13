@@ -89,7 +89,7 @@ export const useOutlineTreeHotkeys = ({
 	const { data: forgeInfo } = useQuery(forgeInfoOptions(projectId));
 	const selection = useOutlineSelection({ projectId, navigationIndex });
 	const isDefaultMode = useAppSelector(
-		(state) => projectSelectors.selectProjectOutlineModeState(state, projectId)._tag === "Default",
+		(state) => projectSelectors.selectOutlineModeState(state, projectId)._tag === "Default",
 	);
 
 	const selectedStack =
@@ -104,13 +104,13 @@ export const useOutlineTreeHotkeys = ({
 	const selectedBranchCommitsChecked = useAppSelector((state) =>
 		selectedBranchSegment && selectedBranchSegment.commits.length > 0
 			? selectedBranchSegment.commits.every((commit) =>
-					projectSelectors.selectProjectCommitChecked(state, projectId, commit.id),
+					projectSelectors.selectCommitChecked(state, projectId, commit.id),
 				)
 			: false,
 	);
 	const selectedCommitChecked = useAppSelector((state) =>
 		selection?._tag === "Commit"
-			? projectSelectors.selectProjectCommitChecked(state, projectId, selection.commitId)
+			? projectSelectors.selectCommitChecked(state, projectId, selection.commitId)
 			: false,
 	);
 	const selectedCommit =

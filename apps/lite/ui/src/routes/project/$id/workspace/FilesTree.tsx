@@ -41,7 +41,7 @@ const useFilesTreeHotkeys = ({
 	selection: string | null;
 }) => {
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectProjectOutlineModeState(state, projectId),
+		projectSelectors.selectOutlineModeState(state, projectId),
 	);
 	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
 	const { data: editors } = useQuery(listEditorsQueryOptions);

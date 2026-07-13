@@ -154,10 +154,10 @@ export const BranchRow: FC<
 	};
 	const operand = branchOperand(branchOperandV);
 	const isDefaultMode = useAppSelector(
-		(state) => projectSelectors.selectProjectOutlineModeState(state, projectId)._tag === "Default",
+		(state) => projectSelectors.selectOutlineModeState(state, projectId)._tag === "Default",
 	);
 	const isRenaming = useAppSelector((state) => {
-		const outlineMode = projectSelectors.selectProjectOutlineModeState(state, projectId);
+		const outlineMode = projectSelectors.selectOutlineModeState(state, projectId);
 		return (
 			outlineMode._tag === "RenameBranch" &&
 			operandEquals(operand, branchOperand(outlineMode.operand))

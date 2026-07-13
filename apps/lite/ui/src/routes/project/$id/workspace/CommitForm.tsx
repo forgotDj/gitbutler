@@ -71,7 +71,7 @@ export const CommitForm: FC<{
 	const commitTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
 	const isDefaultMode = useAppSelector(
-		(state) => projectSelectors.selectProjectOutlineModeState(state, projectId)._tag === "Default",
+		(state) => projectSelectors.selectOutlineModeState(state, projectId)._tag === "Default",
 	);
 
 	const { data: headInfoIndex } = useQuery({

@@ -15,7 +15,7 @@ export const useIsSelected = ({
 }): boolean => {
 	const navigationIndex = assert(use(NavigationIndexContext));
 	return useAppSelector((state) => {
-		const selectionState = projectSelectors.selectProjectSelectionOutline(state, projectId);
+		const selectionState = projectSelectors.selectSelectionOutline(state, projectId);
 		const selection = resolveNavigationIndexSelection(
 			navigationIndex,
 			selectionState,

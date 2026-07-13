@@ -15,7 +15,7 @@ const FullWindowToggle: FC<
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const dispatch = useAppDispatch();
 	const fullWindow = useAppSelector((state) =>
-		projectSelectors.selectProjectDetailsFullWindow(state, projectId),
+		projectSelectors.selectDetailsFullWindow(state, projectId),
 	);
 
 	return (
@@ -48,7 +48,7 @@ const isMac = window.lite.platform === "darwin";
 export const TopLeftControls: FC = () => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const fullWindow = useAppSelector((state) =>
-		projectSelectors.selectProjectDetailsFullWindow(state, projectId),
+		projectSelectors.selectDetailsFullWindow(state, projectId),
 	);
 	return (
 		<div className={styles.container}>

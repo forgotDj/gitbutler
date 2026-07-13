@@ -349,14 +349,14 @@ export const OperationControls: FC<{ outlineNavigationIndex: NavigationIndex<Ope
 }) => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectProjectOutlineModeState(state, projectId),
+		projectSelectors.selectOutlineModeState(state, projectId),
 	);
 	const { data: headInfoIndex } = useQuery({
 		...headInfoQueryOptions(projectId),
 		select: getHeadInfoIndex,
 	});
 	const checkedCommitCount = useAppSelector((state) =>
-		projectSelectors.selectProjectCheckedCommitCount(state, projectId),
+		projectSelectors.selectCheckedCommitCount(state, projectId),
 	);
 
 	return Match.value(outlineMode).pipe(

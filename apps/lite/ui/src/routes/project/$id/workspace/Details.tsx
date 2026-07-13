@@ -770,7 +770,7 @@ const FilesToggle: FC<
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const dispatch = useAppDispatch();
 	const filesVisible = useAppSelector((state) =>
-		projectSelectors.selectProjectFilesVisible(state, projectId),
+		projectSelectors.selectFilesVisible(state, projectId),
 	);
 
 	return (
@@ -1493,10 +1493,10 @@ export const Details: FC<
 	const headInfoIndex = headInfo ? getHeadInfoIndex(headInfo) : null;
 	const dispatch = useAppDispatch();
 	const detailsFullWindow = useAppSelector((state) =>
-		projectSelectors.selectProjectDetailsFullWindow(state, projectId),
+		projectSelectors.selectDetailsFullWindow(state, projectId),
 	);
 	const filesVisible = useAppSelector((state) =>
-		projectSelectors.selectProjectFilesVisible(state, projectId),
+		projectSelectors.selectFilesVisible(state, projectId),
 	);
 	const [commitBodyCollapsed, setCommitBodyCollapsed] = useState(true);
 	const [branchTab, setBranchTab] = useState<BranchTab>("diff");

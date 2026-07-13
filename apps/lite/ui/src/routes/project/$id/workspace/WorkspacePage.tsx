@@ -61,18 +61,16 @@ type PanelId = "outline-panel" | "details-panel";
 const useWorkspaceHotkeys = (projectId: string) => {
 	const dispatch = useAppDispatch();
 	const detailsFullWindow = useAppSelector((state) =>
-		projectSelectors.selectProjectDetailsFullWindow(state, projectId),
+		projectSelectors.selectDetailsFullWindow(state, projectId),
 	);
-	const dialog = useAppSelector((state) =>
-		projectSelectors.selectProjectDialogState(state, projectId),
-	);
+	const dialog = useAppSelector((state) => projectSelectors.selectDialogState(state, projectId));
 	const filesVisible = useAppSelector((state) =>
-		projectSelectors.selectProjectFilesVisible(state, projectId),
+		projectSelectors.selectFilesVisible(state, projectId),
 	);
 	const activeElement = useActiveElement();
 	const focusedSelectionScope = getFocusedSelectionScope(activeElement);
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectProjectOutlineModeState(state, projectId),
+		projectSelectors.selectOutlineModeState(state, projectId),
 	);
 	const outlineVisible = !detailsFullWindow;
 
@@ -185,7 +183,7 @@ const useOutlineNavigationIndex = ({
 	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
 
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectProjectOutlineModeState(state, projectId),
+		projectSelectors.selectOutlineModeState(state, projectId),
 	);
 
 	const items = outlineNavigationItems({
@@ -266,13 +264,11 @@ const WorkspacePage: FC = () => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 
 	const detailsFullWindow = useAppSelector((state) =>
-		projectSelectors.selectProjectDetailsFullWindow(state, projectId),
+		projectSelectors.selectDetailsFullWindow(state, projectId),
 	);
-	const dialog = useAppSelector((state) =>
-		projectSelectors.selectProjectDialogState(state, projectId),
-	);
+	const dialog = useAppSelector((state) => projectSelectors.selectDialogState(state, projectId));
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectProjectOutlineModeState(state, projectId),
+		projectSelectors.selectOutlineModeState(state, projectId),
 	);
 
 	useWorkspaceHotkeys(projectId);

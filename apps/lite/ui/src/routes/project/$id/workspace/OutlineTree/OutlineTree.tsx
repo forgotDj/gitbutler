@@ -103,7 +103,7 @@ const OperandC: FC<
 	const navigationIndex = assert(use(NavigationIndexContext));
 
 	const activeOperation = useAppSelector((state) => {
-		const outlineMode = projectSelectors.selectProjectOutlineModeState(state, projectId);
+		const outlineMode = projectSelectors.selectOutlineModeState(state, projectId);
 
 		return Match.value(outlineMode).pipe(
 			Match.when({ _tag: "Absorb" }, (): ActiveOperation | null => {
@@ -529,7 +529,7 @@ const Stacks: FC<{
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
 	const selection = useOutlineSelection({ projectId, navigationIndex });
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectProjectOutlineModeState(state, projectId),
+		projectSelectors.selectOutlineModeState(state, projectId),
 	);
 
 	const dryRunOperation = Match.value(outlineMode).pipe(
@@ -586,7 +586,7 @@ export const OutlineTree: FC<
 }) => {
 	const selection = useOutlineSelection({ projectId, navigationIndex });
 	const hasCheckedCommits = useAppSelector((state) =>
-		projectSelectors.selectProjectHasCheckedCommits(state, projectId),
+		projectSelectors.selectHasCheckedCommits(state, projectId),
 	);
 
 	const layoutId = `project=${projectId}:outline-tree`;

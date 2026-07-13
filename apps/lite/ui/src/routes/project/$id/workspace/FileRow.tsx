@@ -29,7 +29,7 @@ export const FileRow: FC<
 	const relativePath = item._tag === "Change" ? item.change.path : item.path;
 
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectProjectOutlineModeState(state, projectId),
+		projectSelectors.selectOutlineModeState(state, projectId),
 	);
 	const menuItems = useFileMenuItems({
 		projectId,
@@ -39,7 +39,7 @@ export const FileRow: FC<
 	});
 
 	const hasCheckedCommits = useAppSelector((state) =>
-		projectSelectors.selectProjectHasCheckedCommits(state, projectId),
+		projectSelectors.selectHasCheckedCommits(state, projectId),
 	);
 
 	const lastSepIdx = relativePath.lastIndexOf("/");

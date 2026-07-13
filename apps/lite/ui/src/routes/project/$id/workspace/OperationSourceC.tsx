@@ -35,7 +35,7 @@ export const OperationSourceC: FC<
 		select: getHeadInfoIndex,
 	});
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectProjectOutlineModeState(state, projectId),
+		projectSelectors.selectOutlineModeState(state, projectId),
 	);
 
 	const dispatch = useAppDispatch();

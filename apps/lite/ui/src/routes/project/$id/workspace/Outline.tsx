@@ -55,7 +55,7 @@ export const Outline: FC<
 > = ({ absorptionTargetKeys, navigationIndex, project, projectId, ...restProps }) => {
 	const dispatch = useAppDispatch();
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectProjectOutlineModeState(state, projectId),
+		projectSelectors.selectOutlineModeState(state, projectId),
 	);
 
 	const selectBranch = (branch: BranchOperand) => {
@@ -104,7 +104,7 @@ export const Outline: FC<
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
 	const headInfoIndex = headInfo ? getHeadInfoIndex(headInfo) : undefined;
 	const commitTargetState = useAppSelector((state) =>
-		projectSelectors.selectProjectCommitTarget(state, projectId),
+		projectSelectors.selectCommitTarget(state, projectId),
 	);
 	const targetComboboxItems = buildCommitTargetComboboxItems({
 		headInfo,

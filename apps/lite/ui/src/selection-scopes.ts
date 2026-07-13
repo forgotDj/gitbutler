@@ -74,7 +74,7 @@ export const resolveNavigationIndexSelection = <T>(
 
 export const useFilesSelection = (projectId: string, navigationIndex: NavigationIndex<string>) => {
 	const selection = useAppSelector((state) =>
-		projectSelectors.selectProjectSelectionFiles(state, projectId),
+		projectSelectors.selectSelectionFiles(state, projectId),
 	);
 	return resolveNavigationIndexSelection(navigationIndex, selection, (item) => item);
 };
@@ -87,7 +87,7 @@ export const useOutlineSelection = ({
 	navigationIndex: NavigationIndex<Operand>;
 }) => {
 	const selectionState = useAppSelector((state) =>
-		projectSelectors.selectProjectSelectionOutline(state, projectId),
+		projectSelectors.selectSelectionOutline(state, projectId),
 	);
 	return resolveNavigationIndexSelection(navigationIndex, selectionState, operandIdentityKey);
 };
@@ -100,7 +100,7 @@ export const useDiffSelection = (
 	navigationIndex: NavigationIndex<HunkOperand>,
 ) => {
 	const selection = useAppSelector((state) =>
-		projectSelectors.selectProjectSelectionDiff(state, projectId),
+		projectSelectors.selectSelectionDiff(state, projectId),
 	);
 	return resolveNavigationIndexSelection(navigationIndex, selection, hunkOperandIdentityKey);
 };
@@ -306,7 +306,7 @@ export const useNavigationIndexHotkeys = <T>({
 	]);
 
 	const outlineMode = useAppSelector((state) =>
-		projectSelectors.selectProjectOutlineModeState(state, projectId),
+		projectSelectors.selectOutlineModeState(state, projectId),
 	);
 
 	const operationEnabled = outlineMode._tag === "Default" && selection !== null;

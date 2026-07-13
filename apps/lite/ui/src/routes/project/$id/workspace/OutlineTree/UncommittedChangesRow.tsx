@@ -48,7 +48,7 @@ export const UncommittedChangesRow: FC<{
 
 	const operand = uncommittedChangesOperand;
 	const isDefaultMode = useAppSelector(
-		(state) => projectSelectors.selectProjectOutlineModeState(state, projectId)._tag === "Default",
+		(state) => projectSelectors.selectOutlineModeState(state, projectId)._tag === "Default",
 	);
 	const discardWorktreeChanges = useDiscardWorktreeChanges();
 

@@ -28,7 +28,7 @@ export const StackRow: FC<
 		? { kind: "rebase", selector: relativeTo }
 		: null;
 	const isDefaultMode = useAppSelector(
-		(state) => projectSelectors.selectProjectOutlineModeState(state, projectId)._tag === "Default",
+		(state) => projectSelectors.selectOutlineModeState(state, projectId)._tag === "Default",
 	);
 
 	const unapplyStackMutation = useUnapplyStack();
