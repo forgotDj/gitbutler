@@ -1195,39 +1195,6 @@ async fn handle_command(
         }
         "branch_rename" => deserialize_json(request.params)
             .and_then(|params| but_api::branch::branch_rename_cmd(params).map(|r| json!(r))),
-        // Async virtual branches commands (not yet migrated due to different pattern)
-        "upstream_integration_statuses" => {
-            let params = deserialize_json(request.params);
-            match params {
-                Ok(params) => {
-                    let result =
-                        legacy::virtual_branches::upstream_integration_statuses_cmd(params);
-                    result.map(|r| json!(r))
-                }
-                Err(e) => Err(e),
-            }
-        }
-        "integrate_upstream" => {
-            let params = deserialize_json(request.params);
-            match params {
-                Ok(params) => {
-                    let result = legacy::virtual_branches::integrate_upstream_cmd(params).await;
-                    result.map(|r| json!(r))
-                }
-                Err(e) => Err(e),
-            }
-        }
-        "resolve_upstream_integration" => {
-            let params = deserialize_json(request.params);
-            match params {
-                Ok(params) => {
-                    let result =
-                        legacy::virtual_branches::resolve_upstream_integration_cmd(params).await;
-                    result.map(|r| json!(r))
-                }
-                Err(e) => Err(e),
-            }
-        }
         // GitHub commands (async, not yet migrated)
         "init_github_device_oauth" => {
             let result = github::init_github_device_oauth().await;

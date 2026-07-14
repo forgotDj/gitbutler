@@ -8,7 +8,7 @@ use but_core::{
     ref_metadata::{StackId, StackKind, WorkspaceStack},
     sync::{RepoExclusive, RepoShared},
 };
-use but_ctx::{Context, ThreadSafeContext};
+use but_ctx::Context;
 use but_error::bail_precondition;
 use but_oplog::legacy::{OperationKind, SnapshotDetails, Trailer};
 use but_rebase::graph_rebase::{
@@ -21,10 +21,6 @@ use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
 use gitbutler_branch_actions::{
     BaseBranch, BranchListing, BranchListingDetails, BranchListingFilter,
     branch_upstream_integration::IntegrationStrategy,
-    upstream_integration::{
-        BaseBranchResolution, BaseBranchResolutionApproach, IntegrationOutcome, Resolution,
-        StackStatuses,
-    },
 };
 use gitbutler_git::GitContextExt as _;
 use gitbutler_operating_modes::ensure_open_workspace_mode;
@@ -830,150 +826,4 @@ fn prune_missing_branch_stack_order(ctx: &Context) -> Result<()> {
     let mut meta = ctx.meta()?;
     meta.remove_missing_branch_stack_order_references(&local_branch_refs)?;
     Ok(())
-}
-
-/// Compute upstream integration statuses, optionally scoped to `target_commit_id`.
-#[but_api]
-#[instrument(err(Debug))]
-pub fn upstream_integration_statuses(
-    ctx: ThreadSafeContext,
-    target_commit_id: Option<gix::ObjectId>,
-) -> Result<StackStatuses> {
-    let (base_branch, commit_id, ctx) = {
-        let ctx = ctx.into_thread_local();
-        let guard = ctx.shared_worktree_access();
-
-        // Get all the actively applied reviews
-        (
-            gitbutler_branch_actions::base::get_base_branch_data(&ctx, guard.read_permission())?,
-            target_commit_id,
-            ctx.into_sync(),
-        )
-    };
-
-    let resolved_reviews = resolve_review_map(ctx.clone(), &base_branch)?;
-    let mut ctx = ctx.into_thread_local();
-    gitbutler_branch_actions::upstream_integration_statuses(&mut ctx, commit_id, &resolved_reviews)
-}
-
-pub fn upstream_integration_statuses_with_perm(
-    ctx: ThreadSafeContext,
-    target_commit_id: Option<gix::ObjectId>,
-    perm: &mut RepoExclusive,
-) -> Result<StackStatuses> {
-    let (base_branch, commit_id, ctx) = {
-        let ctx = ctx.into_thread_local();
-
-        // Get all the actively applied reviews
-        (
-            gitbutler_branch_actions::base::get_base_branch_data(&ctx, perm.read_permission())?,
-            target_commit_id,
-            ctx.into_sync(),
-        )
-    };
-
-    let resolved_reviews = resolve_review_map(ctx.clone(), &base_branch)?;
-    let mut ctx = ctx.into_thread_local();
-    gitbutler_branch_actions::upstream_integration_statuses_with_perm(
-        &mut ctx,
-        commit_id,
-        &resolved_reviews,
-        perm,
-    )
-}
-
-#[but_api]
-#[instrument(err(Debug))]
-pub async fn integrate_upstream(
-    ctx: ThreadSafeContext,
-    resolutions: Vec<Resolution>,
-    base_branch_resolution: Option<BaseBranchResolution>,
-) -> Result<IntegrationOutcome> {
-    let (base_branch, ctx) = {
-        let ctx = ctx.into_thread_local();
-        let guard = ctx.shared_worktree_access();
-        let base_branch =
-            gitbutler_branch_actions::base::get_base_branch_data(&ctx, guard.read_permission())?;
-        (base_branch, ctx.to_sync())
-    };
-    let resolved_reviews = resolve_review_map(ctx.clone(), &base_branch)?;
-    let mut ctx = ctx.into_thread_local();
-    let outcome = gitbutler_branch_actions::integrate_upstream(
-        &mut ctx,
-        &resolutions,
-        base_branch_resolution,
-        &resolved_reviews,
-    )?;
-    ctx.invalidate_workspace_cache()?;
-
-    Ok(outcome)
-}
-
-#[but_api]
-#[instrument(err(Debug))]
-pub async fn resolve_upstream_integration(
-    ctx: ThreadSafeContext,
-    resolution_approach: BaseBranchResolutionApproach,
-) -> Result<String> {
-    let (base_branch, sync_ctx) = {
-        let ctx = ctx.into_thread_local();
-        let guard = ctx.shared_worktree_access();
-        let base_branch =
-            gitbutler_branch_actions::base::get_base_branch_data(&ctx, guard.read_permission())?;
-        (base_branch, ctx.into_sync())
-    };
-    let resolved_reviews = resolve_review_map(sync_ctx.clone(), &base_branch)?;
-    let mut ctx = sync_ctx.into_thread_local();
-    let new_target_id = gitbutler_branch_actions::resolve_upstream_integration(
-        &mut ctx,
-        resolution_approach,
-        &resolved_reviews,
-    )?;
-    Ok(new_target_id.to_string())
-}
-
-/// Resolve all actively applied reviews for the given project and command context
-fn resolve_review_map(
-    ctx: ThreadSafeContext,
-    base_branch: &BaseBranch,
-) -> Result<HashMap<String, but_forge::ForgeReview>> {
-    let forge_repo_info = but_forge::derive_forge_repo_info(&base_branch.remote_url);
-    let Some(forge_repo_info) = forge_repo_info.as_ref() else {
-        // No forge? No problem!
-        // If there's no forge associated with the base branch, there can't be any reviews.
-        // Return an empty map.
-        return Ok(HashMap::new());
-    };
-
-    let filter = Some(BranchListingFilter {
-        local: None,
-        applied: Some(true),
-    });
-    let ctx = ctx.into_thread_local();
-    let (branches, preferred_forge_user) = {
-        let preferred_forge_user = ctx.legacy_project.preferred_forge_user.clone();
-        (list_branches(&ctx, filter)?, preferred_forge_user)
-    };
-    let mut reviews = branches.iter().fold(HashMap::new(), |mut acc, branch| {
-        if let Some(stack_ref) = &branch.stack {
-            acc.extend(stack_ref.pull_requests.iter().map(|(k, v)| (k.clone(), *v)));
-        }
-        acc
-    });
-    let ctx = ctx;
-    let mut resolved_reviews = HashMap::new();
-    let db = &mut *ctx.db.get_cache_mut()?;
-    let storage = but_forge_storage::Controller::from_path(but_path::app_data_dir()?);
-    for (key, pr_number) in reviews.drain() {
-        if let Ok(resolved) = but_forge::get_forge_review(
-            &preferred_forge_user,
-            forge_repo_info,
-            pr_number,
-            db,
-            &storage,
-        ) {
-            resolved_reviews.insert(key, resolved);
-        }
-    }
-    Ok(resolved_reviews)
 }
