@@ -1,4 +1,5 @@
 use super::*;
+use gitbutler_branch_actions::BranchManagerExt;
 
 #[test]
 fn success() {
@@ -137,12 +138,10 @@ mod go_back_to_workspace {
         drop(guard);
 
         let mut guard = ctx.exclusive_worktree_access();
-        let stack_entry = gitbutler_branch_actions::create_virtual_branch(
-            ctx,
-            &BranchCreateRequest::default(),
-            guard.write_permission(),
-        )
-        .unwrap();
+        let stack_entry = ctx
+            .branch_manager()
+            .create_virtual_branch(&BranchCreateRequest::default(), guard.write_permission())
+            .unwrap();
         drop(guard);
 
         std::fs::write(repo.path().join("another file.txt"), "content").unwrap();

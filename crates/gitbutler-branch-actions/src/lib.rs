@@ -6,9 +6,7 @@
 
 mod actions;
 // This is our API
-pub use actions::{
-    create_virtual_branch, push_base_branch, set_base_branch, set_target_push_remote,
-};
+pub use actions::{push_base_branch, set_base_branch, set_target_push_remote};
 
 mod r#virtual;
 
