@@ -25,6 +25,42 @@ mod stack_tests;
 mod utils;
 
 #[test]
+fn git_activity_only_reloads_for_a_new_head() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    let mut tui = test_tui(env);
+    let mut ctx = tui.env().context();
+    let project_id = ctx.legacy_project.id.clone();
+    let head_sha = super::operations::head_sha(&mut ctx).unwrap();
+    drop(ctx);
+
+    tui.env().file("external-change.txt", "content");
+
+    tui.render_with_messages(
+        None,
+        vec![Message::WatcherEvent(
+            gitbutler_watcher::Change::GitActivity {
+                project_id: project_id.clone(),
+                head_sha,
+            },
+        )],
+    )
+    .assert_rendered_not_contains("external-change.txt");
+
+    tui.render_with_messages(
+        None,
+        vec![Message::WatcherEvent(
+            gitbutler_watcher::Change::GitActivity {
+                project_id,
+                head_sha: "new-head".to_owned(),
+            },
+        )],
+    )
+    .assert_rendered_contains("external-change.txt");
+}
+
+#[test]
 fn shows_full_error_when_message_wraps() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
     env.setup_metadata(&["A"]);
