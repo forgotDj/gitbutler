@@ -1770,8 +1770,8 @@ async fn target_config(
     push_remote: Option<String>,
 ) -> Result<()> {
     let t = theme::get();
-    match branch {
-        None => {
+    match (branch, push_remote) {
+        (None, None) => {
             #[cfg(feature = "legacy")]
             {
                 let target = {
@@ -1821,7 +1821,22 @@ async fn target_config(
                 }
             }
         }
-        Some(new_branch) => {
+        (None, Some(push_remote)) => {
+            #[cfg(feature = "legacy")]
+            gitbutler_branch_actions::set_target_push_remote(ctx, &push_remote)?;
+            #[cfg(not(feature = "legacy"))]
+            anyhow::bail!("Cannot yet set the push remote without legacy functions - needs port");
+
+            if let Some(out) = out.for_human() {
+                writeln!(
+                    out,
+                    "{} Push remote set to '{}'",
+                    t.sym().success,
+                    t.config_value.paint(&push_remote)
+                )?;
+            }
+        }
+        (Some(new_branch), push_remote) => {
             // refuse to run if there are any applied branches. if so, ask user to unapply first.
             let (guard, _, ws, _) = ctx.workspace_and_db()?;
             if !ws.stacks.is_empty() {

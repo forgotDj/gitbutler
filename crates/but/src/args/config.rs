@@ -106,7 +106,7 @@ pub enum Subcommands {
         /// New target branch to set (e.g., "origin/main")
         branch: Option<String>,
         /// Remote to push branches to (e.g., "origin" for a fork).
-        #[clap(long, value_name = "REMOTE", requires = "branch")]
+        #[clap(long, value_name = "REMOTE")]
         push_remote: Option<String>,
     },
 

@@ -297,3 +297,53 @@ fn bootstrap_missing_target_preserves_existing_workspace_ref() -> anyhow::Result
     assert_eq!(stacks[0].1.derived_name, expected_stack_name);
     Ok(())
 }
+
+#[test]
+fn target_change_preserves_push_remote() -> anyhow::Result<()> {
+    let Test { ctx, .. } = &mut Test::default();
+
+    let mut guard = ctx.exclusive_worktree_access();
+    gitbutler_branch_actions::set_base_branch(
+        ctx,
+        &"refs/remotes/origin/master".parse()?,
+        guard.write_permission(),
+    )?;
+    drop(guard);
+
+    let repo = ctx.repo.get()?;
+    edit_config(Some(&repo), gix::config::Source::Local, |config| {
+        set_config_value(config, "remote.fork.url", "https://example.com/fork.git")
+    })?;
+    let target_id = repo
+        .find_reference("refs/remotes/origin/master")?
+        .peel_to_id()?
+        .detach();
+    repo.reference(
+        "refs/remotes/origin/next",
+        target_id,
+        gix::refs::transaction::PreviousValue::Any,
+        "create another target for testing",
+    )?;
+    drop(repo);
+
+    let mut guard = ctx.exclusive_worktree_access();
+    ctx.reload_repo_and_invalidate_workspace(guard.write_permission())?;
+    drop(guard);
+
+    gitbutler_branch_actions::set_target_push_remote(ctx, "fork")?;
+
+    let mut guard = ctx.exclusive_worktree_access();
+    gitbutler_branch_actions::set_base_branch(
+        ctx,
+        &"refs/remotes/origin/next".parse()?,
+        guard.write_permission(),
+    )?;
+    drop(guard);
+
+    assert_eq!(
+        ctx.project_meta()?.push_remote.as_deref(),
+        Some("fork"),
+        "changing the fetch target must preserve an explicit push remote"
+    );
+    Ok(())
+}
