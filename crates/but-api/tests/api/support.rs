@@ -161,10 +161,7 @@ pub fn fresh_head_info(ctx: &but_ctx::Context) -> anyhow::Result<but_workspace::
     )?
     .pruned_to_entrypoint();
     let db = ctx.db.get_cache()?;
-    let prs_by_head = but_forge::reviews_by_head(&db)?
-        .into_iter()
-        .filter_map(|(head, review)| usize::try_from(review.number).ok().map(|n| (head, n)))
-        .collect();
+    let prs_by_head = but_forge::pr_numbers_by_head(&db)?;
     info.apply_forge_review_associations(&repo, &prs_by_head);
     Ok(info)
 }

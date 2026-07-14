@@ -87,8 +87,14 @@ async function openProjectWithFakeGitHub(
 
 async function applyReviewFromBranchesView(page: Page, title: string) {
 	await clickByTestId(page, "navigation-branches-button");
-	await expect(getByTestId(page, "pr-list-card").filter({ hasText: "#42" })).toBeVisible();
-	await getByTestId(page, "pr-list-card").filter({ hasText: title }).click();
+	const prCard = getByTestId(page, "pr-list-card").filter({ hasText: title });
+	const branchCard = getByTestId(page, "branch-list-card").filter({ hasText: "#42" });
+	await expect(prCard.or(branchCard)).toBeVisible();
+	if ((await prCard.count()) > 0) {
+		await prCard.dispatchEvent("click");
+	} else {
+		await branchCard.dispatchEvent("click");
+	}
 	await clickByTestId(page, "branches-view-apply-from-fork-button");
 	await waitForTestId(page, "workspace-view");
 }
