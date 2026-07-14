@@ -7,7 +7,7 @@ import {
 	useCommitReword,
 	useCommitUncommit,
 } from "#ui/api/mutations.ts";
-import { forgeInfoOptions } from "#ui/api/queries.ts";
+import { forgeInfoOptions, headInfoQueryOptions } from "#ui/api/queries.ts";
 import { classes } from "#ui/components/classes.ts";
 import { GraphSegment } from "#ui/components/GraphSegment.tsx";
 import { Icon } from "#ui/components/Icon.tsx";
@@ -41,6 +41,7 @@ import { insertBlankCommitMenuItem } from "./insertBlankCommitMenuItem.ts";
 import { ItemRow } from "./ItemRow.tsx";
 import { selectAfterDiscardedCommit } from "./selectAfterDiscardedCommit.ts";
 import styles from "./CommitRow.module.css";
+import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 
 const focusCommitMessageInput = () => {
 	document.getElementById(commitMessageInputId)?.focus();
@@ -137,10 +138,16 @@ export const CommitRow: FC<
 		);
 	};
 
+	const { data: headInfoIndex } = useQuery({
+		...headInfoQueryOptions(projectId),
+		select: getHeadInfoIndex,
+	});
+
 	const deleteCommit = () => {
 		const selectionAfterDiscard = selectAfterDiscardedCommit({
 			navigationIndex,
 			commit: commitOperandV,
+			headInfoIndex,
 		});
 
 		commitDiscard(

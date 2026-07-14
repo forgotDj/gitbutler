@@ -285,6 +285,7 @@ export const useOutlineTreeHotkeys = ({
 		const selectionAfterDiscard = selectAfterDiscardedCommit({
 			navigationIndex,
 			commit: { commitId: selection.commitId },
+			headInfoIndex,
 		});
 
 		commitDiscard(
