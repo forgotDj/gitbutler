@@ -74,6 +74,9 @@
 
 	const recentProjectIds = projectsService.recentProjectIds;
 
+	// Below this number of projects a flat list is easier to scan than groups.
+	const MIN_PROJECTS_FOR_GROUPING = 8;
+
 	const mappedProjects = $derived.by(() => {
 		const allProjects = projects.response ?? [];
 		const recentIds = $recentProjectIds;
@@ -83,8 +86,12 @@
 			.filter((project) => project !== undefined);
 		const others = allProjects.filter((project) => !recentIds.includes(project.id));
 
-		// No point in grouping if one of the groups is empty.
-		if (recent.length === 0 || others.length === 0) {
+		// No point in grouping small lists or if one of the groups is empty.
+		if (
+			allProjects.length < MIN_PROJECTS_FOR_GROUPING ||
+			recent.length === 0 ||
+			others.length === 0
+		) {
 			return allProjects.map((project) => ({ value: project.id, label: project.title }));
 		}
 
