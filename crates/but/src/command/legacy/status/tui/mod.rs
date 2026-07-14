@@ -399,8 +399,12 @@ fn event_to_messages(ev: Event, app: &App, terminal_area: Rect, messages: &mut V
             }
 
             if !handled {
-                if app.modal.as_ref().is_some_and(|modal| modal.is_picker()) {
-                    messages.push(Message::FuzzyPicker(FuzzyPickerMessage::Input(ev)));
+                if let Some(message) = app
+                    .modal
+                    .as_ref()
+                    .and_then(|modal| modal.input_message(ev.clone()))
+                {
+                    messages.push(message);
                 } else {
                     match mode {
                         Mode::InlineReword(..) => {
@@ -427,27 +431,38 @@ fn event_to_messages(ev: Event, app: &App, terminal_area: Rect, messages: &mut V
         Event::Resize(_, _) => {
             messages.push(Message::JustRender);
         }
-        Event::Paste(_) => match mode {
-            Mode::InlineReword(..) => {
-                messages.push(Message::Reword(RewordMessage::InlineInput(ev)));
+        Event::Paste(_) => {
+            if let Some(message) = app
+                .modal
+                .as_ref()
+                .and_then(|modal| modal.input_message(ev.clone()))
+            {
+                messages.push(message);
+                return;
             }
-            Mode::Command(..) => {
-                messages.push(Message::Command(CommandMessage::Input(ev)));
+
+            match mode {
+                Mode::InlineReword(..) => {
+                    messages.push(Message::Reword(RewordMessage::InlineInput(ev)));
+                }
+                Mode::Command(..) => {
+                    messages.push(Message::Command(CommandMessage::Input(ev)));
+                }
+                Mode::Jump(..) => {
+                    messages.push(Message::Jump(JumpMessage::Input(ev)));
+                }
+                Mode::Normal(..)
+                | Mode::Details(..)
+                | Mode::Rub(..)
+                | Mode::Commit(..)
+                | Mode::Stack(..)
+                | Mode::PickChanges(..)
+                | Mode::MoveStack(..)
+                | Mode::Move(..) => {
+                    messages.push(Message::JustRender);
+                }
             }
-            Mode::Jump(..) => {
-                messages.push(Message::Jump(JumpMessage::Input(ev)));
-            }
-            Mode::Normal(..)
-            | Mode::Details(..)
-            | Mode::Rub(..)
-            | Mode::Commit(..)
-            | Mode::Stack(..)
-            | Mode::PickChanges(..)
-            | Mode::MoveStack(..)
-            | Mode::Move(..) => {
-                messages.push(Message::JustRender);
-            }
-        },
+        }
         Event::FocusGained => {
             messages.push(Message::SetHasFocus(true));
         }
@@ -822,7 +837,12 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
                 | FuzzyPickerMessage::Close => false,
             },
             Message::Help(message) => match message {
-                HelpMessage::Close | HelpMessage::ScrollUp(_) | HelpMessage::ScrollDown(_) => false,
+                HelpMessage::Close
+                | HelpMessage::Escape
+                | HelpMessage::ToggleSearch
+                | HelpMessage::Input(_)
+                | HelpMessage::ScrollUp(_)
+                | HelpMessage::ScrollDown(_) => false,
             },
             Message::Jump(message) => match message {
                 JumpMessage::Enter

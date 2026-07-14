@@ -8,6 +8,7 @@ use std::{
 use anyhow::Context as _;
 use bstr::ByteSlice;
 use but_ctx::Context;
+use crossterm::event::Event;
 use gitbutler_operating_modes::OperatingMode;
 use gix::refs::{Category, FullName};
 use nonempty::NonEmpty;
@@ -34,8 +35,8 @@ use super::{
     cursor::{Cursor, is_selectable_in_mode},
     file_browser::FileBrowser,
     fps::FpsCounter,
-    fuzzy_picker::{Col, FuzzyPicker, FuzzyPickerItem, SearchableToken},
-    help::Help,
+    fuzzy_picker::{Col, FuzzyPicker, FuzzyPickerItem, FuzzyPickerMessage, SearchableToken},
+    help::{Help, HelpMessage},
     highlight::Highlights,
     key_bind::{
         KeyBinds, confirm_key_binds, default_key_binds, fuzzy_picker_key_binds, help_key_binds,
@@ -422,7 +423,10 @@ impl App {
                     let terminal_area = Rect::from(terminal_guard.terminal_mut().size()?);
                     self.modal = help
                         .handle_message(help_message, terminal_area)?
-                        .map(|help| Modal::Help { help, key_binds });
+                        .map(|help| Modal::Help {
+                            help: Box::new(help),
+                            key_binds,
+                        });
                 }
                 modal => self.modal = modal,
             },
@@ -1173,7 +1177,7 @@ impl App {
             self.modal = None;
         } else {
             self.modal = Some(Modal::Help {
-                help: Help::new([&self.app_key_binds.key_binds], self.theme),
+                help: Box::new(Help::new([&self.app_key_binds.key_binds], self.theme)),
                 key_binds: help_key_binds(),
             });
         }
@@ -1252,18 +1256,23 @@ pub enum Modal {
         key_binds: KeyBinds,
     },
     Help {
-        help: Help,
+        help: Box<Help>,
         key_binds: KeyBinds,
     },
 }
 
 impl Modal {
-    pub fn is_picker(&self) -> bool {
+    pub fn input_message(&self, event: Event) -> Option<Message> {
         match self {
             Modal::CopySelectionPicker { .. }
             | Modal::GotoBranchPicker { .. }
-            | Modal::ApplyStackPicker { .. } => true,
-            Modal::Confirm { .. } | Modal::Help { .. } => false,
+            | Modal::ApplyStackPicker { .. } => {
+                Some(Message::FuzzyPicker(FuzzyPickerMessage::Input(event)))
+            }
+            Modal::Help { help, .. } if help.is_search_focused() => {
+                Some(Message::Help(HelpMessage::Input(event)))
+            }
+            Modal::Confirm { .. } | Modal::Help { .. } => None,
         }
     }
 }
