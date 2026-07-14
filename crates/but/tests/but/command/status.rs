@@ -1285,3 +1285,35 @@ fn status_in_edit_mode_delegates_to_resolve_status() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn status_file_prefixed_with_change_id_when_available_and_commit_id_otherwise() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("B", "Some content");
+    env.invoke_git("config --local gitbutler.testing.changeId 1234");
+
+    env.but("commit -m 'Commit with change ID'")
+        .assert()
+        .success();
+
+    env.but("status -f")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+╭┄zz [uncommitted] (no changes)
+┊
+┊╭┄g0 [A]
+┊●   123 e1db5a8 Commit with change ID
+┊│     1:p A B
+┊●   9477ae7 add A
+┊│     9:t A A
+├╯
+┊
+┴ 0dc3733 (common base) 2000-01-02 add M
+
+Hint: run `but help` for all commands
+
+"#]]);
+}
