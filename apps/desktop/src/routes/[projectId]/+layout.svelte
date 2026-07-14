@@ -104,7 +104,8 @@
 	// Reading the result makes the lazy derived query part of this component's
 	// reactive graph; cache-write completion invalidates head_info in the service.
 	$effect(() => {
-		forgeReviews?.result;
+		const result = forgeReviews?.result;
+		void result;
 	});
 
 	// Migrate stored GitLab access token from the legacy location to the

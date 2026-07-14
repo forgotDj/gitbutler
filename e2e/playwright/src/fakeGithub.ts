@@ -1,5 +1,5 @@
-import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import { spawn } from "node:child_process";
+import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import path from "node:path";
 
 export type FakeGitHubOptions = {
@@ -159,7 +159,7 @@ async function handleRequest(
 
 	const repositoryPath = `/${options.owner}/${options.repo}.git`;
 	if (url.pathname === repositoryPath || url.pathname.startsWith(`${repositoryPath}/`)) {
-		return serveGitRequest(request, response, url, repositoryPath, options.headRepoPath);
+		return await serveGitRequest(request, response, url, repositoryPath, options.headRepoPath);
 	}
 
 	response.writeHead(404, { "Content-Type": "application/json" });
