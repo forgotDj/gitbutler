@@ -1,9 +1,5 @@
 use anyhow::{Context as _, Result};
-use but_core::ref_metadata::StackId;
-use but_ctx::{
-    Context,
-    access::{RepoExclusive, RepoShared},
-};
+use but_ctx::{Context, access::RepoExclusive};
 use but_workspace::legacy::{stack_heads_info, ui};
 use gitbutler_branch::BranchCreateRequest;
 use gitbutler_operating_modes::ensure_open_workspace_mode;
@@ -13,10 +9,7 @@ use gitbutler_oplog::{
 };
 use gitbutler_reference::RemoteRefname;
 
-use crate::{
-    base, base::BaseBranch, branch_manager::BranchManagerExt, branch_upstream_integration,
-    branch_upstream_integration::IntegrationStrategy,
-};
+use crate::{base, base::BaseBranch, branch_manager::BranchManagerExt};
 
 pub fn create_virtual_branch(
     ctx: &Context,
@@ -53,67 +46,6 @@ pub fn set_target_push_remote(ctx: &mut Context, push_remote: &str) -> Result<()
 
 pub fn push_base_branch(ctx: &Context, with_force: bool) -> Result<()> {
     base::push(ctx, with_force)
-}
-
-pub fn integrate_upstream_commits(
-    ctx: &mut Context,
-    stack_id: StackId,
-    series_name: String,
-    integration_strategy: Option<IntegrationStrategy>,
-) -> Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    ensure_open_workspace_mode(ctx, guard.read_permission())
-        .context("Integrating upstream commits requires open workspace mode")?;
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::MergeUpstream),
-        guard.write_permission(),
-    );
-    branch_upstream_integration::integrate_upstream_commits_for_series(
-        ctx,
-        stack_id,
-        guard.write_permission(),
-        series_name,
-        integration_strategy,
-    )
-}
-
-pub fn get_initial_integration_steps_for_branch(
-    ctx: &Context,
-    stack_id: Option<StackId>,
-    branch_name: String,
-    perm: &RepoShared,
-) -> Result<Vec<branch_upstream_integration::InteractiveIntegrationStep>> {
-    ensure_open_workspace_mode(ctx, perm)
-        .context("Getting initial integration steps requires open workspace mode")?;
-    branch_upstream_integration::get_initial_integration_steps_for_branch(
-        ctx,
-        stack_id,
-        branch_name,
-    )
-}
-
-pub fn integrate_branch_with_steps(
-    ctx: &mut Context,
-    stack_id: StackId,
-    branch_name: String,
-    steps: Vec<branch_upstream_integration::InteractiveIntegrationStep>,
-) -> Result<()> {
-    let mut guard = ctx.exclusive_worktree_access();
-    ctx.verify(guard.write_permission())?;
-    ensure_open_workspace_mode(ctx, guard.read_permission())
-        .context("Integrating a branch with steps requires open workspace mode")?;
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::MergeUpstream),
-        guard.write_permission(),
-    );
-    branch_upstream_integration::integrate_branch_with_steps(
-        ctx,
-        stack_id,
-        branch_name,
-        steps,
-        guard.write_permission(),
-    )
 }
 
 pub(crate) trait Verify {

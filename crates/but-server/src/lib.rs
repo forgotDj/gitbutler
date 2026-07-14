@@ -688,18 +688,6 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(legacy::virtual_branches::delete_local_branch_cmd),
         )
         .route(
-            "/integrate_upstream_commits",
-            but_post(legacy::virtual_branches::integrate_upstream_commits_cmd),
-        )
-        .route(
-            "/get_initial_integration_steps_for_branch",
-            but_post(legacy::virtual_branches::get_initial_integration_steps_for_branch_cmd),
-        )
-        .route(
-            "/integrate_branch_with_steps",
-            but_post(legacy::virtual_branches::integrate_branch_with_steps_cmd),
-        )
-        .route(
             "/get_base_branch_data",
             but_post(legacy::virtual_branches::get_base_branch_data_cmd),
         )

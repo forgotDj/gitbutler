@@ -120,7 +120,6 @@ export function getStackServiceMock() {
 	StackServiceMock.prototype.commitMove = vi.fn();
 	StackServiceMock.prototype.reorderStack = [vi.fn(), reactive(() => mockReduxFulfilled({}))];
 	StackServiceMock.prototype.reorderStackMutation = vi.fn();
-	StackServiceMock.prototype.integrateUpstreamCommits = vi.fn();
 	StackServiceMock.prototype.initialBranchIntegration = vi.fn();
 	StackServiceMock.prototype.applyBranchIntegration = vi.fn();
 	StackServiceMock.prototype.previewBranchIntegration = vi.fn();

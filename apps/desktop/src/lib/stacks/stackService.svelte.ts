@@ -728,10 +728,6 @@ export class StackService {
 		return this.backendApi.endpoints.tearOffBranch.mutate;
 	}
 
-	get integrateUpstreamCommits() {
-		return this.backendApi.endpoints.integrateUpstreamCommits.useMutation();
-	}
-
 	initialBranchIntegration(
 		projectId: string,
 		branchRef: string,

@@ -7,8 +7,7 @@
 mod actions;
 // This is our API
 pub use actions::{
-    create_virtual_branch, get_initial_integration_steps_for_branch, integrate_branch_with_steps,
-    integrate_upstream_commits, push_base_branch, set_base_branch, set_target_push_remote,
+    create_virtual_branch, push_base_branch, set_base_branch, set_target_push_remote,
 };
 
 mod r#virtual;
@@ -26,8 +25,6 @@ pub use integration::{
 };
 
 mod remote;
-
-pub mod branch_upstream_integration;
 
 mod gravatar;
 use gitbutler_stack::VirtualBranchesHandle;
