@@ -5,10 +5,8 @@ use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
     style::Stylize,
-    text::{Line, Span},
-    widgets::{
-        Clear, List, ListItem, Padding, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
-    },
+    text::Span,
+    widgets::{Padding, Scrollbar, ScrollbarOrientation, ScrollbarState},
 };
 use ratatui_textarea::TextArea;
 use strum::IntoEnumIterator;
@@ -16,7 +14,10 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::{
     command::legacy::status::tui::{
-        KeyBinds, mode::ModeDiscriminant, popup::Popup, render::SpanExt,
+        KeyBinds,
+        mode::ModeDiscriminant,
+        popup::Popup,
+        render::{RenderSingleLineSpans, SpanExt, available_lines_in_area},
     },
     theme::Theme,
     utils::DebugAsType,
@@ -35,6 +36,8 @@ pub struct Help {
 
 impl Help {
     const HEIGHT_PERCENT: u16 = 80;
+    const KEY_BIND_COLUMN_WIDTH: u16 = 12;
+    const KEY_BIND_COLUMN_PADDING: &str = "            ";
 
     pub fn new<'a>(
         key_binds: impl IntoIterator<Item = &'a KeyBinds>,
@@ -133,7 +136,7 @@ impl Help {
             } else {
                 query
             };
-            frame.render_widget(Paragraph::new(text).style(self.theme.hint), input_area);
+            frame.render_widget(Span::styled(text, self.theme.hint), input_area);
         }
 
         let longest_short_description = self
@@ -151,7 +154,7 @@ impl Help {
             .unwrap_or(0) as u16;
 
         let columns_layout = Layout::horizontal([
-            Constraint::Length(12),
+            Constraint::Length(Self::KEY_BIND_COLUMN_WIDTH),
             Constraint::Length(1),
             Constraint::Length(longest_short_description),
             Constraint::Length(3),
@@ -162,72 +165,59 @@ impl Help {
         let scroll_top = self
             .scroll_top
             .min(self.max_scroll_for_height(list_area.height));
-        let list_entries = || {
-            self.list_entries()
-                .skip(scroll_top)
-                .take(list_area.height as _)
-        };
-
-        // key bind
-        frame.render_widget(
-            List::new(list_entries().map(|entry| {
-                match entry {
-                    HelpLine::Section { mode } => ListItem::new(
-                        Span::raw(center(mode.hotbar_str(), columns_layout[0].width as _))
+        for (entry, row_area) in self
+            .list_entries()
+            .skip(scroll_top)
+            .zip(available_lines_in_area(list_area))
+        {
+            match entry {
+                HelpLine::Section { mode } => {
+                    let mut line =
+                        RenderSingleLineSpans::new(frame, row_of(columns_layout[0], row_area.y));
+                    let mode_name = mode.hotbar_str();
+                    let padding =
+                        (columns_layout[0].width as usize).saturating_sub(mode_name.width());
+                    let left_padding = padding / 2;
+                    let right_padding = padding - left_padding;
+                    line.render(
+                        Span::raw(&Self::KEY_BIND_COLUMN_PADDING[..left_padding])
                             .mode_colors(mode, self.theme),
-                    ),
-                    HelpLine::Item { help_item, .. } => ListItem::new(
-                        Line::from_iter([Span::styled(
-                            &help_item.chord_display,
-                            self.theme.legend,
-                        )])
-                        .right_aligned(),
-                    ),
-                    HelpLine::Empty => ListItem::new(""),
+                    );
+                    line.render(Span::raw(mode_name).mode_colors(mode, self.theme));
+                    line.render(
+                        Span::raw(&Self::KEY_BIND_COLUMN_PADDING[..right_padding])
+                            .mode_colors(mode, self.theme),
+                    );
                 }
-            })),
-            columns_layout[0],
-        );
-
-        // space between key bind and short description
-        frame.render_widget(Clear, columns_layout[1]);
-
-        // short description
-        frame.render_widget(
-            List::new(list_entries().map(|entry| match entry {
                 HelpLine::Item {
                     help_item,
                     short_match_indices,
-                    ..
-                } => ListItem::new(highlight_matches(
-                    &help_item.short_description,
-                    short_match_indices,
-                )),
-                HelpLine::Section { .. } | HelpLine::Empty => ListItem::new(""),
-            })),
-            columns_layout[2],
-        );
+                    long_match_indices,
+                } => {
+                    let mut key_bind =
+                        RenderSingleLineSpans::new(frame, row_of(columns_layout[0], row_area.y));
+                    let padding = (columns_layout[0].width as usize)
+                        .saturating_sub(help_item.chord_display.width());
+                    key_bind.render(Span::raw(&Self::KEY_BIND_COLUMN_PADDING[..padding]));
+                    key_bind.render(Span::styled(&help_item.chord_display, self.theme.legend));
 
-        // space between short description and description
-        frame.render_widget(Clear, columns_layout[3]);
+                    let mut short_description =
+                        RenderSingleLineSpans::new(frame, row_of(columns_layout[2], row_area.y));
+                    short_description.extend(highlight_matches(
+                        &help_item.short_description,
+                        short_match_indices,
+                    ));
 
-        // description
-        frame.render_widget(
-            List::new(list_entries().map(|entry| {
-                match entry {
-                    HelpLine::Item {
-                        help_item,
-                        long_match_indices,
-                        ..
-                    } => ListItem::new(
+                    let mut long_description =
+                        RenderSingleLineSpans::new(frame, row_of(columns_layout[4], row_area.y));
+                    long_description.extend(
                         highlight_matches(&help_item.long_description, long_match_indices)
-                            .style(self.theme.hint),
-                    ),
-                    HelpLine::Section { .. } | HelpLine::Empty => ListItem::new(""),
+                            .map(|span| span.patch_style(self.theme.hint)),
+                    );
                 }
-            })),
-            columns_layout[4],
-        );
+                HelpLine::Empty => {}
+            }
+        }
 
         // scrollbar
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
@@ -405,30 +395,39 @@ fn is_newline_key(code: KeyCode, modifiers: KeyModifiers) -> bool {
         || code == KeyCode::Char('m') && modifiers.contains(KeyModifiers::CONTROL)
 }
 
-fn highlight_matches<'a>(text: &'a str, char_indices: &'a [usize]) -> Line<'a> {
-    Line::from_iter(text.chars().enumerate().map(|(idx, c)| {
-        let span = Span::raw(c.to_string());
-        if char_indices.contains(&idx) {
-            span.underlined()
-        } else {
-            span
+fn highlight_matches<'a>(
+    text: &'a str,
+    char_indices: &'a [usize],
+) -> impl Iterator<Item = Span<'a>> + 'a {
+    let mut chars = text.char_indices().peekable();
+    let mut char_idx = 0;
+
+    std::iter::from_fn(move || {
+        let (start_byte, _) = chars.next()?;
+        let matched = char_indices.contains(&char_idx);
+
+        while chars.peek().is_some() && char_indices.contains(&(char_idx + 1)) == matched {
+            chars.next();
+            char_idx += 1;
         }
-    }))
+
+        let end_byte = chars
+            .peek()
+            .map(|(byte_idx, _)| *byte_idx)
+            .unwrap_or(text.len());
+        char_idx += 1;
+
+        let span = Span::raw(&text[start_byte..end_byte]);
+        Some(if matched { span.underlined() } else { span })
+    })
 }
 
-/// Center `s` inside a string of a given width. Will place the necessary spaces on either side.
-fn center(s: &str, width: usize) -> String {
-    let text_width = s.width();
-    let padding = width.saturating_sub(text_width);
-    let left_padding = padding / 2;
-    let right_padding = padding - left_padding;
-
-    format!(
-        "{}{}{}",
-        " ".repeat(left_padding),
-        s,
-        " ".repeat(right_padding)
-    )
+fn row_of(area: Rect, y: u16) -> Rect {
+    Rect {
+        y,
+        height: 1,
+        ..area
+    }
 }
 
 enum HelpLine<'a> {
