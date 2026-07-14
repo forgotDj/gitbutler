@@ -17,10 +17,12 @@
     <text x="66" y="60" style="fill:#00AA00;">C</text>
     <text x="74" y="60" style="fill:#CCCCCC;">]</text>
     <text x="10 18" y="78" style="fill:#CCCCCC;">┊●</text>
-    <text x="50" y="78" style="fill:#0000AA;font-weight:bold;">a</text>
-    <text x="58 66 74 82 90 98" y="78" style="fill:#CCCCCC;opacity:0.75;">72ac5a</text>
-    <text x="114 122 130" y="78" style="fill:#CCCCCC;">add</text>
-    <text x="146" y="78" style="fill:#CCCCCC;">C</text>
+    <text x="50" y="78" style="fill:#AA00AA;">x</text>
+    <text x="58 66" y="78" style="fill:#CCCCCC;opacity:0.75;">wn</text>
+    <text x="82" y="78" style="fill:#0000AA;font-weight:bold;">a</text>
+    <text x="90 98 106 114 122 130" y="78" style="fill:#CCCCCC;opacity:0.75;">72ac5a</text>
+    <text x="146 154 162" y="78" style="fill:#CCCCCC;">add</text>
+    <text x="178" y="78" style="fill:#CCCCCC;">C</text>
     <text x="10 18" y="96" style="fill:#CCCCCC;">┊│</text>
     <text x="10 18 26" y="114" style="fill:#CCCCCC;">┊├┄</text>
     <text x="34 42" y="114" style="fill:#0000AA;font-weight:bold;">h0</text>
@@ -28,10 +30,12 @@
     <text x="66" y="114" style="fill:#00AA00;">A</text>
     <text x="74" y="114" style="fill:#CCCCCC;">]</text>
     <text x="10 18" y="132" style="fill:#CCCCCC;">┊●</text>
-    <text x="50" y="132" style="fill:#0000AA;font-weight:bold;">b</text>
-    <text x="58 66 74 82 90 98" y="132" style="fill:#CCCCCC;opacity:0.75;">4162d1</text>
-    <text x="114 122 130" y="132" style="fill:#CCCCCC;">add</text>
-    <text x="146" y="132" style="fill:#CCCCCC;">A</text>
+    <text x="50" y="132" style="fill:#AA00AA;">t</text>
+    <text x="58 66" y="132" style="fill:#CCCCCC;opacity:0.75;">pm</text>
+    <text x="82" y="132" style="fill:#0000AA;font-weight:bold;">b</text>
+    <text x="90 98 106 114 122 130" y="132" style="fill:#CCCCCC;opacity:0.75;">4162d1</text>
+    <text x="146 154 162" y="132" style="fill:#CCCCCC;">add</text>
+    <text x="178" y="132" style="fill:#CCCCCC;">A</text>
     <text x="10 18" y="150" style="fill:#CCCCCC;">┊│</text>
     <text x="10 18 26" y="168" style="fill:#CCCCCC;">┊├┄</text>
     <text x="34 42" y="168" style="fill:#0000AA;font-weight:bold;">i0</text>
