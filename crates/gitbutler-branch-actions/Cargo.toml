@@ -21,13 +21,9 @@ export-schema = [
 [dependencies]
 but-error.workspace = true
 but-serde = { workspace = true, features = ["legacy"] }
-but-meta = { workspace = true, features = ["legacy"] }
-but-settings.workspace = true
 but-gerrit.workspace = true
 but-workspace = { workspace = true, features = ["legacy"] }
-but-rebase.workspace = true
 but-core = { workspace = true, features = ["legacy"] }
-but-project-handle.workspace = true
 but-graph = { workspace = true, features = ["legacy"] }
 but-oxidize.workspace = true
 but-ctx = { workspace = true, features = ["legacy"] }
@@ -57,6 +53,10 @@ but-schemars = { workspace = true, optional = true }
 
 [dev-dependencies]
 but-askpass.workspace = true
+but-meta = { workspace = true, features = ["legacy"] }
+but-project-handle.workspace = true
+but-rebase.workspace = true
+but-settings.workspace = true
 git2.workspace = true
 pretty_assertions = "1.4"
 but-graph.workspace = true

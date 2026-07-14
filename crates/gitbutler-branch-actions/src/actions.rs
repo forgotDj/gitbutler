@@ -1,35 +1,12 @@
-use anyhow::{Context as _, Result};
+use anyhow::Result;
 use but_ctx::{Context, access::RepoExclusive};
-use but_workspace::legacy::{stack_heads_info, ui};
-use gitbutler_branch::BranchCreateRequest;
-use gitbutler_operating_modes::ensure_open_workspace_mode;
 use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
 };
 use gitbutler_reference::RemoteRefname;
 
-use crate::{base, base::BaseBranch, branch_manager::BranchManagerExt};
-
-pub fn create_virtual_branch(
-    ctx: &Context,
-    create: &BranchCreateRequest,
-    perm: &mut RepoExclusive,
-) -> Result<ui::StackEntryNoOpt> {
-    ctx.verify(perm)?;
-    ensure_open_workspace_mode(ctx, perm.read_permission())
-        .context("Creating a branch requires open workspace mode")?;
-    let branch_manager = ctx.branch_manager();
-    let stack = branch_manager.create_virtual_branch(create, perm)?;
-    let repo = ctx.repo.get()?;
-    Ok(ui::StackEntryNoOpt {
-        id: stack.id,
-        heads: stack_heads_info(&stack, &repo)?,
-        tip: stack.head_oid(ctx)?,
-        order: Some(stack.order),
-        is_checked_out: false,
-    })
-}
+use crate::{base, base::BaseBranch};
 
 pub fn set_base_branch(
     ctx: &Context,
