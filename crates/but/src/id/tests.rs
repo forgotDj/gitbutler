@@ -67,6 +67,7 @@ branches: [ no ]
     let expected = [CliId::Commit {
         commit_id: id1,
         id: "0".to_string(),
+        change_id: None,
     }];
     assert_eq!(
         id_map.parse("0", Box::new(changed_paths_fn))?,
@@ -103,6 +104,7 @@ fn commit_id_appearing_multiple_times() -> anyhow::Result<()> {
     Commit {
         commit_id: Sha1(0101010101010101010101010101010101010101),
         id: "01",
+        change_id: None,
     },
 ]
 
@@ -134,14 +136,17 @@ branches: [ no ]
     Commit {
         commit_id: Sha1(21aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa),
         id: "21a",
+        change_id: None,
     },
     Commit {
         commit_id: Sha1(21bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb),
         id: "21bb",
+        change_id: None,
     },
     Commit {
         commit_id: Sha1(21bccccccccccccccccccccccccccccccccccccc),
         id: "21bc",
+        change_id: None,
     },
     Branch {
         name: "not-important",
@@ -399,6 +404,7 @@ stacks: [ j0 ]
     Commit {
         commit_id: Sha1(0202020202020202020202020202020202020202),
         id: "0",
+        change_id: None,
     },
     Branch {
         name: "h0",
@@ -572,6 +578,7 @@ uncommitted_hunks: [ l:q ]
     Commit {
         commit_id: Sha1(0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a),
         id: "0",
+        change_id: None,
     },
 ]
 
@@ -2405,10 +2412,16 @@ branches: [ no ]
     Commit {
         commit_id: Sha1(0101010101010101010101010101010101010101),
         id: "01",
+        change_id: Some(
+            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        ),
     },
     Commit {
         commit_id: Sha1(0202020202020202020202020202020202020202),
         id: "02",
+        change_id: Some(
+            "swsrzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        ),
     },
 ]
 
@@ -2425,6 +2438,9 @@ branches: [ no ]
     Commit {
         commit_id: Sha1(0101010101010101010101010101010101010101),
         id: "01",
+        change_id: Some(
+            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        ),
     },
 ]
 
@@ -2441,6 +2457,9 @@ branches: [ no ]
     Commit {
         commit_id: Sha1(0202020202020202020202020202020202020202),
         id: "02",
+        change_id: Some(
+            "swsrzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        ),
     },
 ]
 
@@ -2488,10 +2507,16 @@ branches: [ no ]
     Commit {
         commit_id: Sha1(0101010101010101010101010101010101010101),
         id: "01",
+        change_id: Some(
+            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        ),
     },
     Commit {
         commit_id: Sha1(0202020202020202020202020202020202020202),
         id: "02",
+        change_id: Some(
+            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        ),
     },
 ]
 
@@ -2508,6 +2533,9 @@ branches: [ no ]
     Commit {
         commit_id: Sha1(0101010101010101010101010101010101010101),
         id: "01",
+        change_id: Some(
+            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        ),
     },
 ]
 
@@ -2524,6 +2552,9 @@ branches: [ no ]
     Commit {
         commit_id: Sha1(0202020202020202020202020202020202020202),
         id: "02",
+        change_id: Some(
+            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+        ),
     },
 ]
 

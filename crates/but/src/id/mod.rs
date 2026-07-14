@@ -366,6 +366,7 @@ impl<'a> Node<'a> for &'a WorkspaceCommitWithId {
         Ok(Some(CliId::Commit {
             commit_id: self.commit_id(),
             id: self.short_id.clone(),
+            change_id: self.change_id.as_ref().map(|id| id.change_id.clone()),
         }))
     }
 }
@@ -404,6 +405,7 @@ impl<'a> Node<'a> for &'a RemoteCommitWithId {
         Ok(Some(CliId::Commit {
             commit_id: self.commit_id(),
             id: self.short_id.clone(),
+            change_id: self.change_id.as_ref().map(|id| id.change_id.clone()),
         }))
     }
 }
@@ -1331,6 +1333,8 @@ pub enum CliId {
         /// among all commits in all stacks (but not necessarily among all
         /// commits in the repo).
         id: ShortId,
+        /// The stable change ID from the commit headers, if present.
+        change_id: Option<but_core::ChangeId>,
     },
     /// The uncommitted area, as a designated area that files can be put in.
     Uncommitted {
