@@ -17,8 +17,11 @@ use crate::{
     CliId,
     command::legacy::status::{
         FilesStatusFlag, StatusFlags, StatusOutputLine, TuiLaunchOptions, TuiOutcome,
-        TuiRunOptions, output::StatusOutputLineData, tui::details::Details,
+        TuiRunOptions,
+        output::StatusOutputLineData,
+        tui::{app::mark::SingleSourceMarks, details::Details},
     },
+    id::UncommittedHunkOrFile,
     theme::Theme,
     tui::TerminalGuard,
 };
@@ -28,10 +31,8 @@ use super::{
     Message, ReloadCause, SelectAfterReload, TuiInputOutputChannel,
     backstack::{Backstack, RememberToUpdateBackstack},
     confirm::Confirm,
-    copy_selection_picker,
-    copy_selection_picker::CopySelectionItem,
-    cursor,
-    cursor::{Cursor, is_selectable_in_mode},
+    copy_selection_picker::{self, CopySelectionItem},
+    cursor::{self, Cursor, is_selectable_in_mode},
     file_browser::FileBrowser,
     fps::FpsCounter,
     fuzzy_picker::{Col, FuzzyPicker, FuzzyPickerItem, FuzzyPickerMessage, SearchableToken},
@@ -41,7 +42,7 @@ use super::{
         KeyBinds, confirm_key_binds, default_key_binds, fuzzy_picker_key_binds, help_key_binds,
         normal_with_marks_key_binds,
     },
-    mode::Mode,
+    mode::{DetailsReturnMode, Mode},
     operations,
     toast::{ToastKind, Toasts},
 };
@@ -432,7 +433,8 @@ impl App {
                 modal => self.modal = modal,
             },
             Message::Details(details_message) => {
-                self.details.try_handle_message(details_message, messages)?;
+                self.details
+                    .try_handle_message(details_message, messages, &mut self.backstack)?;
             }
             Message::RegisterOutOfBandMessage(rx) => {
                 self.incoming_out_of_band_messages.push(rx);
@@ -480,8 +482,8 @@ impl App {
             Message::Mark => {
                 self.handle_mark(ctx)?;
             }
-            Message::ClearNormalModeMarks => {
-                self.handle_clear_normal_mode_marks();
+            Message::ClearStatusModeMarks => {
+                self.handle_clear_status_mode_marks();
             }
             Message::SetHasFocus(has_focus) => {
                 self.handle_set_focus(has_focus);
@@ -512,6 +514,17 @@ impl App {
     }
 
     fn handle_confirm_and_quit(&mut self) {
+        fn cli_ids_from_hunks(
+            hunks: &SingleSourceMarks<UncommittedHunkOrFile>,
+        ) -> Option<TuiOutcome> {
+            let ids = hunks
+                .iter()
+                .cloned()
+                .map(CliId::UncommittedHunkOrFile)
+                .collect();
+            Some(TuiOutcome::CliIds(ids))
+        }
+
         self.outcome = match &*self.mode {
             Mode::Normal(..)
             | Mode::Rub(..)
@@ -519,22 +532,26 @@ impl App {
             | Mode::Command(..)
             | Mode::Commit(..)
             | Mode::Move(..)
-            | Mode::Details(..)
             | Mode::Stack(..)
             | Mode::Jump(..)
-            | Mode::MoveStack(..) => Some(TuiOutcome::None),
-            Mode::PickChanges(PickChangesMode { marks }) => {
-                let ids = marks
-                    .iter()
-                    .cloned()
-                    .map(CliId::UncommittedHunkOrFile)
-                    .collect();
-                Some(TuiOutcome::CliIds(ids))
-            }
+            | Mode::MoveStack(..) => return,
+            Mode::Details(details_mode) => match &details_mode.return_mode {
+                DetailsReturnMode::PickChanges(PickChangesMode { marks }) => {
+                    if let Some(marks) = self.details.to_marked_cli_ids() {
+                        Some(TuiOutcome::CliIds(marks.into()))
+                    } else {
+                        cli_ids_from_hunks(marks)
+                    }
+                }
+                DetailsReturnMode::Normal(..) => return,
+            },
+            Mode::PickChanges(PickChangesMode { marks }) => cli_ids_from_hunks(marks),
         };
     }
 
     fn handle_enter_normal_mode_after_confirming_operation(&mut self, messages: &mut Vec<Message>) {
+        self.details.on_unfocus(&mut self.backstack);
+
         let mut entries_to_handle = Vec::new();
         self.mode.update(&mut self.backstack, |backstack, mode| {
             backstack.retain(|entry| match entry {
@@ -547,6 +564,7 @@ impl App {
                     entries_to_handle.push(entry);
                     false
                 }
+                BackstackEntry::LeaveCommandMode => false,
                 BackstackEntry::OpenSplitDetailsView => true,
                 BackstackEntry::OpenFullScreenDetailsView => {
                     entries_to_handle.push(entry);
@@ -576,6 +594,14 @@ impl App {
 
     fn handle_backstack_entry(&mut self, entry: BackstackEntry, messages: &mut Vec<Message>) {
         match entry {
+            BackstackEntry::LeaveCommandMode => {
+                if !self.restore_mode_before_command() {
+                    self.mode.update(&mut self.backstack, |backstack, mode| {
+                        let _ = backstack;
+                        *mode = Mode::Normal(NormalMode::default());
+                    });
+                }
+            }
             BackstackEntry::LeaveNormalMode => {
                 if !self.restore_mode_before_details(messages)
                     && !self.restore_mode_before_jump()
@@ -605,6 +631,9 @@ impl App {
                 Mode::PickChanges(pick_uncommitted_mode) => {
                     pick_uncommitted_mode.marks.clear();
                 }
+                Mode::Details(..) => {
+                    self.details.clear_marks();
+                }
                 Mode::InlineReword(..)
                 | Mode::Rub(..)
                 | Mode::Command(..)
@@ -612,8 +641,7 @@ impl App {
                 | Mode::Move(..)
                 | Mode::Stack(..)
                 | Mode::MoveStack(..)
-                | Mode::Jump(..)
-                | Mode::Details(..) => {}
+                | Mode::Jump(..) => {}
             },
             BackstackEntry::OpenSplitDetailsView | BackstackEntry::OpenFullScreenDetailsView => {
                 messages.push(Message::DetailsLayout(
@@ -976,7 +1004,8 @@ impl App {
         }
         if reload_details_view {
             let details_focused = matches!(&*self.mode, Mode::Details(..));
-            self.details.clear_selection_for_reload(details_focused);
+            self.details
+                .clear_selection_for_reload(details_focused, &mut self.backstack);
             if let Some((index, direction)) = select_details_section_after_reload {
                 self.details.select_section_when_available(index, direction);
             }
