@@ -8,7 +8,7 @@ use std::{
     str::FromStr,
 };
 
-use bstr::BString;
+use bstr::{BString, ByteSlice};
 use but_core::{WORKSPACE_REF_NAME, ref_metadata};
 use but_graph::{SegmentIndex, workspace::StackCommitFlags};
 use gix::Repository;
@@ -630,6 +630,24 @@ fn apply_review_to_metadata(
     }
 }
 
+fn forge_review_for_branch(
+    reviews_by_head: &std::collections::HashMap<String, usize>,
+    short_name: &str,
+) -> Option<usize> {
+    if let Some(review) = reviews_by_head.get(short_name) {
+        return Some(*review);
+    }
+
+    let mut prefixed_matches = reviews_by_head.iter().filter_map(|(head, review)| {
+        let (_, branch) = head.rsplit_once(':')?;
+        (branch == short_name).then_some(*review)
+    });
+    let review = prefixed_matches.next()?;
+    prefixed_matches
+        .all(|candidate| candidate == review)
+        .then_some(review)
+}
+
 impl RefInfo {
     /// Resolve each segment's forge review association from a cache-derived map,
     /// keyed by the segment's remote/pushed short name (what the forge records as
@@ -641,7 +659,8 @@ impl RefInfo {
     /// on an otherwise metadata-less segment synthesizes metadata so single-branch
     /// mode surfaces the association too. `reviews_by_head` maps a pushed short name
     /// to its review number; build it from the forge review cache at the call boundary so
-    /// this crate stays free of DB and forge wiring.
+    /// this crate stays free of DB and forge wiring. As a defensive fallback, a uniquely
+    /// matching `owner:branch` key is accepted, while ambiguous fork heads are ignored.
     pub fn apply_forge_review_associations(
         &mut self,
         repo: &gix::Repository,
@@ -659,7 +678,9 @@ impl RefInfo {
                 .and_then(|rtb| {
                     but_core::extract_remote_name_and_short_name(rtb.as_ref(), &remote_names)
                 })
-                .and_then(|(_, short)| reviews_by_head.get(&short.to_string()).copied());
+                .and_then(|(_, short)| {
+                    forge_review_for_branch(reviews_by_head, short.to_str().ok()?)
+                });
             apply_review_to_metadata(&mut segment.metadata, review);
         }
     }
@@ -872,7 +893,9 @@ pub(crate) fn workspace_data_of_default_workspace_branch(
 
 #[cfg(test)]
 mod review_association_tests {
-    use super::apply_review_to_metadata;
+    use std::collections::HashMap;
+
+    use super::{apply_review_to_metadata, forge_review_for_branch};
     use but_core::ref_metadata::Branch;
 
     fn branch_with_review(review: Option<usize>) -> Branch {
@@ -924,5 +947,44 @@ mod review_association_tests {
         let mut metadata = Some(branch);
         apply_review_to_metadata(&mut metadata, Some(1));
         assert!(metadata.unwrap().review.review_id.is_none());
+    }
+
+    #[test]
+    fn owner_prefixed_review_head_matches_the_short_branch_name() {
+        let reviews = HashMap::from([("alice:feature".to_string(), 42)]);
+
+        assert_eq!(
+            forge_review_for_branch(&reviews, "feature"),
+            Some(42),
+            "a uniquely matching fork head should be accepted defensively"
+        );
+    }
+
+    #[test]
+    fn exact_review_head_takes_precedence_over_a_prefixed_head() {
+        let reviews = HashMap::from([
+            ("feature".to_string(), 42),
+            ("alice:feature".to_string(), 99),
+        ]);
+
+        assert_eq!(
+            forge_review_for_branch(&reviews, "feature"),
+            Some(42),
+            "the forge's normal short-name representation should take precedence"
+        );
+    }
+
+    #[test]
+    fn ambiguous_owner_prefixed_review_heads_do_not_match() {
+        let reviews = HashMap::from([
+            ("alice:feature".to_string(), 42),
+            ("bob:feature".to_string(), 99),
+        ]);
+
+        assert_eq!(
+            forge_review_for_branch(&reviews, "feature"),
+            None,
+            "a short branch name cannot safely select between fork owners"
+        );
     }
 }
