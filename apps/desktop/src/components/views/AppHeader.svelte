@@ -72,12 +72,29 @@
 
 	const projects = $derived(projectsService.projects());
 
-	const mappedProjects = $derived(
-		projects.response?.map((project) => ({
-			value: project.id,
-			label: project.title,
-		})) || [],
-	);
+	const recentProjectIds = projectsService.recentProjectIds;
+
+	const mappedProjects = $derived.by(() => {
+		const allProjects = projects.response ?? [];
+		const recentIds = $recentProjectIds;
+
+		const recent = recentIds
+			.map((id) => allProjects.find((project) => project.id === id))
+			.filter((project) => project !== undefined);
+		const others = allProjects.filter((project) => !recentIds.includes(project.id));
+
+		// No point in grouping if one of the groups is empty.
+		if (recent.length === 0 || others.length === 0) {
+			return allProjects.map((project) => ({ value: project.id, label: project.title }));
+		}
+
+		return [
+			{ header: "Recent" },
+			...recent.map((project) => ({ value: project.id, label: project.title })),
+			{ header: "Other projects" },
+			...others.map((project) => ({ value: project.id, label: project.title })),
+		];
+	});
 
 	let newProjectLoading = $state(false);
 	let projectSelectorOpen = $state(false);
