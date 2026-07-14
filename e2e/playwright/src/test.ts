@@ -56,7 +56,7 @@ export const test = base.extend<{
 		await use(instance);
 		await instance.destroy();
 	},
-	fakeGithub: async (_, use) => {
+	fakeGithub: async ({ page: _page }, use) => {
 		const servers: FakeGitHubServer[] = [];
 		await use(async (options) => {
 			const server = await startFakeGitHubServer(options);
