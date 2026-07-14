@@ -1139,3 +1139,21 @@ fn leaving_command_mode_from_details_puts_you_back_in_details() {
             "snapshots/leaving_command_mode_from_details_puts_you_back_in_details_001.svg"
         ]);
 }
+
+#[test]
+fn dims_unselectable_lines_while_in_details_mode() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("one", "content of one");
+    env.file("two", "content of two");
+    env.file("three", "content of three");
+
+    let mut tui = test_tui(env);
+
+    tui.input(' ');
+    tui.input('d');
+    tui.input('l').assert_rendered_term_svg_eq(file![
+        "snapshots/dims_unselectable_lines_while_in_details_mode_001.svg"
+    ]);
+}
