@@ -120,6 +120,37 @@ fn help_popup_opens_over_status_view() {
 }
 
 #[test]
+fn help_popup_searches_descriptions() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    let mut tui = test_tui(env);
+
+    tui.input('?');
+    tui.input('/')
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_searches_descriptions_001.svg"]);
+
+    tui.input('s');
+    tui.input(KeyCode::Enter);
+    tui.input("hm")
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_searches_descriptions_002.svg"]);
+
+    tui.input(KeyCode::Esc)
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_searches_descriptions_003.svg"]);
+
+    tui.input('/');
+    tui.input('s');
+    tui.input((KeyModifiers::CONTROL, 'm'));
+    tui.input("hm")
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_searches_descriptions_002.svg"]);
+    tui.input('/')
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_searches_descriptions_004.svg"]);
+
+    tui.input(KeyCode::Esc)
+        .assert_rendered_term_svg_eq(file!["snapshots/help_popup_searches_descriptions_005.svg"]);
+}
+
+#[test]
 fn help_popup_scrolls() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
     env.setup_metadata(&["A"]);
