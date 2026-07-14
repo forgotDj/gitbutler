@@ -1,4 +1,4 @@
-use std::{convert::Infallible, path::PathBuf, sync::atomic::AtomicBool, time::Duration};
+use std::{convert::Infallible, path::PathBuf, time::Duration};
 
 use but_testsupport::Sandbox;
 use crossterm::event::*;
@@ -118,7 +118,18 @@ pub fn test_tui_with_options(env: Sandbox, options: TestTuiOptions) -> TestTui {
     build_status_output(&ctx, &status_ctx, &mut status_output)
         .expect("failed to build status output");
 
-    let app = App::new(lines, flags, launch_options, run_options, show_file_browser);
+    let incoming_out_of_band_messages = Vec::new();
+    let head_sha = super::super::operations::head_sha(&mut ctx).expect("failed to read HEAD");
+
+    let app = App::new(
+        lines,
+        flags,
+        launch_options,
+        run_options,
+        show_file_browser,
+        incoming_out_of_band_messages,
+        head_sha,
+    );
     let terminal =
         Terminal::new(TestBackend::new(width, height)).expect("failed to create test terminal");
 
@@ -204,7 +215,6 @@ impl TestTui {
                 &mut events,
                 &mut messages,
                 &mut other_messages,
-                &AtomicBool::default(),
                 &mut ctx,
                 &mut out,
                 &self.mode,

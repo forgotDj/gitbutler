@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity, clippy::too_many_arguments)]
 
 use std::{
-    sync::{Arc, atomic::AtomicBool, mpsc::Receiver},
+    sync::mpsc::{Receiver, Sender},
     time::Duration,
 };
 
@@ -81,16 +81,6 @@ const DETAILS_SIZE_ADJUSTMENT_PERCENTAGE: u16 = 5;
 const DETAILS_MIN_SIZE_PERCENTAGE: u16 = 30;
 const DETAILS_MAX_SIZE_PERCENTAGE: u16 = 90;
 
-/// How long to ignore watcher reloads after a TUI mutation.
-///
-/// Covers the watcher's normal idle debounce, with extra time for Windows'
-/// slower watcher tick. Intentionally shorter than the max debounce timeout.
-const WATCHER_SELF_ECHO_SUPPRESSION: Duration = if cfg!(windows) {
-    Duration::from_secs(1)
-} else {
-    Duration::from_millis(500)
-};
-
 pub fn render_tui(
     ctx: &mut Context,
     out: &mut InputOutputChannel<'_>,
@@ -100,12 +90,17 @@ pub fn render_tui(
     launch_options: TuiLaunchOptions,
     run_options: TuiRunOptions,
 ) -> anyhow::Result<(Vec<StatusOutputLine>, TuiOutcome)> {
+    let (watcher_tx, watcher_rx) = std::sync::mpsc::channel();
+
+    let head_sha = operations::head_sha(ctx)?;
     let mut app = App::new(
         status_lines,
         flags,
         launch_options,
         run_options,
         ctx.settings.feature_flags.tui_file_browser,
+        Vec::from([watcher_rx]),
+        head_sha,
     );
 
     let mut messages = Vec::new();
@@ -123,14 +118,13 @@ pub fn render_tui(
             &mut event_polling,
             &mut messages,
             &mut other_messages,
-            <Arc<AtomicBool>>::default(),
             ctx,
             out,
             mode,
         )?
     } else {
-        let (_watcher_handle, received_watcher_event) =
-            start_watcher(ctx).context("failed to start filesystem watcher")?;
+        let _watcher_handle =
+            start_watcher(ctx, watcher_tx).context("failed to start filesystem watcher")?;
 
         let mut terminal_guard = CrosstermTerminalGuard::alt_screen(true)?;
         let mut event_polling = CrosstermEventPolling::default();
@@ -141,7 +135,6 @@ pub fn render_tui(
             &mut event_polling,
             &mut messages,
             &mut other_messages,
-            received_watcher_event,
             ctx,
             out,
             mode,
@@ -157,7 +150,6 @@ fn render_loop<T, E>(
     event_polling: &mut E,
     messages: &mut Vec<Message>,
     other_messages: &mut Vec<Message>,
-    received_watcher_event: Arc<AtomicBool>,
     ctx: &mut Context,
     out: &mut dyn TuiInputOutputChannel,
     mode: &OperatingMode,
@@ -187,7 +179,6 @@ where
             &mut events,
             messages,
             other_messages,
-            &received_watcher_event,
             ctx,
             out,
             mode,
@@ -207,7 +198,6 @@ fn render_loop_once<T, E>(
     events: &mut Vec<Event>,
     messages: &mut Vec<Message>,
     other_messages: &mut Vec<Message>,
-    received_watcher_event: &AtomicBool,
     ctx: &mut Context,
     out: &mut dyn TuiInputOutputChannel,
     mode: &OperatingMode,
@@ -225,7 +215,6 @@ where
             events,
             messages,
             other_messages,
-            received_watcher_event,
             ctx,
             out,
             mode,
@@ -247,7 +236,6 @@ fn update<T, E>(
     events: &mut Vec<Event>,
     messages: &mut Vec<Message>,
     other_messages: &mut Vec<Message>,
-    received_watcher_event: &AtomicBool,
     ctx: &mut Context,
     out: &mut dyn TuiInputOutputChannel,
     mode: &OperatingMode,
@@ -286,22 +274,6 @@ where
                 std::sync::mpsc::TryRecvError::Disconnected => false,
             },
         });
-
-    // check for events from the watcher
-    if received_watcher_event
-        .compare_exchange(
-            true,
-            false,
-            std::sync::atomic::Ordering::SeqCst,
-            std::sync::atomic::Ordering::SeqCst,
-        )
-        .is_ok_and(|value| value)
-        && app
-            .previous_reload_caused_by_mutation_timestamp
-            .is_none_or(|timestamp| timestamp.elapsed() > WATCHER_SELF_ECHO_SUPPRESSION)
-    {
-        messages.push(Message::Reload(None, ReloadCause::Watcher));
-    }
 
     // handle messages
     let mut did_reload = false;
@@ -507,21 +479,17 @@ fn nonempty_from_refs<'a, T>(head: &'a T, tail: impl Iterator<Item = &'a T>) -> 
 
 fn start_watcher(
     ctx: &mut Context,
-) -> anyhow::Result<(gitbutler_watcher::WatcherHandle, Arc<AtomicBool>)> {
+    tx: Sender<Message>,
+) -> anyhow::Result<gitbutler_watcher::WatcherHandle> {
     let app_settings = app_settings_sync()?;
     let watch_mode = gitbutler_watcher::WatchMode::from_env_or_settings(
         &app_settings.get()?.feature_flags.watch_mode,
         |key| std::env::var(key).ok(),
     );
 
-    let received_watcher_event = Arc::new(AtomicBool::new(false));
-
-    let handler = gitbutler_watcher::Handler::new({
-        let received_watcher_event = Arc::clone(&received_watcher_event);
-        move |_change| {
-            received_watcher_event.store(true, std::sync::atomic::Ordering::SeqCst);
-            Ok(())
-        }
+    let handler = gitbutler_watcher::Handler::new(move |change| {
+        _ = tx.send(Message::WatcherEvent(change));
+        Ok(())
     });
 
     let project_id = ctx.legacy_project.id.clone();
@@ -534,7 +502,7 @@ fn start_watcher(
         watch_mode,
     )?;
 
-    Ok((watcher, received_watcher_event))
+    Ok(watcher)
 }
 
 fn app_settings_sync() -> anyhow::Result<AppSettingsWithDiskSync> {
@@ -592,6 +560,7 @@ enum Message {
     SetHasFocus(bool),
     Back,
     UnfocusDetails,
+    WatcherEvent(gitbutler_watcher::Change),
 
     // Cursor movement
     MoveCursorUp(usize),
@@ -685,7 +654,7 @@ enum ReloadCause {
     /// Reloading because some mutation was made by the TUI.
     Mutation,
     /// Reloading because the watcher came back with an event.
-    Watcher,
+    Watcher { details_selection_changed: bool },
     /// Reloading only because some TUI view state changed, not because any real data changed.
     ViewOnly,
     /// The user manually triggered a reload.
@@ -763,7 +732,7 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
             Message::WithOneFrameDelay(m) => is_repo_mutation(m),
             Message::Reload(_, cause) => match cause {
                 ReloadCause::Mutation
-                | ReloadCause::Watcher
+                | ReloadCause::Watcher { .. }
                 | ReloadCause::ViewOnly
                 | ReloadCause::Manual => true,
             },
@@ -886,6 +855,8 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
             | Message::CopySelectionPicker
             | Message::RegisterOutOfBandMessage(..)
             | Message::Debug(_) => false,
+            // these are never generated by the tui itself
+            Message::WatcherEvent(..) => false,
         }
     }
 
