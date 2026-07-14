@@ -168,48 +168,6 @@ fn local_branch_refname(refname: Refname, given_name: &str) -> Result<gix::refs:
         .map_err(anyhow::Error::from)
 }
 
-/// Turn `branch` into an applied virtual branch, optionally associating
-/// `remote` and `pr_number`.
-///
-/// This acquires exclusive worktree access from `ctx` before applying the
-/// branch in the workspace.
-///
-/// See [`create_virtual_branch_from_branch_with_perm()`] for the underlying
-/// mutation.
-#[but_api]
-#[instrument(err(Debug))]
-pub fn create_virtual_branch_from_branch(
-    ctx: &mut but_ctx::Context,
-    branch: Refname,
-    pr_number: Option<usize>,
-) -> Result<gitbutler_branch_actions::CreateBranchFromBranchOutcome> {
-    let mut guard = ctx.exclusive_worktree_access();
-    let outcome = create_virtual_branch_from_branch_with_perm(
-        ctx,
-        &branch,
-        pr_number,
-        guard.write_permission(),
-    )?;
-    Ok(outcome)
-}
-
-/// Turn `branch` into an applied virtual branch, optionally associating
-/// `remote` and `pr_number`, while reusing caller-held exclusive access.
-///
-/// This delegates to
-/// [`gitbutler_branch_actions::create_virtual_branch_from_branch_with_perm()`].
-pub fn create_virtual_branch_from_branch_with_perm(
-    ctx: &mut but_ctx::Context,
-    branch: &Refname,
-    pr_number: Option<usize>,
-    perm: &mut RepoExclusive,
-) -> Result<gitbutler_branch_actions::CreateBranchFromBranchOutcome> {
-    let outcome = gitbutler_branch_actions::create_virtual_branch_from_branch_with_perm(
-        ctx, branch, pr_number, perm,
-    )?;
-    Ok(outcome.into())
-}
-
 #[but_api]
 #[instrument(err(Debug))]
 pub fn integrate_upstream_commits(

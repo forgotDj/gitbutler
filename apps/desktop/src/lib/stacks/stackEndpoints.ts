@@ -16,12 +16,7 @@ import {
 	ReduxTag,
 } from "$lib/state/tags";
 import { createEntityAdapter, type EntityState } from "@reduxjs/toolkit";
-import type {
-	Stack,
-	CreateRefRequest,
-	CreateBranchFromBranchOutcome,
-	GerritPushFlag,
-} from "$lib/stacks/stack";
+import type { Stack, CreateRefRequest, GerritPushFlag } from "$lib/stacks/stack";
 import type { BackendEndpointBuilder } from "$lib/state/backendApi";
 import type {
 	AbsorptionTarget,
@@ -963,17 +958,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.UpstreamIntegrationStatus),
 				invalidatesList(ReduxTag.PullRequests),
 			],
-		}),
-		createVirtualBranchFromBranch: build.mutation<
-			CreateBranchFromBranchOutcome,
-			{ projectId: string; branch: string; prNumber?: number }
-		>({
-			extraOptions: {
-				command: "create_virtual_branch_from_branch",
-				actionName: "Create Virtual Branch From Branch",
-			},
-			query: (args) => args,
-			invalidatesTags: [invalidatesList(ReduxTag.HeadSha), invalidatesList(ReduxTag.BranchListing)],
 		}),
 		deleteLocalBranch: build.mutation<
 			void,

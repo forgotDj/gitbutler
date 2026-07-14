@@ -1,4 +1,3 @@
-pub use branch_creation::CreateBranchFromBranchOutcome;
 use but_ctx::Context;
 
 mod branch_creation;

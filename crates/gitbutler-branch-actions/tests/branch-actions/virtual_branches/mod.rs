@@ -306,7 +306,6 @@ fn set_head_detached(repo: &gix::Repository, target: gix::ObjectId) {
 }
 
 mod apply_virtual_branch;
-mod create_virtual_branch_from_branch;
 mod init;
 mod list;
 mod list_details;
