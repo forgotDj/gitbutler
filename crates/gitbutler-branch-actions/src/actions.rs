@@ -14,15 +14,8 @@ use gitbutler_oplog::{
 use gitbutler_reference::RemoteRefname;
 
 use crate::{
-    base,
-    base::BaseBranch,
-    branch_manager::BranchManagerExt,
-    branch_upstream_integration,
+    base, base::BaseBranch, branch_manager::BranchManagerExt, branch_upstream_integration,
     branch_upstream_integration::IntegrationStrategy,
-    upstream_integration::{
-        self, BaseBranchResolution, BaseBranchResolutionApproach, IntegrationOutcome, Resolution,
-        StackStatuses, UpstreamIntegrationContext,
-    },
 };
 
 pub fn create_virtual_branch(
@@ -119,70 +112,6 @@ pub fn integrate_branch_with_steps(
         stack_id,
         branch_name,
         steps,
-        guard.write_permission(),
-    )
-}
-
-pub fn upstream_integration_statuses(
-    ctx: &mut Context,
-    target_commit_oid: Option<gix::ObjectId>,
-    review_map: &std::collections::HashMap<String, but_forge::ForgeReview>,
-) -> Result<StackStatuses> {
-    let mut guard = ctx.exclusive_worktree_access();
-    upstream_integration_statuses_with_perm(
-        ctx,
-        target_commit_oid,
-        review_map,
-        guard.write_permission(),
-    )
-}
-
-pub fn upstream_integration_statuses_with_perm(
-    ctx: &mut Context,
-    target_commit_oid: Option<gix::ObjectId>,
-    review_map: &std::collections::HashMap<String, but_forge::ForgeReview>,
-    perm: &mut RepoExclusive,
-) -> Result<StackStatuses> {
-    let repo = ctx.repo.get()?;
-    let context =
-        UpstreamIntegrationContext::open(ctx, target_commit_oid, perm, &repo, review_map)?;
-
-    upstream_integration::upstream_integration_statuses(&context)
-}
-
-pub fn integrate_upstream(
-    ctx: &mut Context,
-    resolutions: &[Resolution],
-    base_branch_resolution: Option<BaseBranchResolution>,
-    review_map: &std::collections::HashMap<String, but_forge::ForgeReview>,
-) -> Result<IntegrationOutcome> {
-    let mut guard = ctx.exclusive_worktree_access();
-
-    let _ = ctx.create_snapshot(
-        SnapshotDetails::new(OperationKind::UpdateWorkspaceBase),
-        guard.write_permission(),
-    );
-
-    upstream_integration::integrate_upstream(
-        ctx,
-        resolutions,
-        base_branch_resolution,
-        review_map,
-        guard.write_permission(),
-    )
-}
-
-pub fn resolve_upstream_integration(
-    ctx: &mut Context,
-    resolution_approach: BaseBranchResolutionApproach,
-    review_map: &std::collections::HashMap<String, but_forge::ForgeReview>,
-) -> Result<gix::ObjectId> {
-    let mut guard = ctx.exclusive_worktree_access();
-
-    upstream_integration::resolve_upstream_integration(
-        ctx,
-        resolution_approach,
-        review_map,
         guard.write_permission(),
     )
 }

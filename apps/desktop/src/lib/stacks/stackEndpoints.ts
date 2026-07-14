@@ -246,7 +246,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 					invalidatesList(ReduxTag.BranchChanges),
 					invalidatesList(ReduxTag.BranchListing),
 					invalidatesType(ReduxTag.BaseBranchData),
-					invalidatesList(ReduxTag.UpstreamIntegrationStatus),
 				];
 			},
 		}),
@@ -259,7 +258,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			invalidatesTags: (result, _error) => [
 				invalidatesItem(ReduxTag.StackDetails, result?.id || "undefined"),
 				invalidatesList(ReduxTag.Stacks),
-				invalidatesList(ReduxTag.UpstreamIntegrationStatus),
 				invalidatesList(ReduxTag.BranchListing),
 			],
 		}),
@@ -385,7 +383,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 			transformResponse: normalizeCreateCommitOutcome,
 			invalidatesTags: [
 				invalidatesList(ReduxTag.WorktreeChanges),
-				invalidatesList(ReduxTag.UpstreamIntegrationStatus),
 				invalidatesList(ReduxTag.IntegrationSteps),
 				invalidatesList(ReduxTag.HeadSha),
 			],
@@ -878,7 +875,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.BranchChanges),
 				invalidatesList(ReduxTag.BranchListing),
 				invalidatesType(ReduxTag.BaseBranchData),
-				invalidatesList(ReduxTag.UpstreamIntegrationStatus),
 			],
 		}),
 		getInitialBranchIntegration: build.query<
@@ -922,7 +918,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 							invalidatesList(ReduxTag.Stacks),
 							invalidatesList(ReduxTag.StackDetails),
 							invalidatesList(ReduxTag.BranchListing),
-							invalidatesList(ReduxTag.UpstreamIntegrationStatus),
 							invalidatesItem(ReduxTag.IntegrationSteps, args.branchRef),
 						],
 		}),
@@ -939,7 +934,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.Stacks),
 				invalidatesList(ReduxTag.StackDetails),
 				invalidatesList(ReduxTag.BranchListing),
-				invalidatesList(ReduxTag.UpstreamIntegrationStatus),
 			],
 		}),
 		reviewApply: build.mutation<ApplyOutcome, { projectId: string; reviewId: number }>({
@@ -955,7 +949,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.Stacks),
 				invalidatesList(ReduxTag.StackDetails),
 				invalidatesList(ReduxTag.BranchListing),
-				invalidatesList(ReduxTag.UpstreamIntegrationStatus),
 				invalidatesList(ReduxTag.PullRequests),
 			],
 		}),
