@@ -824,32 +824,43 @@ impl IdMap {
             }
         };
 
-        let head_info = but_workspace::graph_to_ref_info(
-            &ws,
-            &repo,
-            but_workspace::ref_info::Options {
-                project_meta: ws.graph.project_meta.clone(),
-                ..Default::default()
-            },
-        )?;
-
-        let commit_id_to_change_id = head_info
+        let commit_ids = ws
             .stacks
-            .into_iter()
-            .flat_map(|stack| stack.segments)
+            .iter()
+            .flat_map(|stack| &stack.segments)
             .flat_map(|segment| {
                 segment
                     .commits
-                    .into_iter()
-                    .map(|c| (c.inner.id, c.inner.change_id))
-                    .chain(
-                        segment
-                            .commits_on_remote
-                            .into_iter()
-                            .map(|c| (c.id, c.change_id)),
-                    )
+                    .iter()
+                    .chain(segment.commits_on_remote.iter())
             })
-            .filter_map(|(commit_id, change_id)| change_id.map(|change_id| (commit_id, change_id)))
+            .map(|c| c.id);
+
+        let commit_id_to_change_id = commit_ids
+            .filter_map(|commit_id| {
+                let result = (|| {
+                    let commit = repo.find_commit(commit_id)?;
+                    let commit = commit.decode()?;
+                    let change_id = but_core::commit::Headers::try_from_commit_headers(|| {
+                        commit.extra_headers()
+                    })
+                    .and_then(|headers| headers.change_id);
+                    Ok::<(gix::ObjectId, Option<ChangeId>), anyhow::Error>((commit_id, change_id))
+                })();
+
+                match result {
+                    Ok((commit_id, Some(change_id))) => Some((commit_id, change_id)),
+                    Ok((_, None)) => None,
+                    Err(err) => {
+                        tracing::error!(
+                            ?commit_id,
+                            ?err,
+                            "Failed to resolve commit when mapping change IDs"
+                        );
+                        None
+                    }
+                }
+            })
             .collect();
 
         Self::new(ws.stacks.clone(), hunk_assignments, commit_id_to_change_id)
