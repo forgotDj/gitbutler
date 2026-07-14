@@ -41,14 +41,12 @@ gitbutler-reference.workspace = true
 gitbutler-commit.workspace = true
 gitbutler-operating-modes.workspace = true
 gitbutler-stack.workspace = true
-gitbutler-workspace.workspace = true
 gitbutler-project.workspace = true
 
 tracing.workspace = true
 anyhow.workspace = true
 git2.workspace = true
 gix = { workspace = true, features = ["blob-diff", "revision", "merge"] }
-uuid = { workspace = true }
 serde.workspace = true
 bstr.workspace = true
 url = { version = "2.5.4", features = ["serde"] }
@@ -67,7 +65,6 @@ gitbutler-workspace.workspace = true
 gix = { workspace = true, features = [] }
 glob = "0.3.3"
 tempfile.workspace = true
-but-hunk-assignment.workspace = true
 ctor = "0.6.3"
 snapbox.workspace = true
 

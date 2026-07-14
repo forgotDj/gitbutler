@@ -20,7 +20,6 @@ use but_workspace::legacy::ui::{StackEntryNoOpt, StackHeadInfo};
 use gitbutler_branch::{BranchCreateRequest, BranchUpdateRequest};
 use gitbutler_branch_actions::{
     BaseBranch, BranchListing, BranchListingDetails, BranchListingFilter,
-    branch_upstream_integration::IntegrationStrategy,
 };
 use gitbutler_git::GitContextExt as _;
 use gitbutler_operating_modes::ensure_open_workspace_mode;
@@ -30,7 +29,7 @@ use gitbutler_reference::{Refname, normalize_branch_name as normalize_name};
 use gix::reference::Category;
 use tracing::instrument;
 
-use crate::{json::Error, legacy::workspace::canned_branch_name};
+use crate::legacy::workspace::canned_branch_name;
 // Parameter structs for all functions
 
 #[but_api]
@@ -162,52 +161,6 @@ fn local_branch_refname(refname: Refname, given_name: &str) -> Result<gix::refs:
     Category::LocalBranch
         .to_full_name(given_name)
         .map_err(anyhow::Error::from)
-}
-
-#[but_api]
-#[instrument(err(Debug))]
-pub fn integrate_upstream_commits(
-    ctx: &mut but_ctx::Context,
-    stack_id: StackId,
-    series_name: String,
-    integration_strategy: Option<IntegrationStrategy>,
-) -> Result<()> {
-    gitbutler_branch_actions::integrate_upstream_commits(
-        ctx,
-        stack_id,
-        series_name,
-        integration_strategy,
-    )?;
-    Ok(())
-}
-
-#[but_api]
-#[instrument(err(Debug))]
-pub fn get_initial_integration_steps_for_branch(
-    ctx: &mut but_ctx::Context,
-    stack_id: Option<StackId>,
-    branch_name: String,
-) -> Result<
-    Vec<gitbutler_branch_actions::branch_upstream_integration::InteractiveIntegrationStep>,
-    Error,
-> {
-    let steps = gitbutler_branch_actions::branch_upstream_integration::get_initial_integration_steps_for_branch(
-        ctx,
-        stack_id,
-        branch_name,
-    )?;
-    Ok(steps)
-}
-
-#[but_api]
-#[instrument(err(Debug))]
-pub fn integrate_branch_with_steps(
-    ctx: &mut but_ctx::Context,
-    stack_id: StackId,
-    branch_name: String,
-    steps: Vec<gitbutler_branch_actions::branch_upstream_integration::InteractiveIntegrationStep>,
-) -> Result<()> {
-    gitbutler_branch_actions::integrate_branch_with_steps(ctx, stack_id, branch_name, steps)
 }
 
 /// Switch back to the workspace branch state.

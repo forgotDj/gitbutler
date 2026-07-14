@@ -77,10 +77,6 @@ export type CreateCommitRequest = {
 
 export type CreateCommitRequestWorktreeChanges = DiffSpec;
 
-export type SeriesIntegrationStrategy = {
-	type: "merge" | "rebase";
-};
-
 export interface BranchPushResult {
 	/**
 	 * The list of pushed branches and their corresponding remote refnames.
@@ -835,27 +831,6 @@ export function buildStackEndpoints(build: BackendEndpointBuilder) {
 				invalidatesList(ReduxTag.Stacks),
 				invalidatesList(ReduxTag.BranchChanges),
 				...(args.sourceStackId ? [invalidatesItem(ReduxTag.StackDetails, args.sourceStackId)] : []),
-			],
-		}),
-		integrateUpstreamCommits: build.mutation<
-			void,
-			{
-				projectId: string;
-				stackId: string;
-				seriesName: string;
-				integrationStrategy: SeriesIntegrationStrategy | undefined;
-			}
-		>({
-			extraOptions: {
-				command: "integrate_upstream_commits",
-				actionName: "Integrate Upstream Commits",
-			},
-			query: (args) => args,
-			invalidatesTags: (_result, _error, args) => [
-				invalidatesList(ReduxTag.HeadSha),
-				invalidatesList(ReduxTag.WorktreeChanges),
-				invalidatesItem(ReduxTag.StackDetails, args.stackId),
-				invalidatesItem(ReduxTag.BranchChanges, args.seriesName),
 			],
 		}),
 		landBranch: build.mutation<

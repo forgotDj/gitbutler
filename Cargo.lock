@@ -3865,7 +3865,6 @@ dependencies = [
  "but-error",
  "but-gerrit",
  "but-graph",
- "but-hunk-assignment",
  "but-meta",
  "but-oxidize",
  "but-project-handle",
@@ -3899,7 +3898,6 @@ dependencies = [
  "tempfile",
  "tracing",
  "url",
- "uuid",
 ]
 
 [[package]]
