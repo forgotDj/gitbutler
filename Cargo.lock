@@ -1186,7 +1186,6 @@ dependencies = [
  "but-testsupport",
  "but-workspace",
  "clap",
- "gitbutler-reference",
  "gix",
  "open",
  "prodash",

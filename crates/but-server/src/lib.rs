@@ -688,10 +688,6 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
             but_post(legacy::virtual_branches::delete_local_branch_cmd),
         )
         .route(
-            "/create_virtual_branch_from_branch",
-            but_post(legacy::virtual_branches::create_virtual_branch_from_branch_cmd),
-        )
-        .route(
             "/integrate_upstream_commits",
             but_post(legacy::virtual_branches::integrate_upstream_commits_cmd),
         )

@@ -11,7 +11,7 @@ use gitbutler_oplog::{
     OplogExt,
     entry::{OperationKind, SnapshotDetails},
 };
-use gitbutler_reference::{Refname, RemoteRefname};
+use gitbutler_reference::RemoteRefname;
 
 use crate::{
     base,
@@ -121,19 +121,6 @@ pub fn integrate_branch_with_steps(
         steps,
         guard.write_permission(),
     )
-}
-
-pub fn create_virtual_branch_from_branch_with_perm(
-    ctx: &mut Context,
-    branch: &Refname,
-    pr_number: Option<usize>,
-    perm: &mut RepoExclusive,
-) -> Result<(StackId, Vec<StackId>, Vec<String>)> {
-    ctx.verify(perm)?;
-    ensure_open_workspace_mode(ctx, perm.read_permission())
-        .context("Creating a virtual branch from a branch open workspace mode")?;
-    let branch_manager = ctx.branch_manager();
-    branch_manager.create_virtual_branch_from_branch(branch, pr_number, perm)
 }
 
 pub fn upstream_integration_statuses(

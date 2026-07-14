@@ -781,10 +781,6 @@ export class StackService {
 		return this.backendApi.endpoints.reviewApply.mutate;
 	}
 
-	get createVirtualBranchFromBranch() {
-		return this.backendApi.endpoints.createVirtualBranchFromBranch.mutate;
-	}
-
 	get deleteLocalBranch() {
 		return this.backendApi.endpoints.deleteLocalBranch.mutate;
 	}

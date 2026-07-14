@@ -7,16 +7,16 @@
 mod actions;
 // This is our API
 pub use actions::{
-    create_virtual_branch, create_virtual_branch_from_branch_with_perm,
-    get_initial_integration_steps_for_branch, integrate_branch_with_steps, integrate_upstream,
-    integrate_upstream_commits, push_base_branch, resolve_upstream_integration, set_base_branch,
-    set_target_push_remote, upstream_integration_statuses, upstream_integration_statuses_with_perm,
+    create_virtual_branch, get_initial_integration_steps_for_branch, integrate_branch_with_steps,
+    integrate_upstream, integrate_upstream_commits, push_base_branch, resolve_upstream_integration,
+    set_base_branch, set_target_push_remote, upstream_integration_statuses,
+    upstream_integration_statuses_with_perm,
 };
 
 mod r#virtual;
 
 mod branch_manager;
-pub use branch_manager::{BranchManagerExt, CreateBranchFromBranchOutcome};
+pub use branch_manager::BranchManagerExt;
 
 pub mod base;
 pub use base::BaseBranch;
