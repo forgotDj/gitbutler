@@ -28,7 +28,6 @@ mod workflow;
 pub use action::{ActionListing, Source, list_actions};
 use but_core::ref_metadata::StackId;
 use strum::EnumString;
-pub use workflow::{WorkflowList, list_workflows};
 
 /// React to detected worktree changes by creating commits on the appropriate workspace stacks.
 ///

@@ -1,13 +1,11 @@
-use std::str::FromStr;
-
 use but_core::ref_metadata::StackId;
 use but_ctx::Context;
 use gix::ObjectId;
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RewordOutcome {
     pub stack_id: StackId,
@@ -17,7 +15,7 @@ pub struct RewordOutcome {
     pub new_message: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenameBranchOutcome {
     pub stack_id: StackId,
@@ -32,47 +30,7 @@ pub enum Kind {
     RenameBranch(RenameBranchOutcome),
 }
 
-#[derive(Deserialize)]
-#[serde(untagged)]
-enum KindCompat {
-    String(String),
-    KindRenameBranchObj {
-        #[serde(rename = "type")]
-        kind_type: String,
-        subject: RenameBranchOutcome,
-    },
-    KindRewordObj {
-        #[serde(rename = "type")]
-        kind_type: String,
-        #[serde(default)]
-        subject: Option<RewordOutcome>,
-    },
-}
-
-impl<'de> Deserialize<'de> for Kind {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        match KindCompat::deserialize(deserializer)? {
-            KindCompat::String(s) if s == "Reword" => Ok(Kind::Reword(None)),
-            KindCompat::KindRewordObj { kind_type, subject }
-                if kind_type == "reword" || kind_type == "Reword" =>
-            {
-                Ok(Kind::Reword(subject))
-            }
-            KindCompat::KindRenameBranchObj { kind_type, subject }
-                if kind_type == "renameBranch" || kind_type == "RenameBranch" =>
-            {
-                Ok(Kind::RenameBranch(subject))
-            }
-
-            _ => Err(serde::de::Error::custom("Unknown Kind variant")),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(tag = "type", content = "subject", rename_all = "camelCase")]
 pub enum Status {
     Completed,
@@ -80,7 +38,7 @@ pub enum Status {
     Interrupted(Uuid),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Default)]
 #[serde(tag = "type", content = "subject", rename_all = "camelCase")]
 pub enum Trigger {
     Manual,
@@ -90,8 +48,7 @@ pub enum Trigger {
 }
 
 /// Represents a workflow that was executed by GitButler.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone)]
 pub struct Workflow {
     /// Unique identifier for the workflow.
     id: Uuid,
@@ -104,46 +61,11 @@ pub struct Workflow {
     /// The status of the workflow.
     status: Status,
     /// Input commits
-    #[serde(with = "but_serde::object_id_vec")]
     input_commits: Vec<ObjectId>,
     /// Output commits
-    #[serde(with = "but_serde::object_id_vec")]
     output_commits: Vec<ObjectId>,
     /// Optional summary of the workflow
     summary: Option<String>,
-}
-
-impl TryFrom<but_db::Workflow> for Workflow {
-    type Error = anyhow::Error;
-
-    fn try_from(value: but_db::Workflow) -> Result<Self, Self::Error> {
-        let kind = serde_json::from_str(&value.kind)?;
-        let triggered_by = serde_json::from_str(&value.triggered_by)?;
-        let status = serde_json::from_str(&value.status)?;
-        let input_commits: Vec<ObjectId> =
-            serde_json::from_str::<Vec<String>>(&value.input_commits)?
-                .iter()
-                .map(|c| ObjectId::from_str(c))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| anyhow::anyhow!("Failed to parse input commits: {e}"))?;
-        let output_commits: Vec<ObjectId> =
-            serde_json::from_str::<Vec<String>>(&value.output_commits)?
-                .iter()
-                .map(|c| ObjectId::from_str(c))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| anyhow::anyhow!("Failed to parse output commits: {e}"))?;
-        let summary = value.summary.as_deref().map(|s| s.to_string());
-        Ok(Self {
-            id: Uuid::parse_str(&value.id)?,
-            created_at: value.created_at,
-            kind,
-            triggered_by,
-            status,
-            input_commits,
-            output_commits,
-            summary,
-        })
-    }
 }
 
 impl TryFrom<Workflow> for but_db::Workflow {
@@ -210,27 +132,4 @@ impl Workflow {
             .map_err(|e| anyhow::anyhow!("Failed to persist workflow: {e}"))?;
         Ok(())
     }
-}
-
-pub fn list_workflows(ctx: &Context, offset: i64, limit: i64) -> anyhow::Result<WorkflowList> {
-    let (total, workflows) = ctx
-        .db
-        .get_cache()?
-        .workflows()
-        .list(offset, limit)
-        .map_err(|e| anyhow::anyhow!("Failed to list workflows: {e}"))?;
-
-    let workflows = workflows
-        .into_iter()
-        .map(|w| w.try_into())
-        .collect::<Result<Vec<Workflow>, _>>()?;
-
-    Ok(WorkflowList { total, workflows })
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct WorkflowList {
-    total: i64,
-    workflows: Vec<Workflow>,
 }
