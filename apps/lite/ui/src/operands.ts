@@ -1,60 +1,6 @@
 import { Match } from "effect";
 import type { HunkLineSelection } from "#ui/hunk.ts";
 
-/** @public */
-export type BranchFileParent = { branchRef: Array<number> };
-/** @public */
-export type CommitFileParent = { commitId: string };
-
-export type FileParent =
-	| { _tag: "UncommittedChanges" }
-	| ({ _tag: "Branch" } & BranchFileParent)
-	| ({ _tag: "Commit" } & CommitFileParent);
-
-/** @public */
-export const uncommittedChangesFileParent: FileParent = {
-	_tag: "UncommittedChanges",
-};
-
-/** @public */
-export const branchFileParent = ({ branchRef }: BranchFileParent): FileParent => ({
-	_tag: "Branch",
-	branchRef,
-});
-
-/** @public */
-export const commitFileParent = ({ commitId }: CommitFileParent): FileParent => ({
-	_tag: "Commit",
-	commitId,
-});
-
-/** @public */
-export type StackOperand = {
-	stackId: string;
-};
-
-/** @public */
-export type BranchOperand = {
-	branchRef: Array<number>;
-};
-
-/** @public */
-export type CommitOperand = {
-	commitId: string;
-};
-
-/** @public */
-export type FileOperand = {
-	parent: FileParent;
-	path: string;
-};
-
-/** @public */
-export type HunkOperand = HunkLineSelection & {
-	parent: FileOperand;
-	isResultOfBinaryToTextConversion: boolean;
-};
-
 export type Operand =
 	| { _tag: "UncommittedChanges" }
 	| ({ _tag: "Stack" } & StackOperand)
@@ -63,37 +9,55 @@ export type Operand =
 	| ({ _tag: "File" } & FileOperand)
 	| ({ _tag: "Hunk" } & HunkOperand);
 
-/** @public */
+export type FileParent = Extract<Operand, { _tag: "UncommittedChanges" | "Branch" | "Commit" }>;
+
+export type StackOperand = {
+	stackId: string;
+};
+
+export type BranchOperand = {
+	branchRef: Array<number>;
+};
+
+export type CommitOperand = {
+	commitId: string;
+};
+
+export type FileOperand = {
+	parent: FileParent;
+	path: string;
+};
+
+export type HunkOperand = HunkLineSelection & {
+	parent: FileOperand;
+	isResultOfBinaryToTextConversion: boolean;
+};
+
 export const uncommittedChangesOperand: Operand = {
 	_tag: "UncommittedChanges",
 };
 
-/** @public */
 export const stackOperand = ({ stackId }: StackOperand): Operand => ({
 	_tag: "Stack",
 	stackId,
 });
 
-/** @public */
 export const branchOperand = ({ branchRef }: BranchOperand): Operand => ({
 	_tag: "Branch",
 	branchRef,
 });
 
-/** @public */
 export const commitOperand = ({ commitId }: CommitOperand): Operand => ({
 	_tag: "Commit",
 	commitId,
 });
 
-/** @public */
 export const fileOperand = ({ parent, path }: FileOperand): Operand => ({
 	_tag: "File",
 	parent,
 	path,
 });
 
-/** @public */
 export const hunkOperand = ({
 	parent,
 	isResultOfBinaryToTextConversion,
@@ -103,6 +67,20 @@ export const hunkOperand = ({
 	parent,
 	isResultOfBinaryToTextConversion,
 	...lineSelection,
+});
+
+export const uncommittedChangesFileParent: FileParent = {
+	_tag: "UncommittedChanges",
+};
+
+export const branchFileParent = ({ branchRef }: BranchOperand): FileParent => ({
+	_tag: "Branch",
+	branchRef,
+});
+
+export const commitFileParent = ({ commitId }: CommitOperand): FileParent => ({
+	_tag: "Commit",
+	commitId,
 });
 
 export const operandIdentityKey = (operand: Operand): string =>
@@ -132,26 +110,17 @@ export const operandFileParent = (operand: Operand): FileParent | null =>
 		Match.withReturnType<FileParent | null>(),
 		Match.tags({
 			File: ({ parent }) => parent,
-			UncommittedChanges: () => uncommittedChangesFileParent,
+			UncommittedChanges: () => uncommittedChangesOperand,
 			Hunk: ({ parent }) => parent.parent,
 		}),
 		Match.orElse(() => null),
-	);
-
-const fileParentToOperand = (fileParent: FileParent): Operand =>
-	Match.value(fileParent).pipe(
-		Match.tagsExhaustive({
-			UncommittedChanges: () => uncommittedChangesOperand,
-			Branch: ({ branchRef }) => branchOperand({ branchRef }),
-			Commit: ({ commitId }) => commitOperand({ commitId }),
-		}),
 	);
 
 export const operandContains = (a: Operand, b: Operand) => {
 	if (operandEquals(a, b)) return true;
 
 	const bFileParent = operandFileParent(b);
-	if (bFileParent && operandEquals(a, fileParentToOperand(bFileParent))) return true;
+	if (bFileParent && operandEquals(a, bFileParent)) return true;
 
 	return false;
 };
