@@ -791,12 +791,28 @@ impl App {
                     ));
                 }
             }
-            gitbutler_watcher::Change::WorktreeChanges { .. } => {
+            gitbutler_watcher::Change::WorktreeChanges { changed_paths, .. } => {
                 if self.is_details_visible
                     && let Some(selection) = self.details.selection()
                 {
                     match selection {
-                        CliId::UncommittedHunkOrFile(..) | CliId::Uncommitted { .. } => {
+                        CliId::UncommittedHunkOrFile(hunk) => {
+                            let details_selection_changed =
+                                changed_paths.iter().any(|changed_path| {
+                                    hunk.hunk_assignments
+                                        .head
+                                        .path_bytes
+                                        .to_path()
+                                        .is_ok_and(|path| path == changed_path)
+                                });
+                            messages.push(Message::Reload(
+                                None,
+                                ReloadCause::Watcher {
+                                    details_selection_changed,
+                                },
+                            ));
+                        }
+                        CliId::Uncommitted { .. } => {
                             messages.push(Message::Reload(
                                 None,
                                 ReloadCause::Watcher {
