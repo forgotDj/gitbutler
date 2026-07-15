@@ -96,6 +96,12 @@ impl AgentTarget {
             | detect_agent::Agent::Trae
             | detect_agent::Agent::TabnineCli
             | detect_agent::Agent::Pi
+            | detect_agent::Agent::AmazonQ
+            | detect_agent::Agent::CodeBuddy
+            | detect_agent::Agent::GrokBuild
+            | detect_agent::Agent::Warp
+            | detect_agent::Agent::OpenHands
+            | detect_agent::Agent::OpenClaw
             | detect_agent::Agent::Unknown => None,
         }
     }

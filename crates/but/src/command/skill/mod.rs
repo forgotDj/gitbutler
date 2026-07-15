@@ -289,6 +289,12 @@ fn skill_format_for_agent(agent: Agent, global: bool) -> Option<&'static SkillFo
         | Agent::Hermes
         | Agent::V0
         | Agent::PulumiNeo
+        | Agent::AmazonQ
+        | Agent::CodeBuddy
+        | Agent::GrokBuild
+        | Agent::Warp
+        | Agent::OpenHands
+        | Agent::OpenClaw
         | Agent::Unknown => return None,
     };
     skill_format_for_name(name, global)
