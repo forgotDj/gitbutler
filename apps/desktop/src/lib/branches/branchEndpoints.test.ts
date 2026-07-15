@@ -34,11 +34,25 @@ describe("buildBranchEndpoints", () => {
 			}),
 		).toEqual({
 			projectId: "project-1",
+			action: "modal",
 		});
 		expect(endpoints.workspaceFetchFromRemotes.invalidatesTags).toEqual([
 			invalidatesType(ReduxTag.WorkspaceFetchStatus),
 			invalidatesList(ReduxTag.Stacks),
 			invalidatesList(ReduxTag.StackDetails),
 		]);
+	});
+
+	test("defaults workspace fetch action to auto", () => {
+		const endpoints = buildBranchEndpoints(createEndpointBuilder());
+
+		expect(
+			endpoints.workspaceFetchFromRemotes.query?.({
+				projectId: "project-1",
+			}),
+		).toEqual({
+			projectId: "project-1",
+			action: "auto",
+		});
 	});
 });

@@ -31,7 +31,10 @@ export function buildBranchEndpoints(build: BackendEndpointBuilder) {
 		}),
 		workspaceFetchFromRemotes: build.mutation<void, { projectId: string; action?: string }>({
 			extraOptions: { command: "workspace_fetch_from_remotes" },
-			query: ({ projectId }) => ({ projectId }),
+			query: ({ projectId, action }) => ({
+				projectId,
+				action: action ?? "auto",
+			}),
 			invalidatesTags: [
 				invalidatesType(ReduxTag.WorkspaceFetchStatus),
 				invalidatesList(ReduxTag.Stacks),
