@@ -132,9 +132,7 @@ impl<T> RememberToUpdateBackstack<T> {
     /// This method should only be used if you're mutating a part of the state and not replacing it
     /// outright.
     #[inline]
-    pub fn get_mut_without_updating_backstack_and_i_promise_not_to_change_state(
-        &mut self,
-    ) -> &mut T {
+    pub fn get_mut_and_i_promise_not_to_switch_to_a_different_state(&mut self) -> &mut T {
         &mut self.0
     }
 }

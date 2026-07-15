@@ -590,7 +590,9 @@ enum Message {
     NewBranch,
     ToggleHelp,
     Mark,
+    ClearMarks,
     ClearStatusModeMarks,
+    ClearDetailMarks,
     Undo,
     Redo,
     ShowModal(Modal),
@@ -794,7 +796,6 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
                 | DetailsMessage::GotoBottom
                 | DetailsMessage::Discard
                 | DetailsMessage::Mark
-                | DetailsMessage::ClearMarks
                 | DetailsMessage::DropToBeDiscarded => false,
             },
             Message::DetailsLayout(message) => match message {
@@ -855,7 +856,9 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
             | Message::SelectBranch(..)
             | Message::ToggleHelp
             | Message::Mark
+            | Message::ClearMarks
             | Message::ClearStatusModeMarks
+            | Message::ClearDetailMarks
             | Message::CopySelection
             | Message::CopySelectionPicker
             | Message::CopyToClipboard(..)

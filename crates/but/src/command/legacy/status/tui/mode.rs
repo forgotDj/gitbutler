@@ -3,13 +3,14 @@ use ratatui::style::Color;
 use crate::{
     command::legacy::status::tui::{
         InlineRewordMode,
-        app::mark::MarksRef,
         app::{
             CommandMode, CommandReturnMode, CommitMode, CommitSource, JumpMode, MoveMode,
             MoveSource, MoveStackMode, NormalMode, PickChangesMode, RubMode, RubSource, StackMode,
+            mark::{MarksRef, SingleSourceMarks},
         },
         render::ModeRender,
     },
+    id::UncommittedHunkOrFile,
     theme::Theme,
 };
 
@@ -171,6 +172,7 @@ impl<'a> ModeRef<'a> {
 pub struct DetailsMode {
     pub full_screen: bool,
     pub return_mode: DetailsReturnMode,
+    pub marks: SingleSourceMarks<UncommittedHunkOrFile>,
 }
 
 #[derive(Debug, Clone)]

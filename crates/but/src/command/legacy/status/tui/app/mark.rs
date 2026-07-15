@@ -13,7 +13,9 @@ use crate::{
         StatusOutputLine,
         output::StatusOutputLineData,
         tui::{
-            app::{App, normal_mode::NormalMode, pick_changes_mode::PickChangesMode},
+            app::{
+                App, CommandReturnMode, normal_mode::NormalMode, pick_changes_mode::PickChangesMode,
+            },
             mode::{DetailsReturnMode, Mode},
         },
     },
@@ -582,7 +584,7 @@ impl App {
                 if handle_mark_cli_id(
                     selection,
                     self.mode
-                        .get_mut_without_updating_backstack_and_i_promise_not_to_change_state(),
+                        .get_mut_and_i_promise_not_to_switch_to_a_different_state(),
                 )? && let Some(new_cursor) = self.cursor.move_after_mark(
                     &self.status_lines,
                     &self.mode,
@@ -600,7 +602,7 @@ impl App {
                 if let Some(stack_id) = *stack_id {
                     match self
                         .mode
-                        .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
+                        .get_mut_and_i_promise_not_to_switch_to_a_different_state()
                     {
                         Mode::Normal(NormalMode { marks }) => {
                             handle_mark_branch(marks, ctx, stack_id, name)?;
@@ -622,7 +624,7 @@ impl App {
                 // you cannot select uncommitted changes in rub mode so we don't need to care about that
                 match self
                     .mode
-                    .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
+                    .get_mut_and_i_promise_not_to_switch_to_a_different_state()
                 {
                     Mode::Normal(NormalMode { marks }) => {
                         handle_mark_uncommitted(marks, &self.status_lines)?;
@@ -653,25 +655,25 @@ impl App {
         Ok(())
     }
 
-    pub fn handle_clear_status_mode_marks(&mut self) {
+    pub fn handle_clear_marks(&mut self) {
         let did_clear_marks = match self
             .mode
-            .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
+            .get_mut_and_i_promise_not_to_switch_to_a_different_state()
         {
             Mode::Normal(normal_mode) => {
                 normal_mode.marks.clear();
                 true
             }
-            Mode::Details(details_mode) => match &mut details_mode.return_mode {
-                DetailsReturnMode::Normal(normal_mode) => {
-                    normal_mode.marks.clear();
-                    true
+            Mode::Details(details_mode) => {
+                details_mode.marks.clear();
+                match &mut details_mode.return_mode {
+                    DetailsReturnMode::Normal(normal_mode) => normal_mode.marks.clear(),
+                    DetailsReturnMode::PickChanges(pick_changes_mode) => {
+                        pick_changes_mode.marks.clear()
+                    }
                 }
-                DetailsReturnMode::PickChanges(pick_changes_mode) => {
-                    pick_changes_mode.marks.clear();
-                    true
-                }
-            },
+                true
+            }
             Mode::PickChanges(pick_changes_mode) => {
                 pick_changes_mode.marks.clear();
                 true
@@ -687,11 +689,82 @@ impl App {
         };
 
         if did_clear_marks {
-            if self.details.num_marks() == 0 {
-                self.backstack.remove_mark();
-            } else {
-                self.backstack.push_mark();
+            self.backstack.remove_mark();
+        }
+    }
+
+    pub fn handle_clear_status_mode_marks(&mut self) {
+        let (did_clear_marks, has_detail_marks) = match self
+            .mode
+            .get_mut_and_i_promise_not_to_switch_to_a_different_state()
+        {
+            Mode::Normal(normal_mode) => {
+                normal_mode.marks.clear();
+                (true, false)
             }
+            Mode::Details(details_mode) => {
+                match &mut details_mode.return_mode {
+                    DetailsReturnMode::Normal(normal_mode) => normal_mode.marks.clear(),
+                    DetailsReturnMode::PickChanges(pick_changes_mode) => {
+                        pick_changes_mode.marks.clear()
+                    }
+                }
+                (true, !details_mode.marks.is_empty())
+            }
+            Mode::PickChanges(pick_changes_mode) => {
+                pick_changes_mode.marks.clear();
+                (true, false)
+            }
+            Mode::Rub(..)
+            | Mode::InlineReword(..)
+            | Mode::Command(..)
+            | Mode::Commit(..)
+            | Mode::Move(..)
+            | Mode::Stack(..)
+            | Mode::MoveStack(..)
+            | Mode::Jump(..) => (false, false),
+        };
+
+        if did_clear_marks {
+            if has_detail_marks {
+                self.backstack.push_mark();
+            } else {
+                self.backstack.remove_mark();
+            }
+        }
+    }
+
+    pub fn handle_clear_detail_marks(&mut self) {
+        let did_clear_marks = match self
+            .mode
+            .get_mut_and_i_promise_not_to_switch_to_a_different_state()
+        {
+            Mode::Details(details_mode) => {
+                let did_clear_marks = !details_mode.marks.is_empty();
+                details_mode.marks.clear();
+                did_clear_marks
+            }
+            Mode::Command(command_mode) => {
+                let CommandReturnMode::Details(details_mode) = &mut command_mode.return_mode else {
+                    return;
+                };
+                let did_clear_marks = !details_mode.marks.is_empty();
+                details_mode.marks.clear();
+                did_clear_marks
+            }
+            Mode::Normal(..)
+            | Mode::PickChanges(..)
+            | Mode::Rub(..)
+            | Mode::InlineReword(..)
+            | Mode::Commit(..)
+            | Mode::Move(..)
+            | Mode::Stack(..)
+            | Mode::MoveStack(..)
+            | Mode::Jump(..) => false,
+        };
+
+        if did_clear_marks {
+            self.backstack.remove_mark();
         }
     }
 

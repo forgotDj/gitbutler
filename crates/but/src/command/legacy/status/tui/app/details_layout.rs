@@ -7,12 +7,13 @@ use crate::command::legacy::status::tui::{
 
 impl App {
     pub fn handle_unfocus_details(&mut self, messages: &mut Vec<Message>) {
-        if let Mode::Details(DetailsMode { full_screen, .. }) = &*self.mode {
+        if let Mode::Details(DetailsMode { full_screen, .. }) = self
+            .mode
+            .get_mut_and_i_promise_not_to_switch_to_a_different_state()
+        {
             if *full_screen {
                 return;
             }
-
-            self.details.on_unfocus(&mut self.backstack);
 
             self.restore_mode_before_details(messages);
 
@@ -32,6 +33,11 @@ impl App {
         messages: &mut Vec<Message>,
     ) {
         self.mode.update(&mut self.backstack, |backstack, mode| {
+            if let Mode::Details(details_mode) = mode
+                && !details_mode.marks.is_empty()
+            {
+                backstack.remove_mark();
+            }
             *mode = Mode::Normal(Default::default());
             backstack.remove_leave_normal_mode();
         });
@@ -48,6 +54,9 @@ impl App {
             };
 
             backstack.remove_leave_normal_mode();
+            if !details_mode.marks.is_empty() {
+                backstack.remove_mark();
+            }
             if details_mode.full_screen {
                 backstack.remove_open_details_view();
                 messages.push(Message::DetailsLayout(
@@ -135,12 +144,16 @@ impl App {
                 *mode = Mode::Details(DetailsMode {
                     full_screen,
                     return_mode,
+                    marks: Default::default(),
                 });
             });
     }
 
     pub fn handle_toggle_details_full_screen(&mut self, messages: &mut Vec<Message>) {
-        match &*self.mode {
+        match self
+            .mode
+            .get_mut_and_i_promise_not_to_switch_to_a_different_state()
+        {
             Mode::Normal(..) | Mode::PickChanges(..) => {
                 messages.push(Message::DetailsLayout(DetailsLayoutMessage::Focus {
                     full_screen: true,
@@ -148,7 +161,6 @@ impl App {
             }
             Mode::Details(DetailsMode { full_screen, .. }) => {
                 if *full_screen {
-                    self.details.on_unfocus(&mut self.backstack);
                     self.restore_mode_before_details(messages);
                 } else {
                     messages.push(Message::DetailsLayout(DetailsLayoutMessage::Focus {

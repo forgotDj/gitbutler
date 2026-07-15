@@ -352,7 +352,7 @@ impl App {
             ..
         }) = self
             .mode
-            .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
+            .get_mut_and_i_promise_not_to_switch_to_a_different_state()
         else {
             return;
         };
@@ -370,7 +370,7 @@ impl App {
             ..
         }) = self
             .mode
-            .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
+            .get_mut_and_i_promise_not_to_switch_to_a_different_state()
         else {
             return;
         };

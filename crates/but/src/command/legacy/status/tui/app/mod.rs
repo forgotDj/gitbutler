@@ -438,8 +438,24 @@ impl App {
                 modal => self.modal = modal,
             },
             Message::Details(details_message) => {
-                self.details
-                    .try_handle_message(details_message, messages, &mut self.backstack)?;
+                // Having to conditionally pass marks when handling messages is annoying because we
+                // might not be in details mode and have marks when the message is sent
+                let todo_ = ();
+
+                let marks = if let Mode::Details(details_mode) = self
+                    .mode
+                    .get_mut_and_i_promise_not_to_switch_to_a_different_state()
+                {
+                    Some(&mut details_mode.marks)
+                } else {
+                    None
+                };
+                self.details.try_handle_message(
+                    details_message,
+                    messages,
+                    marks,
+                    &mut self.backstack,
+                )?;
             }
             Message::RegisterOutOfBandMessage(rx) => {
                 self.incoming_out_of_band_messages.push(rx);
@@ -487,8 +503,14 @@ impl App {
             Message::Mark => {
                 self.handle_mark(ctx)?;
             }
+            Message::ClearMarks => {
+                self.handle_clear_marks();
+            }
             Message::ClearStatusModeMarks => {
                 self.handle_clear_status_mode_marks();
+            }
+            Message::ClearDetailMarks => {
+                self.handle_clear_detail_marks();
             }
             Message::SetHasFocus(has_focus) => {
                 self.handle_set_focus(has_focus);
@@ -542,7 +564,7 @@ impl App {
             | Mode::MoveStack(..) => return,
             Mode::Details(details_mode) => match &details_mode.return_mode {
                 DetailsReturnMode::PickChanges(PickChangesMode { marks }) => {
-                    if let Some(marks) = self.details.to_marked_cli_ids() {
+                    if let Some(marks) = self.details.to_marked_cli_ids(&details_mode.marks) {
                         Some(TuiOutcome::CliIds(marks.into()))
                     } else {
                         cli_ids_from_hunks(marks)
@@ -555,8 +577,6 @@ impl App {
     }
 
     fn handle_enter_normal_mode_after_confirming_operation(&mut self, messages: &mut Vec<Message>) {
-        self.details.on_unfocus(&mut self.backstack);
-
         let mut entries_to_handle = Vec::new();
         self.mode.update(&mut self.backstack, |backstack, mode| {
             backstack.retain(|entry| match entry {
@@ -628,7 +648,7 @@ impl App {
             }
             BackstackEntry::Mark => match self
                 .mode
-                .get_mut_without_updating_backstack_and_i_promise_not_to_change_state()
+                .get_mut_and_i_promise_not_to_switch_to_a_different_state()
             {
                 Mode::Normal(normal_mode) => {
                     normal_mode.marks.clear();
@@ -636,8 +656,8 @@ impl App {
                 Mode::PickChanges(pick_uncommitted_mode) => {
                     pick_uncommitted_mode.marks.clear();
                 }
-                Mode::Details(..) => {
-                    self.details.clear_marks();
+                Mode::Details(details_mode) => {
+                    details_mode.marks.clear();
                 }
                 Mode::InlineReword(..)
                 | Mode::Rub(..)
@@ -1025,8 +1045,8 @@ impl App {
         }
         if reload_details_view {
             let details_focused = matches!(&*self.mode, Mode::Details(..));
-            self.details
-                .clear_selection_for_reload(details_focused, &mut self.backstack);
+            self.handle_clear_detail_marks();
+            self.details.clear_selection_for_reload(details_focused);
             if let Some((index, direction)) = select_details_section_after_reload {
                 self.details.select_section_when_available(index, direction);
             }

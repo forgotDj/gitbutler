@@ -22,8 +22,8 @@ use crate::{
             BranchLineContent, StatusOutputContent, StatusOutputLineData, UncommittedLineContent,
         },
         tui::app::{
-            CommitMessageComposer, CommitMode, JumpMode, MoveMode, MoveSource, MoveStackMode,
-            StackMode, find_jump_match,
+            CommandReturnMode, CommitMessageComposer, CommitMode, JumpMode, MoveMode, MoveSource,
+            MoveStackMode, StackMode, find_jump_match, mark::SingleSourceMarks,
         },
     },
     theme::Theme,
@@ -118,9 +118,27 @@ pub fn render_app(app: &App, frame: &mut Frame) {
 }
 
 fn render_details_pane(app: &App, area: Rect, frame: &mut Frame) {
+    let marks = SingleSourceMarks::default();
+    let marks = match &*app.mode {
+        Mode::Details(details_mode) => &details_mode.marks,
+        Mode::Command(command_mode) => match &command_mode.return_mode {
+            CommandReturnMode::Details(details_mode) => &details_mode.marks,
+            CommandReturnMode::Normal(..) => &marks,
+        },
+        Mode::Normal(..)
+        | Mode::Rub(..)
+        | Mode::InlineReword(..)
+        | Mode::Commit(..)
+        | Mode::Move(..)
+        | Mode::Stack(..)
+        | Mode::MoveStack(..)
+        | Mode::PickChanges(..)
+        | Mode::Jump(..) => &marks,
+    };
     app.details.render(
         matches!(app.modal, Some(Modal::Help { .. })),
         app.has_focus,
+        marks,
         area,
         frame,
     );
@@ -1082,13 +1100,11 @@ fn render_debug(app: &App, area: Rect, frame: &mut Frame) {
     let details_selection = String::new();
     let details_worker_busy = format!("Worker busy: {}", app.details.worker_is_busy());
     let details_cache_size = format!("Cache size: {} lines", app.details.cache_size());
-    let details_num_marks = format!("Marks: {}", app.details.num_marks());
     let details_selection = once(ListItem::new("Details").black().on_blue()).chain(
         details_selection
             .lines()
             .chain(details_worker_busy.lines())
             .chain(details_cache_size.lines())
-            .chain(details_num_marks.lines())
             .take(100)
             .map(|line| ListItem::new(line.to_owned())),
     );

@@ -1463,6 +1463,15 @@ impl CliId {
             | CliId::Uncommitted { .. } => None,
         }
     }
+
+    /// Try to convert the id into a hunk.
+    pub fn as_uncommitted_hunk_or_file(&self) -> Option<&UncommittedHunkOrFile> {
+        if let Self::UncommittedHunkOrFile(hunk) = self {
+            Some(hunk)
+        } else {
+            None
+        }
+    }
 }
 
 /// Internal representation of an uncommitted file.
