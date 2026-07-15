@@ -61,6 +61,15 @@ impl Marks {
         matches!(self, Self::Empty)
     }
 
+    pub fn len(&self) -> usize {
+        match self {
+            Marks::Empty => 0,
+            Marks::Hunks(inner) => inner.len(),
+            Marks::Commits(inner) => inner.len(),
+            Marks::CommittedFiles(inner) => inner.len(),
+        }
+    }
+
     pub fn contains_cli_id(&self, cli_id: &CliId) -> bool {
         self.iter().any(|mark| mark.matches_cli_id(cli_id))
     }

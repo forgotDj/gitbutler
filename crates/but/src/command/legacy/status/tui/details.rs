@@ -28,7 +28,7 @@ use crate::{
         Message, ReloadCause, SelectAfterReload,
         app::{
             Modal,
-            mark::{MarkStore, SingleSourceMarks, toggle_markables},
+            mark::{Marks, MarksRef, toggle_markables},
         },
         backstack::Backstack,
         confirm::Confirm,
@@ -40,7 +40,6 @@ use crate::{
         mode::ModeDiscriminant,
         render::{RenderSingleLineSpans, available_lines_in_area},
     },
-    id::UncommittedHunkOrFile,
     theme::Theme,
     utils::{
         DebugAsType,
@@ -51,6 +50,8 @@ use crate::{
         string_interning::Strings,
     },
 };
+
+use super::app::mark::MarkableRef;
 
 mod worker;
 
@@ -172,17 +173,16 @@ impl Details {
         self.reset_line_reader();
     }
 
-    pub fn to_marked_cli_ids(
-        &self,
-        marks: &SingleSourceMarks<UncommittedHunkOrFile>,
-    ) -> Option<NonEmpty<CliId>> {
-        NonEmpty::from_vec(
-            marks
-                .iter()
-                .cloned()
-                .map(CliId::UncommittedHunkOrFile)
-                .collect::<Vec<_>>(),
-        )
+    pub fn to_marked_cli_ids(&self, marks: MarksRef<'_>) -> Option<NonEmpty<CliId>> {
+        if let MarksRef::Hunks { head, tail } = marks {
+            let mut ids = NonEmpty::new(CliId::UncommittedHunkOrFile(head.clone()));
+            for id in tail {
+                ids.push(CliId::UncommittedHunkOrFile(id.clone()));
+            }
+            Some(ids)
+        } else {
+            None
+        }
     }
 
     pub fn selection(&self) -> Option<&CliId> {
@@ -575,7 +575,7 @@ impl Details {
         &self,
         _help_shown: bool,
         tui_has_focus: bool,
-        marks: &SingleSourceMarks<UncommittedHunkOrFile>,
+        marks: MarksRef<'_>,
         area: Rect,
         frame: &mut Frame,
     ) {
@@ -678,7 +678,7 @@ impl Details {
         id: SectionId,
         cli_id: Option<Arc<CliId>>,
         area: Rect,
-        marks: &SingleSourceMarks<UncommittedHunkOrFile>,
+        marks: MarksRef<'_>,
         visible_range: std::ops::Range<usize>,
         frame: &mut Frame,
     ) {
@@ -688,10 +688,8 @@ impl Details {
         for row in visible_range {
             let color = if self.section_is_highlighted(id) {
                 highlight::style().bg.unwrap()
-            } else if let Some(hunk) = cli_id
-                .as_ref()
-                .and_then(|id| id.as_uncommitted_hunk_or_file())
-                && marks.contains_mark(hunk)
+            } else if let Some(cli_id) = cli_id.as_ref()
+                && marks.contains_cli_id(cli_id)
             {
                 self.theme.tui_mark.bg.unwrap()
             } else {
@@ -737,7 +735,7 @@ impl Details {
         &mut self,
         msg: DetailsMessage,
         messages: &mut Vec<Message>,
-        marks: Option<&mut SingleSourceMarks<UncommittedHunkOrFile>>,
+        marks: Option<&mut Marks>,
         backstack: &mut Backstack,
     ) -> anyhow::Result<()> {
         match msg {
@@ -805,7 +803,7 @@ impl Details {
             }
             DetailsMessage::Discard => {
                 let marks = marks.context("BUG: missing marks")?;
-                self.handle_discard(messages, marks);
+                self.handle_discard(messages, marks.as_ref());
             }
             DetailsMessage::DropToBeDiscarded => {
                 self.to_be_discarded.clear();
@@ -830,7 +828,7 @@ impl Details {
         syntax_set: &'a SyntaxSet,
         syntax_theme: &'a syntect::highlighting::Theme,
         highlight_lines: &mut Option<HighlightLines<'a>>,
-        marks: &SingleSourceMarks<UncommittedHunkOrFile>,
+        marks: MarksRef<'_>,
         frame: &mut Frame,
     ) -> RenderedLine {
         match line {
@@ -873,10 +871,7 @@ impl Details {
             } => {
                 *highlight_lines = None;
 
-                let is_marked = cli_id
-                    .as_ref()
-                    .and_then(|id| id.as_uncommitted_hunk_or_file())
-                    .is_some_and(|id| marks.contains_mark(id));
+                let is_marked = cli_id.as_ref().is_some_and(|id| marks.contains_cli_id(id));
 
                 let width = if is_marked { *width + 3 } else { *width };
 
@@ -1179,11 +1174,7 @@ impl Details {
         }
     }
 
-    fn handle_discard(
-        &mut self,
-        messages: &mut Vec<Message>,
-        marks: &SingleSourceMarks<UncommittedHunkOrFile>,
-    ) {
+    fn handle_discard(&mut self, messages: &mut Vec<Message>, marks: MarksRef<'_>) {
         if marks.is_empty() {
             self.handle_discard_selection(messages);
         } else {
@@ -1273,13 +1264,7 @@ impl Details {
         messages.push(Message::ShowModal(Modal::Confirm { confirm }));
     }
 
-    fn handle_discard_marks(
-        &mut self,
-        messages: &mut Vec<Message>,
-        marks: &SingleSourceMarks<UncommittedHunkOrFile>,
-    ) {
-        let marks = marks.clone();
-
+    fn handle_discard_marks(&mut self, messages: &mut Vec<Message>, marks: MarksRef<'_>) {
         match marks {
             MarksRef::Empty => return,
             MarksRef::Hunks {..} => {},
@@ -1287,19 +1272,16 @@ impl Details {
             MarksRef::CommittedFiles {..} => return,
         }
 
-        self.to_be_discarded = marks
+        self.to_be_discarded = self
+            .sections
             .iter()
-            .filter_map(|hunk| {
-                let section = self.sections.iter().find(|section| {
-                    let Some(cli_id) = section.cli_id.as_deref() else {
-                        return false;
-                    };
-                    let Some(section_hunk_id) = cli_id.as_uncommitted_hunk_or_file() else {
-                        return false;
-                    };
-                    section_hunk_id == hunk
-                })?;
-                Some(section.id)
+            .filter_map(|section| {
+                let cli_id = section.cli_id.as_deref()?;
+                if marks.contains_cli_id(cli_id) {
+                    Some(section.id)
+                } else {
+                    None
+                }
             })
             .collect::<Vec<_>>();
 
@@ -1312,7 +1294,7 @@ impl Details {
             .index()
             .and_then(|selected_index| {
                 let selected_section = self.sections.get(selected_index)?;
-                let target_index = if !section_is_marked(selected_section, &marks) {
+                let target_index = if !section_is_marked(selected_section, marks) {
                     selected_index
                 } else {
                     self.sections
@@ -1320,7 +1302,7 @@ impl Details {
                         .enumerate()
                         .skip(selected_index + 1)
                         .find_map(|(index, section)| {
-                            (!section_is_marked(section, &marks)).then_some(index)
+                            (!section_is_marked(section, marks)).then_some(index)
                         })
                         .or_else(|| {
                             self.sections
@@ -1329,13 +1311,13 @@ impl Details {
                                 .take(selected_index)
                                 .rev()
                                 .find_map(|(index, section)| {
-                                    (!section_is_marked(section, &marks)).then_some(index)
+                                    (!section_is_marked(section, marks)).then_some(index)
                                 })
                         })?
                 };
                 let index = self.sections[..target_index]
                     .iter()
-                    .filter(|section| !section_is_marked(section, &marks))
+                    .filter(|section| !section_is_marked(section, marks))
                     .count();
                 let direction = if target_index > selected_index {
                     ScrollDirection::Down
@@ -1350,50 +1332,66 @@ impl Details {
             messages,
         );
 
-        let confirm = Confirm::new(
-            NonEmpty::new(
-                Span::raw(if marks.len() == 1 {
-                    "Discard hunk?"
-                } else {
-                    "Discard hunks?"
-                })
-                .into(),
-            ),
-            self.theme,
-            move |ctx, messages| {
-                let changes = {
-                    let context_lines = ctx.settings.context_lines;
-                    let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
-                    let mut builder = DiffSpecBuilder::new(&mut db, &repo, &ws, context_lines);
-                    for hunk in marks.iter() {
-                        builder.push_changes_from_uncommitted(hunk)?;
-                    }
-                    builder.reconcile_worktree_diff_specs()?;
-                    builder.into_diff_specs()
-                };
+        let confirm = {
+            let marks = marks.to_owned();
 
-                if changes.is_empty() {
-                    return Ok(());
-                }
-
-                but_api::legacy::workspace::discard_worktree_changes(ctx, changes)?;
-
-                let select_after_reload = select_after_discard.map(|selection| {
-                    let PendingSectionSelection::Section { index, direction } = selection else {
-                        unreachable!("discard marks can only select a specific details section")
+            Confirm::new(
+                NonEmpty::new(
+                    Span::raw(if marks.len() == 1 {
+                        "Discard hunk?"
+                    } else {
+                        "Discard hunks?"
+                    })
+                    .into(),
+                ),
+                self.theme,
+                move |ctx, messages| {
+                    let changes = {
+                        let context_lines = ctx.settings.context_lines;
+                        let (_guard, repo, ws, mut db) = ctx.workspace_and_db_mut()?;
+                        let mut builder = DiffSpecBuilder::new(&mut db, &repo, &ws, context_lines);
+                        for mark in marks.iter() {
+                            match mark {
+                                MarkableRef::Uncommitted(hunk) => {
+                                    builder.push_changes_from_uncommitted(hunk)?;
+                                }
+                                MarkableRef::Commit(c) => {
+                                    builder.push_changes_from_commit(c.commit_id, c.id)?;
+                                }
+                                MarkableRef::CommittedFile(c) => {
+                                    builder
+                                        .push_changes_from_committed_file(c.commit_id, c.path)?;
+                                }
+                            }
+                        }
+                        builder.reconcile_worktree_diff_specs()?;
+                        builder.into_diff_specs()
                     };
-                    SelectAfterReload::UncommittedDetailsSection { index, direction }
-                });
-                messages.extend([
-                    Message::Reload(select_after_reload, ReloadCause::Mutation),
-                    Message::ClearDetailMarks,
-                ]);
 
-                drop(drop_to_be_discarded);
+                    if changes.is_empty() {
+                        return Ok(());
+                    }
 
-                Ok(())
-            },
-        );
+                    but_api::legacy::workspace::discard_worktree_changes(ctx, changes)?;
+
+                    let select_after_reload = select_after_discard.map(|selection| {
+                        let PendingSectionSelection::Section { index, direction } = selection
+                        else {
+                            unreachable!("discard marks can only select a specific details section")
+                        };
+                        SelectAfterReload::UncommittedDetailsSection { index, direction }
+                    });
+                    messages.extend([
+                        Message::Reload(select_after_reload, ReloadCause::Mutation),
+                        Message::ClearDetailMarks,
+                    ]);
+
+                    drop(drop_to_be_discarded);
+
+                    Ok(())
+                },
+            )
+        };
 
         messages.push(Message::ShowModal(Modal::Confirm { confirm }));
     }
@@ -1401,7 +1399,7 @@ impl Details {
     fn handle_mark(
         &mut self,
         messages: &mut Vec<Message>,
-        marks: &mut SingleSourceMarks<UncommittedHunkOrFile>,
+        marks: &mut Marks,
         backstack: &mut Backstack,
     ) -> anyhow::Result<()> {
         if !self.selected_uncommitted() {
@@ -1896,12 +1894,9 @@ fn format_lines_in_section(lines: &[DetailsLine]) -> String {
     }
 }
 
-fn section_is_marked(section: &Section, marks: &SingleSourceMarks<UncommittedHunkOrFile>) -> bool {
+fn section_is_marked(section: &Section, marks: MarksRef<'_>) -> bool {
     let Some(cli_id) = section.cli_id.as_deref() else {
         return false;
     };
-    let Some(section_hunk_id) = cli_id.as_uncommitted_hunk_or_file() else {
-        return false;
-    };
-    marks.contains_mark(section_hunk_id)
+    marks.contains_cli_id(cli_id)
 }

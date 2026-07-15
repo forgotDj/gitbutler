@@ -23,7 +23,7 @@ use crate::{
         },
         tui::app::{
             CommandReturnMode, CommitMessageComposer, CommitMode, JumpMode, MoveMode, MoveSource,
-            MoveStackMode, StackMode, find_jump_match, mark::SingleSourceMarks,
+            MoveStackMode, StackMode, find_jump_match, mark::Marks,
         },
     },
     theme::Theme,
@@ -118,12 +118,12 @@ pub fn render_app(app: &App, frame: &mut Frame) {
 }
 
 fn render_details_pane(app: &App, area: Rect, frame: &mut Frame) {
-    let marks = SingleSourceMarks::default();
+    let empty_marks = Marks::default();
     let marks = match &*app.mode {
-        Mode::Details(details_mode) => &details_mode.marks,
+        Mode::Details(details_mode) => details_mode.marks.as_ref(),
         Mode::Command(command_mode) => match &command_mode.return_mode {
-            CommandReturnMode::Details(details_mode) => &details_mode.marks,
-            CommandReturnMode::Normal(..) => &marks,
+            CommandReturnMode::Details(details_mode) => details_mode.marks.as_ref(),
+            CommandReturnMode::Normal(..) => empty_marks.as_ref(),
         },
         Mode::Normal(..)
         | Mode::Rub(..)
@@ -133,7 +133,7 @@ fn render_details_pane(app: &App, area: Rect, frame: &mut Frame) {
         | Mode::Stack(..)
         | Mode::MoveStack(..)
         | Mode::PickChanges(..)
-        | Mode::Jump(..) => &marks,
+        | Mode::Jump(..) => empty_marks.as_ref(),
     };
     app.details.render(
         matches!(app.modal, Some(Modal::Help { .. })),

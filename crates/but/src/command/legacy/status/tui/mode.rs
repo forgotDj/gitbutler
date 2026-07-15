@@ -6,11 +6,10 @@ use crate::{
         app::{
             CommandMode, CommandReturnMode, CommitMode, CommitSource, JumpMode, MoveMode,
             MoveSource, MoveStackMode, NormalMode, PickChangesMode, RubMode, RubSource, StackMode,
-            mark::{MarksRef, SingleSourceMarks},
+            mark::{Marks, MarksRef},
         },
         render::ModeRender,
     },
-    id::UncommittedHunkOrFile,
     theme::Theme,
 };
 
@@ -172,7 +171,7 @@ impl<'a> ModeRef<'a> {
 pub struct DetailsMode {
     pub full_screen: bool,
     pub return_mode: DetailsReturnMode,
-    pub marks: SingleSourceMarks<UncommittedHunkOrFile>,
+    pub marks: Marks,
 }
 
 #[derive(Debug, Clone)]

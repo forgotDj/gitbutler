@@ -564,7 +564,8 @@ impl App {
             | Mode::MoveStack(..) => return,
             Mode::Details(details_mode) => match &details_mode.return_mode {
                 DetailsReturnMode::PickChanges(PickChangesMode { marks }) => {
-                    if let Some(marks) = self.details.to_marked_cli_ids(&details_mode.marks) {
+                    if let Some(marks) = self.details.to_marked_cli_ids(details_mode.marks.as_ref())
+                    {
                         Some(TuiOutcome::CliIds(marks.into()))
                     } else {
                         cli_ids_from_hunks(marks)
