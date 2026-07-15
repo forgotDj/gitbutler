@@ -32,7 +32,7 @@ pub fn review_for_head_ref(
 
 /// Build a lookup from a branch's remote/pushed short name to its associated
 /// PR number, for enriching a workspace projection (see
-/// `but_workspace::RefInfo::apply_forge_pr_associations`) in one pass.
+/// `but_workspace::RefInfo::apply_forge_review_associations`) in one pass.
 ///
 /// This is [`reviews_by_head`] reduced to just the number each projection needs,
 /// so callers across crates don't each re-implement the `ForgeReview -> usize`

@@ -1041,16 +1041,17 @@ fn ci_map(
                 // rather than a stored PR number on branch metadata.
                 if !matches!(push_status, Some(PushStatus::Integrated))
                     && let Some(branch_name) = segment.branch_name()
+                    && let Ok(branch_name) = branch_name.to_str()
                     && review_map
-                        .get(&branch_name.to_string())
+                        .get(branch_name)
                         .is_some_and(|reviews| !reviews.is_empty())
-                    && let Ok(checks) = but_api::legacy::forge::list_ci_checks(
+                    && let Ok(checks) = but_api::legacy::forge::list_ci_checks_for_ref(
                         ctx,
-                        branch_name.to_string(),
+                        branch_name,
                         Some(cache_config.clone()),
                     )
                 {
-                    ci_map.insert(branch_name.to_string(), checks);
+                    ci_map.insert(branch_name.to_owned(), checks);
                 }
             }
         }

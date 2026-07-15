@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import path from "node:path";
+import type { Socket } from "node:net";
 
 export type FakeGitHubOptions = {
 	headRepoPath?: string;
@@ -67,6 +68,7 @@ export async function startFakeGitHubServer({
 	let currentReview = pullRequestPayload(options);
 	let isListed = listed;
 
+	const sockets = new Set<Socket>();
 	const server = http.createServer((request, response) => {
 		handleRequest(request, response, options, {
 			get review() {
@@ -82,6 +84,10 @@ export async function startFakeGitHubServer({
 			response.writeHead(500, { "Content-Type": "application/json" });
 			response.end(JSON.stringify({ message: String(error) }));
 		});
+	});
+	server.on("connection", (socket) => {
+		sockets.add(socket);
+		socket.on("close", () => sockets.delete(socket));
 	});
 
 	await new Promise<void>((resolve) => {
@@ -103,6 +109,7 @@ export async function startFakeGitHubServer({
 		close: async () =>
 			await new Promise<void>((resolve, reject) => {
 				server.close((error) => (error ? reject(error) : resolve()));
+				for (const socket of sockets) socket.destroy();
 			}),
 	};
 }
@@ -293,6 +300,7 @@ async function serveGitRequest(
 		if (name.toLowerCase() === "status") status = Number.parseInt(value, 10);
 		else response.setHeader(name, value);
 	}
+	response.setHeader("Connection", "close");
 	response.writeHead(status);
 	response.end(output.subarray(headerEnd + 4));
 }
@@ -306,6 +314,6 @@ async function readBody(request: IncomingMessage): Promise<string> {
 }
 
 function json(response: ServerResponse, subject: unknown, status = 200) {
-	response.writeHead(status, { "Content-Type": "application/json" });
+	response.writeHead(status, { Connection: "close", "Content-Type": "application/json" });
 	response.end(JSON.stringify(subject));
 }

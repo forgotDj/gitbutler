@@ -3864,6 +3864,7 @@ dependencies = [
  "but-core",
  "but-ctx",
  "but-error",
+ "but-forge",
  "but-graph",
  "but-meta",
  "but-oxidize",

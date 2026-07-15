@@ -652,6 +652,14 @@ pub fn list_ci_checks(
     reference: String,
     cache_config: Option<but_forge::CacheConfig>,
 ) -> Result<Vec<but_forge::CiCheck>> {
+    list_ci_checks_for_ref(ctx, &reference, cache_config)
+}
+
+pub fn list_ci_checks_for_ref(
+    ctx: &Context,
+    reference: &str,
+    cache_config: Option<but_forge::CacheConfig>,
+) -> Result<Vec<but_forge::CiCheck>> {
     let (storage, forge_repo_info, preferred_forge_user) = {
         let project_meta = ctx.project_meta()?;
         let repo = ctx.repo.get()?;
@@ -669,7 +677,7 @@ pub fn list_ci_checks(
         preferred_forge_user,
         &forge_repo_info.context("No forge could be determined for this repository branch")?,
         &storage,
-        &reference,
+        reference,
         db,
         cache_config,
     )
