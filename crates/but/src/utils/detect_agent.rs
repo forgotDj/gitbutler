@@ -15,6 +15,12 @@ pub enum Agent {
     Cursor,
     CursorCli,
     Codex,
+    KiroCli,
+    Junie,
+    QwenCode,
+    GitLabDuoCli,
+    KiloCode,
+    Hermes,
     Devin,
     Dirac,
     GeminiCli,
@@ -46,6 +52,12 @@ impl Agent {
             Self::Cursor => "cursor",
             Self::CursorCli => "cursor-cli",
             Self::Codex => "codex",
+            Self::KiroCli => "kiro-cli",
+            Self::Junie => "junie",
+            Self::QwenCode => "qwen-code",
+            Self::GitLabDuoCli => "gitlab-duo-cli",
+            Self::KiloCode => "kilo-code",
+            Self::Hermes => "hermes-agent",
             Self::Devin => "devin",
             Self::Dirac => "dirac",
             Self::GeminiCli => "gemini-cli",
@@ -117,13 +129,30 @@ fn detect_with(lookup: impl Fn(&str) -> Option<OsString>) -> Option<Agent> {
     {
         return Some(Agent::Codex);
     }
+    // Kiro exposes both FIFO paths only while its agent is driving a command.
+    if is_set("AGENT_DISPLAY_OUT") && is_set("AGENT_CONTEXT_OUT") {
+        return Some(Agent::KiroCli);
+    }
+    if is_value("QWEN_CODE", "1") {
+        return Some(Agent::QwenCode);
+    }
     if is_set("GEMINI_CLI") {
         return Some(Agent::GeminiCli);
     }
     if is_set("COPILOT_AGENT") {
         return Some(Agent::GitHubCopilot);
     }
-    if is_set("OPENCODE_CLIENT") {
+    if is_set("JUNIE_DATA") || is_set("JUNIE_SHIM_PATH") {
+        return Some(Agent::Junie);
+    }
+    // Kilo is an OpenCode fork, so its specific marker must win.
+    if is_set("KILO_PID") {
+        return Some(Agent::KiloCode);
+    }
+    if is_set("HERMES_SESSION_ID") {
+        return Some(Agent::Hermes);
+    }
+    if is_set("OPENCODE_CLIENT") || is_set("OPENCODE") {
         return Some(Agent::OpenCode);
     }
     if is_set("AUGMENT_AGENT") {
@@ -181,6 +210,11 @@ fn parse_ai_agent_var(lookup: &impl Fn(&str) -> Option<OsString>) -> Option<Agen
     if val.is_empty() {
         return None;
     }
+    // GitLab decorates Duo CLI with the LSP version between its product names,
+    // for example `gitlab-lsp_7.17.0__duo-cli`.
+    if val.starts_with("gitlab-lsp-") && val.ends_with("-duo-cli") {
+        return Some(Agent::GitLabDuoCli);
+    }
     Some(
         match_agent_name(&val)
             .or_else(|| match_agent_name_prefix(&val))
@@ -228,6 +262,12 @@ fn match_agent_name(val: &str) -> Option<Agent> {
         "cursor" => Agent::Cursor,
         "cursor-cli" => Agent::CursorCli,
         "codex" => Agent::Codex,
+        "kiro" | "kiro-cli" => Agent::KiroCli,
+        "junie" => Agent::Junie,
+        "qwen" | "qwen-code" => Agent::QwenCode,
+        "gitlab-duo" | "gitlab-duo-cli" => Agent::GitLabDuoCli,
+        "kilo" | "kilo-code" => Agent::KiloCode,
+        "hermes" | "hermes-agent" => Agent::Hermes,
         "devin" => Agent::Devin,
         "dirac" => Agent::Dirac,
         "gemini" | "gemini-cli" => Agent::GeminiCli,
@@ -362,6 +402,41 @@ mod tests {
     }
 
     #[test]
+    fn detect_kiro_cli_when_both_side_channels_are_set() {
+        assert_eq!(
+            detect_with(env_from(&[
+                ("AGENT_DISPLAY_OUT", "/tmp/display"),
+                ("AGENT_CONTEXT_OUT", "/tmp/context"),
+            ])),
+            Some(Agent::KiroCli),
+        );
+    }
+
+    #[test]
+    fn ignore_single_kiro_side_channel() {
+        for var in ["AGENT_DISPLAY_OUT", "AGENT_CONTEXT_OUT"] {
+            assert_eq!(
+                detect_with(env_from(&[(var, "/tmp/fifo")])),
+                None,
+                "{var} alone is not a sufficiently specific Kiro marker",
+            );
+        }
+    }
+
+    #[test]
+    fn detect_qwen_code() {
+        assert_eq!(
+            detect_with(env_from(&[("QWEN_CODE", "1")])),
+            Some(Agent::QwenCode),
+        );
+    }
+
+    #[test]
+    fn ignore_noncanonical_qwen_marker_value() {
+        assert_eq!(detect_with(env_from(&[("QWEN_CODE", "true")])), None);
+    }
+
+    #[test]
     fn detect_gemini() {
         assert_eq!(
             detect_with(env_from(&[("GEMINI_CLI", "1")])),
@@ -374,6 +449,22 @@ mod tests {
         assert_eq!(
             detect_with(env_from(&[("COPILOT_AGENT", "1")])),
             Some(Agent::GitHubCopilot),
+        );
+    }
+
+    #[test]
+    fn detect_junie_data() {
+        assert_eq!(
+            detect_with(env_from(&[("JUNIE_DATA", "/tmp/junie")])),
+            Some(Agent::Junie),
+        );
+    }
+
+    #[test]
+    fn detect_junie_shim_path() {
+        assert_eq!(
+            detect_with(env_from(&[("JUNIE_SHIM_PATH", "/tmp/junie/shim")])),
+            Some(Agent::Junie),
         );
     }
 
@@ -393,6 +484,30 @@ mod tests {
         assert_eq!(
             detect_with(env_from(&[("OPENCODE_CLIENT", "1")])),
             Some(Agent::OpenCode),
+        );
+    }
+
+    #[test]
+    fn detect_opencode_process_marker() {
+        assert_eq!(
+            detect_with(env_from(&[("OPENCODE", "1")])),
+            Some(Agent::OpenCode),
+        );
+    }
+
+    #[test]
+    fn detect_kilo_code_before_opencode() {
+        assert_eq!(
+            detect_with(env_from(&[("KILO_PID", "1234"), ("OPENCODE", "1")])),
+            Some(Agent::KiloCode),
+        );
+    }
+
+    #[test]
+    fn detect_hermes() {
+        assert_eq!(
+            detect_with(env_from(&[("HERMES_SESSION_ID", "session-123")])),
+            Some(Agent::Hermes),
         );
     }
 
@@ -470,6 +585,11 @@ mod tests {
             ("augment-cli", Agent::Augment),
             ("github-copilot-cli", Agent::GitHubCopilot),
             ("github_copilot_vscode_agent", Agent::GitHubCopilot),
+            ("kiro", Agent::KiroCli),
+            ("qwen", Agent::QwenCode),
+            ("gitlab-duo", Agent::GitLabDuoCli),
+            ("kilo", Agent::KiloCode),
+            ("hermes", Agent::Hermes),
             ("devin", Agent::Devin),
             ("pool", Agent::Poolside),
             ("v0", Agent::V0),
@@ -490,6 +610,14 @@ mod tests {
         assert_eq!(
             detect_with(env_from(&[("AI_AGENT", "some-new-agent")])),
             Some(Agent::Unknown),
+        );
+    }
+
+    #[test]
+    fn detect_gitlab_duo_cli_with_decorated_ai_agent_value() {
+        assert_eq!(
+            detect_with(env_from(&[("AI_AGENT", "gitlab-lsp_7.17.0__duo-cli",)])),
+            Some(Agent::GitLabDuoCli),
         );
     }
 
@@ -659,6 +787,12 @@ mod tests {
             Agent::Cursor,
             Agent::CursorCli,
             Agent::Codex,
+            Agent::KiroCli,
+            Agent::Junie,
+            Agent::QwenCode,
+            Agent::GitLabDuoCli,
+            Agent::KiloCode,
+            Agent::Hermes,
             Agent::Devin,
             Agent::Dirac,
             Agent::GeminiCli,
