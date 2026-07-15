@@ -315,7 +315,6 @@ const BranchSegment: FC<{
 				}
 				pushStatus={segment.pushStatus}
 				graphStatus={segmentPushStatusToGraphSegmentStatus(segment.pushStatus)}
-				pullRequest={segment.metadata?.review.pullRequest ?? null}
 				bottomRelativeTo={segmentBottomRelativeTo(segment)}
 				isTopSegment={isTopSegment}
 			/>

@@ -725,7 +725,7 @@ const Title: FC<{
 					{({ data: commitDetails }) => (
 						<div className={styles.title}>
 							<Icon name="commit" />
-							<h3 className={classes("text-15", "text-semibold")}>
+							<h3 className={classes(styles.titleContent, "text-15", "text-semibold")}>
 								{commitTitle(commitDetails.commit.message) ?? "(no message)"}
 								{commitDetails.commit.hasConflicts && " ⚠️"}
 								{commitBody(commitDetails.commit.message) !== undefined && (
@@ -745,7 +745,7 @@ const Title: FC<{
 											)}
 											onClick={() => onBodyCollapsedChange(!bodyCollapsed)}
 										>
-											<Icon name="kebab" />
+											<Icon name="kebab" className={styles.commitBodyToggleIcon} />
 										</Tooltip.Trigger>
 										<Tooltip.Portal>
 											<Tooltip.Positioner sideOffset={4}>
