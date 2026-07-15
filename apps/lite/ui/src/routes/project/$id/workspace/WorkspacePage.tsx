@@ -16,7 +16,7 @@ import { PickerDialog } from "#ui/components/PickerDialog.tsx";
 import { globalHotkeys, workspaceHotkeys } from "#ui/hotkeys.ts";
 import { writeLastOpenedProject } from "#ui/project.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
-import { ProjectForFrontend, RefInfo, Segment } from "@gitbutler/but-sdk";
+import { ProjectForFrontend, RefInfo } from "@gitbutler/but-sdk";
 import { useHotkey, useHotkeys } from "@tanstack/react-hotkeys";
 import {
 	QueryErrorResetBoundary,
@@ -154,24 +154,21 @@ const outlineNavigationItems = ({
 }: {
 	headInfo: RefInfo | undefined;
 	uncommittedFilePaths: Array<string> | undefined;
-}): Array<Operand> => {
-	const segmentItems = (segment: Segment): Array<Operand> => [
-		...(segment.refName ? [branchOperand({ branchRef: segment.refName.fullNameBytes })] : []),
-		...segment.commits.map((commit) => commitOperand({ commitId: commit.id })),
-	];
+}): Array<Operand> => [
+	uncommittedChangesOperand,
+	...(uncommittedFilePaths?.map((path) =>
+		fileOperand({ parent: uncommittedChangesFileParent, path }),
+	) ?? []),
 
-	return [
-		uncommittedChangesOperand,
-		...(uncommittedFilePaths?.map((path) =>
-			fileOperand({ parent: uncommittedChangesFileParent, path }),
-		) ?? []),
-
-		...(headInfo?.stacks.toReversed() ?? []).flatMap((stack) =>
-			stack.segments.flatMap(segmentItems),
+	...(headInfo?.stacks.toReversed() ?? []).flatMap((stack) =>
+		stack.segments.flatMap(
+			(segment): Array<Operand> => [
+				...(segment.refName ? [branchOperand({ branchRef: segment.refName.fullNameBytes })] : []),
+				...segment.commits.map((commit) => commitOperand({ commitId: commit.id })),
+			],
 		),
-	];
-};
-
+	),
+];
 const hasAnyOperation = (source: Operand, target: Operand) => {
 	const operations = getOperations(source, target);
 	return !!operations.into || !!operations.above || !!operations.below;
