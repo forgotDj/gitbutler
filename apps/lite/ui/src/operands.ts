@@ -2,9 +2,9 @@ import { Match } from "effect";
 import type { HunkLineSelection } from "#ui/hunk.ts";
 
 /** @public */
-export type BranchFileParent = { stackId: string; branchRef: Array<number> };
+export type BranchFileParent = { branchRef: Array<number> };
 /** @public */
-export type CommitFileParent = { stackId: string; commitId: string };
+export type CommitFileParent = { commitId: string };
 
 export type FileParent =
 	| { _tag: "UncommittedChanges" }
@@ -17,16 +17,14 @@ export const uncommittedChangesFileParent: FileParent = {
 };
 
 /** @public */
-export const branchFileParent = ({ stackId, branchRef }: BranchFileParent): FileParent => ({
+export const branchFileParent = ({ branchRef }: BranchFileParent): FileParent => ({
 	_tag: "Branch",
-	stackId,
 	branchRef,
 });
 
 /** @public */
-export const commitFileParent = ({ stackId, commitId }: CommitFileParent): FileParent => ({
+export const commitFileParent = ({ commitId }: CommitFileParent): FileParent => ({
 	_tag: "Commit",
-	stackId,
 	commitId,
 });
 
@@ -36,12 +34,12 @@ export type StackOperand = {
 };
 
 /** @public */
-export type BranchOperand = StackOperand & {
+export type BranchOperand = {
 	branchRef: Array<number>;
 };
 
 /** @public */
-export type CommitOperand = StackOperand & {
+export type CommitOperand = {
 	commitId: string;
 };
 
@@ -77,16 +75,14 @@ export const stackOperand = ({ stackId }: StackOperand): Operand => ({
 });
 
 /** @public */
-export const branchOperand = ({ stackId, branchRef }: BranchOperand): Operand => ({
+export const branchOperand = ({ branchRef }: BranchOperand): Operand => ({
 	_tag: "Branch",
-	stackId,
 	branchRef,
 });
 
 /** @public */
-export const commitOperand = ({ stackId, commitId }: CommitOperand): Operand => ({
+export const commitOperand = ({ commitId }: CommitOperand): Operand => ({
 	_tag: "Commit",
-	stackId,
 	commitId,
 });
 
@@ -115,15 +111,14 @@ export const operandIdentityKey = (operand: Operand): string =>
 			UncommittedChanges: () => JSON.stringify(["UncommittedChanges"]),
 			File: (x) => JSON.stringify(["File", x.parent, x.path]),
 			Stack: (x) => JSON.stringify(["Stack", x.stackId]),
-			Branch: (x) => JSON.stringify(["Branch", x.stackId, x.branchRef]),
-			Commit: (x) => JSON.stringify(["Commit", x.stackId, x.commitId]),
+			Branch: (x) => JSON.stringify(["Branch", x.branchRef]),
+			Commit: (x) => JSON.stringify(["Commit", x.commitId]),
 			Hunk: (x) =>
 				JSON.stringify([
 					"Hunk",
 					x.parent,
 					x.hunkHeader,
 					x.lineGroups,
-					x.range,
 					x.isResultOfBinaryToTextConversion,
 				]),
 		}),
@@ -147,8 +142,8 @@ const fileParentToOperand = (fileParent: FileParent): Operand =>
 	Match.value(fileParent).pipe(
 		Match.tagsExhaustive({
 			UncommittedChanges: () => uncommittedChangesOperand,
-			Branch: ({ stackId, branchRef }) => branchOperand({ stackId, branchRef }),
-			Commit: ({ stackId, commitId }) => commitOperand({ stackId, commitId }),
+			Branch: ({ branchRef }) => branchOperand({ branchRef }),
+			Commit: ({ commitId }) => commitOperand({ commitId }),
 		}),
 	);
 

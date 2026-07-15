@@ -987,10 +987,10 @@ const Diff: FC<{
 	);
 	const fileParent = Match.value(outlineSelection).pipe(
 		Match.tags({
-			Branch: ({ branchRef, stackId }) => branchFileParent({ branchRef, stackId }),
+			Branch: ({ branchRef }) => branchFileParent({ branchRef }),
 			UncommittedChanges: () => uncommittedChangesFileParent,
 			File: ({ parent }) => parent,
-			Commit: ({ commitId, stackId }) => commitFileParent({ commitId, stackId }),
+			Commit: ({ commitId }) => commitFileParent({ commitId }),
 		}),
 		Match.orElseAbsurd,
 	);
