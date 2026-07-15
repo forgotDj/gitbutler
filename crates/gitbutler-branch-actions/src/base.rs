@@ -10,7 +10,6 @@ use but_ctx::Context;
 use but_error::Code;
 use but_graph::FirstParent;
 use but_meta::virtual_branches_legacy_types::Target;
-use gitbutler_git::GitContextExt as _;
 use gitbutler_project::{FetchResult, Project};
 use gitbutler_reference::{Refname, RemoteRefname};
 use gitbutler_repo::first_parent_commit_ids_until;
@@ -486,21 +485,6 @@ fn first_parent_commit_ids_with_limit(
         .take(limit)
         .map(|info| Ok(info?.id))
         .collect()
-}
-
-pub(crate) fn push(ctx: &Context, with_force: bool) -> Result<()> {
-    let project_meta = ctx.project_meta()?;
-    let target_ref: RemoteRefname = project_meta.target_ref_or_err()?.to_string().parse()?;
-    let _ = ctx.push(
-        project_meta.target_commit_id_or_err()?,
-        &target_ref,
-        with_force,
-        ctx.legacy_project.force_push_protection,
-        None,
-        None,
-        vec![],
-    );
-    Ok(())
 }
 
 #[cfg(test)]

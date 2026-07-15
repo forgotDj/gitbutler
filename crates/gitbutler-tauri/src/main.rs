@@ -357,7 +357,6 @@ fn main() -> anyhow::Result<()> {
                 legacy::virtual_branches::tauri_get_base_branch_data::get_base_branch_data,
                 legacy::virtual_branches::tauri_set_base_branch::set_base_branch,
                 legacy::virtual_branches::tauri_switch_back_to_workspace::switch_back_to_workspace,
-                legacy::virtual_branches::tauri_push_base_branch::push_base_branch,
                 legacy::virtual_branches::tauri_update_stack_order::update_stack_order,
                 legacy::virtual_branches::tauri_unapply_stack::unapply_stack,
                 legacy::virtual_branches::tauri_list_branches::list_branches,

@@ -3877,7 +3877,6 @@ dependencies = [
  "git2",
  "gitbutler-branch",
  "gitbutler-commit",
- "gitbutler-git",
  "gitbutler-operating-modes",
  "gitbutler-oplog",
  "gitbutler-project",
