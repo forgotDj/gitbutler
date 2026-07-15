@@ -200,12 +200,14 @@ const useOutlineNavigationIndex = ({
 			Absorb: (activeMode) =>
 				items.filter(
 					(operand) =>
+						operandEquals(operand, activeMode.source) ||
 						operandContains(operand, activeMode.source) ||
 						(operand._tag === "Commit" && absorptionTargetCommitIds.has(operand.commitId)),
 				),
 			Transfer: (activeMode) =>
 				items.filter(
 					(operand) =>
+						operandEquals(operand, activeMode.value.source) ||
 						operandContains(operand, activeMode.value.source) ||
 						hasAnyOperation(activeMode.value.source, operand),
 				),

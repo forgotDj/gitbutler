@@ -117,10 +117,6 @@ export const operandFileParent = (operand: Operand): FileParent | null =>
 	);
 
 export const operandContains = (a: Operand, b: Operand) => {
-	if (operandEquals(a, b)) return true;
-
 	const bFileParent = operandFileParent(b);
-	if (bFileParent && operandEquals(a, bFileParent)) return true;
-
-	return false;
+	return bFileParent && operandEquals(a, bFileParent);
 };
