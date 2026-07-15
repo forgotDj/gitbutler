@@ -1347,6 +1347,7 @@ impl Details {
                     for id in marked_section_cli_ids {
                         builder.push_changes_from_id(&id)?;
                     }
+                    builder.reconcile_worktree_diff_specs()?;
                     builder.into_diff_specs()
                 };
 
