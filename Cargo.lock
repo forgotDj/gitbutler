@@ -917,7 +917,6 @@ dependencies = [
  "gitbutler-oplog",
  "gitbutler-reference",
  "gix",
- "itertools",
  "rmcp",
  "schemars 1.2.1",
  "serde",
