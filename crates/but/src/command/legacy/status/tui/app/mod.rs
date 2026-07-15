@@ -86,6 +86,7 @@ pub struct App {
     pub should_render: bool,
     pub cursor: Cursor,
     pub status_scroll: StatusScroll,
+    pub debug_scroll: DebugScroll,
     pub mode: RememberToUpdateBackstack<Mode>,
     pub toasts: Toasts,
     pub renders: u64,
@@ -153,6 +154,7 @@ impl App {
             flags,
             cursor,
             status_scroll: StatusScroll::default(),
+            debug_scroll: DebugScroll::default(),
             outcome: None,
             should_render: true,
             mode,
@@ -238,6 +240,8 @@ impl App {
                 self.handle_confirm_and_quit();
             }
             Message::JustRender => {}
+            Message::DebugScrollUp(count) => self.debug_scroll.up(count),
+            Message::DebugScrollDown(count) => self.debug_scroll.down(count),
             Message::MoveCursorUp(count) => {
                 for _ in 0..count {
                     if let Some(new_cursor) =
@@ -1372,6 +1376,29 @@ impl App {
 
     pub fn handle_set_focus(&mut self, has_focus: bool) {
         self.has_focus = has_focus;
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct DebugScroll {
+    top: Cell<usize>,
+}
+
+impl DebugScroll {
+    pub fn top(&self) -> usize {
+        self.top.get()
+    }
+
+    pub fn set_top(&self, top: usize) {
+        self.top.set(top);
+    }
+
+    pub fn up(&self, n: usize) {
+        self.top.set(self.top.get().saturating_sub(n));
+    }
+
+    pub fn down(&self, n: usize) {
+        self.top.set(self.top.get().saturating_add(n));
     }
 }
 

@@ -169,6 +169,11 @@ impl Details {
         self.cache.num_lines
     }
 
+    pub fn selected_section_cli_id(&self) -> Option<&CliId> {
+        let index = self.selected_section.get().index()?;
+        self.sections.get(index)?.cli_id.as_deref()
+    }
+
     pub fn on_hidden(&mut self) {
         self.reset_line_reader();
     }

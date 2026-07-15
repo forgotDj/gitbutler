@@ -445,17 +445,21 @@ fn event_to_messages(ev: Event, app: &App, terminal_area: Rect, messages: &mut V
         }
         Event::Mouse(event) => match event.kind {
             MouseEventKind::ScrollDown => {
-                if app.modal.is_none()
-                    && mouse_is_over_details(app, terminal_area, event.column, event.row)
-                {
-                    messages.push(Message::Details(DetailsMessage::ScrollDown(3)));
+                if app.modal.is_none() {
+                    if mouse_is_over_debug(app, terminal_area, event.column, event.row) {
+                        messages.push(Message::DebugScrollDown(3));
+                    } else if mouse_is_over_details(app, terminal_area, event.column, event.row) {
+                        messages.push(Message::Details(DetailsMessage::ScrollDown(3)));
+                    }
                 }
             }
             MouseEventKind::ScrollUp => {
-                if app.modal.is_none()
-                    && mouse_is_over_details(app, terminal_area, event.column, event.row)
-                {
-                    messages.push(Message::Details(DetailsMessage::ScrollUp(3)));
+                if app.modal.is_none() {
+                    if mouse_is_over_debug(app, terminal_area, event.column, event.row) {
+                        messages.push(Message::DebugScrollUp(3));
+                    } else if mouse_is_over_details(app, terminal_area, event.column, event.row) {
+                        messages.push(Message::Details(DetailsMessage::ScrollUp(3)));
+                    }
                 }
             }
             MouseEventKind::Moved
@@ -466,6 +470,11 @@ fn event_to_messages(ev: Event, app: &App, terminal_area: Rect, messages: &mut V
             | MouseEventKind::ScrollRight => {}
         },
     }
+}
+
+fn mouse_is_over_debug(app: &App, terminal_area: Rect, column: u16, row: u16) -> bool {
+    render::debug_content_area_for_app(app, terminal_area)
+        .is_some_and(|area| area.contains(Position { x: column, y: row }))
 }
 
 fn mouse_is_over_details(app: &App, terminal_area: Rect, column: u16, row: u16) -> bool {
@@ -559,6 +568,8 @@ enum Message {
     DropToBeDiscarded,
     GrowDetails,
     ShrinkDetails,
+    DebugScrollUp(usize),
+    DebugScrollDown(usize),
     SetHasFocus(bool),
     Back,
     UnfocusDetails,
@@ -843,6 +854,8 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
             | Message::DropToBeDiscarded
             | Message::GrowDetails
             | Message::ShrinkDetails
+            | Message::DebugScrollUp(_)
+            | Message::DebugScrollDown(_)
             | Message::SetHasFocus(_)
             | Message::Back
             | Message::UnfocusDetails
