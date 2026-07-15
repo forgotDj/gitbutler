@@ -732,7 +732,7 @@ fn render_status_list_item(
             .set_style(area_used_by_main_content, Style::default().crossed_out());
     }
 
-    if !is_selectable_in_mode(tui_line, &app.mode, app.flags.show_files) {
+    if !is_selectable_in_mode(tui_line, app.mode.as_ref(), app.flags.show_files) {
         line.frame
             .buffer_mut()
             .set_style(area_used_by_main_content, app.theme.hint);

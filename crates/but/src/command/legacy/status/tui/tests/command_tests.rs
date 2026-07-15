@@ -102,3 +102,21 @@ fn command_mode_keeps_input_when_command_exits_non_zero() {
         .assert_rendered_term_svg_eq(file!["snapshots/command_mode_failure_001.svg"])
         .assert_current_line_eq(str!["╭┄zz [uncommitted] (no changes)"]);
 }
+
+#[test]
+fn dims_unselectable_lines_while_in_command_mode() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("one", "content of one");
+    env.file("two", "content of two");
+    env.file("three", "content of three");
+
+    let mut tui = test_tui(env);
+
+    tui.input(' ');
+
+    tui.input(':').assert_rendered_term_svg_eq(file![
+        "snapshots/dims_unselectable_lines_while_in_command_mode_001.svg"
+    ]);
+}

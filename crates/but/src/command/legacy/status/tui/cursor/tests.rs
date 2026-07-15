@@ -2094,17 +2094,17 @@ fn is_selectable_in_rub_mode_requires_available_target() {
 
     assert!(is_selectable_in_mode(
         &selectable_line,
-        &mode,
+        mode.as_ref(),
         FilesStatusFlag::All
     ));
     assert!(!is_selectable_in_mode(
         &blocked_line,
-        &mode,
+        mode.as_ref(),
         FilesStatusFlag::All
     ));
     assert!(!is_selectable_in_mode(
         &not_selectable_line,
-        &mode,
+        mode.as_ref(),
         FilesStatusFlag::All
     ));
 }
@@ -2194,7 +2194,7 @@ fn is_selectable_is_true_in_inline_reword_mode() {
     // Inline reword intentionally returns selectable so rows are not dimmed during editing.
     assert!(is_selectable_in_mode(
         &selectable_line,
-        &inline_reword,
+        inline_reword.as_ref(),
         FilesStatusFlag::All
     ));
 }
@@ -2224,12 +2224,12 @@ fn is_selectable_in_commit_mode_scopes_commit_targets_to_stack() {
 
     assert!(is_selectable_in_mode(
         &same_stack_commit_line,
-        &mode,
+        mode.as_ref(),
         FilesStatusFlag::All
     ));
     assert!(!is_selectable_in_mode(
         &other_stack_commit_line,
-        &mode,
+        mode.as_ref(),
         FilesStatusFlag::All
     ));
 }

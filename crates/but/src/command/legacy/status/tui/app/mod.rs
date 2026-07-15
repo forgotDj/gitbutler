@@ -300,7 +300,7 @@ impl App {
                 if let Some(uncommitted_line) = new_cursor.selected_line(&self.status_lines)
                     && cursor::is_selectable_in_mode(
                         uncommitted_line,
-                        &self.mode,
+                        self.mode.as_ref(),
                         self.flags.show_files,
                     )
                 {
@@ -314,7 +314,7 @@ impl App {
                 if let Some(merge_base_line) = new_cursor.selected_line(&self.status_lines)
                     && cursor::is_selectable_in_mode(
                         merge_base_line,
-                        &self.mode,
+                        self.mode.as_ref(),
                         self.flags.show_files,
                     )
                 {
@@ -686,7 +686,7 @@ impl App {
             return;
         };
 
-        if !is_selectable_in_mode(line, &self.mode, self.flags.show_files) {
+        if !is_selectable_in_mode(line, self.mode.as_ref(), self.flags.show_files) {
             if let Some(new_cursor) =
                 self.cursor
                     .move_down(&self.status_lines, &self.mode, self.flags.show_files)
@@ -1274,7 +1274,7 @@ impl App {
                             }
                         })
                         .is_none_or(|line| {
-                            is_selectable_in_mode(line, &self.mode, self.flags.show_files)
+                            is_selectable_in_mode(line, self.mode.as_ref(), self.flags.show_files)
                         })
                 }
             })
@@ -1285,7 +1285,7 @@ impl App {
             let include_uncommitted = Cursor::select_uncommitted(&self.status_lines)
                 .and_then(|cursor| cursor.selected_line(&self.status_lines))
                 .is_some_and(|uncommitted| {
-                    is_selectable_in_mode(uncommitted, &self.mode, self.flags.show_files)
+                    is_selectable_in_mode(uncommitted, self.mode.as_ref(), self.flags.show_files)
                 });
 
             let picker_items = if include_uncommitted {

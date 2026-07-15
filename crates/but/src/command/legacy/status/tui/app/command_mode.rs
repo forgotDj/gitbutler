@@ -8,7 +8,9 @@ use ratatui_textarea::{CursorMove, TextArea};
 use crate::{
     command::legacy::status::tui::{
         App, Message, Mode, NormalMode, ReloadCause, ToastKind, TuiInputOutputChannel,
-        format_error_for_tui, mode::DetailsMode, render::ModeRender,
+        format_error_for_tui,
+        mode::{DetailsMode, ModeRef},
+        render::ModeRender,
     },
     tui::TerminalGuard,
     utils::binary_path::current_exe_for_but_exec,
@@ -25,6 +27,15 @@ pub struct CommandMode {
 pub enum CommandReturnMode {
     Normal(NormalMode),
     Details(DetailsMode),
+}
+
+impl CommandReturnMode {
+    pub fn as_ref(&self) -> ModeRef<'_> {
+        match self {
+            CommandReturnMode::Normal(inner) => ModeRef::Normal(inner),
+            CommandReturnMode::Details(inner) => ModeRef::Details(inner),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
