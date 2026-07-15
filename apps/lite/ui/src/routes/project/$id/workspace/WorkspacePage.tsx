@@ -153,7 +153,7 @@ const outlineNavigationItems = ({
 	uncommittedFilePaths,
 }: {
 	headInfo: RefInfo | undefined;
-	uncommittedFilePaths: Array<string>;
+	uncommittedFilePaths: Array<string> | undefined;
 }): Array<Operand> => {
 	const segmentItems = (segment: Segment): Array<Operand> => [
 		...(segment.refName ? [branchOperand({ branchRef: segment.refName.fullNameBytes })] : []),
@@ -162,9 +162,9 @@ const outlineNavigationItems = ({
 
 	return [
 		uncommittedChangesOperand,
-		...uncommittedFilePaths.map((path) =>
+		...(uncommittedFilePaths?.map((path) =>
 			fileOperand({ parent: uncommittedChangesFileParent, path }),
-		),
+		) ?? []),
 
 		...(headInfo?.stacks.toReversed() ?? []).flatMap((stack) =>
 			stack.segments.flatMap(segmentItems),
@@ -184,7 +184,7 @@ const buildOutlineNavigationIndex = ({
 	absorptionTargetCommitIds,
 }: {
 	headInfo: RefInfo | undefined;
-	uncommittedFilePaths: Array<string>;
+	uncommittedFilePaths: Array<string> | undefined;
 	outlineMode: OutlineMode;
 	absorptionTargetCommitIds: ReadonlySet<string>;
 }): NavigationIndex<Operand> => {
@@ -373,7 +373,7 @@ const WorkspacePage: FC = () => {
 
 	const outlineNavigationIndex = buildOutlineNavigationIndex({
 		headInfo,
-		uncommittedFilePaths: worktreeChanges?.changes.map((change) => change.path) ?? [],
+		uncommittedFilePaths: worktreeChanges?.changes.map((change) => change.path),
 		outlineMode,
 		absorptionTargetCommitIds,
 	});
