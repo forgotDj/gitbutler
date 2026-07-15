@@ -954,38 +954,6 @@ fn marks_stay_when_going_straight_from_split_to_fullscreen() {
 }
 
 #[test]
-fn status_and_detail_marks_coexist() {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
-    env.setup_metadata(&[]);
-
-    env.file("one", "content of one");
-
-    let mut tui = test_tui(env);
-
-    tui.input('j');
-    tui.input(' ').assert_rendered_contains("┊✔︎  k A one");
-
-    tui.input('d');
-    tui.input('l');
-    tui.input('j');
-    tui.input(' ')
-        .assert_rendered_contains("┊✔︎  k A one")
-        .assert_rendered_contains("✔︎  k:f one │")
-        .assert_rendered_term_svg_eq(file!["snapshots/status_and_detail_marks_coexist_001.svg"]);
-    tui.input('h')
-        .assert_rendered_contains("┊✔︎  k A one")
-        .assert_rendered_contains("✔︎  k:f one │")
-        .assert_backstack_eq([BackstackEntry::Mark, BackstackEntry::OpenSplitDetailsView])
-        .assert_rendered_term_svg_eq(file!["snapshots/status_and_detail_marks_coexist_002.svg"]);
-
-    tui.input(KeyCode::Esc)
-        .assert_rendered_contains("┊   k A one")
-        .assert_rendered_contains("│ k:f one │")
-        .assert_backstack_eq([BackstackEntry::OpenSplitDetailsView])
-        .assert_rendered_term_svg_eq(file!["snapshots/status_and_detail_marks_coexist_003.svg"]);
-}
-
-#[test]
 fn normal_and_detail_marks_coexist_in_split_details() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
     env.setup_metadata(&[]);
@@ -1069,50 +1037,6 @@ fn normal_and_detail_marks_coexist_in_full_screen_details() {
         .assert_backstack_eq([BackstackEntry::Mark])
         .assert_rendered_term_svg_eq(file![
             "snapshots/normal_and_detail_marks_coexist_in_full_screen_details_002.svg"
-        ]);
-}
-
-#[test]
-fn pick_changes_and_detail_marks_coexist() {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
-    env.setup_metadata(&[]);
-
-    env.file("one", "content of one");
-    env.file("two", "content of two");
-    env.file("three", "content of three");
-
-    let mut tui = test_tui_with_options(
-        env,
-        TestTuiOptions {
-            run_options: TuiRunOptions::PickChanges,
-            ..Default::default()
-        },
-    );
-
-    tui.reload();
-    tui.input(' ')
-        .assert_backstack_eq([BackstackEntry::Mark])
-        .assert_rendered_contains("┊✔︎  k    A one");
-
-    tui.input('l')
-        .assert_rendered_contains("┊✔︎  k    A one")
-        .assert_backstack_eq([
-            BackstackEntry::LeaveNormalMode,
-            BackstackEntry::OpenSplitDetailsView,
-            BackstackEntry::Mark,
-        ]);
-
-    tui.input('g');
-    tui.input('j');
-    tui.input(' ')
-        .assert_backstack_eq([
-            BackstackEntry::Mark,
-            BackstackEntry::LeaveNormalMode,
-            BackstackEntry::OpenSplitDetailsView,
-        ])
-        .assert_rendered_contains("┊✔︎  k    A one")
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/pick_changes_and_detail_marks_coexist_001.svg"
         ]);
 }
 
@@ -1208,4 +1132,217 @@ fn shows_synthetic_change_id() {
     tui.input('j');
     tui.input('d')
         .assert_rendered_term_svg_eq(file!["snapshots/shows_synthetic_change_id_001.svg"]);
+}
+
+#[test]
+fn marking_file_marks_all_hunks() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("file", "line\n".repeat(10));
+
+    let mut tui = test_tui(env);
+
+    tui.input('c');
+    tui.input('e');
+    tui.input('b');
+
+    tui.env().prepend_file("file", "top");
+    tui.env().append_file("file", "bottom");
+
+    tui.reload();
+
+    // marking the file in the status also marks both hunks in the detail view
+    tui.input('g');
+    tui.input('d');
+    tui.input('j');
+    tui.input(' ')
+        .assert_rendered_term_svg_eq(file!["snapshots/marking_file_marks_all_hunks_001.svg"]);
+
+    // unmarking the file in the status removes all marks from detail view
+    tui.input(' ')
+        .assert_rendered_term_svg_eq(file!["snapshots/marking_file_marks_all_hunks_002.svg"]);
+
+    // marking a file in the detail view then clearing marks from the status also clears the detail
+    // marks
+    tui.input('l');
+    tui.input('j');
+    tui.input(' ');
+    tui.input('g')
+        .assert_rendered_term_svg_eq(file!["snapshots/marking_file_marks_all_hunks_003.svg"]);
+    tui.input('h');
+    tui.input(' ')
+        .assert_rendered_term_svg_eq(file!["snapshots/marking_file_marks_all_hunks_004.svg"]);
+    tui.input(' ')
+        .assert_rendered_term_svg_eq(file!["snapshots/marking_file_marks_all_hunks_005.svg"]);
+}
+
+#[test]
+fn marking_all_hunks_marks_file() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("file", "line\n".repeat(10));
+
+    let mut tui = test_tui(env);
+
+    tui.input('c');
+    tui.input('e');
+    tui.input('b');
+
+    tui.env().prepend_file("file", "top");
+    tui.env().append_file("file", "bottom");
+
+    tui.reload();
+
+    tui.input('g');
+    tui.input('d');
+    tui.input('j');
+    tui.input('l')
+        .assert_rendered_term_svg_eq(file!["snapshots/marking_all_hunks_marks_file_001.svg"]);
+
+    // marking both hunks in the detail view should also mark the file in the status
+    tui.input('j');
+    tui.input(' ');
+    tui.input(' ');
+    tui.input('g')
+        .assert_rendered_term_svg_eq(file!["snapshots/marking_all_hunks_marks_file_002.svg"]);
+
+    // unmarking a hunk in the details view also unmarks it in the status
+    tui.input('j');
+    tui.input(' ');
+    tui.input('g')
+        .assert_rendered_term_svg_eq(file!["snapshots/marking_all_hunks_marks_file_003.svg"]);
+}
+
+#[test]
+fn marking_all_hunks_marks_file_with_multiple_files_changed() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("file", "line\n".repeat(10));
+
+    let mut tui = test_tui(env);
+
+    tui.input('c');
+    tui.input('e');
+    tui.input('b');
+
+    tui.env().prepend_file("file", "top");
+    tui.env().append_file("file", "bottom");
+
+    tui.env().file("new-file", "content");
+
+    tui.reload();
+
+    tui.input('g');
+    tui.input('d').assert_rendered_term_svg_eq(file![
+        "snapshots/marking_all_hunks_marks_file_with_multiple_files_changed_001.svg"
+    ]);
+    tui.input('l');
+    tui.input('j');
+    tui.input(' ');
+    tui.input(' ');
+    tui.input('g').assert_rendered_term_svg_eq(file![
+        "snapshots/marking_all_hunks_marks_file_with_multiple_files_changed_002.svg"
+    ]);
+    tui.input((KeyModifiers::SHIFT, 'G'))
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/marking_all_hunks_marks_file_with_multiple_files_changed_003.svg"
+        ]);
+    tui.input('k');
+    tui.input(' ').assert_rendered_term_svg_eq(file![
+        "snapshots/marking_all_hunks_marks_file_with_multiple_files_changed_004.svg"
+    ]);
+    tui.input(' ').assert_rendered_term_svg_eq(file![
+        "snapshots/marking_all_hunks_marks_file_with_multiple_files_changed_005.svg"
+    ]);
+}
+
+#[test]
+fn marking_zz_marks_all_hunks_in_detail_view() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("file", "line\n".repeat(10));
+
+    let mut tui = test_tui(env);
+
+    tui.input('c');
+    tui.input('e');
+    tui.input('b');
+
+    tui.env().prepend_file("file", "top");
+    tui.env().append_file("file", "bottom");
+
+    tui.env().file("new-file", "content");
+
+    tui.reload();
+
+    tui.input('g');
+    tui.input('d');
+    tui.input(' ').assert_rendered_term_svg_eq(file![
+        "snapshots/marking_zz_marks_all_hunks_in_detail_view_001.svg"
+    ]);
+    tui.input(' ').assert_rendered_term_svg_eq(file![
+        "snapshots/marking_zz_marks_all_hunks_in_detail_view_002.svg"
+    ]);
+}
+
+#[test]
+fn marking_file_in_pick_changes_marks_hunks_in_details() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("file", "content");
+
+    let mut tui = test_tui_with_options(
+        env,
+        TestTuiOptions {
+            run_options: TuiRunOptions::PickChanges,
+            ..Default::default()
+        },
+    );
+
+    tui.input('d');
+    tui.input('j');
+    tui.input(' ').assert_rendered_term_svg_eq(file![
+        "snapshots/marking_file_in_pick_changes_marks_hunks_in_details_001.svg"
+    ]);
+}
+
+#[test]
+fn marking_and_discarding_all_hunks() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("file", "line\n".repeat(10));
+
+    let mut tui = test_tui(env);
+
+    tui.input('c');
+    tui.input('e');
+    tui.input('b');
+
+    tui.env().prepend_file("file", "top");
+    tui.env().append_file("file", "bottom");
+
+    tui.env().file("new-file", "content");
+
+    tui.reload();
+
+    // mark both hunks in file
+    tui.input('g');
+    tui.input('d');
+    tui.input('j');
+    tui.input('l');
+    tui.input('j');
+    tui.input(' ');
+    tui.input(' ');
+    tui.input('g')
+        .assert_rendered_term_svg_eq(file!["snapshots/marking_and_discarding_all_hunks_001.svg"]);
+
+    tui.input('x');
+    tui.input('y')
+        .assert_rendered_term_svg_eq(file!["snapshots/marking_and_discarding_all_hunks_002.svg"]);
 }

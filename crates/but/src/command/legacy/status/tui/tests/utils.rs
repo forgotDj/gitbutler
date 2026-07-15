@@ -63,14 +63,7 @@ impl Default for TestTuiOptions {
 }
 
 pub fn test_tui(env: Sandbox) -> TestTui {
-    test_tui_with_options(
-        env,
-        TestTuiOptions {
-            width: 100,
-            height: 20,
-            ..Default::default()
-        },
-    )
+    test_tui_with_options(env, TestTuiOptions::default())
 }
 
 pub fn test_tui_with_options(env: Sandbox, options: TestTuiOptions) -> TestTui {

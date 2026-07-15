@@ -4,6 +4,7 @@ use anyhow::Context as _;
 use bstr::{BStr, BString};
 use but_core::{ChangeId, ref_metadata::StackId};
 use but_ctx::Context;
+use but_hunk_assignment::HunkAssignment;
 use nonempty::NonEmpty;
 use strum::VariantArray;
 
@@ -59,15 +60,6 @@ impl Marks {
 
     pub fn is_empty(&self) -> bool {
         matches!(self, Self::Empty)
-    }
-
-    pub fn len(&self) -> usize {
-        match self {
-            Marks::Empty => 0,
-            Marks::Hunks(inner) => inner.len(),
-            Marks::Commits(inner) => inner.len(),
-            Marks::CommittedFiles(inner) => inner.len(),
-        }
     }
 
     pub fn contains_cli_id(&self, cli_id: &CliId) -> bool {
@@ -235,6 +227,34 @@ pub trait MarkStore<T> {
     fn remove_mark(&mut self, mark: &T);
 }
 
+impl MarkStore<Markable> for Marks {
+    type Error = anyhow::Error;
+
+    fn contains_mark(&self, mark: &Markable) -> bool {
+        match mark {
+            Markable::Uncommitted(hunk) => self.contains_mark(hunk),
+            Markable::Commit(commit) => self.contains_mark(commit),
+            Markable::CommittedFile(file) => self.contains_mark(file),
+        }
+    }
+
+    fn insert_mark(&mut self, mark: Markable) -> Result<(), Self::Error> {
+        match mark {
+            Markable::Uncommitted(hunk) => self.insert_mark(hunk),
+            Markable::Commit(commit) => self.insert_mark(commit),
+            Markable::CommittedFile(file) => self.insert_mark(file),
+        }
+    }
+
+    fn remove_mark(&mut self, mark: &Markable) {
+        match mark {
+            Markable::Uncommitted(hunk) => self.remove_mark(hunk),
+            Markable::Commit(commit) => self.remove_mark(commit),
+            Markable::CommittedFile(file) => self.remove_mark(file),
+        }
+    }
+}
+
 impl MarkStore<UncommittedHunkOrFile> for Marks {
     type Error = anyhow::Error;
 
@@ -244,6 +264,9 @@ impl MarkStore<UncommittedHunkOrFile> for Marks {
     }
 
     fn insert_mark(&mut self, mark: UncommittedHunkOrFile) -> Result<(), Self::Error> {
+        if self.contains_mark(&mark) {
+            return Ok(());
+        }
         match self {
             Self::Empty => *self = Self::Hunks(NonEmpty::new(mark)),
             Self::Hunks(hunks) => hunks.push(mark),
@@ -272,6 +295,9 @@ impl MarkStore<MarkedCommit> for Marks {
     }
 
     fn insert_mark(&mut self, mark: MarkedCommit) -> Result<(), Self::Error> {
+        if self.contains_mark(&mark) {
+            return Ok(());
+        }
         match self {
             Self::Empty => *self = Self::Commits(NonEmpty::new(mark)),
             Self::Commits(commits) => commits.push(mark),
@@ -300,6 +326,9 @@ impl MarkStore<MarkedCommittedFile> for Marks {
     }
 
     fn insert_mark(&mut self, mark: MarkedCommittedFile) -> Result<(), Self::Error> {
+        if self.contains_mark(&mark) {
+            return Ok(());
+        }
         match self {
             Self::Empty => *self = Self::CommittedFiles(NonEmpty::new(mark)),
             Self::CommittedFiles(files) => {
@@ -361,6 +390,9 @@ where
     }
 
     fn insert_mark(&mut self, mark: T) -> Result<(), Self::Error> {
+        if self.contains_mark(&mark) {
+            return Ok(());
+        }
         self.0.push(mark);
         Ok(())
     }
@@ -724,13 +756,13 @@ fn handle_mark_cli_id(commit: &CliId, mode: &mut Mode) -> anyhow::Result<bool> {
 
     match mode {
         Mode::Normal(normal_mode) => {
-            toggle_markable_ref(&mut normal_mode.marks, markable)?;
+            toggle_markables(&mut normal_mode.marks, [markable.to_owned()])?;
         }
         Mode::PickChanges(pick_uncommitted_mode) => {
-            let MarkableRef::Uncommitted(hunk) = markable else {
+            let MarkableRef::Uncommitted(..) = markable else {
                 return Ok(false);
             };
-            toggle_markables(&mut pick_uncommitted_mode.marks, [hunk.clone()])?;
+            toggle_markables(&mut pick_uncommitted_mode.marks, [markable.to_owned()])?;
         }
         Mode::InlineReword(..)
         | Mode::Rub(..)
@@ -748,12 +780,48 @@ fn handle_mark_cli_id(commit: &CliId, mode: &mut Mode) -> anyhow::Result<bool> {
     Ok(true)
 }
 
-fn toggle_markable_ref(marks: &mut Marks, markable: MarkableRef<'_>) -> anyhow::Result<()> {
-    match markable {
-        MarkableRef::Uncommitted(hunk) => toggle_markables(marks, [hunk.clone()]),
-        MarkableRef::Commit(commit) => toggle_markables(marks, [commit.to_owned()]),
-        MarkableRef::CommittedFile(file) => toggle_markables(marks, [file.to_owned()]),
+// Create a fake synthetic hunk that makes the parent (entire-file) hunk or child (individual hunks
+// inside a multi hunk change) hunk get marked/unmarked.
+//
+// When you mark an uncommitted file in the status that should be equivalent to marking all the
+// individual hunks in the detail view. We do that by creating synthetic child hunks and also
+// insert those into the mark store, when marking the parent. The detail view does the inverse when
+// marking a child hunk.
+//
+// This relies on the fact that `UncommittedHunkOrFile::eq` just uses `hunk_assignments` and
+// `is_entire_file` and _not_ `id`. So we're free to invent a fake id for our synthetic hunk and
+// it'll still match the real hunk and which will then appear marked. This check is made by the
+// rendering when deciding to show the checkmark or not.
+//
+// When the hunks are actually used later they'll be deduplicated so duplicates or overlapping
+// hunks don't break mutations.
+fn synthetic_hunk(
+    base_id: &str,
+    idx: usize,
+    hunk_assignments: NonEmpty<HunkAssignment>,
+    is_entire_file: bool,
+) -> UncommittedHunkOrFile {
+    UncommittedHunkOrFile {
+        id: format!("{base_id}:synthetic-id-{idx}"),
+        hunk_assignments,
+        is_entire_file,
     }
+}
+
+pub fn synthetic_parent_hunk(
+    base_id: &str,
+    idx: usize,
+    hunk_assignments: NonEmpty<HunkAssignment>,
+) -> UncommittedHunkOrFile {
+    synthetic_hunk(base_id, idx, hunk_assignments, true)
+}
+
+pub fn synthetic_child_hunk(
+    base_id: &str,
+    idx: usize,
+    hunk_assignments: NonEmpty<HunkAssignment>,
+) -> UncommittedHunkOrFile {
+    synthetic_hunk(base_id, idx, hunk_assignments, false)
 }
 
 fn handle_mark_branch(
@@ -765,10 +833,12 @@ fn handle_mark_branch(
     let commits =
         commits_on_branch(ctx, stack_id, name)?
             .into_iter()
-            .map(|(commit_id, id, change_id)| MarkedCommit {
-                commit_id,
-                id,
-                change_id,
+            .map(|(commit_id, id, change_id)| {
+                Markable::Commit(MarkedCommit {
+                    commit_id,
+                    id,
+                    change_id,
+                })
             });
 
     toggle_markables(marks, commits)?;
@@ -776,69 +846,111 @@ fn handle_mark_branch(
     Ok(())
 }
 
-fn handle_mark_uncommitted<S>(
-    marks: &mut S,
+fn handle_mark_uncommitted(
+    marks: &mut Marks,
     status_lines: &[StatusOutputLine],
-) -> Result<(), S::Error>
-where
-    S: MarkStore<crate::id::UncommittedHunkOrFile>,
-{
-    let uncommitted_files = status_lines.iter().filter_map(|line| match &line.data {
-        StatusOutputLineData::UncommittedFile { cli_id } => {
-            match MarkableRef::try_from_cli_id(cli_id) {
-                Some(MarkableRef::Uncommitted(hunk)) => Some(hunk.clone()),
-                Some(_) | None => None,
+) -> anyhow::Result<()> {
+    let uncommitted_files = status_lines
+        .iter()
+        .filter_map(|line| match &line.data {
+            StatusOutputLineData::UncommittedFile { cli_id } => {
+                match MarkableRef::try_from_cli_id(cli_id) {
+                    Some(MarkableRef::Uncommitted(hunk)) => {
+                        Some(Markable::Uncommitted(hunk.clone()))
+                    }
+                    Some(_) | None => None,
+                }
             }
-        }
-        StatusOutputLineData::UpdateNotice
-        | StatusOutputLineData::Connector
-        | StatusOutputLineData::BetweenStacks
-        | StatusOutputLineData::StagedChanges { .. }
-        | StatusOutputLineData::StagedFile { .. }
-        | StatusOutputLineData::UncommittedChanges { .. }
-        | StatusOutputLineData::Branch { .. }
-        | StatusOutputLineData::Commit { .. }
-        | StatusOutputLineData::CommitMessage
-        | StatusOutputLineData::EmptyCommitMessage
-        | StatusOutputLineData::File { .. }
-        | StatusOutputLineData::MergeBase
-        | StatusOutputLineData::UpstreamChanges
-        | StatusOutputLineData::Warning
-        | StatusOutputLineData::Hint
-        | StatusOutputLineData::NoAssignmentsUnstaged => None,
-    });
+            StatusOutputLineData::UpdateNotice
+            | StatusOutputLineData::Connector
+            | StatusOutputLineData::BetweenStacks
+            | StatusOutputLineData::StagedChanges { .. }
+            | StatusOutputLineData::StagedFile { .. }
+            | StatusOutputLineData::UncommittedChanges { .. }
+            | StatusOutputLineData::Branch { .. }
+            | StatusOutputLineData::Commit { .. }
+            | StatusOutputLineData::CommitMessage
+            | StatusOutputLineData::EmptyCommitMessage
+            | StatusOutputLineData::File { .. }
+            | StatusOutputLineData::MergeBase
+            | StatusOutputLineData::UpstreamChanges
+            | StatusOutputLineData::Warning
+            | StatusOutputLineData::Hint
+            | StatusOutputLineData::NoAssignmentsUnstaged => None,
+        })
+        .collect::<Vec<_>>();
 
-    toggle_markables(marks, uncommitted_files)
+    toggle_markables(marks, uncommitted_files)?;
+
+    Ok(())
 }
 
-pub fn toggle_markables<T, S>(
-    marks: &mut S,
-    markables: impl IntoIterator<Item = T>,
-) -> Result<(), S::Error>
-where
-    S: MarkStore<T>,
-{
+#[derive(Debug, Clone, Copy)]
+pub enum ToggleMarkablesOutcome {
+    Marked,
+    Unmarked,
+    NoMarkables,
+}
+
+pub fn toggle_markables(
+    marks: &mut Marks,
+    markables: impl IntoIterator<Item = Markable>,
+) -> anyhow::Result<ToggleMarkablesOutcome> {
+    let markables = markables.into_iter().collect::<Vec<_>>();
     let mut marked = Vec::new();
     let mut saw_unmarked = false;
 
-    for markable in markables {
-        if marks.contains_mark(&markable) {
+    for markable in &markables {
+        if marks.contains_mark(markable) {
             if !saw_unmarked {
                 marked.push(markable);
             }
         } else {
             saw_unmarked = true;
             marked.clear();
-            marks.insert_mark(markable)?;
+            marks.insert_mark(markable.clone())?;
         }
     }
 
-    if !saw_unmarked {
-        for markable in &marked {
+    let outcome = if saw_unmarked {
+        ToggleMarkablesOutcome::Marked
+    } else if marked.is_empty() {
+        ToggleMarkablesOutcome::NoMarkables
+    } else {
+        for markable in marked {
             marks.remove_mark(markable);
         }
-    }
+        ToggleMarkablesOutcome::Unmarked
+    };
 
+    propagate_marks_from_parent_to_children(marks, &markables, outcome)?;
+
+    Ok(outcome)
+}
+
+fn propagate_marks_from_parent_to_children(
+    marks: &mut Marks,
+    markables: &[Markable],
+    outcome: ToggleMarkablesOutcome,
+) -> anyhow::Result<()> {
+    for markable in markables {
+        let Markable::Uncommitted(hunk) = markable else {
+            continue;
+        };
+        if !hunk.is_entire_file {
+            continue;
+        }
+
+        for (idx, hunk_assignment) in hunk.hunk_assignments.iter().enumerate() {
+            let child_hunk =
+                synthetic_child_hunk(&hunk.id, idx, NonEmpty::new(hunk_assignment.clone()));
+            match outcome {
+                ToggleMarkablesOutcome::Marked => marks.insert_mark(child_hunk)?,
+                ToggleMarkablesOutcome::Unmarked => marks.remove_mark(&child_hunk),
+                ToggleMarkablesOutcome::NoMarkables => {}
+            }
+        }
+    }
     Ok(())
 }
 

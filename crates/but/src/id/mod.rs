@@ -1301,8 +1301,16 @@ pub struct UncommittedHunkOrFile {
 
 impl PartialEq for UncommittedHunkOrFile {
     fn eq(&self, other: &Self) -> bool {
-        self.hunk_assignments == other.hunk_assignments
-            && self.is_entire_file == other.is_entire_file
+        let Self {
+            hunk_assignments,
+            is_entire_file,
+            // Intentionally dont compare the short id since it depends on what other hunks exist
+            // and thus doesn't change the identity of this hunk specifically.
+            //
+            // `fn synthetic_hunk` relies on this.
+            id: _,
+        } = self;
+        hunk_assignments == &other.hunk_assignments && *is_entire_file == other.is_entire_file
     }
 }
 

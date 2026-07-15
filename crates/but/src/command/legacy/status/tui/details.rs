@@ -28,7 +28,7 @@ use crate::{
         Message, ReloadCause, SelectAfterReload,
         app::{
             Modal,
-            mark::{Marks, MarksRef, toggle_markables},
+            mark::{MarkStore, Markable, Marks, MarksRef, synthetic_parent_hunk, toggle_markables},
         },
         backstack::Backstack,
         confirm::Confirm,
@@ -1263,9 +1263,8 @@ impl Details {
 
     fn handle_discard_marks(&mut self, messages: &mut Vec<Message>, marks: MarksRef<'_>) {
         match marks {
-            MarksRef::Empty => return,
             MarksRef::Hunks { .. } => {}
-            MarksRef::Commits { .. } | MarksRef::CommittedFiles { .. } => return,
+            MarksRef::Empty | MarksRef::Commits { .. } | MarksRef::CommittedFiles { .. } => return,
         }
 
         self.to_be_discarded = self
@@ -1332,14 +1331,7 @@ impl Details {
             let marks = marks.to_owned();
 
             Confirm::new(
-                NonEmpty::new(
-                    Span::raw(if marks.len() == 1 {
-                        "Discard hunk?"
-                    } else {
-                        "Discard hunks?"
-                    })
-                    .into(),
-                ),
+                NonEmpty::new(Span::raw("Discard?").into()),
                 self.theme,
                 move |ctx, messages| {
                     let changes = {
@@ -1360,7 +1352,12 @@ impl Details {
                                 }
                             }
                         }
-                        builder.reconcile_worktree_diff_specs()?;
+                        match marks {
+                            Marks::Hunks(..) => {
+                                builder.reconcile_worktree_diff_specs()?;
+                            }
+                            Marks::Empty | Marks::Commits(..) | Marks::CommittedFiles(..) => {}
+                        }
                         builder.into_diff_specs()
                     };
 
@@ -1398,6 +1395,12 @@ impl Details {
         marks: &mut Marks,
         backstack: &mut Backstack,
     ) -> anyhow::Result<()> {
+        // we need all the sections to toggle parent marks so dont allow marking until we've
+        // finished streaming the diff
+        if self.is_polling_thread() {
+            return Ok(());
+        }
+
         if !self.selected_uncommitted() {
             return Ok(());
         }
@@ -1411,7 +1414,42 @@ impl Details {
         let CliId::UncommittedHunkOrFile(hunk) = &*section_cli_id else {
             return Ok(());
         };
-        toggle_markables(marks, [hunk.clone()])?;
+
+        toggle_markables(marks, [Markable::Uncommitted(hunk.clone())])?;
+
+        let sections_for_file_cli_ids = self
+            .sections
+            .iter()
+            .filter_map(|section| {
+                let cli_id = section.cli_id.as_deref()?;
+                let CliId::UncommittedHunkOrFile(section_hunk) = cli_id else {
+                    return None;
+                };
+                // the detail view can contain hunks from multiple files, for example if viewing
+                // the uncommitted area, so only check hunks from the marked file
+                if section_hunk.hunk_assignments.head.path_bytes
+                    != hunk.hunk_assignments.head.path_bytes
+                {
+                    return None;
+                }
+                Some(section_hunk)
+            })
+            .collect::<Vec<_>>();
+        if let Some(sections_for_file_cli_ids) = NonEmpty::from_vec(sections_for_file_cli_ids) {
+            let all_sections_marked = sections_for_file_cli_ids
+                .iter()
+                .all(|hunk| marks.contains_mark(*hunk));
+            let parent_hunk = synthetic_parent_hunk(
+                &sections_for_file_cli_ids.head.id,
+                0,
+                sections_for_file_cli_ids.flat_map(|hunk| hunk.hunk_assignments.clone()),
+            );
+            if all_sections_marked {
+                marks.insert_mark(parent_hunk)?;
+            } else {
+                marks.remove_mark(&parent_hunk);
+            }
+        }
 
         if marks.is_empty() {
             backstack.remove_mark();
