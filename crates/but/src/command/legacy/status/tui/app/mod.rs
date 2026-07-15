@@ -106,7 +106,6 @@ pub struct App {
     pub backstack: Backstack,
     pub file_browser: Option<FileBrowser>,
     pub head_sha: String,
-    pub has_pending_workspace_activity_event: bool,
 }
 
 impl App {
@@ -174,7 +173,6 @@ impl App {
             has_focus: true,
             file_browser,
             head_sha,
-            has_pending_workspace_activity_event: false,
         }
     }
 
@@ -486,7 +484,7 @@ impl App {
                 self.handle_clear_normal_mode_marks();
             }
             Message::SetHasFocus(has_focus) => {
-                self.handle_set_focus(has_focus, messages);
+                self.handle_set_focus(has_focus);
             }
             Message::Undo => {
                 self.handle_undo(ctx, messages)?;
@@ -805,7 +803,12 @@ impl App {
                 // processes and only then reloading. Always reloading here would result in double
                 // reloads when the TUI performs a mutation.
                 if !self.has_focus {
-                    self.has_pending_workspace_activity_event = true;
+                    messages.push(Message::Reload(
+                        None,
+                        ReloadCause::Watcher {
+                            details_selection_changed: false,
+                        },
+                    ));
                 }
             }
         }
@@ -821,8 +824,6 @@ impl App {
         cause: ReloadCause,
     ) -> anyhow::Result<()> {
         tracing::debug!("handle_reload");
-
-        self.has_pending_workspace_activity_event = false;
 
         let close_empty_global_file_list_after_reload = matches!(
             (&self.flags.show_files, &select_after_reload),
@@ -1296,19 +1297,7 @@ impl App {
         }
     }
 
-    pub fn handle_set_focus(&mut self, has_focus: bool, messages: &mut Vec<Message>) {
-        if !self.has_focus
-            && has_focus
-            && std::mem::take(&mut self.has_pending_workspace_activity_event)
-        {
-            messages.push(Message::Reload(
-                None,
-                ReloadCause::Watcher {
-                    details_selection_changed: false,
-                },
-            ));
-        }
-
+    pub fn handle_set_focus(&mut self, has_focus: bool) {
         self.has_focus = has_focus;
     }
 }
