@@ -4211,15 +4211,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gitbutler-url"
-version = "0.0.0"
-dependencies = [
- "bstr",
- "thiserror 2.0.18",
- "url",
-]
-
-[[package]]
 name = "gitbutler-user"
 version = "0.0.0"
 dependencies = [
