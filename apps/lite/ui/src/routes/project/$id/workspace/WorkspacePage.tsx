@@ -148,27 +148,6 @@ const useWorkspaceHotkeys = (projectId: string) => {
 	]);
 };
 
-const outlineNavigationItems = ({
-	headInfo,
-	uncommittedFilePaths,
-}: {
-	headInfo: RefInfo | undefined;
-	uncommittedFilePaths: Array<string> | undefined;
-}): Array<Operand> => [
-	uncommittedChangesOperand,
-	...(uncommittedFilePaths?.map((path) =>
-		fileOperand({ parent: uncommittedChangesFileParent, path }),
-	) ?? []),
-
-	...(headInfo?.stacks.toReversed() ?? []).flatMap((stack) =>
-		stack.segments.flatMap(
-			(segment): Array<Operand> => [
-				...(segment.refName ? [branchOperand({ branchRef: segment.refName.fullNameBytes })] : []),
-				...segment.commits.map((commit) => commitOperand({ commitId: commit.id })),
-			],
-		),
-	),
-];
 const hasAnyOperation = (source: Operand, target: Operand) => {
 	const operations = getOperations(source, target);
 	return !!operations.into || !!operations.above || !!operations.below;
@@ -185,18 +164,34 @@ const buildOutlineNavigationIndex = ({
 	outlineMode: OutlineMode;
 	absorptionTargetCommitIds: ReadonlySet<string>;
 }): NavigationIndex<Operand> => {
-	const items = Match.value(outlineMode).pipe(
+	const allItems = () => [
+		uncommittedChangesOperand,
+		...(uncommittedFilePaths?.map((path) =>
+			fileOperand({ parent: uncommittedChangesFileParent, path }),
+		) ?? []),
+
+		...(headInfo?.stacks.toReversed() ?? []).flatMap((stack) =>
+			stack.segments.flatMap(
+				(segment): Array<Operand> => [
+					...(segment.refName ? [branchOperand({ branchRef: segment.refName.fullNameBytes })] : []),
+					...segment.commits.map((commit) => commitOperand({ commitId: commit.id })),
+				],
+			),
+		),
+	];
+
+	const filteredItems = Match.value(outlineMode).pipe(
 		Match.tagsExhaustive({
-			Default: () => outlineNavigationItems({ headInfo, uncommittedFilePaths }),
+			Default: () => allItems(),
 			Absorb: (activeMode) =>
-				outlineNavigationItems({ headInfo, uncommittedFilePaths }).filter(
+				allItems().filter(
 					(operand) =>
 						operandEquals(operand, activeMode.source) ||
 						operandContains(operand, activeMode.source) ||
 						(operand._tag === "Commit" && absorptionTargetCommitIds.has(operand.commitId)),
 				),
 			Transfer: ({ value: activeMode }) =>
-				outlineNavigationItems({ headInfo, uncommittedFilePaths }).filter(
+				allItems().filter(
 					(operand) =>
 						operandEquals(operand, activeMode.source) ||
 						operandContains(operand, activeMode.source) ||
@@ -207,9 +202,9 @@ const buildOutlineNavigationIndex = ({
 		}),
 	);
 
-	const indexByKey = buildIndexByKey(items, operandIdentityKey);
+	const indexByKey = buildIndexByKey(filteredItems, operandIdentityKey);
 
-	return { items, indexByKey };
+	return { items: filteredItems, indexByKey };
 };
 
 type ProjectPickerProps = {
