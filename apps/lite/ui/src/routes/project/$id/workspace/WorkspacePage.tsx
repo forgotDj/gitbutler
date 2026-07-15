@@ -188,20 +188,18 @@ const buildOutlineNavigationIndex = ({
 	outlineMode: OutlineMode;
 	absorptionTargetCommitIds: ReadonlySet<string>;
 }): NavigationIndex<Operand> => {
-	const allItems = outlineNavigationItems({ headInfo, uncommittedFilePaths });
-
-	const filteredItems = Match.value(outlineMode).pipe(
+	const items = Match.value(outlineMode).pipe(
 		Match.tagsExhaustive({
-			Default: () => allItems,
+			Default: () => outlineNavigationItems({ headInfo, uncommittedFilePaths }),
 			Absorb: (activeMode) =>
-				allItems.filter(
+				outlineNavigationItems({ headInfo, uncommittedFilePaths }).filter(
 					(operand) =>
 						operandEquals(operand, activeMode.source) ||
 						operandContains(operand, activeMode.source) ||
 						(operand._tag === "Commit" && absorptionTargetCommitIds.has(operand.commitId)),
 				),
 			Transfer: (activeMode) =>
-				allItems.filter(
+				outlineNavigationItems({ headInfo, uncommittedFilePaths }).filter(
 					(operand) =>
 						operandEquals(operand, activeMode.value.source) ||
 						operandContains(operand, activeMode.value.source) ||
@@ -212,9 +210,9 @@ const buildOutlineNavigationIndex = ({
 		}),
 	);
 
-	const indexByKey = buildIndexByKey(filteredItems, operandIdentityKey);
+	const indexByKey = buildIndexByKey(items, operandIdentityKey);
 
-	return { items: filteredItems, indexByKey };
+	return { items, indexByKey };
 };
 
 type ProjectPickerProps = {
