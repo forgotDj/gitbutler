@@ -98,6 +98,7 @@ import {
 import {
 	contiguousSelectionByLine,
 	contiguousSelectionsFromHunk,
+	rangeFromLineGroups,
 	synthesizeFilePatch,
 } from "#ui/hunk.ts";
 import { buildIndexByKey, NavigationIndex } from "#ui/workspace/navigation-index.ts";
@@ -272,6 +273,9 @@ const getDiffView = ({
 		if (mdiff?.type === "Patch") {
 			for (const hunk of item.fileDiff.hunks) {
 				for (const selection of contiguousSelectionsFromHunk(hunk)) {
+					const range = rangeFromLineGroups(selection.lineGroups);
+					if (!range) continue;
+
 					const hunkOperand: HunkOperand = {
 						parent: file,
 						...selection,
@@ -286,7 +290,7 @@ const getDiffView = ({
 						operand: hunkOperand,
 						selectedLines: {
 							id: item.id,
-							range: hunkOperand.range,
+							range,
 						},
 					};
 					diffViewFile.hunks.push(diffViewHunk);
