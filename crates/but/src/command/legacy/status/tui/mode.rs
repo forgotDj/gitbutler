@@ -5,8 +5,8 @@ use crate::{
         InlineRewordMode,
         app::mark::MarksRef,
         app::{
-            CommandMode, CommitMode, CommitSource, JumpMode, MoveMode, MoveSource, MoveStackMode,
-            NormalMode, PickChangesMode, RubMode, RubSource, StackMode,
+            CommandMode, CommandReturnMode, CommitMode, CommitSource, JumpMode, MoveMode,
+            MoveSource, MoveStackMode, NormalMode, PickChangesMode, RubMode, RubSource, StackMode,
         },
         render::ModeRender,
     },
@@ -64,15 +64,17 @@ impl Mode {
                 MarksRef::from_hunk_slice(&pick_uncommitted_mode.marks)
             }
             Mode::Details(details_mode) => details_mode.return_mode.marks(),
+            Mode::Command(command_mode) => match &command_mode.return_mode {
+                CommandReturnMode::Normal(normal_mode) => normal_mode.marks.as_ref(),
+                CommandReturnMode::Details(details_mode) => details_mode.return_mode.marks(),
+            },
             Mode::Move(move_mode) => match &*move_mode.source {
                 MoveSource::Marks(commits) => MarksRef::from_commits(commits),
                 MoveSource::Commit { .. } | MoveSource::Branch { .. } => MarksRef::Empty,
             },
-            Mode::InlineReword(..)
-            | Mode::Command(..)
-            | Mode::Stack(..)
-            | Mode::MoveStack(..)
-            | Mode::Jump(..) => MarksRef::Empty,
+            Mode::InlineReword(..) | Mode::Stack(..) | Mode::MoveStack(..) | Mode::Jump(..) => {
+                MarksRef::Empty
+            }
         }
     }
 }
