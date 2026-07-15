@@ -30,7 +30,7 @@ use super::super::{
 };
 
 pub struct TestTui {
-    pub app: App,
+    app: App,
     terminal: Terminal<TestBackend>,
     env: Option<Sandbox>,
     out: OutputChannel,
