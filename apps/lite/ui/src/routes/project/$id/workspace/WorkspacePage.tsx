@@ -198,12 +198,12 @@ const buildOutlineNavigationIndex = ({
 						operandContains(operand, activeMode.source) ||
 						(operand._tag === "Commit" && absorptionTargetCommitIds.has(operand.commitId)),
 				),
-			Transfer: (activeMode) =>
+			Transfer: ({ value: activeMode }) =>
 				outlineNavigationItems({ headInfo, uncommittedFilePaths }).filter(
 					(operand) =>
-						operandEquals(operand, activeMode.value.source) ||
-						operandContains(operand, activeMode.value.source) ||
-						hasAnyOperation(activeMode.value.source, operand),
+						operandEquals(operand, activeMode.source) ||
+						operandContains(operand, activeMode.source) ||
+						hasAnyOperation(activeMode.source, operand),
 				),
 			RenameBranch: (x) => [branchOperand(x.operand)],
 			RewordCommit: (x) => [commitOperand(x.operand)],
