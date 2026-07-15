@@ -211,10 +211,8 @@ const useOutlineNavigationIndex = ({
 						operandContains(operand, activeMode.value.source) ||
 						hasAnyOperation(activeMode.value.source, operand),
 				),
-			RenameBranch: (x) =>
-				items.filter((operand) => operandEquals(operand, branchOperand(x.operand))),
-			RewordCommit: (x) =>
-				items.filter((operand) => operandEquals(operand, commitOperand(x.operand))),
+			RenameBranch: (x) => [branchOperand(x.operand)],
+			RewordCommit: (x) => [commitOperand(x.operand)],
 		}),
 	);
 	const indexByKey = buildIndexByKey(filteredItems, operandIdentityKey);
