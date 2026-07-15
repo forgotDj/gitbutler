@@ -679,13 +679,21 @@ pub(super) fn same_entity_for_reload(previous: &CliId, current: &CliId) -> bool 
         }
         (
             CliId::Commit {
-                commit_id: previous,
+                commit_id: previous_commit_id,
+                change_id: previous_change_id,
                 ..
             },
             CliId::Commit {
-                commit_id: current, ..
+                commit_id: current_commit_id,
+                change_id: current_change_id,
+                ..
             },
-        ) => previous == current,
+        ) => match (previous_change_id, current_change_id) {
+            (Some(previous), Some(current)) => previous == current,
+            (Some(_), None) | (None, Some(_)) | (None, None) => {
+                previous_commit_id == current_commit_id
+            }
+        },
         (CliId::Uncommitted { .. }, CliId::Uncommitted { .. }) => true,
         (
             CliId::Stack {
