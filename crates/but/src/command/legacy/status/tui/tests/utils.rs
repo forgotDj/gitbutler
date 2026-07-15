@@ -193,6 +193,9 @@ impl TestTui {
         self.render_with_messages(event, Vec::new())
     }
 
+    /// Lower level utility method that generally shouldn't be used. Prefer [`TestTui::input`] or
+    /// [`TestTui::reload`] instead.
+    #[doc(hidden)]
     #[track_caller]
     pub fn render_with_messages<E>(
         &mut self,
