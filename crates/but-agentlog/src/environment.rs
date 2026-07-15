@@ -545,7 +545,7 @@ fn resolve_branch_pr(
         remote_tracking.as_ref(),
         &repo.remote_names(),
     )?;
-    prs_by_head.get(&short.to_string()).copied()
+    prs_by_head.get(short.to_str().ok()?).copied()
 }
 
 fn review_targets(branch_key: &str, metadata: Option<&Branch>) -> Vec<ReviewTarget> {

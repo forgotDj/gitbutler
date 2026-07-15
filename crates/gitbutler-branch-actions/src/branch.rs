@@ -455,7 +455,7 @@ impl GitButlerStack {
                         .remote_tracking_ref_name
                         .as_ref()
                         .and_then(|rn| extract_remote_name_and_short_name(rn.as_ref(), names))
-                        .and_then(|(_, short)| reviews_by_head.get(&short.to_string()))
+                        .and_then(|(_, short)| reviews_by_head.get(short.to_str().ok()?))
                         .and_then(|review| usize::try_from(review.number).ok()),
                 })
                 .collect(),

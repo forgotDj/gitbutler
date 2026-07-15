@@ -5,6 +5,7 @@ import path from "node:path";
 export type FakeGitHubOptions = {
 	headRepoPath?: string;
 	forkRepoPath?: string;
+	baseRepoPath?: string;
 	sourceBranch?: string;
 	owner?: string;
 	repo?: string;
@@ -17,6 +18,7 @@ export type FakeGitHubOptions = {
 
 type ResolvedFakeGitHubOptions = {
 	headRepoPath: string;
+	baseRepoPath: string;
 	sourceBranch: string;
 	owner: string;
 	repo: string;
@@ -36,6 +38,7 @@ export type FakeGitHubServer = {
 export async function startFakeGitHubServer({
 	headRepoPath,
 	forkRepoPath,
+	baseRepoPath,
 	sourceBranch = "fork-feature",
 	owner = "acme",
 	repo = "widgets",
@@ -52,6 +55,7 @@ export async function startFakeGitHubServer({
 
 	const options = {
 		headRepoPath: reviewRepoPath,
+		baseRepoPath: baseRepoPath ?? reviewRepoPath,
 		sourceBranch,
 		owner,
 		repo,
@@ -159,7 +163,7 @@ async function handleRequest(
 
 	const repositoryPath = `/${options.owner}/${options.repo}.git`;
 	if (url.pathname === repositoryPath || url.pathname.startsWith(`${repositoryPath}/`)) {
-		return await serveGitRequest(request, response, url, repositoryPath, options.headRepoPath);
+		return await serveGitRequest(request, response, url, repositoryPath, options.baseRepoPath);
 	}
 
 	response.writeHead(404, { "Content-Type": "application/json" });

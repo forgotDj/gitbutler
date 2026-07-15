@@ -783,11 +783,7 @@ fn branch_is_merged_upstream(
 
     segment
         .branch_name()
-        .and_then(|branch_name| {
-            // Resolve by branch name from the cached review list; a stored PR
-            // number is no longer used to disambiguate.
-            review::from_branch_details(&status_ctx.review_map, branch_name, None)
-        })
+        .and_then(|branch_name| review::from_branch_details(&status_ctx.review_map, branch_name))
         .is_some_and(|review| review.is_merged_at_commit(&head_commit_id))
 }
 
@@ -1212,7 +1208,7 @@ fn print_group(
             let review_spans: Vec<Span<'static>> = segment
                 .branch_name()
                 .and_then(|branch_name| {
-                    review::from_branch_details(&status_ctx.review_map, branch_name, None)
+                    review::from_branch_details(&status_ctx.review_map, branch_name)
                 })
                 .map(|r| {
                     [Span::raw(" ")]
