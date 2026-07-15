@@ -2,10 +2,9 @@ use std::{borrow::Cow, collections::BTreeSet, sync::Arc};
 
 use anyhow::Context as _;
 use bstr::{BString, ByteSlice as _};
-use but_core::{CommitOwned, TreeChange, diff::CommitDetails};
+use but_core::{CommitOwned, TreeChange, commit::Headers, diff::CommitDetails};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignment;
-use gitbutler_commit::commit_ext::CommitExt;
 use gix::{prelude::ObjectIdExt as _, refs::FullName};
 use nonempty::NonEmpty;
 use ratatui::style::Style;
@@ -148,7 +147,10 @@ impl CopySelectionItem {
             CopySelectionItem::CommitSha(commit_id) => Ok(commit_id.to_string()),
             CopySelectionItem::ChangeId(commit_id) => {
                 let commit = repo.find_commit(*commit_id)?;
-                let change_id = commit.change_id().context("commit has no change id")?;
+                let commit = commit.decode()?;
+                let change_id = Headers::try_from_commit_headers(|| commit.extra_headers())
+                    .and_then(|headers| headers.change_id)
+                    .context("commit has no change id")?;
                 Ok(change_id.to_string())
             }
             CopySelectionItem::ShortCommitSha(commit_id) => {

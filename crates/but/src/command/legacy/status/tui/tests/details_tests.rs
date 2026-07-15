@@ -1157,3 +1157,16 @@ fn dims_unselectable_lines_while_in_details_mode() {
         "snapshots/dims_unselectable_lines_while_in_details_mode_001.svg"
     ]);
 }
+
+#[test]
+fn doesnt_show_synthetic_change_id() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    let mut tui = test_tui(env);
+
+    tui.input('j');
+    tui.input('j');
+    tui.input('d')
+        .assert_rendered_term_svg_eq(file!["snapshots/doesnt_show_synthetic_change_id_001.svg"]);
+}
