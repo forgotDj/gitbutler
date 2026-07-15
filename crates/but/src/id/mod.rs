@@ -1394,10 +1394,7 @@ pub enum CliId {
 impl PartialEq for CliId {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (
-                Self::UncommittedHunkOrFile(UncommittedHunkOrFile { id: l_id, .. }),
-                Self::UncommittedHunkOrFile(UncommittedHunkOrFile { id: r_id, .. }),
-            ) => l_id == r_id,
+            (Self::UncommittedHunkOrFile(l), Self::UncommittedHunkOrFile(r)) => l == r,
             (
                 Self::CommittedFile {
                     id: l_id,
