@@ -813,7 +813,7 @@ fn detail_marks_use_the_backstack() {
 }
 
 #[test]
-fn detail_marks_clear_when_leaving_detail_mode() {
+fn detail_marks_stay_when_leaving_detail_mode() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
     env.setup_metadata(&[]);
 
@@ -836,14 +836,14 @@ fn detail_marks_clear_when_leaving_detail_mode() {
         BackstackEntry::OpenSplitDetailsView,
     ]);
     tui.input('h')
-        .assert_backstack_eq([BackstackEntry::OpenSplitDetailsView])
+        .assert_backstack_eq([BackstackEntry::Mark, BackstackEntry::OpenSplitDetailsView])
         .assert_rendered_term_svg_eq(file![
-            "snapshots/detail_marks_clear_when_leaving_detail_mode_001.svg"
+            "snapshots/detail_marks_stay_when_leaving_detail_mode_001.svg"
         ]);
 }
 
 #[test]
-fn detail_marks_clear_when_closing_detail_view() {
+fn detail_marks_stay_when_closing_detail_view() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
     env.setup_metadata(&[]);
 
@@ -865,14 +865,16 @@ fn detail_marks_clear_when_closing_detail_view() {
         BackstackEntry::LeaveNormalMode,
         BackstackEntry::OpenSplitDetailsView,
     ]);
-    tui.input('d').assert_backstack_eq([]);
-    tui.input('d').assert_rendered_term_svg_eq(file![
-        "snapshots/detail_marks_clear_when_closing_detail_view_001.svg"
-    ]);
+    tui.input('d').assert_backstack_eq([BackstackEntry::Mark]);
+    tui.input('d')
+        .assert_backstack_eq([BackstackEntry::OpenSplitDetailsView, BackstackEntry::Mark])
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/detail_marks_stay_when_closing_detail_view_001.svg"
+        ]);
 }
 
 #[test]
-fn detail_marks_clear_when_closing_full_screen_detail_view() {
+fn detail_marks_stay_when_closing_full_screen_detail_view() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
     env.setup_metadata(&[]);
 
@@ -893,16 +895,21 @@ fn detail_marks_clear_when_closing_full_screen_detail_view() {
             BackstackEntry::OpenFullScreenDetailsView,
         ])
         .assert_rendered_term_svg_eq(file![
-            "snapshots/detail_marks_clear_when_closing_full_screen_detail_view_001.svg"
+            "snapshots/detail_marks_stay_when_closing_full_screen_detail_view_001.svg"
         ]);
     tui.input((KeyModifiers::SHIFT, 'D'))
-        .assert_backstack_eq([])
+        .assert_backstack_eq([BackstackEntry::Mark])
         .assert_rendered_term_svg_eq(file![
-            "snapshots/detail_marks_clear_when_closing_full_screen_detail_view_002.svg"
+            "snapshots/detail_marks_stay_when_closing_full_screen_detail_view_002.svg"
         ]);
     tui.input((KeyModifiers::SHIFT, 'D'))
+        .assert_backstack_eq([
+            BackstackEntry::LeaveNormalMode,
+            BackstackEntry::OpenFullScreenDetailsView,
+            BackstackEntry::Mark,
+        ])
         .assert_rendered_term_svg_eq(file![
-            "snapshots/detail_marks_clear_when_closing_full_screen_detail_view_003.svg"
+            "snapshots/detail_marks_stay_when_closing_full_screen_detail_view_003.svg"
         ]);
 }
 
@@ -938,16 +945,48 @@ fn marks_stay_when_going_straight_from_split_to_fullscreen() {
             "snapshots/marks_stay_when_going_straight_from_split_to_fullscreen_001.svg"
         ]);
 
-    // closing the full screen details should also clear the marks and backstack
+    // Closing full screen details should retain the marks.
     tui.input((KeyModifiers::SHIFT, 'D'))
-        .assert_backstack_eq([])
+        .assert_backstack_eq([BackstackEntry::Mark])
         .assert_rendered_term_svg_eq(file![
             "snapshots/marks_stay_when_going_straight_from_split_to_fullscreen_002.svg"
         ]);
 }
 
 #[test]
-fn discards_normal_mode_marks_when_marking_details() {
+fn status_and_detail_marks_coexist() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("one", "content of one");
+
+    let mut tui = test_tui(env);
+
+    tui.input('j');
+    tui.input(' ').assert_rendered_contains("┊✔︎  k A one");
+
+    tui.input('d');
+    tui.input('l');
+    tui.input('j');
+    tui.input(' ')
+        .assert_rendered_contains("┊✔︎  k A one")
+        .assert_rendered_contains("✔︎  k:f one │")
+        .assert_rendered_term_svg_eq(file!["snapshots/status_and_detail_marks_coexist_001.svg"]);
+    tui.input('h')
+        .assert_rendered_contains("┊✔︎  k A one")
+        .assert_rendered_contains("✔︎  k:f one │")
+        .assert_backstack_eq([BackstackEntry::Mark, BackstackEntry::OpenSplitDetailsView])
+        .assert_rendered_term_svg_eq(file!["snapshots/status_and_detail_marks_coexist_002.svg"]);
+
+    tui.input(KeyCode::Esc)
+        .assert_rendered_contains("┊   k A one")
+        .assert_rendered_contains("│ k:f one │")
+        .assert_backstack_eq([BackstackEntry::OpenSplitDetailsView])
+        .assert_rendered_term_svg_eq(file!["snapshots/status_and_detail_marks_coexist_003.svg"]);
+}
+
+#[test]
+fn normal_and_detail_marks_coexist_in_split_details() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
     env.setup_metadata(&[]);
 
@@ -973,25 +1012,25 @@ fn discards_normal_mode_marks_when_marking_details() {
             BackstackEntry::Mark,
         ])
         .assert_rendered_term_svg_eq(file![
-            "snapshots/discards_normal_mode_marks_when_marking_details_001.svg"
+            "snapshots/normal_and_detail_marks_coexist_in_split_details_001.svg"
         ]);
 
-    // but marking from the details view clears the normal mode marks
+    // Marking from the details view retains the normal mode marks.
     tui.input('j');
     tui.input(' ')
-        .assert_rendered_contains("┊   k    A one")
+        .assert_rendered_contains("┊✔︎  k    A one")
         .assert_backstack_eq([
             BackstackEntry::Mark,
             BackstackEntry::LeaveNormalMode,
             BackstackEntry::OpenSplitDetailsView,
         ])
         .assert_rendered_term_svg_eq(file![
-            "snapshots/discards_normal_mode_marks_when_marking_details_002.svg"
+            "snapshots/normal_and_detail_marks_coexist_in_split_details_002.svg"
         ]);
 }
 
 #[test]
-fn discards_normal_mode_marks_when_marking_full_screen_details() {
+fn normal_and_detail_marks_coexist_in_full_screen_details() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
     env.setup_metadata(&[]);
 
@@ -1022,19 +1061,19 @@ fn discards_normal_mode_marks_when_marking_full_screen_details() {
             BackstackEntry::OpenFullScreenDetailsView,
         ])
         .assert_rendered_term_svg_eq(file![
-            "snapshots/discards_normal_mode_marks_when_marking_full_screen_details_001.svg"
+            "snapshots/normal_and_detail_marks_coexist_in_full_screen_details_001.svg"
         ]);
 
     tui.input((KeyModifiers::SHIFT, 'D'))
-        .assert_rendered_contains("┊   k    A one")
-        .assert_backstack_eq([])
+        .assert_rendered_contains("┊✔︎  k    A one")
+        .assert_backstack_eq([BackstackEntry::Mark])
         .assert_rendered_term_svg_eq(file![
-            "snapshots/discards_normal_mode_marks_when_marking_full_screen_details_002.svg"
+            "snapshots/normal_and_detail_marks_coexist_in_full_screen_details_002.svg"
         ]);
 }
 
 #[test]
-fn discards_pick_changes_marks_when_marking_details() {
+fn pick_changes_and_detail_marks_coexist() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
     env.setup_metadata(&[]);
 
@@ -1071,9 +1110,9 @@ fn discards_pick_changes_marks_when_marking_details() {
             BackstackEntry::LeaveNormalMode,
             BackstackEntry::OpenSplitDetailsView,
         ])
-        .assert_rendered_contains("┊   k    A one")
+        .assert_rendered_contains("┊✔︎  k    A one")
         .assert_rendered_term_svg_eq(file![
-            "snapshots/discards_pick_changes_marks_when_marking_details_001.svg"
+            "snapshots/pick_changes_and_detail_marks_coexist_001.svg"
         ]);
 }
 

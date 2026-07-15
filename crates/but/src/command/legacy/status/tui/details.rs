@@ -178,18 +178,6 @@ impl Details {
         self.reset_line_reader();
     }
 
-    pub fn to_marked_cli_ids(&self, marks: MarksRef<'_>) -> Option<NonEmpty<CliId>> {
-        if let MarksRef::Hunks { head, tail } = marks {
-            let mut ids = NonEmpty::new(CliId::UncommittedHunkOrFile(head.clone()));
-            for id in tail {
-                ids.push(CliId::UncommittedHunkOrFile(id.clone()));
-            }
-            Some(ids)
-        } else {
-            None
-        }
-    }
-
     pub fn selection(&self) -> Option<&CliId> {
         self.selection.as_ref()
     }
@@ -807,14 +795,18 @@ impl Details {
                 self.copy_current_hunk()?;
             }
             DetailsMessage::Discard => {
-                let marks = marks.context("BUG: missing marks")?;
+                let Some(marks) = marks else {
+                    return Ok(());
+                };
                 self.handle_discard(messages, marks.as_ref());
             }
             DetailsMessage::DropToBeDiscarded => {
                 self.to_be_discarded.clear();
             }
             DetailsMessage::Mark => {
-                let marks = marks.context("BUG: missing marks")?;
+                let Some(marks) = marks else {
+                    return Ok(());
+                };
                 self.handle_mark(messages, marks, backstack)?;
             }
         }
@@ -1272,9 +1264,8 @@ impl Details {
     fn handle_discard_marks(&mut self, messages: &mut Vec<Message>, marks: MarksRef<'_>) {
         match marks {
             MarksRef::Empty => return,
-            MarksRef::Hunks {..} => {},
-            MarksRef::Commits {..} |
-            MarksRef::CommittedFiles {..} => return,
+            MarksRef::Hunks { .. } => {}
+            MarksRef::Commits { .. } | MarksRef::CommittedFiles { .. } => return,
         }
 
         self.to_be_discarded = self
@@ -1388,7 +1379,7 @@ impl Details {
                     });
                     messages.extend([
                         Message::Reload(select_after_reload, ReloadCause::Mutation),
-                        Message::ClearDetailMarks,
+                        Message::ClearMarks,
                     ]);
 
                     drop(drop_to_be_discarded);
@@ -1428,10 +1419,7 @@ impl Details {
             backstack.push_mark();
         }
 
-        messages.extend([
-            Message::ClearStatusModeMarks,
-            Message::Details(DetailsMessage::SelectNextSection),
-        ]);
+        messages.push(Message::Details(DetailsMessage::SelectNextSection));
 
         Ok(())
     }

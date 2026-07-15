@@ -18,9 +18,8 @@ use crate::{
         FilesStatusFlag, StatusFlags, StatusOutputLine, TuiLaunchOptions, TuiOutcome,
         TuiRunOptions,
         output::StatusOutputLineData,
-        tui::{app::mark::SingleSourceMarks, copy_selection_picker::Clipboard, details::Details},
+        tui::{copy_selection_picker::Clipboard, details::Details},
     },
-    id::UncommittedHunkOrFile,
     theme::Theme,
     tui::TerminalGuard,
 };
@@ -442,15 +441,11 @@ impl App {
                 modal => self.modal = modal,
             },
             Message::Details(details_message) => {
-                // Having to conditionally pass marks when handling messages is annoying because we
-                // might not be in details mode and have marks when the message is sent
-                let todo_ = ();
-
                 let marks = if let Mode::Details(details_mode) = self
                     .mode
                     .get_mut_and_i_promise_not_to_switch_to_a_different_state()
                 {
-                    Some(&mut details_mode.marks)
+                    Some(details_mode.return_mode.marks_mut())
                 } else {
                     None
                 };
@@ -510,12 +505,6 @@ impl App {
             Message::ClearMarks => {
                 self.handle_clear_marks();
             }
-            Message::ClearStatusModeMarks => {
-                self.handle_clear_status_mode_marks();
-            }
-            Message::ClearDetailMarks => {
-                self.handle_clear_detail_marks();
-            }
             Message::SetHasFocus(has_focus) => {
                 self.handle_set_focus(has_focus);
             }
@@ -545,40 +534,33 @@ impl App {
     }
 
     fn handle_confirm_and_quit(&mut self) {
-        fn cli_ids_from_hunks(
-            hunks: &SingleSourceMarks<UncommittedHunkOrFile>,
-        ) -> Option<TuiOutcome> {
-            let ids = hunks
-                .iter()
-                .cloned()
-                .map(CliId::UncommittedHunkOrFile)
-                .collect();
-            Some(TuiOutcome::CliIds(ids))
-        }
-
-        self.outcome = match &*self.mode {
-            Mode::Normal(..)
-            | Mode::Rub(..)
-            | Mode::InlineReword(..)
-            | Mode::Command(..)
-            | Mode::Commit(..)
-            | Mode::Move(..)
-            | Mode::Stack(..)
-            | Mode::Jump(..)
-            | Mode::MoveStack(..) => return,
-            Mode::Details(details_mode) => match &details_mode.return_mode {
-                DetailsReturnMode::PickChanges(PickChangesMode { marks }) => {
-                    if let Some(marks) = self.details.to_marked_cli_ids(details_mode.marks.as_ref())
-                    {
-                        Some(TuiOutcome::CliIds(marks.into()))
-                    } else {
-                        cli_ids_from_hunks(marks)
+        self.outcome = Some(TuiOutcome::CliIds(
+            match &*self.mode {
+                Mode::Normal(..)
+                | Mode::Rub(..)
+                | Mode::InlineReword(..)
+                | Mode::Command(..)
+                | Mode::Commit(..)
+                | Mode::Move(..)
+                | Mode::Stack(..)
+                | Mode::Jump(..)
+                | Mode::MoveStack(..) => return,
+                Mode::Details(details_mode) => match &details_mode.return_mode {
+                    DetailsReturnMode::PickChanges(PickChangesMode { marks }) => {
+                        if !details_mode.return_mode.marks().is_empty() {
+                            details_mode.return_mode.marks()
+                        } else {
+                            marks.as_ref()
+                        }
                     }
-                }
-                DetailsReturnMode::Normal(..) => return,
-            },
-            Mode::PickChanges(PickChangesMode { marks }) => cli_ids_from_hunks(marks),
-        };
+                    DetailsReturnMode::Normal(..) => return,
+                },
+                Mode::PickChanges(PickChangesMode { marks }) => marks.as_ref(),
+            }
+            .iter()
+            .map(|mark| mark.to_owned().into_cli_id())
+            .collect(),
+        ));
     }
 
     fn handle_enter_normal_mode_after_confirming_operation(&mut self, messages: &mut Vec<Message>) {
@@ -662,7 +644,7 @@ impl App {
                     pick_uncommitted_mode.marks.clear();
                 }
                 Mode::Details(details_mode) => {
-                    details_mode.marks.clear();
+                    details_mode.return_mode.marks_mut().clear();
                 }
                 Mode::InlineReword(..)
                 | Mode::Rub(..)
@@ -1050,7 +1032,7 @@ impl App {
         }
         if reload_details_view {
             let details_focused = matches!(&*self.mode, Mode::Details(..));
-            self.handle_clear_detail_marks();
+            self.handle_clear_marks();
             self.details.clear_selection_for_reload(details_focused);
             if let Some((index, direction)) = select_details_section_after_reload {
                 self.details.select_section_when_available(index, direction);

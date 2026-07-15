@@ -24,7 +24,6 @@ pub struct CommandMode {
 }
 
 #[derive(Debug, Clone)]
-#[expect(clippy::large_enum_variant)]
 pub enum CommandReturnMode {
     Normal(NormalMode),
     Details(DetailsMode),

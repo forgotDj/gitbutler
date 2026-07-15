@@ -34,7 +34,7 @@ impl App {
     ) {
         self.mode.update(&mut self.backstack, |backstack, mode| {
             if let Mode::Details(details_mode) = mode
-                && !details_mode.marks.is_empty()
+                && !details_mode.return_mode.marks().is_empty()
             {
                 backstack.remove_mark();
             }
@@ -54,9 +54,6 @@ impl App {
             };
 
             backstack.remove_leave_normal_mode();
-            if !details_mode.marks.is_empty() {
-                backstack.remove_mark();
-            }
             if details_mode.full_screen {
                 backstack.remove_open_details_view();
                 messages.push(Message::DetailsLayout(
@@ -144,7 +141,6 @@ impl App {
                 *mode = Mode::Details(DetailsMode {
                     full_screen,
                     return_mode,
-                    marks: Default::default(),
                 });
             });
     }

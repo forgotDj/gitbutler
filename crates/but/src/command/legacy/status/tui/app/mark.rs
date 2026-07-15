@@ -16,7 +16,7 @@ use crate::{
             app::{
                 App, CommandReturnMode, normal_mode::NormalMode, pick_changes_mode::PickChangesMode,
             },
-            mode::{DetailsReturnMode, Mode},
+            mode::Mode,
         },
     },
     id::{ShortId, UncommittedHunkOrFile},
@@ -75,27 +75,7 @@ impl Marks {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = MarkableRef<'_>> {
-        match self {
-            Marks::Empty => Box::new(std::iter::empty()) as Box<dyn Iterator<Item = _>>,
-            Marks::Hunks(hunks) => {
-                let iter = hunks.iter().map(MarkableRef::Uncommitted);
-                Box::new(iter)
-            }
-            Marks::Commits(commits) => {
-                let iter = commits
-                    .iter()
-                    .map(|inner| inner.as_ref())
-                    .map(MarkableRef::Commit);
-                Box::new(iter)
-            }
-            Marks::CommittedFiles(files) => {
-                let iter = files
-                    .iter()
-                    .map(|inner| inner.as_ref())
-                    .map(MarkableRef::CommittedFile);
-                Box::new(iter)
-            }
-        }
+        self.as_ref().iter()
     }
 
     pub fn as_ref(&self) -> MarksRef<'_> {
@@ -133,6 +113,7 @@ impl<'a> MarksRef<'a> {
         }
     }
 
+    #[expect(dead_code)]
     pub fn from_hunk_slice(hunks: &'a [UncommittedHunkOrFile]) -> Self {
         let Some((head, tail)) = hunks.split_first() else {
             return Self::Empty;
@@ -215,6 +196,32 @@ impl<'a> MarksRef<'a> {
                 let mut files = NonEmpty::new(head.clone());
                 files.extend(tail.iter().cloned());
                 Marks::CommittedFiles(files)
+            }
+        }
+    }
+
+    pub fn iter(self) -> impl Iterator<Item = MarkableRef<'a>> {
+        match self {
+            Self::Empty => Box::new(std::iter::empty()) as Box<dyn Iterator<Item = _>>,
+            Self::Hunks { head, tail } => {
+                let iter = std::iter::once(head)
+                    .chain(tail)
+                    .map(MarkableRef::Uncommitted);
+                Box::new(iter)
+            }
+            Self::Commits { head, tail } => {
+                let iter = std::iter::once(head)
+                    .chain(tail)
+                    .map(|commit| commit.as_ref())
+                    .map(MarkableRef::Commit);
+                Box::new(iter)
+            }
+            Self::CommittedFiles { head, tail } => {
+                let iter = std::iter::once(head)
+                    .chain(tail)
+                    .map(|file| file.as_ref())
+                    .map(MarkableRef::CommittedFile);
+                Box::new(iter)
             }
         }
     }
@@ -329,6 +336,7 @@ impl<T> Default for SingleSourceMarks<T> {
 }
 
 impl<T> SingleSourceMarks<T> {
+    #[expect(dead_code)]
     pub fn clear(&mut self) {
         self.0.clear();
     }
@@ -639,7 +647,7 @@ impl App {
                         handle_mark_uncommitted(marks, &self.status_lines)?;
                     }
                     Mode::PickChanges(PickChangesMode { marks }) => {
-                        let Ok(()) = handle_mark_uncommitted(marks, &self.status_lines);
+                        handle_mark_uncommitted(marks, &self.status_lines)?;
                     }
                     Mode::Rub(..)
                     | Mode::InlineReword(..)
@@ -674,96 +682,23 @@ impl App {
                 true
             }
             Mode::Details(details_mode) => {
-                details_mode.marks.clear();
-                match &mut details_mode.return_mode {
-                    DetailsReturnMode::Normal(normal_mode) => normal_mode.marks.clear(),
-                    DetailsReturnMode::PickChanges(pick_changes_mode) => {
-                        pick_changes_mode.marks.clear()
-                    }
-                }
+                details_mode.return_mode.marks_mut().clear();
                 true
             }
             Mode::PickChanges(pick_changes_mode) => {
                 pick_changes_mode.marks.clear();
                 true
-            }
-            Mode::Rub(..)
-            | Mode::InlineReword(..)
-            | Mode::Command(..)
-            | Mode::Commit(..)
-            | Mode::Move(..)
-            | Mode::Stack(..)
-            | Mode::MoveStack(..)
-            | Mode::Jump(..) => false,
-        };
-
-        if did_clear_marks {
-            self.backstack.remove_mark();
-        }
-    }
-
-    pub fn handle_clear_status_mode_marks(&mut self) {
-        let (did_clear_marks, has_detail_marks) = match self
-            .mode
-            .get_mut_and_i_promise_not_to_switch_to_a_different_state()
-        {
-            Mode::Normal(normal_mode) => {
-                normal_mode.marks.clear();
-                (true, false)
-            }
-            Mode::Details(details_mode) => {
-                match &mut details_mode.return_mode {
-                    DetailsReturnMode::Normal(normal_mode) => normal_mode.marks.clear(),
-                    DetailsReturnMode::PickChanges(pick_changes_mode) => {
-                        pick_changes_mode.marks.clear()
-                    }
-                }
-                (true, !details_mode.marks.is_empty())
-            }
-            Mode::PickChanges(pick_changes_mode) => {
-                pick_changes_mode.marks.clear();
-                (true, false)
-            }
-            Mode::Rub(..)
-            | Mode::InlineReword(..)
-            | Mode::Command(..)
-            | Mode::Commit(..)
-            | Mode::Move(..)
-            | Mode::Stack(..)
-            | Mode::MoveStack(..)
-            | Mode::Jump(..) => (false, false),
-        };
-
-        if did_clear_marks {
-            if has_detail_marks {
-                self.backstack.push_mark();
-            } else {
-                self.backstack.remove_mark();
-            }
-        }
-    }
-
-    pub fn handle_clear_detail_marks(&mut self) {
-        let did_clear_marks = match self
-            .mode
-            .get_mut_and_i_promise_not_to_switch_to_a_different_state()
-        {
-            Mode::Details(details_mode) => {
-                let did_clear_marks = !details_mode.marks.is_empty();
-                details_mode.marks.clear();
-                did_clear_marks
             }
             Mode::Command(command_mode) => {
-                let CommandReturnMode::Details(details_mode) = &mut command_mode.return_mode else {
-                    return;
-                };
-                let did_clear_marks = !details_mode.marks.is_empty();
-                details_mode.marks.clear();
-                did_clear_marks
+                match &mut command_mode.return_mode {
+                    CommandReturnMode::Normal(normal_mode) => normal_mode.marks.clear(),
+                    CommandReturnMode::Details(details_mode) => {
+                        details_mode.return_mode.marks_mut().clear()
+                    }
+                }
+                true
             }
-            Mode::Normal(..)
-            | Mode::PickChanges(..)
-            | Mode::Rub(..)
+            Mode::Rub(..)
             | Mode::InlineReword(..)
             | Mode::Commit(..)
             | Mode::Move(..)
@@ -795,7 +730,7 @@ fn handle_mark_cli_id(commit: &CliId, mode: &mut Mode) -> anyhow::Result<bool> {
             let MarkableRef::Uncommitted(hunk) = markable else {
                 return Ok(false);
             };
-            let Ok(()) = toggle_markables(&mut pick_uncommitted_mode.marks, [hunk.clone()]);
+            toggle_markables(&mut pick_uncommitted_mode.marks, [hunk.clone()])?;
         }
         Mode::InlineReword(..)
         | Mode::Rub(..)

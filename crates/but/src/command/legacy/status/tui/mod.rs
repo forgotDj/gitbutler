@@ -602,8 +602,6 @@ enum Message {
     ToggleHelp,
     Mark,
     ClearMarks,
-    ClearStatusModeMarks,
-    ClearDetailMarks,
     Undo,
     Redo,
     ShowModal(Modal),
@@ -870,8 +868,6 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
             | Message::ToggleHelp
             | Message::Mark
             | Message::ClearMarks
-            | Message::ClearStatusModeMarks
-            | Message::ClearDetailMarks
             | Message::CopySelection
             | Message::CopySelectionPicker
             | Message::CopyToClipboard(..)

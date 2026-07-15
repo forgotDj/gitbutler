@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="820" height="380" viewBox="0 0 820 380">
   <rect x="0" y="0" width="820" height="380" fill="#000000" />
-  <rect x="10" y="10" width="400" height="18" fill="#313244" />
+  <rect x="10" y="28" width="8" height="18" fill="#313244" />
+  <rect x="18" y="28" width="16" height="18" fill="#0000AA" />
+  <rect x="34" y="28" width="376" height="18" fill="#313244" />
   <rect x="426" y="64" width="16" height="18" fill="#0000AA" />
   <rect x="418" y="154" width="392" height="18" fill="#004100" />
   <rect x="10" y="352" width="88" height="18" fill="#FFA500" />
@@ -17,13 +19,14 @@
     <text x="546 554" y="24" style="fill:#00AA00;">+1</text>
     <text x="570 578" y="24" style="fill:#AA0000;">-0</text>
     <text x="10" y="42" style="fill:#CCCCCC;">┊</text>
-    <text x="42 50 58 66" y="42" style="fill:#0000AA;font-weight:bold;">twop</text>
-    <text x="82" y="42" style="fill:#CCCCCC;">A</text>
-    <text x="98 106 114" y="42" style="fill:#00AA00;">two</text>
+    <text x="18" y="42" style="fill:#000000;">✔︎</text>
+    <text x="42" y="42" style="fill:#0000AA;font-weight:bold;">k</text>
+    <text x="58" y="42" style="fill:#CCCCCC;">A</text>
+    <text x="74 82 90" y="42" style="fill:#00AA00;">one</text>
     <text x="410" y="42" style="fill:#555555;">│</text>
     <text x="10" y="60" style="fill:#CCCCCC;">┊</text>
     <text x="410" y="60" style="fill:#0000AA;">▌</text>
-    <text x="418 426 434 442 450 458 466 474 482 490 498 506 514 522 530 538" y="60" style="fill:#555555;">───────────────╮</text>
+    <text x="418 426 434 442 450 458 466 474 482 490 498 506 514" y="60" style="fill:#555555;">────────────╮</text>
     <text x="10" y="78" style="fill:#CCCCCC;">┴</text>
     <text x="26 34 42 50 58 66 74" y="78" style="fill:#CCCCCC;opacity:0.75;">0dc3733</text>
     <text x="90 98 106 114 122 130 138" y="78" style="fill:#CCCCCC;opacity:0.75;">(common</text>
@@ -33,11 +36,11 @@
     <text x="322" y="78" style="fill:#CCCCCC;opacity:0.75;">M</text>
     <text x="410" y="78" style="fill:#0000AA;">▌</text>
     <text x="426" y="78" style="fill:#000000;">✔︎</text>
-    <text x="450 458 466 474 482 490" y="78" style="fill:#0000AA;">twop:b</text>
-    <text x="506 514 522" y="78" style="fill:#CCCCCC;">two</text>
-    <text x="538" y="78" style="fill:#555555;">│</text>
+    <text x="450 458 466" y="78" style="fill:#0000AA;">k:f</text>
+    <text x="482 490 498" y="78" style="fill:#CCCCCC;">one</text>
+    <text x="514" y="78" style="fill:#555555;">│</text>
     <text x="410" y="96" style="fill:#0000AA;">▌</text>
-    <text x="418 426 434 442 450 458 466 474 482 490 498 506 514 522 530 538" y="96" style="fill:#555555;">───────────────╯</text>
+    <text x="418 426 434 442 450 458 466 474 482 490 498 506 514" y="96" style="fill:#555555;">────────────╯</text>
     <text x="410" y="114" style="fill:#0000AA;">▌</text>
     <text x="410" y="132" style="fill:#0000AA;">▌</text>
     <text x="418 426" y="132" style="fill:#CCCCCC;opacity:0.75;">@@</text>
@@ -53,7 +56,7 @@
     <text x="482" y="168" style="fill:#CCCCCC;">+</text>
     <text x="490 498 506 514 522 530 538" y="168" style="fill:#F8F8F2;">content</text>
     <text x="554 562" y="168" style="fill:#F8F8F2;">of</text>
-    <text x="578 586 594" y="168" style="fill:#F8F8F2;">two</text>
+    <text x="578 586 594" y="168" style="fill:#F8F8F2;">one</text>
     <text x="410" y="186" style="fill:#555555;">│</text>
     <text x="410" y="204" style="fill:#555555;">│</text>
     <text x="410" y="222" style="fill:#555555;">│</text>

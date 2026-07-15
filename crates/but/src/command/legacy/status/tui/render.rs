@@ -22,8 +22,8 @@ use crate::{
             BranchLineContent, StatusOutputContent, StatusOutputLineData, UncommittedLineContent,
         },
         tui::app::{
-            CommandReturnMode, CommitMessageComposer, CommitMode, JumpMode, MoveMode, MoveSource,
-            MoveStackMode, StackMode, find_jump_match, mark::Marks,
+            CommitMessageComposer, CommitMode, JumpMode, MoveMode, MoveSource, MoveStackMode,
+            StackMode, find_jump_match,
         },
     },
     theme::Theme,
@@ -115,23 +115,7 @@ pub fn render_app(app: &App, frame: &mut Frame) {
 }
 
 fn render_details_pane(app: &App, area: Rect, frame: &mut Frame) {
-    let empty_marks = Marks::default();
-    let marks = match &*app.mode {
-        Mode::Details(details_mode) => details_mode.marks.as_ref(),
-        Mode::Command(command_mode) => match &command_mode.return_mode {
-            CommandReturnMode::Details(details_mode) => details_mode.marks.as_ref(),
-            CommandReturnMode::Normal(..) => empty_marks.as_ref(),
-        },
-        Mode::Normal(..)
-        | Mode::Rub(..)
-        | Mode::InlineReword(..)
-        | Mode::Commit(..)
-        | Mode::Move(..)
-        | Mode::Stack(..)
-        | Mode::MoveStack(..)
-        | Mode::PickChanges(..)
-        | Mode::Jump(..) => empty_marks.as_ref(),
-    };
+    let marks = app.mode.marks_ref();
     app.details.render(
         matches!(app.modal, Some(Modal::Help { .. })),
         app.has_focus,
