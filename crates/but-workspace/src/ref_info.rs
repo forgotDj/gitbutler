@@ -517,11 +517,37 @@ pub(crate) fn find_ancestor_workspace_commit(
         }
         false
     });
-    sidx_and_cidx.map(|(sidx, cidx)| AncestorWorkspaceCommit {
+    ancestor_workspace_commit_if_outside(commits_outside, sidx_and_cidx)
+}
+
+fn ancestor_workspace_commit_if_outside(
+    commits_outside: Vec<crate::ref_info::Commit>,
+    sidx_and_cidx: Option<(SegmentIndex, usize)>,
+) -> Option<AncestorWorkspaceCommit> {
+    let (sidx, cidx) = sidx_and_cidx?;
+    (!commits_outside.is_empty()).then_some(AncestorWorkspaceCommit {
         commits_outside,
         segment_with_managed_commit: sidx,
         commit_index_of_managed_commit: cidx,
     })
+}
+
+#[cfg(test)]
+mod ancestor_workspace_tests {
+    use super::ancestor_workspace_commit_if_outside;
+
+    #[test]
+    fn empty_outside_commits_are_not_ancestor_workspace_state() {
+        let actual = ancestor_workspace_commit_if_outside(
+            Vec::new(),
+            Some((but_graph::SegmentIndex::new(0), 0)),
+        );
+
+        assert!(
+            actual.is_none(),
+            "the managed commit itself must not be reported as an ancestor"
+        );
+    }
 }
 
 /// Gather information about graph and the workspace that might be associated with it,

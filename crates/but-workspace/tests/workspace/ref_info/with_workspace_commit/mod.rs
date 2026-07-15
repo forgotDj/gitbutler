@@ -33,6 +33,30 @@ pub fn ref_info(
 }
 
 #[test]
+fn direct_workspace_ref_has_no_ancestor_workspace_commit() -> anyhow::Result<()> {
+    let (repo, meta) = read_only_in_memory_scenario("remote-advanced-ff")?;
+    let workspace_tip = repo.head_id()?.detach();
+    repo.reference(
+        "refs/heads/direct-workspace",
+        workspace_tip,
+        gix::refs::transaction::PreviousValue::MustNotExist,
+        "test direct workspace ref",
+    )?;
+
+    let info = ref_info(
+        repo.find_reference("refs/heads/direct-workspace")?,
+        &meta,
+        standard_options(),
+    )?;
+
+    assert!(
+        info.ancestor_workspace_commit.is_none(),
+        "a ref pointing directly at the managed workspace commit has no outside commits"
+    );
+    Ok(())
+}
+
+#[test]
 fn gerrit_mode_uses_metadata_for_commit_review_urls_and_push_status() -> anyhow::Result<()> {
     let (repo, mut meta) = read_only_in_memory_scenario("remote-advanced-ff")?;
     add_stack(&mut meta, 1, "A", StackState::InWorkspace);
