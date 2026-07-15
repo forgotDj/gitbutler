@@ -9,11 +9,12 @@ use but_core::{
 use but_ctx::Context;
 use but_error::Code;
 use but_graph::FirstParent;
+use but_meta::virtual_branches_legacy_types::Target;
 use gitbutler_git::GitContextExt as _;
 use gitbutler_project::{FetchResult, Project};
 use gitbutler_reference::{Refname, RemoteRefname};
 use gitbutler_repo::first_parent_commit_ids_until;
-use gitbutler_stack::{Stack, Target, canned_branch_name};
+use gitbutler_stack::Stack;
 use serde::Serialize;
 use tracing::instrument;
 
@@ -126,7 +127,7 @@ pub fn bootstrap_default_target_if_missing(ctx: &Context) -> Result<bool> {
             return Ok(false);
         }
     };
-    ctx.set_default_target(target.into())?;
+    ctx.set_default_target(target)?;
     set_exclude_decoration(ctx)?;
     Ok(true)
 }
@@ -226,7 +227,7 @@ pub(crate) fn set_base_branch(
         push_remote_name: None,
     };
 
-    ctx.set_default_target(target.clone().into())?;
+    ctx.set_default_target(target.clone())?;
     let mut vb_state = ctx.virtual_branches();
 
     // TODO: make sure this is a real branch
@@ -259,7 +260,9 @@ pub(crate) fn set_base_branch(
             };
 
             let branch_name = if branch_matches_target {
-                canned_branch_name(&*ctx.repo.get()?)?
+                but_core::branch::canned_refname(&*ctx.repo.get()?)?
+                    .shorten()
+                    .to_string()
             } else {
                 head_name.to_string().replace("refs/heads/", "")
             };
