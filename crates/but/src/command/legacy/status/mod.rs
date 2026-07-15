@@ -382,9 +382,6 @@ fn build_status_context<'a>(
                     local_commits_by_id.insert(local_commit.id, local_commit);
                 }
                 for remote_commit in commits_on_remote {
-                    if let Some(change_id) = &remote_commit.change_id {
-                        commit_id_to_change_id.insert(remote_commit.id, change_id.clone());
-                    }
                     remote_commits_by_id.insert(remote_commit.id, remote_commit);
                 }
                 push_statuses_by_segment_id.insert(segment.id, push_status);
@@ -1358,10 +1355,7 @@ fn print_group(
                     status_ctx,
                     stack_with_id.id,
                     commit.short_id.clone(),
-                    commit
-                        .change_id
-                        .as_ref()
-                        .map(|change_id| change_id.short_id.clone()),
+                    None,
                     inner,
                     CommitChanges::Remote(&details.diff_with_first_parent),
                     CommitClassification::Upstream,
