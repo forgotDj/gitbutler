@@ -147,6 +147,71 @@ fn move_checked_out_top_branch_down_checks_out_new_top() -> anyhow::Result<()> {
 }
 
 #[test]
+fn move_checked_out_top_branch_down_dry_run_does_not_persist_order() -> anyhow::Result<()> {
+    let (mut ctx, _tmp) = context_with_three_branch_stack()?;
+    let subject: gix::refs::FullName = "refs/heads/C".try_into()?;
+    let target: gix::refs::FullName = "refs/heads/A".try_into()?;
+    let order_before = ctx
+        .meta()?
+        .branch_stack_order(subject.as_ref())?
+        .expect("branch order is configured");
+
+    let result =
+        but_api::branch::move_branch(&mut ctx, subject.as_ref(), target.as_ref(), DryRun::Yes)?;
+
+    assert_workspace_ref(&result.workspace, "refs/heads/B");
+    #[cfg(not(feature = "graph-workspace"))]
+    assert_eq!(
+        workspace_branch_names(&result.workspace),
+        ["B", "C", "A"],
+        "dry-run should preview the reordered stack"
+    );
+    assert_eq!(
+        ctx.repo.get()?.head_name()?.as_ref(),
+        Some(&subject),
+        "dry-run should leave HEAD on the original stack tip"
+    );
+    assert_eq!(
+        ctx.meta()?.branch_stack_order(subject.as_ref())?,
+        Some(order_before),
+        "dry-run should not persist the proposed order"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn successful_branch_move_returns_and_persists_reordered_stack() -> anyhow::Result<()> {
+    let (mut ctx, _tmp) = context_with_three_branch_stack()?;
+    let subject: gix::refs::FullName = "refs/heads/A".try_into()?;
+    let target: gix::refs::FullName = "refs/heads/B".try_into()?;
+    let tip: gix::refs::FullName = "refs/heads/C".try_into()?;
+
+    let result =
+        but_api::branch::move_branch(&mut ctx, subject.as_ref(), target.as_ref(), DryRun::No)?;
+
+    assert_workspace_ref(&result.workspace, "refs/heads/C");
+    #[cfg(not(feature = "graph-workspace"))]
+    assert_eq!(
+        workspace_branch_names(&result.workspace),
+        ["C", "A", "B"],
+        "the returned workspace should use the persisted order"
+    );
+    assert_eq!(
+        ctx.repo.get()?.head_name()?.as_ref(),
+        Some(&tip),
+        "a lower-branch reorder should leave HEAD on the stack tip"
+    );
+    assert_eq!(
+        ctx.meta()?.branch_stack_order(tip.as_ref())?,
+        Some(vec![tip, subject, target]),
+        "the successful materialization should persist the new order"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn move_empty_branch_dry_run_previews_new_order_without_persisting_it() -> anyhow::Result<()> {
     let (repo, _tmp) = repo_with_feature_branch()?;
     let mut ctx = but_ctx::Context::from_repo_for_testing(repo)?.with_memory_app_cache();
