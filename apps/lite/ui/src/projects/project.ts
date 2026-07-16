@@ -191,12 +191,12 @@ export const projectReducers = {
 	},
 	enterKeyboardTransferMode: (
 		state: ProjectState,
-		{ source, operationType }: { source: Operand; operationType?: OperationType },
+		{ sources, operationType }: { sources: Array<Operand>; operationType?: OperationType },
 	) => {
 		const workspaceState = state.workspace;
 		workspaceState.mode = transferOutlineMode(
 			keyboardTransferMode({
-				source,
+				sources,
 				operationType: operationType ?? "into",
 				restoreSelection: {
 					outline: workspaceState.selection.outline,
@@ -236,7 +236,7 @@ export const projectReducers = {
 
 				workspaceState.mode = transferOutlineMode(
 					pointerTransferMode({
-						source: mode.source,
+						sources: mode.sources,
 						target,
 						operationType,
 					}),
@@ -254,7 +254,7 @@ export const projectReducers = {
 			Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) => {
 				workspaceState.mode = transferOutlineMode(
 					keyboardTransferMode({
-						source: mode.source,
+						sources: mode.sources,
 						operationType,
 						restoreSelection: mode.restoreSelection,
 					}),

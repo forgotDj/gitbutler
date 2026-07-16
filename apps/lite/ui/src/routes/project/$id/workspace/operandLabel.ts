@@ -32,3 +32,16 @@ export const operandLabel = ({
 			},
 		}),
 	);
+
+export const operandsLabel = ({
+	operands,
+	headInfoIndex,
+}: {
+	operands: Array<Operand>;
+	headInfoIndex: HeadInfoIndex;
+}) => {
+	if (operands.length !== 1) return `${operands.length.toLocaleString()} items`;
+
+	// oxlint-disable-next-line typescript/no-non-null-assertion
+	return operandLabel({ operand: operands[0]!, headInfoIndex });
+};

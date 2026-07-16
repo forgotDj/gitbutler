@@ -133,7 +133,7 @@ const OperandC: FC<
 					return {
 						operationType: mode.operationType,
 						tooltip: getOperation({
-							source: mode.source,
+							sources: mode.sources,
 							target: operand,
 							operationType: mode.operationType,
 						})?.label,
@@ -535,7 +535,7 @@ const Stacks: FC<{
 					if (!target) return;
 
 					return getOperation({
-						source: mode.source,
+						sources: mode.sources,
 						target,
 						operationType: mode.operationType,
 					})?.operation;

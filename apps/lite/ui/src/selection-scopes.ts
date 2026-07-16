@@ -269,7 +269,7 @@ export const useNavigationIndexHotkeys = <T>({
 		dispatch(
 			projectSlice.actions.enterKeyboardTransferMode({
 				projectId,
-				source,
+				sources: [source],
 				operationType,
 			}),
 		);

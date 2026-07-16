@@ -1,5 +1,5 @@
 import { Operand, operandEquals } from "#ui/operands.ts";
-import { getOperationSource, pointerTransferMode } from "#ui/outline/mode.ts";
+import { getOperationSources, pointerTransferMode } from "#ui/outline/mode.ts";
 import styles from "./OperationSourceC.module.css";
 import { operandLabel } from "./operandLabel.ts";
 import { headInfoQueryOptions } from "#ui/api/queries.ts";
@@ -65,14 +65,14 @@ export const OperationSourceC: FC<
 			projectSlice.actions.enterTransferMode({
 				projectId,
 				mode: pointerTransferMode({
-					source,
+					sources: [source],
 					target: null,
 					operationType: null,
 				}),
 			}),
 		);
 	});
-	const getInitialData = useEffectEvent((): DragData => ({ source }));
+	const getInitialData = useEffectEvent((): DragData => ({ sources: [source] }));
 
 	useEffect(() => {
 		const element = dragRef.current;
@@ -93,8 +93,10 @@ export const OperationSourceC: FC<
 		});
 	}, [dispatch, projectId]);
 
-	const operationSource = getOperationSource(outlineMode);
-	const isActiveSource = operationSource ? operandEquals(operationSource, source) : false;
+	const operationSources = getOperationSources(outlineMode);
+	const isActiveSource = operationSources
+		? operationSources.some((operationSource) => operandEquals(operationSource, source))
+		: false;
 
 	return useRender({
 		render,
