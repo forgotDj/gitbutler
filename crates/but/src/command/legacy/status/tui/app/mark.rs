@@ -217,6 +217,29 @@ impl<'a> MarksRef<'a> {
             }
         }
     }
+
+    pub fn contains_child_of(self, cli_id: &CliId) -> bool {
+        let CliId::UncommittedHunkOrFile(parent) = cli_id else {
+            return false;
+        };
+        if !parent.is_entire_file {
+            return false;
+        }
+
+        self.iter().any(|mark| {
+            let MarkableRef::Uncommitted(child) = mark else {
+                return false;
+            };
+
+            !child.is_entire_file
+                && child.hunk_assignments.iter().any(|child_assignment| {
+                    parent
+                        .hunk_assignments
+                        .iter()
+                        .any(|parent_assignment| parent_assignment == child_assignment)
+                })
+        })
+    }
 }
 
 pub trait MarkStore<T> {

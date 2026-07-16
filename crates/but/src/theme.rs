@@ -521,6 +521,8 @@ pub struct ThemeSymbols {
     pub lightning: StyledSymbol,
     /// Line marked in TUI
     pub mark: StyledSymbol,
+    /// Line partially marked in TUI
+    pub partial_mark: StyledSymbol,
 }
 
 impl ThemeSymbols {
@@ -533,6 +535,7 @@ impl ThemeSymbols {
             arrow: StyledSymbol::new("→", t.hint),
             lightning: StyledSymbol::new("⚡", t.attention.add_modifier(Modifier::BOLD)),
             mark: StyledSymbol::new("✔︎", t.tui_mark),
+            partial_mark: StyledSymbol::new("—", t.tui_mark),
         }
     }
 }
@@ -541,52 +544,49 @@ impl ThemeSymbols {
 /// Ratatui [`Span`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StyledSymbol {
-    content: String,
+    content: &'static str,
     style: Style,
 }
 
 impl StyledSymbol {
     /// Create a new [`StyledSymbol`].
-    pub fn new<S: AsRef<str>>(content: S, style: Style) -> Self {
-        StyledSymbol {
-            content: content.as_ref().to_string(),
-            style,
-        }
+    pub fn new(content: &'static str, style: Style) -> Self {
+        StyledSymbol { content, style }
     }
 
     /// Convert the [`StyledSymbol`] into a styled [`Span`].
     pub fn span(&self) -> Span<'_> {
-        Span::styled(&self.content, self.style)
+        Span::styled(self.content, self.style)
     }
 
     /// Return a new symbol styled for success.
     pub fn success(&self) -> StyledSymbol {
         let t = get();
-        StyledSymbol::new(&self.content, t.success.add_modifier(Modifier::BOLD))
+        StyledSymbol::new(self.content, t.success.add_modifier(Modifier::BOLD))
     }
 
     /// Return a new symbol styled for attention / warning.
     pub fn attention(&self) -> StyledSymbol {
         let t = get();
-        StyledSymbol::new(&self.content, t.attention.add_modifier(Modifier::BOLD))
+        StyledSymbol::new(self.content, t.attention.add_modifier(Modifier::BOLD))
     }
 
     /// Return a new symbol styled for error.
     pub fn error(&self) -> StyledSymbol {
         let t = get();
-        StyledSymbol::new(&self.content, t.error.add_modifier(Modifier::BOLD))
+        StyledSymbol::new(self.content, t.error.add_modifier(Modifier::BOLD))
     }
 
     /// Return a new symbol styled for info.
     pub fn info(&self) -> StyledSymbol {
         let t = get();
-        StyledSymbol::new(&self.content, t.info.add_modifier(Modifier::BOLD))
+        StyledSymbol::new(self.content, t.info.add_modifier(Modifier::BOLD))
     }
 }
 
 impl Display for StyledSymbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.style.paint(&self.content))
+        write!(f, "{}", self.style.paint(self.content))
     }
 }
 

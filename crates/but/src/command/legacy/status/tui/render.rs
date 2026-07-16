@@ -524,15 +524,23 @@ fn render_status_list_item(
     let mut line = RenderSingleLineSpans::new(frame, area);
 
     // ┊╭┄dp [dp-branch-1]
-    // ^^^ render the connector
+    // ^^^ render the connector, optionally with mark symbol
     if let Some(connector) = connector {
-        if data
-            .cli_id()
-            .is_some_and(|id| app.marks_ref().contains_cli_id(id))
-        {
+        let mark_symbol = data.cli_id().and_then(|id| {
+            let marks = app.marks_ref();
+            if marks.contains_cli_id(id) {
+                Some(&app.theme.sym().mark)
+            } else if marks.contains_child_of(id) {
+                Some(&app.theme.sym().partial_mark)
+            } else {
+                None
+            }
+        });
+
+        if let Some(mark_symbol) = mark_symbol {
             for (idx, span) in connector.iter().enumerate() {
                 if idx == 1 {
-                    line.render(app.theme.sym().mark.span());
+                    line.render(mark_symbol.span());
                 } else if idx == 2 {
                     // after the indicator is a bunch of spaces
                     for (c_idx, c) in span.content.chars().enumerate() {
