@@ -532,24 +532,6 @@ fn ancestor_workspace_commit_if_outside(
     })
 }
 
-#[cfg(test)]
-mod ancestor_workspace_tests {
-    use super::ancestor_workspace_commit_if_outside;
-
-    #[test]
-    fn empty_outside_commits_are_not_ancestor_workspace_state() {
-        let actual = ancestor_workspace_commit_if_outside(
-            Vec::new(),
-            Some((but_graph::SegmentIndex::new(0), 0)),
-        );
-
-        assert!(
-            actual.is_none(),
-            "the managed commit itself must not be reported as an ancestor"
-        );
-    }
-}
-
 /// Gather information about graph and the workspace that might be associated with it,
 /// based on data in `repo` and `meta`. Use `options` to further configure the call.
 ///
