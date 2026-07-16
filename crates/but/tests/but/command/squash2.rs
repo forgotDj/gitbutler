@@ -65,11 +65,11 @@ fn squash_two_commits() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 f55169f add three
+┊●   1#0 add three
 ┊│     1#0:o A three
-┊●   1#1 f63361f add two
+┊●   1#1 add two
 ┊│     1#1:t A two
-┊●   1#2 ea345ba add one
+┊●   1#2 add one
 ┊│     1#2:k A one
 ├╯
 ┊
@@ -94,10 +94,10 @@ Squashed f55169f into f63361f to create 7251301
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 7251301 squashed
+┊●   1#0 squashed
 ┊│     1#0:o A three
 ┊│     1#0:t A two
-┊●   1#1 ea345ba add one
+┊●   1#1 add one
 ┊│     1#1:k A one
 ├╯
 ┊
@@ -149,7 +149,7 @@ Squashed f55169f, f63361f into ea345ba to create e355a10
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1 e355a10 squashed
+┊●   1 squashed
 ┊│     1:k A one
 ┊│     1:o A three
 ┊│     1:t A two
@@ -696,11 +696,11 @@ fn aborts_on_conflicts() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 d5e51af remove file
+┊●   1#0 remove file
 ┊│     1#0:u D file.txt
-┊●   1#1 5b59611 change file
+┊●   1#1 change file
 ┊│     1#1:u M file.txt
-┊●   1#2 11a2a8a add file
+┊●   1#2 add file
 ┊│     1#2:u A file.txt
 ├╯
 ┊
@@ -730,16 +730,16 @@ fn cannot_squash_into_commits_on_unapplied_branches() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄se [second]
-┊●   1#0 d15f721 add four
+┊●   1#0 add four
 ┊│     1#0:q A four
-┊●   1#1 66a5286 add three
+┊●   1#1 add three
 ┊│     1#1:o A three
 ├╯
 ┊
 ┊╭┄on [one]
-┊●   1#2 f63361f add two
+┊●   1#2 add two
 ┊│     1#2:t A two
-┊●   1#3 ea345ba add one
+┊●   1#3 add one
 ┊│     1#3:k A one
 ├╯
 ┊
@@ -829,10 +829,10 @@ Squashed f55169f into f63361f to create 5ab5165
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 5ab5165 add two
+┊●   1#0 add two
 ┊│     1#0:o A three
 ┊│     1#0:t A two
-┊●   1#1 ea345ba add one
+┊●   1#1 add one
 ┊│     1#1:k A one
 ├╯
 ┊
@@ -862,11 +862,11 @@ Squashed branch 'one' to create commit 00e6751
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄se [second]
-┊●   1#0 00e6751 add four
+┊●   1#0 add four
 ┊│     1#0:q A four
 ┊│     1#0:k A one
 ┊│     1#0:t A two
-┊●   1#1 66a5286 add three
+┊●   1#1 add three
 ┊│     1#1:o A three
 ├╯
 ┊
@@ -891,7 +891,7 @@ fn amend_uncommitted_files_into_commit() {
 ┊   twop A two
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1 7adb8e6 (no commit message) (no changes)
+┊●   1 (no commit message) (no changes)
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -916,7 +916,7 @@ Amended 7adb8e6 to create d2f176a
 ┊   o A three
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1 d2f176a (no commit message)
+┊●   1 (no commit message)
 ┊│     1:k A one
 ┊│     1:t A two
 ├╯
@@ -942,7 +942,7 @@ fn amend_all_uncommitted_changes_into_commit() {
 ┊   twop A two
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1 7adb8e6 (no commit message) (no changes)
+┊●   1 (no commit message) (no changes)
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -966,7 +966,7 @@ Amended 7adb8e6 to create 0e76889
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1 0e76889 (no commit message)
+┊●   1 (no commit message)
 ┊│     1:k A one
 ┊│     1:o A three
 ┊│     1:t A two
@@ -1059,11 +1059,11 @@ Amended f55169f to create f55169f
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 f55169f add three
+┊●   1#0 add three
 ┊│     1#0:o A three
-┊●   1#1 f63361f add two
+┊●   1#1 add two
 ┊│     1#1:t A two
-┊●   1#2 ea345ba add one
+┊●   1#2 add one
 ┊│     1#2:k A one
 ├╯
 ┊
@@ -1093,11 +1093,11 @@ Amended f63361f to create 5ab5165
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 bb84ecc add three (no changes)
-┊●   1#1 5ab5165 add two
+┊●   1#0 add three (no changes)
+┊●   1#1 add two
 ┊│     1#1:o A three
 ┊│     1#1:t A two
-┊●   1#2 ea345ba add one
+┊●   1#2 add one
 ┊│     1#2:k A one
 ├╯
 ┊
@@ -1119,11 +1119,11 @@ fn cannot_amend_files_from_different_commits() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 f55169f add three
+┊●   1#0 add three
 ┊│     1#0:o A three
-┊●   1#1 f63361f add two
+┊●   1#1 add two
 ┊│     1#1:t A two
-┊●   1#2 ea345ba add one
+┊●   1#2 add one
 ┊│     1#2:k A one
 ├╯
 ┊
@@ -1163,11 +1163,11 @@ fn cannot_amend_files_in_ways_that_cause_conflicts() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 beafa55 remove file
+┊●   1#0 remove file
 ┊│     1#0:q D file
-┊●   1#1 623d399 change file
+┊●   1#1 change file
 ┊│     1#1:q M file
-┊●   1#2 5c348d7 add file
+┊●   1#2 add file
 ┊│     1#2:q A file
 ├╯
 ┊
@@ -1207,12 +1207,12 @@ Amended f55169f to create 13baa98
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 13baa98 add three
+┊●   1#0 add three
 ┊│     1#0:q A file
 ┊│     1#0:o A three
-┊●   1#1 f63361f add two
+┊●   1#1 add two
 ┊│     1#1:t A two
-┊●   1#2 ea345ba add one
+┊●   1#2 add one
 ┊│     1#2:k A one
 ├╯
 ┊
@@ -1269,7 +1269,7 @@ Error: --target cannot be an empty branch
 ┊╭┄mi [middle] (no commits)
 ┊│
 ┊├┄bo [bottom]
-┊●   1 7adb8e6 (no commit message) (no changes)
+┊●   1 (no commit message) (no changes)
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1325,9 +1325,9 @@ Uncommitted f55169f
 ┊   o A three
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 f63361f add two
+┊●   1#0 add two
 ┊│     1#0:t A two
-┊●   1#1 ea345ba add one
+┊●   1#1 add one
 ┊│     1#1:k A one
 ├╯
 ┊
@@ -1356,11 +1356,11 @@ fn squash_into_zz_to_uncommit_file() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 f55169f add three
+┊●   1#0 add three
 ┊│     1#0:o A three
-┊●   1#1 f63361f add two
+┊●   1#1 add two
 ┊│     1#1:t A two
-┊●   1#2 ea345ba add one
+┊●   1#2 add one
 ┊│     1#2:k A one
 ├╯
 ┊
@@ -1386,10 +1386,10 @@ Uncommitted from f55169f
 ┊   o A three
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 aba928c add three (no changes)
-┊●   1#1 f63361f add two
+┊●   1#0 add three (no changes)
+┊●   1#1 add two
 ┊│     1#1:t A two
-┊●   1#2 ea345ba add one
+┊●   1#2 add one
 ┊│     1#2:k A one
 ├╯
 ┊
@@ -1421,11 +1421,11 @@ fn cannot_uncommit_files_in_ways_that_cause_conflicts() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   1#0 beafa55 remove file
+┊●   1#0 remove file
 ┊│     1#0:q D file
-┊●   1#1 623d399 change file
+┊●   1#1 change file
 ┊│     1#1:q M file
-┊●   1#2 5c348d7 add file
+┊●   1#2 add file
 ┊│     1#2:q A file
 ├╯
 ┊
