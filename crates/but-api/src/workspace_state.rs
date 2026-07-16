@@ -143,6 +143,21 @@ impl WorkspaceState {
         }
     }
 
+    /// Build a [`WorkspaceState`] from an already-prepared overlayed graph without PR associations.
+    ///
+    /// Prefer [`WorkspaceState::from_workspace_with_db`] for API responses that
+    /// can access the forge review cache. This constructor exists for layers
+    /// that intentionally do not depend on forge storage and whose consumers do
+    /// not observe PR association fields.
+    pub fn from_workspace_without_pr_associations<M: RefMetadata>(
+        workspace: &but_graph::Workspace,
+        meta: &mut M,
+        repo: &gix::Repository,
+        replaced_commits: BTreeMap<gix::ObjectId, gix::ObjectId>,
+    ) -> anyhow::Result<WorkspaceState> {
+        Self::from_workspace(workspace, meta, repo, replaced_commits, &HashMap::new())
+    }
+
     /// Build a [`WorkspaceState`] from an already-prepared overlayed graph.
     ///
     /// This is the API-facing constructor for callers that already hold the
@@ -219,6 +234,20 @@ impl WorkspaceState {
             materialized.history.commit_mappings(),
             prs_by_head,
         )
+    }
+
+    /// Build a [`WorkspaceState`] from a successful rebase without PR associations.
+    ///
+    /// Prefer [`WorkspaceState::from_successful_rebase_with_db`] for API
+    /// responses that can access the forge review cache. This constructor exists
+    /// for layers that intentionally do not depend on forge storage and whose
+    /// consumers do not observe PR association fields.
+    pub fn from_successful_rebase_without_pr_associations<M: RefMetadata>(
+        rebase: SuccessfulRebase<'_, '_, M>,
+        repo: &gix::Repository,
+        dry_run: DryRun,
+    ) -> anyhow::Result<WorkspaceState> {
+        Self::from_successful_rebase(rebase, repo, dry_run, &HashMap::new())
     }
 
     /// Build a [`WorkspaceState`] from a successful rebase, materializing it when needed.
