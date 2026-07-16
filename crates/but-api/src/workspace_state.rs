@@ -145,7 +145,7 @@ impl WorkspaceState {
 
     /// Build a [`WorkspaceState`] from an already-prepared overlayed graph without PR associations.
     ///
-    /// Prefer [`WorkspaceState::from_workspace_with_db`] for API responses that
+    /// Prefer `WorkspaceState::from_workspace_with_db` for API responses that
     /// can access the forge review cache. This constructor exists for layers
     /// that intentionally do not depend on forge storage and whose consumers do
     /// not observe PR association fields.
@@ -238,7 +238,7 @@ impl WorkspaceState {
 
     /// Build a [`WorkspaceState`] from a successful rebase without PR associations.
     ///
-    /// Prefer [`WorkspaceState::from_successful_rebase_with_db`] for API
+    /// Prefer `WorkspaceState::from_successful_rebase_with_db` for API
     /// responses that can access the forge review cache. This constructor exists
     /// for layers that intentionally do not depend on forge storage and whose
     /// consumers do not observe PR association fields.
