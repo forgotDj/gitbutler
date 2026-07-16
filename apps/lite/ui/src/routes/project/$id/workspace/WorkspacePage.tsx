@@ -71,8 +71,8 @@ const useWorkspaceHotkeys = (projectId: string) => {
 	);
 	const activeElement = useActiveElement();
 	const focusedSelectionScope = getFocusedSelectionScope(activeElement);
-	const outlineMode = useAppSelector((state) =>
-		projectSlice.selectors.selectOutlineModeState(state, projectId),
+	const isDefaultMode = useAppSelector(
+		(state) => projectSlice.selectors.selectOutlineModeState(state, projectId)._tag === "Default",
 	);
 	const outlineVisible = !detailsFullWindow;
 
@@ -85,7 +85,7 @@ const useWorkspaceHotkeys = (projectId: string) => {
 			hotkey: globalHotkeys.redo.hotkey,
 			callback: () => restoreSnapshot("redo"),
 			options: {
-				enabled: outlineMode._tag === "Default" && !isRestoreSnapshotPending,
+				enabled: isDefaultMode && !isRestoreSnapshotPending,
 				meta: globalHotkeys.redo.meta,
 				ignoreInputs: true,
 			},
@@ -94,7 +94,7 @@ const useWorkspaceHotkeys = (projectId: string) => {
 			hotkey: globalHotkeys.undo.hotkey,
 			callback: () => restoreSnapshot("undo"),
 			options: {
-				enabled: outlineMode._tag === "Default" && !isRestoreSnapshotPending,
+				enabled: isDefaultMode && !isRestoreSnapshotPending,
 				meta: globalHotkeys.undo.meta,
 				ignoreInputs: true,
 			},
