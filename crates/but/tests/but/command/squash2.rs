@@ -79,7 +79,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_squash2 f55169f --target f63361f --message 'squashed'")
+    env.but("_squash2 1#0 --target 1#1 --message 'squashed'")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -109,7 +109,7 @@ Hint: run `but help` for all commands
 
     env.but("undo").assert().success();
 
-    env.but("_squash2 f55169f --target f63361f --message 'squashed' --format json")
+    env.but("_squash2 1#0 --target 1#1 --message 'squashed' --format json")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -121,7 +121,7 @@ Hint: run `but help` for all commands
 
     env.but("undo").assert().success();
 
-    env.but("_squash2 f55169f --target f63361f --message 'squashed' --format shell")
+    env.but("_squash2 1#0 --target 1#1 --message 'squashed' --format shell")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -134,7 +134,7 @@ Hint: run `but help` for all commands
 fn squash_multiple_sources() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 f55169f f63361f --target ea345ba --message 'squashed'")
+    env.but("_squash2 1#0 1#1 --target 1#2 --message 'squashed'")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -166,7 +166,7 @@ Hint: run `but help` for all commands
 fn use_target_message() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 f55169f --target f63361f --use-target-message")
+    env.but("_squash2 1#0 --target 1#1 --use-target-message")
         .assert()
         .success();
 
@@ -197,7 +197,7 @@ Hint: run `but help` for all commands
 fn use_source_message() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 f55169f --target f63361f --use-source-message")
+    env.but("_squash2 1#0 --target 1#1 --use-source-message")
         .assert()
         .success();
 
@@ -261,7 +261,7 @@ Hint: run `but help` for all commands
 fn squash_whole_branch_into_commit_on_same_branch() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 a-branch-1 -t f63361f --use-target-message")
+    env.but("_squash2 a-branch-1 -t 1#1 --use-target-message")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -338,7 +338,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_squash2 a-branch-1 add-file-branch -t d1d6a19 --use-target-message")
+    env.but("_squash2 a-branch-1 add-file-branch -t 1#1 --use-target-message")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -421,7 +421,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_squash2 target-branch a-branch-1 add-file-branch -t 561a8d8 --use-target-message")
+    env.but("_squash2 target-branch a-branch-1 add-file-branch -t 1#2 --use-target-message")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -552,7 +552,7 @@ For more information, try '--help'.
 fn cannot_squash_only_target() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 --target f55169f")
+    env.but("_squash2 --target 1#0")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -570,7 +570,7 @@ For more information, try '--help'.
 fn cannot_mix_sources() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 a-branch-1 f55169f --target ea345ba")
+    env.but("_squash2 a-branch-1 1#0 --target 1#2")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -583,7 +583,7 @@ Error: Cannot mix different types of sources
 fn cannot_squash_multiple_commits_without_target() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 f55169f ea345ba")
+    env.but("_squash2 1#0 1#2")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -632,7 +632,7 @@ Error: Need at least 2 commits to squash
 fn cannot_squash_commit_into_itself() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 f55169f -t f55169f")
+    env.but("_squash2 1#0 -t 1#0")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -666,7 +666,7 @@ fn cannot_squash_empty_branch_into_commit() {
 
     env.but("branch new empty-branch").assert().success();
 
-    env.but("_squash2 empty-branch -t 561a8d8")
+    env.but("_squash2 empty-branch -t 1")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -710,7 +710,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_squash2 d5e51af -t 11a2a8a")
+    env.but("_squash2 1#0 -t 1#2")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -751,7 +751,7 @@ Hint: run `but help` for all commands
 
     env.but("unapply second").assert().success();
 
-    env.but("_squash2 f63361f -t d15f721")
+    env.but("_squash2 1#0 -t d15f721")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -814,7 +814,7 @@ Error: Need at least 2 commits to squash
 fn squash_with_duplicate_commit_sources() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 f55169f f55169f -t f63361f -u")
+    env.but("_squash2 1#0 1#0 -t 1#1 -u")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -847,7 +847,7 @@ Hint: run `but help` for all commands
 fn squash_with_duplicate_branch_sources() {
     let env = two_branches();
 
-    env.but("_squash2 one one -t d15f721 -u")
+    env.but("_squash2 one one -t 1#0 -u")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -900,7 +900,7 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 
 "#]]);
 
-    env.but("_squash2 one two -t 7adb8e6 -u")
+    env.but("_squash2 one two -t 1 -u")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -951,7 +951,7 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 
 "#]]);
 
-    env.but("_squash2 zz -t 7adb8e6 -u")
+    env.but("_squash2 zz -t 1 -u")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1016,7 +1016,7 @@ q:d file│
 
 "#]]);
 
-    env.but("_squash2 qs:9 -t bcf07e2 -u")
+    env.but("_squash2 qs:9 -t 1 -u")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1044,7 +1044,7 @@ q:d file│
 fn amend_all_uncommitted_changes_when_zz_is_empty() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 zz -t f55169f -u")
+    env.but("_squash2 zz -t 1#0 -u")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1078,7 +1078,7 @@ Hint: run `but help` for all commands
 fn amend_committed_file() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 f5:or -t f63361f -u")
+    env.but("_squash2 1#0:o -t 1#1 -u")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1133,7 +1133,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_squash2 f5:or f6:tw -t ea345ba -u")
+    env.but("_squash2 1#0:o 1#1:t -t 1#2 -u")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -1177,7 +1177,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_squash2 be:qs -t 5c348d7 -u")
+    env.but("_squash2 1#0:q -t 1#2 -u")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -1309,7 +1309,7 @@ Hint: --target must be an applied commit, branch, or zz. Run `but status` for ap
 fn squash_into_zz_to_uncommit_commit() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 f55169f -t zz")
+    env.but("_squash2 1#0 -t zz")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1339,7 +1339,7 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 
     env.but("undo").assert().success();
 
-    env.but("_squash2 f55169f -t zz --format json")
+    env.but("_squash2 1#0 -t zz --format json")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#""#]]);
@@ -1370,7 +1370,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_squash2 f5:or -t zz")
+    env.but("_squash2 1#0:o -t zz")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1435,7 +1435,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_squash2 5c348d7 -t zz")
+    env.but("_squash2 1#2 -t zz")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -1443,7 +1443,7 @@ Error: Cannot uncommit commits that would result in merge conflicts
 
 "#]]);
 
-    env.but("_squash2 5c:qs -t zz")
+    env.but("_squash2 1#2:q -t zz")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -1479,7 +1479,7 @@ Error: --use-source-message cannot be used when squashing uncommitted changes
 fn cannot_use_source_message_when_moving_committed_files() {
     let env = one_branch_three_commits();
 
-    env.but("_squash2 f5:or -t f63361f --use-source-message")
+    env.but("_squash2 1#0:o -t 1#1 --use-source-message")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"

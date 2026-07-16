@@ -634,9 +634,9 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    let commit_id = "da";
+    let change_id = "1#0";
 
-    env.but(format!("diff --format json {commit_id}"))
+    env.but(format!("diff --format json {change_id}"))
         .allow_json()
         .assert()
         .success()

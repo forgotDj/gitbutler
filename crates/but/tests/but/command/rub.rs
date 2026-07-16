@@ -250,7 +250,7 @@ fn committed_file_to_uncommitted_area() -> anyhow::Result<()> {
 
 "#]]);
 
-    env.but("rub e8:b.txt zz")
+    env.but("rub 1#0:p zz")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1609,7 +1609,7 @@ fn rub_commit_without_message_to_commit() {
 
 "#]]);
 
-    env.but("commit empty --after aec35ac").assert().success();
+    env.but("commit empty --after 1").assert().success();
 
     env.but("status --no-hint")
         .assert()
@@ -1627,7 +1627,7 @@ fn rub_commit_without_message_to_commit() {
 
 "#]]);
 
-    env.but("rub 5e5c05a aec35ac").assert().success();
+    env.but("rub 1#0 1#1").assert().success();
 
     env.but("status --no-hint")
         .assert()
@@ -1652,9 +1652,9 @@ fn rub_commit_to_commit_without_message() -> anyhow::Result<()> {
 
     env.file("one.txt", "one.txt contents");
     env.but("commit -m 'add one.txt'").assert().success();
-    env.but("commit empty --after aec35ac").assert().success();
+    env.but("commit empty --after 1").assert().success();
 
-    env.but("rub aec35ac 5e5c05a").assert().success();
+    env.but("rub 1#1 1#0").assert().success();
 
     let status = status_json(&env)?;
     let branch = status["stacks"]
@@ -2268,7 +2268,7 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 
 "#]]);
 
-    env.but("rub zz e3f869d").assert().success();
+    env.but("rub zz 1").assert().success();
 
     env.but("status -f")
         .assert()

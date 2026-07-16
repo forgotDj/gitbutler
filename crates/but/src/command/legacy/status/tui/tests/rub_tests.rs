@@ -35,9 +35,8 @@ fn rub_api_uncommitted_to_commit() {
     tui.input('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> v A test.txt"]);
 
-    tui.input(KeyCode::Down).assert_current_line_eq(str![
-        "┊●   << amend >> 1 (no commit message) (no changes)"
-    ]);
+    tui.input(KeyCode::Down)
+        .assert_current_line_eq(str!["┊●   << amend >> 1 (no commit message) (no changes)"]);
 
     tui.input(KeyCode::Enter)
         .assert_current_line_eq(str!["┊●   1 (no commit message)"])

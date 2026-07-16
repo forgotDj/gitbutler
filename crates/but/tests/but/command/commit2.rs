@@ -184,7 +184,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("show b141567")
+    env.but("show 1")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"

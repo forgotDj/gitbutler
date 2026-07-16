@@ -834,9 +834,8 @@ fn rubbing() {
     tui.input('r')
         .assert_current_line_eq(str!["┊   << source >> << noop >> v A test.txt"]);
 
-    tui.input(KeyCode::Down).assert_current_line_eq(str![
-        "┊●   << amend >> 1 (no commit message) (no changes)"
-    ]);
+    tui.input(KeyCode::Down)
+        .assert_current_line_eq(str!["┊●   << amend >> 1 (no commit message) (no changes)"]);
 
     tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊●   << amend >> 9477ae7 add A"]);
