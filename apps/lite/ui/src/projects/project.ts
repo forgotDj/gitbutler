@@ -288,7 +288,7 @@ export const projectReducers = {
 	) => {
 		state.workspace.highlightedCommitIds = commitIds ?? [];
 	},
-	setCommitChecked: (
+	checkCommit: (
 		state: ProjectState,
 		{ commitId, checked }: { commitId: string; checked: boolean },
 	) => {
@@ -296,7 +296,7 @@ export const projectReducers = {
 		if (checked) checkedCommitIds[commitId] = true;
 		else delete checkedCommitIds[commitId];
 	},
-	setCommitsChecked: (
+	checkCommits: (
 		state: ProjectState,
 		{ commitIds, checked }: { commitIds: Array<string>; checked: boolean },
 	) => {
@@ -305,6 +305,15 @@ export const projectReducers = {
 			if (checked) checkedCommitIds[commitId] = true;
 			else delete checkedCommitIds[commitId];
 		}
+	},
+	setCheckedCommits: (state: ProjectState, { commitIds }: { commitIds: Array<string> }) => {
+		state.workspace.checkedCommitIds = commitIds.reduce(
+			(acc, commitId) => {
+				acc[commitId] = true;
+				return acc;
+			},
+			{} as Record<string, true>,
+		);
 	},
 	clearCheckedCommits: (state: ProjectState) => {
 		state.workspace.checkedCommitIds = {};
@@ -362,10 +371,13 @@ export const projectReducers = {
 	},
 };
 
-const selectCheckedCommitOperands = createSelector(
+const selectCheckedCommits = createSelector(
 	(state: ProjectState) => state.workspace.checkedCommitIds,
-	(checkedCommitIds) =>
-		Object.keys(checkedCommitIds).map((commitId) => commitOperand({ commitId })),
+	(checkedCommitIds) => new Set(Object.keys(checkedCommitIds)),
+);
+
+const selectCheckedCommitOperands = createSelector(selectCheckedCommits, (checkedCommitIds) =>
+	Array.from(checkedCommitIds).map((commitId) => commitOperand({ commitId })),
 );
 
 export const projectSelectors = {
@@ -406,10 +418,9 @@ export const projectSelectors = {
 	selectHighlightedCommitIds: (state: ProjectState) => state.workspace.highlightedCommitIds,
 	selectCommitChecked: (state: ProjectState, commitId: string) =>
 		state.workspace.checkedCommitIds[commitId] === true,
+	selectCheckedCommits,
 	selectCheckedCommitOperands,
-	selectCheckedCommitCount: (state: ProjectState) =>
-		Object.keys(state.workspace.checkedCommitIds).length,
-	selectHasCheckedCommits: (state: ProjectState) =>
-		Object.keys(state.workspace.checkedCommitIds).length > 0,
+	selectCheckedCommitCount: (state: ProjectState) => selectCheckedCommits(state).size,
+	selectHasCheckedCommits: (state: ProjectState) => selectCheckedCommits(state).size > 0,
 	selectCommitTarget: (state: ProjectState) => state.workspace.commitTarget,
 };

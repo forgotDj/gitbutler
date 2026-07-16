@@ -72,10 +72,12 @@ export const useOutlineTreeHotkeys = ({
 	navigationIndex,
 	projectId,
 	ref,
+	checkCommit,
 }: {
 	navigationIndex: NavigationIndex<Operand>;
 	projectId: string;
 	ref: RefObject<HTMLElement | null>;
+	checkCommit: (evt: { commitId: string; shiftKey: boolean }) => void;
 }) => {
 	const { data: headInfoIndex } = useQuery({
 		...headInfoQueryOptions(projectId),
@@ -107,11 +109,6 @@ export const useOutlineTreeHotkeys = ({
 			? selectedBranchSegment.commits.every((commit) =>
 					projectSlice.selectors.selectCommitChecked(state, projectId, commit.id),
 				)
-			: false,
-	);
-	const selectedCommitChecked = useAppSelector((state) =>
-		selection?._tag === "Commit"
-			? projectSlice.selectors.selectCommitChecked(state, projectId, selection.commitId)
 			: false,
 	);
 	const selectedCommit =
@@ -225,23 +222,24 @@ export const useOutlineTreeHotkeys = ({
 		);
 	};
 
-	const toggleSelectedCommitChecked = () => {
+	const toggleSelectedCommitChecked = (event: KeyboardEvent) => {
 		if (!selection || selection._tag !== "Commit") return;
+		// Leave activation of a directly focused checkbox to the checkbox itself.
+		if (event.target !== ref.current) return;
 
-		dispatch(
-			projectSlice.actions.setCommitChecked({
-				projectId,
-				commitId: selection.commitId,
-				checked: !selectedCommitChecked,
-			}),
-		);
+		event.preventDefault();
+		event.stopPropagation();
+		checkCommit({
+			commitId: selection.commitId,
+			shiftKey: event.shiftKey,
+		});
 	};
 
 	const toggleSelectedBranchChecked = () => {
 		if (!selectedBranchSegment) return;
 
 		dispatch(
-			projectSlice.actions.setCommitsChecked({
+			projectSlice.actions.checkCommits({
 				projectId,
 				commitIds: selectedBranchSegment.commits.map((commit) => commit.id),
 				checked: !selectedBranchCommitsChecked,
@@ -482,8 +480,21 @@ export const useOutlineTreeHotkeys = ({
 			options: {
 				conflictBehavior: "allow",
 				enabled: defaultOutlineHotkeysEnabled && isSelectedCommit,
+				preventDefault: false,
+				stopPropagation: false,
 				target: ref,
 				meta: outlineHotkeys.checkCommit.meta,
+			},
+		},
+		{
+			hotkey: "Shift+Space",
+			callback: toggleSelectedCommitChecked,
+			options: {
+				conflictBehavior: "allow",
+				enabled: defaultOutlineHotkeysEnabled && isSelectedCommit,
+				preventDefault: false,
+				stopPropagation: false,
+				target: ref,
 			},
 		},
 		{
