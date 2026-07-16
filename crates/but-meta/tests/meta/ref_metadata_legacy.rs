@@ -1975,7 +1975,8 @@ fn preserves_duplicate_heads_if_they_map_to_the_same_workspace_segment() -> anyh
 }
 
 #[test]
-fn removes_within_stack_duplicate_heads_even_when_mapped_to_a_segment() -> anyhow::Result<()> {
+fn removes_within_stack_duplicate_heads_even_when_mapped_to_a_segment_13345() -> anyhow::Result<()>
+{
     let repo = but_testsupport::read_only_in_memory_scenario("ws/multi-lane-with-shared-segment")?;
     let (mut store, _tmp) = empty_vb_store_rw()?;
     store.data_mut().default_target = Some(Target {
@@ -1985,10 +1986,8 @@ fn removes_within_stack_duplicate_heads_even_when_mapped_to_a_segment() -> anyho
         push_remote_name: Some("origin".into()),
     });
 
-    // A single stack that lists "shared" twice - one of the corruption shapes in
-    // #13345. Even though "shared" maps to a real projected segment (which is what
-    // makes the cross-stack preserve carve-out fire), one stack must never repeat a
-    // branch.
+    // A single stack that lists "shared" twice.
+    // Even though "shared" maps to a real projected segment, one stack must never repeat a branch.
     let stack = LegacyStack::new_with_just_heads(
         vec![
             StackBranch::new_with_zero_head("shared".into(), None, None, false),
