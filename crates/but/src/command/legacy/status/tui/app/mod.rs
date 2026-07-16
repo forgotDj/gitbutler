@@ -1031,7 +1031,6 @@ impl App {
         }
         if reload_details_view {
             let details_focused = matches!(&*self.mode, Mode::Details(..));
-            self.handle_clear_marks();
             self.details.clear_selection_for_reload(details_focused);
             if let Some((index, direction)) = select_details_section_after_reload {
                 self.details.select_section_when_available(index, direction);
