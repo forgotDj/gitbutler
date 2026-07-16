@@ -25,6 +25,7 @@ import {
 	type TransferMode,
 } from "#ui/outline/mode.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
+import { createSelector } from "@reduxjs/toolkit";
 import type { AbsorptionTarget, RelativeTo } from "@gitbutler/but-sdk";
 import { Match } from "effect";
 
@@ -361,6 +362,12 @@ export const projectReducers = {
 	},
 };
 
+const selectCheckedCommitOperands = createSelector(
+	(state: ProjectState) => state.workspace.checkedCommitIds,
+	(checkedCommitIds) =>
+		Object.keys(checkedCommitIds).map((commitId) => commitOperand({ commitId })),
+);
+
 export const projectSelectors = {
 	selectFilesVisible: (state: ProjectState) => state.filesVisible,
 	selectDetailsFullWindow: (state: ProjectState) => state.detailsFullWindow,
@@ -399,6 +406,7 @@ export const projectSelectors = {
 	selectHighlightedCommitIds: (state: ProjectState) => state.workspace.highlightedCommitIds,
 	selectCommitChecked: (state: ProjectState, commitId: string) =>
 		state.workspace.checkedCommitIds[commitId] === true,
+	selectCheckedCommitOperands,
 	selectCheckedCommitCount: (state: ProjectState) =>
 		Object.keys(state.workspace.checkedCommitIds).length,
 	selectHasCheckedCommits: (state: ProjectState) =>

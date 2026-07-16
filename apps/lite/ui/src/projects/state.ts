@@ -78,6 +78,7 @@ export const projectSlice = createSlice({
 		selectOutlineModeState: fromProject(projectSelectors.selectOutlineModeState),
 		selectHighlightedCommitIds: fromProject(projectSelectors.selectHighlightedCommitIds),
 		selectCommitChecked: fromProject(projectSelectors.selectCommitChecked),
+		selectCheckedCommitOperands: fromProject(projectSelectors.selectCheckedCommitOperands),
 		selectCheckedCommitCount: fromProject(projectSelectors.selectCheckedCommitCount),
 		selectHasCheckedCommits: fromProject(projectSelectors.selectHasCheckedCommits),
 		selectCommitTarget: fromProject(projectSelectors.selectCommitTarget),

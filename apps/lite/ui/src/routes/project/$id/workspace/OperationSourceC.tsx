@@ -1,7 +1,7 @@
 import { Operand, operandEquals } from "#ui/operands.ts";
 import { getOperationSources, pointerTransferMode } from "#ui/outline/mode.ts";
 import styles from "./OperationSourceC.module.css";
-import { operandLabel } from "./operandLabel.ts";
+import { operandsLabel } from "./operandLabel.ts";
 import { headInfoQueryOptions } from "#ui/api/queries.ts";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 import { classes } from "#ui/components/classes.ts";
@@ -37,6 +37,17 @@ export const OperationSourceC: FC<
 	const outlineMode = useAppSelector((state) =>
 		projectSlice.selectors.selectOutlineModeState(state, projectId),
 	);
+	const dragSource = useAppSelector((state) => {
+		const isCheckedCommit =
+			source._tag === "Commit" &&
+			projectSlice.selectors.selectCommitChecked(state, projectId, source.commitId);
+
+		return isCheckedCommit
+			? projectSlice.selectors.selectCheckedCommitOperands(state, projectId)
+			: // We don't create an array here in order to preserve reference identity.
+				source;
+	});
+	const dragSources = Array.isArray(dragSource) ? dragSource : [dragSource];
 
 	const dispatch = useAppDispatch();
 	const dragRef = useRef<HTMLElement>(null);
@@ -49,7 +60,7 @@ export const OperationSourceC: FC<
 					if (!headInfoIndex) return;
 					const root = createRoot(container);
 					root.render(
-						<DragPreview>{operandLabel({ operand: source, headInfoIndex })}</DragPreview>,
+						<DragPreview>{operandsLabel({ operands: dragSources, headInfoIndex })}</DragPreview>,
 					);
 					return () => {
 						root.unmount();
@@ -65,14 +76,14 @@ export const OperationSourceC: FC<
 			projectSlice.actions.enterTransferMode({
 				projectId,
 				mode: pointerTransferMode({
-					sources: [source],
+					sources: dragSources,
 					target: null,
 					operationType: null,
 				}),
 			}),
 		);
 	});
-	const getInitialData = useEffectEvent((): DragData => ({ sources: [source] }));
+	const getInitialData = useEffectEvent((): DragData => ({ sources: dragSources }));
 
 	useEffect(() => {
 		const element = dragRef.current;
