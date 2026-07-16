@@ -5,6 +5,28 @@ use super::util;
 use crate::utils::Sandbox;
 
 #[test]
+fn commit_rejects_linked_worktree_with_specific_error() -> anyhow::Result<()> {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    let linked_root = tempfile::tempdir()?;
+    let linked_worktree_dir = linked_root.path().join("linked");
+    env.invoke_git(&format!(
+        "worktree add -b linked-mutation {}",
+        linked_worktree_dir.display()
+    ));
+
+    env.but("commit linked-mutation -m rejected")
+        .current_dir(&linked_worktree_dir)
+        .assert()
+        .failure()
+        .stdout_eq(snapbox::str![])
+        .stderr_eq(snapbox::str![[r#"
+Error: `but commit` is not supported from linked worktrees. Use Git directly for this worktree.
+
+"#]]);
+    Ok(())
+}
+
+#[test]
 fn commit_moved_file_replaced_by_directory() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
     env.setup_metadata(&["A"]);
