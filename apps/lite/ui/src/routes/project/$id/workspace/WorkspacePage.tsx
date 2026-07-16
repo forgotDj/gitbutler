@@ -16,7 +16,7 @@ import { PickerDialog } from "#ui/components/PickerDialog.tsx";
 import { globalHotkeys, workspaceHotkeys } from "#ui/hotkeys.ts";
 import { writeLastOpenedProject } from "#ui/project.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
-import { ProjectForFrontend, RefInfo } from "@gitbutler/but-sdk";
+import { ProjectForFrontend, RefInfo, WorktreeChanges } from "@gitbutler/but-sdk";
 import { useHotkey, useHotkeys } from "@tanstack/react-hotkeys";
 import {
 	QueryErrorResetBoundary,
@@ -155,19 +155,19 @@ const hasAnyOperation = (source: Operand, target: Operand) => {
 
 const buildOutlineNavigationIndex = ({
 	headInfo,
-	uncommittedFilePaths,
+	worktreeChanges,
 	outlineMode,
 	absorptionTargetCommitIds,
 }: {
 	headInfo: RefInfo | undefined;
-	uncommittedFilePaths: Array<string> | undefined;
+	worktreeChanges: WorktreeChanges | undefined;
 	outlineMode: OutlineMode;
 	absorptionTargetCommitIds: ReadonlySet<string>;
 }): NavigationIndex<Operand> => {
 	const allItems = () => [
 		uncommittedChangesOperand,
-		...(uncommittedFilePaths?.map((path) =>
-			fileOperand({ parent: uncommittedChangesFileParent, path }),
+		...(worktreeChanges?.changes.map((change) =>
+			fileOperand({ parent: uncommittedChangesFileParent, path: change.path }),
 		) ?? []),
 
 		...(headInfo?.stacks.toReversed() ?? []).flatMap((stack) =>
@@ -364,7 +364,7 @@ const WorkspacePage: FC = () => {
 
 	const outlineNavigationIndex = buildOutlineNavigationIndex({
 		headInfo,
-		uncommittedFilePaths: worktreeChanges?.changes.map((change) => change.path),
+		worktreeChanges,
 		outlineMode,
 		absorptionTargetCommitIds,
 	});
