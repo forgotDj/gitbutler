@@ -745,7 +745,7 @@ const Title: FC<{
 											)}
 											onClick={() => onBodyCollapsedChange(!bodyCollapsed)}
 										>
-											<Icon name="kebab" className={styles.commitBodyToggleIcon} />
+											<Icon name="kebab" />
 										</Tooltip.Trigger>
 										<Tooltip.Portal>
 											<Tooltip.Positioner sideOffset={4}>
