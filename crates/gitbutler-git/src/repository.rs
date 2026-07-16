@@ -447,7 +447,10 @@ where
             source.into()
         }
     })?;
-    let args = fetch_arguments(remote, &refspecs);
+    let mut args = vec!["fetch", "--quiet"];
+
+    args.push(remote);
+    args.extend(refspecs.iter().map(String::as_str));
 
     let (status, stdout, stderr) =
         execute_with_auth_harness(HarnessEnv::Repo(repo_path), &executor, &args, on_prompt).await?;
@@ -496,12 +499,6 @@ fn fetch_refspecs(
     } else {
         refspecs
     })
-}
-
-fn fetch_arguments<'a>(remote: &'a str, refspecs: &'a [String]) -> Vec<&'a str> {
-    let mut args = vec!["fetch", "--quiet", "--prune", remote];
-    args.extend(refspecs.iter().map(String::as_str));
-    args
 }
 
 /// Pushes a refspec to the given remote in the repository at the given path.
@@ -696,27 +693,6 @@ mod tests {
             path,
             Path::new(&expected),
             "fallback should preserve the historical current_exe sibling lookup"
-        );
-    }
-
-    #[test]
-    fn fetch_arguments_include_prune() {
-        let refspecs = vec![
-            "+refs/heads/*:refs/remotes/origin/*".to_owned(),
-            "+refs/tags/*:refs/tags/*".to_owned(),
-        ];
-
-        assert_eq!(
-            super::fetch_arguments("origin", &refspecs),
-            vec![
-                "fetch",
-                "--quiet",
-                "--prune",
-                "origin",
-                "+refs/heads/*:refs/remotes/origin/*",
-                "+refs/tags/*:refs/tags/*",
-            ],
-            "fetch should prune while preserving the configured refspec order"
         );
     }
 }

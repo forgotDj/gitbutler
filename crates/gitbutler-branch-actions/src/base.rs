@@ -160,24 +160,20 @@ pub(crate) fn set_base_branch(
 ) -> Result<BaseBranch> {
     let repo = ctx.repo.get()?;
 
-    let (existing_target_ref_matches, push_remote_name) =
-        if let Ok(mut project_meta) = ctx.project_meta() {
-            let repaired_project_meta =
-                but_core::ref_metadata::repair_target_metadata_for_migration(&project_meta, &repo);
-            if repaired_project_meta != project_meta {
-                ctx.set_project_meta(repaired_project_meta.clone())?;
-                project_meta = repaired_project_meta;
-            }
-            (
-                project_meta.target_commit_id.is_some()
-                    && project_meta.target_ref.is_some_and(|target_ref| {
-                        target_ref.to_string() == target_branch_ref.to_string()
-                    }),
-                project_meta.push_remote,
-            )
-        } else {
-            (false, None)
-        };
+    let existing_target_ref_matches = if let Ok(mut project_meta) = ctx.project_meta() {
+        let repaired_project_meta =
+            but_core::ref_metadata::repair_target_metadata_for_migration(&project_meta, &repo);
+        if repaired_project_meta != project_meta {
+            ctx.set_project_meta(repaired_project_meta.clone())?;
+            project_meta = repaired_project_meta;
+        }
+        project_meta.target_commit_id.is_some()
+            && project_meta
+                .target_ref
+                .is_some_and(|target_ref| target_ref.to_string() == target_branch_ref.to_string())
+    } else {
+        false
+    };
 
     // if target exists, and it is the same as the requested branch, we should go back
     if existing_target_ref_matches {
@@ -227,7 +223,7 @@ pub(crate) fn set_base_branch(
         branch: target_branch_ref.clone(),
         remote_url,
         sha: target_commit_oid,
-        push_remote_name,
+        push_remote_name: None,
     };
 
     ctx.set_default_target(target.clone())?;

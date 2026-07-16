@@ -518,7 +518,8 @@ but config user               # Also: forge, target, metrics, ui, ai
 but config ai openai          # Also: anthropic, ollama, lmstudio, openrouter
 but config target             # Show the current target branch
 but config target origin/main # Set the fetch target
-but config target --push-remote origin
+but config push-remote         # Show the current push remote
+but config push-remote origin  # Set the push remote without changing the target
 ```
 
 ### `but update check`

@@ -106,8 +106,31 @@ pub enum Subcommands {
         /// New target branch to set (e.g., "origin/main")
         branch: Option<String>,
         /// Remote to push branches to (e.g., "origin" for a fork).
-        #[clap(long, value_name = "REMOTE")]
+        #[clap(long, value_name = "REMOTE", requires = "branch")]
         push_remote: Option<String>,
+    },
+
+    /// View or set the remote used to push branches.
+    ///
+    /// Without arguments, displays the effective push remote. With a remote name, updates the push
+    /// remote without changing the target branch.
+    ///
+    /// ## Examples
+    ///
+    /// View the current push remote:
+    ///
+    /// ```text
+    /// but config push-remote
+    /// ```
+    ///
+    /// Push branches to a fork remote:
+    ///
+    /// ```text
+    /// but config push-remote origin
+    /// ```
+    PushRemote {
+        /// New remote to use when pushing branches (e.g., "origin").
+        remote: Option<String>,
     },
 
     /// View or set metrics collection.
