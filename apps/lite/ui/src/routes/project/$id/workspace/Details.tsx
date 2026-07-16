@@ -725,8 +725,10 @@ const Title: FC<{
 					{({ data: commitDetails }) => (
 						<div className={styles.title}>
 							<Icon name="commit" />
-							<h3 className={classes(styles.titleContent, "text-15", "text-semibold")}>
-								{commitTitle(commitDetails.commit.message) ?? "(no message)"}
+							<h3 className={classes(styles.titleContentWrapper, "text-15", "text-semibold")}>
+								<span className={styles.titleContent}>
+									{commitTitle(commitDetails.commit.message) ?? "(no message)"}
+								</span>
 								{commitDetails.commit.hasConflicts && " ⚠️"}
 								{commitBody(commitDetails.commit.message) !== undefined && (
 									<Tooltip.Root>
@@ -745,7 +747,7 @@ const Title: FC<{
 											)}
 											onClick={() => onBodyCollapsedChange(!bodyCollapsed)}
 										>
-											<Icon name="kebab" className={styles.commitBodyToggleIcon} />
+											<Icon name="kebab" />
 										</Tooltip.Trigger>
 										<Tooltip.Portal>
 											<Tooltip.Positioner sideOffset={4}>
