@@ -53,10 +53,8 @@ pub fn commit_squash_only_with_perm(
     if subject_commit_ids.is_empty() {
         anyhow::bail!("No commits were provided to squash")
     }
-
-    let prs_by_head = crate::workspace_state::forge_prs_by_head(ctx)?;
     let mut meta = ctx.meta()?;
-    let (repo, mut ws, _) = ctx.workspace_mut_and_db_with_perm(perm)?;
+    let (repo, mut ws, db) = ctx.workspace_mut_and_db_with_perm(perm)?;
     let editor = Editor::create(&mut ws, &mut meta, &repo)?;
     let SquashCommitsOutcome {
         rebase,
@@ -68,7 +66,7 @@ pub fn commit_squash_only_with_perm(
         how_to_combine_messages,
     )?;
     let new_commit = rebase.lookup_pick(commit_selector)?;
-    let workspace = WorkspaceState::from_successful_rebase(rebase, &repo, dry_run, &prs_by_head)?;
+    let workspace = WorkspaceState::from_successful_rebase_with_db(rebase, &repo, dry_run, &db)?;
 
     Ok(CommitSquashResult {
         new_commit,

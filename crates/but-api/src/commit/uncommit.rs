@@ -122,7 +122,6 @@ pub fn commit_uncommit_only_with_perm(
         anyhow::bail!("no commit IDs provided for uncommit");
     }
     let context_lines = ctx.settings.context_lines;
-    let prs_by_head = crate::workspace_state::forge_prs_by_head(ctx)?;
     let mut meta = ctx.meta()?;
     let (repo, mut ws, mut db) = ctx.workspace_mut_and_db_mut_with_perm(perm)?;
     let mut tx = db.transaction()?;
@@ -207,16 +206,18 @@ pub fn commit_uncommit_only_with_perm(
 
     if dry_run == DryRun::No {
         tx.commit()?;
+    } else {
+        drop(tx);
     }
 
     Ok(UncommitResult {
         uncommitted_ids: subject_commit_ids,
-        workspace: WorkspaceState::from_workspace(
+        workspace: WorkspaceState::from_workspace_with_db(
             workspace,
             meta,
             repo,
             replaced_commits,
-            &prs_by_head,
+            &db,
         )?,
     })
 }
@@ -269,7 +270,6 @@ pub fn commit_uncommit_changes_only_with_perm(
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<MoveChangesResult> {
     let context_lines = ctx.settings.context_lines;
-    let prs_by_head = crate::workspace_state::forge_prs_by_head(ctx)?;
     let mut meta = ctx.meta()?;
     let (repo, mut ws, mut db) = ctx.workspace_mut_and_db_mut_with_perm(perm)?;
     let mut tx = db.transaction()?;
@@ -341,15 +341,17 @@ pub fn commit_uncommit_changes_only_with_perm(
 
     if dry_run == DryRun::No {
         tx.commit()?;
+    } else {
+        drop(tx);
     }
 
     Ok(MoveChangesResult {
-        workspace: WorkspaceState::from_workspace(
+        workspace: WorkspaceState::from_workspace_with_db(
             workspace,
             meta,
             repo,
             replaced_commits,
-            &prs_by_head,
+            &db,
         )?,
     })
 }
@@ -456,7 +458,6 @@ pub fn commit_uncommit_changes_from_commits_only_with_perm(
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<UncommitChangesFromCommitsResult> {
     let context_lines = ctx.settings.context_lines;
-    let prs_by_head = crate::workspace_state::forge_prs_by_head(ctx)?;
     let mut meta = ctx.meta()?;
     let (repo, mut ws, mut db) = ctx.workspace_mut_and_db_mut_with_perm(perm)?;
     let mut tx = db.transaction()?;
@@ -554,15 +555,17 @@ pub fn commit_uncommit_changes_from_commits_only_with_perm(
 
     if dry_run == DryRun::No {
         tx.commit()?;
+    } else {
+        drop(tx);
     }
 
     Ok(UncommitChangesFromCommitsResult {
-        workspace: WorkspaceState::from_workspace(
+        workspace: WorkspaceState::from_workspace_with_db(
             workspace,
             meta,
             repo,
             replaced_commits,
-            &prs_by_head,
+            &db,
         )?,
         failures,
     })

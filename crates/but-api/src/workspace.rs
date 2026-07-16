@@ -343,7 +343,6 @@ pub fn workspace_integrate_upstream_only_with_perm(
     dry_run: DryRun,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<WorkspaceIntegrateUpstreamOutcome> {
-    let prs_by_head = crate::workspace_state::forge_prs_by_head(ctx)?;
     let mut meta = ctx.meta()?;
     let (workspace_state, worktree_conflicts) = {
         let (repo, mut ws, db) = ctx.workspace_mut_and_db_with_perm(perm)?;
@@ -375,7 +374,7 @@ pub fn workspace_integrate_upstream_only_with_perm(
         if dry_run.into() {
             let replaced_commits = rebase.history.commit_mappings();
             let workspace_state =
-                WorkspaceState::from_rebase_preview(&mut rebase, replaced_commits, &prs_by_head)?;
+                WorkspaceState::from_rebase_preview_with_db(&mut rebase, replaced_commits, &db)?;
             return Ok(WorkspaceIntegrateUpstreamOutcome {
                 workspace_state,
                 worktree_conflicts,
@@ -395,12 +394,12 @@ pub fn workspace_integrate_upstream_only_with_perm(
             materialized.meta.set_workspace(&md)?;
         }
 
-        let workspace_state = WorkspaceState::from_workspace(
+        let workspace_state = WorkspaceState::from_workspace_with_db(
             materialized.workspace,
             materialized.meta,
             &repo,
             materialized.history.commit_mappings(),
-            &prs_by_head,
+            &db,
         )?;
         (workspace_state, worktree_conflicts)
     };

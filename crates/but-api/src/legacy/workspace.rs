@@ -52,7 +52,11 @@ pub fn head_info(ctx: &but_ctx::Context) -> Result<but_workspace::RefInfo> {
 
     // Resolve each segment's PR association from the forge review cache instead
     // of stored branch metadata, keyed by the segment's remote/pushed short name.
-    info.apply_forge_review_associations(&repo, &crate::workspace_state::forge_prs_by_head(ctx)?);
+    let forge_db = ctx.db.get_cache()?;
+    info.apply_forge_review_associations(
+        &repo,
+        &crate::workspace_state::forge_prs_by_head(&forge_db)?,
+    );
 
     Ok(info)
 }
