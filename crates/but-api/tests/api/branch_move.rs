@@ -116,6 +116,37 @@ fn move_non_empty_branch_dry_run_previews_new_tip_without_mutating_repository() 
 }
 
 #[test]
+fn move_checked_out_top_branch_down_checks_out_new_top() -> anyhow::Result<()> {
+    let (mut ctx, _tmp) = context_with_three_branch_stack()?;
+    let subject: gix::refs::FullName = "refs/heads/C".try_into()?;
+    let target: gix::refs::FullName = "refs/heads/A".try_into()?;
+    let new_tip: gix::refs::FullName = "refs/heads/B".try_into()?;
+
+    let result =
+        but_api::branch::move_branch(&mut ctx, subject.as_ref(), target.as_ref(), DryRun::No)?;
+
+    assert_workspace_ref(&result.workspace, "refs/heads/B");
+    #[cfg(not(feature = "graph-workspace"))]
+    assert_eq!(
+        workspace_branch_names(&result.workspace),
+        ["B", "C", "A"],
+        "the whole reordered stack should remain projected"
+    );
+    assert_eq!(
+        ctx.repo.get()?.head_name()?.as_ref(),
+        Some(&new_tip),
+        "HEAD should follow the new top of the reordered stack"
+    );
+    assert_eq!(
+        ctx.meta()?.branch_stack_order(new_tip.as_ref())?,
+        Some(vec![new_tip, subject, target]),
+        "the persisted branch order should match the graph rewrite"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn move_empty_branch_dry_run_previews_new_order_without_persisting_it() -> anyhow::Result<()> {
     let (repo, _tmp) = repo_with_feature_branch()?;
     let mut ctx = but_ctx::Context::from_repo_for_testing(repo)?.with_memory_app_cache();

@@ -121,6 +121,21 @@ test("can move a bottom non-empty branch above the checked-out branch", async ({
 	await assertCommitSubjects(["A: first commit", "C: first commit", "B: first commit"], localClone);
 });
 
+test("can move the checked-out top branch down within its stack", async ({ page, gitbutler }) => {
+	const localClone = await setupThreeBranchStackProject(gitbutler, page);
+
+	await expect(getByTestId(page, "branch-card")).toHaveCount(3);
+	await expectCurrentBranchChip(page, "C");
+	await expectBranchHeaderOrder(page, ["C", "B", "A"]);
+
+	await dragBranchToInsertionDropzone(page, "C", 1);
+
+	await expectBranchHeaderOrder(page, ["B", "C", "A"]);
+	await expectCurrentBranchChip(page, "B");
+	await assertBranch("B", localClone);
+	await assertCommitSubjects(["B: first commit", "C: first commit", "A: first commit"], localClone);
+});
+
 test("can move a bottom non-empty branch above the checked-out middle branch", async ({
 	page,
 	gitbutler,

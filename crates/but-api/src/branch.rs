@@ -1601,9 +1601,9 @@ pub fn move_branch_with_perm(
         },
     )?;
 
-    // In single-branch (ad-hoc) mode a move can place the subject above the checked-out tip. The
-    // operation doesn't move `HEAD`, so check out the new tip here to keep the moved branch part of
-    // the projected workspace (mirroring `create_reference`). Skipped on dry runs.
+    // In single-branch (ad-hoc) mode a reorder can change which branch is at the top of the visible
+    // stack. The operation doesn't move `HEAD`, so check out that tip here to keep the whole stack
+    // projected (mirroring `create_reference`). Skipped on dry runs.
     let is_dry_run: bool = dry_run.into();
     if let Some(new_tip) = new_tip
         && !is_dry_run

@@ -1736,6 +1736,78 @@ mod single_branch_mode {
     }
 
     #[test]
+    fn move_top_non_empty_branch_down_checks_out_new_top() -> anyhow::Result<()> {
+        let (_tmp, repo, mut meta, project_meta) =
+            ad_hoc_workspace_with_three_non_empty_branches("C")?;
+
+        let branch_stack_order = move_branch_and_apply(
+            &repo,
+            &mut meta,
+            project_meta,
+            r("refs/heads/C"),
+            r("refs/heads/A"),
+        )?;
+
+        assert_head(&repo, "B");
+        assert_eq!(
+            branch_stack_order,
+            Some(vec![
+                r("refs/heads/B").to_owned(),
+                r("refs/heads/C").to_owned(),
+                r("refs/heads/A").to_owned(),
+                r("refs/heads/main").to_owned(),
+            ]),
+            "moving the checked-out tip down should make the branch above it the new tip"
+        );
+        // The same commits are reordered to match the branch order, with the new tip checked out.
+        snapbox::assert_data_eq!(
+            normalized_graph_snapshot(&repo)?,
+            snapbox::str![[r#"
+* [C1] (HEAD -> B) add b
+* [C2] (C) add c
+* [C3] (A) add a
+* [C4] (main) add main
+"#]]
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn move_top_non_empty_branch_above_current_parent_is_a_noop() -> anyhow::Result<()> {
+        let (_tmp, repo, mut meta, project_meta) =
+            ad_hoc_workspace_with_three_non_empty_branches("C")?;
+        let tips_before = ["A", "B", "C"].map(|branch| branch_tip(&repo, branch));
+
+        let branch_stack_order = move_branch_and_apply(
+            &repo,
+            &mut meta,
+            project_meta,
+            r("refs/heads/C"),
+            r("refs/heads/B"),
+        )?;
+
+        assert_head(&repo, "C");
+        assert_eq!(
+            branch_stack_order,
+            Some(vec![
+                r("refs/heads/C").to_owned(),
+                r("refs/heads/B").to_owned(),
+                r("refs/heads/A").to_owned(),
+                r("refs/heads/main").to_owned(),
+            ]),
+            "placing the tip above its current parent should preserve branch order"
+        );
+        assert_eq!(
+            ["A", "B", "C"].map(|branch| branch_tip(&repo, branch)),
+            tips_before,
+            "a no-op move should not rewrite commits"
+        );
+
+        Ok(())
+    }
+
+    #[test]
     fn move_bottom_branch_above_checked_out_middle_leaves_top_branch_untouched()
     -> anyhow::Result<()> {
         let (_tmp, repo, mut meta, project_meta) =

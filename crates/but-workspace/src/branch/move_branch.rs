@@ -11,11 +11,11 @@ pub struct Outcome<'ws, 'meta, M: RefMetadata> {
     /// The updated workspace metadata that accompanies the move operation.
     /// It should replace the actual workspace metadata to configure moved 'virtual' branches segments, if `Some()`.
     pub ws_meta: Option<but_core::ref_metadata::Workspace>,
-    /// In single-branch (ad-hoc) mode, set to the reference that became the new tip when the move
-    /// placed the subject above the currently checked-out branch. `HEAD` is *not* moved by the
-    /// operation; the caller is responsible for checking this out so the moved branch stays part of
-    /// the projected workspace (mirroring [`create_reference`](crate::branch::create_reference())).
-    /// `None` when the tip is unchanged.
+    /// In single-branch (ad-hoc) mode, set to the reference that should become the new tip after the
+    /// reorder. This can be the subject when it moves above the current tip, or the branch now above
+    /// it when the checked-out tip moves down. `HEAD` is *not* moved by the operation; the caller is
+    /// responsible for checking this out so the whole reordered stack stays projected (mirroring
+    /// [`create_reference`](crate::branch::create_reference())). `None` when the tip is unchanged.
     pub new_tip: Option<gix::refs::FullName>,
     /// In single-branch (ad-hoc) mode, the reordered tip-to-base branch chain that the caller should
     /// persist with [`RefMetadata::set_branch_stack_order`].
@@ -122,7 +122,12 @@ pub(super) mod function {
             delimiter: subject_delimiter,
             children_to_disconnect,
             parents_to_disconnect,
-        } = get_disconnect_parameters(&editor, source_stack, subject_segment, workspace_head)?;
+        } = get_disconnect_parameters(
+            &editor,
+            source_stack,
+            subject_segment,
+            Some(workspace_head),
+        )?;
 
         editor.disconnect_segment_from(
             subject_delimiter.clone(),
@@ -218,12 +223,11 @@ pub(super) mod function {
     /// Move a branch in a single-branch (ad-hoc) workspace, where `HEAD` is on a plain local branch.
     ///
     /// In single-branch (ad-hoc) mode there is no workspace commit, and the tip-to-base order of
-    /// same-commit empty branches lives in the `branch_order` metadata table rather than in the
-    /// workspace metadata. Reordering two empty branches is therefore a pure metadata operation
-    /// with no graph rewrite - mirror `create_reference`'s ad-hoc handling. The reordered chain is
-    /// returned in [`Outcome::branch_stack_order`] for the caller to persist (via
-    /// [`RefMetadata::set_branch_stack_order`]) rather than being written here, so callers can skip
-    /// persistence for dry-run previews.
+    /// branches lives in the `branch_order` metadata table rather than in workspace metadata. Empty
+    /// branches can therefore move through metadata alone, while branches with commits also require
+    /// a graph rewrite. The reordered chain is returned in [`Outcome::branch_stack_order`] for the
+    /// caller to persist (via [`RefMetadata::set_branch_stack_order`]) rather than being written
+    /// here, so callers can skip persistence for dry-run previews.
     fn move_branch_in_single_branch_mode<'ws, 'meta, M: RefMetadata>(
         mut successful_rebase: SuccessfulRebase<'ws, 'meta, M>,
         workspace: but_graph::Workspace,
@@ -266,24 +270,29 @@ pub(super) mod function {
                 },
             }
         };
-        let new_order = reorder_empty_branch_in_stack_order(
-            existing_order,
-            target_branch_name,
-            subject_branch_name,
+        let previous_order = existing_order.clone();
+        let new_order =
+            reorder_branch_in_stack_order(existing_order, target_branch_name, subject_branch_name);
+
+        // Keep HEAD at the top of the reordered portion of the stack. This is the subject when it
+        // moves above the current entrypoint, or the branch that moves above the subject when the
+        // checked-out top branch moves down.
+        let new_tip = reordered_entrypoint(
+            entrypoint.as_ref().map(|name| name.as_ref()),
+            source_stack,
+            &new_order,
         );
 
-        // Moving the subject on top of the checked-out branch makes it the new tip. The workspace
-        // only projects the entrypoint and the segments below it, so unless `HEAD` moves the subject
-        // would sit above the entrypoint and drop out of the projection. Report it as the new tip so
-        // the caller can check it out (mirroring `create_reference`); we don't move `HEAD` here.
-        let new_tip = (entrypoint.as_ref().map(|name| name.as_ref()) == Some(target_branch_name))
-            .then(|| subject_branch_name.to_owned());
+        if new_order == previous_order {
+            return Ok(Outcome {
+                rebase: successful_rebase,
+                ws_meta: None,
+                new_tip,
+                branch_stack_order: Some(new_order),
+            });
+        }
 
         if !subject_segment.commits.is_empty() {
-            let workspace_head = workspace
-                .tip_commit()
-                .map(|commit| commit.id)
-                .context("Couldn't find workspace head.")?;
             let (_, target_segment) = destination;
             let target_segment_ref_name = target_segment
                 .ref_name()
@@ -297,7 +306,7 @@ pub(super) mod function {
                 delimiter: subject_delimiter,
                 children_to_disconnect,
                 parents_to_disconnect,
-            } = get_disconnect_parameters(&editor, source_stack, subject_segment, workspace_head)?;
+            } = get_disconnect_parameters(&editor, source_stack, subject_segment, None)?;
 
             editor.disconnect_segment_from(
                 subject_delimiter.clone(),
@@ -374,7 +383,12 @@ pub(super) mod function {
             delimiter: subject_delimiter,
             children_to_disconnect,
             parents_to_disconnect,
-        } = get_disconnect_parameters(&editor, &source_stack, &subject_segment, workspace_head)?;
+        } = get_disconnect_parameters(
+            &editor,
+            &source_stack,
+            &subject_segment,
+            Some(workspace_head),
+        )?;
 
         let skip_reconnect_step = source_stack.segments.len() == 1;
         editor.disconnect_segment_from(
@@ -435,6 +449,21 @@ pub(super) mod function {
             .collect()
     }
 
+    fn reordered_entrypoint(
+        entrypoint: Option<&FullNameRef>,
+        stack: &but_graph::workspace::Stack,
+        new_order: &[gix::refs::FullName],
+    ) -> Option<gix::refs::FullName> {
+        let entrypoint = entrypoint?;
+        let new_entrypoint = new_order.iter().find(|candidate| {
+            stack
+                .segments
+                .iter()
+                .any(|segment| segment.ref_name() == Some(candidate.as_ref()))
+        })?;
+        (new_entrypoint.as_ref() != entrypoint).then(|| new_entrypoint.clone())
+    }
+
     /// Determine the surrounding context of the subject and target branches.
     ///
     /// Currently, this looks into the workspace projection in order to determine **where to take the branch from and to**.
@@ -488,7 +517,7 @@ pub(super) mod function {
     /// If `target` isn't tracked yet (stale or empty metadata) it is appended first, so that a move
     /// where *both* branches are missing adds them both - `subject` on top of `target` - instead of
     /// silently clobbering the rest of the ordering down to just `subject`.
-    fn reorder_empty_branch_in_stack_order(
+    fn reorder_branch_in_stack_order(
         mut order: Vec<gix::refs::FullName>,
         target_branch_name: &FullNameRef,
         subject_branch_name: &FullNameRef,
@@ -531,7 +560,7 @@ pub(super) mod function {
 
     #[cfg(test)]
     mod tests {
-        use super::reorder_empty_branch_in_stack_order;
+        use super::reorder_branch_in_stack_order;
 
         fn r(name: &str) -> gix::refs::FullName {
             gix::refs::FullName::try_from(name).expect("valid ref name")
@@ -544,7 +573,7 @@ pub(super) mod function {
         #[test]
         fn moves_subject_on_top_of_target_when_both_present() {
             let order = vec![r("refs/heads/main"), r("refs/heads/a"), r("refs/heads/b")];
-            let new = reorder_empty_branch_in_stack_order(
+            let new = reorder_branch_in_stack_order(
                 order,
                 r("refs/heads/main").as_ref(),
                 r("refs/heads/b").as_ref(),
@@ -559,7 +588,7 @@ pub(super) mod function {
         #[test]
         fn adds_subject_above_target_when_only_target_is_present() {
             let order = vec![r("refs/heads/main")];
-            let new = reorder_empty_branch_in_stack_order(
+            let new = reorder_branch_in_stack_order(
                 order,
                 r("refs/heads/main").as_ref(),
                 r("refs/heads/new").as_ref(),
@@ -572,7 +601,7 @@ pub(super) mod function {
             // Stale/empty metadata: neither branch is tracked yet. Both are added, subject on top of
             // target, without dropping any pre-existing ordering.
             let order = vec![r("refs/heads/main")];
-            let new = reorder_empty_branch_in_stack_order(
+            let new = reorder_branch_in_stack_order(
                 order,
                 r("refs/heads/target").as_ref(),
                 r("refs/heads/subject").as_ref(),
@@ -585,7 +614,7 @@ pub(super) mod function {
 
         #[test]
         fn adds_both_in_order_from_empty_metadata() {
-            let new = reorder_empty_branch_in_stack_order(
+            let new = reorder_branch_in_stack_order(
                 Vec::new(),
                 r("refs/heads/target").as_ref(),
                 r("refs/heads/subject").as_ref(),
