@@ -1,18 +1,13 @@
 <script lang="ts" module>
 	export interface Props {
 		/**
-		 * The text to display and copy
+		 * The label to display; copying is up to the caller's `onclick`
 		 */
 		text: string;
 		/**
 		 * Optional prefix to display before the text (e.g., "upstream")
 		 */
 		prefix?: string;
-		/**
-		 * Whether to show only the first 7 characters (useful for SHAs)
-		 * @default true
-		 */
-		shortenText?: boolean;
 		/**
 		 * Callback when the button is clicked
 		 */
@@ -27,15 +22,13 @@
 <script lang="ts">
 	import Icon from "$components/Icon.svelte";
 
-	const { text, prefix, shortenText = true, onclick, class: className }: Props = $props();
-
-	const displayText = $derived(shortenText ? text.substring(0, 7) : text);
+	const { text, prefix, onclick, class: className }: Props = $props();
 </script>
 
 <button type="button" class="copy-btn underline-dotted {className}" {onclick}>
 	<span>
 		{#if prefix}{prefix}
-		{/if}{displayText}
+		{/if}{text}
 	</span>
 	<Icon name="copy" size={14} />
 </button>
