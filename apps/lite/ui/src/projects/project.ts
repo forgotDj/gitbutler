@@ -327,16 +327,15 @@ export const projectReducers = {
 		{ replacedCommits }: { replacedCommits: Record<string, string> },
 	) => {
 		const workspaceState = state.workspace;
-		const commit = rewrittenCommitSelection({
+		const newCommit = rewrittenCommitSelection({
 			selection: workspaceState.selection.outline,
 			replacedCommits,
 		});
-		if (commit) workspaceState.selection.outline = commit;
+		if (newCommit) workspaceState.selection.outline = newCommit;
 
 		if (workspaceState.commitTarget?.type === "commit") {
-			const commitId = replacedCommits[workspaceState.commitTarget.subject];
-			if (commitId !== undefined)
-				workspaceState.commitTarget = { type: "commit", subject: commitId };
+			const newId = replacedCommits[workspaceState.commitTarget.subject];
+			if (newId !== undefined) workspaceState.commitTarget = { type: "commit", subject: newId };
 		}
 
 		for (const oldId of Object.keys(workspaceState.checkedCommitIds)) {
