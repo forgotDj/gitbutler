@@ -15,6 +15,7 @@ import {
 	operandEquals,
 } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
+import { getTransferTarget } from "#ui/outline/mode.ts";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import {
 	OperationTarget as OperationTarget_,
@@ -108,11 +109,10 @@ const OperationTarget: FC<
 
 	type ActiveOperation = { operationType: OperationType; tooltip?: string | undefined };
 	const activeOperation = useAppSelector((state) => {
-		const isSelected = projectSlice.selectors.selectIsSelectedOutline(
+		const selection = projectSlice.selectors.selectSelectionOutline(
 			state,
 			projectId,
 			navigationIndex,
-			operand,
 		);
 		const outlineMode = projectSlice.selectors.selectOutlineModeState(state, projectId);
 
@@ -128,12 +128,8 @@ const OperationTarget: FC<
 				Transfer: ({ value: mode }): ActiveOperation | null => {
 					if (mode.operationType === null) return null;
 
-					const isActive = Match.value(mode).pipe(
-						Match.tagsExhaustive({
-							Pointer: (mode) => mode.target !== null && operandEquals(mode.target, operand),
-							Keyboard: () => isSelected,
-						}),
-					);
+					const target = getTransferTarget(mode, selection);
+					const isActive = target !== null && operandEquals(target, operand);
 					if (!isActive) return null;
 
 					return {
@@ -580,12 +576,7 @@ const Stacks: FC<{
 				Transfer: ({ value: mode }) => {
 					if (mode.operationType === null) return;
 
-					const target = Match.value(mode).pipe(
-						Match.tagsExhaustive({
-							Pointer: (mode) => mode.target,
-							Keyboard: () => selection,
-						}),
-					);
+					const target = getTransferTarget(mode, selection);
 					if (!target) return;
 
 					return getOperation({
