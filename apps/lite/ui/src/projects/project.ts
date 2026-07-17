@@ -1,6 +1,5 @@
 import { bytesEqual } from "#ui/api/bytes.ts";
 import type { HeadInfoIndex } from "#ui/api/ref-info.ts";
-import { rewrittenCommitOperand, rewrittenCommitSelection } from "#ui/commit.ts";
 import {
 	branchOperand,
 	commitOperand,
@@ -327,16 +326,16 @@ export const projectReducers = {
 		{ replacedCommits }: { replacedCommits: Record<string, string> },
 	) => {
 		const workspaceState = state.workspace;
-		const commit = rewrittenCommitSelection({
-			selection: workspaceState.selection.outline,
-			replacedCommits,
-		});
-		if (commit) workspaceState.selection.outline = commit;
+		const selection = workspaceState.selection.outline;
+		if (selection?._tag === "Commit") {
+			const newId = replacedCommits[selection.commitId];
+			if (newId !== undefined)
+				workspaceState.selection.outline = commitOperand({ commitId: newId });
+		}
 
 		if (workspaceState.commitTarget?.type === "commit") {
-			const commitId = replacedCommits[workspaceState.commitTarget.subject];
-			if (commitId !== undefined)
-				workspaceState.commitTarget = { type: "commit", subject: commitId };
+			const newId = replacedCommits[workspaceState.commitTarget.subject];
+			if (newId !== undefined) workspaceState.commitTarget = { type: "commit", subject: newId };
 		}
 
 		for (const oldId of Object.keys(workspaceState.checkedCommitIds)) {
@@ -348,11 +347,9 @@ export const projectReducers = {
 		}
 
 		if (workspaceState.mode._tag === "RewordCommit") {
-			const commit = rewrittenCommitOperand({
-				commit: workspaceState.mode.operand,
-				replacedCommits,
-			});
-			if (commit) workspaceState.mode = rewordCommitOutlineMode({ operand: commit });
+			const newId = replacedCommits[workspaceState.mode.operand.commitId];
+			if (newId !== undefined)
+				workspaceState.mode = rewordCommitOutlineMode({ operand: { commitId: newId } });
 		}
 	},
 	toggleFiles: (state: ProjectState) => {

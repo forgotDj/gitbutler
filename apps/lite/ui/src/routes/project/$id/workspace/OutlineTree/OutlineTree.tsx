@@ -437,8 +437,8 @@ const StackC: FC<{
 	//   so it probably isn't too common.
 	// For now we'll treat this as non-nullable until we identify cases where it
 	// could genuinely be null (assuming backend correctness).
-	// oxlint-disable-next-line typescript/no-non-null-assertion -- [tag:stack-id-required]
-	const stackId = stack.id!;
+	// [tag:stack-id-required]
+	const stackId = assert(stack.id);
 	const operand = stackOperand({ stackId });
 	const canTearOffBranch = stack.segments.length > 1;
 	const downstackPushStatuses = downstackPushStatusesFromSegments(stack.segments);

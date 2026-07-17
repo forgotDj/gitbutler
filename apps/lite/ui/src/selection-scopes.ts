@@ -5,6 +5,7 @@ import { projectSlice } from "#ui/projects/state.ts";
 import { useAppDispatch } from "#ui/store.ts";
 import { getAdjacent, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import { useHotkeySequences, useHotkeys } from "@tanstack/react-hotkeys";
+import { assert } from "#ui/assert.ts";
 
 export type SelectionScope = "outline" | "files" | "diff";
 const allSelectionScopes: Array<SelectionScope> = ["outline", "files", "diff"];
@@ -50,10 +51,10 @@ export const focusAdjacentSelectionScope = ({
 		if (nextSelectionScope !== undefined) focusSelectionScope(nextSelectionScope);
 	} else {
 		const curr = orderedSelectionScopes.indexOf(currentSelectionScope);
-		// oxlint-disable-next-line typescript/no-non-null-assertion -- This shouldn't ever fail.
-		const nextSelectionScope = orderedSelectionScopes.at(
-			(curr + offset) % orderedSelectionScopes.length,
-		)!;
+		// This shouldn't ever fail.
+		const nextSelectionScope = assert(
+			orderedSelectionScopes.at((curr + offset) % orderedSelectionScopes.length),
+		);
 
 		focusSelectionScope(nextSelectionScope);
 	}
