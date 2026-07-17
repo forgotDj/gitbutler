@@ -15,7 +15,7 @@ import {
 	attachInstruction,
 	extractInstruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
-import { Tooltip, useRender } from "@base-ui/react";
+import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import { Match } from "effect";
 import { FC, useEffect, useEffectEvent, useRef } from "react";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
@@ -141,6 +141,34 @@ export type OperationTargetOutline = "inside" | "outside";
 
 export type ActiveOperation = { operationType: OperationType; tooltip?: string | undefined };
 
+const PresentationalOperationTarget: FC<
+	{
+		operationType: OperationType | undefined;
+		outline: OperationTargetOutline;
+	} & useRender.ComponentProps<"div">
+> = ({ operationType, outline, render, ...props }) =>
+	useRender({
+		render,
+		props: mergeProps<"div">(props, {
+			className: Match.value(operationType).pipe(
+				Match.when("above", () => classes(styles.insertionTarget, styles.insertionTargetAbove)),
+				Match.when("below", () => classes(styles.insertionTarget, styles.insertionTargetBelow)),
+				Match.when("into", () =>
+					classes(
+						styles.activeTarget,
+						Match.value(outline).pipe(
+							Match.when("inside", () => styles.activeTargetInside),
+							Match.when("outside", () => styles.activeTargetOutside),
+							Match.exhaustive,
+						),
+					),
+				),
+				Match.when(undefined, () => undefined),
+				Match.exhaustive,
+			),
+		}),
+	});
+
 export const OperationTarget: FC<
 	{
 		enabled: boolean;
@@ -148,36 +176,24 @@ export const OperationTarget: FC<
 		projectId: string;
 		activeOperation?: ActiveOperation | null;
 		outline: OperationTargetOutline;
-	} & useRender.ComponentProps<"div">
+	} & useRender.ComponentProps<"button">
 > = ({ enabled, target, projectId, activeOperation, outline, render, ...props }) => {
 	const dropRef = useOperationDropTarget({ enabled, target, projectId });
-
-	const targetEl = useRender({
-		render,
-		ref: dropRef,
-		props,
-	});
 
 	return (
 		<Tooltip.Root open={activeOperation?.tooltip !== undefined} disableHoverablePopup>
 			<Tooltip.Trigger
-				render={targetEl}
-				className={Match.value(activeOperation?.operationType).pipe(
-					Match.when("above", () => classes(styles.insertionTarget, styles.insertionTargetAbove)),
-					Match.when("below", () => classes(styles.insertionTarget, styles.insertionTargetBelow)),
-					Match.when("into", () =>
-						classes(
-							styles.activeTarget,
-							Match.value(outline).pipe(
-								Match.when("inside", () => styles.activeTargetInside),
-								Match.when("outside", () => styles.activeTargetOutside),
-								Match.exhaustive,
-							),
-						),
-					),
-					Match.when(undefined, () => undefined),
-					Match.exhaustive,
-				)}
+				{...props}
+				render={
+					<PresentationalOperationTarget
+						ref={(el) => {
+							dropRef.current = el;
+						}}
+						operationType={activeOperation?.operationType}
+						outline={outline}
+						render={render}
+					/>
+				}
 			/>
 			<Tooltip.Portal>
 				<Tooltip.Positioner sideOffset={8} side="right">
