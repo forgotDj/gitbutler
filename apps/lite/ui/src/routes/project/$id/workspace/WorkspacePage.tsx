@@ -31,11 +31,13 @@ import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panel
 import {
 	branchOperand,
 	commitOperand,
+	fileOperand,
 	operandContains,
 	operandEquals,
 	operandIdentityKey,
 	type BranchOperand,
 	type Operand,
+	uncommittedChangesFileParent,
 } from "#ui/operands.ts";
 import { Details } from "./Details.tsx";
 import styles from "./WorkspacePage.module.css";
@@ -368,15 +370,35 @@ const WorkspacePage: FC = () => {
 		outlineMode,
 		absorptionTargetCommitIds,
 	});
-
 	const outlineSelection = useAppSelector((state) =>
 		projectSlice.selectors.selectSelectionOutline(state, projectId, outlineNavigationIndex),
 	);
 
 	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
 	const uncommittedFilesNavigationIndex = buildUncommittedFilesNavigationIndex({ worktreeChanges });
+	const uncommittedFilesSelection = useAppSelector((state) =>
+		projectSlice.selectors.selectSelectionUncommittedFiles(
+			state,
+			projectId,
+			uncommittedFilesNavigationIndex,
+		),
+	);
 
-	const deferredOutlineSelection = useDeferredValue(outlineSelection);
+	const detailsSelectionScope = useAppSelector((state) =>
+		projectSlice.selectors.selectDetailsSelectionScope(state, projectId),
+	);
+	const detailsSelection = Match.value(detailsSelectionScope).pipe(
+		Match.when("outline", () => outlineSelection),
+		Match.when("uncommitted-files", () =>
+			uncommittedFilesSelection === null
+				? null
+				: fileOperand({ parent: uncommittedChangesFileParent, path: uncommittedFilesSelection }),
+		),
+		Match.when(null, () => null),
+		Match.exhaustive,
+	);
+
+	const deferredDetailsSelection = useDeferredValue(detailsSelection);
 
 	const { data: projects } = useSuspenseQuery(listProjectsQueryOptions);
 
@@ -429,8 +451,8 @@ const WorkspacePage: FC = () => {
 
 				<Panel id={"details-panel" satisfies PanelId} className={styles.panel}>
 					<Details
-						key={deferredOutlineSelection ? operandIdentityKey(deferredOutlineSelection) : null}
-						outlineSelection={deferredOutlineSelection}
+						key={deferredDetailsSelection ? operandIdentityKey(deferredDetailsSelection) : null}
+						outlineSelection={deferredDetailsSelection}
 					/>
 				</Panel>
 			</Group>

@@ -25,6 +25,7 @@ import {
 	type TransferMode,
 } from "#ui/outline/mode.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
+import type { SelectionScope } from "#ui/selection-scopes.ts";
 import { createSelector } from "@reduxjs/toolkit";
 import type { AbsorptionTarget, RelativeTo } from "@gitbutler/but-sdk";
 import { Match } from "effect";
@@ -44,9 +45,12 @@ export type SelectionState = {
 	diff: HunkOperand | null;
 };
 
+type DetailsSelectionScope = Extract<SelectionScope, "uncommitted-files" | "outline">;
+
 type WorkspaceState = {
 	checkedCommitIds: Record<string, true>;
 	commitTarget: RelativeTo | null;
+	detailsSelectionScope: DetailsSelectionScope | null;
 	highlightedCommitIds: Array<string>;
 	mode: OutlineMode;
 	selection: SelectionState;
@@ -62,6 +66,7 @@ const createInitialSelectionState = (): SelectionState => ({
 const createInitialWorkspaceState = (): WorkspaceState => ({
 	checkedCommitIds: {},
 	commitTarget: null,
+	detailsSelectionScope: null,
 	highlightedCommitIds: [],
 	mode: defaultOutlineMode,
 	selection: createInitialSelectionState(),
@@ -94,6 +99,9 @@ const hunkOperandIdentityKey = (operand: HunkOperand): string =>
 	operandIdentityKey(hunkOperand(operand));
 
 export const projectReducers = {
+	setDetailsSelectionScope: (state: ProjectState, { scope }: { scope: DetailsSelectionScope }) => {
+		state.workspace.detailsSelectionScope = scope;
+	},
 	selectUncommittedFiles: (state: ProjectState, { selection }: { selection: string | null }) => {
 		const workspaceState = state.workspace;
 		if (workspaceState.selection.uncommittedFiles === selection) return;
@@ -397,6 +405,7 @@ const selectCheckedCommitOperands = createSelector(selectCheckedCommits, (checke
 export const projectSelectors = {
 	selectFilesVisible: (state: ProjectState) => state.filesVisible,
 	selectDetailsFullWindow: (state: ProjectState) => state.detailsFullWindow,
+	selectDetailsSelectionScope: (state: ProjectState) => state.workspace.detailsSelectionScope,
 	selectDialogState: (state: ProjectState) => state.dialog,
 	selectSelectionUncommittedFiles: (
 		state: ProjectState,

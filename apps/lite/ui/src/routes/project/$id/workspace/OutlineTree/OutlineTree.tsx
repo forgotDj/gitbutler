@@ -219,6 +219,14 @@ const UncommittedChanges: FC<{
 
 			<FilesTree
 				data-selection-scope={"uncommitted-files" satisfies SelectionScope}
+				onFocus={() =>
+					dispatch(
+						projectSlice.actions.setDetailsSelectionScope({
+							projectId,
+							scope: "uncommitted-files",
+						}),
+					)
+				}
 				emptyLabel="Nothing to commit"
 				fileParent={uncommittedChangesFileParent}
 				items={fileRowItems}
@@ -508,6 +516,7 @@ const Stacks: FC<{
 	checkCommit: (evt: { commitId: string; shiftKey: boolean }) => void;
 }> = ({ projectId, commitTarget, checkCommit }) => {
 	const navigationIndex = assert(use(NavigationIndexContext));
+	const dispatch = useAppDispatch();
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
 	const selection = useAppSelector((state) =>
 		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
@@ -557,6 +566,9 @@ const Stacks: FC<{
 				aria-activedescendant={selection ? treeItemId(selection) : undefined}
 				className={classes(styles.tree, styles.stacks)}
 				data-selection-scope={"outline" satisfies SelectionScope}
+				onFocus={() =>
+					dispatch(projectSlice.actions.setDetailsSelectionScope({ projectId, scope: "outline" }))
+				}
 				ref={hotkeysRef}
 			>
 				{(headInfo?.stacks.toReversed() ?? []).map((stack) => (

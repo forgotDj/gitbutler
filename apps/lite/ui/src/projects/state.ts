@@ -42,6 +42,7 @@ export const projectSlice = createSlice({
 	name: "project",
 	initialState,
 	reducers: {
+		setDetailsSelectionScope: withProject(projectReducers.setDetailsSelectionScope),
 		selectUncommittedFiles: withProject(projectReducers.selectUncommittedFiles),
 		selectOutline: withProject(projectReducers.selectOutline),
 		selectFiles: withProject(projectReducers.selectFiles),
@@ -72,6 +73,7 @@ export const projectSlice = createSlice({
 	selectors: {
 		selectFilesVisible: fromProject(projectSelectors.selectFilesVisible),
 		selectDetailsFullWindow: fromProject(projectSelectors.selectDetailsFullWindow),
+		selectDetailsSelectionScope: fromProject(projectSelectors.selectDetailsSelectionScope),
 		selectDialogState: fromProject(projectSelectors.selectDialogState),
 		selectSelectionUncommittedFiles: fromProject(projectSelectors.selectSelectionUncommittedFiles),
 		selectIsSelectedOutline: fromProject(projectSelectors.selectIsSelectedOutline),
