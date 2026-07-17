@@ -42,6 +42,5 @@ export const operandsLabel = ({
 }) => {
 	if (operands.length !== 1) return `${operands.length.toLocaleString()} items`;
 
-	// oxlint-disable-next-line typescript/no-non-null-assertion
-	return operandLabel({ operand: operands[0]!, headInfoIndex });
+	return operandLabel({ operand: assert(operands[0]), headInfoIndex });
 };
