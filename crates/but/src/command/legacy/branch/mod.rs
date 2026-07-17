@@ -86,6 +86,34 @@ pub fn new(
             .transpose()?
     };
 
+    if resolved_anchor.is_none()
+        && ctx.settings.feature_flags.single_branch
+        && gitbutler_operating_modes::in_outside_workspace_mode(ctx, guard.read_permission())?
+    {
+        let head_name = ctx
+            .repo
+            .get()?
+            .head()?
+            .referent_name()
+            .filter(|name| name.category() == Some(gix::refs::Category::LocalBranch))
+            .context("single-branch branch creation requires HEAD to be a local branch")?
+            .to_owned();
+        let new_ref: gix::refs::FullName = format!("refs/heads/{branch_name}").try_into()?;
+        but_api::branch::branch_create_with_perm(
+            ctx,
+            Some(new_ref),
+            but_api::branch::json::BranchCreatePlacement::Dependent {
+                relative_to: but_api::commit::json::RelativeTo::Reference(head_name),
+                side: but_rebase::graph_rebase::mutate::InsertSide::Above,
+            },
+            guard.write_permission(),
+        )?;
+        if let Some(out) = out.for_human() {
+            writeln!(out, "{} Created branch {branch_name}", t.sym().success)?;
+        }
+        return Ok(());
+    }
+
     let anchor = resolved_anchor
         .clone()
         .map(|anchor| -> CliResult<_> {

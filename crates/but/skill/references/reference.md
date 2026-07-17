@@ -500,7 +500,11 @@ but setup
 but setup --init              # Also initialize a new git repo if none exists
 ```
 
-Converts regular git repo to use GitButler workspace model. Use `--init` in non-interactive environments (CI/CD) to ensure a git repository exists before setup.
+Converts a regular Git repository to the managed GitButler workspace model. Use `--init` in
+non-interactive environments (CI/CD) to ensure a Git repository exists before setup. When the
+experimental single-branch feature is enabled, normal CLI use does not require this command: the
+repository is registered and its target is inferred lazily without checking out
+`gitbutler/workspace` or installing setup hooks.
 
 ### `but teardown`
 

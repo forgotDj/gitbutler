@@ -5,11 +5,43 @@
 //! application can operate on any branch, the target can be set at any time.
 
 use anyhow::{Context as _, Result, bail};
+use bstr::ByteSlice;
 use but_core::{
     RefMetadata,
     git_config::{edit_repo_config, ensure_config_value},
     ref_metadata::ProjectMeta,
 };
+
+/// Infer a default remote-tracking target from repository configuration without changing state.
+///
+/// The repository's unambiguous default push remote is used. Within that remote, its symbolic
+/// `HEAD` is preferred, followed by `main` and `master`. `None` means there is no unambiguous
+/// remote or none of those references exist.
+pub fn infer_default_target_ref(repo: &gix::Repository) -> Result<Option<gix::refs::FullName>> {
+    let Some(remote_name) = repo.remote_default_name(gix::remote::Direction::Push) else {
+        return Ok(None);
+    };
+    let remote_name = remote_name
+        .to_str()
+        .context("default remote name is not UTF-8")?;
+
+    let remote_head_ref = format!("refs/remotes/{remote_name}/HEAD");
+    if let Ok(head_ref) = repo.find_reference(remote_head_ref.as_str())
+        && let Some(branch_name) = head_ref.target().try_name()
+    {
+        return Ok(Some(branch_name.to_owned()));
+    }
+
+    for branch_name in ["main", "master"] {
+        let full_name: gix::refs::FullName =
+            format!("refs/remotes/{remote_name}/{branch_name}").try_into()?;
+        if repo.try_find_reference(full_name.as_ref())?.is_some() {
+            return Ok(Some(full_name));
+        }
+    }
+
+    Ok(None)
+}
 
 /// Make `target_ref` the project's default target and initialize project metadata,
 /// without changing the currently checked out branch.
