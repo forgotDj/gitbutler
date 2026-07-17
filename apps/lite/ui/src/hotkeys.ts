@@ -118,11 +118,17 @@ export const workspaceHotkeys = {
 			name: "Update workspace (rebases all stacks)",
 		},
 	},
-	focusPreviousSelectionScope: {
+	focusHorizontalSelectionScopeLeft: {
 		hotkey: "Mod+Alt+ArrowLeft",
 	},
-	focusNextSelectionScope: {
+	focusHorizontalSelectionScopeRight: {
 		hotkey: "Mod+Alt+ArrowRight",
+	},
+	focusVerticalSelectionScopeUp: {
+		hotkey: "Mod+Alt+ArrowUp",
+	},
+	focusVerticalSelectionScopeDown: {
+		hotkey: "Mod+Alt+ArrowDown",
 	},
 	settings: {
 		hotkey: "Mod+,",

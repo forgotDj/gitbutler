@@ -6,8 +6,9 @@ import {
 } from "#ui/api/queries.ts";
 import { useRestoreSnapshot } from "#ui/api/mutations.ts";
 import {
-	focusAdjacentSelectionScope,
+	focusHorizontalSelectionScope,
 	focusSelectionScope,
+	focusVerticalSelectionScope,
 	getFocusedSelectionScope,
 	SelectionScope,
 } from "#ui/selection-scopes.ts";
@@ -74,6 +75,9 @@ const useWorkspaceHotkeys = (projectId: string) => {
 		(state) => projectSlice.selectors.selectOutlineModeState(state, projectId)._tag === "Default",
 	);
 	const outlineVisible = !detailsFullWindow;
+	const outlineSelectionScope = useAppSelector((state) =>
+		projectSlice.selectors.selectDetailsSelectionScope(state, projectId),
+	);
 
 	const { isPending: isRestoreSnapshotPending, mutate: restoreSnapshot } = useRestoreSnapshot({
 		projectId,
@@ -127,19 +131,43 @@ const useWorkspaceHotkeys = (projectId: string) => {
 			},
 		},
 		{
-			hotkey: workspaceHotkeys.focusPreviousSelectionScope.hotkey,
+			hotkey: workspaceHotkeys.focusHorizontalSelectionScopeLeft.hotkey,
 			callback: () => {
-				focusAdjacentSelectionScope({ filesVisible, offset: -1, outlineVisible });
+				focusHorizontalSelectionScope({
+					filesVisible,
+					offset: -1,
+					outlineSelectionScope,
+					outlineVisible,
+				});
 			},
 			options: {
 				conflictBehavior: "allow",
 			},
 		},
 		{
-			hotkey: workspaceHotkeys.focusNextSelectionScope.hotkey,
+			hotkey: workspaceHotkeys.focusHorizontalSelectionScopeRight.hotkey,
 			callback: () => {
-				focusAdjacentSelectionScope({ filesVisible, offset: 1, outlineVisible });
+				focusHorizontalSelectionScope({
+					filesVisible,
+					offset: 1,
+					outlineSelectionScope,
+					outlineVisible,
+				});
 			},
+			options: {
+				conflictBehavior: "allow",
+			},
+		},
+		{
+			hotkey: workspaceHotkeys.focusVerticalSelectionScopeUp.hotkey,
+			callback: () => focusVerticalSelectionScope(-1),
+			options: {
+				conflictBehavior: "allow",
+			},
+		},
+		{
+			hotkey: workspaceHotkeys.focusVerticalSelectionScopeDown.hotkey,
+			callback: () => focusVerticalSelectionScope(1),
 			options: {
 				conflictBehavior: "allow",
 			},
