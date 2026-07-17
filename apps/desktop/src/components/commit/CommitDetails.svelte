@@ -68,7 +68,7 @@
 		{#if commit.changeId}
 			{@const changeId = commit.changeId}
 			<span class="divider">•</span>
-			<Tooltip text="Change ID: {changeId}">
+			<Tooltip text="Copy change ID">
 				<CopyButton
 					class="copy-change-id"
 					text={changeId.slice(0, 3)}
