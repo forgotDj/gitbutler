@@ -122,6 +122,10 @@ const OperationTarget: FC<
 			navigationIndex,
 		);
 		const outlineMode = projectSlice.selectors.selectOutlineModeState(state, projectId);
+		const detailsSelectionScope = projectSlice.selectors.selectDetailsSelectionScope(
+			state,
+			projectId,
+		);
 
 		return Match.value(outlineMode).pipe(
 			Match.tags({
@@ -135,7 +139,7 @@ const OperationTarget: FC<
 				Transfer: ({ value: mode }): ActiveOperation | null => {
 					if (mode.operationType === null) return null;
 
-					const target = getTransferTarget(mode, selection);
+					const target = getTransferTarget(mode, selection, detailsSelectionScope);
 					const isActive = target !== null && operandEquals(target, operand);
 					if (!isActive) return null;
 
@@ -540,13 +544,17 @@ const Stacks: FC<{
 	);
 	const dryRunOperation = useAppSelector((state) => {
 		const outlineMode = projectSlice.selectors.selectOutlineModeState(state, projectId);
+		const detailsSelectionScope = projectSlice.selectors.selectDetailsSelectionScope(
+			state,
+			projectId,
+		);
 
 		return Match.value(outlineMode).pipe(
 			Match.tags({
 				Transfer: ({ value: mode }) => {
 					if (mode.operationType === null) return;
 
-					const target = getTransferTarget(mode, selection);
+					const target = getTransferTarget(mode, selection, detailsSelectionScope);
 					if (!target) return;
 
 					return getOperation({

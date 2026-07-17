@@ -16,7 +16,6 @@ import {
 } from "#ui/operations/operation.ts";
 import { projectSlice } from "#ui/projects/state.ts";
 import { operandLabel, operandsLabel } from "#ui/routes/project/$id/workspace/operandLabel.ts";
-import {} from "#ui/selection-scopes.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { Button, Toggle, ToggleGroup, Tooltip } from "@base-ui/react";
 import { useHotkeys, type UseHotkeyDefinition } from "@tanstack/react-hotkeys";
@@ -288,6 +287,9 @@ const TransferKeyboardOperationControls: FC<{
 	mode: KeyboardTransferMode;
 	outlineNavigationIndex: NavigationIndex<Operand>;
 }> = ({ headInfoIndex, projectId, mode, outlineNavigationIndex }) => {
+	const detailsSelectionScope = useAppSelector((state) =>
+		projectSlice.selectors.selectDetailsSelectionScope(state, projectId),
+	);
 	const selection = useAppSelector((state) =>
 		projectSlice.selectors.selectSelectionOutline(state, projectId, outlineNavigationIndex),
 	);
@@ -295,7 +297,7 @@ const TransferKeyboardOperationControls: FC<{
 	const dispatch = useAppDispatch();
 	const { mutate: runOperation } = useRunOperation();
 
-	const target = getTransferTarget(keyboardTransferMode(mode), selection);
+	const target = getTransferTarget(keyboardTransferMode(mode), selection, detailsSelectionScope);
 	if (!target) return null;
 
 	const operations = getOperations(mode.sources, target);
