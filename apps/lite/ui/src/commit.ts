@@ -1,4 +1,4 @@
-import { commitOperand, type CommitOperand, type Operand } from "#ui/operands.ts";
+import { commitOperand, type Operand } from "#ui/operands.ts";
 import type { Commit, ForgeInfo } from "@gitbutler/but-sdk";
 
 export const shortCommitId = (commitId: string): string => commitId.slice(0, 7);
@@ -20,19 +20,6 @@ export const commitBody = (input: string): string | undefined => {
 export const commitIsDiverged = (commit: Commit): boolean =>
 	commit.state.type === "LocalAndRemote" && commit.state.subject !== commit.id;
 
-export const rewrittenCommitOperand = ({
-	commit,
-	replacedCommits,
-}: {
-	commit: CommitOperand;
-	replacedCommits: Record<string, string>;
-}): CommitOperand | null => {
-	const commitId = replacedCommits[commit.commitId];
-	if (commitId === undefined) return null;
-
-	return { commitId };
-};
-
 export const rewrittenCommitSelection = ({
 	selection,
 	replacedCommits,
@@ -42,13 +29,10 @@ export const rewrittenCommitSelection = ({
 }): Operand | null => {
 	if (selection?._tag !== "Commit") return selection;
 
-	const commit = rewrittenCommitOperand({
-		commit: selection,
-		replacedCommits,
-	});
-	if (!commit) return selection;
+	const newId = replacedCommits[selection.commitId];
+	if (newId === undefined) return selection;
 
-	return commitOperand(commit);
+	return commitOperand({ commitId: newId });
 };
 
 type ForgeUrlFreshness = "fresh" | "stale";
