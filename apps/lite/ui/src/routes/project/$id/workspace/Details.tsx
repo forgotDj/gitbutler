@@ -393,7 +393,7 @@ const DiffContents: FC<{
 		},
 		ref: selectionScopeRef,
 		getKey: hunkOperandIdentityKey,
-		operationSourceForItem: hunkOperand,
+		operationSourcesForItem: (hunk) => [hunkOperand(hunk)],
 	});
 
 	useHotkeys([

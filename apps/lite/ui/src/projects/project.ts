@@ -1,4 +1,5 @@
 import { bytesEqual } from "#ui/api/bytes.ts";
+import type { HeadInfoIndex } from "#ui/api/ref-info.ts";
 import { rewrittenCommitOperand, rewrittenCommitSelection } from "#ui/commit.ts";
 import {
 	branchOperand,
@@ -25,6 +26,7 @@ import {
 	type TransferMode,
 } from "#ui/outline/mode.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
+import { createSelector } from "@reduxjs/toolkit";
 import type { AbsorptionTarget, RelativeTo } from "@gitbutler/but-sdk";
 import { Match } from "effect";
 
@@ -191,12 +193,12 @@ export const projectReducers = {
 	},
 	enterKeyboardTransferMode: (
 		state: ProjectState,
-		{ source, operationType }: { source: Operand; operationType?: OperationType },
+		{ sources, operationType }: { sources: Array<Operand>; operationType?: OperationType },
 	) => {
 		const workspaceState = state.workspace;
 		workspaceState.mode = transferOutlineMode(
 			keyboardTransferMode({
-				source,
+				sources,
 				operationType: operationType ?? "into",
 				restoreSelection: {
 					outline: workspaceState.selection.outline,
@@ -236,7 +238,7 @@ export const projectReducers = {
 
 				workspaceState.mode = transferOutlineMode(
 					pointerTransferMode({
-						source: mode.source,
+						sources: mode.sources,
 						target,
 						operationType,
 					}),
@@ -254,7 +256,7 @@ export const projectReducers = {
 			Match.when({ _tag: "Transfer", value: { _tag: "Keyboard" } }, ({ value: mode }) => {
 				workspaceState.mode = transferOutlineMode(
 					keyboardTransferMode({
-						source: mode.source,
+						sources: mode.sources,
 						operationType,
 						restoreSelection: mode.restoreSelection,
 					}),
@@ -287,7 +289,7 @@ export const projectReducers = {
 	) => {
 		state.workspace.highlightedCommitIds = commitIds ?? [];
 	},
-	setCommitChecked: (
+	checkCommit: (
 		state: ProjectState,
 		{ commitId, checked }: { commitId: string; checked: boolean },
 	) => {
@@ -295,7 +297,7 @@ export const projectReducers = {
 		if (checked) checkedCommitIds[commitId] = true;
 		else delete checkedCommitIds[commitId];
 	},
-	setCommitsChecked: (
+	checkCommits: (
 		state: ProjectState,
 		{ commitIds, checked }: { commitIds: Array<string>; checked: boolean },
 	) => {
@@ -304,6 +306,15 @@ export const projectReducers = {
 			if (checked) checkedCommitIds[commitId] = true;
 			else delete checkedCommitIds[commitId];
 		}
+	},
+	setCheckedCommits: (state: ProjectState, { commitIds }: { commitIds: Array<string> }) => {
+		state.workspace.checkedCommitIds = commitIds.reduce(
+			(acc, commitId) => {
+				acc[commitId] = true;
+				return acc;
+			},
+			{} as Record<string, true>,
+		);
 	},
 	clearCheckedCommits: (state: ProjectState) => {
 		state.workspace.checkedCommitIds = {};
@@ -361,6 +372,21 @@ export const projectReducers = {
 	},
 };
 
+const selectCheckedCommits = createSelector(
+	(state: ProjectState) => state.workspace.checkedCommitIds,
+	(_state: ProjectState, headInfoIndex: HeadInfoIndex) => headInfoIndex,
+	(checkedCommitIds, headInfoIndex) =>
+		new Set(
+			Object.keys(checkedCommitIds).filter(
+				(commitId) => headInfoIndex.commitContextById(commitId) !== undefined,
+			),
+		),
+);
+
+const selectCheckedCommitOperands = createSelector(selectCheckedCommits, (checkedCommitIds) =>
+	Array.from(checkedCommitIds).map((commitId) => commitOperand({ commitId })),
+);
+
 export const projectSelectors = {
 	selectFilesVisible: (state: ProjectState) => state.filesVisible,
 	selectDetailsFullWindow: (state: ProjectState) => state.detailsFullWindow,
@@ -399,9 +425,11 @@ export const projectSelectors = {
 	selectHighlightedCommitIds: (state: ProjectState) => state.workspace.highlightedCommitIds,
 	selectCommitChecked: (state: ProjectState, commitId: string) =>
 		state.workspace.checkedCommitIds[commitId] === true,
-	selectCheckedCommitCount: (state: ProjectState) =>
-		Object.keys(state.workspace.checkedCommitIds).length,
-	selectHasCheckedCommits: (state: ProjectState) =>
-		Object.keys(state.workspace.checkedCommitIds).length > 0,
+	selectCheckedCommits,
+	selectCheckedCommitOperands,
+	selectCheckedCommitCount: (state: ProjectState, headInfoIndex: HeadInfoIndex) =>
+		selectCheckedCommits(state, headInfoIndex).size,
+	selectHasCheckedCommits: (state: ProjectState, headInfoIndex: HeadInfoIndex) =>
+		selectCheckedCommits(state, headInfoIndex).size > 0,
 	selectCommitTarget: (state: ProjectState) => state.workspace.commitTarget,
 };

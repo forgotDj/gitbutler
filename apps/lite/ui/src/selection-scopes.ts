@@ -67,7 +67,7 @@ export const useNavigationIndexHotkeys = <T>({
 	selection,
 	ref,
 	selectSectionPredicate,
-	operationSourceForItem,
+	operationSourcesForItem,
 	getKey,
 }: {
 	navigationIndex: NavigationIndex<T>;
@@ -77,7 +77,7 @@ export const useNavigationIndexHotkeys = <T>({
 	selection: T | null;
 	ref: React.RefObject<HTMLElement | null>;
 	selectSectionPredicate?: (item: T) => boolean;
-	operationSourceForItem: (item: T) => Operand;
+	operationSourcesForItem: (item: T) => Array<Operand>;
 	getKey: (item: T) => string;
 }) => {
 	const dispatch = useAppDispatch();
@@ -264,15 +264,14 @@ export const useNavigationIndexHotkeys = <T>({
 	const enterTransferModeForSelection = (operationType: OperationType) => {
 		if (selection === null) return;
 
-		const source = operationSourceForItem(selection);
-
 		dispatch(
 			projectSlice.actions.enterKeyboardTransferMode({
 				projectId,
-				source,
+				sources: operationSourcesForItem(selection),
 				operationType,
 			}),
 		);
+
 		focusSelectionScope("outline");
 	};
 

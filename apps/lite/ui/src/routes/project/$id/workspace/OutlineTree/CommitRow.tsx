@@ -58,8 +58,9 @@ export const CommitRow: FC<
 		projectId: string;
 		isCommitTarget: boolean;
 		dryRunCommit: Commit | null;
+		checkCommit: (evt: { commitId: string; shiftKey: boolean }) => void;
 	} & ComponentProps<"div">
-> = ({ commit, projectId, isCommitTarget, dryRunCommit, ...restProps }) => {
+> = ({ commit, projectId, isCommitTarget, dryRunCommit, checkCommit, ...restProps }) => {
 	const { data: forgeInfo } = useQuery(forgeInfoOptions(projectId));
 	const mforgeUrl = forgeInfo && commitForgeUrl(commit, forgeInfo);
 
@@ -174,7 +175,7 @@ export const CommitRow: FC<
 		dispatch(
 			projectSlice.actions.enterKeyboardTransferMode({
 				projectId,
-				source: operand,
+				sources: [operand],
 			}),
 		);
 		focusSelectionScope("outline");
@@ -368,10 +369,11 @@ export const CommitRow: FC<
 						className={styles.checkbox}
 						nativeButton
 						render={<Tooltip.Trigger />}
-						onCheckedChange={(checked) => {
-							dispatch(
-								projectSlice.actions.setCommitChecked({ projectId, commitId: commit.id, checked }),
-							);
+						onCheckedChange={(_checked, { event }) => {
+							const shiftKey =
+								(event instanceof MouseEvent || event instanceof KeyboardEvent) &&
+								event.shiftKey === true;
+							checkCommit({ commitId: commit.id, shiftKey });
 						}}
 					/>
 					<Tooltip.Portal>

@@ -57,7 +57,7 @@ export const useFileMenuItems = ({
 		dispatch(
 			projectSlice.actions.enterKeyboardTransferMode({
 				projectId,
-				source: fileOperand(operand),
+				sources: [fileOperand(operand)],
 			}),
 		);
 		focusSelectionScope("outline");
