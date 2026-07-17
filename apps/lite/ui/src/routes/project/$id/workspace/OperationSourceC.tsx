@@ -37,15 +37,23 @@ export const OperationSourceC: FC<
 	const outlineMode = useAppSelector((state) =>
 		projectSlice.selectors.selectOutlineModeState(state, projectId),
 	);
+	// We don't necessarily wrap in an array here in order to preserve reference identity.
 	const dragSource = useAppSelector((state) => {
-		const isCheckedCommit =
-			source._tag === "Commit" &&
-			projectSlice.selectors.selectCommitChecked(state, projectId, source.commitId);
+		if (source._tag !== "Commit" || !headInfoIndex) return source;
 
-		return isCheckedCommit
-			? projectSlice.selectors.selectCheckedCommitOperands(state, projectId)
-			: // We don't create an array here in order to preserve reference identity.
-				source;
+		const isCheckedCommit = projectSlice.selectors.selectCommitChecked(
+			state,
+			projectId,
+			source.commitId,
+		);
+		if (!isCheckedCommit) return source;
+
+		const checkedCommitOperands = projectSlice.selectors.selectCheckedCommitOperands(
+			state,
+			projectId,
+			headInfoIndex,
+		);
+		return checkedCommitOperands.length > 0 ? checkedCommitOperands : source;
 	});
 	const dragSources = Array.isArray(dragSource) ? dragSource : [dragSource];
 

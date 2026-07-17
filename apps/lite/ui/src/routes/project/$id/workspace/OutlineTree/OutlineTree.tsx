@@ -1,7 +1,7 @@
 import rowStyles from "../Row.module.css";
 import { changesInWorktreeQueryOptions, headInfoQueryOptions } from "#ui/api/queries.ts";
 import { relativeToEquals } from "#ui/api/relative-to.ts";
-import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
+import { getHeadInfoIndex, type HeadInfoIndex } from "#ui/api/ref-info.ts";
 import { commitIsDiverged, commitTitle } from "#ui/commit.ts";
 import {
 	branchOperand,
@@ -202,6 +202,7 @@ const UncommittedChanges: FC<{
 							key={item.path}
 							item={item}
 							projectId={projectId}
+							headInfoIndex={headInfoIndex ?? undefined}
 							branchNameByCommitId={(cid) =>
 								headInfoIndex?.commitContextById(cid)?.segment.refName?.displayName
 							}
@@ -216,8 +217,9 @@ const UncommittedChanges: FC<{
 const UncommittedFileRow: FC<{
 	item: FileRowItem;
 	projectId: string;
+	headInfoIndex: HeadInfoIndex | undefined;
 	branchNameByCommitId: (commitId: string) => string | undefined;
-}> = ({ item, projectId, branchNameByCommitId }) => {
+}> = ({ item, projectId, headInfoIndex, branchNameByCommitId }) => {
 	const operand = fileOperand({
 		parent: uncommittedChangesFileParent,
 		path: item.path,
@@ -243,6 +245,7 @@ const UncommittedFileRow: FC<{
 							item={item}
 							projectId={projectId}
 							fileParent={uncommittedChangesFileParent}
+							headInfoIndex={headInfoIndex}
 							branchNameByCommitId={branchNameByCommitId}
 							inert={!navigationIndexIncludes(navigationIndex, operand, operandIdentityKey)}
 							isSelected={isSelected}
@@ -589,12 +592,14 @@ export const OutlineTree: FC<
 		commitTarget: RelativeTo | null;
 		navigationIndex: NavigationIndex<Operand>;
 		absorptionTargetCommitIds: ReadonlySet<string>;
+		headInfoIndex: HeadInfoIndex | undefined;
 	} & ComponentProps<"div">
 > = ({
 	projectId,
 	commitTarget,
 	navigationIndex,
 	absorptionTargetCommitIds,
+	headInfoIndex,
 	ref: refProp,
 	...props
 }) => {
@@ -602,7 +607,9 @@ export const OutlineTree: FC<
 		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
 	);
 	const hasCheckedCommits = useAppSelector((state) =>
-		projectSlice.selectors.selectHasCheckedCommits(state, projectId),
+		headInfoIndex
+			? projectSlice.selectors.selectHasCheckedCommits(state, projectId, headInfoIndex)
+			: false,
 	);
 	const store = useAppStore();
 	const dispatch = useAppDispatch();
@@ -618,9 +625,12 @@ export const OutlineTree: FC<
 	const getCheckedRange = checkedRange(rangeResolver);
 
 	const checkCommit = ({ commitId, shiftKey }: { commitId: string; shiftKey: boolean }): void => {
+		if (!headInfoIndex) return;
+
 		const checkedCommitIds = projectSlice.selectors.selectCheckedCommits(
 			store.getState(),
 			projectId,
+			headInfoIndex,
 		);
 		const nextCommitRange = getCheckedRange({
 			checked: checkedCommitIds,

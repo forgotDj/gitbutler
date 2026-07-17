@@ -2,7 +2,7 @@ import { selectionOperationHotkeys, type CommandGroup } from "#ui/hotkeys.ts";
 import { type OperationType } from "#ui/operations/operation.ts";
 import { type Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
-import { useAppDispatch, useAppSelector } from "#ui/store.ts";
+import { useAppDispatch } from "#ui/store.ts";
 import { getAdjacent, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import { useHotkeySequences, useHotkeys } from "@tanstack/react-hotkeys";
 
@@ -67,7 +67,7 @@ export const useNavigationIndexHotkeys = <T>({
 	selection,
 	ref,
 	selectSectionPredicate,
-	operationSourceForItem,
+	operationSourcesForItem,
 	getKey,
 }: {
 	navigationIndex: NavigationIndex<T>;
@@ -77,13 +77,10 @@ export const useNavigationIndexHotkeys = <T>({
 	selection: T | null;
 	ref: React.RefObject<HTMLElement | null>;
 	selectSectionPredicate?: (item: T) => boolean;
-	operationSourceForItem: (item: T) => Operand;
+	operationSourcesForItem: (item: T) => Array<Operand>;
 	getKey: (item: T) => string;
 }) => {
 	const dispatch = useAppDispatch();
-	const checkedCommitOperands = useAppSelector((state) =>
-		projectSlice.selectors.selectCheckedCommitOperands(state, projectId),
-	);
 
 	const moveSelection = (offset: -1 | 1) => {
 		const newItem =
@@ -267,18 +264,14 @@ export const useNavigationIndexHotkeys = <T>({
 	const enterTransferModeForSelection = (operationType: OperationType) => {
 		if (selection === null) return;
 
-		const source = operationSourceForItem(selection);
-
 		dispatch(
 			projectSlice.actions.enterKeyboardTransferMode({
 				projectId,
-				sources:
-					group === "Outline" && checkedCommitOperands.length > 0
-						? checkedCommitOperands
-						: [source],
+				sources: operationSourcesForItem(selection),
 				operationType,
 			}),
 		);
+
 		focusSelectionScope("outline");
 	};
 

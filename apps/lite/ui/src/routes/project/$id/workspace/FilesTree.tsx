@@ -117,7 +117,7 @@ const useFilesTreeHotkeys = ({
 		selection,
 		ref,
 		getKey: (path) => path,
-		operationSourceForItem: (path) => fileOperand({ parent: fileParent, path }),
+		operationSourcesForItem: (path) => [fileOperand({ parent: fileParent, path })],
 	});
 };
 
@@ -193,6 +193,7 @@ export const FilesTree: FC<
 										render={
 											<FileRow
 												item={item}
+												headInfoIndex={headInfoIndex}
 												inert={!navigationIndexIncludes(navigationIndex, item.path, (path) => path)}
 												isSelected={selection !== null && selection === item.path}
 												onSelect={() => onFileSelection(item.path)}
