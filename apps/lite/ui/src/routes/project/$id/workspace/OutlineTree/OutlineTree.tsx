@@ -225,10 +225,11 @@ const UncommittedChanges: FC<{
 	);
 
 	return (
-		<div>
+		<div className={styles.uncommittedChanges}>
 			<UncommittedChangesRow changes={worktreeChanges?.changes ?? []} projectId={projectId} />
 
 			<FilesTree
+				className={styles.uncommittedChangesTree}
 				data-selection-scope={"uncommitted-files" satisfies SelectionScope}
 				onFocus={() =>
 					dispatch(
