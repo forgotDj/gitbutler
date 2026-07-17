@@ -112,9 +112,7 @@ pub fn workspace_fetch_from_remotes(
 
     // A partial failure may still have updated some remote refs.
     ctx.invalidate_workspace_cache()?;
-    if fetch_result.is_ok() {
-        prune_missing_branch_stack_order(ctx)?;
-    }
+    prune_missing_branch_stack_order(ctx)?;
     fetch_result
 }
 
@@ -577,7 +575,10 @@ pub fn workspace_integrate_upstream_only_with_perm(
 
 #[cfg(test)]
 mod tests {
-    use super::{review_integration_hints_from_reviews, target_branch_name};
+    use super::{
+        review_integration_hints_from_reviews, target_branch_name, workspace_fetch_from_remotes,
+    };
+    use but_core::RefMetadata;
     use but_testsupport::{CommandExt, git_at_dir, open_repo};
     use std::collections::HashSet;
     use std::path::Path;
@@ -609,6 +610,32 @@ mod tests {
 
     fn write_file(root: &Path, relative_path: &str, content: &str) -> anyhow::Result<()> {
         std::fs::write(root.join(relative_path), content)?;
+        Ok(())
+    }
+
+    #[test]
+    fn failed_fetch_prunes_missing_branch_stack_order() -> anyhow::Result<()> {
+        but_askpass::disable();
+        let (repo, tmp) = repo_with_feature_branch()?;
+        let feature: gix::refs::FullName = "refs/heads/feature".try_into()?;
+        let main = repo.head_name()?.expect("HEAD is symbolic").to_owned();
+        let mut ctx = but_ctx::Context::from_repo_for_testing(repo)?.with_memory_app_cache();
+        ctx.meta()?
+            .set_branch_stack_order(&[feature.clone(), main.clone()])?;
+
+        git_at_dir(tmp.path())
+            .args(["branch", "-D", "feature"])
+            .run();
+
+        let mut guard = ctx.exclusive_worktree_access();
+        workspace_fetch_from_remotes(&ctx, None, guard.write_permission())
+            .expect_err("the configured origin does not exist");
+        drop(guard);
+
+        assert!(
+            ctx.meta()?.branch_stack_order(main.as_ref())?.is_none(),
+            "failed fetch should still prune missing branch-order references"
+        );
         Ok(())
     }
 
