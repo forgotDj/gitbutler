@@ -13,8 +13,7 @@ import {
 import { projectSlice } from "#ui/projects/state.ts";
 import { useAppSelector } from "#ui/store.ts";
 import { stackBottomRelativeTo } from "#ui/api/stack.ts";
-import { Toolbar } from "@base-ui/react/toolbar";
-import { Tooltip } from "@base-ui/react/tooltip";
+import { Tooltip, Toolbar } from "@base-ui/react";
 import { BottomUpdate, Stack } from "@gitbutler/but-sdk";
 import { ComponentProps, FC } from "react";
 import { getRowButtonClassName } from "../Row-utils.ts";
