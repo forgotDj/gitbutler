@@ -170,14 +170,18 @@ const buildOutlineNavigationIndex = ({
 			fileOperand({ parent: uncommittedChangesFileParent, path: change.path }),
 		) ?? []),
 
-		...(headInfo?.stacks.toReversed() ?? []).flatMap((stack) =>
-			stack.segments.flatMap(
-				(segment): Array<Operand> => [
-					...(segment.refName ? [branchOperand({ branchRef: segment.refName.fullNameBytes })] : []),
-					...segment.commits.map((commit) => commitOperand({ commitId: commit.id })),
-				],
-			),
-		),
+		...(headInfo?.stacks
+			.toReversed()
+			.flatMap((stack) =>
+				stack.segments.flatMap(
+					(segment): Array<Operand> => [
+						...(segment.refName
+							? [branchOperand({ branchRef: segment.refName.fullNameBytes })]
+							: []),
+						...segment.commits.map((commit) => commitOperand({ commitId: commit.id })),
+					],
+				),
+			) ?? []),
 	];
 
 	const filteredItems = Match.value(outlineMode).pipe(
