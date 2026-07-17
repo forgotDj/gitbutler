@@ -158,7 +158,15 @@ const OperationTarget: FC<
 	});
 
 	return (
-		<Tooltip.Root open={activeOperation?.tooltip !== undefined} disableHoverablePopup>
+		<Tooltip.Root
+			open={activeOperation?.tooltip !== undefined}
+			disableHoverablePopup
+			onOpenChange={(_, eventDetails) => {
+				// Allow escape to bubble up from tree so it triggers the cancel
+				// operation shortcut.
+				if (eventDetails.reason === "escape-key") eventDetails.allowPropagation();
+			}}
+		>
 			<Tooltip.Trigger
 				{...props}
 				render={
