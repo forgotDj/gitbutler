@@ -1528,6 +1528,8 @@ export type FeatureFlags = {
   writeCommitEvolution: boolean;
   /** Show the experimental file browser in the TUI. */
   tuiFileBrowser: boolean;
+  /** Enable experimental worktree manipulation support. */
+  worktreeManipulation: boolean;
 };
 
 export type Fetch = {
