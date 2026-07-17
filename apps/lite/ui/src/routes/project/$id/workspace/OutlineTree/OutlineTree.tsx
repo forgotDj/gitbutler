@@ -17,10 +17,10 @@ import {
 import { projectSlice } from "#ui/projects/state.ts";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import {
-	useOperationDropTarget,
 	OperationTarget as OperationTarget_,
 	OperationTargetOutline,
 } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
+import { useOperationDropTarget } from "#ui/routes/project/$id/workspace/useOperationDropTarget.ts";
 import { NavigationIndexContext } from "#ui/routes/project/$id/workspace/OutlineNavigationIndexContext.ts";
 import { useAppDispatch, useAppSelector, useAppStore } from "#ui/store.ts";
 import { classes } from "#ui/components/classes.ts";
