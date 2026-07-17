@@ -1,28 +1,17 @@
 <script lang="ts" module>
 	export interface Props {
-		/**
-		 * The label to display; copying is up to the caller's `onclick`
-		 */
 		text: string;
-		/**
-		 * Optional prefix to display before the text (e.g., "upstream")
-		 */
 		prefix?: string;
-		/**
-		 * Callback when the button is clicked
-		 */
 		onclick?: () => void;
-		/**
-		 * Additional CSS classes
-		 */
 		class?: string;
+		hideIcon?: boolean;
 	}
 </script>
 
 <script lang="ts">
 	import Icon from "$components/Icon.svelte";
 
-	const { text, prefix, onclick, class: className }: Props = $props();
+	const { text, prefix, onclick, class: className, hideIcon = false }: Props = $props();
 </script>
 
 <button type="button" class="copy-btn underline-dotted {className}" {onclick}>
@@ -30,7 +19,9 @@
 		{#if prefix}{prefix}
 		{/if}{text}
 	</span>
-	<Icon name="copy" size={14} />
+	{#if !hideIcon}
+		<Icon name="copy" size={14} />
+	{/if}
 </button>
 
 <style lang="postcss">

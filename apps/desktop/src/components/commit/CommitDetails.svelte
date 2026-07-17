@@ -58,6 +58,7 @@
 			<CopyButton
 				class="copy-sha"
 				text={commit.id.slice(0, 7)}
+				hideIcon
 				onclick={() => {
 					clipboardService.write(commit.id, {
 						message: "Commit SHA copied",
@@ -68,10 +69,11 @@
 		{#if commit.changeId}
 			{@const changeId = commit.changeId}
 			<span class="divider">•</span>
-			<Tooltip text="Change ID: {changeId}">
+			<Tooltip text="Copy change ID">
 				<CopyButton
 					class="copy-change-id"
 					text={changeId.slice(0, 3)}
+					hideIcon
 					onclick={() => {
 						clipboardService.write(changeId, {
 							message: "Change ID copied",
