@@ -33,6 +33,7 @@ import {
 	Stack,
 	PushStatus,
 	WorkspaceState,
+	type RefInfo,
 } from "@gitbutler/but-sdk";
 import { useQuery } from "@tanstack/react-query";
 import { Match } from "effect";
@@ -59,6 +60,14 @@ import { checkedRange, navigationIndexRange } from "#ui/checking.ts";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
 import { SelectionScope } from "#ui/selection-scopes.ts";
 import { FilesTree } from "#ui/routes/project/$id/workspace/FilesTree.tsx";
+import {
+	CommitForm,
+	type CommitTargetComboboxItem,
+} from "#ui/routes/project/$id/workspace/CommitForm.tsx";
+import {
+	buildCommitTargetComboboxItems,
+	selectCommitTargetComboboxItem,
+} from "./commitTargetComboboxItems.ts";
 
 const DryRunWorkspaceContext = createContext<WorkspaceState | null>(null);
 
@@ -202,8 +211,10 @@ const OperandC: FC<
 
 const UncommittedChanges: FC<{
 	navigationIndex: NavigationIndex<string>;
+	commitTarget: CommitTargetComboboxItem | null;
 	projectId: string;
-}> = ({ navigationIndex, projectId }) => {
+	targetComboboxItems: Array<CommitTargetComboboxItem>;
+}> = ({ navigationIndex, commitTarget, projectId, targetComboboxItems }) => {
 	const dispatch = useAppDispatch();
 
 	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
@@ -242,6 +253,12 @@ const UncommittedChanges: FC<{
 					el?.focus({ focusVisible: false });
 				}}
 				selection={fileSelection}
+			/>
+
+			<CommitForm
+				projectId={projectId}
+				commitTarget={commitTarget}
+				targetComboboxItems={targetComboboxItems}
 			/>
 		</div>
 	);
@@ -588,7 +605,7 @@ const Stacks: FC<{
 export const OutlineTree: FC<
 	{
 		projectId: string;
-		commitTarget: RelativeTo | null;
+		headInfo: RefInfo | undefined;
 		navigationIndex: NavigationIndex<Operand>;
 		uncommittedFilesNavigationIndex: NavigationIndex<string>;
 		absorptionTargetCommitIds: ReadonlySet<string>;
@@ -596,13 +613,25 @@ export const OutlineTree: FC<
 	} & ComponentProps<"div">
 > = ({
 	projectId,
-	commitTarget,
+	headInfo,
 	navigationIndex,
 	uncommittedFilesNavigationIndex,
 	absorptionTargetCommitIds,
 	headInfoIndex,
 	...props
 }) => {
+	const commitTargetState = useAppSelector((state) =>
+		projectSlice.selectors.selectCommitTarget(state, projectId),
+	);
+	const commitTargetComboboxItems = buildCommitTargetComboboxItems({
+		headInfo,
+		headInfoIndex,
+		commitTargetState,
+	});
+	const commitTarget = selectCommitTargetComboboxItem({
+		items: commitTargetComboboxItems,
+		commitTargetState,
+	});
 	const hasCheckedCommits = useAppSelector((state) =>
 		headInfoIndex
 			? projectSlice.selectors.selectHasCheckedCommits(state, projectId, headInfoIndex)
@@ -669,8 +698,8 @@ export const OutlineTree: FC<
 					<Panel
 						id={"uncommitted-changes-panel" satisfies PanelId}
 						className={styles.uncommittedChangesOuterPanel}
-						defaultSize={200}
-						minSize={120}
+						defaultSize={280}
+						minSize={200}
 						groupResizeBehavior="preserve-pixel-size"
 					>
 						<OperationSourceC
@@ -687,7 +716,9 @@ export const OutlineTree: FC<
 										<div className={styles.panel}>
 											<UncommittedChanges
 												navigationIndex={uncommittedFilesNavigationIndex}
+												commitTarget={commitTarget}
 												projectId={projectId}
+												targetComboboxItems={commitTargetComboboxItems}
 											/>
 										</div>
 									}
@@ -699,7 +730,11 @@ export const OutlineTree: FC<
 					<Separator className={styles.resizeHandle} />
 
 					<Panel id={"stacks-panel" satisfies PanelId} className={styles.panel} minSize={120}>
-						<Stacks projectId={projectId} commitTarget={commitTarget} checkCommit={checkCommit} />
+						<Stacks
+							projectId={projectId}
+							commitTarget={commitTarget?.relativeTo ?? null}
+							checkCommit={checkCommit}
+						/>
 					</Panel>
 				</Group>
 			</AbsorptionTargetCommitIdsContext>

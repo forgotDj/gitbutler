@@ -26,14 +26,9 @@ import { useHotkeys } from "@tanstack/react-hotkeys";
 import { Match } from "effect";
 import { type ComponentProps, type FC, useState } from "react";
 import { ToggleGroupStyles, ToggleStyles } from "#ui/components/ToggleGroup.tsx";
-import {
-	buildCommitTargetComboboxItems,
-	selectCommitTargetComboboxItem,
-} from "#ui/routes/project/$id/workspace/OutlineTree/commitTargetComboboxItems.ts";
 import { OutlineTree } from "#ui/routes/project/$id/workspace/OutlineTree/OutlineTree.tsx";
 import styles from "./Outline.module.css";
 import { TopLeftControls } from "#ui/routes/project/$id/workspace/TopLeftControls.tsx";
-import { CommitForm } from "#ui/routes/project/$id/workspace/CommitForm.tsx";
 
 const ActivitySpinner: FC = () => {
 	const fetchingCount = useIsFetching();
@@ -153,18 +148,6 @@ export const Outline: FC<
 	const { data: guiSettings } = useQuery(guiSettingsQueryOptions);
 	const { data: workspaceFetchStatus } = useQuery(workspaceFetchStatusQueryOptions(projectId));
 	const headInfoIndex = headInfo ? getHeadInfoIndex(headInfo) : undefined;
-	const commitTargetState = useAppSelector((state) =>
-		projectSlice.selectors.selectCommitTarget(state, projectId),
-	);
-	const targetComboboxItems = buildCommitTargetComboboxItems({
-		headInfo,
-		headInfoIndex,
-		commitTargetState,
-	});
-	const commitTarget = selectCommitTargetComboboxItem({
-		items: targetComboboxItems,
-		commitTargetState,
-	});
 	const rebaseUpdates =
 		headInfo?.stacks.flatMap((stack): Array<BottomUpdate> => {
 			const relativeTo = stackBottomRelativeTo(stack);
@@ -381,12 +364,6 @@ export const Outline: FC<
 						Branches
 					</Toggle>
 				</ToggleGroup>
-
-				<CommitForm
-					projectId={projectId}
-					commitTarget={commitTarget}
-					targetComboboxItems={targetComboboxItems}
-				/>
 			</div>
 
 			<OutlineTree
@@ -394,9 +371,9 @@ export const Outline: FC<
 				navigationIndex={navigationIndex}
 				uncommittedFilesNavigationIndex={uncommittedFilesNavigationIndex}
 				absorptionTargetCommitIds={absorptionTargetCommitIds}
+				headInfo={headInfo}
 				headInfoIndex={headInfoIndex}
 				projectId={projectId}
-				commitTarget={commitTarget?.relativeTo ?? null}
 			/>
 		</div>
 	);
