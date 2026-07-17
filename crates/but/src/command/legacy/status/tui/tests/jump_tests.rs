@@ -147,5 +147,5 @@ fn when_branch_short_code_matches_commit_sha_without_change_id() {
     tui.input("/");
     tui.input("b");
     tui.input("0")
-        .assert_current_line_eq(str![["┊●   b0f22e6 add branch 814"]]);
+        .assert_current_line_eq(str!["┊╭┄br [branch]"]);
 }

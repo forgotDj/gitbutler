@@ -15,7 +15,7 @@ fn no_message_nothing_to_commit() {
 ┊
 ┊╭┄g0 [A]
 ┊●   1 (no commit message) (no changes)
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -48,7 +48,7 @@ Created commit 7bbfdca on branch 'A'
 ┊
 ┊╭┄g0 [A]
 ┊●   1 (no commit message)
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -117,7 +117,7 @@ fn no_args_single_head_message_from_editor() {
 ┊
 ┊╭┄g0 [A]
 ┊●   1 commit from editor
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -144,7 +144,7 @@ fn single_head_with_message() {
 ┊
 ┊╭┄g0 [A]
 ┊●   1 add file.txt
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -174,7 +174,7 @@ fn can_repeat_message() {
 ┊╭┄g0 [A]
 ┊● 1 author 2000-01-01 00:00:00 +0000 (sha b141567)
 ┊│     add file.txt  with more  text lines
-┊● 9477ae7 author 2000-01-01 00:00:00 +0000
+┊● tpm author 2000-01-01 00:00:00 +0000 (sha 9477ae7)
 ┊│     add A 
 ├╯
 ┊
@@ -230,7 +230,7 @@ fn editor_user_writes_no_message() {
 ┊
 ┊╭┄g0 [A]
 ┊●   1 (no commit message)
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -414,7 +414,7 @@ fn create_commit_on_new_branch_with_canned_name() {
 ├╯
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -527,8 +527,8 @@ fn commit_empty_above_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -550,7 +550,7 @@ Hint: run `but help` for all commands
 ┊╭┄g0 [A]
 ┊●   ywx add second
 ┊●   1 (no commit message) (no changes)
-┊●   fe12bcd add first
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -572,8 +572,8 @@ fn commit_empty_below_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -620,8 +620,8 @@ fn commit_above_commit() {
 ┊   u A file.txt
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -643,7 +643,7 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 ┊╭┄g0 [A]
 ┊●   ywx add second
 ┊●   1 add file.txt
-┊●   fe12bcd add first
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -668,7 +668,7 @@ fn commit_above_branch() {
 ┊   u A file.txt
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -691,7 +691,7 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 ┊●   1 add file.txt
 ┊│
 ┊├┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -716,8 +716,8 @@ fn commit_below_commit() {
 ┊   u A file.txt
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -764,7 +764,7 @@ fn commit_below_branch() {
 ┊   u A file.txt
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -812,8 +812,8 @@ fn commit_below_branch_with_multiple_commits_treats_branch_as_bucket() {
 ┊   u A file.txt
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -859,8 +859,8 @@ fn commit_above_refuses_on_conflicts() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -892,8 +892,8 @@ fn commit_below_refuses_on_conflicts() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -997,11 +997,11 @@ fn above_commit_not_in_workspace_returns_bad_input() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1056,7 +1056,7 @@ fn committing_specific_cli_ids() {
 ┊   twop A two
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1077,8 +1077,8 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 ┊╭┄g0 [A]
 ┊●   1 (no commit message)
 ┊│     1:k A one
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1137,8 +1137,8 @@ q:2 file│
 ┊│     1#0:q M file
 ┊●   1#1 (no commit message)
 ┊│     1#1:q A file
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1164,8 +1164,8 @@ Hint: run `but help` for all commands
 ┊│     1#0:q M file
 ┊●   1#1 (no commit message)
 ┊│     1#1:q A file
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1224,8 +1224,8 @@ q:2 file│
 ┊│     1#0:q M file
 ┊●   1#1 (no commit message)
 ┊│     1#1:q A file
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1251,8 +1251,8 @@ Hint: run `but help` for all commands
 ┊│     1#0:q M file
 ┊●   1#1 (no commit message)
 ┊│     1#1:q A file
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1297,7 +1297,7 @@ fn can_commit_with_path_prefix() {
 ┊   r A path/to/second.txt
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1319,8 +1319,8 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 ┊●   1 (no commit message)
 ┊│     1:m A path/to/first.txt
 ┊│     1:r A path/to/second.txt
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1362,8 +1362,8 @@ fn path_prefix_with_mix_of_modifications() {
 ┊│     1:l A dir/to_delete.txt
 ┊│     1:n A dir/to_empty.txt
 ┊│     1:x A dir/to_modify.txt
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1389,8 +1389,8 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 ┊│     1#1:l A dir/to_delete.txt
 ┊│     1#1:n A dir/to_empty.txt
 ┊│     1#1:x A dir/to_modify.txt
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1651,7 +1651,7 @@ fn commit_to_existing_branch_via_short_code() {
 ┊
 ┊╭┄g0 [A]
 ┊●   1 new commit (no changes)
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1829,7 +1829,7 @@ fn new_branches_are_created_on_top() {
 ├╯
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M

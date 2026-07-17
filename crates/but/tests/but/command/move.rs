@@ -117,7 +117,7 @@ fn move_multiple_commits_before_another_commit() -> anyhow::Result<()> {
 ┊●   1#0 create e.txt and f.txt
 ┊●   1#1 create c.txt and d.txt
 ┊●   1#2 create a.txt and b.txt
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -161,7 +161,7 @@ Moved 2 commits → before 1#0
 ┊●   1#0 create a.txt and b.txt
 ┊●   1#1 create e.txt and f.txt
 ┊●   1#2 create c.txt and d.txt
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -195,7 +195,7 @@ fn move_multiple_commits_after_another_commit() -> anyhow::Result<()> {
 ┊●   1#0 create e.txt and f.txt
 ┊●   1#1 create c.txt and d.txt
 ┊●   1#2 create a.txt and b.txt
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -239,7 +239,7 @@ Moved 2 commits → after 1#2
 ┊●   1#0 create c.txt and d.txt
 ┊●   1#1 create a.txt and b.txt
 ┊●   1#2 create e.txt and f.txt
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -265,18 +265,18 @@ fn move_multiple_commits_from_different_branches() -> anyhow::Result<()> {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   add59d2 A: 10 lines on top
+┊●   psr A: 10 lines on top
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   a748762 B: another 10 lines at the bottom
-┊●   62e05ba B: 10 lines at the bottom
+┊●   ynm B: another 10 lines at the bottom
+┊●   tlv B: 10 lines at the bottom
 ├╯
 ┊
 ┊╭┄i0 [C]
-┊●   930563a C: add another 10 lines to new file
-┊●   68a2fc3 C: add 10 lines to new file
-┊●   984fd1c C: new file with 10 lines
+┊●   zmt C: add another 10 lines to new file
+┊●   xkt C: add 10 lines to new file
+┊●   sxz C: new file with 10 lines
 ├╯
 ┊
 ┴ 8f0d338 (common base) 2000-01-02 base
@@ -380,7 +380,7 @@ Moved 4 commits → before [..]
 ┊●   xkt C: add 10 lines to new file
 ┊●   sxz C: new file with 10 lines
 ┊●   psr A: 10 lines on top
-┊●   62e05ba B: 10 lines at the bottom
+┊●   tlv B: 10 lines at the bottom
 ├╯
 ┊
 ┊╭┄i0 [C] (no commits)
@@ -409,18 +409,18 @@ fn move_multiple_commits_from_different_branches_after() -> anyhow::Result<()> {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   add59d2 A: 10 lines on top
+┊●   psr A: 10 lines on top
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   a748762 B: another 10 lines at the bottom
-┊●   62e05ba B: 10 lines at the bottom
+┊●   ynm B: another 10 lines at the bottom
+┊●   tlv B: 10 lines at the bottom
 ├╯
 ┊
 ┊╭┄i0 [C]
-┊●   930563a C: add another 10 lines to new file
-┊●   68a2fc3 C: add 10 lines to new file
-┊●   984fd1c C: new file with 10 lines
+┊●   zmt C: add another 10 lines to new file
+┊●   xkt C: add 10 lines to new file
+┊●   sxz C: new file with 10 lines
 ├╯
 ┊
 ┴ 8f0d338 (common base) 2000-01-02 base
@@ -470,7 +470,7 @@ Hint: run `but help` for all commands
     .assert()
     .success()
     .stdout_eq(str![[r#"
-Moved 4 commits → after a748762
+Moved 4 commits → after ynm
 
 "#]]);
 
@@ -523,8 +523,8 @@ Moved 4 commits → after a748762
 ┊●   xkt C: add 10 lines to new file
 ┊●   sxz C: new file with 10 lines
 ┊●   psr A: 10 lines on top
-┊●   a748762 B: another 10 lines at the bottom
-┊●   62e05ba B: 10 lines at the bottom
+┊●   ynm B: another 10 lines at the bottom
+┊●   tlv B: 10 lines at the bottom
 ├╯
 ┊
 ┊╭┄i0 [C] (no commits)
@@ -791,14 +791,14 @@ fn move_branch_by_name_from_top_level_move() -> anyhow::Result<()> {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [C]
-┊●   3842fc0 add C
+┊●   xwn add C
 ┊│
 ┊├┄i0 [B]
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -830,10 +830,10 @@ Moved branch A on top of C.
 ┊●   tpm add A
 ┊│
 ┊├┄h0 [C]
-┊●   3842fc0 add C
+┊●   xwn add C
 ┊│
 ┊├┄i0 [B]
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -944,14 +944,14 @@ fn move_branch_by_cli_id_from_top_level_move() -> anyhow::Result<()> {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [C]
-┊●   3842fc0 add C
+┊●   xwn add C
 ┊│
 ┊├┄i0 [B]
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -994,10 +994,10 @@ Moved branch A on top of C.
 ┊●   tpm add A
 ┊│
 ┊├┄h0 [C]
-┊●   3842fc0 add C
+┊●   xwn add C
 ┊│
 ┊├┄i0 [B]
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1025,14 +1025,14 @@ fn tear_off_branch_with_top_level_move_to_zz() -> anyhow::Result<()> {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [C]
-┊●   3842fc0 add C
+┊●   xwn add C
 ┊│
 ┊├┄i0 [B]
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1073,11 +1073,11 @@ Unstacked branch C.
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┊╭┄i0 [C]
@@ -1109,14 +1109,14 @@ fn move_branch_with_after_flag_fails_from_top_level_move() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [C]
-┊●   3842fc0 add C
+┊●   xwn add C
 ┊│
 ┊├┄i0 [B]
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1141,14 +1141,14 @@ Failed to move branch. The --after flag only makes sense when moving a commit to
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [C]
-┊●   3842fc0 add C
+┊●   xwn add C
 ┊│
 ┊├┄i0 [B]
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M

@@ -243,7 +243,7 @@ fn assert_workspace_status(env: &crate::utils::Sandbox) {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M

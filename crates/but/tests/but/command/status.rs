@@ -60,10 +60,10 @@ fn anonymous_segment() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0
-┊●   b36b65c anonymous (no changes)
+┊●   sxu anonymous (no changes)
 ┊│
 ┊├┄h0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -571,7 +571,7 @@ fn status_upstream_and_merge_base_messages_truncate_when_unpaged() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A] [✓ upstream merges cleanly]
-┊●   601614c add A
+┊●   lvx add A
 ├╯
 ┊
 ┊╭┄(upstream) ⏫ 1 commit
@@ -616,11 +616,11 @@ fn status_marks_merged_upstream_without_upstream_flag() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A] (merged upstream)
-┊●   756ee31 A-change
+┊●   nyq A-change
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   536958e B-change
+┊●   kyl B-change
 ├╯
 ┊
 ┊● 9354ac4 (upstream) ⏫ 2 commits
@@ -896,11 +896,11 @@ fn status_upstream_prunes_untracked_integrated_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A] (merged upstream)
-┊●   756ee31 A-change
+┊●   nyq A-change
 ├╯
 ┊
 ┊╭┄h0 [B] [✓ upstream merges cleanly]
-┊●   536958e B-change
+┊●   kyl B-change
 ├╯
 ┊
 ┊╭┄(upstream) ⏫ 2 commits
@@ -938,11 +938,11 @@ fn status_upstream_prunes_metadata_tracked_integrated_branches() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A] (merged upstream)
-┊●   756ee31 A-change
+┊●   nyq A-change
 ├╯
 ┊
 ┊╭┄h0 [B] [✓ upstream merges cleanly]
-┊●   536958e B-change
+┊●   kyl B-change
 ├╯
 ┊
 ┊╭┄ex [extra-untracked] ○ empty (no commits)
@@ -988,15 +988,15 @@ fn status_upstream_prunes_with_different_bases() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A] [✓ upstream merges cleanly]
-┊●   756ee31 A-change
+┊●   nyq A-change
 ├╯
 ┊
 ┊╭┄h0 [B] [✓ upstream merges cleanly]
-┊●   594a02c B-change
+┊●   wxl B-change
 ┊│
 ┊├┄ma [main] (merged upstream)
-┊●   ba5149e M2
-┊●   6daac93 M1
+┊●   upk M2
+┊●   tpp M1
 ├╯
 ┊
 ┊╭┄(upstream) ⏫ 2 commits
@@ -1219,7 +1219,7 @@ printf '100644 %s 1\tconflicted.txt\n100644 %s 2\tconflicted.txt\n100644 %s 3\tc
 ┊    conflicted.txt {conflicted}
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1309,8 +1309,8 @@ fn status_file_prefixed_with_change_id_when_available_and_commit_id_otherwise() 
 ┊╭┄g0 [A]
 ┊●   123 Commit with change ID
 ┊│     123:p A B
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M

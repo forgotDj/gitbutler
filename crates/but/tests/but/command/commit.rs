@@ -43,8 +43,8 @@ fn commit_moved_file_replaced_by_directory() {
 ┊●   1 Commit everything
 ┊│     1:q A A/file
 ┊│     1:p R B
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -381,7 +381,7 @@ fn commit_empty_default() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -403,7 +403,7 @@ Created blank commit at the tip of branch 'A'
 ┊
 ┊╭┄g0 [A]
 ┊●   1 (no commit message) (no changes)
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -525,7 +525,7 @@ fn commit_empty_after_stack_head_is_disallowed() -> anyhow::Result<()> {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -583,10 +583,10 @@ fn commit_empty_after_branch_for_non_stack_head() -> anyhow::Result<()> {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
+┊●   ywx add second
 ┊│
 ┊├┄bo [bottom]
-┊●   fe12bcd add first
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -612,7 +612,7 @@ Created blank commit above branch 'bottom'
 ┊●   1 (no commit message) (no changes)
 ┊│
 ┊├┄bo [bottom]
-┊●   fe12bcd add first
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -633,7 +633,7 @@ fn commit_empty_with_before_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -655,7 +655,7 @@ Created blank commit at the tip of branch 'A'
 ┊
 ┊╭┄g0 [A]
 ┊●   1 (no commit message) (no changes)
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M

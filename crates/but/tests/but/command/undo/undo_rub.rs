@@ -17,11 +17,11 @@ fn undo_squash_commits() {
 
     run_mutate_undo_roundtrip_test(&env, |env| {
         env.but("rub")
-            .arg("9a")
-            .arg("fe")
+            .arg("y")
+            .arg("z")
             .assert()
             .success()
-            .stdout_eq("Squashed 9ac4652 → zll\n")
+            .stdout_eq("Squashed ywx → zll\n")
             .stderr_eq("");
     });
 }

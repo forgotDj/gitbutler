@@ -12,8 +12,8 @@ fn move_commit_above_other_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -60,8 +60,8 @@ fn move_commit_below_other_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -108,19 +108,19 @@ fn move_multiple_consecutive_commits_relative_to_other_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   5c88a8e add A13
-┊●   a18ea48 add A12
-┊●   0c0fcbf add A11
-┊●   c472887 add A10
-┊●   8188106 add A9
-┊●   769f4a8 add A8
-┊●   2a98cfc add A7
-┊●   d60e311 add A6
-┊●   c67c49e add A5
-┊●   23c280d add A4
-┊●   5c7c6d7 add A3
-┊●   1299ac9 add A2
-┊●   0748e42 add A1
+┊●   usn add A13
+┊●   opy add A12
+┊●   opk add A11
+┊●   vvl add A10
+┊●   mzz add A9
+┊●   vmw add A8
+┊●   tpw add A7
+┊●   lyq add A6
+┊●   pyq add A5
+┊●   mvv add A4
+┊●   tvm add A3
+┊●   sxq add A2
+┊●   zpl add A1
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -154,12 +154,12 @@ Moved 2a98cfc, 769f4a8 [..]
 ┊●   tpw add A7
 ┊●   vvl add A10
 ┊●   mzz add A9
-┊●   d60e311 add A6
-┊●   c67c49e add A5
-┊●   23c280d add A4
-┊●   5c7c6d7 add A3
-┊●   1299ac9 add A2
-┊●   0748e42 add A1
+┊●   lyq add A6
+┊●   pyq add A5
+┊●   mvv add A4
+┊●   tvm add A3
+┊●   sxq add A2
+┊●   zpl add A1
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -184,19 +184,19 @@ fn move_multiple_non_consecutive_commits_in_arbitrary_order_relative_to_other_co
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   5c88a8e add A13
-┊●   a18ea48 add A12
-┊●   0c0fcbf add A11
-┊●   c472887 add A10
-┊●   8188106 add A9
-┊●   769f4a8 add A8
-┊●   2a98cfc add A7
-┊●   d60e311 add A6
-┊●   c67c49e add A5
-┊●   23c280d add A4
-┊●   5c7c6d7 add A3
-┊●   1299ac9 add A2
-┊●   0748e42 add A1
+┊●   usn add A13
+┊●   opy add A12
+┊●   opk add A11
+┊●   vvl add A10
+┊●   mzz add A9
+┊●   vmw add A8
+┊●   tpw add A7
+┊●   lyq add A6
+┊●   pyq add A5
+┊●   mvv add A4
+┊●   tvm add A3
+┊●   sxq add A2
+┊●   zpl add A1
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -265,8 +265,8 @@ fn moving_commits_above_branch_creates_branch_above() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -315,8 +315,8 @@ fn moving_commits_above_branch_without_changing_relative_order_only_creates_bran
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -340,10 +340,10 @@ Moved 9ac4652 to new branch 'a-branch-1' above branch 'A'
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   9ac4652 add second
+┊●   ywx add second
 ┊│
 ┊├┄g0 [A]
-┊●   fe12bcd add first
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -365,8 +365,8 @@ fn moving_commits_below_branch_creates_branch_below() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -415,8 +415,8 @@ fn moving_commits_below_branch_without_changing_relative_order_only_creates_bran
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -440,10 +440,10 @@ Moved fe12bcd to new branch 'a-branch-1' below branch 'A'
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
+┊●   ywx add second
 ┊│
 ┊├┄br [a-branch-1]
-┊●   fe12bcd add first
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -465,8 +465,8 @@ fn moving_all_commits_above_branch_retains_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -490,8 +490,8 @@ Moved 9ac4652, fe12bcd to new branch 'a-branch-1' above branch 'A'
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄br [a-branch-1]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ┊│
 ┊├┄g0 [A] (no commits)
 ├╯
@@ -515,8 +515,8 @@ fn moving_all_commits_below_branch_retains_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -542,8 +542,8 @@ Moved 9ac4652, fe12bcd to new branch 'a-branch-1' below branch 'A'
 ┊╭┄g0 [A] (no commits)
 ┊│
 ┊├┄br [a-branch-1]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -565,7 +565,7 @@ fn move_commit_above_empty_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [B] (no commits)
@@ -595,7 +595,7 @@ Moved 9477ae7 to new branch 'a-branch-1' above branch 'B'
 ├╯
 ┊
 ┊╭┄br [a-branch-1]
-┊●   9477ae7 add A
+┊●   tpm add A
 ┊│
 ┊├┄h0 [B] (no commits)
 ├╯
@@ -619,7 +619,7 @@ fn move_commit_below_empty_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [B] (no commits)
@@ -651,7 +651,7 @@ Moved 9477ae7 to new branch 'a-branch-1' below branch 'B'
 ┊╭┄h0 [B] (no commits)
 ┊│
 ┊├┄br [a-branch-1]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -673,7 +673,7 @@ fn above_or_below_unapplied_or_non_existing_branch_errors() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [B] (no commits)
@@ -739,11 +739,11 @@ fn move_to_tip_of_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -771,7 +771,7 @@ Moved 9477ae7 to the tip of branch 'B'
 ┊
 ┊╭┄h0 [B]
 ┊●   tpm add A
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -793,7 +793,7 @@ fn move_to_tip_of_empty_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [B] (no commits)
@@ -823,7 +823,7 @@ Moved 9477ae7 to the tip of branch 'B'
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -845,8 +845,8 @@ fn move_to_tip_of_new_unstacked_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -874,7 +874,7 @@ Moved 9ac4652 to new branch 'new-branch'
 ├╯
 ┊
 ┊╭┄g0 [A]
-┊●   fe12bcd add first
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -896,8 +896,8 @@ fn move_to_tip_of_new_unstacked_branch_with_canned_name() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -925,7 +925,7 @@ Moved 9ac4652 to new branch 'a-branch-1'
 ├╯
 ┊
 ┊╭┄g0 [A]
-┊●   fe12bcd add first
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -947,10 +947,10 @@ fn move_file_below_commit_creates_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊│     9:w A second
-┊●   fe12bcd add first
-┊│     f:l A first
+┊●   ywx add second
+┊│     ywx:w A second
+┊●   zll add first
+┊│     zll:l A first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -1000,10 +1000,10 @@ fn move_file_above_commit_creates_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊│     9:w A second
-┊●   fe12bcd add first
-┊│     f:l A first
+┊●   ywx add second
+┊│     ywx:w A second
+┊●   zll add first
+┊│     zll:l A first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -1053,10 +1053,10 @@ fn move_file_below_branch_creates_branch_and_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊│     9:w A second
-┊●   fe12bcd add first
-┊│     f:l A first
+┊●   ywx add second
+┊│     ywx:w A second
+┊●   zll add first
+┊│     zll:l A first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -1108,10 +1108,10 @@ fn move_file_above_branch_creates_branch_and_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊│     9:w A second
-┊●   fe12bcd add first
-┊│     f:l A first
+┊●   ywx add second
+┊│     ywx:w A second
+┊●   zll add first
+┊│     zll:l A first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -1163,13 +1163,13 @@ fn move_file_to_branch_tip_creates_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   d3e2ba3 add B
-┊│     d:p A B
+┊●   lrm add B
+┊│     lrm:p A B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1195,8 +1195,8 @@ Moved 1 changes from d3e2ba3 to new commit be174de to the tip of branch 'A'
 ┊╭┄g0 [A]
 ┊●   1 (no commit message)
 ┊│     1:p A B
-┊●   9477ae7 add A
-┊│     94:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┊╭┄h0 [B]
@@ -1222,10 +1222,10 @@ fn move_file_to_non_existing_branch_tip_creates_unstacked_branch_and_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊│     9:w A second
-┊●   fe12bcd add first
-┊│     f:l A first
+┊●   ywx add second
+┊│     ywx:w A second
+┊●   zll add first
+┊│     zll:l A first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -1255,8 +1255,8 @@ Moved 1 changes from 9ac4652 to new commit 8e35f84 on new branch 'new-branch'
 ┊
 ┊╭┄g0 [A]
 ┊●   ywx add second (no changes)
-┊●   fe12bcd add first
-┊│     f:l A first
+┊●   zll add first
+┊│     zll:l A first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -1278,10 +1278,10 @@ fn move_file_branch_without_argument_creates_unstacked_branch_with_canned_name_a
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊│     9:w A second
-┊●   fe12bcd add first
-┊│     f:l A first
+┊●   ywx add second
+┊│     ywx:w A second
+┊●   zll add first
+┊│     zll:l A first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -1311,8 +1311,8 @@ Moved 1 changes from 9ac4652 to new commit 8e35f84 on new branch 'a-branch-1'
 ┊
 ┊╭┄g0 [A]
 ┊●   ywx add second (no changes)
-┊●   fe12bcd add first
-┊│     f:l A first
+┊●   zll add first
+┊│     zll:l A first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -1436,13 +1436,13 @@ fn move_file_from_multiple_source_commits_is_not_allowed() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   d3e2ba3 add B
-┊│     d:p A B
+┊●   lrm add B
+┊│     lrm:p A B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1476,13 +1476,13 @@ fn move_branch_above_within_same_stack() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [C]
-┊●   aebb090 add C
+┊●   wlx add C
 ┊│
 ┊├┄h0 [B]
-┊●   582f37b add B
+┊●   wwm add B
 ┊│
 ┊├┄i0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1512,7 +1512,7 @@ Stacked branch 'B' on top of branch 'C'
 ┊●   wlx add C
 ┊│
 ┊├┄i0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1595,11 +1595,11 @@ fn move_branch_above_to_other_stack() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   d3e2ba3 add B
+┊●   lrm add B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1626,7 +1626,7 @@ Stacked branch 'B' on top of branch 'A'
 ┊●   lrm add B
 ┊│
 ┊├┄h0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1648,7 +1648,7 @@ fn move_empty_branch_above_other_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [B] (no commits)
@@ -1677,7 +1677,7 @@ Stacked branch 'B' on top of branch 'A'
 ┊╭┄g0 [B] (no commits)
 ┊│
 ┊├┄h0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1755,13 +1755,13 @@ fn unstack_tip_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [C]
-┊●   aebb090 add C
+┊●   wlx add C
 ┊│
 ┊├┄h0 [B]
-┊●   582f37b add B
+┊●   wwm add B
 ┊│
 ┊├┄i0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1785,10 +1785,10 @@ Unstacked branch 'C'
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [B]
-┊●   582f37b add B
+┊●   wwm add B
 ┊│
 ┊├┄h0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄i0 [C]
@@ -1816,13 +1816,13 @@ fn unstack_middle_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [C]
-┊●   aebb090 add C
+┊●   wlx add C
 ┊│
 ┊├┄h0 [B]
-┊●   582f37b add B
+┊●   wwm add B
 ┊│
 ┊├┄i0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1853,7 +1853,7 @@ Unstacked branch 'B'
 ┊●   wlx add C
 ┊│
 ┊├┄i0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1877,13 +1877,13 @@ fn unstack_bottom_branch() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [C]
-┊●   aebb090 add C
+┊●   wlx add C
 ┊│
 ┊├┄h0 [B]
-┊●   582f37b add B
+┊●   wwm add B
 ┊│
 ┊├┄i0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1907,7 +1907,7 @@ Unstacked branch 'A'
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [C]
@@ -1990,13 +1990,13 @@ fn unstack_branch_using_branch_arg() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [C]
-┊●   aebb090 add C
+┊●   wlx add C
 ┊│
 ┊├┄h0 [B]
-┊●   582f37b add B
+┊●   wwm add B
 ┊│
 ┊├┄i0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -2021,7 +2021,7 @@ Unstacked branch 'A'
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [C]
@@ -2050,10 +2050,10 @@ fn unstack_file() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊│     9:w A second
-┊●   fe12bcd add first
-┊│     f:l A first
+┊●   ywx add second
+┊│     ywx:w A second
+┊●   zll add first
+┊│     zll:l A first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -2083,10 +2083,10 @@ fn unstack_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊│     9:w A second
-┊●   fe12bcd add first
-┊│     f:l A first
+┊●   ywx add second
+┊│     ywx:w A second
+┊●   zll add first
+┊│     zll:l A first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -2138,13 +2138,13 @@ fn cannot_move_multiple_branches_at_once() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [C]
-┊●   aebb090 add C
+┊●   wlx add C
 ┊│
 ┊├┄h0 [B]
-┊●   582f37b add B
+┊●   wwm add B
 ┊│
 ┊├┄i0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -2178,13 +2178,13 @@ fn cannot_move_branch_below() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [C]
-┊●   aebb090 add C
+┊●   wlx add C
 ┊│
 ┊├┄h0 [B]
-┊●   582f37b add B
+┊●   wwm add B
 ┊│
 ┊├┄i0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -2220,13 +2220,13 @@ fn cannot_move_branch_to_branch_tip() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [C]
-┊●   aebb090 add C
+┊●   wlx add C
 ┊│
 ┊├┄h0 [B]
-┊●   582f37b add B
+┊●   wwm add B
 ┊│
 ┊├┄i0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -2256,13 +2256,13 @@ fn cannot_mix_sources() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   d3e2ba3 add B
-┊│     d:p A B
+┊●   lrm add B
+┊│     lrm:p A B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -2320,7 +2320,7 @@ fn targeting_unapplied_branch_errors() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┊╭┄h0 [B] (no commits)
@@ -2354,8 +2354,8 @@ fn cannot_combine_targets() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9ac4652 add second
-┊●   fe12bcd add first
+┊●   ywx add second
+┊●   zll add first
 ├╯
 ┊
 ┴ 1bbc04b (common base) 2000-01-02 add Base
@@ -2470,7 +2470,7 @@ fn cannot_move_from_uncommitted() {
 ┊   q A file
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -2515,7 +2515,7 @@ fn cannot_move_to_uncommitted() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M

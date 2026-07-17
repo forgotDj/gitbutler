@@ -791,8 +791,8 @@ fn cannot_squash_branch_with_one_commit_into_that_one_commit() {
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M

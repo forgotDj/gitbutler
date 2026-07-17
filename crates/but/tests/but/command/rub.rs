@@ -240,7 +240,7 @@ fn committed_file_to_uncommitted_area() -> anyhow::Result<()> {
 ...
               "changes": [
                 {
-                  "cliId": "9:t",
+                  "cliId": "t:t",
                   "filePath": "A",
                   "changeType": "added"
                 }
@@ -312,7 +312,7 @@ Uncommitted changes
 ...
               "changes": [
                 {
-                  "cliId": "9:t",
+                  "cliId": "t:t",
                   "filePath": "A",
                   "changeType": "added"
                 }
@@ -330,7 +330,7 @@ Uncommitted changes
 ...
               "changes": [
                 {
-                  "cliId": "d:p",
+                  "cliId": "l:p",
                   "filePath": "B",
                   "changeType": "added"
                 }
@@ -737,13 +737,13 @@ fn uncommit_command_with_discard_on_commit() -> anyhow::Result<()> {
 ┊●   1 create a.txt and b.txt
 ┊│     1:n A a.txt
 ┊│     1:p A b.txt
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   d3e2ba3 add B
-┊│     d:p A B
+┊●   lrm add B
+┊│     lrm:p A B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -781,13 +781,13 @@ Hint: run `but help` for all commands
 ╭┄zz [uncommitted] (no changes)
 ┊
 ┊╭┄g0 [A]
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   d3e2ba3 add B
-┊│     d:p A B
+┊●   lrm add B
+┊│     lrm:p A B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -821,13 +821,13 @@ fn uncommit_command_with_discard_on_committed_file() -> anyhow::Result<()> {
 ┊●   1 create a.txt and b.txt
 ┊│     1:n A a.txt
 ┊│     1:p A b.txt
-┊●   9477ae7 add A
-┊│     9:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   d3e2ba3 add B
-┊│     d:p A B
+┊●   lrm add B
+┊│     lrm:p A B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -864,13 +864,13 @@ Hint: run `but help` for all commands
 ┊╭┄g0 [A]
 ┊●   1 create a.txt and b.txt
 ┊│     1:n A a.txt
-┊●   9477ae7 add A
-┊│     94:t A A
+┊●   tpm add A
+┊│     tpm:t A A
 ├╯
 ┊
 ┊╭┄h0 [B]
-┊●   d3e2ba3 add B
-┊│     d:p A B
+┊●   lrm add B
+┊│     lrm:p A B
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1604,7 +1604,7 @@ fn rub_commit_without_message_to_commit() {
 ┊
 ┊╭┄g0 [A]
 ┊●   1 add one.txt
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1622,7 +1622,7 @@ fn rub_commit_without_message_to_commit() {
 ┊╭┄g0 [A]
 ┊●   1#0 (no commit message) (no changes)
 ┊●   1#1 add one.txt
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -1639,7 +1639,7 @@ fn rub_commit_without_message_to_commit() {
 ┊
 ┊╭┄g0 [A]
 ┊●   1 add one.txt
-┊●   9477ae7 add A
+┊●   tpm add A
 ├╯
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
