@@ -233,7 +233,7 @@ const UncommittedChanges: FC<{
 				tabIndex={0}
 				role="tree"
 				aria-activedescendant={selection ? treeItemId(selection) : undefined}
-				className={classes(styles.section, styles.tree)}
+				className={styles.tree}
 				data-selection-scope={"uncommitted-files" satisfies SelectionScope}
 				// Focus on page load.
 				ref={useMergedRefs(uncommittedFilesHotkeysRef, (el) => {
