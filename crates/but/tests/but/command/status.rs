@@ -162,7 +162,8 @@ fn json_shows_paths_as_strings() {
           "name": "A",
           "commits": [
             {
-              "cliId": "9",
+              "cliId": "tpm",
+              "changeId": "tpmktkqkknswxzyszlkxlrzoqorvpmur",
               "commitId": "9477ae721ab521d9d0174f70e804ce3ff9f6fb56",
               "createdAt": "2000-01-01T00:00:00+00:00",
               "message": "add A/n",
@@ -189,7 +190,8 @@ fn json_shows_paths_as_strings() {
           "name": "B",
           "commits": [
             {
-              "cliId": "d",
+              "cliId": "lrm",
+              "changeId": "lrmqkrvsuswuvvsnqpzqsoyswomkqvpw",
               "commitId": "d3e2ba36c529fbdce8de90593e22aceae21f9b17",
               "createdAt": "2000-01-01T00:00:00+00:00",
               "message": "add B/n",
@@ -358,14 +360,14 @@ fn long_cli_ids() {
 }
 
 #[test]
-fn long_cli_ids_json() -> anyhow::Result<()> {
+fn json_commit_cli_ids_use_change_ids() -> anyhow::Result<()> {
     let env = Sandbox::init_scenario_with_target_and_default_settings("commits-with-same-prefix");
 
     // Must set metadata to match the scenario, or else the old APIs used here won't deliver.
     env.setup_metadata(&["A"]);
 
-    // Assert a handful of commits to show that the commit CLI IDs become longer
-    // if a short ID would be ambiguous, but remain at 2 characters otherwise.
+    // Assert that JSON exposes each full change ID and uses its display-padded prefix as CLI ID,
+    // while retaining the underlying commit ID.
     env.but("--format json status -f")
         .allow_json()
         .with_assert(env.assert_with_uuid_and_timestamp_redactions())
@@ -376,13 +378,15 @@ fn long_cli_ids_json() -> anyhow::Result<()> {
 ...
           "commits": [
             {
-              "cliId": "5c8",
+              "cliId": "usn",
+              "changeId": "usnytowxypnotllltxmxrklxpksltzzr",
               "commitId": "5c88a8ec10067ef547f14b467776d3584cd683ea",
               "createdAt": "[RFC_TIMESTAMP]",
               "message": "add A13/n",
 ...
             {
-              "cliId": "a",
+              "cliId": "opy",
+              "changeId": "opypvmowxsmlvxvktmlrnqwkywlwlrno",
               "commitId": "a18ea48cd317c7c8fc9317b6f2427be4cdb2585d",
               "createdAt": "[RFC_TIMESTAMP]",
               "message": "add A12/n",
@@ -404,7 +408,8 @@ fn long_cli_ids_json() -> anyhow::Result<()> {
             {
 ...
             {
-              "cliId": "5c7",
+              "cliId": "tvm",
+              "changeId": "tvmyxqqsmtxrysurmzrxmylqrtmmxpyn",
               "commitId": "5c7c6d7f3854bb61978b410b1ae8146be9948b26",
               "createdAt": "[RFC_TIMESTAMP]",
               "message": "add A3/n",

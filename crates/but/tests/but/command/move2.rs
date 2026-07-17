@@ -129,10 +129,10 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    for (operator, target_commit) in [("--above", "lyq"), ("--below", "tpw")] {
+    for (operator, target_cli_id) in [("--above", "lyq"), ("--below", "tpw")] {
         env.but("_move2 vvl mzz")
             .arg(operator)
-            .arg(target_commit)
+            .arg(target_cli_id)
             .assert()
             .success()
             .stdout_eq(snapbox::str![["
@@ -205,7 +205,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    for (operator, target_commit) in [("--above", "vmw"), ("--below", "mzz")] {
+    for (operator, target_cli_id) in [("--above", "vmw"), ("--below", "mzz")] {
         // We pick the source commits in an "incorrect" order, but they should later be sorted correctly
         // via topological sort.
         //
@@ -213,7 +213,7 @@ Hint: run `but help` for all commands
         // to newest, i.e. (A8) <- A1 <- A5 <- A7
         env.but("_move2 tpw zpl pyq")
             .arg(operator)
-            .arg(target_commit)
+            .arg(target_cli_id)
             .assert()
             .success()
             .stdout_eq(snapbox::str![["
