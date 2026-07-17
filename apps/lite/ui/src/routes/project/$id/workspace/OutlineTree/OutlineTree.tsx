@@ -18,14 +18,15 @@ import { projectSlice } from "#ui/projects/state.ts";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import {
 	ActiveOperation,
-	OperationTarget,
+	useOperationDropTarget,
+	PresentationalOperationTarget,
 	OperationTargetOutline,
 } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { NavigationIndexContext } from "#ui/routes/project/$id/workspace/OutlineNavigationIndexContext.ts";
 import { useAppDispatch, useAppSelector, useAppStore } from "#ui/store.ts";
 import { classes } from "#ui/components/classes.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
-import { mergeProps, useRender } from "@base-ui/react";
+import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import {
 	BranchReference,
 	RelativeTo,
@@ -58,6 +59,7 @@ import {
 	type DownstackPushStatus,
 } from "#ui/segment.ts";
 import { checkedRange, navigationIndexRange } from "#ui/checking.ts";
+import { TooltipPopup } from "#ui/components/Tooltip.tsx";
 
 const DryRunWorkspaceContext = createContext<WorkspaceState | null>(null);
 
@@ -90,6 +92,41 @@ const TreeItem: FC<
 			"aria-selected": isSelected,
 		}),
 	});
+};
+
+const OperationTarget: FC<
+	{
+		enabled: boolean;
+		target: Operand;
+		projectId: string;
+		activeOperation?: ActiveOperation | null;
+		outline: OperationTargetOutline;
+	} & useRender.ComponentProps<"button">
+> = ({ enabled, target, projectId, activeOperation, outline, render, ...props }) => {
+	const dropRef = useOperationDropTarget({ enabled, target, projectId });
+
+	return (
+		<Tooltip.Root open={activeOperation?.tooltip !== undefined} disableHoverablePopup>
+			<Tooltip.Trigger
+				{...props}
+				render={
+					<PresentationalOperationTarget
+						ref={(el) => {
+							dropRef.current = el;
+						}}
+						operationType={activeOperation?.operationType}
+						outline={outline}
+						render={render}
+					/>
+				}
+			/>
+			<Tooltip.Portal>
+				<Tooltip.Positioner sideOffset={8} side="right">
+					<Tooltip.Popup render={<TooltipPopup />}>{activeOperation?.tooltip}</Tooltip.Popup>
+				</Tooltip.Positioner>
+			</Tooltip.Portal>
+		</Tooltip.Root>
+	);
 };
 
 const OperandC: FC<

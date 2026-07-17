@@ -15,10 +15,9 @@ import {
 	attachInstruction,
 	extractInstruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/list-item";
-import { mergeProps, Tooltip, useRender } from "@base-ui/react";
+import { mergeProps, useRender } from "@base-ui/react";
 import { Match } from "effect";
 import { FC, useEffect, useEffectEvent, useRef } from "react";
-import { TooltipPopup } from "#ui/components/Tooltip.tsx";
 
 type DropTargetParams = Parameters<typeof dropTargetForElements>[0];
 type GetDataArgs = Parameters<NonNullable<DropTargetParams["getData"]>>[0];
@@ -39,7 +38,8 @@ const getOperationTypeFromData = (data: DropData): OperationType | null => {
 	);
 };
 
-const useOperationDropTarget = ({
+// TODO: move
+export const useOperationDropTarget = ({
 	enabled,
 	target,
 	projectId,
@@ -141,7 +141,7 @@ export type OperationTargetOutline = "inside" | "outside";
 
 export type ActiveOperation = { operationType: OperationType; tooltip?: string | undefined };
 
-const PresentationalOperationTarget: FC<
+export const PresentationalOperationTarget: FC<
 	{
 		operationType: OperationType | undefined;
 		outline: OperationTargetOutline;
@@ -168,38 +168,3 @@ const PresentationalOperationTarget: FC<
 			),
 		}),
 	});
-
-export const OperationTarget: FC<
-	{
-		enabled: boolean;
-		target: Operand;
-		projectId: string;
-		activeOperation?: ActiveOperation | null;
-		outline: OperationTargetOutline;
-	} & useRender.ComponentProps<"button">
-> = ({ enabled, target, projectId, activeOperation, outline, render, ...props }) => {
-	const dropRef = useOperationDropTarget({ enabled, target, projectId });
-
-	return (
-		<Tooltip.Root open={activeOperation?.tooltip !== undefined} disableHoverablePopup>
-			<Tooltip.Trigger
-				{...props}
-				render={
-					<PresentationalOperationTarget
-						ref={(el) => {
-							dropRef.current = el;
-						}}
-						operationType={activeOperation?.operationType}
-						outline={outline}
-						render={render}
-					/>
-				}
-			/>
-			<Tooltip.Portal>
-				<Tooltip.Positioner sideOffset={8} side="right">
-					<Tooltip.Popup render={<TooltipPopup />}>{activeOperation?.tooltip}</Tooltip.Popup>
-				</Tooltip.Positioner>
-			</Tooltip.Portal>
-		</Tooltip.Root>
-	);
-};
