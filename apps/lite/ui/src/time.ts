@@ -16,7 +16,7 @@ export const formatRelativeTimeWith =
 	};
 
 const stdRelativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, {
-	numeric: "auto",
+	numeric: "always",
 	style: "long",
 });
 

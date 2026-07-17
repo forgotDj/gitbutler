@@ -30,7 +30,8 @@ export type QueryKey =
 	| "treeChangeDiffs"
 	| "absorptionPlan"
 	| "dryRun"
-	| "guiSettings";
+	| "guiSettings"
+	| "workspaceFetchStatus";
 
 export const branchDetailsQueryOptions = ({ projectId, ...params }: BranchDetailsParams) =>
 	queryOptions({
@@ -69,6 +70,12 @@ export const headInfoQueryOptions = (projectId: string) =>
 	queryOptions({
 		queryKey: ["headInfo" satisfies QueryKey, projectId],
 		queryFn: () => window.lite.headInfo(projectId),
+	});
+
+export const workspaceFetchStatusQueryOptions = (projectId: string) =>
+	queryOptions({
+		queryKey: ["workspaceFetchStatus" satisfies QueryKey, projectId],
+		queryFn: () => window.lite.workspaceFetchStatus(projectId),
 	});
 
 export const getReviewQueryOptions = ({ projectId, reviewId }: GetReviewParams) =>
