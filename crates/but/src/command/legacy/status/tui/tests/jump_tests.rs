@@ -127,25 +127,25 @@ fn highlights_exact_matches_when_file_list_is_open() {
 }
 
 #[test]
-fn when_branch_short_code_matches_commit_sha_without_change_id() {
+fn when_branch_short_code_and_commit_change_id_have_same_initial_character() {
     let env = Sandbox::init_scenario_with_target_and_default_settings(
-        "branch-short-code-matches-commit-sha",
+        "branch-short-code-matches-commit-change-id",
     );
-    env.setup_metadata(&["branch"]);
+    env.setup_metadata(&["rr-branch"]);
 
     let mut tui = test_tui(env);
 
     tui.input("g");
     tui.input("/");
-    tui.input("b").assert_rendered_term_svg_eq(file![
+    tui.input("r").assert_rendered_term_svg_eq(file![
         "snapshots/when_branch_short_code_matches_commit_sha_without_change_id_001.svg"
     ]);
     tui.input("r")
-        .assert_current_line_eq(str![["┊╭┄br [branch]"]]);
+        .assert_current_line_eq(str![["┊╭┄rr [rr-branch]"]]);
 
     tui.input("g");
     tui.input("/");
-    tui.input("b");
-    tui.input("0")
-        .assert_current_line_eq(str!["┊╭┄br [branch]"]);
+    tui.input("r");
+    tui.input("z")
+        .assert_current_line_eq(str!["┊●   rzr add branch 814"]);
 }
