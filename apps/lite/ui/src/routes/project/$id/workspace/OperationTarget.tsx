@@ -139,8 +139,6 @@ export const useOperationDropTarget = ({
 
 export type OperationTargetOutline = "inside" | "outside";
 
-export type ActiveOperation = { operationType: OperationType; tooltip?: string | undefined };
-
 export const PresentationalOperationTarget: FC<
 	{
 		operationType: OperationType | undefined;

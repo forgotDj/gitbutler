@@ -17,7 +17,6 @@ import {
 import { projectSlice } from "#ui/projects/state.ts";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import {
-	ActiveOperation,
 	useOperationDropTarget,
 	PresentationalOperationTarget,
 	OperationTargetOutline,
@@ -41,7 +40,7 @@ import { ComponentProps, createContext, FC, Fragment, use, useRef } from "react"
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import styles from "./OutlineTree.module.css";
 import { Row, RowLabel, RowLabelContainer } from "../Row.tsx";
-import { getOperation, useDryRunOperation } from "#ui/operations/operation.ts";
+import { getOperation, OperationType, useDryRunOperation } from "#ui/operations/operation.ts";
 import { GraphSegment, GraphSegmentStatus } from "#ui/components/GraphSegment.tsx";
 import { segmentBottomRelativeTo } from "#ui/api/stack.ts";
 import { assert } from "#ui/assert.ts";
@@ -97,48 +96,17 @@ const TreeItem: FC<
 const OperationTarget: FC<
 	{
 		enabled: boolean;
-		target: Operand;
+		operand: Operand;
 		projectId: string;
-		activeOperation?: ActiveOperation | null;
 		outline: OperationTargetOutline;
 	} & useRender.ComponentProps<"button">
-> = ({ enabled, target, projectId, activeOperation, outline, render, ...props }) => {
-	const dropRef = useOperationDropTarget({ enabled, target, projectId });
+> = ({ enabled, operand, projectId, outline, render, ...props }) => {
+	const dropRef = useOperationDropTarget({ enabled, target: operand, projectId });
 
-	return (
-		<Tooltip.Root open={activeOperation?.tooltip !== undefined} disableHoverablePopup>
-			<Tooltip.Trigger
-				{...props}
-				render={
-					<PresentationalOperationTarget
-						ref={(el) => {
-							dropRef.current = el;
-						}}
-						operationType={activeOperation?.operationType}
-						outline={outline}
-						render={render}
-					/>
-				}
-			/>
-			<Tooltip.Portal>
-				<Tooltip.Positioner sideOffset={8} side="right">
-					<Tooltip.Popup render={<TooltipPopup />}>{activeOperation?.tooltip}</Tooltip.Popup>
-				</Tooltip.Positioner>
-			</Tooltip.Portal>
-		</Tooltip.Root>
-	);
-};
-
-const OperandC: FC<
-	{
-		projectId: string;
-		operand: Operand;
-		outline: OperationTargetOutline;
-	} & useRender.ComponentProps<"div">
-> = ({ projectId, operand, outline, render, ...props }) => {
 	const absorptionTargetCommitIds = assert(use(AbsorptionTargetCommitIdsContext));
 	const navigationIndex = assert(use(NavigationIndexContext));
 
+	type ActiveOperation = { operationType: OperationType; tooltip?: string | undefined };
 	const activeOperation = useAppSelector((state) => {
 		const isSelected = projectSlice.selectors.selectIsSelectedOutline(
 			state,
@@ -182,6 +150,39 @@ const OperandC: FC<
 		);
 	});
 
+	return (
+		<Tooltip.Root open={activeOperation?.tooltip !== undefined} disableHoverablePopup>
+			<Tooltip.Trigger
+				{...props}
+				render={
+					<PresentationalOperationTarget
+						ref={(el) => {
+							dropRef.current = el;
+						}}
+						operationType={activeOperation?.operationType}
+						outline={outline}
+						render={render}
+					/>
+				}
+			/>
+			<Tooltip.Portal>
+				<Tooltip.Positioner sideOffset={8} side="right">
+					<Tooltip.Popup render={<TooltipPopup />}>{activeOperation?.tooltip}</Tooltip.Popup>
+				</Tooltip.Positioner>
+			</Tooltip.Portal>
+		</Tooltip.Root>
+	);
+};
+
+const OperandC: FC<
+	{
+		projectId: string;
+		operand: Operand;
+		outline: OperationTargetOutline;
+	} & useRender.ComponentProps<"div">
+> = ({ projectId, operand, outline, render, ...props }) => {
+	const navigationIndex = assert(use(NavigationIndexContext));
+
 	return useRender({
 		render: (
 			<OperationSourceC
@@ -192,8 +193,7 @@ const OperandC: FC<
 					<OperationTarget
 						enabled={navigationIndexIncludes(navigationIndex, operand, operandIdentityKey)}
 						projectId={projectId}
-						target={operand}
-						activeOperation={activeOperation}
+						operand={operand}
 						outline={outline}
 						render={render}
 					/>
