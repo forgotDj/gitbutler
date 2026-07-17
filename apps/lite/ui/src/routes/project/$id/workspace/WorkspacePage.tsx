@@ -164,7 +164,7 @@ const buildOutlineNavigationIndex = ({
 	outlineMode: OutlineMode;
 	absorptionTargetCommitIds: ReadonlySet<string>;
 }): NavigationIndex<Operand> => {
-	const allItems = () => [
+	const allItems = (): Array<Operand> => [
 		uncommittedChangesOperand,
 		...(worktreeChanges?.changes.map((change) =>
 			fileOperand({ parent: uncommittedChangesFileParent, path: change.path }),
