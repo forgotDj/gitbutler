@@ -962,6 +962,9 @@ const Diff: FC<{
 	const didScrollToViaFileRef = useRef(false);
 
 	const dispatch = useAppDispatch();
+	const canShowFiles = useAppSelector((state) =>
+		projectSlice.selectors.selectCanShowFiles(state, projectId),
+	);
 	const files = filesItems.map((item) => item.path);
 	const filesNavigationIndex: NavigationIndex<string> = {
 		items: files,
@@ -1073,7 +1076,7 @@ const Diff: FC<{
 	return (
 		<div className={styles.diffTab}>
 			<div className={styles.actions}>
-				<FilesToggle className={getButtonClassName({})}>Toggle files</FilesToggle>
+				{canShowFiles && <FilesToggle className={getButtonClassName({})}>Toggle files</FilesToggle>}
 
 				<Toolbar.Root aria-label="Diff controls" className={styles.diffControls}>
 					<ToggleGroupStyles>
@@ -1495,9 +1498,13 @@ export const Details: FC<
 	const detailsFullWindow = useAppSelector((state) =>
 		projectSlice.selectors.selectDetailsFullWindow(state, projectId),
 	);
-	const filesVisible = useAppSelector((state) =>
+	const filesVisibleState = useAppSelector((state) =>
 		projectSlice.selectors.selectFilesVisible(state, projectId),
 	);
+	const canShowFiles = useAppSelector((state) =>
+		projectSlice.selectors.selectCanShowFiles(state, projectId),
+	);
+	const filesVisible = canShowFiles && filesVisibleState;
 	const [commitBodyCollapsed, setCommitBodyCollapsed] = useState(true);
 	const [branchTab, setBranchTab] = useState<BranchTab>("diff");
 	const commitBodyId = useId();

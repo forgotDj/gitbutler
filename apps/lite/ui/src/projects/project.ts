@@ -404,6 +404,8 @@ const selectCheckedCommitOperands = createSelector(selectCheckedCommits, (checke
 
 export const projectSelectors = {
 	selectFilesVisible: (state: ProjectState) => state.filesVisible,
+	selectCanShowFiles: (state: ProjectState) =>
+		state.workspace.detailsSelectionScope !== "uncommitted-files",
 	selectDetailsFullWindow: (state: ProjectState) => state.detailsFullWindow,
 	selectDetailsSelectionScope: (state: ProjectState) => state.workspace.detailsSelectionScope,
 	selectDialogState: (state: ProjectState) => state.dialog,

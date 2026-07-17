@@ -66,8 +66,11 @@ const useWorkspaceHotkeys = (projectId: string) => {
 	const dialog = useAppSelector((state) =>
 		projectSlice.selectors.selectDialogState(state, projectId),
 	);
-	const filesVisible = useAppSelector((state) =>
+	const filesVisibleState = useAppSelector((state) =>
 		projectSlice.selectors.selectFilesVisible(state, projectId),
+	);
+	const canShowFiles = useAppSelector((state) =>
+		projectSlice.selectors.selectCanShowFiles(state, projectId),
 	);
 	const activeElement = useActiveElement();
 	const focusedSelectionScope = getFocusedSelectionScope(activeElement);
@@ -78,6 +81,7 @@ const useWorkspaceHotkeys = (projectId: string) => {
 	const outlineSelectionScope = useAppSelector((state) =>
 		projectSlice.selectors.selectDetailsSelectionScope(state, projectId),
 	);
+	const filesVisible = canShowFiles && filesVisibleState;
 
 	const { isPending: isRestoreSnapshotPending, mutate: restoreSnapshot } = useRestoreSnapshot({
 		projectId,
@@ -127,6 +131,7 @@ const useWorkspaceHotkeys = (projectId: string) => {
 			},
 			options: {
 				conflictBehavior: "allow",
+				enabled: canShowFiles,
 				meta: workspaceHotkeys.toggleFiles.meta,
 			},
 		},
