@@ -18,7 +18,7 @@ import { projectSlice } from "#ui/projects/state.ts";
 import { OperationSourceC } from "#ui/routes/project/$id/workspace/OperationSourceC.tsx";
 import {
 	useOperationDropTarget,
-	PresentationalOperationTarget,
+	OperationTarget as OperationTarget_,
 	OperationTargetOutline,
 } from "#ui/routes/project/$id/workspace/OperationTarget.tsx";
 import { NavigationIndexContext } from "#ui/routes/project/$id/workspace/OutlineNavigationIndexContext.ts";
@@ -155,7 +155,7 @@ const OperationTarget: FC<
 			<Tooltip.Trigger
 				{...props}
 				render={
-					<PresentationalOperationTarget
+					<OperationTarget_
 						ref={(el) => {
 							dropRef.current = el;
 						}}

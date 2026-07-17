@@ -139,7 +139,7 @@ export const useOperationDropTarget = ({
 
 export type OperationTargetOutline = "inside" | "outside";
 
-export const PresentationalOperationTarget: FC<
+export const OperationTarget: FC<
 	{
 		operationType: OperationType | undefined;
 		outline: OperationTargetOutline;
