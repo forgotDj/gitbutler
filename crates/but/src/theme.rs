@@ -679,6 +679,16 @@ pub fn new_commit_ref_with_perm(
     Ok(refs.pop().expect("one ref per commit id"))
 }
 
+/// Paint a commit ref from precomputed parts: the stable change-ID ref when
+/// the commit has one, its short sha otherwise.
+pub fn commit_display_ref(cli_id: Option<&str>, short_sha: &str) -> String {
+    let t = get();
+    match cli_id {
+        Some(cli_id) => t.change_id.paint(cli_id).to_string(),
+        None => t.cli_id.paint(short_sha).to_string(),
+    }
+}
+
 /// Like [`new_commit_ref_with_perm`], for messages that mention several
 /// commits: all refs render from one freshly built [`crate::IdMap`].
 pub fn new_commit_refs_with_perm(
