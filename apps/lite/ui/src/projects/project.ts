@@ -1,6 +1,5 @@
 import { bytesEqual } from "#ui/api/bytes.ts";
 import type { HeadInfoIndex } from "#ui/api/ref-info.ts";
-import { rewrittenCommitSelection } from "#ui/commit.ts";
 import {
 	branchOperand,
 	commitOperand,
@@ -327,11 +326,12 @@ export const projectReducers = {
 		{ replacedCommits }: { replacedCommits: Record<string, string> },
 	) => {
 		const workspaceState = state.workspace;
-		const newCommit = rewrittenCommitSelection({
-			selection: workspaceState.selection.outline,
-			replacedCommits,
-		});
-		if (newCommit) workspaceState.selection.outline = newCommit;
+		const selection = workspaceState.selection.outline;
+		if (selection?._tag === "Commit") {
+			const newId = replacedCommits[selection.commitId];
+			if (newId !== undefined)
+				workspaceState.selection.outline = commitOperand({ commitId: newId });
+		}
 
 		if (workspaceState.commitTarget?.type === "commit") {
 			const newId = replacedCommits[workspaceState.commitTarget.subject];

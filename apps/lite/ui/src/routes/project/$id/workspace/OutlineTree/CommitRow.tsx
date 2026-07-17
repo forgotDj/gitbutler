@@ -13,13 +13,7 @@ import { GraphSegment } from "#ui/components/GraphSegment.tsx";
 import { Icon } from "#ui/components/Icon.tsx";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
 import { assert } from "#ui/assert.ts";
-import {
-	commitBody,
-	commitForgeUrl,
-	commitIsDiverged,
-	commitTitle,
-	rewrittenCommitSelection,
-} from "#ui/commit.ts";
+import { commitBody, commitForgeUrl, commitIsDiverged, commitTitle } from "#ui/commit.ts";
 import { errorMessageForToast } from "#ui/errors.ts";
 import { outlineHotkeys, selectionOperationHotkeys, toElectronAccelerator } from "#ui/hotkeys.ts";
 import {
@@ -157,13 +151,17 @@ export const CommitRow: FC<
 			},
 			{
 				onSuccess: (response) => {
+					const newId =
+						selectionAfterDiscard?._tag === "Commit"
+							? response.workspace.replacedCommits[selectionAfterDiscard.commitId]
+							: undefined;
+					const latestSelectionAfterDiscard =
+						newId === undefined ? selectionAfterDiscard : commitOperand({ commitId: newId });
+
 					dispatch(
 						projectSlice.actions.selectOutline({
 							projectId,
-							selection: rewrittenCommitSelection({
-								selection: selectionAfterDiscard,
-								replacedCommits: response.workspace.replacedCommits,
-							}),
+							selection: latestSelectionAfterDiscard,
 						}),
 					);
 				},

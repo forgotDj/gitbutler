@@ -10,7 +10,7 @@ import {
 import { forgeInfoOptions, headInfoQueryOptions } from "#ui/api/queries.ts";
 import { decodeBytes } from "#ui/api/bytes.ts";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
-import { commitForgeUrl, rewrittenCommitSelection } from "#ui/commit.ts";
+import { commitForgeUrl } from "#ui/commit.ts";
 import { outlineHotkeys } from "#ui/hotkeys.ts";
 import {
 	branchOperand,
@@ -295,13 +295,17 @@ export const useOutlineTreeHotkeys = ({
 			},
 			{
 				onSuccess: (response) => {
+					const newId =
+						selectionAfterDiscard?._tag === "Commit"
+							? response.workspace.replacedCommits[selectionAfterDiscard.commitId]
+							: undefined;
+					const latestSelectionAfterDiscard =
+						newId === undefined ? selectionAfterDiscard : commitOperand({ commitId: newId });
+
 					dispatch(
 						projectSlice.actions.selectOutline({
 							projectId,
-							selection: rewrittenCommitSelection({
-								selection: selectionAfterDiscard,
-								replacedCommits: response.workspace.replacedCommits,
-							}),
+							selection: latestSelectionAfterDiscard,
 						}),
 					);
 				},
