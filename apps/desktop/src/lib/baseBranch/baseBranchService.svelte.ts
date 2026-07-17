@@ -72,7 +72,7 @@ export default class BaseBranchService {
 		return this.backendApi.endpoints.workspaceFetchStatus.useQuery({ projectId });
 	}
 
-	async fetchFromRemotes(projectId: string, action?: "auto" | "modal") {
+	async fetchFromRemotes(projectId: string, action: "auto" | "modal" = "auto") {
 		return await this.backendApi.endpoints.workspaceFetchFromRemotes
 			.mutate({ projectId, action })
 			.catch((error: unknown) => {

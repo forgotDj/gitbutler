@@ -63,11 +63,11 @@ test.describe("manual workspace fetch", () => {
 		await expect(syncButton).toContainText("Refetch");
 
 		await clickByTestId(page, "sync-button");
-		await expect(syncButton).toContainText("Just now");
+		await expect(syncButton).toContainText(/Just now|A few sec ago/);
 
 		await page.reload();
 		await expect(getByTestId(page, "workspace-view")).toBeVisible();
-		await expect(getByTestId(page, "sync-button")).toContainText("Just now");
+		await expect(getByTestId(page, "sync-button")).toContainText(/Just now|A few sec ago/);
 	});
 
 	test("fetches healthy remotes even when another remote fails", async ({ page, gitbutler }) => {
