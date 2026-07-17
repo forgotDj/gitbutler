@@ -360,7 +360,7 @@ fn commit_with_position_on_different_branch_fails() -> anyhow::Result<()> {
     env.file("new-file.txt", "content");
 
     let output = env
-        .but("commit -m 'Wrong target' A --before d3e2ba3")
+        .but("commit -m 'Wrong target' A --before lrm")
         .assert()
         .failure();
     let stderr = std::str::from_utf8(&output.get_output().stderr)?;
@@ -465,9 +465,8 @@ fn commit_empty_with_before_flag() {
 
     env.setup_metadata(&["A"]);
 
-    // Get the commit ID from the CLI ID map
-    // Use the short git hash for the commit on branch A
-    env.but("commit empty --before 9477ae7")
+    // Use the displayed change ID for the commit on branch A.
+    env.but("commit empty --before tpm")
         .assert()
         .success()
         .stdout_eq(str![[r#"
@@ -497,7 +496,7 @@ fn commit_empty_with_positional_target_defaults_to_before() {
     env.setup_metadata(&["A"]);
 
     // Use positional argument without flag (should default to --before behavior)
-    env.but("commit empty 9477ae7")
+    env.but("commit empty tpm")
         .assert()
         .success()
         .stdout_eq(str![[r#"
@@ -681,7 +680,7 @@ fn commit_empty_with_after_commit() {
     env.setup_metadata(&["A"]);
 
     // Insert empty commit after a specific commit
-    env.but("commit empty --after 9477ae7")
+    env.but("commit empty --after tpm")
         .assert()
         .success()
         .stdout_eq(str![[r#"
@@ -1082,7 +1081,7 @@ fn commit_json_positioned_omits_branch_tip() -> anyhow::Result<()> {
     env.file("new-file.txt", "test content");
 
     let output = env
-        .but("commit --format json -m 'Test commit' A --before 9477ae7")
+        .but("commit --format json -m 'Test commit' A --before tpm")
         .assert()
         .success();
     let json: serde_json::Value = serde_json::from_slice(&output.get_output().stdout)?;

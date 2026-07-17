@@ -56,7 +56,7 @@ fn jump_from_other_modes() {
         .assert_rendered_term_svg_eq(file!["snapshots/jump_from_other_modes_001.svg"]);
     tui.input('/')
         .assert_rendered_term_svg_eq(file!["snapshots/jump_from_other_modes_002.svg"]);
-    tui.input("38")
+    tui.input('x')
         .assert_rendered_term_svg_eq(file!["snapshots/jump_from_other_modes_003.svg"]);
 }
 
@@ -96,7 +96,7 @@ fn restores_backstack_from_previous_mode() {
 
     tui.input('/')
         .assert_backstack_eq([BackstackEntry::LeaveNormalMode, BackstackEntry::Mark]);
-    tui.input("38")
+    tui.input('x')
         .assert_backstack_eq([BackstackEntry::LeaveNormalMode, BackstackEntry::Mark]);
 }
 
@@ -111,7 +111,7 @@ fn highlights_exact_matches_when_file_list_is_open() {
 
     tui.input((KeyModifiers::SHIFT, 'F'));
     tui.input('/');
-    tui.input('9').assert_rendered_term_svg_eq(file![
+    tui.input('t').assert_rendered_term_svg_eq(file![
         "snapshots/highlights_exact_matches_when_file_list_is_open_001.svg"
     ]);
 

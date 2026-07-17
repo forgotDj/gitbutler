@@ -537,7 +537,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_commit2 --no-message --above fe")
+    env.but("_commit2 --no-message --above zll")
         .assert()
         .success();
 
@@ -582,7 +582,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_commit2 --no-message --below fe")
+    env.but("_commit2 --no-message --below zll")
         .assert()
         .success();
 
@@ -630,7 +630,7 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 
 "#]]);
 
-    env.but("_commit2 -m 'add file.txt' --above fe")
+    env.but("_commit2 -m 'add file.txt' --above zll")
         .assert()
         .success();
 
@@ -726,7 +726,7 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 
 "#]]);
 
-    env.but("_commit2 -m 'add file.txt' --below fe")
+    env.but("_commit2 -m 'add file.txt' --below zll")
         .assert()
         .success();
 
@@ -871,7 +871,7 @@ Hint: run `but help` for all commands
 
     env.file("second", "Conflicting with commit 9ac4652");
 
-    env.but("_commit2 -m 'add second' --above fe")
+    env.but("_commit2 -m 'add second' --above zll")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -904,7 +904,7 @@ Hint: run `but help` for all commands
 
     env.file("second", "Conflicting with commit 9ac4652");
 
-    env.but("_commit2 -m 'add second' --below 9a")
+    env.but("_commit2 -m 'add second' --below ywx")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -1012,6 +1012,7 @@ Hint: run `but help` for all commands
 
     env.but("unapply B").assert().success();
 
+    // Unapplied commits have no change ID in the workspace map, so use the commit ID intentionally.
     env.but("_commit2 --above d3")
         .assert()
         .failure()
@@ -1399,7 +1400,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("diff d1a")
+    env.but("diff 1#0")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"

@@ -22,7 +22,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 fe --above 9a")
+    env.but("_move2 zll --above ywx")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -70,7 +70,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a --below fe")
+    env.but("_move2 ywx --below zll")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -129,14 +129,14 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    for (operator, target_commit) in [("--above", "c4"), ("--below", "0c")] {
-        env.but("_move2 2a 76")
+    for (operator, target_commit) in [("--above", "lyq"), ("--below", "tpw")] {
+        env.but("_move2 vvl mzz")
             .arg(operator)
             .arg(target_commit)
             .assert()
             .success()
             .stdout_eq(snapbox::str![["
-Moved 2a98cfc, 769f4a8 [..]
+Moved c472887, 8188106 [..]
 
 "]]);
 
@@ -205,13 +205,13 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    for (operator, target_commit) in [("--above", "76"), ("--below", "81")] {
+    for (operator, target_commit) in [("--above", "vmw"), ("--below", "mzz")] {
         // We pick the source commits in an "incorrect" order, but they should later be sorted correctly
         // via topological sort.
         //
         // Order as picked is: A7 A1 A5 --above A8, but we expect the commits to be applied from oldest
         // to newest, i.e. (A8) <- A1 <- A5 <- A7
-        env.but("_move2 2a 07 c6")
+        env.but("_move2 tpw zpl pyq")
             .arg(operator)
             .arg(target_commit)
             .assert()
@@ -275,7 +275,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 fe --above g0")
+    env.but("_move2 zll --above g0")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -325,7 +325,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a --above g0")
+    env.but("_move2 ywx --above g0")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -375,7 +375,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a --below g0")
+    env.but("_move2 ywx --below g0")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -425,7 +425,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 fe --below g0")
+    env.but("_move2 zll --below g0")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -475,7 +475,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a fe --above g0")
+    env.but("_move2 ywx zll --above g0")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -525,7 +525,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a fe --below g0")
+    env.but("_move2 ywx zll --below g0")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -577,7 +577,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 94 --above h0")
+    env.but("_move2 tpm --above h0")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -631,7 +631,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 94 --below h0")
+    env.but("_move2 tpm --below h0")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -686,7 +686,7 @@ Hint: run `but help` for all commands
 "#]]);
     env.but("unapply B").assert().success();
 
-    env.but("_move2 94 --above B")
+    env.but("_move2 tpm --above B")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -696,7 +696,7 @@ Hint: Run `but status` for applicable targets.
 
 "#]]);
 
-    env.but("_move2 94 --below B")
+    env.but("_move2 tpm --below B")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -706,7 +706,7 @@ Hint: Run `but status` for applicable targets.
 
 "#]]);
 
-    env.but("_move2 94 --above no-such-branch")
+    env.but("_move2 tpm --above no-such-branch")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -716,7 +716,7 @@ Hint: Run `but status` for applicable targets.
 
 "#]]);
 
-    env.but("_move2 94 --below no-such-branch")
+    env.but("_move2 tpm --below no-such-branch")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -752,7 +752,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 94 -b B")
+    env.but("_move2 tpm -b B")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -805,7 +805,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 94 -b B")
+    env.but("_move2 tpm -b B")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -855,7 +855,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a --branch new-branch")
+    env.but("_move2 ywx --branch new-branch")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -906,7 +906,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a --branch")
+    env.but("_move2 ywx --branch")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -959,7 +959,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a:wu --below fe")
+    env.but("_move2 ywx:wu --below zll")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1012,7 +1012,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 fe:lz --above 9a")
+    env.but("_move2 zll:lz --above ywx")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1065,7 +1065,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a:wu --below A")
+    env.but("_move2 ywx:wu --below A")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1120,7 +1120,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 fe:lz --above A")
+    env.but("_move2 zll:lz --above A")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1178,7 +1178,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 d3:pl --branch A")
+    env.but("_move2 lrm:pl --branch A")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1234,7 +1234,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a:wu --branch new-branch")
+    env.but("_move2 ywx:wu --branch new-branch")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1290,7 +1290,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a:wu --branch")
+    env.but("_move2 ywx:wu --branch")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1361,7 +1361,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 e3:py e3:ul --above e3")
+    env.but("_move2 1#0:u 1#0:p --above 1#0")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1393,7 +1393,7 @@ Hint: run `but help` for all commands
 
     env.but("undo").assert().success();
 
-    env.but("_move2 e3:ul e3:py --above e3")
+    env.but("_move2 1#0:p 1#0:u --above 1#0")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -1451,7 +1451,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 94:tm d3:pl -b")
+    env.but("_move2 tpm:tm lrm:pl -b")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -2062,7 +2062,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 fe --unstack")
+    env.but("_move2 zll --unstack")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -2095,7 +2095,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 fe:lz --unstack")
+    env.but("_move2 zll:lz --unstack")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
@@ -2271,7 +2271,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 94 d3:pl -b")
+    env.but("_move2 tpm lrm:pl -b")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -2283,7 +2283,7 @@ Hint: You can only move one kind of source (e.g. commits) at a time
 
 "#]]);
 
-    env.but("_move2 d3 B --above A")
+    env.but("_move2 lrm B --above A")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -2295,7 +2295,7 @@ Hint: You can only move one kind of source (e.g. commits) at a time
 
 "#]]);
 
-    env.but("_move2 d3:pl B --above A")
+    env.but("_move2 lrm:pl B --above A")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -2333,7 +2333,7 @@ Hint: run `but help` for all commands
 "#]]);
     env.but("unapply B").assert().success();
 
-    env.but("_move2 94 --branch B")
+    env.but("_move2 tpm --branch B")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -2364,7 +2364,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 9a --below fe --above fe")
+    env.but("_move2 ywx --below zll --above zll")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
@@ -2420,27 +2420,27 @@ fn source_cannot_be_target() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack-two-commits");
     env.setup_metadata(&["A"]);
 
-    env.but("_move2 9a --above 9a")
+    env.but("_move2 ywx --above ywx")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
-Error: Bad input '9a' for '--above'
+Error: Bad input 'ywx' for '--above'
 
 Source cannot also be target
 
-Hint: Trying to move items above '9a'? Remove '9a' from '<SOURCES>' and try again!
+Hint: Trying to move items above 'ywx'? Remove 'ywx' from '<SOURCES>' and try again!
 
 "#]]);
 
-    env.but("_move2 9a --below 9a")
+    env.but("_move2 ywx --below ywx")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
-Error: Bad input '9a' for '--below'
+Error: Bad input 'ywx' for '--below'
 
 Source cannot also be target
 
-Hint: Trying to move items below '9a'? Remove '9a' from '<SOURCES>' and try again!
+Hint: Trying to move items below 'ywx'? Remove 'ywx' from '<SOURCES>' and try again!
 
 "#]]);
 
@@ -2524,7 +2524,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_move2 94 --below zz")
+    env.but("_move2 tpm --below zz")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"

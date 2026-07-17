@@ -1289,7 +1289,7 @@ fn status_in_edit_mode_delegates_to_resolve_status() -> anyhow::Result<()> {
 }
 
 #[test]
-fn status_file_prefixed_with_change_id_when_available_and_commit_id_otherwise() {
+fn status_file_prefixed_with_persisted_or_synthetic_change_id() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
     env.setup_metadata(&["A"]);
 

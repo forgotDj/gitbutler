@@ -751,6 +751,7 @@ Hint: run `but help` for all commands
 
     env.but("unapply second").assert().success();
 
+    // Unapplied commits have no change ID in the workspace map, so use the commit ID intentionally.
     env.but("_squash2 1#0 -t d15f721")
         .assert()
         .failure()
@@ -801,7 +802,7 @@ Hint: run `but help` for all commands
 
 "#]]);
 
-    env.but("_squash2 A -t 9477ae7")
+    env.but("_squash2 A -t tpm")
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
