@@ -1,7 +1,7 @@
 import rowStyles from "../Row.module.css";
 import { changesInWorktreeQueryOptions, headInfoQueryOptions } from "#ui/api/queries.ts";
 import { relativeToEquals } from "#ui/api/relative-to.ts";
-import { getHeadInfoIndex, type HeadInfoIndex } from "#ui/api/ref-info.ts";
+import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 import { commitIsDiverged, commitTitle } from "#ui/commit.ts";
 import {
 	branchOperand,
@@ -33,7 +33,6 @@ import {
 	Stack,
 	PushStatus,
 	WorkspaceState,
-	type RefInfo,
 } from "@gitbutler/but-sdk";
 import { useQuery } from "@tanstack/react-query";
 import { Match } from "effect";
@@ -606,21 +605,20 @@ const Stacks: FC<{
 export const OutlineTree: FC<
 	{
 		projectId: string;
-		headInfo: RefInfo | undefined;
 		navigationIndex: NavigationIndex<Operand>;
 		uncommittedFilesNavigationIndex: NavigationIndex<string>;
 		absorptionTargetCommitIds: ReadonlySet<string>;
-		headInfoIndex: HeadInfoIndex | undefined;
 	} & ComponentProps<"div">
 > = ({
 	projectId,
-	headInfo,
 	navigationIndex,
 	uncommittedFilesNavigationIndex,
 	absorptionTargetCommitIds,
-	headInfoIndex,
 	...props
 }) => {
+	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
+	const headInfoIndex = headInfo ? getHeadInfoIndex(headInfo) : undefined;
+
 	const commitTargetState = useAppSelector((state) =>
 		projectSlice.selectors.selectCommitTarget(state, projectId),
 	);

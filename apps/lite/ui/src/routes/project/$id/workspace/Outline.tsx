@@ -5,7 +5,6 @@ import {
 	workspaceFetchQueryOptions,
 	workspaceFetchStatusQueryOptions,
 } from "#ui/api/queries.ts";
-import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 import { stackBottomRelativeTo } from "#ui/api/stack.ts";
 import { getButtonClassName } from "#ui/components/Button.tsx";
 import { classes } from "#ui/components/classes.ts";
@@ -147,7 +146,6 @@ export const Outline: FC<
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
 	const { data: guiSettings } = useQuery(guiSettingsQueryOptions);
 	const { data: workspaceFetchStatus } = useQuery(workspaceFetchStatusQueryOptions(projectId));
-	const headInfoIndex = headInfo ? getHeadInfoIndex(headInfo) : undefined;
 	const rebaseUpdates =
 		headInfo?.stacks.flatMap((stack): Array<BottomUpdate> => {
 			const relativeTo = stackBottomRelativeTo(stack);
@@ -371,8 +369,6 @@ export const Outline: FC<
 				navigationIndex={navigationIndex}
 				uncommittedFilesNavigationIndex={uncommittedFilesNavigationIndex}
 				absorptionTargetCommitIds={absorptionTargetCommitIds}
-				headInfo={headInfo}
-				headInfoIndex={headInfoIndex}
 				projectId={projectId}
 			/>
 		</div>
