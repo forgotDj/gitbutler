@@ -223,29 +223,23 @@ impl App {
                         return;
                     };
                     if details_mode.full_screen {
-                        messages.extend([
-                            Message::DetailsLayout(DetailsLayoutMessage::Dismiss),
-                            Message::Commit(CommitMessage::StartWithSource(Arc::clone(selection))),
-                        ]);
-                    } else {
-                        messages.extend([
-                            Message::UnfocusDetails,
-                            Message::Commit(CommitMessage::StartWithSource(Arc::clone(selection))),
-                        ]);
+                        messages
+                            .push(Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit));
                     }
+                    messages.extend([
+                        Message::UnfocusDetails,
+                        Message::Commit(CommitMessage::StartWithSource(Arc::clone(selection))),
+                    ]);
                 }
                 MarksRef::Hunks { .. } => {
                     if details_mode.full_screen {
-                        messages.extend([
-                            Message::DetailsLayout(DetailsLayoutMessage::Dismiss),
-                            Message::Commit(CommitMessage::Start),
-                        ]);
-                    } else {
-                        messages.extend([
-                            Message::UnfocusDetails,
-                            Message::Commit(CommitMessage::Start),
-                        ]);
+                        messages
+                            .push(Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit));
                     }
+                    messages.extend([
+                        Message::UnfocusDetails,
+                        Message::Commit(CommitMessage::Start),
+                    ]);
                 }
                 MarksRef::Commits { .. } | MarksRef::CommittedFiles { .. } => {}
             },

@@ -6,6 +6,7 @@ use temp_env::with_var;
 use crate::command::legacy::status::{
     TuiRunOptions,
     tui::{
+        DetailsLayoutMessage, Message,
         backstack::BackstackEntry,
         tests::utils::{TestTuiOptions, test_tui, test_tui_with_options},
     },
@@ -507,6 +508,84 @@ fn toggle_full_screen_details_view() {
     tui.input(KeyCode::Esc)
         .assert_rendered_term_svg_eq(file![
             "snapshots/toggle_full_screen_details_view_for_commit_014_escape_closes_from_details_mode.svg"
+        ]);
+}
+
+#[test]
+fn switch_full_screen_details_to_split() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("one", "content of one");
+    env.file("two", "content of two");
+    env.file("three", "content of three");
+
+    let mut tui = test_tui(env);
+
+    tui.input((KeyModifiers::SHIFT, 'D'));
+    tui.input(binds::SCROLL_DOWN);
+    tui.input(' ').assert_backstack_eq([
+        BackstackEntry::Mark,
+        BackstackEntry::LeaveNormalMode,
+        BackstackEntry::OpenFullScreenDetailsView,
+    ]);
+
+    tui.render_with_messages(
+        None,
+        vec![Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit)],
+    )
+    .assert_backstack_eq([
+        BackstackEntry::Mark,
+        BackstackEntry::LeaveNormalMode,
+        BackstackEntry::OpenSplitDetailsView,
+    ])
+    .assert_rendered_term_svg_eq(file![
+        "snapshots/switch_full_screen_details_to_split_001.svg"
+    ]);
+
+    tui.input((KeyModifiers::SHIFT, 'D')).assert_backstack_eq([
+        BackstackEntry::Mark,
+        BackstackEntry::LeaveNormalMode,
+        BackstackEntry::OpenSplitDetailsView,
+    ]);
+    tui.render_with_messages(
+        None,
+        vec![Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit)],
+    )
+    .assert_backstack_eq([
+        BackstackEntry::Mark,
+        BackstackEntry::LeaveNormalMode,
+        BackstackEntry::OpenSplitDetailsView,
+    ])
+    .assert_rendered_term_svg_eq(file![
+        "snapshots/switch_full_screen_details_to_split_002.svg"
+    ]);
+}
+
+#[test]
+fn back_from_details_switched_to_split_unfocuses_details() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+    env.file("file.txt", "content");
+
+    let mut tui = test_tui(env);
+
+    tui.input((KeyModifiers::SHIFT, 'D')).assert_backstack_eq([
+        BackstackEntry::LeaveNormalMode,
+        BackstackEntry::OpenFullScreenDetailsView,
+    ]);
+    tui.render_with_messages(
+        None,
+        vec![Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit)],
+    )
+    .assert_backstack_eq([
+        BackstackEntry::LeaveNormalMode,
+        BackstackEntry::OpenSplitDetailsView,
+    ]);
+    tui.input(KeyCode::Esc)
+        .assert_backstack_eq([BackstackEntry::OpenSplitDetailsView])
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/back_from_details_switched_to_split_unfocuses_details_001.svg"
         ]);
 }
 

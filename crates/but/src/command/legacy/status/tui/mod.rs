@@ -649,6 +649,8 @@ enum DetailsLayoutMessage {
     Focus { full_screen: bool },
     /// Toggle between split details and full-screen details.
     ToggleFullScreen,
+    /// Switch full-screen details to the focused split details view.
+    SwitchToSplit,
     /// Show or hide the details view without necessarily focusing it.
     ToggleVisibility,
     /// Close the full-screen details view if active, otherwise toggle details visibility.
@@ -808,6 +810,7 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
             Message::DetailsLayout(message) => match message {
                 DetailsLayoutMessage::Focus { .. }
                 | DetailsLayoutMessage::ToggleFullScreen
+                | DetailsLayoutMessage::SwitchToSplit
                 | DetailsLayoutMessage::ToggleVisibility
                 | DetailsLayoutMessage::Dismiss => false,
             },

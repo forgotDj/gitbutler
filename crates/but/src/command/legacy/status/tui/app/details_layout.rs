@@ -74,12 +74,28 @@ impl App {
     }
 
     pub fn handle_focus_details(&mut self, full_screen: bool, messages: &mut Vec<Message>) {
-        if !full_screen
-            && let Mode::Details(DetailsMode {
-                full_screen: false, ..
-            }) = &*self.mode
-        {
-            return;
+        if !full_screen {
+            match &*self.mode {
+                Mode::Details(DetailsMode {
+                    full_screen: false, ..
+                }) => return,
+                Mode::Details(DetailsMode {
+                    full_screen: true, ..
+                }) => {
+                    messages.push(Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit));
+                    return;
+                }
+                Mode::Normal(..)
+                | Mode::PickChanges(..)
+                | Mode::Rub(..)
+                | Mode::InlineReword(..)
+                | Mode::Command(..)
+                | Mode::Commit(..)
+                | Mode::Move(..)
+                | Mode::MoveStack(..)
+                | Mode::Jump(..)
+                | Mode::Stack(..) => {}
+            }
         }
 
         if full_screen
@@ -138,6 +154,20 @@ impl App {
                     return_mode,
                 });
             });
+    }
+
+    pub fn handle_switch_details_to_split(&mut self) {
+        self.mode.update(&mut self.backstack, |backstack, mode| {
+            let Mode::Details(DetailsMode { full_screen, .. }) = mode else {
+                return;
+            };
+            if !*full_screen {
+                return;
+            }
+
+            *full_screen = false;
+            backstack.switch_full_screen_details_to_split();
+        });
     }
 
     pub fn handle_toggle_details_full_screen(&mut self, messages: &mut Vec<Message>) {

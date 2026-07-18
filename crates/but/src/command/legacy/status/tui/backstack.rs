@@ -46,6 +46,14 @@ impl Backstack {
         self.remove(BackstackEntry::OpenFullScreenDetailsView);
     }
 
+    pub fn switch_full_screen_details_to_split(&mut self) {
+        for entry in &mut self.stack {
+            if *entry == BackstackEntry::OpenFullScreenDetailsView {
+                *entry = BackstackEntry::OpenSplitDetailsView;
+            }
+        }
+    }
+
     pub fn push_mark(&mut self) {
         self.remove_mark();
         self.push_front(BackstackEntry::Mark);

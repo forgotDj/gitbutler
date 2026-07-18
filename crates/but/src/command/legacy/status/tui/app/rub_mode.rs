@@ -225,26 +225,18 @@ impl App {
                         return;
                     };
                     if details_mode.full_screen {
-                        messages.extend([
-                            Message::DetailsLayout(DetailsLayoutMessage::Dismiss),
-                            Message::Rub(RubMessage::StartWithSource(Arc::clone(selection))),
-                        ]);
-                    } else {
-                        messages.extend([
-                            Message::UnfocusDetails,
-                            Message::Rub(RubMessage::StartWithSource(Arc::clone(selection))),
-                        ]);
+                        messages.push(Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit));
                     }
+                    messages.extend([
+                        Message::UnfocusDetails,
+                        Message::Rub(RubMessage::StartWithSource(Arc::clone(selection))),
+                    ]);
                 }
                 MarksRef::Hunks { .. } => {
                     if details_mode.full_screen {
-                        messages.extend([
-                            Message::DetailsLayout(DetailsLayoutMessage::Dismiss),
-                            Message::Rub(RubMessage::Start),
-                        ]);
-                    } else {
-                        messages.extend([Message::UnfocusDetails, Message::Rub(RubMessage::Start)]);
+                        messages.push(Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit));
                     }
+                    messages.extend([Message::UnfocusDetails, Message::Rub(RubMessage::Start)]);
                 }
                 MarksRef::Commits { .. } | MarksRef::CommittedFiles { .. } => {}
             },

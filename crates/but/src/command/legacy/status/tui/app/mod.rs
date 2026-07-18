@@ -345,6 +345,9 @@ impl App {
                 DetailsLayoutMessage::ToggleFullScreen => {
                     self.handle_toggle_details_full_screen(messages);
                 }
+                DetailsLayoutMessage::SwitchToSplit => {
+                    self.handle_switch_details_to_split();
+                }
                 DetailsLayoutMessage::ToggleVisibility => {
                     self.handle_toggle_details_visibility(messages);
                 }
