@@ -28,7 +28,9 @@ use crate::{
         Message, ReloadCause, SelectAfterReload,
         app::{
             Modal,
-            mark::{MarkStore, Markable, Marks, MarksRef, synthetic_parent_hunk, toggle_markables},
+            mark::{
+                MarkStore, MarkableRef, Marks, MarksRef, synthetic_parent_hunk, toggle_markables,
+            },
         },
         backstack::Backstack,
         confirm::Confirm,
@@ -50,8 +52,6 @@ use crate::{
         string_interning::Strings,
     },
 };
-
-use super::app::mark::MarkableRef;
 
 mod worker;
 
@@ -1417,11 +1417,13 @@ impl Details {
         let Some(section_cli_id) = section.cli_id.as_ref().map(Arc::clone) else {
             return Ok(());
         };
-        let CliId::UncommittedHunkOrFile(hunk) = &*section_cli_id else {
+        let Some(markable @ MarkableRef::Uncommitted(hunk)) =
+            MarkableRef::try_from_cli_id(section_cli_id.as_ref())
+        else {
             return Ok(());
         };
 
-        toggle_markables(marks, [Markable::Uncommitted(hunk.clone())])?;
+        toggle_markables(marks, [markable.to_owned()])?;
 
         let sections_for_file_cli_ids = self
             .sections
