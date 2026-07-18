@@ -112,6 +112,12 @@ latest `main` IS `but pull` — it is never `move`, `config target`, `unapply`,
 or raw `git pull`/`git rebase`. The pull output already reports the resulting
 state.
 
+If `but pull` refuses because uncommitted changes conflict with the update,
+park them on a temporary commit (there is no stash, and hand-reverting files
+risks losing work): `but commit <branch> --changes <file-id...> -m "wip"`,
+pull again — the parked commit may come back conflicted for `but resolve` —
+then `but uncommit` it so the changes end up uncommitted again.
+
 ### Commit selected files or hunks
 
 1. `but diff` — use this first for selective dirty commits. It shows file and hunk IDs for uncommitted changes.
