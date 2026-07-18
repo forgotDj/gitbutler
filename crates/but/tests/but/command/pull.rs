@@ -25,7 +25,7 @@ fn pull_prunes_integrated_stack_and_keeps_remaining_stack_parent() -> anyhow::Re
 ┊●   lrm add B
 ├╯
 ┊
-┊● 26ecc90 (upstream: origin/main) ⏫ 2 commits
+┊● 26ecc90 (upstream: origin/main) 2 new commits
 ├╯ 26ecc90 (common base) 2000-01-02 add upstream
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
@@ -98,7 +98,7 @@ fn pull_prunes_integrated_branch_from_partial_stack() -> anyhow::Result<()> {
 ┊●   rkq add C
 ├╯
 ┊
-┊● d4cb681 (upstream: origin/main) ⏫ 2 commits
+┊● d4cb681 (upstream: origin/main) 2 new commits
 ├╯ 0dc3733 (common base) 2000-01-02 add M
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
@@ -183,7 +183,7 @@ fn pull_check_uses_workspace_dry_run_for_partial_stack() -> anyhow::Result<()> {
 ┊●   rkq add C
 ├╯
 ┊
-┊● d4cb681 (upstream: origin/main) ⏫ 2 commits
+┊● d4cb681 (upstream: origin/main) 2 new commits
 ├╯ 0dc3733 (common base) 2000-01-02 add M
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
@@ -230,7 +230,7 @@ Run `but pull` to update your branches
 ┊●   rkq add C
 ├╯
 ┊
-┊● d4cb681 (upstream: origin/main) ⏫ 2 commits (checked 0 seconds ago)
+┊● d4cb681 (upstream: origin/main) 2 new commits (checked 0 seconds ago)
 ├╯ 0dc3733 (common base) 2000-01-02 add M
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
@@ -254,7 +254,7 @@ fn pull_check_reports_conflicted_branches_as_rebasable() -> anyhow::Result<()> {
 ┊●   nyo A-change
 ├╯
 ┊
-┊● bdfcf28 (upstream: origin/main) ⏫ 1 commit
+┊● bdfcf28 (upstream: origin/main) 1 new commit
 ├╯ efc9211 (common base) 2000-01-02 base
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
@@ -316,7 +316,7 @@ fn pull_reparents_workspace_to_target_after_all_stacks_integrate() -> anyhow::Re
 ┊╭┄h0 [B] (no commits)
 ├╯
 ┊
-┊● 7e5d4e1 (upstream: origin/main) ⏫ 3 commits
+┊● 7e5d4e1 (upstream: origin/main) 3 new commits
 ├╯ 7e5d4e1 (common base) 2000-01-02 add upstream
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
@@ -406,7 +406,7 @@ fn pull_does_not_report_branch_rebase_conflicts_as_worktree_conflicts() -> anyho
 ┊●   vun local change
 ├╯
 ┊
-┊● 7f73771 (upstream: origin/main) ⏫ 1 commit
+┊● 7f73771 (upstream: origin/main) 1 new commit
 ├╯ 7f73771 (common base) 2000-01-02 upstream change
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
@@ -466,7 +466,7 @@ fn pull_json_reports_branch_rebase_conflicts_as_successful_integration() -> anyh
 ┊●   vun local change
 ├╯
 ┊
-┊● 7f73771 (upstream: origin/main) ⏫ 1 commit
+┊● 7f73771 (upstream: origin/main) 1 new commit
 ├╯ 7f73771 (common base) 2000-01-02 upstream change
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
@@ -533,7 +533,7 @@ fn pull_reports_conflict_in_lower_branch_of_stack() -> anyhow::Result<()> {
 ┊●   [..] bottom change
 ├╯
 ┊
-┊● 7f73771 (upstream: origin/main) ⏫ 1 commit
+┊● 7f73771 (upstream: origin/main) 1 new commit
 ├╯ 7f73771 (common base) 2000-01-02 upstream change
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
@@ -601,7 +601,7 @@ fn pull_reports_conflicts_in_multiple_branches_of_stack() -> anyhow::Result<()> 
 ┊●   [..] bottom change
 ├╯
 ┊
-┊● e4933d8 (upstream: origin/main) ⏫ 1 commit
+┊● e4933d8 (upstream: origin/main) 1 new commit
 ├╯ [..] (common base) 2000-01-02 upstream change
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace

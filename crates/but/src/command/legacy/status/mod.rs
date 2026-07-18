@@ -698,7 +698,7 @@ fn print_hint(
         output.hint(Vec::from([Span::styled(id_hint, crate::theme::get().hint)]))?;
     }
 
-    // The ⏫ marker alone reads as a configuration mismatch to some agents,
+    // A behind-count alone reads as a configuration mismatch to some agents,
     // which then try to repoint the target instead of pulling.
     if let Some(upstream) = &status_ctx.upstream_state {
         output.hint(Vec::from([Span::styled(
@@ -912,7 +912,7 @@ fn print_upstream_state(
     if status_ctx.flags.show_upstream {
         // When showing detailed commits, only show count in summary
         let mut upstream_summary = Vec::from([Span::raw(format!(
-            "(upstream: {}) ⏫ {} {}",
+            "(upstream: {}) {} new {}",
             upstream.target_name,
             upstream.behind_count,
             if upstream.behind_count == 1 {
@@ -964,7 +964,7 @@ fn print_upstream_state(
         let mut upstream_summary = Vec::from([
             Span::styled(upstream.latest_commit.clone(), t.hint),
             Span::raw(format!(
-                " (upstream: {}) ⏫ {} {}",
+                " (upstream: {}) {} new {}",
                 upstream.target_name,
                 upstream.behind_count,
                 if upstream.behind_count == 1 {
