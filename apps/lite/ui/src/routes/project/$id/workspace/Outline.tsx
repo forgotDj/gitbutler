@@ -1,5 +1,6 @@
 import { useBranchCreate, useWorkspaceIntegrateUpstream } from "#ui/api/mutations.ts";
 import {
+	guiSettingsQueryOptions,
 	headInfoQueryOptions,
 	workspaceFetchQueryOptions,
 	workspaceFetchStatusQueryOptions,
@@ -141,6 +142,7 @@ export const Outline: FC<
 	};
 
 	const { data: headInfo } = useQuery(headInfoQueryOptions(projectId));
+	const { data: guiSettings } = useQuery(guiSettingsQueryOptions);
 	const { data: workspaceFetchStatus } = useQuery(workspaceFetchStatusQueryOptions(projectId));
 	const headInfoIndex = headInfo ? getHeadInfoIndex(headInfo) : undefined;
 	const commitTargetState = useAppSelector((state) =>
@@ -163,7 +165,7 @@ export const Outline: FC<
 	const { isPending: isWorkspaceIntegrateUpstreamPending, mutate: workspaceIntegrateUpstream } =
 		useWorkspaceIntegrateUpstream();
 	const { isFetching: isWorkspaceFetchFromRemotesPending, refetch: workspaceFetchFromRemotes } =
-		useQuery(workspaceFetchQueryOptions(projectId));
+		useQuery(workspaceFetchQueryOptions(projectId, guiSettings?.autoFetchFrequency));
 	const fetchFromRemotes = () => {
 		void workspaceFetchFromRemotes().then(({ error }) => {
 			if (!error) return;

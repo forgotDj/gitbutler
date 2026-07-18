@@ -1,5 +1,13 @@
+import { describe, expect, it, vi } from "vitest";
+
+// Node v22 is missing this API, causing the test suite to throw on importing the module.
+vi.hoisted(() => {
+	Object.defineProperty(Intl, "DurationFormat", {
+		value: class DurationFormat {},
+	});
+});
+
 import { formatRelativeTimeWith } from "./time.ts";
-import { describe, expect, it } from "vitest";
 
 describe("formatRelativeTime", () => {
 	const now = 1_800_000_000_000;

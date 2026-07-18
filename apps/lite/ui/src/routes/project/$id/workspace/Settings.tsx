@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react";
-import type { FC } from "react";
+import { useDeferredValue, useState, type FC } from "react";
 import styles from "./Settings.module.css";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { guiSettingsQueryOptions, listEditorsQueryOptions } from "#ui/api/queries.ts";
@@ -9,7 +9,9 @@ import { themes } from "@pierre/theming/themes";
 import type { ThemesType } from "@pierre/diffs/react";
 import { displayName } from "#ui/syntax-highlighting.ts";
 import { classes } from "#ui/components/classes.ts";
-import { defaultSettings } from "#ui/settings.ts";
+import { clampAutoFetch as clampAutofetch, defaultSettings } from "#ui/settings.ts";
+import * as ms from "ms";
+import { formatDuration } from "#ui/time.ts";
 
 const getRenderableThemes = (filter?: ThemeCollectionFilter) =>
 	themes
@@ -45,6 +47,21 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 	const lightThemes = getRenderableThemes({ colorScheme: "light" });
 	const darkThemes = getRenderableThemes({ colorScheme: "dark" });
 
+	const [autofetch, setAutofetch] = useState(
+		settings.autoFetchFrequency ?? defaultSettings.autoFetchFrequency,
+	);
+	const deferredAutofetch = useDeferredValue(autofetch);
+
+	// Throws on empty and large strings.
+	let parsedAutofetch: number;
+	try {
+		parsedAutofetch = ms.parse(deferredAutofetch);
+	} catch {
+		parsedAutofetch = Number.NaN;
+	}
+
+	const isValidAutofetch = !Number.isNaN(parsedAutofetch);
+
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
@@ -59,6 +76,35 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 						</h1>
 
 						<div className={classes("text-13", styles.inputs)}>
+							<div className={styles.input}>
+								<label htmlFor="autofetch" className={styles.label}>
+									Auto-fetch frequency
+									<div className={classes("text-12", styles.inferredValue)}>
+										{isValidAutofetch
+											? formatDuration(clampAutofetch(parsedAutofetch))
+											: "Disabled"}
+									</div>
+								</label>
+
+								<input
+									id="autofetch"
+									type="text"
+									value={autofetch}
+									onChange={(evt) => setAutofetch(evt.currentTarget.value)}
+									onBlur={(evt) =>
+										saveGUISettings({
+											autoFetchFrequency: evt.currentTarget.value,
+										})
+									}
+									onKeyDown={(evt) =>
+										evt.key === "Escape" &&
+										saveGUISettings({
+											autoFetchFrequency: evt.currentTarget.value,
+										})
+									}
+								/>
+							</div>
+
 							<div className={styles.input}>
 								<label htmlFor="editor" className={styles.label}>
 									Default editor

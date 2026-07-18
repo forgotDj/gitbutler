@@ -22,3 +22,35 @@ const stdRelativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, {
 
 export const formatRelativeTime: (timestamp: number, now?: number) => string =
 	formatRelativeTimeWith(stdRelativeTimeFormatter);
+
+/** @public */
+export const formatDurationWith =
+	(df: Intl.DurationFormat) =>
+	(ms: number): string => {
+		const sign = Math.sign(ms);
+		let msRemaining = Math.round(Math.abs(ms));
+
+		const weeks = Math.trunc(msRemaining / 604_800_000);
+		msRemaining %= 604_800_000;
+		const days = Math.trunc(msRemaining / 86_400_000);
+		msRemaining %= 86_400_000;
+		const hours = Math.trunc(msRemaining / 3_600_000);
+		msRemaining %= 3_600_000;
+		const minutes = Math.trunc(msRemaining / 60_000);
+		msRemaining %= 60_000;
+		const seconds = Math.trunc(msRemaining / 1_000);
+		msRemaining %= 1_000;
+
+		return df.format({
+			weeks: weeks * sign,
+			days: days * sign,
+			hours: hours * sign,
+			minutes: minutes * sign,
+			seconds: seconds * sign,
+			milliseconds: msRemaining * sign,
+		});
+	};
+
+const stdDurationFormatter = new Intl.DurationFormat(undefined, { style: "long" });
+
+export const formatDuration: (ms: number) => string = formatDurationWith(stdDurationFormatter);
