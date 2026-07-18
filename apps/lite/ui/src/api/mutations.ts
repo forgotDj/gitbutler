@@ -685,25 +685,6 @@ export const useWorkspaceIntegrateUpstream = () => {
 	});
 };
 
-export const useWorkspaceFetchFromRemotes = () => {
-	const toastManager = Toast.useToastManager();
-
-	return useMutation({
-		mutationFn: window.lite.workspaceFetchFromRemotes,
-		onError: (error) => {
-			// oxlint-disable-next-line no-console
-			console.error(error);
-
-			toastManager.add({
-				type: "error",
-				title: "Failed to fetch",
-				description: errorMessageForToast(error),
-				priority: "high",
-			});
-		},
-	});
-};
-
 export const useRemoveBranch = () => {
 	const toastManager = Toast.useToastManager();
 

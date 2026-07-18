@@ -31,6 +31,7 @@ export type QueryKey =
 	| "absorptionPlan"
 	| "dryRun"
 	| "guiSettings"
+	| "workspaceFetch"
 	| "workspaceFetchStatus";
 
 export const branchDetailsQueryOptions = ({ projectId, ...params }: BranchDetailsParams) =>
@@ -76,6 +77,15 @@ export const workspaceFetchStatusQueryOptions = (projectId: string) =>
 	queryOptions({
 		queryKey: ["workspaceFetchStatus" satisfies QueryKey, projectId],
 		queryFn: () => window.lite.workspaceFetchStatus(projectId),
+	});
+
+export const workspaceFetchQueryOptions = (projectId: string) =>
+	queryOptions({
+		queryKey: ["workspaceFetch" satisfies QueryKey, projectId],
+		queryFn: () => window.lite.workspaceFetchFromRemotes({ projectId, action: null }),
+		refetchInterval: 15 * 60_000,
+		refetchIntervalInBackground: true,
+		retry: false,
 	});
 
 export const getReviewQueryOptions = ({ projectId, reviewId }: GetReviewParams) =>

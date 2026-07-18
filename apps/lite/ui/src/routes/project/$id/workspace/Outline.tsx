@@ -1,13 +1,14 @@
+import { useBranchCreate, useWorkspaceIntegrateUpstream } from "#ui/api/mutations.ts";
 import {
-	useBranchCreate,
-	useWorkspaceFetchFromRemotes,
-	useWorkspaceIntegrateUpstream,
-} from "#ui/api/mutations.ts";
-import { headInfoQueryOptions, workspaceFetchStatusQueryOptions } from "#ui/api/queries.ts";
+	headInfoQueryOptions,
+	workspaceFetchQueryOptions,
+	workspaceFetchStatusQueryOptions,
+} from "#ui/api/queries.ts";
 import { getHeadInfoIndex } from "#ui/api/ref-info.ts";
 import { stackBottomRelativeTo } from "#ui/api/stack.ts";
 import { getButtonClassName } from "#ui/components/Button.tsx";
 import { classes } from "#ui/components/classes.ts";
+import { errorMessageForToast } from "#ui/errors.ts";
 import { Icon } from "#ui/components/Icon.tsx";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
 import { globalHotkeys, workspaceHotkeys } from "#ui/hotkeys.ts";
@@ -17,7 +18,7 @@ import { focusSelectionScope, type SelectionScope } from "#ui/selection-scopes.t
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { formatRelativeTime } from "#ui/time.ts";
 import type { NavigationIndex } from "#ui/workspace/navigation-index.ts";
-import { Button, Toggle, ToggleGroup, Tooltip } from "@base-ui/react";
+import { Button, Toast, Toggle, ToggleGroup, Tooltip } from "@base-ui/react";
 import { BottomUpdate, ProjectForFrontend } from "@gitbutler/but-sdk";
 import { useIsFetching, useIsMutating, useQuery } from "@tanstack/react-query";
 import { useHotkeys } from "@tanstack/react-hotkeys";
@@ -96,6 +97,7 @@ export const Outline: FC<
 	} & ComponentProps<"div">
 > = ({ absorptionTargetCommitIds, navigationIndex, project, projectId, ...restProps }) => {
 	const dispatch = useAppDispatch();
+	const toastManager = Toast.useToastManager();
 	const isDefaultMode = useAppSelector(
 		(state) => projectSlice.selectors.selectOutlineModeState(state, projectId)._tag === "Default",
 	);
@@ -160,10 +162,21 @@ export const Outline: FC<
 		}) ?? [];
 	const { isPending: isWorkspaceIntegrateUpstreamPending, mutate: workspaceIntegrateUpstream } =
 		useWorkspaceIntegrateUpstream();
-	const { isPending: isWorkspaceFetchFromRemotesPending, mutate: workspaceFetchFromRemotes } =
-		useWorkspaceFetchFromRemotes();
+	const { isFetching: isWorkspaceFetchFromRemotesPending, refetch: workspaceFetchFromRemotes } =
+		useQuery(workspaceFetchQueryOptions(projectId));
 	const fetchFromRemotes = () => {
-		workspaceFetchFromRemotes({ projectId, action: null });
+		void workspaceFetchFromRemotes().then(({ error }) => {
+			if (!error) return;
+
+			// oxlint-disable-next-line no-console
+			console.error(error);
+			toastManager.add({
+				type: "error",
+				title: "Failed to fetch",
+				description: errorMessageForToast(error),
+				priority: "high",
+			});
+		});
 	};
 	const updateWorkspace = () => {
 		workspaceIntegrateUpstream({ projectId, updates: rebaseUpdates, dryRun: false });
