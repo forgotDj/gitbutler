@@ -97,7 +97,7 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 										})
 									}
 									onKeyDown={(evt) =>
-										evt.key === "Escape" &&
+										(evt.key === "Enter" || evt.key === "Escape") &&
 										saveGUISettings({
 											autoFetchFrequency: evt.currentTarget.value,
 										})
@@ -185,7 +185,7 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 										})
 									}
 									onKeyDown={(evt) =>
-										evt.key === "Escape" &&
+										(evt.key === "Enter" || evt.key === "Escape") &&
 										saveGUISettings({
 											diffFontFamily: evt.currentTarget.value,
 										})
@@ -210,7 +210,7 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 										})
 									}
 									onKeyDown={(evt) =>
-										evt.key === "Escape" &&
+										(evt.key === "Enter" || evt.key === "Escape") &&
 										saveGUISettings({
 											diffFontSize: clamp(Number(evt.currentTarget.value), 1, 32),
 										})
@@ -235,7 +235,7 @@ export const Settings: FC<Props> = ({ open, onOpenChange }) => {
 										})
 									}
 									onKeyDown={(evt) =>
-										evt.key === "Escape" &&
+										(evt.key === "Enter" || evt.key === "Escape") &&
 										saveGUISettings({
 											diffTabSize: clamp(Number(evt.currentTarget.value), 1, 8),
 										})
