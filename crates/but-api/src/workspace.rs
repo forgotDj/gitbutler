@@ -13,6 +13,7 @@ use but_core::{
     DryRun, RefMetadata, extract_remote_name_and_short_name, is_workspace_ref_name,
     sync::{RepoExclusive, RepoShared},
 };
+use but_error::AnyhowContextExt as _;
 use but_forge::ForgeReview;
 use but_oplog::legacy::{OperationKind, SnapshotDetails};
 use but_rebase::graph_rebase::mutate::RelativeTo;
@@ -86,19 +87,39 @@ pub fn workspace_fetch_from_remotes(
         let _fetch_guard = repo_fetch_lock
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let errors = remotes
+        let failures = remotes
             .iter()
             .filter_map(|remote| {
                 gitbutler_git::fetch_with_askpass(&repo_path, remote, askpass_action.clone())
                     .err()
-                    .map(|err| format!("{remote}: {err}"))
+                    .map(|err| (remote, err))
             })
             .collect::<Vec<_>>();
 
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(anyhow::anyhow!(errors.join("\n")))
+        // Keep the failure's own error context (e.g. the `ProjectGitAuth` code and its
+        // user-facing message) intact whenever possible: return a single failure as-is, and
+        // reapply the first failure's code when several failures collapse into one message.
+        match failures.len() {
+            0 => Ok(()),
+            1 => {
+                let (remote, err) = failures.into_iter().next().expect("length checked above");
+                Err(err.context(format!("fetching remote `{remote}` failed")))
+            }
+            _ => {
+                let code = failures
+                    .iter()
+                    .find_map(|(_, err)| err.custom_context().map(|ctx| ctx.code));
+                let joined = failures
+                    .iter()
+                    .map(|(remote, err)| format!("{remote}: {err}"))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                let err = anyhow::anyhow!(joined);
+                Err(match code {
+                    Some(code) => err.context(code),
+                    None => err,
+                })
+            }
         }
     })();
 
