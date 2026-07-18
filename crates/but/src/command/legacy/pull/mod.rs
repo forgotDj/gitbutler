@@ -496,11 +496,28 @@ async fn handle_pull(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Resu
                 // Set undo command
                 pull_result.undo_command = Some("but undo".to_string());
 
+                // The integration ran on its own thread-local context, so this
+                // context's cached repository and workspace still predate the
+                // rebase. Reload before rendering, or the conflicted commits
+                // fall back to sha refs that don't match what status shows.
+                if has_conflicts {
+                    let mut guard = ctx.exclusive_worktree_access();
+                    if let Err(err) =
+                        ctx.reload_repo_and_invalidate_workspace(guard.write_permission())
+                    {
+                        tracing::warn!(?err, "could not reload the workspace after integration");
+                    }
+                }
+
                 // Look up the conflicted commits so the output can name them
                 // directly instead of sending callers through `but status`.
                 let conflicted_commits = if has_conflicts {
-                    crate::command::legacy::resolve::find_conflicted_commits(ctx)
-                        .unwrap_or_default()
+                    crate::command::legacy::resolve::find_conflicted_commits(ctx).unwrap_or_else(
+                        |err| {
+                            tracing::warn!(?err, "could not look up conflicted commits");
+                            Default::default()
+                        },
+                    )
                 } else {
                     Default::default()
                 };

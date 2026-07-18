@@ -553,7 +553,7 @@ Summary
 ────────
   A - rebased
   B - conflicted
-      d5fa75c [conflict] bottom change
+      rou [conflict] bottom change
 
 To resolve conflicts:
   1. Run `but resolve <commit>` on a conflicted commit listed above — oldest first (they are listed bottom-up)
@@ -620,10 +620,10 @@ Rebase resulted in some conflicts
 Summary
 ────────
   A - conflicted
-      7ac1f5a [conflict] bottom change
-      09bcfd9 [conflict] top change
+      trk [conflict] bottom change
+      wmr [conflict] top change
   B - conflicted
-      7ac1f5a [conflict] bottom change
+      trk [conflict] bottom change
 
 To resolve conflicts:
   1. Run `but resolve <commit>` on a conflicted commit listed above — oldest first (they are listed bottom-up)
