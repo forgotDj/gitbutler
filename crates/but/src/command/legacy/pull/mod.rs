@@ -52,6 +52,15 @@ struct ConflictInfo {
     branch: String,
     files: Vec<String>,
     upstream_commit: Option<String>,
+    #[serde(default)]
+    commits: Vec<ConflictedCommitInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ConflictedCommitInfo {
+    id: String,
+    message: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,7 +73,7 @@ struct PullSummary {
 }
 
 pub async fn handle(
-    ctx: &Context,
+    ctx: &mut Context,
     out: &mut OutputChannel,
     check_only: bool,
 ) -> anyhow::Result<()> {
@@ -220,7 +229,7 @@ async fn handle_check(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<
     Ok(())
 }
 
-async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<()> {
+async fn handle_pull(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Result<()> {
     let t = theme::get();
     let mut pull_result = PullResult {
         status: String::new(),
@@ -468,12 +477,33 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                 // Set undo command
                 pull_result.undo_command = Some("but undo".to_string());
 
+                // Look up the conflicted commits so the output can name them
+                // directly instead of sending callers through `but status`.
+                let conflicted_commits = if has_conflicts {
+                    crate::command::legacy::resolve::find_conflicted_commits(ctx)
+                        .unwrap_or_default()
+                } else {
+                    Default::default()
+                };
+
                 // Populate conflicts info
                 for branch_name in &conflicted_rebases {
                     pull_result.conflicts.push(ConflictInfo {
                         branch: branch_name.clone(),
                         files: vec![], // TODO: Get actual conflicted files
                         upstream_commit: None,
+                        commits: conflicted_commits
+                            .get(branch_name)
+                            .map(|commits| {
+                                commits
+                                    .iter()
+                                    .map(|commit| ConflictedCommitInfo {
+                                        id: commit.commit_short_id.clone(),
+                                        message: commit.commit_message.clone(),
+                                    })
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
                     });
                 }
 
@@ -534,6 +564,14 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                             t.local_branch.paint(branch),
                             t.error.paint("conflicted")
                         )?;
+                        for commit in conflicted_commits.get(branch).into_iter().flatten() {
+                            writeln!(
+                                out,
+                                "      {} {}",
+                                t.change_id.paint(&commit.commit_short_id),
+                                t.hint.paint(&commit.commit_message)
+                            )?;
+                        }
                     }
 
                     // Conflict resolution instructions
@@ -542,18 +580,13 @@ async fn handle_pull(ctx: &Context, out: &mut OutputChannel) -> anyhow::Result<(
                         writeln!(out, "{}", t.important.paint("To resolve conflicts:"))?;
                         writeln!(
                             out,
-                            "  1. Run {} to see conflicted commits",
-                            t.command_suggestion.paint("`but status`")
-                        )?;
-                        writeln!(
-                            out,
-                            "  2. Run {} to enter resolution mode on any conflicted commit",
+                            "  1. Run {} on a conflicted commit listed above",
                             t.command_suggestion.paint("`but resolve <commit>`")
                         )?;
-                        writeln!(out, "  3. Edit files to resolve the conflicts")?;
+                        writeln!(out, "  2. Edit files to resolve the conflicts")?;
                         writeln!(
                             out,
-                            "  4. Run {} to finalize the resolution",
+                            "  3. Run {} to finalize the resolution",
                             t.command_suggestion.paint("`but resolve finish`")
                         )?;
                     }

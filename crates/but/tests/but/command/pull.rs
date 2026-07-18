@@ -549,12 +549,12 @@ Summary
 ────────
   A - rebased
   B - conflicted
+      d5fa75c [conflict] bottom change
 
 To resolve conflicts:
-  1. Run `but status` to see conflicted commits
-  2. Run `but resolve <commit>` to enter resolution mode on any conflicted commit
-  3. Edit files to resolve the conflicts
-  4. Run `but resolve finish` to finalize the resolution
+  1. Run `but resolve <commit>` on a conflicted commit listed above
+  2. Edit files to resolve the conflicts
+  3. Run `but resolve finish` to finalize the resolution
 
 To undo this operation:
   Run `but undo`
@@ -616,13 +616,15 @@ Rebase resulted in some conflicts
 Summary
 ────────
   A - conflicted
+      7ac1f5a [conflict] bottom change
+      09bcfd9 [conflict] top change
   B - conflicted
+      7ac1f5a [conflict] bottom change
 
 To resolve conflicts:
-  1. Run `but status` to see conflicted commits
-  2. Run `but resolve <commit>` to enter resolution mode on any conflicted commit
-  3. Edit files to resolve the conflicts
-  4. Run `but resolve finish` to finalize the resolution
+  1. Run `but resolve <commit>` on a conflicted commit listed above
+  2. Edit files to resolve the conflicts
+  3. Run `but resolve finish` to finalize the resolution
 
 To undo this operation:
   Run `but undo`
