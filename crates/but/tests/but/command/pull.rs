@@ -29,7 +29,6 @@ fn pull_prunes_integrated_stack_and_keeps_remaining_stack_parent() -> anyhow::Re
 ├╯ 26ecc90 (common base) 2000-01-02 add upstream
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
-Hint: run `but help` for all commands
 
 "#]]);
 
@@ -259,7 +258,6 @@ fn pull_check_reports_conflicted_branches_as_rebasable() -> anyhow::Result<()> {
 ├╯ efc9211 (common base) 2000-01-02 base
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
-Hint: run `but help` for all commands
 
 "#]]);
 
@@ -322,7 +320,6 @@ fn pull_reparents_workspace_to_target_after_all_stacks_integrate() -> anyhow::Re
 ├╯ 7e5d4e1 (common base) 2000-01-02 add upstream
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
-Hint: run `but help` for all commands
 
 "#]]);
 
@@ -473,7 +470,6 @@ fn pull_json_reports_branch_rebase_conflicts_as_successful_integration() -> anyh
 ├╯ 7f73771 (common base) 2000-01-02 upstream change
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
-Hint: run `but help` for all commands
 
 "#]]);
 
@@ -541,7 +537,6 @@ fn pull_reports_conflict_in_lower_branch_of_stack() -> anyhow::Result<()> {
 ├╯ 7f73771 (common base) 2000-01-02 upstream change
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
-Hint: run `but help` for all commands
 
 "#]]);
 
@@ -610,7 +605,6 @@ fn pull_reports_conflicts_in_multiple_branches_of_stack() -> anyhow::Result<()> 
 ├╯ [..] (common base) 2000-01-02 upstream change
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
-Hint: run `but help` for all commands
 
 "#]]);
 

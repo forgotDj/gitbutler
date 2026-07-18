@@ -679,12 +679,14 @@ fn print_hint(
 
     // Determine what hint to show based on workspace state
     let has_uncommitted_files = !status_ctx.worktree_changes.is_empty();
+    let mut shown_situational_hint = false;
 
     if should_explain_rewritten_commit_marker(status_ctx) {
         output.hint(Vec::from([Span::styled(
             "Hint: ◐ means rewritten locally vs upstream.",
             crate::theme::get().hint,
         )]))?;
+        shown_situational_hint = true;
     }
 
     if status_ctx.is_agent_invocation {
@@ -706,24 +708,35 @@ fn print_hint(
             ),
             crate::theme::get().hint,
         )]))?;
+        shown_situational_hint = true;
     }
 
     let hint_text = if not_on_workspace {
-        "Hint: run `but setup` to switch back to GitButler managed mode."
+        Some("Hint: run `but setup` to switch back to GitButler managed mode.")
     } else if has_merged_upstream_branch {
-        "Hint: branches marked `(merged upstream)` have landed; run `but pull` to remove them, or start new work on another branch"
+        Some(
+            "Hint: branches marked `(merged upstream)` have landed; run `but pull` to remove them, or start new work on another branch",
+        )
     } else if !status_ctx.has_branches {
-        "Hint: run `but branch new` to create a new branch to work on"
+        Some("Hint: run `but branch new` to create a new branch to work on")
     } else if has_uncommitted_files {
-        "Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m \"message\" --changes <id>` to commit them"
+        Some(
+            "Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m \"message\" --changes <id>` to commit them",
+        )
+    } else if shown_situational_hint {
+        // The generic catch-all adds nothing when a situational hint is
+        // already on screen.
+        None
     } else {
-        "Hint: run `but help` for all commands"
+        Some("Hint: run `but help` for all commands")
     };
 
-    output.hint(Vec::from([Span::styled(
-        hint_text,
-        crate::theme::get().hint,
-    )]))?;
+    if let Some(hint_text) = hint_text {
+        output.hint(Vec::from([Span::styled(
+            hint_text,
+            crate::theme::get().hint,
+        )]))?;
+    }
 
     Ok(())
 }

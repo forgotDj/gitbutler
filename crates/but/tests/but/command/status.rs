@@ -585,7 +585,6 @@ fn status_upstream_and_merge_base_messages_truncate_when_unpaged() {
 ├╯ 9fd740d (common base) 2000-01-02 add merge-base-message-that-is-intentio…
 
 Hint: origin/main moved ahead; run `but pull` to update the workspace
-Hint: run `but help` for all commands
 
 "#]]);
 }
@@ -1180,7 +1179,6 @@ This notice repeats until the skill is installed. If it still appears after inst
 
 Hint: ◐ means rewritten locally vs upstream.
 Hint: the first token on each line is the ID to use in commands.
-Hint: run `but help` for all commands
 
 "#]]);
 
@@ -1199,7 +1197,6 @@ Hint: run `but help` for all commands
 
 Hint: ◐ means rewritten locally vs upstream.
 Hint: the first token on each line is the ID to use in commands.
-Hint: run `but help` for all commands
 
 "#]]);
 }
