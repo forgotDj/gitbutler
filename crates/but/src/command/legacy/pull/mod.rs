@@ -2,6 +2,7 @@ mod json;
 
 use std::fmt::Write;
 
+use anyhow::bail;
 use bstr::ByteSlice;
 use but_core::{DryRun, RepositoryExt};
 use but_ctx::Context;
@@ -373,14 +374,32 @@ async fn handle_pull(ctx: &mut Context, out: &mut OutputChannel) -> anyhow::Resu
             writeln!(
                 out,
                 "{}",
-                t.attention
-                    .paint("Please commit or stash them and try again.")
+                t.important
+                    .paint("To update anyway, park them on a temporary commit first:")
+            )?;
+            writeln!(
+                out,
+                "  1. Run {} with the files listed above ({} shows their IDs)",
+                t.command_suggestion
+                    .paint("`but commit <branch> --changes <file-id...> -m \"wip\"`"),
+                t.command_suggestion.paint("`but diff`")
+            )?;
+            writeln!(
+                out,
+                "  2. Run {} again; the parked commit may come back conflicted, ready for {}",
+                t.command_suggestion.paint("`but pull`"),
+                t.command_suggestion.paint("`but resolve`")
+            )?;
+            writeln!(
+                out,
+                "  3. Run {} afterwards to make those changes uncommitted again",
+                t.command_suggestion.paint("`but uncommit <commit>`")
             )?;
         }
         if let Some(out) = out.for_json() {
             out.write_value(&pull_result)?;
         }
-        None
+        bail!("nothing was updated; uncommitted changes conflict with the incoming updates");
     } else {
         pull_result.status = "updating".to_string();
 

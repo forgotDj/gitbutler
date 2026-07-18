@@ -692,14 +692,17 @@ fn pull_reports_worktree_conflict_paths() -> anyhow::Result<()> {
     // to `shared.txt` on the resulting workspace head.
     env.file("shared.txt", "dirty local\nmore local work\n");
 
-    env.but("pull").assert().success().stdout_eq(str![[r#"
+    env.but("pull").assert().failure().stdout_eq(str![[r#"
 
 Found 1 upstream commits on origin/main
    [..] upstream change
 
 There are uncommitted changes in the worktree that conflict with the updates:
   shared.txt
-Please commit or stash them and try again.
+To update anyway, park them on a temporary commit first:
+  1. Run `but commit <branch> --changes <file-id...> -m "wip"` with the files listed above (`but diff` shows their IDs)
+  2. Run `but pull` again; the parked commit may come back conflicted, ready for `but resolve`
+  3. Run `but uncommit <commit>` afterwards to make those changes uncommitted again
 
 "#]]);
 
