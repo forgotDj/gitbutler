@@ -223,8 +223,7 @@ impl App {
                         return;
                     };
                     if details_mode.full_screen {
-                        messages
-                            .push(Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit));
+                        messages.push(Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit));
                     }
                     messages.extend([
                         Message::UnfocusDetails,
@@ -233,8 +232,7 @@ impl App {
                 }
                 MarksRef::Hunks { .. } => {
                     if details_mode.full_screen {
-                        messages
-                            .push(Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit));
+                        messages.push(Message::DetailsLayout(DetailsLayoutMessage::SwitchToSplit));
                     }
                     messages.extend([
                         Message::UnfocusDetails,
@@ -273,6 +271,8 @@ impl App {
             .update_and_push_leave_normal_mode(&mut self.backstack, |mode| {
                 *mode = Mode::Commit(commit_mode);
             });
+
+        self.ensure_cursor_is_on_selectable_line();
     }
 
     fn handle_commit_start_marks(&mut self) {
@@ -302,6 +302,8 @@ impl App {
                     message_composer: CommitMessageComposer::default(),
                 });
             });
+
+        self.ensure_cursor_is_on_selectable_line();
     }
 
     fn handle_commit_confirm<T>(

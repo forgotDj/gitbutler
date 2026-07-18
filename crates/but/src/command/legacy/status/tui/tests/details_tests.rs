@@ -1552,7 +1552,6 @@ fn committing_selection_from_split_details() {
     tui.input('c').assert_rendered_term_svg_eq(file![
         "snapshots/committing_selection_from_split_details_002.svg"
     ]);
-    tui.input('j');
     tui.input('e');
     tui.input(KeyCode::Enter).assert_rendered_term_svg_eq(file![
         "snapshots/committing_selection_from_split_details_003.svg"
@@ -1576,7 +1575,6 @@ fn committing_selection_from_full_screen_details() {
     tui.input('c').assert_rendered_term_svg_eq(file![
         "snapshots/committing_selection_from_full_screen_details_002.svg"
     ]);
-    tui.input('j');
     tui.input('e');
     tui.input(KeyCode::Enter).assert_rendered_term_svg_eq(file![
         "snapshots/committing_selection_from_full_screen_details_003.svg"
