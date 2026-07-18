@@ -365,7 +365,7 @@ but resolve cancel --force
 1. `but resolve <commit-id>` — enter resolution mode using the commit ID from the `but pull` summary (or `but status`); the conflict regions are printed with line numbers
 2. Edit the conflicted files — remove `<<<<<<<`, `=======`, `>>>>>>>` markers and keep the correct content (`but resolve status` re-lists what remains when several files are conflicted)
 3. `but resolve finish` — finalize and return to normal mode; the output reports leftover markers and the surviving uncommitted changes, so no follow-up status is needed
-4. If multiple commits are conflicted, repeat steps 1-3 for each one
+4. If multiple commits are conflicted, repeat steps 1-3 for each one, oldest commit first — finishing a lower commit rebases the ones above it
 
 **Important:** Never use `git add`, `git commit`, or other git write commands during conflict resolution. Only use `but resolve` commands and edit files directly.
 

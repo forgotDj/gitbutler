@@ -261,8 +261,8 @@ When `but pull` causes conflicts, affected commits are marked as conflicted.
 
 ### Resolution Workflow
 
-1. **Identify:** the `but pull` summary lists each conflicted commit's ID (`but status` also shows them)
-2. **Enter mode:** `but resolve <commit-id>` — it prints the conflict regions with line numbers
+1. **Identify:** the `but pull` summary lists each conflicted commit's ID, oldest first (`but status` also shows them)
+2. **Enter mode:** `but resolve <commit-id>` — it prints the conflict regions with line numbers. With several conflicted commits, resolve the oldest first: finishing a lower commit rebases the ones above it
 3. **Fix conflicts:** Edit files, remove conflict markers (`but resolve status` re-lists what remains when several files are conflicted)
 4. **Finalize:** `but resolve finish` or `but resolve cancel` — finish reports leftover markers and the surviving uncommitted changes, so no follow-up check is needed
 

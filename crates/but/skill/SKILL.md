@@ -104,7 +104,7 @@ For "get latest from main", "update/sync this workspace", or "pull main":
 
 1. `but pull --check`
 2. If clean, `but pull`
-3. If commits come back conflicted, resolve each one: `but resolve <commit>` (the IDs are in the pull output), edit the files, then `but resolve finish`
+3. If commits come back conflicted, resolve each one oldest-first (the pull output lists them in that order): `but resolve <commit>`, edit the files, then `but resolve finish`. Finishing a lower commit rebases the ones above it, so always work bottom-up.
 
 `but pull` updates applied branches onto the latest target branch (usually
 `main`) and carries uncommitted changes along. Rebasing a branch onto the
