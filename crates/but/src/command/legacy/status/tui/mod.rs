@@ -279,7 +279,6 @@ where
 
     // handle messages
     let mut did_reload = false;
-    messages.append(&mut app.delayed_messages);
     loop {
         if messages.is_empty() {
             break;
@@ -612,7 +611,6 @@ enum Message {
     CopyToClipboard(String),
     #[expect(clippy::enum_variant_names)]
     RegisterOutOfBandMessage(Receiver<Message>),
-    WithOneFrameDelay(Box<Message>),
     AndThen {
         lhs: Box<Message>,
         rhs: Box<Message>,
@@ -628,11 +626,6 @@ fn message_is_send() {
 }
 
 impl Message {
-    /// Delay a message so it wont be handled until the next frame.
-    pub fn with_one_frame_delay(self) -> Self {
-        Self::WithOneFrameDelay(Box::new(self))
-    }
-
     /// Send another message only if handling the first succeeds.
     #[expect(dead_code)]
     pub fn and_then(self, other: Self) -> Self {
@@ -743,7 +736,6 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
     fn is_repo_mutation(m: &Message) -> bool {
         match m {
             Message::AndThen { lhs, rhs } => is_repo_mutation(lhs) || is_repo_mutation(rhs),
-            Message::WithOneFrameDelay(m) => is_repo_mutation(m),
             Message::Reload(_, cause) => match cause {
                 ReloadCause::Mutation
                 | ReloadCause::Watcher { .. }
@@ -765,6 +757,7 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
             Message::Rub(message) => match message {
                 RubMessage::Confirm => true,
                 RubMessage::Start
+                | RubMessage::StartWithSource(..)
                 | RubMessage::StartReverse
                 | RubMessage::UseTargetMessage
                 | RubMessage::UseSourceMessage => false,

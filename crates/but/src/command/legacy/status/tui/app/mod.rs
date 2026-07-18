@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     cell::Cell,
     sync::{Arc, mpsc::Receiver},
+    time::Instant,
 };
 
 use bstr::ByteSlice;
@@ -96,7 +97,6 @@ pub struct App {
     pub details: Details,
     pub is_details_visible: bool,
     pub launch_options: TuiLaunchOptions,
-    pub delayed_messages: Vec<Message>,
     pub incoming_out_of_band_messages: Vec<Receiver<Message>>,
     pub fps: FpsCounter,
     pub to_be_discarded: Vec<Arc<CliId>>,
@@ -162,7 +162,6 @@ impl App {
             updates: 0,
             app_key_binds,
             highlight: Default::default(),
-            delayed_messages: Default::default(),
             incoming_out_of_band_messages,
             to_be_discarded: Default::default(),
             modal: Default::default(),
@@ -211,9 +210,12 @@ impl App {
         T: TerminalGuard,
         anyhow::Error: From<<T::Backend as Backend>::Error>,
     {
+        let start = Instant::now();
+        let m = format!("{msg:?}");
         if let Err(err) = self.try_handle_message(ctx, out, mode, terminal_guard, messages, msg) {
             messages.push(Message::ShowError(err));
         }
+        tracing::debug!("try_handle_message ({}): {:?}", m, start.elapsed());
     }
 
     fn try_handle_message<T>(
@@ -458,9 +460,6 @@ impl App {
             }
             Message::RegisterOutOfBandMessage(rx) => {
                 self.incoming_out_of_band_messages.push(rx);
-            }
-            Message::WithOneFrameDelay(msg) => {
-                self.delayed_messages.push(*msg);
             }
             Message::Discard => {
                 self.handle_discard(ctx, messages)?;

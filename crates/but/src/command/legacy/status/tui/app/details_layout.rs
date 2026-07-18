@@ -110,12 +110,7 @@ impl App {
             messages.push(Message::DetailsLayout(
                 DetailsLayoutMessage::ToggleVisibility,
             ));
-
-            // We can't select the first section on the same frame that we show the detail view.
-            // The incremental diff rendering introduces a one frame delay before the first section
-            // is shown.
-            messages
-                .push(Message::Details(DetailsMessage::SelectFirstSection).with_one_frame_delay());
+            messages.push(Message::Details(DetailsMessage::SelectFirstSection));
 
             self.backstack.push_open_details_view(full_screen);
         }

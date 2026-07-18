@@ -67,8 +67,10 @@ pub fn default_key_binds() -> KeyBinds {
                 builder.details_scroll_up().register();
                 builder.details_scroll_down().register();
 
-                builder.details_mark().register();
+                builder.rub().register();
                 builder.details_discard().register();
+
+                builder.details_mark().register();
 
                 builder.details_jump_up().register();
                 builder.details_jump_down().register();

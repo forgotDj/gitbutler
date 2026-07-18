@@ -169,9 +169,9 @@ impl Details {
         self.cache.num_lines
     }
 
-    pub fn selected_section_cli_id(&self) -> Option<&CliId> {
+    pub fn selected_section_cli_id(&self) -> Option<&Arc<CliId>> {
         let index = self.selected_section.get().index()?;
-        self.sections.get(index)?.cli_id.as_deref()
+        self.sections.get(index)?.cli_id.as_ref()
     }
 
     pub fn on_hidden(&mut self) {
@@ -766,13 +766,19 @@ impl Details {
                     });
             }
             DetailsMessage::SelectFirstSection => {
-                self.selected_section
-                    .set(match self.selected_section.get() {
-                        SelectedSection::None => SelectedSection::Selected(0),
-                        SelectedSection::Selected(n) | SelectedSection::Deselected(n) => {
-                            SelectedSection::Selected(n)
-                        }
-                    });
+                if self.sections.is_empty() {
+                    self.pending_section_selection
+                        .set(PendingSectionSelection::First);
+                } else {
+                    self.clear_pending_first_section_selection();
+                    self.selected_section
+                        .set(match self.selected_section.get() {
+                            SelectedSection::None => SelectedSection::Selected(0),
+                            SelectedSection::Selected(n) | SelectedSection::Deselected(n) => {
+                                SelectedSection::Selected(n)
+                            }
+                        });
+                }
             }
             DetailsMessage::GotoTop => {
                 self.scroll.goto_top();
