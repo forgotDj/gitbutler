@@ -102,13 +102,15 @@ but <mutation> ...
 
 For "get latest from main", "update/sync this workspace", or "pull main":
 
-1. `but status -fv`
-2. `but pull --check`
-3. If clean, `but pull`
-4. `but status -fv`
+1. `but pull --check`
+2. If clean, `but pull`
+3. If commits come back conflicted, resolve each one: `but resolve <commit>` (the IDs are in the pull output), edit the files, then `but resolve finish`
 
 `but pull` updates applied branches onto the latest target branch (usually
-`main`). Do not use raw `git pull` or `git rebase`.
+`main`) and carries uncommitted changes along. Rebasing a branch onto the
+latest `main` IS `but pull` — it is never `move`, `config target`, `unapply`,
+or raw `git pull`/`git rebase`. The pull output already reports the resulting
+state.
 
 ### Commit selected files or hunks
 
