@@ -27,7 +27,10 @@ use nonempty::NonEmpty;
 use crate::{
     CliError, CliId, IdMap, bad_input,
     command::legacy::rub::assign::stack_id_to_branch_name,
-    id::parser::{IdResolutionError, parse_sources_with_disambiguation, prompt_for_disambiguation},
+    id::parser::{
+        IdResolutionError, parse_sources_with_disambiguation,
+        parse_uncommitted_sources_with_disambiguation, prompt_for_disambiguation,
+    },
     utils::{OutputChannel, diff_specs::DiffSpecBuilder, shorten_object_id},
 };
 
@@ -1664,7 +1667,7 @@ pub(crate) fn handle_amend(
     let id_map = IdMap::new_from_context(ctx, None, guard.read_permission())?;
     let mut files = Vec::new();
     for file_str in file_strs {
-        files.extend(parse_sources_with_disambiguation(
+        files.extend(parse_uncommitted_sources_with_disambiguation(
             ctx, &id_map, file_str, out,
         )?);
     }

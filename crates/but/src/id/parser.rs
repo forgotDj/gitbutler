@@ -21,6 +21,53 @@ impl std::fmt::Display for IdResolutionError {
 
 impl std::error::Error for IdResolutionError {}
 
+/// Which namespace source selectors resolve in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SourceScope {
+    /// Match commits, branches, stacks, and uncommitted files alike.
+    Any,
+    /// Match only uncommitted files and hunks, so commit and branch IDs
+    /// minted after a file ID was printed cannot shadow it.
+    UncommittedOnly,
+}
+
+fn parse_scoped(
+    ctx: &mut Context,
+    id_map: &IdMap,
+    part: &str,
+    scope: SourceScope,
+) -> anyhow::Result<Vec<CliId>> {
+    match scope {
+        SourceScope::Any => id_map.parse_using_context(part, ctx),
+        SourceScope::UncommittedOnly => {
+            let scoped = id_map.parse_uncommitted_using_context(part, ctx)?;
+            if !scoped.is_empty() {
+                return Ok(scoped);
+            }
+            // Nothing uncommitted matches directly. Container selectors the
+            // scoped parser does not model may still resolve to uncommitted
+            // files in the full namespace; anything else gets a targeted error.
+            let full = id_map.parse_using_context(part, ctx)?;
+            if !full.is_empty()
+                && full
+                    .iter()
+                    .all(|id| matches!(id, CliId::UncommittedHunkOrFile(_)))
+            {
+                return Ok(full);
+            }
+            if let Some(other) = full.first() {
+                return Err(IdResolutionError::new(format!(
+                    "'{}' is {} but must be an uncommitted file or hunk",
+                    part,
+                    other.kind_for_humans()
+                ))
+                .into());
+            }
+            Ok(vec![])
+        }
+    }
+}
+
 pub(crate) fn parse_sources(
     ctx: &mut Context,
     id_map: &IdMap,
@@ -152,9 +199,31 @@ pub fn parse_sources_with_disambiguation(
     source: &str,
     out: &mut OutputChannel,
 ) -> anyhow::Result<Vec<CliId>> {
+    parse_sources_with_disambiguation_scoped(ctx, id_map, source, out, SourceScope::Any)
+}
+
+/// Like [parse_sources_with_disambiguation], but selectors resolve only
+/// against uncommitted files and hunks. Use for arguments that must name
+/// uncommitted changes, such as `--changes`.
+pub(crate) fn parse_uncommitted_sources_with_disambiguation(
+    ctx: &mut Context,
+    id_map: &IdMap,
+    source: &str,
+    out: &mut OutputChannel,
+) -> anyhow::Result<Vec<CliId>> {
+    parse_sources_with_disambiguation_scoped(ctx, id_map, source, out, SourceScope::UncommittedOnly)
+}
+
+fn parse_sources_with_disambiguation_scoped(
+    ctx: &mut Context,
+    id_map: &IdMap,
+    source: &str,
+    out: &mut OutputChannel,
+    scope: SourceScope,
+) -> anyhow::Result<Vec<CliId>> {
     // Check if it's a list (contains ',')
     if source.contains(',') {
-        return parse_list_with_disambiguation(ctx, id_map, source, out);
+        return parse_list_with_disambiguation(ctx, id_map, source, out, scope);
     }
 
     // Check if it's a valid range (e.g., "g0-h2" where both sides are uncommitted files).
@@ -167,7 +236,7 @@ pub fn parse_sources_with_disambiguation(
     }
 
     // Single source (including strings with dashes that aren't valid ranges)
-    let source_result = id_map.parse_using_context(source, ctx)?;
+    let source_result = parse_scoped(ctx, id_map, source, scope)?;
     if source_result.is_empty() {
         return Err(IdResolutionError::new(format!(
             "Source '{source}' not found. If you just performed a Git operation (squash, rebase, etc.), try running 'but status' to refresh the current state."
@@ -190,6 +259,7 @@ fn parse_list_with_disambiguation(
     id_map: &IdMap,
     source: &str,
     out: &mut OutputChannel,
+    scope: SourceScope,
 ) -> anyhow::Result<Vec<CliId>> {
     let parts: Vec<&str> = source.split(',').collect();
     let mut result = Vec::new();
@@ -202,7 +272,7 @@ fn parse_list_with_disambiguation(
             continue;
         }
 
-        let matches = id_map.parse_using_context(part, ctx)?;
+        let matches = parse_scoped(ctx, id_map, part, scope)?;
         if matches.is_empty() {
             return Err(IdResolutionError::new(format!(
                 "Item '{part}' in list not found. If you just performed a Git operation (squash, rebase, etc.), try running 'but status' to refresh the current state."
