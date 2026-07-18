@@ -1513,13 +1513,17 @@ pub trait ModeRender {
     fn render_hot_bar_content(&self, app: &App, area: Rect, frame: &mut Frame) {
         let mode = ModeDiscriminant::from(&*app.mode);
         let key_binds = app.active_key_binds();
+        let selection = app
+            .cursor
+            .selected_line(&app.status_lines)
+            .and_then(|line| Some(&**line.data.cli_id()?));
         let always_show_count = key_binds
-            .iter_key_binds_available_in_mode(mode)
+            .iter_key_binds_available_in_mode(mode, selection)
             .filter(|key_bind| !key_bind.hide_from_hotbar())
             .filter(|key_bind| key_bind.always_show_in_hot_bar())
             .count();
         let always_show_width_without_separators = key_binds
-            .iter_key_binds_available_in_mode(mode)
+            .iter_key_binds_available_in_mode(mode, selection)
             .filter(|key_bind| !key_bind.hide_from_hotbar())
             .filter(|key_bind| key_bind.always_show_in_hot_bar())
             .map(|key_bind| hot_bar_item_width(key_bind, false))
@@ -1539,7 +1543,7 @@ pub trait ModeRender {
         let mut line = RenderSingleLineSpans::new(frame, area);
 
         for key_bind in key_binds
-            .iter_key_binds_available_in_mode(mode)
+            .iter_key_binds_available_in_mode(mode, selection)
             .filter(|key_bind| !key_bind.hide_from_hotbar())
             .filter(|key_bind| !key_bind.always_show_in_hot_bar())
         {
@@ -1557,7 +1561,7 @@ pub trait ModeRender {
         }
 
         for key_bind in key_binds
-            .iter_key_binds_available_in_mode(mode)
+            .iter_key_binds_available_in_mode(mode, selection)
             .filter(|key_bind| !key_bind.hide_from_hotbar())
             .filter(|key_bind| key_bind.always_show_in_hot_bar())
         {

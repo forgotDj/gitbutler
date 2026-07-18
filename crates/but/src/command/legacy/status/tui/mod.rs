@@ -363,7 +363,12 @@ fn event_to_messages(ev: Event, app: &App, terminal_area: Rect, messages: &mut V
     match ev {
         Event::Key(key) => {
             let mut handled = false;
-            for key_bind in key_binds.iter_key_binds_available_in_mode(ModeDiscriminant::from(mode))
+            let selection = app
+                .cursor
+                .selected_line(&app.status_lines)
+                .and_then(|line| Some(&**line.data.cli_id()?));
+            for key_bind in
+                key_binds.iter_key_binds_available_in_mode(ModeDiscriminant::from(mode), selection)
             {
                 if key_bind.matches(&key) {
                     messages.push(key_bind.message());
