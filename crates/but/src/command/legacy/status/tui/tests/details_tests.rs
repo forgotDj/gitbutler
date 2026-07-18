@@ -1455,3 +1455,105 @@ fn rubbing_selection_from_full_screen_details_view() {
         "snapshots/rubbing_selection_from_full_screen_details_view_003.svg"
     ]);
 }
+
+#[test]
+fn committing_selection_from_split_details() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("one", "line");
+    env.file("two", "line");
+
+    let mut tui = test_tui(env);
+
+    tui.input('l');
+    tui.input('j').assert_rendered_term_svg_eq(file![
+        "snapshots/committing_selection_from_split_details_001.svg"
+    ]);
+    tui.input('c').assert_rendered_term_svg_eq(file![
+        "snapshots/committing_selection_from_split_details_002.svg"
+    ]);
+    tui.input('j');
+    tui.input('e');
+    tui.input(KeyCode::Enter).assert_rendered_term_svg_eq(file![
+        "snapshots/committing_selection_from_split_details_003.svg"
+    ]);
+}
+
+#[test]
+fn committing_selection_from_full_screen_details() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("one", "line");
+    env.file("two", "line");
+
+    let mut tui = test_tui(env);
+
+    tui.input((KeyModifiers::SHIFT, 'D'));
+    tui.input('j').assert_rendered_term_svg_eq(file![
+        "snapshots/committing_selection_from_full_screen_details_001.svg"
+    ]);
+    tui.input('c').assert_rendered_term_svg_eq(file![
+        "snapshots/committing_selection_from_full_screen_details_002.svg"
+    ]);
+    tui.input('j');
+    tui.input('e');
+    tui.input(KeyCode::Enter).assert_rendered_term_svg_eq(file![
+        "snapshots/committing_selection_from_full_screen_details_003.svg"
+    ]);
+}
+
+#[test]
+fn committing_hunks_from_split_details() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("one", "line");
+    env.file("two", "line");
+
+    let mut tui = test_tui(env);
+
+    tui.input('l');
+    tui.input('j');
+    tui.input(' ');
+    tui.input(' ').assert_rendered_term_svg_eq(file![
+        "snapshots/committing_hunks_from_split_details_001.svg"
+    ]);
+    tui.input('c').assert_rendered_term_svg_eq(file![
+        "snapshots/committing_hunks_from_split_details_002.svg"
+    ]);
+    tui.input('j');
+    tui.input('j');
+    tui.input('e');
+    tui.input(KeyCode::Enter).assert_rendered_term_svg_eq(file![
+        "snapshots/committing_hunks_from_split_details_003.svg"
+    ]);
+}
+
+#[test]
+fn committing_hunks_from_full_screen_details() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("one", "line");
+    env.file("two", "line");
+
+    let mut tui = test_tui(env);
+
+    tui.input((KeyModifiers::SHIFT, 'D'));
+    tui.input('j');
+    tui.input(' ');
+    tui.input(' ').assert_rendered_term_svg_eq(file![
+        "snapshots/committing_hunks_from_full_screen_details_001.svg"
+    ]);
+    tui.input('c');
+    tui.input('j');
+    tui.input('j');
+    tui.input('e').assert_rendered_term_svg_eq(file![
+        "snapshots/committing_hunks_from_full_screen_details_002.svg"
+    ]);
+    tui.input(KeyCode::Enter).assert_rendered_term_svg_eq(file![
+        "snapshots/committing_hunks_from_full_screen_details_003.svg"
+    ]);
+}

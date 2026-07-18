@@ -37,7 +37,6 @@ use crate::{
             help::HelpMessage,
             key_bind::{KeyBinds, fuzzy_picker_key_binds},
             mode::{Mode, ModeDiscriminant},
-            operations::stack_has_assigned_changes,
             toast::ToastKind,
         },
     },
@@ -756,6 +755,7 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
                 | CommitMessage::Confirm
                 | CommitMessage::CommitToNewBranch => true,
                 CommitMessage::Start
+                | CommitMessage::StartWithSource(..)
                 | CommitMessage::ToggleMessageComposer(_)
                 | CommitMessage::ToggleInsertSide => false,
             },

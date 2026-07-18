@@ -71,6 +71,10 @@ pub fn default_key_binds() -> KeyBinds {
                 builder.details_scroll_down().register();
 
                 builder
+                    .commit()
+                    .condition(KeyBindCondition::SelectionIsUncommitted)
+                    .register();
+                builder
                     .rub()
                     .condition(KeyBindCondition::SelectionIsUncommitted)
                     .register();
