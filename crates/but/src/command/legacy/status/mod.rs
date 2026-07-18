@@ -696,6 +696,18 @@ fn print_hint(
         output.hint(Vec::from([Span::styled(id_hint, crate::theme::get().hint)]))?;
     }
 
+    // The ⏫ marker alone reads as a configuration mismatch to some agents,
+    // which then try to repoint the target instead of pulling.
+    if let Some(upstream) = &status_ctx.upstream_state {
+        output.hint(Vec::from([Span::styled(
+            format!(
+                "Hint: {} moved ahead; run `but pull` to update the workspace",
+                upstream.target_name
+            ),
+            crate::theme::get().hint,
+        )]))?;
+    }
+
     let hint_text = if not_on_workspace {
         "Hint: run `but setup` to switch back to GitButler managed mode."
     } else if has_merged_upstream_branch {
@@ -887,7 +899,8 @@ fn print_upstream_state(
     if status_ctx.flags.show_upstream {
         // When showing detailed commits, only show count in summary
         let mut upstream_summary = Vec::from([Span::raw(format!(
-            "(upstream) ⏫ {} {}",
+            "(upstream: {}) ⏫ {} {}",
+            upstream.target_name,
             upstream.behind_count,
             if upstream.behind_count == 1 {
                 "commit"
@@ -938,7 +951,8 @@ fn print_upstream_state(
         let mut upstream_summary = Vec::from([
             Span::styled(upstream.latest_commit.clone(), t.hint),
             Span::raw(format!(
-                " (upstream) ⏫ {} {}",
+                " (upstream: {}) ⏫ {} {}",
+                upstream.target_name,
                 upstream.behind_count,
                 if upstream.behind_count == 1 {
                     "commit"
