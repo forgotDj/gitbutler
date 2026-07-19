@@ -4,7 +4,10 @@
   <rect x="18" y="28" width="16" height="18" fill="#0000AA" />
   <rect x="18" y="46" width="16" height="18" fill="#0000AA" />
   <rect x="426" y="64" width="16" height="18" fill="#0000AA" />
-  <rect x="418" y="154" width="392" height="18" fill="#004100" />
+  <rect x="418" y="154" width="392" height="18" fill="#2D5B2D" />
+  <rect x="418" y="172" width="392" height="18" fill="#353747" />
+  <rect x="418" y="190" width="392" height="18" fill="#353747" />
+  <rect x="418" y="208" width="392" height="18" fill="#353747" />
   <rect x="426" y="262" width="16" height="18" fill="#0000AA" />
   <rect x="10" y="352" width="80" height="18" fill="#555555" />
   <g font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">

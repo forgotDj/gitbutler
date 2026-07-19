@@ -294,6 +294,7 @@ pub struct Theme {
     pub tui_mode_move: Style,
     pub tui_mode_details: Style,
     pub tui_mark: Style,
+    pub tui_details_context_lines_marked: Style,
 
     // General purpose
     /// Subdued hint text for supplemental information that should not demand attention
@@ -433,6 +434,9 @@ impl Theme {
             tui_mode_move: Style::new().bg(Color::Cyan).fg(Color::Black),
             tui_mode_details: Style::new().bg(Color::Rgb(255, 165, 0)).fg(Color::Black),
             tui_mark: Style::new().bg(Color::Blue).fg(Color::Black),
+            tui_details_context_lines_marked: const {
+                Rgb(30, 30, 45).lerp(Rgb(69, 71, 88), 0.6).into_bg_style()
+            },
 
             // General purpose
             hint: Style::new().add_modifier(Modifier::DIM),
@@ -488,6 +492,11 @@ impl Theme {
             tui_mode_move: dark_t.tui_mode_move.fg(white_256),
             tui_mode_details: dark_t.tui_mode_details.fg(Color::Black),
             tui_mark: dark_t.tui_mark.fg(white_256),
+            tui_details_context_lines_marked: const {
+                Rgb(255, 255, 255)
+                    .lerp(Rgb(69, 71, 88), 0.2)
+                    .into_bg_style()
+            },
 
             // General purpose
             hint: style_fg(Color::DarkGray),
@@ -755,6 +764,27 @@ impl Display for Branch<&FullName> {
             "'{}'",
             t.local_branch.paint(self.0.shorten().to_str_lossy())
         )
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Rgb(pub u8, pub u8, pub u8);
+
+impl Rgb {
+    pub const fn lerp(self, rhs: Rgb, weight: f32) -> Rgb {
+        const fn lerp_channel(lhs: u8, rhs: u8, weight: f32) -> u8 {
+            (lhs as f32 + (rhs as f32 - lhs as f32) * weight).round() as u8
+        }
+
+        Rgb(
+            lerp_channel(self.0, rhs.0, weight),
+            lerp_channel(self.1, rhs.1, weight),
+            lerp_channel(self.2, rhs.2, weight),
+        )
+    }
+
+    pub const fn into_bg_style(self) -> Style {
+        Style::new().bg(Color::Rgb(self.0, self.1, self.2))
     }
 }
 

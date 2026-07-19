@@ -3,8 +3,11 @@
   <rect x="10" y="10" width="400" height="18" fill="#313244" />
   <rect x="18" y="28" width="16" height="18" fill="#0000AA" />
   <rect x="426" y="28" width="16" height="18" fill="#0000AA" />
-  <rect x="418" y="172" width="392" height="18" fill="#580001" />
-  <rect x="418" y="190" width="392" height="18" fill="#004100" />
+  <rect x="418" y="118" width="392" height="18" fill="#353747" />
+  <rect x="418" y="136" width="392" height="18" fill="#353747" />
+  <rect x="418" y="154" width="392" height="18" fill="#353747" />
+  <rect x="418" y="172" width="392" height="18" fill="#6B2D2E" />
+  <rect x="418" y="190" width="392" height="18" fill="#2D5B2D" />
   <rect x="418" y="334" width="392" height="18" fill="#004100" />
   <rect x="10" y="352" width="88" height="18" fill="#FFA500" />
   <g font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">

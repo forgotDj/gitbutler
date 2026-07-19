@@ -16,7 +16,7 @@ use nonempty::NonEmpty;
 use ratatui::{
     Frame,
     layout::Rect,
-    style::Stylize as _,
+    style::{Color, Stylize as _},
     text::{Line, Span},
     widgets::{Scrollbar, ScrollbarOrientation, ScrollbarState},
 };
@@ -42,7 +42,7 @@ use crate::{
         mode::ModeDiscriminant,
         render::{RenderSingleLineSpans, available_lines_in_area},
     },
-    theme::Theme,
+    theme::{Rgb, Theme},
     utils::{
         DebugAsType,
         diff_rendering::{
@@ -978,6 +978,27 @@ impl Details {
                         frame.render_widget(crossed_out_line, line_area);
                     } else {
                         frame.render_widget(syntax_highlighted_line, line_area);
+                    }
+
+                    if line
+                        .cli_id
+                        .as_ref()
+                        .is_some_and(|id| marks.contains_cli_id(id))
+                    {
+                        if let Some(color) = line.line_numbers.kind.bg(self.theme) {
+                            if let Color::Rgb(r, g, b) = color {
+                                let base = Rgb(r, g, b);
+                                let mix = Rgb(150, 150, 150);
+                                let weight = 0.3;
+                                frame
+                                    .buffer_mut()
+                                    .set_style(line_area, base.lerp(mix, weight).into_bg_style());
+                            }
+                        } else {
+                            frame
+                                .buffer_mut()
+                                .set_style(line_area, self.theme.tui_details_context_lines_marked);
+                        }
                     }
                 }
             }
