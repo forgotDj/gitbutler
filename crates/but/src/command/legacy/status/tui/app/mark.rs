@@ -231,15 +231,20 @@ impl<'a> MarksRef<'a> {
                 return false;
             };
 
-            !child.is_entire_file
-                && child.hunk_assignments.iter().any(|child_assignment| {
-                    parent
-                        .hunk_assignments
-                        .iter()
-                        .any(|parent_assignment| parent_assignment == child_assignment)
-                })
+            hunk_is_child_of(parent, child)
         })
     }
+}
+
+pub fn hunk_is_child_of(parent: &UncommittedHunkOrFile, child: &UncommittedHunkOrFile) -> bool {
+    parent.is_entire_file
+        && !child.is_entire_file
+        && child.hunk_assignments.iter().any(|child_assignment| {
+            parent
+                .hunk_assignments
+                .iter()
+                .any(|parent_assignment| parent_assignment == child_assignment)
+        })
 }
 
 pub trait MarkStore<T> {

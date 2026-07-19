@@ -14,7 +14,7 @@ use crate::{
             output::StatusOutputLineData,
             tui::{
                 App, DetailsLayoutMessage, Message, NOOP, ReloadCause, SelectAfterReload,
-                app::mark::{MarkedCommit, Marks, MarksRef},
+                app::mark::{MarkedCommit, Marks, MarksRef, hunk_is_child_of},
                 cursor,
                 mode::Mode,
                 nonempty_from_refs, operations,
@@ -49,7 +49,15 @@ impl RubSource {
     pub fn contains(&self, other: &CliId) -> bool {
         match self {
             RubSource::Marks(marks) => marks.contains_cli_id(other),
-            RubSource::CliId(source) => &**source == other,
+            RubSource::CliId(source) => {
+                if let CliId::UncommittedHunkOrFile(source) = &**source
+                    && let CliId::UncommittedHunkOrFile(other) = other
+                {
+                    source == other || hunk_is_child_of(other, source)
+                } else {
+                    &**source == other
+                }
+            }
         }
     }
 }
@@ -110,6 +118,7 @@ impl ModeRender for RubMode {
         let display = match &self.source {
             RubSource::CliId(source) => Cow::Borrowed(
                 rub_operation_display(NonEmpty::new(source), target, self.how_to_combine_messages)
+                    .or_else(|| self.source.contains(target).then_some(NOOP))
                     .unwrap_or("invalid"),
             ),
             RubSource::Marks(marks) => {
@@ -490,7 +499,6 @@ pub fn route_operation<'a>(
             target,
             how_to_combine_messages,
         )? {
-            op @ RubOperation::UnassignUncommitted(..) => op,
             op @ RubOperation::UncommittedToCommit(..) => op,
             op @ RubOperation::UncommittedAreaToCommit(..) => op,
             op @ RubOperation::CommitToUncommittedArea(..) => op,
@@ -503,6 +511,9 @@ pub fn route_operation<'a>(
             op @ RubOperation::StackToStack(..) => op,
             op @ RubOperation::UncommittedAreaToStack(..) => op,
             op @ RubOperation::StackToCommit(..) => op,
+
+            // dont support stack assignments
+            RubOperation::UnassignUncommitted(..) => return None,
 
             // dont allow rubbing with branches
             RubOperation::UncommittedToBranch(..)
@@ -537,7 +548,7 @@ pub fn rub_operation_display(
     how_to_combine_messages: MessageCombinationStrategy,
 ) -> Option<&'static str> {
     if sources.len() == 1 && *sources.first() == target {
-        return Some("noop");
+        return Some(NOOP);
     }
 
     let operation = route_operation(sources, target, how_to_combine_messages)?;

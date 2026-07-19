@@ -972,10 +972,12 @@ pub fn is_selectable_in_mode(
         ModeRef::Details(details_mode) => {
             is_selectable_in_mode(line, details_mode.return_mode.as_ref(), show_files_flag)
         }
-        ModeRef::Rub(rub_mode) => line
-            .data
-            .cli_id()
-            .is_some_and(|cli_id| rub_mode.available_targets.contains(cli_id)),
+        ModeRef::Rub(rub_mode) => {
+            line
+                .data
+                .cli_id()
+                .is_some_and(|cli_id| rub_mode.available_targets.contains(cli_id))
+        },
         ModeRef::Commit(commit_mode) => commit_operation_display(&line.data, commit_mode).is_some(),
         ModeRef::Move(move_mode) => move_operation_display(&line.data, move_mode).is_some(),
         ModeRef::MoveStack(move_mode) => reorder_operation_display(&line.data, move_mode).is_some(),

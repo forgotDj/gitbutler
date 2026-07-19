@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="820" height="380" viewBox="0 0 820 380">
   <rect x="0" y="0" width="820" height="380" fill="#000000" />
+  <rect x="42" y="28" width="96" height="18" fill="#555555" />
   <rect x="10" y="100" width="40" height="18" fill="#45475A" />
   <rect x="50" y="100" width="88" height="18" fill="#0000AA" />
   <rect x="138" y="100" width="272" height="18" fill="#45475A" />
@@ -7,18 +8,21 @@
   <rect x="10" y="352" width="56" height="18" fill="#0000AA" />
   <g font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">
     <text x="10 18" y="24" style="fill:#CCCCCC;">╭┄</text>
-    <text x="26 34" y="24" style="fill:#0000AA;font-weight:bold;">zz</text>
-    <text x="50" y="24" style="fill:#CCCCCC;">[</text>
-    <text x="58 66 74 82 90 98 106 114 122 130 138" y="24" style="fill:#00AAAA;">uncommitted</text>
-    <text x="146" y="24" style="fill:#CCCCCC;">]</text>
+    <text x="26 34" y="24" style="fill:#0000AA;font-weight:bold;opacity:0.75;">zz</text>
+    <text x="50" y="24" style="fill:#CCCCCC;opacity:0.75;">[</text>
+    <text x="58 66 74 82 90 98 106 114 122 130 138" y="24" style="fill:#00AAAA;opacity:0.75;">uncommitted</text>
+    <text x="146" y="24" style="fill:#CCCCCC;opacity:0.75;">]</text>
     <text x="410" y="24" style="fill:#555555;">│</text>
     <text x="418 426 434 442 450 458" y="24" style="fill:#CCCCCC;">Commit</text>
     <text x="474 482 490" y="24" style="fill:#CCCCCC;">ID:</text>
     <text x="506 514 522 530 538 546 554 562 570 578 586 594 602 610 618 626 634 642 650 658 666 674 682 690 698 706 714 722 730 738 746 754 762 770 778 786 794 802" y="24" style="fill:#00AAAA;">9477ae721ab521d9d0174f70e804ce3ff9f6fb</text>
     <text x="10" y="42" style="fill:#CCCCCC;">┊</text>
-    <text x="42" y="42" style="fill:#0000AA;font-weight:bold;opacity:0.75;">k</text>
-    <text x="82" y="42" style="fill:#CCCCCC;opacity:0.75;">A</text>
-    <text x="98 106 114" y="42" style="fill:#00AA00;opacity:0.75;">one</text>
+    <text x="42 50" y="42" style="fill:#FFFFFF;">&lt;&lt;</text>
+    <text x="66 74 82 90 98 106" y="42" style="fill:#FFFFFF;">source</text>
+    <text x="122 130" y="42" style="fill:#FFFFFF;">&gt;&gt;</text>
+    <text x="146" y="42" style="fill:#0000AA;font-weight:bold;">k</text>
+    <text x="186" y="42" style="fill:#CCCCCC;">A</text>
+    <text x="202 210 218" y="42" style="fill:#00AA00;">one</text>
     <text x="410" y="42" style="fill:#555555;">│</text>
     <text x="418 426 434 442 450 458 466" y="42" style="fill:#CCCCCC;">Author:</text>
     <text x="506 514 522 530 538 546" y="42" style="fill:#FFFF55;">author</text>
