@@ -252,9 +252,12 @@ impl Details {
 
         match selection {
             CliId::Commit {
-                commit_id: commit, ..
+                commit_id: commit,
+                change_id,
+                ..
             } => {
                 let commit = *commit;
+                let change_id = change_id.clone();
                 self.poll_render_thread(
                     ctx,
                     Some(CacheKey::Commit(commit)),
@@ -262,6 +265,7 @@ impl Details {
                     move |ctx, theme, id_gen, line_writer, options| {
                         diff_rendering::render_commit(
                             commit,
+                            change_id,
                             ctx,
                             theme,
                             id_gen,
