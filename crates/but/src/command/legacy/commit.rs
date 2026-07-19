@@ -250,43 +250,29 @@ fn resolve_file_ids(
     let mut errors = Vec::new();
 
     for file_id in file_ids {
-        // Resolve in the uncommitted file/hunk namespace only, so a commit or
-        // branch ID minted after the file ID was printed cannot shadow it.
-        let cli_ids = match id_map.parse_uncommitted_using_context(file_id, ctx) {
+        // Resolve in the uncommitted namespace (with the shared full-namespace
+        // fallback for container selectors), so a commit or branch ID minted
+        // after the file ID was printed cannot shadow it.
+        let cli_ids = match crate::id::parser::resolve_uncommitted_part(ctx, id_map, file_id) {
             Ok(ids) => ids,
             Err(e) => {
-                errors.push(format!("'{file_id}': {e}"));
+                if e.downcast_ref::<crate::id::parser::IdResolutionError>()
+                    .is_some()
+                {
+                    errors.push(format!("{e}"));
+                } else {
+                    errors.push(format!("'{file_id}': {e}"));
+                }
                 continue;
             }
         };
 
-        let cli_ids = if cli_ids.is_empty() {
-            // Nothing uncommitted matches directly. Container selectors this
-            // parser does not model may still resolve to uncommitted files in
-            // the full namespace; anything else is worth a targeted error.
-            let full = id_map.parse_using_context(file_id, ctx).unwrap_or_default();
-            if !full.is_empty()
-                && full
-                    .iter()
-                    .all(|id| matches!(id, CliId::UncommittedHunkOrFile(_)))
-            {
-                full
-            } else if let Some(other) = full.first() {
-                errors.push(format!(
-                    "'{}' is {} but must be an uncommitted file or hunk",
-                    file_id,
-                    other.kind_for_humans()
-                ));
-                continue;
-            } else {
-                errors.push(line_range_hunk_hint(file_id).unwrap_or_else(|| {
-                    format!("'{file_id}' not found. Run 'but status' to see available file IDs.")
-                }));
-                continue;
-            }
-        } else {
-            cli_ids
-        };
+        if cli_ids.is_empty() {
+            errors.push(line_range_hunk_hint(file_id).unwrap_or_else(|| {
+                format!("'{file_id}' not found. Run 'but status' to see available file IDs.")
+            }));
+            continue;
+        }
 
         if cli_ids.len() > 1 {
             errors.push(format!(

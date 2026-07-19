@@ -39,33 +39,44 @@ fn parse_scoped(
 ) -> anyhow::Result<Vec<CliId>> {
     match scope {
         SourceScope::Any => id_map.parse_using_context(part, ctx),
-        SourceScope::UncommittedOnly => {
-            let scoped = id_map.parse_uncommitted_using_context(part, ctx)?;
-            if !scoped.is_empty() {
-                return Ok(scoped);
-            }
-            // Nothing uncommitted matches directly. Container selectors the
-            // scoped parser does not model may still resolve to uncommitted
-            // files in the full namespace; anything else gets a targeted error.
-            let full = id_map.parse_using_context(part, ctx)?;
-            if !full.is_empty()
-                && full
-                    .iter()
-                    .all(|id| matches!(id, CliId::UncommittedHunkOrFile(_)))
-            {
-                return Ok(full);
-            }
-            if let Some(other) = full.first() {
-                return Err(IdResolutionError::new(format!(
-                    "'{}' is {} but must be an uncommitted file or hunk",
-                    part,
-                    other.kind_for_humans()
-                ))
-                .into());
-            }
-            Ok(vec![])
-        }
+        SourceScope::UncommittedOnly => resolve_uncommitted_part(ctx, id_map, part),
     }
+}
+
+/// Resolve one selector that must name uncommitted changes: the uncommitted
+/// namespace first, then a full-namespace fallback that keeps any uncommitted
+/// interpretations (container selectors the scoped parser does not model) and
+/// turns everything else into a targeted error naming what the selector is.
+///
+/// This is the single home of that policy — `but commit --changes`, amend,
+/// stage, unstage, and discard all resolve through it so they cannot diverge.
+pub(crate) fn resolve_uncommitted_part(
+    ctx: &mut Context,
+    id_map: &IdMap,
+    part: &str,
+) -> anyhow::Result<Vec<CliId>> {
+    let scoped = id_map.parse_uncommitted_using_context(part, ctx)?;
+    if !scoped.is_empty() {
+        return Ok(scoped);
+    }
+    let full = id_map.parse_using_context(part, ctx)?;
+    let uncommitted: Vec<CliId> = full
+        .iter()
+        .filter(|id| matches!(id, CliId::UncommittedHunkOrFile(_)))
+        .cloned()
+        .collect();
+    if !uncommitted.is_empty() {
+        return Ok(uncommitted);
+    }
+    if let Some(other) = full.first() {
+        return Err(IdResolutionError::new(format!(
+            "'{}' is {} but must be an uncommitted file or hunk",
+            part,
+            other.kind_for_humans()
+        ))
+        .into());
+    }
+    Ok(vec![])
 }
 
 pub(crate) fn parse_sources(
@@ -73,22 +84,41 @@ pub(crate) fn parse_sources(
     id_map: &IdMap,
     source: &str,
 ) -> anyhow::Result<Vec<CliId>> {
+    parse_sources_scoped(ctx, id_map, source, SourceScope::Any)
+}
+
+/// Like [parse_sources], but selectors resolve only against uncommitted files
+/// and hunks. For commands whose sources must be uncommitted (e.g. discard).
+pub(crate) fn parse_uncommitted_sources(
+    ctx: &mut Context,
+    id_map: &IdMap,
+    source: &str,
+) -> anyhow::Result<Vec<CliId>> {
+    parse_sources_scoped(ctx, id_map, source, SourceScope::UncommittedOnly)
+}
+
+fn parse_sources_scoped(
+    ctx: &mut Context,
+    id_map: &IdMap,
+    source: &str,
+    scope: SourceScope,
+) -> anyhow::Result<Vec<CliId>> {
     // Check if it's a list (contains ',')
     if source.contains(',') {
-        return parse_list(ctx, id_map, source);
+        return parse_list(ctx, id_map, source, scope);
     }
 
     // Check if it's a valid range (e.g., "g0-h2" where both sides are uncommitted files).
     // If the string contains '-' but isn't a valid range (e.g., a filename like "my-file.rs"
     // or a branch name like "feature-auth"), fall through to single-entity parsing.
     if source.contains('-')
-        && let Some(range_result) = try_parse_range(ctx, id_map, source)?
+        && let Some(range_result) = try_parse_range(ctx, id_map, source, scope)?
     {
         return Ok(range_result);
     }
 
     // Single source (including strings with dashes that aren't valid ranges)
-    let source_result = id_map.parse_using_context(source, ctx)?;
+    let source_result = parse_scoped(ctx, id_map, source, scope)?;
     if source_result.len() != 1 {
         if source_result.is_empty() {
             return Err(IdResolutionError::new(format!(
@@ -124,6 +154,7 @@ fn try_parse_range(
     ctx: &mut Context,
     id_map: &IdMap,
     source: &str,
+    scope: SourceScope,
 ) -> anyhow::Result<Option<Vec<CliId>>> {
     let parts: Vec<&str> = source.split('-').collect();
     if parts.len() != 2 {
@@ -131,11 +162,14 @@ fn try_parse_range(
     }
 
     // If either half fails to parse (e.g., single character "a" in "a-file.txt"),
-    // this isn't a range — fall through to single-entity parsing.
-    let Ok(start_matches) = id_map.parse_using_context(parts[0], ctx) else {
+    // this isn't a range — fall through to single-entity parsing. Endpoints
+    // honor the caller's scope: a range copied from `but diff` must keep
+    // resolving even when a later commit's change ID shadows an endpoint in
+    // the full namespace.
+    let Ok(start_matches) = parse_scoped(ctx, id_map, parts[0], scope) else {
         return Ok(None);
     };
-    let Ok(end_matches) = id_map.parse_using_context(parts[1], ctx) else {
+    let Ok(end_matches) = parse_scoped(ctx, id_map, parts[1], scope) else {
         return Ok(None);
     };
 
@@ -230,7 +264,7 @@ fn parse_sources_with_disambiguation_scoped(
     // If the string contains '-' but isn't a valid range (e.g., a filename like "my-file.rs"
     // or a branch name like "feature-auth"), fall through to single-entity parsing.
     if source.contains('-')
-        && let Some(range_result) = try_parse_range(ctx, id_map, source)?
+        && let Some(range_result) = try_parse_range(ctx, id_map, source, scope)?
     {
         return Ok(range_result);
     }
@@ -301,7 +335,12 @@ fn parse_list_with_disambiguation(
     Ok(result)
 }
 
-fn parse_list(ctx: &mut Context, id_map: &IdMap, source: &str) -> anyhow::Result<Vec<CliId>> {
+fn parse_list(
+    ctx: &mut Context,
+    id_map: &IdMap,
+    source: &str,
+    scope: SourceScope,
+) -> anyhow::Result<Vec<CliId>> {
     let parts: Vec<&str> = source.split(',').collect();
     let mut result = Vec::new();
 
@@ -313,7 +352,7 @@ fn parse_list(ctx: &mut Context, id_map: &IdMap, source: &str) -> anyhow::Result
             continue;
         }
 
-        let matches = id_map.parse_using_context(part, ctx)?;
+        let matches = parse_scoped(ctx, id_map, part, scope)?;
         if matches.len() != 1 {
             if matches.is_empty() {
                 return Err(IdResolutionError::new(format!(

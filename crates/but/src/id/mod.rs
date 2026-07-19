@@ -936,7 +936,11 @@ impl IdMap {
     /// Like [IdMap::parse_element], but matches only uncommitted files and
     /// their containers: exact filenames, `dir/` path prefixes, uncommitted
     /// file IDs, the `zz` uncommitted area, and explicit `@{stack}` selectors.
-    /// Commit and branch IDs never match, so they cannot shadow a file ID.
+    /// Commit change IDs never shadow a file ID here, while an element that
+    /// exactly equals a displayed branch or stack ID deliberately matches
+    /// nothing — those IDs are stable and were never shown for a file, so
+    /// resolving them to a file by hex-prefix accident would silently act on
+    /// the wrong target.
     fn parse_element_uncommitted<'a>(
         &'a self,
         element: &str,
@@ -954,44 +958,56 @@ impl IdMap {
             return Ok(self.parse_uncommitted_path_prefix(None, element));
         }
 
-        // Exact filenames win over generated IDs, mirroring `parse_element`.
-        let mut matches = self.parse_uncommitted_filename(None, element);
+        // Exact filenames win over generated IDs, mirroring `parse_element`
+        // (which returns filename matches before ever considering `zz`).
+        let matches = self.parse_uncommitted_filename(None, element);
+        if !matches.is_empty() {
+            return Ok(matches);
+        }
+        let mut matches = matches;
         if element == UNCOMMITTED {
-            #[derive(Debug)]
-            struct Unstaged {}
-            impl<'a> Node<'a> for Unstaged {
-                fn parse(
-                    self: Box<Self>,
-                    element: &str,
-                    id_map: &'a IdMap,
-                    _changes_in_commit_fn: &mut ChangesInCommitFn<'a>,
-                ) -> anyhow::Result<Vec<Box<dyn Node<'a> + 'a>>> {
-                    Ok(id_map.parse_uncommitted_filename(None, element))
-                }
-
-                fn to_cli_id(
-                    self: Box<Self>,
-                    _short_id: &str,
-                    id_map: &IdMap,
-                ) -> anyhow::Result<Option<CliId>> {
-                    Ok(Some(id_map.uncommitted.clone()))
-                }
-            }
             matches.push(Box::new(Unstaged {}));
         }
-        if matches.is_empty() {
-            let element_bstring = BString::from(element);
-            for (reverse_hex, uncommitted_file) in self
-                .uncommitted_files
-                .range(ChangeId::from(element_bstring.clone())..)
-            {
-                if !reverse_hex.starts_with(&element_bstring) {
-                    break;
-                }
-                matches.push(Box::new(uncommitted_file));
-            }
+        if matches.is_empty() && !self.is_displayed_branch_or_stack_id(element) {
+            matches = self.uncommitted_file_id_prefix_matches(element);
         }
         Ok(matches)
+    }
+
+    /// Whether `element` is exactly a branch segment or stack short ID
+    /// currently in this map. Unlike commit change IDs (random, minted after
+    /// the fact), these are displayed to the user, so a selector equal to one
+    /// refers to that entity — never to a file that happens to share the
+    /// prefix.
+    fn is_displayed_branch_or_stack_id(&self, element: &str) -> bool {
+        self.indexed_stacks
+            .borrow_owner()
+            .iter()
+            .flat_map(|stack| stack.segments.iter())
+            .any(|segment| segment.short_id == element)
+            || self
+                .stack_ids
+                .values()
+                .any(|id| matches!(id, CliId::Stack { id, .. } if id == element))
+    }
+
+    /// All uncommitted files whose full reverse-hex ID starts with `element`.
+    fn uncommitted_file_id_prefix_matches<'a>(
+        &'a self,
+        element: &str,
+    ) -> Vec<Box<dyn Node<'a> + 'a>> {
+        let mut matches = Vec::<Box<dyn Node<'a> + 'a>>::new();
+        let element_bstring = BString::from(element);
+        for (reverse_hex, uncommitted_file) in self
+            .uncommitted_files
+            .range(ChangeId::from(element_bstring.clone())..)
+        {
+            if !reverse_hex.starts_with(&element_bstring) {
+                break;
+            }
+            matches.push(Box::new(uncommitted_file));
+        }
+        matches
     }
 
     fn parse_element<'a>(&'a self, element: &str) -> anyhow::Result<Vec<Box<dyn Node<'a> + 'a>>> {
@@ -1119,26 +1135,6 @@ impl IdMap {
             }
         }
         if element == UNCOMMITTED {
-            #[derive(Debug)]
-            struct Unstaged {}
-            impl<'a> Node<'a> for Unstaged {
-                fn parse(
-                    self: Box<Self>,
-                    element: &str,
-                    id_map: &'a IdMap,
-                    _changes_in_commit_fn: &mut ChangesInCommitFn<'a>,
-                ) -> anyhow::Result<Vec<Box<dyn Node<'a> + 'a>>> {
-                    Ok(id_map.parse_uncommitted_filename(None, element))
-                }
-
-                fn to_cli_id(
-                    self: Box<Self>,
-                    _short_id: &str,
-                    id_map: &IdMap,
-                ) -> anyhow::Result<Option<CliId>> {
-                    Ok(Some(id_map.uncommitted.clone()))
-                }
-            }
             matches.push(Box::new(Unstaged {}));
         }
 
@@ -1152,19 +1148,36 @@ impl IdMap {
         // We should consider namespacing the branch short IDs as this problem will only grow with
         // the introduction of change IDs for commits.
         if matches.is_empty() {
-            let element_bstring = BString::from(element);
-            for (reverse_hex, uncommitted_file) in self
-                .uncommitted_files
-                .range(ChangeId::from(element_bstring.clone())..)
-            {
-                if !reverse_hex.starts_with(&element_bstring) {
-                    break;
-                }
-                matches.push(Box::new(uncommitted_file));
-            }
+            matches = self.uncommitted_file_id_prefix_matches(element);
         }
 
         Ok(matches)
+    }
+}
+
+/// The `zz` uncommitted-area sentinel as a parse node: children are unstaged
+/// filenames, and by itself it resolves to [`CliId::Uncommitted`]. Shared by
+/// the full and the uncommitted-scoped element parsers so the sentinel cannot
+/// drift between them.
+#[derive(Debug)]
+struct Unstaged {}
+
+impl<'a> Node<'a> for Unstaged {
+    fn parse(
+        self: Box<Self>,
+        element: &str,
+        id_map: &'a IdMap,
+        _changes_in_commit_fn: &mut ChangesInCommitFn<'a>,
+    ) -> anyhow::Result<Vec<Box<dyn Node<'a> + 'a>>> {
+        Ok(id_map.parse_uncommitted_filename(None, element))
+    }
+
+    fn to_cli_id(
+        self: Box<Self>,
+        _short_id: &str,
+        id_map: &IdMap,
+    ) -> anyhow::Result<Option<CliId>> {
+        Ok(Some(id_map.uncommitted.clone()))
     }
 }
 
@@ -1183,11 +1196,16 @@ impl IdMap {
         self.parse_with(entity, changes_in_commit_fn, Self::parse_element)
     }
 
-    /// Like [IdMap::parse], but the leading element resolves only against
-    /// uncommitted files and hunks — commits, branches, and stacks never
-    /// match. Use this for selectors that must name uncommitted changes
-    /// (e.g. `--changes`), so a file ID handed out by an earlier command
-    /// cannot be shadowed by a commit change ID minted in between.
+    /// Like [IdMap::parse], but the leading element resolves in the
+    /// uncommitted namespace: commit change IDs and branch/stack short IDs
+    /// never shadow a file ID. Use this for selectors that must name
+    /// uncommitted changes (e.g. `--changes`), so a file ID handed out by an
+    /// earlier command cannot be invalidated by a commit minted in between.
+    ///
+    /// Container selectors still surface their containers: bare `zz` yields
+    /// [`CliId::Uncommitted`], `dir/` yields [`CliId::PathPrefix`], and
+    /// `X@{stack}` resolves through the full parser (and can yield
+    /// [`CliId::Stack`]); callers validate the kinds they accept.
     pub fn parse_uncommitted<'a>(
         &'a self,
         entity: &str,
@@ -1271,6 +1289,20 @@ impl IdMap {
         self.parse_using_repo(entity, repo)
     }
 
+    /// Convenience for [IdMap::parse_uncommitted] if a [gix::Repository] is available.
+    pub fn parse_uncommitted_using_repo<'a>(
+        &'a self,
+        entity: &str,
+        repo: &'a gix::Repository,
+    ) -> anyhow::Result<Vec<CliId>> {
+        self.parse_uncommitted(
+            entity,
+            Box::new(move |commit_id, parent_id| {
+                but_core::diff::tree_changes(repo, parent_id, commit_id)
+            }),
+        )
+    }
+
     /// Convenience for [IdMap::parse_uncommitted] if a [Context] is available.
     pub fn parse_uncommitted_using_context(
         &self,
@@ -1278,12 +1310,7 @@ impl IdMap {
         ctx: &Context,
     ) -> anyhow::Result<Vec<CliId>> {
         let repo = &*ctx.repo.get()?;
-        self.parse_uncommitted(
-            entity,
-            Box::new(move |commit_id, parent_id| {
-                but_core::diff::tree_changes(repo, parent_id, commit_id)
-            }),
-        )
+        self.parse_uncommitted_using_repo(entity, repo)
     }
 
     /// Returns the [`CliId::Stack`] for a given `stack_id`, if it exists.

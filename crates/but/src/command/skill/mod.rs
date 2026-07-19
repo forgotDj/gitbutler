@@ -599,7 +599,8 @@ fn find_all_installations(
         // relative workdir. Absolutize it so discovered installation paths can
         // be handed to context-free operations (`check --update` reinstalls
         // each outdated path without a repository context).
-        let workdir = std::path::absolute(workdir).unwrap_or_else(|_| workdir.to_path_buf());
+        let workdir = std::path::absolute(workdir)
+            .with_context(|| format!("Could not absolutize repository workdir {workdir:?}"))?;
         base_dirs.push((workdir, SCOPE_LOCAL));
     }
 
