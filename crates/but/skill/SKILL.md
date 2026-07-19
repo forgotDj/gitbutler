@@ -73,7 +73,7 @@ The first token on each `but diff` / `but status` line is that line's ID — pas
 - Stack branches: `but move <branch-name-or-id> <target-branch-name-or-id>` (**branch names or branch CLI IDs**)
 - Tear off a branch: `but move <branch-name-or-id> zz` (`zz` = uncommitted)
 - Push: `but push <branch-name>` — always specify the branch; bare `but push` pushes ALL branches when run non-interactively
-- Pull: `but pull --check` then `but pull`
+- Pull (update workspace from the target): `but pull` — the output reports the result; `--check` is only a dry-run preview
 - Create PR: `but pr new <branch-id> [-m "Title..."] [-F pr_message.txt] [-t] [--draft]` — auto-pushes first; do not run `but push` before it
 
 ## Task Recipes
@@ -82,11 +82,12 @@ The first token on each `but diff` / `but status` line is that line's ID — pas
 
 For "get latest from main", "update/sync this workspace", "rebase onto main", or "pull main":
 
-1. `but pull --check`
-2. If clean, `but pull`
-3. If commits come back conflicted, resolve them oldest-first following the printed instructions: `but resolve <commit>`, edit the files, `but resolve finish`. Finishing a lower commit rebases the ones above it, so always work bottom-up.
+1. `but pull` — one command; no preflight needed. Its output reports the resulting state, it refuses safely when uncommitted changes conflict, and `but undo` reverts it.
+2. If commits come back conflicted, resolve them oldest-first following the printed instructions: `but resolve <commit>`, edit the files, `but resolve finish`. Finishing a lower commit rebases the ones above it, so always work bottom-up.
 
-Rebasing applied branches onto the latest target IS `but pull` — never `move`, `config target`, `unapply`, or raw `git pull`/`git rebase`. It carries uncommitted changes along, and its output reports the resulting state. If it refuses because uncommitted changes conflict, park them as printed: `but commit <branch> --changes <ids> -m "wip"`, pull again, then `but uncommit` the parked commit (there is no stash; do not hand-revert files).
+Use `but pull --check` only to answer "would this conflict?" without updating (a dry-run preview), not as a step before every pull.
+
+Rebasing applied branches onto the latest target IS `but pull` — never `move`, `config target`, `unapply`, or raw `git pull`/`git rebase`. The base shown in status is the last FETCHED state: when `git log` shows `main` (local or remote) ahead of it, that is exactly the update `but pull` fetches and applies — the target setting is not stale and repointing it is never the fix. Pull carries uncommitted changes along, and its output reports the resulting state. If it refuses because uncommitted changes conflict, park them as printed: `but commit <branch> --changes <ids> -m "wip"`, pull again, then `but uncommit` the parked commit (there is no stash; do not hand-revert files).
 
 ### Commit selected files or hunks
 
