@@ -36,7 +36,7 @@ use crate::{
             },
             help::HelpMessage,
             key_bind::{KeyBinds, fuzzy_picker_key_binds},
-            mode::{Mode, ModeDiscriminant},
+            mode::Mode,
             toast::ToastKind,
         },
     },
@@ -366,9 +366,7 @@ fn event_to_messages(ev: Event, app: &App, terminal_area: Rect, messages: &mut V
                 .cursor
                 .selected_line(&app.status_lines)
                 .and_then(|line| Some(&**line.data.cli_id()?));
-            for key_bind in
-                key_binds.iter_key_binds_available_in_mode(ModeDiscriminant::from(mode), selection)
-            {
+            for key_bind in key_binds.iter_key_binds_available_in_mode(mode, selection) {
                 if key_bind.matches(&key) {
                     messages.push(key_bind.message());
                     handled = true;

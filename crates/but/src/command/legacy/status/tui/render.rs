@@ -1511,7 +1511,7 @@ pub trait ModeRender {
     //
     // For most modes that is key binds but some modes, such as command mode, override that.
     fn render_hot_bar_content(&self, app: &App, area: Rect, frame: &mut Frame) {
-        let mode = ModeDiscriminant::from(&*app.mode);
+        let mode = &*app.mode;
         let key_binds = app.active_key_binds();
         let selection = app
             .cursor
