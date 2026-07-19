@@ -595,7 +595,12 @@ fn find_all_installations(
         && let Ok(repo) = ctx.repo.get()
         && let Some(workdir) = repo.workdir()
     {
-        base_dirs.push((workdir.to_path_buf(), SCOPE_LOCAL));
+        // A repository discovered from a relative working directory reports a
+        // relative workdir. Absolutize it so discovered installation paths can
+        // be handed to context-free operations (`check --update` reinstalls
+        // each outdated path without a repository context).
+        let workdir = std::path::absolute(workdir).unwrap_or_else(|_| workdir.to_path_buf());
+        base_dirs.push((workdir, SCOPE_LOCAL));
     }
 
     // Scan each base directory for the formats valid in its scope, so a
