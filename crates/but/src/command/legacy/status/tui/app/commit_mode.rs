@@ -16,6 +16,7 @@ use crate::{
             tui::{
                 App, DetailsLayoutMessage, Message, Mode, ReloadCause, RewordMessage,
                 SelectAfterReload,
+                app::mark::hunk_is_child_of,
                 render::{
                     ModeRender, RenderSingleLineSpans, render_commit_operation_target_marker,
                     source_span,
@@ -103,27 +104,13 @@ impl ModeRender for CommitMode {
 }
 
 impl CommitSource {
-    pub fn try_new(id: CliId) -> Option<Self> {
-        match id {
-            CliId::Uncommitted { id } => {
-                Some(Self::UncommittedArea(UncommittedAreaCommitSource { id }))
-            }
-            CliId::UncommittedHunkOrFile(uncommitted_cli_id) => {
-                Some(Self::Uncommitted(uncommitted_cli_id))
-            }
-            CliId::Stack { stack_id, .. } => Some(Self::Stack(StackCommitSource { stack_id })),
-            CliId::PathPrefix { .. }
-            | CliId::CommittedFile { .. }
-            | CliId::Branch { .. }
-            | CliId::Commit { .. } => None,
-        }
-    }
-
     pub fn contains(&self, other: &CliId) -> bool {
         match self {
             CommitSource::Marks(hunks) => {
                 if let CliId::UncommittedHunkOrFile(rhs) = other {
-                    hunks.iter().any(|lhs| lhs == rhs)
+                    hunks
+                        .iter()
+                        .any(|lhs| lhs == rhs || hunk_is_child_of(rhs, lhs))
                 } else {
                     false
                 }
@@ -137,7 +124,7 @@ impl CommitSource {
             }
             CommitSource::Uncommitted(lhs) => {
                 if let CliId::UncommittedHunkOrFile(rhs) = other {
-                    lhs == rhs
+                    lhs == rhs || hunk_is_child_of(rhs, lhs)
                 } else {
                     false
                 }
@@ -246,13 +233,12 @@ impl App {
     }
 
     fn handle_commit_start_source(&mut self, cli_id: Arc<CliId>) {
-        let source = match &*cli_id {
-            CliId::UncommittedHunkOrFile(..) | CliId::Uncommitted { .. } | CliId::Stack { .. } => {
-                let Some(source) = CommitSource::try_new(Arc::unwrap_or_clone(cli_id)) else {
-                    return;
-                };
-                source
+        let source = match Arc::unwrap_or_clone(cli_id) {
+            CliId::Uncommitted { id } => {
+                CommitSource::UncommittedArea(UncommittedAreaCommitSource { id })
             }
+            CliId::UncommittedHunkOrFile(hunk) => CommitSource::Uncommitted(hunk),
+            CliId::Stack { stack_id, .. } => CommitSource::Stack(StackCommitSource { stack_id }),
             CliId::Branch { .. } | CliId::Commit { .. } => {
                 CommitSource::UncommittedArea(UncommittedAreaCommitSource {
                     id: UNCOMMITTED.to_string(),

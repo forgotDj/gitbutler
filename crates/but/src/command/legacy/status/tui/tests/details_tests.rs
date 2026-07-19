@@ -1,6 +1,6 @@
 use but_testsupport::Sandbox;
 use crossterm::event::{KeyCode, KeyModifiers};
-use snapbox::file;
+use snapbox::{file, str};
 use temp_env::with_var;
 
 use crate::command::legacy::status::{
@@ -1503,9 +1503,11 @@ fn rubbing_selection_from_split_details_view() {
         .assert_rendered_term_svg_eq(file![
             "snapshots/rubbing_selection_from_split_details_view_001.svg"
         ]);
-    tui.input('r').assert_rendered_term_svg_eq(file![
-        "snapshots/rubbing_selection_from_split_details_view_002.svg"
-    ]);
+    tui.input('r');
+    tui.input(binds::SCROLL_DOWN)
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/rubbing_selection_from_split_details_view_002.svg"
+        ]);
     tui.input(KeyCode::Enter).assert_rendered_term_svg_eq(file![
         "snapshots/rubbing_selection_from_split_details_view_003.svg"
     ]);
@@ -1527,9 +1529,11 @@ fn rubbing_selection_from_full_screen_details_view() {
         .assert_rendered_term_svg_eq(file![
             "snapshots/rubbing_selection_from_full_screen_details_view_001.svg"
         ]);
-    tui.input('r').assert_rendered_term_svg_eq(file![
-        "snapshots/rubbing_selection_from_full_screen_details_view_002.svg"
-    ]);
+    tui.input('r');
+    tui.input(binds::SCROLL_DOWN)
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/rubbing_selection_from_full_screen_details_view_002.svg"
+        ]);
     tui.input(KeyCode::Enter).assert_rendered_term_svg_eq(file![
         "snapshots/rubbing_selection_from_full_screen_details_view_003.svg"
     ]);
@@ -1549,9 +1553,11 @@ fn committing_selection_from_split_details() {
     tui.input('j').assert_rendered_term_svg_eq(file![
         "snapshots/committing_selection_from_split_details_001.svg"
     ]);
-    tui.input('c').assert_rendered_term_svg_eq(file![
-        "snapshots/committing_selection_from_split_details_002.svg"
-    ]);
+    tui.input('c');
+    tui.input(binds::SCROLL_DOWN)
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/committing_selection_from_split_details_002.svg"
+        ]);
     tui.input('e');
     tui.input(KeyCode::Enter).assert_rendered_term_svg_eq(file![
         "snapshots/committing_selection_from_split_details_003.svg"
@@ -1572,9 +1578,11 @@ fn committing_selection_from_full_screen_details() {
     tui.input('j').assert_rendered_term_svg_eq(file![
         "snapshots/committing_selection_from_full_screen_details_001.svg"
     ]);
-    tui.input('c').assert_rendered_term_svg_eq(file![
-        "snapshots/committing_selection_from_full_screen_details_002.svg"
-    ]);
+    tui.input('c');
+    tui.input(binds::SCROLL_DOWN)
+        .assert_rendered_term_svg_eq(file![
+            "snapshots/committing_selection_from_full_screen_details_002.svg"
+        ]);
     tui.input('e');
     tui.input(KeyCode::Enter).assert_rendered_term_svg_eq(file![
         "snapshots/committing_selection_from_full_screen_details_003.svg"
@@ -1632,5 +1640,132 @@ fn committing_hunks_from_full_screen_details() {
     ]);
     tui.input(KeyCode::Enter).assert_rendered_term_svg_eq(file![
         "snapshots/committing_hunks_from_full_screen_details_003.svg"
+    ]);
+}
+
+#[test]
+fn commit_source_without_marks_is_selectable() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("one", "line");
+    env.file("two", "line");
+
+    let mut tui = test_tui(env);
+
+    tui.input('l');
+    tui.input('j');
+    tui.input('c').assert_rendered_term_svg_eq(file![
+        "snapshots/commit_source_without_marks_is_selectable_001.svg"
+    ]);
+}
+
+#[test]
+fn commit_source_with_marks_is_selectable() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("one", "line");
+    env.file("two", "line");
+
+    let mut tui = test_tui(env);
+
+    tui.input('l');
+    tui.input('j');
+    tui.input(' ');
+    tui.input('c').assert_rendered_term_svg_eq(file![
+        "snapshots/commit_source_with_marks_is_selectable_001.svg"
+    ]);
+}
+
+#[test]
+fn commit_source_with_partial_marks_is_selectable() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("file", "line\n".repeat(10));
+
+    let mut tui = test_tui(env);
+
+    tui.input('c');
+    tui.input('e');
+    tui.input('b');
+
+    tui.env().prepend_file("file", "top");
+    tui.env().append_file("file", "bottom");
+
+    tui.env().file("new-file", "content");
+
+    tui.reload();
+
+    tui.input('g');
+    tui.input('l');
+    tui.input('j');
+    tui.input(' ');
+    tui.input('c')
+        .assert_current_line_eq(str![["┊—  << source >> << noop >> q M file[..]"]]);
+}
+
+#[test]
+fn rub_source_without_marks_is_selectable() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("one", "line");
+    env.file("two", "line");
+
+    let mut tui = test_tui(env);
+
+    tui.input('l');
+    tui.input('j');
+    tui.input('r').assert_rendered_term_svg_eq(file![
+        "snapshots/rub_source_without_marks_is_selectable_001.svg"
+    ]);
+}
+
+#[test]
+fn rub_source_with_marks_is_selectable() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("one", "line");
+    env.file("two", "line");
+
+    let mut tui = test_tui(env);
+
+    tui.input('l');
+    tui.input('j');
+    tui.input(' ');
+    tui.input('r').assert_rendered_term_svg_eq(file![
+        "snapshots/rub_source_with_marks_is_selectable_001.svg"
+    ]);
+}
+
+#[test]
+fn rub_source_with_partial_marks_is_selectable() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    env.file("file", "line\n".repeat(10));
+
+    let mut tui = test_tui(env);
+
+    tui.input('c');
+    tui.input('e');
+    tui.input('b');
+
+    tui.env().prepend_file("file", "top");
+    tui.env().append_file("file", "bottom");
+
+    tui.env().file("new-file", "content");
+
+    tui.reload();
+
+    tui.input('g');
+    tui.input('l');
+    tui.input('j');
+    tui.input(' ');
+    tui.input('r').assert_rendered_term_svg_eq(file![
+        "snapshots/rub_source_with_partial_marks_is_selectable_001.svg"
     ]);
 }
