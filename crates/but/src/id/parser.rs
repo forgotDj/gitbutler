@@ -2,7 +2,7 @@ use anyhow::Context as _;
 use bstr::BStr;
 use but_ctx::Context;
 
-use crate::{CliId, IdMap, utils::OutputChannel};
+use crate::{CliId, IdMap, id::SourceScope, utils::OutputChannel};
 
 #[derive(Debug)]
 pub(crate) struct IdResolutionError(String);
@@ -20,16 +20,6 @@ impl std::fmt::Display for IdResolutionError {
 }
 
 impl std::error::Error for IdResolutionError {}
-
-/// Which namespace source selectors resolve in.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum SourceScope {
-    /// Match commits, branches, stacks, and uncommitted files alike.
-    Any,
-    /// Match only uncommitted files and hunks, so commit and branch IDs
-    /// minted after a file ID was printed cannot shadow it.
-    UncommittedOnly,
-}
 
 fn parse_scoped(
     ctx: &mut Context,
