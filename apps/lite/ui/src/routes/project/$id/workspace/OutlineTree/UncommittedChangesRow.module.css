@@ -5,3 +5,17 @@
   padding-block: calc(var(--panel-padding-block) - 4px);
   flex-shrink: 0;
 }
+
+.lineStats {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.linesAdded {
+	color: var(--text-safe);
+}
+
+.linesRemoved {
+	color: var(--text-danger);
+}
