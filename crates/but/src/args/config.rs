@@ -479,6 +479,13 @@ impl FeatureFlag {
             FeatureFlag::SingleBranch => "single-branch",
         }
     }
+
+    pub fn as_json_key(self) -> &'static str {
+        match self {
+            FeatureFlag::UnapplyV3Pgm => "unapply_v3_pgm",
+            FeatureFlag::SingleBranch => "single_branch",
+        }
+    }
 }
 
 /// Values for a feature flag.

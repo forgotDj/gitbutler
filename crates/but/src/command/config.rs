@@ -483,7 +483,7 @@ fn write_feature_flag_value(
     if let Some(out) = out.for_shell() {
         writeln!(out, "{enabled}")?;
     } else if let Some(out) = out.for_json() {
-        out.write_value(serde_json::json!({ flag.as_str(): enabled }))?;
+        out.write_value(serde_json::json!({ flag.as_json_key(): enabled }))?;
     }
     Ok(())
 }

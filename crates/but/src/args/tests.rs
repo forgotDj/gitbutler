@@ -566,6 +566,12 @@ mod config_feature {
 
         assert_eq!(err.kind(), clap::error::ErrorKind::InvalidValue);
     }
+
+    #[test]
+    fn json_keys_use_snake_case() {
+        assert_eq!(FeatureFlag::UnapplyV3Pgm.as_json_key(), "unapply_v3_pgm");
+        assert_eq!(FeatureFlag::SingleBranch.as_json_key(), "single_branch");
+    }
 }
 
 #[test]
