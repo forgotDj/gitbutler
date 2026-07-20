@@ -748,7 +748,7 @@ export const OutlineTree: FC<
 
 					<Separator className={styles.resizeHandle} />
 
-					<Panel id={"stacks-panel" satisfies PanelId} className={styles.panel} minSize={120}>
+					<Panel id={"stacks-panel" satisfies PanelId} className={styles.stacksPanel} minSize={120}>
 						<Stacks
 							projectId={projectId}
 							commitTarget={commitTarget?.relativeTo ?? null}

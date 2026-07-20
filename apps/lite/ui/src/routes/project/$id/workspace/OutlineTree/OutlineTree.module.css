@@ -1,7 +1,8 @@
 .section {
 	padding: 6px;
 	border-radius: var(--radius-2xl);
-	background-color: var(--bg-2);
+	background-color: var(--bg-1);
+	box-shadow: var(--shadow-card);
 }
 
 .tree {
@@ -34,29 +35,19 @@
 	padding-inline: var(--panel-padding-inline);
 	padding-block: var(--panel-padding-block);
 	overflow: auto;
-	scroll-padding-block: var(--panel-padding-block);
-	scroll-padding-inline: var(--panel-padding-inline);
 }
 
 .uncommittedChanges {
 	display: flex;
-	/* flex-grow: 1; */
 	flex-direction: column;
 	min-height: 0;
 	overflow: auto;
-	max-height: 100%;
+	height: 100%;
 }
 
 .uncommittedChangesTree {
 	padding-inline: var(--panel-padding-inline);
-	/* padding-bottom: var(--panel-padding-block); */
-	/* padding-block: var(--panel-padding-block); */
 	flex-grow: 1;
-
-	/* hide the scrollbar for the uncommitted changes tree, since it is already shown on the outer panel */
-	&::-webkit-scrollbar {
-		display: none;
-	}
 
 	/* Gradient ramp that fades out the scrolling items, shown only while there
 	   is more content to scroll to below. */
@@ -84,10 +75,26 @@
 	padding-bottom: var(--panel-padding-block);
 }
 
+.stacksPanel {
+	background-color: var(--bg-2);
+}
+
+.stacksPanel, .uncommittedChangesTree {
+	/* Hide the native scrollbar. Can't use BaseUI Scroll Area because rows are
+	   native drag-and-drop targets (see .uncommittedChangesTree). */
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
 .stacks {
 	display: flex;
-	row-gap: 12px;
+	row-gap: 8px;
 	flex-direction: column;
+	padding-inline: var(--panel-padding-inline);
+	padding-block: var(--panel-padding-block);
 }
 
 .segments {
