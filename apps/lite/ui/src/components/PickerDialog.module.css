@@ -2,10 +2,7 @@
 	position: fixed;
 	inset: 0;
 	background-color: var(--bg-overlay);
-
-	@media (prefers-color-scheme: dark) {
-		opacity: 0.7;
-	}
+	opacity: --light-dark(1, 0.7);
 	transition: opacity 150ms cubic-bezier(0.45, 1.005, 0, 1.005);
 
 	&[data-starting-style],

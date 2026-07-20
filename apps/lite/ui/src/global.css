@@ -1,7 +1,22 @@
 @import "@gitbutler/design-core/core";
 
+/*
+    color-scheme isn't yet respected by prefers-color-scheme, so where we can't use light-dark() we
+    can instead use this homegrown alternative. See:
+		https://issues.chromium.org/issues/498561069
+		https://github.com/w3c/csswg-drafts/issues/10577
+*/
+@function --light-dark(--light, --dark) {
+	result: if(style(--color-scheme: light): var(--light) ; else: var(--dark));
+}
+
 :root {
 	color-scheme: light dark;
+
+	--color-scheme: light;
+	@media (prefers-color-scheme: dark) {
+		--color-scheme: dark;
+	}
 
 	--list-item-hover-bg: color-mix(var(--fill-gray-bg) var(--opacity-bg-hover), transparent);
 	--focus-ring: 1.5px solid color-mix(in srgb, var(--fill-gray-bg) 70%, transparent);
