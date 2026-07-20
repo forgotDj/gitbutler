@@ -26,6 +26,7 @@ import {
 } from "../Row.tsx";
 import { useQueries } from "@tanstack/react-query";
 import { treeChangeDiffsQueryOptions } from "#ui/api/queries.ts";
+import styles from "./UncommittedChangesRow.module.css";
 
 type LineStats = {
 	linesAdded: number;
@@ -104,6 +105,7 @@ export const UncommittedChangesRow: FC<{
 
 	return (
 		<Row
+			className={styles.container}
 			onContextMenu={(event) => {
 				void showNativeContextMenu(event, menuItems);
 			}}

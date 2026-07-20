@@ -40,14 +40,48 @@
 
 .uncommittedChanges {
 	display: flex;
-	flex-grow: 1;
+	/* flex-grow: 1; */
 	flex-direction: column;
 	min-height: 0;
+	overflow: auto;
+	max-height: 100%;
 }
 
 .uncommittedChangesTree {
+	padding-inline: var(--panel-padding-inline);
+	/* padding-bottom: var(--panel-padding-block); */
+	/* padding-block: var(--panel-padding-block); */
 	flex-grow: 1;
-	overflow: auto;
+
+	/* hide the scrollbar for the uncommitted changes tree, since it is already shown on the outer panel */
+	&::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* Gradient ramp that fades out the scrolling items, shown only while there
+	   is more content to scroll to below. */
+	&::after {
+		display: block;
+		z-index: 1;
+		position: sticky;
+		bottom: 0;
+		height: 20px;
+		margin-top: -8px;
+		background: linear-gradient(to top, var(--bg-1) 20%, transparent);
+		content: "";
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 120ms ease;
+
+		@container scroll-state(scrollable: bottom) {
+			opacity: 1;
+		}
+	}
+}
+
+.commitForm {
+	padding-inline: var(--panel-padding-inline);
+	padding-bottom: var(--panel-padding-block);
 }
 
 .stacks {
