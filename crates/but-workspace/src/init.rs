@@ -28,6 +28,7 @@ pub fn infer_default_target_ref(repo: &gix::Repository) -> Result<Option<gix::re
     let remote_head_ref = format!("refs/remotes/{remote_name}/HEAD");
     if let Ok(head_ref) = repo.find_reference(remote_head_ref.as_str())
         && let Some(branch_name) = head_ref.target().try_name()
+        && is_existing_branch_on_remote(repo, branch_name, remote_name)?
     {
         return Ok(Some(branch_name.to_owned()));
     }
@@ -35,12 +36,29 @@ pub fn infer_default_target_ref(repo: &gix::Repository) -> Result<Option<gix::re
     for branch_name in ["main", "master"] {
         let full_name: gix::refs::FullName =
             format!("refs/remotes/{remote_name}/{branch_name}").try_into()?;
-        if repo.try_find_reference(full_name.as_ref())?.is_some() {
+        if is_existing_branch_on_remote(repo, full_name.as_ref(), remote_name)? {
             return Ok(Some(full_name));
         }
     }
 
     Ok(None)
+}
+
+fn is_existing_branch_on_remote(
+    repo: &gix::Repository,
+    ref_name: &gix::refs::FullNameRef,
+    expected_remote: &str,
+) -> Result<bool> {
+    let belongs_to_expected_remote =
+        but_core::extract_remote_name_and_short_name(ref_name, &repo.remote_names())
+            .is_some_and(|(remote_name, _)| remote_name == expected_remote);
+    if !belongs_to_expected_remote {
+        return Ok(false);
+    }
+
+    Ok(repo
+        .try_find_reference(ref_name)?
+        .is_some_and(|mut reference| reference.peel_to_commit().is_ok()))
 }
 
 /// Make `target_ref` the project's default target and initialize project metadata,
