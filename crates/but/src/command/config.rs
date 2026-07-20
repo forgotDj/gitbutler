@@ -442,7 +442,7 @@ pub(crate) fn feature_config(
         }
     } else if let Some(out) = out.for_shell() {
         for (flag, enabled) in flags {
-            writeln!(out, "{}={enabled}", flag.as_str())?;
+            writeln!(out, "{}={enabled}", flag.as_json_key())?;
         }
     } else if let Some(out) = out.for_json() {
         out.write_value(serde_json::json!({
