@@ -40,14 +40,14 @@
 .uncommittedChanges {
 	display: flex;
 	flex-direction: column;
+	height: 100%;
 	min-height: 0;
 	overflow: auto;
-	height: 100%;
 }
 
 .uncommittedChangesTree {
-	padding-inline: var(--panel-padding-inline);
 	flex-grow: 1;
+	padding-inline: var(--panel-padding-inline);
 
 	/* Gradient ramp that fades out the scrolling items, shown only while there
 	   is more content to scroll to below. */
@@ -79,7 +79,8 @@
 	background-color: var(--bg-2);
 }
 
-.stacksPanel, .uncommittedChangesTree {
+.stacksPanel,
+.uncommittedChangesTree {
 	/* Hide the native scrollbar. Can't use BaseUI Scroll Area because rows are
 	   native drag-and-drop targets (see .uncommittedChangesTree). */
 	scrollbar-width: none;
