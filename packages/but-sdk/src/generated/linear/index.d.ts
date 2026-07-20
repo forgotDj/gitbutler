@@ -182,6 +182,12 @@ export declare function changesInWorktreeWithPerm(projectId: string, computeDeps
 export declare function commitAmend(projectId: string, commitId: string, changes: Array<DiffSpec>, dryRun: boolean): Promise<CommitCreateResult>
 
 /**
+ * Cherry-picks `source_commit_ids` to `side` of `relative_to` and records an
+ * oplog snapshot on success.
+ */
+export declare function commitCherryPick(projectId: string, sourceCommitIds: Array<string>, relativeTo: RelativeTo, side: InsertSide, dryRun: boolean): Promise<CommitCherryPickResult>
+
+/**
  * Insert a new commit built from `changes` and record an oplog snapshot on
  * success.
  *
@@ -1303,6 +1309,14 @@ export type CommitAbsorption = {
   commitSummary: string;
   files: Array<FileAbsorption>;
   reason: AbsorptionReason;
+};
+
+/** JSON transport type for cherry-picking commits. */
+export type CommitCherryPickResult = {
+  /** Final cherry-picked commit IDs in parent-first order. */
+  newCommits: Array<string>;
+  /** Workspace state after the cherry-pick. */
+  workspace: WorkspaceState;
 };
 
 /** JSON transport type for creating a commit in the rebase graph. */
