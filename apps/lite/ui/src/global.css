@@ -7,16 +7,15 @@
 		https://github.com/w3c/csswg-drafts/issues/10577
 */
 @function --light-dark(--light, --dark) {
-	result: if(style(--color-scheme: light): var(--light) ; else: var(--dark));
+	result: if(
+		style(--theme: light): var(--light) ; style(--theme: dark): var(--dark) ;
+			media(prefers-color-scheme: dark): var(--dark) ; else: var(--light)
+	);
 }
 
 :root {
-	color-scheme: light dark;
-
-	--color-scheme: light;
-	@media (prefers-color-scheme: dark) {
-		--color-scheme: dark;
-	}
+	--theme: attr(data-theme type(<custom-ident>));
+	color-scheme: --light-dark(light, dark);
 
 	--list-item-hover-bg: color-mix(var(--fill-gray-bg) var(--opacity-bg-hover), transparent);
 	--focus-ring: 1.5px solid color-mix(in srgb, var(--fill-gray-bg) 70%, transparent);

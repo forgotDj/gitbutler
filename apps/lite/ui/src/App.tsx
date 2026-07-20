@@ -1,9 +1,14 @@
 import { Toast, ToastManager, Tooltip } from "@base-ui/react";
 import { useWorkerPool, WorkerPoolContextProvider } from "@pierre/diffs/react";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import {
+	QueryClient,
+	QueryClientProvider,
+	useQuery,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RegisteredRouter, RouterProvider } from "@tanstack/react-router";
-import { type FC, StrictMode, useEffect } from "react";
+import { type FC, StrictMode, useEffect, useLayoutEffect } from "react";
 import { Provider } from "react-redux";
 import { store } from "#ui/store.ts";
 import { Toasts } from "#ui/components/Toasts.tsx";
@@ -17,7 +22,7 @@ const workerFactory = (): Worker =>
 	});
 
 // Must be mounted under the worker pool provider.
-const ThemeSync: FC = () => {
+const SyntaxThemeSync: FC = () => {
 	const workerPool = useWorkerPool();
 	const { data: theme } = useQuery({
 		...guiSettingsQueryOptions,
@@ -36,6 +41,20 @@ const ThemeSync: FC = () => {
 	return null;
 };
 
+// Must be mounted under the RQ provider.
+const AppThemeSync: FC = () => {
+	const { data: theme } = useSuspenseQuery({
+		...guiSettingsQueryOptions,
+		select: (cfg) => cfg.theme ?? defaultSettings.theme,
+	});
+
+	useLayoutEffect(() => {
+		document.documentElement.dataset.theme = theme;
+	}, [theme]);
+
+	return null;
+};
+
 export const App: FC<{
 	queryClient: QueryClient;
 	toastManager: ToastManager;
@@ -50,7 +69,8 @@ export const App: FC<{
 							poolOptions={{ workerFactory }}
 							highlighterOptions={{ preferredHighlighter: "shiki-wasm" }}
 						>
-							<ThemeSync />
+							<AppThemeSync />
+							<SyntaxThemeSync />
 							<RouterProvider router={router} />
 							<AskpassPromptDialog />
 							<Toasts />

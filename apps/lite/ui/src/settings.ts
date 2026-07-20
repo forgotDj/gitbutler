@@ -16,6 +16,7 @@ export const defaultSettings = {
 		light: "github-light-default" satisfies BundledTheme,
 		dark: "github-dark-default" satisfies BundledTheme,
 	},
+	theme: "system",
 } satisfies Partial<GUISettings>;
 
 export const clampAutoFetch = (ms: number): number =>
