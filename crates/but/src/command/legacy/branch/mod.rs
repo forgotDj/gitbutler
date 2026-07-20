@@ -5,7 +5,7 @@ use gitbutler_oplog::entry::{OperationKind, SnapshotDetails};
 
 use crate::{
     CliResult, IdMap,
-    args::atoms::{BranchArg, BranchOrCommit, CliIdArg, Purpose},
+    args::atoms::{BranchArg, BranchOrCommit, CliIdArg, Purpose, ResolvedCliIdArg},
     theme::{self, Paint},
     utils::OutputChannel,
 };
@@ -59,7 +59,6 @@ pub fn new(
     branch_name_arg: Option<BranchArg>,
     anchor_arg: Option<CliIdArg>,
 ) -> CliResult<()> {
-    let t = theme::get();
     let mut guard = ctx.exclusive_worktree_access();
 
     let branch_name = if let Some(branch_name_arg) = branch_name_arg {
@@ -108,9 +107,7 @@ pub fn new(
             },
             guard.write_permission(),
         )?;
-        if let Some(out) = out.for_human() {
-            writeln!(out, "{} Created branch {branch_name}", t.sym().success)?;
-        }
+        write_new_branch_output(out, &branch_name, None, anchor_arg)?;
         return Ok(());
     }
 
@@ -143,6 +140,18 @@ pub fn new(
         guard.write_permission(),
     )?;
 
+    write_new_branch_output(out, &branch_name, resolved_anchor.as_ref(), anchor_arg)?;
+
+    Ok(())
+}
+
+fn write_new_branch_output(
+    out: &mut OutputChannel,
+    branch_name: &str,
+    resolved_anchor: Option<&ResolvedCliIdArg>,
+    anchor_arg: Option<CliIdArg>,
+) -> CliResult<()> {
+    let t = theme::get();
     if let Some(out) = out.for_human() {
         if let Some(resolved_anchor) = resolved_anchor {
             writeln!(
@@ -164,7 +173,7 @@ pub fn new(
         writeln!(out, "{branch_name}")?;
     } else if let Some(out) = out.for_json() {
         let value = json::BranchNewOutput {
-            branch: branch_name.clone(),
+            branch: branch_name.to_owned(),
             anchor: anchor_arg,
         };
         out.write_value(value)?;
