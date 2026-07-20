@@ -83,7 +83,7 @@ fn unborn() {
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
-Error: Setup required: No GitButler project found at . - run `but setup` to configure the project
+Error: No target branch is configured and none could be inferred. Run `but config target <remote>/<branch>` to configure one.
 
 "#]]);
 }
@@ -104,7 +104,7 @@ fn first_commit_no_workspace() {
         .assert()
         .failure()
         .stderr_eq(snapbox::str![[r#"
-Error: Setup required: No GitButler project found at . - run `but setup` to configure the project
+Error: No target branch is configured and none could be inferred. Run `but config target <remote>/<branch>` to configure one.
 
 "#]]);
 }

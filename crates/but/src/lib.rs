@@ -697,7 +697,14 @@ async fn match_subcommand(
                     interactive,
                 }) => {
                     let status_after = args.status_after && !dry_run && !interactive;
-                    let mut ctx = setup::init_ctx(&args, InitCtxOptions::default(), out)?;
+                    let mut ctx = setup::init_ctx(
+                        &args,
+                        InitCtxOptions {
+                            workspace_check: setup::WorkspaceCheck::Disabled,
+                            ..Default::default()
+                        },
+                        out,
+                    )?;
                     out.begin_status_after(status_after);
                     let result = command::branch::update(
                         &mut ctx,
@@ -724,7 +731,14 @@ async fn match_subcommand(
             workspace,
             new,
         } => {
-            let mut ctx = setup::init_ctx(&args, InitCtxOptions::default(), out)?;
+            let mut ctx = setup::init_ctx(
+                &args,
+                InitCtxOptions {
+                    workspace_check: setup::WorkspaceCheck::Disabled,
+                    ..Default::default()
+                },
+                out,
+            )?;
             command::r#switch::handle(&mut ctx, out, target, workspace, new)
                 .emit_metrics(metrics_ctx)
         }
@@ -1749,7 +1763,14 @@ async fn match_subcommand(
             after,
         } => {
             let status_after = args.status_after;
-            let mut ctx = setup::init_ctx(&args, InitCtxOptions::default(), out)?;
+            let mut ctx = setup::init_ctx(
+                &args,
+                InitCtxOptions {
+                    workspace_check: setup::WorkspaceCheck::Disabled,
+                    ..Default::default()
+                },
+                out,
+            )?;
             out.begin_status_after(status_after);
             let result = command::r#move::handle(&mut ctx, out, &source, &target, after)
                 .emit_metrics(metrics_ctx);
