@@ -3,10 +3,10 @@
 	align-items: center;
 	padding: 6px 8px;
 	gap: 7px;
-	border-radius: var(--radius-m);
+	border-radius: var(--radius-lg);
 	outline: 1px solid color-mix(var(--scale-gray-0) 10%, transparent);
 	background-color: var(--bg-1);
-	box-shadow: var(--shadow-s);
+	box-shadow: var(--shadow-sm);
 	color: var(--text-1);
 }
 

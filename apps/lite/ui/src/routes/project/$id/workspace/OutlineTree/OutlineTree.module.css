@@ -1,6 +1,6 @@
 .section {
 	padding: 6px;
-	border-radius: var(--radius-l);
+	border-radius: var(--radius-2xl);
 	background-color: var(--bg-2);
 }
 
