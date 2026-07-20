@@ -1,6 +1,6 @@
 .section {
 	padding: 6px;
-	border-radius: var(--radius-2xl);
+	border-radius: var(--radius-card);
 	background-color: var(--bg-1);
 	box-shadow: var(--shadow-card);
 }
