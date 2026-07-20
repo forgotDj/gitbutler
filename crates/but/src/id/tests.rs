@@ -178,6 +178,29 @@ branches: [ no ]
 }
 
 #[test]
+fn exact_branch_short_id_takes_priority() {
+    let commit_id = id(1);
+    let id_map = IdMap::new(
+        vec![stack([segment("tp-branch", [commit_id], None, [])])],
+        vec![],
+        [(commit_id, ChangeId::from(BString::from("tpm")))]
+            .into_iter()
+            .collect(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        id_map.parse("tp", Box::new(|_, _| unreachable!())).unwrap(),
+        [CliId::Branch {
+            name: "tp-branch".into(),
+            id: "tp".into(),
+            stack_id: None,
+        }],
+        "exact branch short ID wins over change ID prefix"
+    );
+}
+
+#[test]
 fn branches_work_with_single_character() -> anyhow::Result<()> {
     let stacks = vec![stack([segment("f", [id(1)], None, [])])];
     let id_map = IdMap::new(stacks, Vec::new(), gix::hashtable::HashMap::default())?;

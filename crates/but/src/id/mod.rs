@@ -1075,6 +1075,18 @@ impl IdMap {
         element: &str,
         matches: &mut Vec<Box<dyn Node<'a> + 'a>>,
     ) {
+        // Branch short IDs are allowed to be prefixes of other IDs, so if we match any branch short
+        // ID exactly we must return immediately to prevent ambiguity. This design prevents us from
+        // needing some branch disambiguator.
+        for stack_with_id in self.indexed_stacks.borrow_owner().iter() {
+            for segment_with_id in stack_with_id.segments.iter() {
+                if segment_with_id.short_id == element {
+                    matches.push(Box::new(segment_with_id));
+                    return;
+                }
+            }
+        }
+
         // Match against commits
         let maybe_element_hex_prefix = if element
             .chars()
@@ -1143,15 +1155,6 @@ impl IdMap {
             {
                 matches.push(Box::new(stack_with_id));
                 break;
-            }
-        }
-
-        // Then try CliId matching
-        for stack_with_id in self.indexed_stacks.borrow_owner().iter() {
-            for segment_with_id in stack_with_id.segments.iter() {
-                if segment_with_id.short_id == element {
-                    matches.push(Box::new(segment_with_id));
-                }
             }
         }
     }
