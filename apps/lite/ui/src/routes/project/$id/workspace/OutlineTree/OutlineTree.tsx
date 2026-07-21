@@ -25,7 +25,7 @@ import { NavigationIndexContext } from "#ui/routes/project/$id/workspace/Outline
 import { useAppDispatch, useAppSelector, useAppStore } from "#ui/store.ts";
 import { classes } from "#ui/components/classes.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
-import { mergeProps, ScrollArea, Tooltip, useRender } from "@base-ui/react";
+import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import {
 	BranchReference,
 	RelativeTo,
@@ -240,49 +240,40 @@ const UncommittedChanges: FC<{
 		<div className={styles.uncommittedChanges}>
 			<UncommittedChangesRow changes={worktreeChanges?.changes ?? []} projectId={projectId} />
 
-			<ScrollArea.Root className={styles.uncommittedChangesScrollArea}>
-				<ScrollArea.Viewport
-					className={classes(styles.uncommittedChangesTree, uiStyles.scrollerWithSeparator)}
-				>
-					<FilesTree
-						data-selection-scope={"uncommitted-files" satisfies SelectionScope}
-						onFocus={() =>
-							dispatch(
-								projectSlice.actions.setDetailsSelectionScope({
-									projectId,
-									scope: "uncommitted-files",
-								}),
-							)
-						}
-						emptyLabel="Nothing to commit"
-						fileParent={uncommittedChangesFileParent}
-						items={fileRowItems}
-						navigationIndex={navigationIndex}
-						onFileSelection={(selection) =>
-							dispatch(projectSlice.actions.selectUncommittedFiles({ projectId, selection }))
-						}
-						projectId={projectId}
-						ref={(el) => {
-							// Don't steal focus if this component is mounted later on.
-							if (document.activeElement !== document.body) return;
+			<div
+				className={classes(
+					styles.uncommittedChangesTree,
+					uiStyles.scrollerWithSeparator,
+					uiStyles.overlayScrollbar,
+				)}
+			>
+				<FilesTree
+					data-selection-scope={"uncommitted-files" satisfies SelectionScope}
+					onFocus={() =>
+						dispatch(
+							projectSlice.actions.setDetailsSelectionScope({
+								projectId,
+								scope: "uncommitted-files",
+							}),
+						)
+					}
+					emptyLabel="Nothing to commit"
+					fileParent={uncommittedChangesFileParent}
+					items={fileRowItems}
+					navigationIndex={navigationIndex}
+					onFileSelection={(selection) =>
+						dispatch(projectSlice.actions.selectUncommittedFiles({ projectId, selection }))
+					}
+					projectId={projectId}
+					ref={(el) => {
+						// Don't steal focus if this component is mounted later on.
+						if (document.activeElement !== document.body) return;
 
-							el?.focus({ focusVisible: false });
-						}}
-						selection={fileSelection}
-					/>
-				</ScrollArea.Viewport>
-				<ScrollArea.Scrollbar
-					className={styles.scrollbar}
-					// This scroll area is rendered inside a native drag-and-drop
-					// source (OperationSourceC). Marking the scrollbar as draggable
-					// makes it the drag source (instead of the ancestor), so we can
-					// cancel the native drag and let the thumb scroll instead.
-					draggable
-					onDragStart={(event) => event.preventDefault()}
-				>
-					<ScrollArea.Thumb className={styles.scrollbarThumb} />
-				</ScrollArea.Scrollbar>
-			</ScrollArea.Root>
+						el?.focus({ focusVisible: false });
+					}}
+					selection={fileSelection}
+				/>
+			</div>
 
 			<div className={styles.commitForm}>
 				<CommitForm
@@ -763,24 +754,16 @@ export const OutlineTree: FC<
 
 					<Separator className={styles.resizeHandle} />
 
-					<Panel id={"stacks-panel" satisfies PanelId} className={styles.stacksPanel} minSize={120}>
-						<ScrollArea.Root className={styles.stacksScrollArea}>
-							<ScrollArea.Viewport className={styles.stacksViewport}>
-								<Stacks
-									projectId={projectId}
-									commitTarget={commitTarget?.relativeTo ?? null}
-									checkCommit={checkCommit}
-								/>
-							</ScrollArea.Viewport>
-							<ScrollArea.Scrollbar
-								className={styles.scrollbar}
-								// See comment on the uncommitted-changes scrollbar.
-								draggable
-								onDragStart={(event) => event.preventDefault()}
-							>
-								<ScrollArea.Thumb className={styles.scrollbarThumb} />
-							</ScrollArea.Scrollbar>
-						</ScrollArea.Root>
+					<Panel
+						id={"stacks-panel" satisfies PanelId}
+						className={classes(styles.stacksPanel, uiStyles.overlayScrollbar)}
+						minSize={120}
+					>
+						<Stacks
+							projectId={projectId}
+							commitTarget={commitTarget?.relativeTo ?? null}
+							checkCommit={checkCommit}
+						/>
 					</Panel>
 				</Group>
 			</AbsorptionTargetCommitIdsContext>

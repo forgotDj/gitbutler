@@ -45,15 +45,13 @@
 	overflow: auto;
 }
 
-.uncommittedChangesScrollArea {
-	position: relative;
-	flex-grow: 1;
-	min-height: 0;
-}
-
 .uncommittedChangesTree {
-	height: 100%;
-	padding-inline: var(--panel-padding-inline);
+	flex-grow: 1;
+
+	/* The scrollbar gutter takes up part of the inline end padding so the
+	   thumb visually overlays the panel margin. */
+	padding-inline: var(--panel-padding-inline)
+		calc(var(--panel-padding-inline) - var(--overlay-scrollbar-size));
 
 	/* Gradient ramp that fades out the scrolling items, shown only while there
 	   is more content to scroll to below. */
@@ -82,52 +80,18 @@
 }
 
 .stacksPanel {
-	/* Stretch/shrink single child element to fit this element. */
-	display: grid;
-	grid-template-rows: minmax(0, 1fr);
-	grid-template-columns: minmax(0, 1fr);
 	background-color: var(--bg-2);
-}
-
-.stacksScrollArea {
-	position: relative;
-	min-height: 0;
-}
-
-.stacksViewport {
-	height: 100%;
-}
-
-.scrollbar {
-	display: flex;
-	justify-content: center;
-	width: 10px;
-	padding-block: 2px;
-	opacity: 0;
-	transition: opacity 150ms;
-
-	&[data-scrolling] {
-		transition-duration: 0ms;
-	}
-
-	&[data-hovering],
-	&[data-scrolling] {
-		opacity: 1;
-	}
-}
-
-.scrollbarThumb {
-	width: 4px;
-	border-radius: 2px;
-	background-color: var(--scale-gray-60);
-	opacity: 0.8;
 }
 
 .stacks {
 	display: flex;
 	row-gap: 8px;
 	flex-direction: column;
-	padding-inline: var(--panel-padding-inline);
+
+	/* The scrollbar gutter takes up part of the inline end padding so the
+	   thumb visually overlays the panel margin. */
+	padding-inline: var(--panel-padding-inline)
+		calc(var(--panel-padding-inline) - var(--overlay-scrollbar-size));
 	padding-block: var(--panel-padding-block);
 }
 
