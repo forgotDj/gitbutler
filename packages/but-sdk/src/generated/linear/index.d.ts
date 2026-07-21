@@ -325,6 +325,7 @@ export declare function forgeCompareBranchUrl(projectId: string, base: string, b
 /**
  * Per-project forge display + URL config. Lets the renderer build
  * commit/PR URLs and pick labels without branching on forge name.
+ * Returns no value when the project has no target yet or its target forge is unknown.
  */
 export declare function forgeInfo(projectId: string): Promise<ForgeInfo | null>
 
@@ -332,6 +333,7 @@ export declare function forgeInfo(projectId: string): Promise<ForgeInfo | null>
  * Get the forge provider name.
  *
  * This is determined by the forge the base branch is pointing to.
+ * Returns no value when the project has no target yet or its target forge is unknown.
  */
 export declare function forgeProvider(projectId: string): Promise<ForgeName | null>
 
