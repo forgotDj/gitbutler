@@ -495,7 +495,7 @@ const moveOperation = ({
 	return branchMoveOperation;
 };
 
-export type OperationType = "into" | "above" | "below";
+export type Placement = "into" | "above" | "below";
 
 const isOperationSourceEnabled = (source: Operand): boolean =>
 	Match.value(source).pipe(
@@ -503,9 +503,9 @@ const isOperationSourceEnabled = (source: Operand): boolean =>
 		Match.orElse(() => true),
 	);
 
-export type OperationsByType = Record<OperationType, LabelledOperation | null>;
+export type OperationsByPlacement = Record<Placement, LabelledOperation | null>;
 
-export const getOperations = (sources: Array<Operand>, target: Operand): OperationsByType => {
+export const getOperations = (sources: Array<Operand>, target: Operand): OperationsByPlacement => {
 	if (
 		sources.length === 0 ||
 		sources.some((source) => operandEquals(source, target)) ||
@@ -527,5 +527,5 @@ export const getOperations = (sources: Array<Operand>, target: Operand): Operati
 export const getOperation = (x: {
 	sources: Array<Operand>;
 	target: Operand;
-	operationType: OperationType;
-}): LabelledOperation | null => getOperations(x.sources, x.target)[x.operationType];
+	placement: Placement;
+}): LabelledOperation | null => getOperations(x.sources, x.target)[x.placement];

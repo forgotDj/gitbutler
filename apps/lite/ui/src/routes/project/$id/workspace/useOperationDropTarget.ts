@@ -1,7 +1,7 @@
 import {
 	getOperation,
 	getOperations,
-	type OperationType,
+	type Placement,
 	useRunOperation,
 } from "#ui/operations/operation.ts";
 import type { Operand } from "#ui/operands.ts";
@@ -22,12 +22,12 @@ type OnDropArgs = Parameters<NonNullable<DropTargetParams["onDrop"]>>[0];
 
 type DropData = OnDropArgs["self"]["data"];
 
-const getOperationTypeFromData = (data: DropData): OperationType | null => {
+const getPlacementFromData = (data: DropData): Placement | null => {
 	const instruction = extractInstruction(data);
 	if (!instruction) return null;
 
 	return Match.value(instruction.operation).pipe(
-		Match.withReturnType<OperationType>(),
+		Match.withReturnType<Placement>(),
 		Match.when("combine", () => "into"),
 		Match.when("reorder-before", () => "above"),
 		Match.when("reorder-after", () => "below"),
@@ -83,13 +83,13 @@ export const useOperationDropTarget = ({
 
 				if (!isActiveDropTarget) return;
 
-				const operationType = getOperationTypeFromData(args.self.data);
+				const placement = getPlacementFromData(args.self.data);
 
 				dispatch(
 					projectSlice.actions.updatePointerTransfer({
 						projectId,
 						target,
-						operationType,
+						placement,
 					}),
 				);
 			},
@@ -98,7 +98,7 @@ export const useOperationDropTarget = ({
 					projectSlice.actions.updatePointerTransfer({
 						projectId,
 						target: null,
-						operationType: null,
+						placement: null,
 					}),
 				);
 			},
@@ -109,13 +109,13 @@ export const useOperationDropTarget = ({
 				if (!isActiveDropTarget) return;
 
 				const dragData = parseDragData(args.source.data);
-				const operationType = getOperationTypeFromData(args.self.data);
+				const placement = getPlacementFromData(args.self.data);
 				const operation =
-					dragData && operationType !== null
+					dragData && placement !== null
 						? getOperation({
 								sources: dragData.sources,
 								target,
-								operationType,
+								placement,
 							})
 						: null;
 
