@@ -14,6 +14,7 @@ import { commitForgeUrl } from "#ui/commit.ts";
 import { outlineHotkeys } from "#ui/hotkeys.ts";
 import { branchOperand, commitOperand, operandIdentityKey, type Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
+import { interfaceSlice } from "#ui/interface/state.ts";
 import { useNavigationIndexHotkeys } from "#ui/selection-scopes.ts";
 import { useAppDispatch, useAppSelector, useAppStore } from "#ui/store.ts";
 import { type NavigationIndex } from "#ui/workspace/navigation-index.ts";
@@ -129,7 +130,7 @@ export const useOutlineTreeHotkeys = ({
 	const { mutate: branchCreate } = useBranchCreate();
 
 	const openBranchPicker = () => {
-		dispatch(projectSlice.actions.openDialog({ projectId, dialog: { _tag: "BranchPicker" } }));
+		dispatch(interfaceSlice.actions.openDialog({ dialog: { _tag: "BranchPicker" } }));
 	};
 
 	const amendCommit = () => {

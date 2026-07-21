@@ -14,6 +14,7 @@ import { TooltipPopup } from "#ui/components/Tooltip.tsx";
 import { globalHotkeys, workspaceHotkeys } from "#ui/hotkeys.ts";
 import { branchOperand, type BranchOperand, type Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
+import { interfaceSlice } from "#ui/interface/state.ts";
 import { focusSelectionScope } from "#ui/selection-scopes.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { formatRelativeTime } from "#ui/time.ts";
@@ -116,15 +117,15 @@ export const Outline: FC<
 	};
 
 	const openApplyBranchPicker = () => {
-		dispatch(projectSlice.actions.openDialog({ projectId, dialog: { _tag: "ApplyBranchPicker" } }));
+		dispatch(interfaceSlice.actions.openDialog({ dialog: { _tag: "ApplyBranchPicker" } }));
 	};
 
 	const openProjectPicker = () => {
-		dispatch(projectSlice.actions.openDialog({ projectId, dialog: { _tag: "ProjectPicker" } }));
+		dispatch(interfaceSlice.actions.openDialog({ dialog: { _tag: "ProjectPicker" } }));
 	};
 
 	const openSettings = () => {
-		dispatch(projectSlice.actions.openDialog({ projectId, dialog: { _tag: "Settings" } }));
+		dispatch(interfaceSlice.actions.openDialog({ dialog: { _tag: "Settings" } }));
 	};
 
 	const { isPending: isBranchCreatePending, mutate: branchCreate } = useBranchCreate();
