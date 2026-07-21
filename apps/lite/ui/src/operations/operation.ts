@@ -61,7 +61,7 @@ type Operation =
 
 type LabelledOperation = { operation: Operation; label: string };
 
-const runOperation = async ({
+const executeOperation = async ({
 	projectId,
 	operation,
 	resolveChanges,
@@ -192,7 +192,7 @@ export const useDryRunOperation = ({
 		queryKey: ["dryRun" satisfies QueryKey, projectId, operation, changes],
 		queryFn: () => {
 			if (!operation) return null;
-			return runOperation({
+			return executeOperation({
 				projectId,
 				operation,
 				resolveChanges: async () => changes,
@@ -204,7 +204,7 @@ export const useDryRunOperation = ({
 	});
 };
 
-export const useRunOperation = () => {
+export const useExecuteOperation = () => {
 	const { id: projectId } = useParams({ from: "/project/$id/workspace" });
 	const dispatch = useAppDispatch();
 	const queryClient = useQueryClient();
@@ -212,7 +212,7 @@ export const useRunOperation = () => {
 
 	return useMutation({
 		mutationFn: (operation: Operation) =>
-			runOperation({
+			executeOperation({
 				projectId,
 				operation,
 				resolveChanges: (sources) => resolveDiffSpecs({ projectId, queryClient, sources }),

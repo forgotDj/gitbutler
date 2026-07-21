@@ -2,7 +2,7 @@ import {
 	getOperation,
 	getOperations,
 	type Placement,
-	useRunOperation,
+	useExecuteOperation,
 } from "#ui/operations/operation.ts";
 import type { Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
@@ -45,7 +45,7 @@ export const useOperationDropTarget = ({
 	projectId: string;
 }) => {
 	const dispatch = useAppDispatch();
-	const { mutate: runOperation } = useRunOperation();
+	const { mutate: executeOperation } = useExecuteOperation();
 	const dropRef = useRef<HTMLElement>(null);
 
 	const getData = useEffectEvent(({ input, element, source }: GetDataArgs) => {
@@ -125,10 +125,10 @@ export const useOperationDropTarget = ({
 				}
 
 				dispatch(projectSlice.actions.exitMode({ projectId }));
-				runOperation(operation.operation);
+				executeOperation(operation.operation);
 			},
 		});
-	}, [dispatch, projectId, runOperation, target]);
+	}, [dispatch, projectId, executeOperation, target]);
 
 	return dropRef;
 };

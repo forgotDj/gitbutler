@@ -10,7 +10,7 @@ import { operationHotkeys } from "#ui/hotkeys.ts";
 import type { Operand } from "#ui/operands.ts";
 import {
 	getOperations,
-	useRunOperation,
+	useExecuteOperation,
 	type Placement,
 	type OperationsByPlacement,
 } from "#ui/operations/operation.ts";
@@ -295,7 +295,7 @@ const TransferKeyboardOperationControls: FC<{
 	);
 
 	const dispatch = useAppDispatch();
-	const { mutate: runOperation } = useRunOperation();
+	const { mutate: executeOperation } = useExecuteOperation();
 
 	const target = getTransferTarget(keyboardTransferMode(mode), selection, detailsSelectionScope);
 	if (!target) return null;
@@ -308,7 +308,7 @@ const TransferKeyboardOperationControls: FC<{
 
 		if (!operation) return;
 
-		runOperation(operation.operation);
+		executeOperation(operation.operation);
 	};
 
 	const cancel = () => {
