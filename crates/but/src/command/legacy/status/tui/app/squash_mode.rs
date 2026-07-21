@@ -326,6 +326,7 @@ pub enum SquashReword {
 pub enum SquashMessage {
     Start,
     StartWith(Arc<CliId>),
+    StartReverse,
     Confirm,
     UseTargetMessage,
 }
@@ -345,6 +346,7 @@ impl App {
         match squash_message {
             SquashMessage::Start => self.handle_squash_start(messages),
             SquashMessage::StartWith(id) => self.handle_squash_start_with(id),
+            SquashMessage::StartReverse => self.handle_squash_reverse(),
             SquashMessage::Confirm => self.handle_squash_confirm(ctx, terminal_guard, messages)?,
             SquashMessage::UseTargetMessage => self.handle_use_target_message(),
         }
@@ -415,8 +417,8 @@ impl App {
         }
     }
 
-    fn handle_squash_start_with(&mut self, id: Arc<CliId>) {
-        match &*id {
+    fn handle_squash_start_with(&mut self, source: Arc<CliId>) {
+        match &*source {
             CliId::Uncommitted { .. } => {
                 self.start_with_source(SquashSource::Uncommitted);
             }
@@ -450,6 +452,26 @@ impl App {
             }
             CliId::PathPrefix { .. } | CliId::Stack { .. } => {}
         }
+    }
+
+    fn handle_squash_reverse(&mut self) {
+        if !matches!(&*self.mode, Mode::Normal(..)) {
+            return;
+        }
+
+        let Some(selection) = self
+            .cursor
+            .selected_line(&self.status_lines)
+            .and_then(|line| line.data.cli_id())
+        else {
+            return;
+        };
+
+        if matches!(&**selection, CliId::UncommittedHunkOrFile(..)) {
+            return;
+        }
+
+        self.start_with_source(SquashSource::Uncommitted);
     }
 
     fn start_with_source(&mut self, source: SquashSource) {

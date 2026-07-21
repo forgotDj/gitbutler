@@ -755,6 +755,7 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
             Message::Squash(message) => match message {
                 SquashMessage::Confirm => true,
                 SquashMessage::Start
+                | SquashMessage::StartReverse
                 | SquashMessage::StartWith(..)
                 | SquashMessage::UseTargetMessage => false,
             },

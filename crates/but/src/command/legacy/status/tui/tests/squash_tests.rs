@@ -448,3 +448,25 @@ fn squash_uncommitted_to_branch() {
     tui.input(KeyCode::Enter)
         .assert_rendered_term_svg_eq(file!["snapshots/squash_uncommitted_to_branch_003.svg"]);
 }
+
+#[test]
+fn reverse_squash() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("one", "contents");
+    env.file("two", "contents");
+
+    let mut tui = test_tui(env);
+
+    tui.input(Shift('f'));
+    tui.input('j');
+    tui.input('j');
+    tui.input('j');
+    tui.input('j');
+    tui.input(Shift('r'))
+        .assert_rendered_term_svg_eq(file!["snapshots/reverse_squash_001.svg"]);
+    tui.input('u');
+    tui.input(KeyCode::Enter)
+        .assert_rendered_term_svg_eq(file!["snapshots/reverse_squash_002.svg"]);
+}

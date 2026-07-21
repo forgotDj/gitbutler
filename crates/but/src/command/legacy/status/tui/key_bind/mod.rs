@@ -637,6 +637,14 @@ impl KeyBindsBuilder<'_> {
         .long_description("Squash, amend, or undo commits")
     }
 
+    fn reverse_squash(&mut self) -> KeyBindsInModesBuilder<'_> {
+        self.key_bind("reverse squash", press().shift().code(KeyCode::Char('R')), || {
+            Message::Squash(SquashMessage::StartReverse)
+        })
+        .long_description("Squash into selection")
+        .hide_from_hotbar()
+    }
+
     fn squash_use_target_message(&mut self) -> KeyBindsInModesBuilder<'_> {
         self.key_bind(
             "use target message",
@@ -1010,8 +1018,7 @@ fn register_normal_mode_key_binds(builder: &mut KeyBindsBuilder<'_>, without_mar
     builder.squash().register();
 
     if without_marks {
-        // TODO: implement this when rub mode has been fully removed
-        // builder.reverse_squash().register();
+        builder.reverse_squash().register();
     }
 
     builder.commit().register();
