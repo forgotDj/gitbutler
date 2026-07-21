@@ -221,7 +221,10 @@ export const CommitForm: FC<{
 							// the tooltip. Other props should be passed above.
 							render={<Button focusableWhenDisabled render={<Tooltip.Trigger />} />}
 						>
-							<Icon name="bullseye" size={14} />
+							<Icon
+								name={commitTarget?.operand._tag === "Commit" ? "commit" : "branch"}
+								size={14}
+							/>
 							<span className={styles.targetTriggerLabel}>
 								<Combobox.Value placeholder="Select commit target" />
 							</span>

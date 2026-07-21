@@ -22,7 +22,7 @@ export const buildCommitTargetComboboxItems = ({
 		...(commitTarget
 			? ([
 					{
-						label: `Commit: ${commitTitle(commitTarget.message) ?? "(no message)"}`,
+						label: commitTitle(commitTarget.message) ?? "(no message)",
 						operand: { _tag: "Commit", commitId: commitTarget.id },
 						relativeTo: { type: "commit", subject: commitTarget.id },
 					},
