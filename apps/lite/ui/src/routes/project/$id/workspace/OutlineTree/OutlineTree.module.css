@@ -1,5 +1,4 @@
 .section {
-	padding: 6px;
 	border-radius: var(--radius-card);
 	background-color: var(--bg-1);
 	box-shadow: var(--shadow-card);
@@ -40,9 +39,7 @@
 .uncommittedChanges {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
 	min-height: 0;
-	overflow: auto;
 }
 
 .uncommittedChangesTree {
@@ -61,7 +58,7 @@
 		position: sticky;
 		bottom: 0;
 		height: 20px;
-		margin-top: -8px;
+		margin-block-start: -8px;
 		background: linear-gradient(to top, var(--bg-1) 20%, transparent);
 		content: "";
 		opacity: 0;
@@ -75,8 +72,8 @@
 }
 
 .commitForm {
-	padding-inline: var(--panel-padding-inline);
-	padding-bottom: var(--panel-padding-block);
+	margin-inline: var(--panel-padding-inline);
+	margin-block-end: var(--panel-padding-block);
 }
 
 .stacksPanel {
@@ -96,6 +93,8 @@
 }
 
 .segments {
+	padding-block-start: 6px;
+	padding-inline: 6px;
 	display: flex;
 	flex-direction: column;
 }
@@ -109,5 +108,5 @@
 .stack {
 	display: flex;
 	flex-direction: column;
-	padding-bottom: 0;
+	padding-block-end: 0;
 }

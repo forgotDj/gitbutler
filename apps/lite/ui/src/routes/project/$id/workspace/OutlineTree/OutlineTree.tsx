@@ -275,13 +275,12 @@ const UncommittedChanges: FC<{
 				/>
 			</div>
 
-			<div className={styles.commitForm}>
-				<CommitForm
-					projectId={projectId}
-					commitTarget={commitTarget}
-					targetComboboxItems={targetComboboxItems}
-				/>
-			</div>
+			<CommitForm
+				projectId={projectId}
+				commitTarget={commitTarget}
+				targetComboboxItems={targetComboboxItems}
+				className={styles.commitForm}
+			/>
 		</div>
 	);
 };
@@ -738,14 +737,12 @@ export const OutlineTree: FC<
 									operand={uncommittedChangesOperand}
 									outline="inside"
 									render={
-										<div>
-											<UncommittedChanges
-												navigationIndex={uncommittedFilesNavigationIndex}
-												commitTarget={commitTarget}
-												projectId={projectId}
-												targetComboboxItems={commitTargetComboboxItems}
-											/>
-										</div>
+										<UncommittedChanges
+											navigationIndex={uncommittedFilesNavigationIndex}
+											commitTarget={commitTarget}
+											projectId={projectId}
+											targetComboboxItems={commitTargetComboboxItems}
+										/>
 									}
 								/>
 							}

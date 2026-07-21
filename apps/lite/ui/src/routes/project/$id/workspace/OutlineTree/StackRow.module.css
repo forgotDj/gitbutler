@@ -1,11 +1,7 @@
 .header {
 	position: relative;
-	margin-bottom: 6px;
-	margin-inline: -4px;
-	margin-block-start: -4px;
-	padding-inline: 10px;
+	padding-inline: 12px;
 	padding-block: 2px;
-	/* background-color: red; */
 
 	/* Divider drawn as a pseudo-element so it can extend past the 6px card
 	   padding to span the full card width without overriding the row's own
