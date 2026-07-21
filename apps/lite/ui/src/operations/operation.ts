@@ -12,42 +12,47 @@ import { useParams } from "@tanstack/react-router";
 import { errorMessageForToast } from "#ui/errors.ts";
 import { syncCoreCaches } from "#ui/api/mutations.ts";
 
+/**
+ * Each operation type corresponds to a member of the SDK's `OperationKind` type and associated
+ * single mutation. `SplitCommit` is our one exception as the SDK doesn't currently support that as
+ * a single, atomic operation.
+ */
 type Operation =
-	| { _tag: "CommitAmend"; source: Operand; commitId: string }
+	| { _tag: "AmendCommit"; source: Operand; commitId: string }
 	| {
-			_tag: "CommitCreate";
+			_tag: "CreateCommit";
 			source: Operand;
 			relativeTo: RelativeTo;
 			side: InsertSide;
 			message: string;
 	  }
 	| {
-			_tag: "CommitSplit";
+			_tag: "SplitCommit";
 			source: Operand;
 			sourceCommitId: string;
 			relativeTo: RelativeTo;
 			side: InsertSide;
 	  }
 	| {
-			_tag: "CommitMove";
+			_tag: "MoveCommit";
 			subjectCommitIds: Array<string>;
 			relativeTo: RelativeTo;
 			side: InsertSide;
 	  }
 	| {
-			_tag: "CommitMoveChangesBetween";
+			_tag: "MoveCommitFile";
 			source: Operand;
 			sourceCommitId: string;
 			destinationCommitId: string;
 	  }
 	| {
-			_tag: "CommitSquash";
+			_tag: "SquashCommit";
 			sourceCommitIds: Array<string>;
 			destinationCommitId: string;
 	  }
-	| { _tag: "CommitUncommit"; subjectCommitIds: Array<string>; assignTo: string | null }
+	| { _tag: "UndoCommit"; subjectCommitIds: Array<string>; assignTo: string | null }
 	| {
-			_tag: "CommitUncommitChanges";
+			_tag: "DiscardChanges";
 			source: Operand;
 			commitId: string;
 			assignTo: string | null;
@@ -69,7 +74,7 @@ const runOperation = async ({
 }) =>
 	Match.value(operation).pipe(
 		Match.tagsExhaustive({
-			CommitAmend: async (operation) => {
+			AmendCommit: async (operation) => {
 				const changes = await resolveChanges([operation.source]);
 				if (!changes) return null;
 				return window.lite.commitAmend({
@@ -79,7 +84,7 @@ const runOperation = async ({
 					dryRun,
 				});
 			},
-			CommitMoveChangesBetween: async (operation) => {
+			MoveCommitFile: async (operation) => {
 				const changes = await resolveChanges([operation.source]);
 				if (!changes) return null;
 				return window.lite.commitMoveChangesBetween({
@@ -90,21 +95,21 @@ const runOperation = async ({
 					dryRun,
 				});
 			},
-			CommitSquash: (operation) =>
+			SquashCommit: (operation) =>
 				window.lite.commitSquash({
 					projectId,
 					sourceCommitIds: operation.sourceCommitIds,
 					destinationCommitId: operation.destinationCommitId,
 					dryRun,
 				}),
-			CommitUncommit: (operation) =>
+			UndoCommit: (operation) =>
 				window.lite.commitUncommit({
 					projectId,
 					subjectCommitIds: operation.subjectCommitIds,
 					assignTo: operation.assignTo,
 					dryRun,
 				}),
-			CommitUncommitChanges: async (operation) => {
+			DiscardChanges: async (operation) => {
 				const changes = await resolveChanges([operation.source]);
 				if (!changes) return null;
 				return window.lite.commitUncommitChanges({
@@ -115,7 +120,7 @@ const runOperation = async ({
 					dryRun,
 				});
 			},
-			CommitCreate: async (operation) => {
+			CreateCommit: async (operation) => {
 				const changes = await resolveChanges([operation.source]);
 				if (!changes) return null;
 				return window.lite.commitCreate({
@@ -127,7 +132,7 @@ const runOperation = async ({
 					dryRun,
 				});
 			},
-			CommitSplit: async (operation) => {
+			SplitCommit: async (operation) => {
 				const changes = await resolveChanges([operation.source]);
 				if (!changes) return null;
 
@@ -152,7 +157,7 @@ const runOperation = async ({
 					dryRun,
 				});
 			},
-			CommitMove: (operation) =>
+			MoveCommit: (operation) =>
 				window.lite.commitMove({
 					projectId,
 					subjectCommitIds: operation.subjectCommitIds,
@@ -262,7 +267,7 @@ const squashOperation = ({
 	) {
 		return {
 			operation: {
-				_tag: "CommitSquash",
+				_tag: "SquashCommit",
 				sourceCommitIds: sources.map((source) => source.commitId),
 				destinationCommitId: target.commitId,
 			},
@@ -277,7 +282,7 @@ const squashOperation = ({
 	) {
 		return {
 			operation: {
-				_tag: "CommitUncommit",
+				_tag: "UndoCommit",
 				subjectCommitIds: sources.map((source) => source.commitId),
 				assignTo: null,
 			},
@@ -296,7 +301,7 @@ const squashOperation = ({
 			},
 			({ source, target }): OperationWithLabel => ({
 				operation: {
-					_tag: "CommitAmend",
+					_tag: "AmendCommit",
 					commitId: target.commitId,
 					source,
 				},
@@ -310,7 +315,7 @@ const squashOperation = ({
 			},
 			({ source, sourceFileParent }): OperationWithLabel => ({
 				operation: {
-					_tag: "CommitUncommitChanges",
+					_tag: "DiscardChanges",
 					commitId: sourceFileParent.commitId,
 					assignTo: null,
 					source,
@@ -325,7 +330,7 @@ const squashOperation = ({
 			},
 			({ source, sourceFileParent, target }): OperationWithLabel => ({
 				operation: {
-					_tag: "CommitMoveChangesBetween",
+					_tag: "MoveCommitFile",
 					sourceCommitId: sourceFileParent.commitId,
 					destinationCommitId: target.commitId,
 					source,
@@ -354,7 +359,7 @@ const intoOperation = ({
 	) {
 		return {
 			operation: {
-				_tag: "CommitMove",
+				_tag: "MoveCommit",
 				subjectCommitIds: sources.map((source) => source.commitId),
 				relativeTo: { type: "referenceBytes", subject: target.branchRef },
 				side: "below",
@@ -374,7 +379,7 @@ const intoOperation = ({
 			},
 			({ source, target }): OperationWithLabel => ({
 				operation: {
-					_tag: "CommitCreate",
+					_tag: "CreateCommit",
 					relativeTo: { type: "referenceBytes", subject: target.branchRef },
 					side: "below",
 					source,
@@ -419,7 +424,7 @@ const moveOperation = ({
 	if (relativeTo && sources.length > 0 && sources.every((source) => source._tag === "Commit")) {
 		return {
 			operation: {
-				_tag: "CommitMove",
+				_tag: "MoveCommit",
 				subjectCommitIds: sources.map((source) => source.commitId),
 				relativeTo,
 				side,
@@ -463,7 +468,7 @@ const moveOperation = ({
 			{ sourceFileParent: { _tag: "UncommittedChanges" } },
 			({ source }): OperationWithLabel => ({
 				operation: {
-					_tag: "CommitCreate",
+					_tag: "CreateCommit",
 					relativeTo,
 					side,
 					source,
@@ -480,7 +485,7 @@ const moveOperation = ({
 			{ sourceFileParent: { _tag: "Commit" } },
 			({ source, sourceFileParent }): OperationWithLabel => ({
 				operation: {
-					_tag: "CommitSplit",
+					_tag: "SplitCommit",
 					sourceCommitId: sourceFileParent.commitId,
 					relativeTo,
 					side,
