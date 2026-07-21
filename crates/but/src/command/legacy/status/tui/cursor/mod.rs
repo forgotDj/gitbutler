@@ -318,20 +318,6 @@ impl Cursor {
         Some(Self(idx))
     }
 
-    /// Select the first line that points to the given stack.
-    pub fn select_stack(stack_id: StackId, lines: &[StatusOutputLine]) -> Option<Self> {
-        let idx = lines.iter().position(|line| {
-            if let Some(CliId::Stack { stack_id: id, .. }) = line.data.cli_id().map(|id| &**id)
-                && stack_id == *id
-            {
-                true
-            } else {
-                false
-            }
-        })?;
-        Some(Self(idx))
-    }
-
     /// Select the first uncommitted file line that points to the given path in the given stack.
     pub fn select_uncommitted_file(
         path: &BStr,

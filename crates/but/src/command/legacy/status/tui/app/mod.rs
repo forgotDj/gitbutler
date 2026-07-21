@@ -984,7 +984,6 @@ impl App {
             | Some(SelectAfterReload::FirstFileInCommit(_))
             | Some(SelectAfterReload::UncommittedFile { .. })
             | Some(SelectAfterReload::Branch(_))
-            | Some(SelectAfterReload::Stack(_))
             | Some(SelectAfterReload::CliId(_))
             | Some(SelectAfterReload::Uncommitted)
             | None => None,
@@ -1020,7 +1019,6 @@ impl App {
                 | SelectAfterReload::Uncommitted
                 | SelectAfterReload::UncommittedFile { .. }
                 | SelectAfterReload::UncommittedDetailsSection { .. }
-                | SelectAfterReload::Stack(_)
                 | SelectAfterReload::CliId(_) => {}
             }
         }
@@ -1047,7 +1045,6 @@ impl App {
                 SelectAfterReload::FirstFileInCommit(commit_id) => {
                     Cursor::select_first_file_in_commit(commit_id, &new_lines)
                 }
-                SelectAfterReload::Stack(stack_id) => Cursor::select_stack(stack_id, &new_lines),
                 SelectAfterReload::CliId(cli_id) => Cursor::restore(&cli_id, &new_lines),
             }
         } else {

@@ -686,7 +686,6 @@ enum SelectAfterReload {
         direction: ScrollDirection,
     },
     Branch(String),
-    Stack(StackId),
     CliId(Box<CliId>),
     Uncommitted,
 }
