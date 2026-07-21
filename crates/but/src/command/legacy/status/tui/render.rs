@@ -852,7 +852,6 @@ fn selected_operation_extension<'a>(
         | Mode::MoveStack(..)
         | Mode::PickChanges(..)
         | Mode::Details(..)
-        | Mode::Rub(..)
         | Mode::Squash(..)
         | Mode::Stack(..)
         | Mode::InlineReword(..)
@@ -1471,7 +1470,6 @@ impl Mode {
     fn as_mode_render(&self) -> &dyn ModeRender {
         match self {
             Mode::Normal(mode) => mode,
-            Mode::Rub(mode) => mode,
             Mode::Squash(mode) => mode,
             Mode::InlineReword(mode) => mode,
             Mode::Command(mode) => mode,

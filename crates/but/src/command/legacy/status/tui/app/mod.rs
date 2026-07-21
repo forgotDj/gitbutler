@@ -72,9 +72,6 @@ pub use normal_mode::*;
 mod pick_changes_mode;
 pub use pick_changes_mode::*;
 
-mod rub_mode;
-pub use rub_mode::*;
-
 mod stack_mode;
 pub use stack_mode::*;
 
@@ -314,17 +311,7 @@ impl App {
                 if let Some(new_cursor) =
                     Cursor::select_branch(&branch_name.shorten().to_str_lossy(), &self.status_lines)
                 {
-                    self.cursor = if matches!(&*self.mode, Mode::Rub(_)) {
-                        new_cursor
-                            .move_down_within_section(
-                                &self.status_lines,
-                                &self.mode,
-                                self.flags.show_files,
-                            )
-                            .unwrap_or(new_cursor)
-                    } else {
-                        new_cursor
-                    };
+                    self.cursor = new_cursor;
                 }
             }
             Message::SelectUncommitted => {
@@ -353,7 +340,6 @@ impl App {
                     self.cursor = new_cursor;
                 }
             }
-            Message::Rub(rub_message) => self.handle_rub(rub_message, ctx, messages)?,
             Message::Squash(squash_message) => {
                 self.handle_squash(squash_message, ctx, terminal_guard, messages)?
             }
@@ -567,7 +553,6 @@ impl App {
         self.outcome = Some(TuiOutcome::CliIds(
             match &*self.mode {
                 Mode::Normal(..)
-                | Mode::Rub(..)
                 | Mode::Squash(..)
                 | Mode::InlineReword(..)
                 | Mode::Command(..)
@@ -600,7 +585,7 @@ impl App {
             backstack.retain(|entry| match entry {
                 BackstackEntry::ShowFileList => {
                     // this keeps the global file list open after performing operations such as
-                    // committing or rubbing
+                    // committing or squashing
                     true
                 }
                 BackstackEntry::LeaveNormalMode | BackstackEntry::Mark => {
@@ -678,7 +663,6 @@ impl App {
                     details_mode.return_mode.marks_mut().clear();
                 }
                 Mode::InlineReword(..)
-                | Mode::Rub(..)
                 | Mode::Squash(..)
                 | Mode::Command(..)
                 | Mode::Commit(..)
@@ -700,10 +684,10 @@ impl App {
         match self.flags.show_files {
             FilesStatusFlag::Commit(object_id) => {
                 // When viewing files in a commit cursor movement is constrained to only those
-                // files. However you can start a rub which then enables moving outside the file
+                // files. However you can start a squash which then enables moving outside the file
                 // list, while keeping the file list visible. Thus when entering normal mode
-                // (perhaps from cancelling the rub) we need to potentially move the cursor back to
-                // the file list.
+                // (perhaps from cancelling the squash) we need to potentially move the cursor back
+                // to the file list.
                 let Some(selection) = self.cursor.selected_line(&self.status_lines) else {
                     return false;
                 };
@@ -1370,29 +1354,25 @@ impl App {
                 Some(&ref_info.ref_name)
             })
             .filter(|name| {
-                if matches!(&*self.mode, Mode::Rub(_)) {
-                    true
-                } else {
-                    // not all branches are selectable all the time, for example if we're committing
-                    // changes assigned to a stack then we cannot select branches outside the stack
-                    self.status_lines
-                        .iter()
-                        .find(|line| {
-                            if let Some(id) = line.data.cli_id()
-                                && let CliId::Branch {
-                                    name: name_on_line, ..
-                                } = &**id
-                                && name_on_line == name.shorten()
-                            {
-                                true
-                            } else {
-                                false
-                            }
-                        })
-                        .is_none_or(|line| {
-                            is_selectable_in_mode(line, self.mode.as_ref(), self.flags.show_files)
-                        })
-                }
+                // not all branches are selectable all the time, for example if we're committing
+                // changes assigned to a stack then we cannot select branches outside the stack
+                self.status_lines
+                    .iter()
+                    .find(|line| {
+                        if let Some(id) = line.data.cli_id()
+                            && let CliId::Branch {
+                                name: name_on_line, ..
+                            } = &**id
+                            && name_on_line == name.shorten()
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                    .is_none_or(|line| {
+                        is_selectable_in_mode(line, self.mode.as_ref(), self.flags.show_files)
+                    })
             })
             .map(|name| name.to_owned())
             .collect::<Vec<_>>();

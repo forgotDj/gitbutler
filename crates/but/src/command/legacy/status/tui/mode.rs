@@ -5,8 +5,7 @@ use crate::{
         InlineRewordMode,
         app::{
             CommandMode, CommandReturnMode, CommitMode, CommitSource, JumpMode, MoveMode,
-            MoveSource, MoveStackMode, NormalMode, PickChangesMode, RubMode, RubSource, SquashMode,
-            StackMode,
+            MoveSource, MoveStackMode, NormalMode, PickChangesMode, SquashMode, StackMode,
             mark::{Marks, MarksRef},
         },
         render::ModeRender,
@@ -21,7 +20,6 @@ use super::app::SquashSource;
 #[strum_discriminants(name(ModeDiscriminant))]
 pub enum Mode {
     Normal(NormalMode),
-    Rub(RubMode),
     Squash(SquashMode),
     InlineReword(InlineRewordMode),
     Command(CommandMode),
@@ -58,7 +56,6 @@ impl Mode {
     pub fn as_ref(&self) -> ModeRef<'_> {
         match self {
             Mode::Normal(inner) => ModeRef::Normal(inner),
-            Mode::Rub(inner) => ModeRef::Rub(inner),
             Mode::Squash(inner) => ModeRef::Squash(inner),
             Mode::InlineReword(inner) => ModeRef::InlineReword(inner),
             Mode::Command(inner) => ModeRef::Command(inner),
@@ -78,7 +75,7 @@ impl ModeDiscriminant {
         match self {
             Self::Normal => theme.tui_mode_normal.bg.unwrap_or(Color::DarkGray),
             Self::Commit | Self::PickChanges => theme.tui_mode_commit.bg.unwrap_or(Color::Green),
-            Self::Rub | Self::Squash | Self::Jump => theme.tui_mode_rub.bg.unwrap_or(Color::Blue),
+            Self::Squash | Self::Jump => theme.tui_mode_squash.bg.unwrap_or(Color::Blue),
             Self::InlineReword | Self::Stack => {
                 theme.tui_mode_inline_reword.bg.unwrap_or(Color::Magenta)
             }
@@ -95,7 +92,7 @@ impl ModeDiscriminant {
         match self {
             Self::Normal => theme.tui_mode_normal.fg.unwrap_or(Color::White),
             Self::Commit | Self::PickChanges => theme.tui_mode_commit.fg.unwrap_or(Color::Black),
-            Self::Rub | Self::Squash | Self::Jump => theme.tui_mode_rub.fg.unwrap_or(Color::Black),
+            Self::Squash | Self::Jump => theme.tui_mode_squash.fg.unwrap_or(Color::Black),
             Self::InlineReword | Self::Stack => {
                 theme.tui_mode_inline_reword.fg.unwrap_or(Color::Black)
             }
@@ -108,7 +105,6 @@ impl ModeDiscriminant {
     pub fn hotbar_str(self) -> &'static str {
         match self {
             Self::Normal => "  normal  ",
-            Self::Rub => "  rub  ",
             Self::Squash => "  squash  ",
             Self::InlineReword => "  reword  ",
             Self::Command => "  command  ",
@@ -126,7 +122,6 @@ impl ModeDiscriminant {
 #[derive(Debug, Copy, Clone)]
 pub enum ModeRef<'a> {
     Normal(&'a NormalMode),
-    Rub(&'a RubMode),
     Squash(&'a SquashMode),
     #[expect(dead_code)]
     InlineReword(&'a InlineRewordMode),
@@ -144,10 +139,6 @@ impl<'a> ModeRef<'a> {
     pub fn marks_ref(self) -> MarksRef<'a> {
         match self {
             ModeRef::Normal(normal_mode) => normal_mode.marks.as_ref(),
-            ModeRef::Rub(rub_mode) => match &rub_mode.source {
-                RubSource::Marks(marks) => marks.as_ref(),
-                RubSource::CliId(..) => MarksRef::Empty,
-            },
             ModeRef::Squash(SquashMode { source, reword: _ }) => match source {
                 SquashSource::Uncommitted
                 | SquashSource::Branch(..)

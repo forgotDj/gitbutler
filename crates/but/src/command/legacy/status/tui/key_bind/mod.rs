@@ -7,7 +7,7 @@ use crate::{
     CliId,
     command::legacy::status::tui::{
         CommandMessage, ConfirmMessage, DetailsLayoutMessage, FuzzyPickerMessage, JumpMessage,
-        Message, RubMessage, StackMessage,
+        Message, StackMessage,
         app::{CommitMessageComposer, RewordMessage, SquashMessage},
         details::DetailsMessage,
         help::HelpMessage,
@@ -35,12 +35,6 @@ pub fn default_key_binds() -> KeyBinds {
                 builder.mark().register();
                 builder.confirm_and_quit().register();
                 register_non_mode_specific_key_binds(&mut builder, WithFocusDetails::Yes);
-            }
-            ModeDiscriminant::Rub => {
-                builder.rub_confirm().register();
-                builder.rub_use_target_message().register();
-                builder.rub_use_source_message().register();
-                register_non_mode_specific_key_binds(&mut builder, WithFocusDetails::No);
             }
             ModeDiscriminant::Squash => {
                 builder.squash_confirm().register();
@@ -91,12 +85,6 @@ pub fn default_key_binds() -> KeyBinds {
                     .register();
                 builder
                     .squash()
-                    .condition(KeyBindCondition::SelectionIsUncommitted.and(
-                        &KeyBindCondition::Not(&KeyBindCondition::DetailsReturnModeIsPickChanges),
-                    ))
-                    .register();
-                builder
-                    .rub()
                     .condition(KeyBindCondition::SelectionIsUncommitted.and(
                         &KeyBindCondition::Not(&KeyBindCondition::DetailsReturnModeIsPickChanges),
                     ))
@@ -597,7 +585,7 @@ impl KeyBindsBuilder<'_> {
     fn mark(&mut self) -> KeyBindsInModesBuilder<'_> {
         self.key_bind("mark", press().code(KeyCode::Char(' ')), || Message::Mark)
             .show_only_in_normal_mode_help_section()
-            .long_description("Mark and rub multiple items")
+            .long_description("Mark multiple items")
     }
 
     fn quit(&mut self) -> KeyBindsInModesBuilder<'_> {
@@ -643,7 +631,7 @@ impl KeyBindsBuilder<'_> {
     }
 
     fn squash(&mut self) -> KeyBindsInModesBuilder<'_> {
-        self.key_bind("squash", press().shift().code(KeyCode::Char('S')), || {
+        self.key_bind("squash", press().code(KeyCode::Char('r')), || {
             Message::Squash(SquashMessage::Start)
         })
         .long_description("Squash, amend, or undo commits")
@@ -663,23 +651,6 @@ impl KeyBindsBuilder<'_> {
             Message::Squash(SquashMessage::Confirm)
         })
         .long_description("Squash target into selection")
-    }
-
-    fn rub(&mut self) -> KeyBindsInModesBuilder<'_> {
-        self.key_bind("rub", press().code(KeyCode::Char('r')), || {
-            Message::Rub(RubMessage::Start)
-        })
-        .long_description("Squash or undo commits")
-    }
-
-    fn reverse_rub(&mut self) -> KeyBindsInModesBuilder<'_> {
-        self.key_bind(
-            "reverse rub",
-            press().shift().code(KeyCode::Char('R')),
-            || Message::Rub(RubMessage::StartReverse),
-        )
-        .long_description("Rub uncommitted changes into selection")
-        .hide_from_hotbar()
     }
 
     fn commit(&mut self) -> KeyBindsInModesBuilder<'_> {
@@ -830,31 +801,6 @@ impl KeyBindsBuilder<'_> {
             press().code(KeyCode::Enter).alt_code(KeyCode::Char('c')),
             || Message::ConfirmAndQuit,
         )
-    }
-
-    fn rub_use_target_message(&mut self) -> KeyBindsInModesBuilder<'_> {
-        self.key_bind(
-            "use target message",
-            press().shift().code(KeyCode::Char('T')),
-            || Message::Rub(RubMessage::UseTargetMessage),
-        )
-        .long_description("When squashing use target message and discard source message")
-    }
-
-    fn rub_use_source_message(&mut self) -> KeyBindsInModesBuilder<'_> {
-        self.key_bind(
-            "use source message",
-            press().shift().code(KeyCode::Char('S')),
-            || Message::Rub(RubMessage::UseSourceMessage),
-        )
-        .long_description("When squashing use source message and discard target message")
-    }
-
-    fn rub_confirm(&mut self) -> KeyBindsInModesBuilder<'_> {
-        self.key_bind("confirm", press().code(KeyCode::Enter), || {
-            Message::Rub(RubMessage::Confirm)
-        })
-        .long_description("Rub target into selection")
     }
 
     fn reword_open_editor(&mut self) -> KeyBindsInModesBuilder<'_> {
@@ -1061,11 +1007,11 @@ fn register_normal_mode_key_binds(builder: &mut KeyBindsBuilder<'_>, without_mar
     builder.jump_up().register();
     builder.jump_down().register();
 
-    builder.rub().register();
     builder.squash().register();
 
     if without_marks {
-        builder.reverse_rub().register();
+        // TODO: implement this when rub mode has been fully removed
+        // builder.reverse_squash().register();
     }
 
     builder.commit().register();

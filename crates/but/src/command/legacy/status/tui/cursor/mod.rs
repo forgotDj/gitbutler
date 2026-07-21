@@ -789,16 +789,6 @@ fn is_section_header(line: &StatusOutputLine, mode: &Mode) -> bool {
                     | StatusOutputLineData::MergeBase
             )
         }
-
-        Mode::Rub(..) => {
-            matches!(
-                line.data,
-                StatusOutputLineData::Branch { .. }
-                    | StatusOutputLineData::StagedChanges { .. }
-                    | StatusOutputLineData::UncommittedChanges { .. }
-                    | StatusOutputLineData::MergeBase
-            )
-        }
     }
 }
 
@@ -857,13 +847,6 @@ pub fn is_selectable_in_mode(
 
     // selecting the source line should always be possible
     match mode {
-        ModeRef::Rub(rub_mode) => {
-            if let Some(cli_id) = line.data.cli_id()
-                && rub_mode.source.contains(cli_id)
-            {
-                return true;
-            }
-        }
         ModeRef::Squash(squash_mode) => {
             if let Some(cli_id) = line.data.cli_id()
                 && squash_mode.source.contains(cli_id)
@@ -939,8 +922,7 @@ pub fn is_selectable_in_mode(
                 return false;
             }
         }
-        ModeRef::Rub(..)
-        | ModeRef::Squash(..)
+        ModeRef::Squash(..)
         | ModeRef::InlineReword(..)
         | ModeRef::Command(..)
         | ModeRef::Commit(..)
@@ -981,10 +963,6 @@ pub fn is_selectable_in_mode(
         ModeRef::Details(details_mode) => {
             is_selectable_in_mode(line, details_mode.return_mode.as_ref(), show_files_flag)
         }
-        ModeRef::Rub(rub_mode) => line
-            .data
-            .cli_id()
-            .is_some_and(|cli_id| rub_mode.available_targets.contains(cli_id)),
         ModeRef::Squash(SquashMode { source, reword: _ }) => line
             .data
             .cli_id()
