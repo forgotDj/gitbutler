@@ -114,13 +114,13 @@ const runOperation = async ({
 }: {
 	projectId: string;
 	operation: Operation;
-	resolveChanges: (source: Operand) => Promise<Array<DiffSpec> | null>;
+	resolveChanges: (sources: Array<Operand>) => Promise<Array<DiffSpec> | null>;
 	dryRun: boolean;
 }) =>
 	Match.value(operation).pipe(
 		Match.tagsExhaustive({
 			CommitAmend: async (operation) => {
-				const changes = await resolveChanges(operation.source);
+				const changes = await resolveChanges([operation.source]);
 				if (!changes) return null;
 				return window.lite.commitAmend({
 					projectId,
@@ -130,7 +130,7 @@ const runOperation = async ({
 				});
 			},
 			CommitMoveChangesBetween: async (operation) => {
-				const changes = await resolveChanges(operation.source);
+				const changes = await resolveChanges([operation.source]);
 				if (!changes) return null;
 				return window.lite.commitMoveChangesBetween({
 					projectId,
@@ -155,7 +155,7 @@ const runOperation = async ({
 					dryRun,
 				}),
 			CommitUncommitChanges: async (operation) => {
-				const changes = await resolveChanges(operation.source);
+				const changes = await resolveChanges([operation.source]);
 				if (!changes) return null;
 				return window.lite.commitUncommitChanges({
 					projectId,
@@ -166,7 +166,7 @@ const runOperation = async ({
 				});
 			},
 			CommitCreate: async (operation) => {
-				const changes = await resolveChanges(operation.source);
+				const changes = await resolveChanges([operation.source]);
 				if (!changes) return null;
 				return window.lite.commitCreate({
 					projectId,
@@ -178,7 +178,7 @@ const runOperation = async ({
 				});
 			},
 			CommitSplit: async (operation) => {
-				const changes = await resolveChanges(operation.source);
+				const changes = await resolveChanges([operation.source]);
 				if (!changes) return null;
 
 				// We can't dry run this as it's not an atomic operation. Ideally this
@@ -229,7 +229,7 @@ export const useDryRunOperation = ({
 }) => {
 	const changes = useResolveDiffSpecs({
 		projectId,
-		operand: operation && "source" in operation ? operation.source : undefined,
+		sources: operation && "source" in operation ? [operation.source] : undefined,
 	});
 
 	return useQuery({
@@ -260,7 +260,7 @@ export const useRunOperation = () => {
 			runOperation({
 				projectId,
 				operation,
-				resolveChanges: (source) => resolveDiffSpecs({ projectId, queryClient, source }),
+				resolveChanges: (sources) => resolveDiffSpecs({ projectId, queryClient, sources }),
 				dryRun: false,
 			}),
 		onSuccess: async (response, _input, _ctx, { client }) => {
