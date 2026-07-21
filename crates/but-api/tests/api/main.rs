@@ -8,5 +8,7 @@ mod branch_rename;
 mod forge_info;
 #[cfg(all(feature = "legacy", not(feature = "graph-workspace")))]
 mod forge_pr_association;
+#[cfg(feature = "legacy")]
+mod legacy_workspace;
 mod resolve_ai;
 mod support;
