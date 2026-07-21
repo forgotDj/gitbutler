@@ -59,7 +59,7 @@ type Operation =
 	  }
 	| { _tag: "MoveBranch"; subjectBranch: string; targetBranch: string };
 
-type OperationWithLabel = { operation: Operation; label: string };
+type LabelledOperation = { operation: Operation; label: string };
 
 const runOperation = async ({
 	projectId,
@@ -259,7 +259,7 @@ const squashOperation = ({
 }: {
 	sources: Array<Operand>;
 	target: Operand;
-}): OperationWithLabel | null => {
+}): LabelledOperation | null => {
 	if (
 		target._tag === "Commit" &&
 		sources.length > 0 &&
@@ -299,7 +299,7 @@ const squashOperation = ({
 				sourceFileParent: { _tag: "UncommittedChanges" },
 				target: { _tag: "Commit" },
 			},
-			({ source, target }): OperationWithLabel => ({
+			({ source, target }): LabelledOperation => ({
 				operation: {
 					_tag: "AmendCommit",
 					commitId: target.commitId,
@@ -313,7 +313,7 @@ const squashOperation = ({
 				sourceFileParent: { _tag: "Commit" },
 				target: { _tag: "UncommittedChanges" },
 			},
-			({ source, sourceFileParent }): OperationWithLabel => ({
+			({ source, sourceFileParent }): LabelledOperation => ({
 				operation: {
 					_tag: "DiscardChanges",
 					commitId: sourceFileParent.commitId,
@@ -328,7 +328,7 @@ const squashOperation = ({
 				sourceFileParent: { _tag: "Commit" },
 				target: { _tag: "Commit" },
 			},
-			({ source, sourceFileParent, target }): OperationWithLabel => ({
+			({ source, sourceFileParent, target }): LabelledOperation => ({
 				operation: {
 					_tag: "MoveCommitFile",
 					sourceCommitId: sourceFileParent.commitId,
@@ -348,7 +348,7 @@ const intoOperation = ({
 }: {
 	sources: Array<Operand>;
 	target: Operand;
-}): OperationWithLabel | null => {
+}): LabelledOperation | null => {
 	const squash = squashOperation({ sources, target });
 	if (squash) return squash;
 
@@ -377,7 +377,7 @@ const intoOperation = ({
 				sourceFileParent: { _tag: "UncommittedChanges" },
 				target: { _tag: "Branch" },
 			},
-			({ source, target }): OperationWithLabel => ({
+			({ source, target }): LabelledOperation => ({
 				operation: {
 					_tag: "CreateCommit",
 					relativeTo: { type: "referenceBytes", subject: target.branchRef },
@@ -401,7 +401,7 @@ const moveOperation = ({
 	sources: Array<Operand>;
 	target: Operand;
 	side: InsertSide;
-}): OperationWithLabel | null => {
+}): LabelledOperation | null => {
 	const relativeTo: RelativeTo | null = Match.value({ target, side }).pipe(
 		Match.when({ target: { _tag: "Commit" } }, ({ target }): RelativeTo | null => ({
 			type: "commit",
@@ -447,7 +447,7 @@ const moveOperation = ({
 				target: { _tag: "Branch" },
 				side: "above",
 			},
-			({ source, target }): OperationWithLabel => ({
+			({ source, target }): LabelledOperation => ({
 				operation: {
 					_tag: "MoveBranch",
 					subjectBranch: decodeBytes(source.branchRef),
@@ -466,7 +466,7 @@ const moveOperation = ({
 	return Match.value({ source, sourceFileParent: operandFileParent(source) }).pipe(
 		Match.when(
 			{ sourceFileParent: { _tag: "UncommittedChanges" } },
-			({ source }): OperationWithLabel => ({
+			({ source }): LabelledOperation => ({
 				operation: {
 					_tag: "CreateCommit",
 					relativeTo,
@@ -483,7 +483,7 @@ const moveOperation = ({
 		),
 		Match.when(
 			{ sourceFileParent: { _tag: "Commit" } },
-			({ source, sourceFileParent }): OperationWithLabel => ({
+			({ source, sourceFileParent }): LabelledOperation => ({
 				operation: {
 					_tag: "SplitCommit",
 					sourceCommitId: sourceFileParent.commitId,
@@ -510,7 +510,7 @@ const isOperationSourceEnabled = (source: Operand): boolean =>
 		Match.orElse(() => true),
 	);
 
-export type OperationsByType = Record<OperationType, OperationWithLabel | null>;
+export type OperationsByType = Record<OperationType, LabelledOperation | null>;
 
 export const getOperations = (sources: Array<Operand>, target: Operand): OperationsByType => {
 	if (
@@ -535,4 +535,4 @@ export const getOperation = (x: {
 	sources: Array<Operand>;
 	target: Operand;
 	operationType: OperationType;
-}): OperationWithLabel | null => getOperations(x.sources, x.target)[x.operationType];
+}): LabelledOperation | null => getOperations(x.sources, x.target)[x.operationType];
