@@ -22,12 +22,15 @@ pub(crate) fn open(
         match cli_id.resolve_in_workspace(&repo, &id_map, Purpose::Uncommitted, None)? {
             ResolvedCliIdArg::UncommittedHunkOrFile(uncommitted) => {
                 let hunk = uncommitted.hunk_assignments.first();
-                let path = gix::path::from_bstr(hunk.path_bytes.as_bstr()).to_path_buf();
 
                 let line_nr = if uncommitted.is_entire_file {
                     None
                 } else {
                     compute_line_number_to_open_at(hunk)
+                };
+
+                let Some(path) = repo.workdir_path(hunk.path_bytes.as_bstr()) else {
+                    return Err(anyhow::anyhow!("Failed to resolve path to hunk").into());
                 };
 
                 (

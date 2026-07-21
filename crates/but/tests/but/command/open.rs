@@ -44,7 +44,7 @@ Hint: run `but branch new` to create a new branch to work on
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-filepath='new-file.txt'
+filepath='/[..]/new-file.txt'
 
 "#]]);
 }
@@ -126,35 +126,35 @@ lp:6 file-with-mixed.txt│
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-filepath='file-with-additions.txt' line_number='1'
+filepath='/[..]/file-with-additions.txt' line_number='1'
 
 "#]]);
     env.but("_open rn:4 -p echo ")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-filepath='file-with-additions.txt' line_number='11'
+filepath='/[..]/file-with-additions.txt' line_number='11'
 
 "#]]);
     env.but("_open rw:b -p echo ")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-filepath='file-with-deletions.txt' line_number='1'
+filepath='/[..]/file-with-deletions.txt' line_number='1'
 
 "#]]);
     env.but("_open rw:6 -p echo ")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-filepath='file-with-deletions.txt' line_number='7'
+filepath='/[..]/file-with-deletions.txt' line_number='7'
 
 "#]]);
     env.but("_open lp:6 -p echo ")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-filepath='file-with-mixed.txt' line_number='2'
+filepath='/[..]/file-with-mixed.txt' line_number='2'
 
 "#]]);
 }
@@ -183,7 +183,7 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-filepath='file with some $meta; cat A > new-file.txt; spaces/in it.txt' line_number='11'
+filepath='/[..]/file with some $meta; cat A > new-file.txt; spaces/in it.txt' line_number='11'
 
 "#]]);
 }
