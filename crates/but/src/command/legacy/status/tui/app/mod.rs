@@ -78,6 +78,9 @@ pub use rub_mode::*;
 mod stack_mode;
 pub use stack_mode::*;
 
+mod squash_mode;
+pub use squash_mode::*;
+
 #[derive(Debug)]
 pub struct App {
     pub status_lines: Vec<StatusOutputLine>,
@@ -351,6 +354,9 @@ impl App {
                 }
             }
             Message::Rub(rub_message) => self.handle_rub(rub_message, ctx, messages)?,
+            Message::Squash(squash_message) => {
+                self.handle_squash(squash_message, ctx, terminal_guard, messages)?
+            }
             Message::Back => {
                 self.handle_back(messages);
             }
@@ -562,6 +568,7 @@ impl App {
             match &*self.mode {
                 Mode::Normal(..)
                 | Mode::Rub(..)
+                | Mode::Squash(..)
                 | Mode::InlineReword(..)
                 | Mode::Command(..)
                 | Mode::Commit(..)
@@ -650,7 +657,7 @@ impl App {
                     });
                 }
                 if !self.maybe_move_cursor_into_file_list() {
-                    self.ensure_cursor_is_on_selectable_line();
+                    self.ensure_cursor_is_on_selectable_line(MoveCursorDiration::Down);
                 }
             }
             BackstackEntry::ShowFileList => {
@@ -672,6 +679,7 @@ impl App {
                 }
                 Mode::InlineReword(..)
                 | Mode::Rub(..)
+                | Mode::Squash(..)
                 | Mode::Command(..)
                 | Mode::Commit(..)
                 | Mode::Move(..)
@@ -717,22 +725,40 @@ impl App {
         }
     }
 
-    fn ensure_cursor_is_on_selectable_line(&mut self) {
+    fn ensure_cursor_is_on_selectable_line(&mut self, direction: MoveCursorDiration) {
         let Some(line) = self.cursor.selected_line(&self.status_lines) else {
             return;
         };
 
         if !is_selectable_in_mode(line, self.mode.as_ref(), self.flags.show_files) {
-            if let Some(new_cursor) =
-                self.cursor
-                    .move_down(&self.status_lines, &self.mode, self.flags.show_files)
-            {
-                self.cursor = new_cursor;
-            } else if let Some(new_cursor) =
-                self.cursor
-                    .move_up(&self.status_lines, &self.mode, self.flags.show_files)
-            {
-                self.cursor = new_cursor;
+            let directions = match direction {
+                MoveCursorDiration::Up => [MoveCursorDiration::Up, MoveCursorDiration::Down],
+                MoveCursorDiration::Down => [MoveCursorDiration::Down, MoveCursorDiration::Up],
+            };
+
+            for d in directions {
+                match d {
+                    MoveCursorDiration::Up => {
+                        if let Some(new_cursor) = self.cursor.move_up(
+                            &self.status_lines,
+                            &self.mode,
+                            self.flags.show_files,
+                        ) {
+                            self.cursor = new_cursor;
+                            break;
+                        }
+                    }
+                    MoveCursorDiration::Down => {
+                        if let Some(new_cursor) = self.cursor.move_down(
+                            &self.status_lines,
+                            &self.mode,
+                            self.flags.show_files,
+                        ) {
+                            self.cursor = new_cursor;
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
@@ -1076,7 +1102,7 @@ impl App {
         }
 
         self.status_lines = new_lines;
-        self.ensure_cursor_is_on_selectable_line();
+        self.ensure_cursor_is_on_selectable_line(MoveCursorDiration::Down);
 
         let details_selection_after_reload = self
             .cursor
@@ -1606,6 +1632,11 @@ impl FuzzyPickerItem for GotoBranchItem {
             Self::Uncommitted => theme.info,
         }
     }
+}
+
+enum MoveCursorDiration {
+    Up,
+    Down,
 }
 
 #[cfg(test)]

@@ -853,6 +853,7 @@ fn selected_operation_extension<'a>(
         | Mode::PickChanges(..)
         | Mode::Details(..)
         | Mode::Rub(..)
+        | Mode::Squash(..)
         | Mode::Stack(..)
         | Mode::InlineReword(..)
         | Mode::Jump(..)
@@ -1471,6 +1472,7 @@ impl Mode {
         match self {
             Mode::Normal(mode) => mode,
             Mode::Rub(mode) => mode,
+            Mode::Squash(mode) => mode,
             Mode::InlineReword(mode) => mode,
             Mode::Command(mode) => mode,
             Mode::Commit(mode) => mode,

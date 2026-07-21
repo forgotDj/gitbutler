@@ -1,4 +1,4 @@
-use bstr::BString;
+use bstr::{BStr, BString};
 use nonempty::NonEmpty;
 use serde::Serialize;
 
@@ -445,12 +445,42 @@ impl std::fmt::Display for ResolvedCliIdArg {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[allow(missing_docs)]
 pub struct CommittedFile {
     pub commit_id: gix::ObjectId,
     pub path: BString,
     pub id: ShortId,
+}
+
+impl CommittedFile {
+    #[allow(missing_docs)]
+    pub fn as_ref(&self) -> CommittedFileRef<'_> {
+        CommittedFileRef {
+            commit_id: self.commit_id,
+            path: self.path.as_ref(),
+            id: &self.id,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(missing_docs)]
+pub struct CommittedFileRef<'a> {
+    pub commit_id: gix::ObjectId,
+    pub path: &'a BStr,
+    pub id: &'a str,
+}
+
+impl CommittedFileRef<'_> {
+    #[allow(missing_docs)]
+    pub fn to_owned(self) -> CommittedFile {
+        CommittedFile {
+            commit_id: self.commit_id,
+            path: self.path.to_owned(),
+            id: self.id.to_owned(),
+        }
+    }
 }
 
 /// A reference to a [`CliIdArg`] that has actually been resolved.

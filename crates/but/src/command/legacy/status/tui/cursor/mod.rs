@@ -11,7 +11,7 @@ use crate::{
         tui::{
             Mode, NormalMode, PickChangesMode, SelectAfterReload,
             app::{
-                CommitSource,
+                CommitSource, SquashMode,
                 mark::{MarkableRef, Marks, MarksRef},
                 prefix_match,
             },
@@ -780,6 +780,7 @@ fn is_section_header(line: &StatusOutputLine, mode: &Mode) -> bool {
         | Mode::Stack(..)
         | Mode::MoveStack(..)
         | Mode::Jump(..)
+        | Mode::Squash(..)
         | Mode::Details(..) => {
             matches!(
                 line.data,
@@ -863,6 +864,13 @@ pub fn is_selectable_in_mode(
                 return true;
             }
         }
+        ModeRef::Squash(squash_mode) => {
+            if let Some(cli_id) = line.data.cli_id()
+                && squash_mode.source.contains(cli_id)
+            {
+                return true;
+            }
+        }
         ModeRef::Commit(commit_mode) => {
             if let Some(cli_id) = line.data.cli_id()
                 && commit_mode.source.contains(cli_id)
@@ -932,6 +940,7 @@ pub fn is_selectable_in_mode(
             }
         }
         ModeRef::Rub(..)
+        | ModeRef::Squash(..)
         | ModeRef::InlineReword(..)
         | ModeRef::Command(..)
         | ModeRef::Commit(..)
@@ -976,6 +985,10 @@ pub fn is_selectable_in_mode(
             .data
             .cli_id()
             .is_some_and(|cli_id| rub_mode.available_targets.contains(cli_id)),
+        ModeRef::Squash(SquashMode { source, reword: _ }) => line
+            .data
+            .cli_id()
+            .is_some_and(|target| source.can_target(target)),
         ModeRef::Commit(commit_mode) => commit_operation_display(&line.data, commit_mode).is_some(),
         ModeRef::Move(move_mode) => move_operation_display(&line.data, move_mode).is_some(),
         ModeRef::MoveStack(move_mode) => reorder_operation_display(&line.data, move_mode).is_some(),

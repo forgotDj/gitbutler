@@ -40,16 +40,13 @@
     <text x="258" y="402" style="fill:#0000AA;">r</text>
     <text x="274 282 290" y="402" style="fill:#CCCCCC;opacity:0.75;">rub</text>
     <text x="306" y="402" style="fill:#CCCCCC;opacity:0.75;">•</text>
-    <text x="322" y="402" style="fill:#0000AA;">c</text>
-    <text x="338 346 354 362 370 378" y="402" style="fill:#CCCCCC;opacity:0.75;">commit</text>
-    <text x="394" y="402" style="fill:#CCCCCC;opacity:0.75;">•</text>
-    <text x="410" y="402" style="fill:#0000AA;">m</text>
-    <text x="426 434 442 450" y="402" style="fill:#CCCCCC;opacity:0.75;">move</text>
-    <text x="466" y="402" style="fill:#CCCCCC;opacity:0.75;">•</text>
-    <text x="482" y="402" style="fill:#0000AA;">?</text>
-    <text x="498 506 514 522" y="402" style="fill:#CCCCCC;opacity:0.75;">help</text>
-    <text x="538" y="402" style="fill:#CCCCCC;opacity:0.75;">•</text>
-    <text x="554" y="402" style="fill:#0000AA;">q</text>
-    <text x="570 578 586 594" y="402" style="fill:#CCCCCC;opacity:0.75;">quit</text>
+    <text x="322 330 338 346 354 362 370" y="402" style="fill:#0000AA;">shift+s</text>
+    <text x="386 394 402 410 418 426" y="402" style="fill:#CCCCCC;opacity:0.75;">squash</text>
+    <text x="442" y="402" style="fill:#CCCCCC;opacity:0.75;">•</text>
+    <text x="458" y="402" style="fill:#0000AA;">?</text>
+    <text x="474 482 490 498" y="402" style="fill:#CCCCCC;opacity:0.75;">help</text>
+    <text x="514" y="402" style="fill:#CCCCCC;opacity:0.75;">•</text>
+    <text x="530" y="402" style="fill:#0000AA;">q</text>
+    <text x="546 554 562 570" y="402" style="fill:#CCCCCC;opacity:0.75;">quit</text>
   </g>
 </svg>
