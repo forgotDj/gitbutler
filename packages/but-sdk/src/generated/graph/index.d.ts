@@ -386,7 +386,7 @@ export declare function listBranches(projectId: string, filter: BranchListingFil
 
 export declare function listCiChecks(projectId: string, reference: string, cacheConfig: CacheConfig | null): Promise<Array<CiCheck>>
 
-/** List all supported editors. */
+/** List all editors that can be opened from a GUI client. */
 export declare function listEditors(): Promise<Array<Editor>>
 
 export declare function listProjectsStateless(): Promise<Array<ProjectForFrontend>>
