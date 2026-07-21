@@ -766,16 +766,7 @@ impl Context {
     }
 
     fn workspace_from_head(&self) -> anyhow::Result<but_graph::Workspace> {
-        let mut options = but_graph::init::Options::limited();
-        // Empty and side-effect free unless the `worktreeManipulation` flag is on.
-        options.worktree_tips = self
-            .active_worktrees()?
-            .into_iter()
-            .map(|worktree| but_graph::init::WorktreeTip {
-                ref_name: worktree.ref_name,
-                id: worktree.head,
-            })
-            .collect();
+        let options = self.graph_options(but_graph::init::Options::limited())?;
         let repo = self.repo.get()?;
         let meta = but_meta::BranchOrderMetadata::from_paths_read_only(
             self.project_data_dir().join("virtual_branches.toml"),
