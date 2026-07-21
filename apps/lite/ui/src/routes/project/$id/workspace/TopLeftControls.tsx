@@ -5,7 +5,7 @@ import { interfaceSlice } from "#ui/interface/state.ts";
 import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { workspaceHotkeys } from "#ui/hotkeys.ts";
 import { Tooltip } from "@base-ui/react";
-import { type FC } from "react";
+import type { FC } from "react";
 import styles from "./TopLeftControls.module.css";
 
 const FullWindowButton: FC = () => {

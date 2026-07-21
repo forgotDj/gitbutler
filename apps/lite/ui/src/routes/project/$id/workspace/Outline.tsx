@@ -20,7 +20,7 @@ import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { formatRelativeTime } from "#ui/time.ts";
 import type { NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import { Button, Toast, Toggle, ToggleGroup, Tooltip } from "@base-ui/react";
-import { BottomUpdate, ProjectForFrontend } from "@gitbutler/but-sdk";
+import type { BottomUpdate, ProjectForFrontend } from "@gitbutler/but-sdk";
 import { useIsFetching, useIsMutating, useQuery } from "@tanstack/react-query";
 import { useHotkeys } from "@tanstack/react-hotkeys";
 import { Match } from "effect";
