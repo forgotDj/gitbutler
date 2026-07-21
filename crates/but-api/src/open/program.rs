@@ -110,6 +110,7 @@ enum CliArgumentSupplier {
     #[cfg(target_os = "macos")]
     Xcode,
     /// For programs that don't support any special "open at" semantics
+    #[allow(dead_code)]
     Default,
 }
 
