@@ -51,34 +51,110 @@ filepath='new-file.txt'
 
 #[test]
 fn open_uncommitted_hunk() {
-    let env = setup_multi_hunk_uncommitted_changes("file.txt");
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&["A"]);
+
+    let original_content = "this\nis\nsome\ncontent\nto\ndiff\nwith\nadded\nlines\n";
+    env.file("file-with-additions.txt", original_content);
+    env.file("file-with-deletions.txt", original_content);
+    env.file("file-with-mixed.txt", original_content);
+    env.but("commit -m 'Add files'").assert().success();
+
+    env.file(
+        "file-with-additions.txt",
+        format!("new first\n{original_content}new last"),
+    );
+    env.file(
+        "file-with-deletions.txt",
+        "is\nsome\ncontent\nto\ndiff\nwith\nadded\n",
+    );
+    env.file(
+        "file-with-mixed.txt",
+        "this\nIS\nsome\ncontent\nto\ndiff\nwith\nADDED\n",
+    );
 
     env.but("diff")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-─────────────╮
-uv:7 file.txt│
-─────────────╯
+────────────────────────────╮
+rn:7 file-with-additions.txt│
+────────────────────────────╯
      1│+new first
    1 2│ this
    2 3│ is
    3 4│ some
-─────────────╮
-uv:4 file.txt│
-─────────────╯
+────────────────────────────╮
+rn:4 file-with-additions.txt│
+────────────────────────────╯
     7  8│ with
     8  9│ added
     9 10│ lines
       11│+new last
+────────────────────────────╮
+rw:b file-with-deletions.txt│
+────────────────────────────╯
+   1  │-this
+   2 1│ is
+   3 2│ some
+   4 3│ content
+────────────────────────────╮
+rw:6 file-with-deletions.txt│
+────────────────────────────╯
+    6  5│ diff
+    7  6│ with
+    8  7│ added
+    9   │-lines
+────────────────────────╮
+lp:6 file-with-mixed.txt│
+────────────────────────╯
+    1  1│ this
+    2   │-is
+       2│+IS
+    3  3│ some
+    4  4│ content
+    5  5│ to
+    6  6│ diff
+    7  7│ with
+    8   │-added
+    9   │-lines
+       8│+ADDED
 
 "#]]);
 
-    env.but("_open uv:4 -p echo")
+    env.but("_open rn:7 -p echo ")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-filepath='file.txt' line_number='11'
+filepath='file-with-additions.txt' line_number='1'
+
+"#]]);
+    env.but("_open rn:4 -p echo ")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='file-with-additions.txt' line_number='11'
+
+"#]]);
+    env.but("_open rw:b -p echo ")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='file-with-deletions.txt' line_number='1'
+
+"#]]);
+    env.but("_open rw:6 -p echo ")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='file-with-deletions.txt' line_number='7'
+
+"#]]);
+    env.but("_open lp:6 -p echo ")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='file-with-mixed.txt' line_number='2'
 
 "#]]);
 }
