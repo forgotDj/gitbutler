@@ -18,17 +18,17 @@ import { syncCoreCaches } from "#ui/api/mutations.ts";
  * a single, atomic operation.
  */
 type Operation =
-	| { _tag: "AmendCommit"; source: Operand; commitId: string }
+	| { _tag: "AmendCommit"; sources: Array<Operand>; commitId: string }
 	| {
 			_tag: "CreateCommit";
-			source: Operand;
+			sources: Array<Operand>;
 			relativeTo: RelativeTo;
 			side: InsertSide;
 			message: string;
 	  }
 	| {
 			_tag: "SplitCommit";
-			source: Operand;
+			sources: Array<Operand>;
 			sourceCommitId: string;
 			relativeTo: RelativeTo;
 			side: InsertSide;
@@ -41,7 +41,7 @@ type Operation =
 	  }
 	| {
 			_tag: "MoveCommitFile";
-			source: Operand;
+			sources: Array<Operand>;
 			sourceCommitId: string;
 			destinationCommitId: string;
 	  }
@@ -53,7 +53,7 @@ type Operation =
 	| { _tag: "UndoCommit"; subjectCommitIds: Array<string>; assignTo: string | null }
 	| {
 			_tag: "DiscardChanges";
-			source: Operand;
+			sources: Array<Operand>;
 			commitId: string;
 			assignTo: string | null;
 	  }
@@ -75,7 +75,7 @@ const runOperation = async ({
 	Match.value(operation).pipe(
 		Match.tagsExhaustive({
 			AmendCommit: async (operation) => {
-				const changes = await resolveChanges([operation.source]);
+				const changes = await resolveChanges(operation.sources);
 				if (!changes) return null;
 				return window.lite.commitAmend({
 					projectId,
@@ -85,7 +85,7 @@ const runOperation = async ({
 				});
 			},
 			MoveCommitFile: async (operation) => {
-				const changes = await resolveChanges([operation.source]);
+				const changes = await resolveChanges(operation.sources);
 				if (!changes) return null;
 				return window.lite.commitMoveChangesBetween({
 					projectId,
@@ -110,7 +110,7 @@ const runOperation = async ({
 					dryRun,
 				}),
 			DiscardChanges: async (operation) => {
-				const changes = await resolveChanges([operation.source]);
+				const changes = await resolveChanges(operation.sources);
 				if (!changes) return null;
 				return window.lite.commitUncommitChanges({
 					projectId,
@@ -121,7 +121,7 @@ const runOperation = async ({
 				});
 			},
 			CreateCommit: async (operation) => {
-				const changes = await resolveChanges([operation.source]);
+				const changes = await resolveChanges(operation.sources);
 				if (!changes) return null;
 				return window.lite.commitCreate({
 					projectId,
@@ -133,7 +133,7 @@ const runOperation = async ({
 				});
 			},
 			SplitCommit: async (operation) => {
-				const changes = await resolveChanges([operation.source]);
+				const changes = await resolveChanges(operation.sources);
 				if (!changes) return null;
 
 				// We can't dry run this as it's not an atomic operation. Ideally this
@@ -184,7 +184,7 @@ export const useDryRunOperation = ({
 }) => {
 	const changes = useResolveDiffSpecs({
 		projectId,
-		sources: operation && "source" in operation ? [operation.source] : undefined,
+		sources: operation && "sources" in operation ? operation.sources : undefined,
 	});
 
 	return useQuery({
@@ -246,6 +246,23 @@ export const useRunOperation = () => {
 	});
 };
 
+const isUncommittedChangesSource = (source: Operand): boolean =>
+	operandFileParent(source)?._tag === "UncommittedChanges";
+
+const commitIdFromFileSources = (sources: Array<Operand>): string | null => {
+	const [source, ...rest] = sources;
+	if (!source) return null;
+
+	const parent = operandFileParent(source);
+	if (parent?._tag !== "Commit") return null;
+
+	const hasDisparateParent = rest.some((source) => {
+		const otherParent = operandFileParent(source);
+		return otherParent === null || !operandEquals(parent, otherParent);
+	});
+	return hasDisparateParent ? null : parent.commitId;
+};
+
 /**
  * | SOURCE ↓ / TARGET →    | Changes  | Commit |
  * | ---------------------- | -------- | ------ |
@@ -290,56 +307,45 @@ const squashOperation = ({
 		};
 	}
 
-	const [source, ...rest] = sources;
-	if (!source || rest.length > 0) return null;
+	if (target._tag === "Commit" && sources.length > 0 && sources.every(isUncommittedChangesSource)) {
+		return {
+			operation: {
+				_tag: "AmendCommit",
+				commitId: target.commitId,
+				sources,
+			},
+			label: "Amend",
+		};
+	}
 
-	return Match.value({ source, sourceFileParent: operandFileParent(source), target }).pipe(
-		Match.when(
-			{
-				sourceFileParent: { _tag: "UncommittedChanges" },
-				target: { _tag: "Commit" },
+	const sourceCommitId = commitIdFromFileSources(sources);
+	if (sourceCommitId === null) return null;
+
+	if (target._tag === "UncommittedChanges") {
+		return {
+			operation: {
+				_tag: "DiscardChanges",
+				commitId: sourceCommitId,
+				assignTo: null,
+				sources,
 			},
-			({ source, target }): LabelledOperation => ({
-				operation: {
-					_tag: "AmendCommit",
-					commitId: target.commitId,
-					source,
-				},
-				label: "Amend",
-			}),
-		),
-		Match.when(
-			{
-				sourceFileParent: { _tag: "Commit" },
-				target: { _tag: "UncommittedChanges" },
+			label: "Uncommit",
+		};
+	}
+
+	if (target._tag === "Commit") {
+		return {
+			operation: {
+				_tag: "MoveCommitFile",
+				sourceCommitId,
+				destinationCommitId: target.commitId,
+				sources,
 			},
-			({ source, sourceFileParent }): LabelledOperation => ({
-				operation: {
-					_tag: "DiscardChanges",
-					commitId: sourceFileParent.commitId,
-					assignTo: null,
-					source,
-				},
-				label: "Uncommit",
-			}),
-		),
-		Match.when(
-			{
-				sourceFileParent: { _tag: "Commit" },
-				target: { _tag: "Commit" },
-			},
-			({ source, sourceFileParent, target }): LabelledOperation => ({
-				operation: {
-					_tag: "MoveCommitFile",
-					sourceCommitId: sourceFileParent.commitId,
-					destinationCommitId: target.commitId,
-					source,
-				},
-				label: "Amend",
-			}),
-		),
-		Match.orElse(() => null),
-	);
+			label: "Amend",
+		};
+	}
+
+	return null;
 };
 
 const intoOperation = ({
@@ -368,28 +374,20 @@ const intoOperation = ({
 		};
 	}
 
-	const [source, ...rest] = sources;
-	if (!source || rest.length > 0) return null;
-
-	return Match.value({ source, sourceFileParent: operandFileParent(source), target }).pipe(
-		Match.when(
-			{
-				sourceFileParent: { _tag: "UncommittedChanges" },
-				target: { _tag: "Branch" },
+	if (target._tag === "Branch" && sources.length > 0 && sources.every(isUncommittedChangesSource)) {
+		return {
+			operation: {
+				_tag: "CreateCommit",
+				relativeTo: { type: "referenceBytes", subject: target.branchRef },
+				side: "below",
+				sources,
+				message: "",
 			},
-			({ source, target }): LabelledOperation => ({
-				operation: {
-					_tag: "CreateCommit",
-					relativeTo: { type: "referenceBytes", subject: target.branchRef },
-					side: "below",
-					source,
-					message: "",
-				},
-				label: "Commit here",
-			}),
-		),
-		Match.orElse(() => null),
-	);
+			label: "Commit here",
+		};
+	}
+
+	return null;
 };
 
 // https://linear.app/gitbutler/issue/GB-1735/support-all-permutations-of-moving-branches-and-commits
@@ -437,6 +435,41 @@ const moveOperation = ({
 		};
 	}
 
+	if (relativeTo && sources.length > 0 && sources.every(isUncommittedChangesSource)) {
+		return {
+			operation: {
+				_tag: "CreateCommit",
+				relativeTo,
+				side,
+				sources,
+				message: "",
+			},
+			label: Match.value(side).pipe(
+				Match.when("above", () => "Commit above"),
+				Match.when("below", () => "Commit below"),
+				Match.exhaustive,
+			),
+		};
+	}
+
+	const sourceCommitId = commitIdFromFileSources(sources);
+	if (relativeTo && sourceCommitId !== null) {
+		return {
+			operation: {
+				_tag: "SplitCommit",
+				sourceCommitId,
+				relativeTo,
+				side,
+				sources,
+			},
+			label: Match.value(side).pipe(
+				Match.when("above", () => "Commit above"),
+				Match.when("below", () => "Commit below"),
+				Match.exhaustive,
+			),
+		};
+	}
+
 	const [source, ...rest] = sources;
 	if (!source || rest.length > 0) return null;
 
@@ -459,47 +492,7 @@ const moveOperation = ({
 		Match.orElse(() => null),
 	);
 
-	if (branchMoveOperation) return branchMoveOperation;
-
-	if (!relativeTo) return null;
-
-	return Match.value({ source, sourceFileParent: operandFileParent(source) }).pipe(
-		Match.when(
-			{ sourceFileParent: { _tag: "UncommittedChanges" } },
-			({ source }): LabelledOperation => ({
-				operation: {
-					_tag: "CreateCommit",
-					relativeTo,
-					side,
-					source,
-					message: "",
-				},
-				label: Match.value(side).pipe(
-					Match.when("above", () => "Commit above"),
-					Match.when("below", () => "Commit below"),
-					Match.exhaustive,
-				),
-			}),
-		),
-		Match.when(
-			{ sourceFileParent: { _tag: "Commit" } },
-			({ source, sourceFileParent }): LabelledOperation => ({
-				operation: {
-					_tag: "SplitCommit",
-					sourceCommitId: sourceFileParent.commitId,
-					relativeTo,
-					side,
-					source,
-				},
-				label: Match.value(side).pipe(
-					Match.when("above", () => "Commit above"),
-					Match.when("below", () => "Commit below"),
-					Match.exhaustive,
-				),
-			}),
-		),
-		Match.orElse(() => null),
-	);
+	return branchMoveOperation;
 };
 
 export type OperationType = "into" | "above" | "below";
