@@ -676,9 +676,11 @@ pub fn open_in_editor(
         bail_precondition!("{path:?} is inside repository .git directory at {git_dir_path:?}");
     }
 
-    let Some(editor) = PROGRAMS.iter().find(|editor| editor.id == editor_id) else {
-        bail_precondition!("editor_id '{editor_id}' does not exist");
-    };
-
-    open_in_program_unchecked(editor, &resolved_path, line_nr)
+    if let Some(editor) = PROGRAMS.iter().find(|editor| editor.id == editor_id)
+        && editor.is_gui_editor()
+    {
+        open_in_program_unchecked(editor, &resolved_path, line_nr)
+    } else {
+        bail_precondition!("editor_id '{editor_id}' is not a GUI-compatible editor");
+    }
 }
