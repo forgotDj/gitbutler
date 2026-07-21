@@ -2,7 +2,11 @@ use anyhow::Context as _;
 use bstr::BStr;
 use but_ctx::Context;
 
-use crate::{CliId, IdMap, id::SourceScope, utils::OutputChannel};
+use crate::{
+    CliId, IdMap,
+    id::{CommittedFileId, SourceScope},
+    utils::OutputChannel,
+};
 
 #[derive(Debug)]
 pub(crate) struct IdResolutionError(String);
@@ -422,9 +426,9 @@ pub fn prompt_for_disambiguation(
                 CliId::Branch { name, .. } => {
                     format!("{short_id} - {kind} (branch '{name}')")
                 }
-                CliId::CommittedFile {
+                CliId::CommittedFile(CommittedFileId {
                     path, commit_id, ..
-                } => {
+                }) => {
                     format!(
                         "{} - {} (file '{}' in commit {})",
                         short_id,

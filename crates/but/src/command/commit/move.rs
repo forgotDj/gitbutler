@@ -1,5 +1,6 @@
 use crate::{
     CliId,
+    id::CommittedFileId,
     theme::{self, Paint},
     utils::OutputChannel,
 };
@@ -326,11 +327,11 @@ fn route_move_operation<'a>(
         }),
         // CommittedFile -> Commit: move a file from one commit to another
         (
-            CommittedFile {
+            CommittedFile(CommittedFileId {
                 path,
                 commit_id: source_commit,
                 ..
-            },
+            }),
             Commit {
                 commit_id: target_commit,
                 ..
@@ -387,12 +388,12 @@ mod tests {
     }
 
     fn committed_file_id(path: &str) -> CliId {
-        CliId::CommittedFile {
+        CliId::CommittedFile(CommittedFileId {
             commit_id: gix::ObjectId::empty_tree(gix::hash::Kind::Sha1),
             path: BString::from(path),
             id: "cf".to_string(),
             change_id: None,
-        }
+        })
     }
 
     #[test]

@@ -19,10 +19,12 @@ use nonempty::NonEmpty;
 
 use crate::{
     CliId, IdMap,
-    id::WorktreeHunk,
-    id::parser::{
-        IdResolutionError, parse_sources_with_disambiguation,
-        parse_uncommitted_sources_with_disambiguation, prompt_for_disambiguation,
+    id::{
+        CommittedFileId, WorktreeHunk,
+        parser::{
+            IdResolutionError, parse_sources_with_disambiguation,
+            parse_uncommitted_sources_with_disambiguation, prompt_for_disambiguation,
+        },
     },
     theme::{self, Paint},
     utils::{OutputChannel, diff_specs::DiffSpecBuilder, shorten_object_id},
@@ -505,11 +507,11 @@ pub(crate) fn route_operation<'a>(
             // Branch -> *
             // CommittedFile -> *
             (
-                CommittedFile {
+                CommittedFile(CommittedFileId {
                     path,
                     commit_id: source,
                     ..
-                },
+                }),
                 Commit {
                     commit_id: target, ..
                 },
@@ -521,9 +523,9 @@ pub(crate) fn route_operation<'a>(
                 },
             )),
             (
-                CommittedFile {
+                CommittedFile(CommittedFileId {
                     path, commit_id, ..
-                },
+                }),
                 Uncommitted { .. },
             ) => Some(RubOperation::CommittedFileToUncommittedArea(
                 CommittedFileToUncommittedAreaOperation {
@@ -791,9 +793,9 @@ pub(crate) fn handle_uncommit(
                         )?;
                     }
                 }
-                CliId::CommittedFile {
+                CliId::CommittedFile(CommittedFileId {
                     path, commit_id, ..
-                } => {
+                }) => {
                     crate::command::commit::file::uncommit_file_and_discard(
                         ctx,
                         path.as_ref(),
@@ -855,9 +857,9 @@ fn uncommit_committed_files(
     let mut commit_order = Vec::new();
     let mut paths_by_commit: HashMap<gix::ObjectId, Vec<&BStr>> = HashMap::new();
     for source in sources {
-        let CliId::CommittedFile {
+        let CliId::CommittedFile(CommittedFileId {
             commit_id, path, ..
-        } = source
+        }) = source
         else {
             unreachable!("uncommit_committed_files only handles committed files");
         };
@@ -1064,12 +1066,12 @@ mod tests {
     }
 
     fn committed_file_id() -> CliId {
-        CliId::CommittedFile {
+        CliId::CommittedFile(CommittedFileId {
             commit_id: gix::ObjectId::empty_tree(gix::hash::Kind::Sha1),
             path: BString::from("test.txt"),
             id: "cd".to_string(),
             change_id: None,
-        }
+        })
     }
 
     fn commit_id() -> CliId {

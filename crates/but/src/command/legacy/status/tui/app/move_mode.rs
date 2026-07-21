@@ -26,7 +26,7 @@ use crate::{
             },
         },
     },
-    id::ShortId,
+    id::{CommittedFileId, ShortId},
     utils::targeting,
 };
 
@@ -156,7 +156,7 @@ impl TryFrom<CliId> for MoveSource {
                 anyhow::bail!("cannot move: {:?}", uncommitted_cli_id.id)
             }
             CliId::PathPrefix { id, .. }
-            | CliId::CommittedFile { id, .. }
+            | CliId::CommittedFile(CommittedFileId { id, .. })
             | CliId::Uncommitted { id }
             | CliId::Stack { id, .. } => {
                 anyhow::bail!("cannot move: {id:?}")

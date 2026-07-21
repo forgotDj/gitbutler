@@ -374,7 +374,7 @@ impl<'a> Node<'a> for &'a WorkspaceCommitWithId {
                 || tree_changes.first().path == BStr::new(element);
             if is_match {
                 matches.push(Box::new(Leaf {
-                    cli_id: CliId::CommittedFile {
+                    cli_id: CliId::CommittedFile(CommittedFileId {
                         commit_id: self.commit_id(),
                         path: tree_changes.first().path.clone(),
                         id: format!(
@@ -389,7 +389,7 @@ impl<'a> Node<'a> for &'a WorkspaceCommitWithId {
                             .change_id
                             .as_ref()
                             .map(|change_id| change_id.change_id.clone()),
-                    },
+                    }),
                 }));
             }
         }
@@ -1424,18 +1424,7 @@ fn cli_ids_refer_to_same_entity(lhs: &CliId, rhs: &CliId) -> bool {
                 ..
             },
         ) => lhs_commit_id == rhs_commit_id,
-        (
-            CliId::CommittedFile {
-                commit_id: lhs_commit_id,
-                path: lhs_path,
-                ..
-            },
-            CliId::CommittedFile {
-                commit_id: rhs_commit_id,
-                path: rhs_path,
-                ..
-            },
-        ) => lhs_commit_id == rhs_commit_id && lhs_path == rhs_path,
+        (CliId::CommittedFile(l), CliId::CommittedFile(r)) => l == r,
         (
             CliId::Branch {
                 name: lhs_name,
@@ -1538,16 +1527,7 @@ pub enum CliId {
         hunk_assignments: NonEmpty<(ShortId, WorktreeHunk)>,
     },
     /// A file that exists in a commit.
-    CommittedFile {
-        /// The object ID of the commit containing the change to the file
-        commit_id: gix::ObjectId,
-        /// The file path relative to the repository root
-        path: BString,
-        /// The short CLI ID for this file (typically 2 characters)
-        id: ShortId,
-        /// The stable change ID from the commit headers, if present.
-        change_id: Option<but_core::ChangeId>,
-    },
+    CommittedFile(CommittedFileId),
     /// A branch.
     Branch {
         /// The short name of the branch, like `main` or `origin/feat`.
@@ -1586,18 +1566,7 @@ impl PartialEq for CliId {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::UncommittedHunkOrFile(l), Self::UncommittedHunkOrFile(r)) => l == r,
-            (
-                Self::CommittedFile {
-                    id: l_id,
-                    path: l_path,
-                    ..
-                },
-                Self::CommittedFile {
-                    id: r_id,
-                    path: r_path,
-                    ..
-                },
-            ) => l_id == r_id && l_path == r_path,
+            (Self::CommittedFile(l), Self::CommittedFile(r)) => l == r,
             (Self::Branch { id: l_id, .. }, Self::Branch { id: r_id, .. }) => l_id == r_id,
             (Self::Commit { id: l_id, .. }, Self::Commit { id: r_id, .. }) => l_id == r_id,
             (Self::Stack { id: l_id, .. }, Self::Stack { id: r_id, .. }) => l_id == r_id,
@@ -1629,7 +1598,7 @@ impl CliId {
         match self {
             CliId::UncommittedHunkOrFile(UncommittedHunkOrFile { id, .. })
             | CliId::PathPrefix { id, .. }
-            | CliId::CommittedFile { id, .. }
+            | CliId::CommittedFile(CommittedFileId { id, .. })
             | CliId::Branch { id, .. }
             | CliId::Commit { id, .. }
             | CliId::Stack { id, .. }
@@ -1782,10 +1751,14 @@ impl<'a> Node<'a> for &'a UncommittedHunk {
 
 #[derive(Debug, Clone)]
 pub struct CommittedFileId {
+    /// The object ID of the commit containing the change to the file
     pub commit_id: gix::ObjectId,
+    /// The file path relative to the repository root
     pub path: BString,
+    /// The short CLI ID for this file (typically 2 characters)
     pub id: ShortId,
-    pub change_id: Option<ChangeId>,
+    /// The stable change ID from the commit headers, if present.
+    pub change_id: Option<but_core::ChangeId>,
 }
 
 impl CommittedFileId {

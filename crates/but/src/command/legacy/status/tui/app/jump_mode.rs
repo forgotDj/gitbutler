@@ -13,6 +13,7 @@ use crate::{
             render::ModeRender,
         },
     },
+    id::CommittedFileId,
 };
 
 #[derive(Debug, Clone)]
@@ -117,7 +118,7 @@ fn jump_id_has_prefix(id: &CliId, query: &str) -> bool {
             }
         }
         CliId::PathPrefix { id, .. }
-        | CliId::CommittedFile { id, .. }
+        | CliId::CommittedFile(CommittedFileId { id, .. })
         | CliId::Branch { id, .. }
         | CliId::Uncommitted { id }
         | CliId::Stack { id, .. } => id.starts_with(query),

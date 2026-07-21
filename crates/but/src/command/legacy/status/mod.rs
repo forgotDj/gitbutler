@@ -34,7 +34,9 @@ use crate::{
         upstream::{self, BranchStatus as UpstreamBranchStatus},
         workspace_target,
     },
-    id::{ChangeIdWithShortId, SegmentWithId, ShortId, StackWithId, TreeChangeWithId},
+    id::{
+        ChangeIdWithShortId, CommittedFileId, SegmentWithId, ShortId, StackWithId, TreeChangeWithId,
+    },
     tui::text::truncate_text,
     utils::{
         InputOutputChannel, OutputChannel, WriteWithUtils, shorten_hex_object_id,
@@ -1687,12 +1689,12 @@ fn print_commit(
                     .unwrap_or(0);
 
                 for TreeChangeWithId { short_id, inner } in tree_changes {
-                    let file_cli_id = CliId::CommittedFile {
+                    let file_cli_id = CliId::CommittedFile(CommittedFileId {
                         commit_id: commit.id,
                         path: inner.path.clone(),
                         id: short_id.to_owned(),
                         change_id: change_id.map(|change_id| change_id.change_id.clone()),
-                    };
+                    });
 
                     let display_id = displayed_file_id(padded_file_id_prefix.as_deref(), short_id);
                     let (status, path) = tree_change_display_cli(inner);

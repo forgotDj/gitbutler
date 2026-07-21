@@ -19,6 +19,7 @@ use crate::{
         mode::Mode,
         operations,
     },
+    id::CommittedFileId,
     utils::diff_specs::DiffSpecBuilder,
 };
 
@@ -191,12 +192,12 @@ impl App {
                         },
                     )
                 }
-                CliId::CommittedFile {
+                CliId::CommittedFile(CommittedFileId {
                     commit_id,
                     path,
                     id: _,
                     change_id: _,
-                } => {
+                }) => {
                     let commit_id = *commit_id;
                     let path = path.to_owned();
 

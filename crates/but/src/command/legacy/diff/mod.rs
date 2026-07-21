@@ -1,7 +1,9 @@
 use but_ctx::Context;
 use serde::Serialize;
 
-use crate::{CliId, IdMap, command::legacy::diff::show::Filter, utils::OutputChannel};
+use crate::{
+    CliId, IdMap, command::legacy::diff::show::Filter, id::CommittedFileId, utils::OutputChannel,
+};
 
 mod display;
 mod show;
@@ -33,9 +35,9 @@ pub fn handle_tui(ctx: &mut Context, target_str: Option<&str>) -> anyhow::Result
             CliId::Stack { .. } => {
                 DiffFileEntry::from_worktree(&id_map, Some(&WorktreeFilter::UncommittedArea))
             }
-            CliId::CommittedFile {
+            CliId::CommittedFile(CommittedFileId {
                 commit_id, path, ..
-            } => DiffFileEntry::from_commit(ctx, commit_id, Some(path))?,
+            }) => DiffFileEntry::from_commit(ctx, commit_id, Some(path))?,
             CliId::Commit { commit_id, .. } => DiffFileEntry::from_commit(ctx, commit_id, None)?,
             CliId::Branch { name, .. } => DiffFileEntry::from_branch(ctx, name)?,
         }
@@ -73,9 +75,9 @@ pub fn handle(
                 hunk_assignments, ..
             } => show::hunk_assignments(&hunk_assignments, out),
             CliId::Uncommitted { .. } => show::worktree(id_map, out, Some(Filter::UncommittedArea)),
-            CliId::CommittedFile {
+            CliId::CommittedFile(CommittedFileId {
                 commit_id, path, ..
-            } => show::commit(ctx, out, commit_id, Some(path)),
+            }) => show::commit(ctx, out, commit_id, Some(path)),
             CliId::Branch { name, .. } => show::branch(ctx, out, name),
             CliId::Commit { commit_id: id, .. } => show::commit(ctx, out, id, None),
             CliId::Stack { .. } => show::worktree(id_map, out, Some(Filter::UncommittedArea)),

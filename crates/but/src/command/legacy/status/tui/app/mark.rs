@@ -195,18 +195,10 @@ impl<'a> MarksRef<'a> {
                     .any(|commit| commit.commit_id == *commit_id)
             }
             MarksRef::CommittedFiles { head, tail } => {
-                let CliId::CommittedFile {
-                    commit_id,
-                    path,
-                    id: _,
-                    change_id: _,
-                } = cli_id
-                else {
+                let CliId::CommittedFile(other) = cli_id else {
                     return false;
                 };
-                std::iter::once(head)
-                    .chain(tail)
-                    .any(|file| file.commit_id == *commit_id && &file.path == path)
+                std::iter::once(head).chain(tail).any(|file| other == file)
             }
             MarksRef::Branches { head, tail } => {
                 let CliId::Branch {
@@ -568,17 +560,7 @@ impl Markable {
                 id,
                 change_id,
             },
-            Markable::CommittedFile(CommittedFileId {
-                commit_id,
-                path,
-                id,
-                change_id,
-            }) => CliId::CommittedFile {
-                commit_id,
-                path,
-                id,
-                change_id,
-            },
+            Markable::CommittedFile(file) => CliId::CommittedFile(file),
             Markable::Branch(BranchId { name, id, stack_id }) => {
                 CliId::Branch { name, id, stack_id }
             }
@@ -645,19 +627,8 @@ impl<'a> MarkableRef<'a> {
                     }
                 }
                 MarkableRefDiscriminants::CommittedFile => {
-                    if let CliId::CommittedFile {
-                        commit_id,
-                        path,
-                        id,
-                        change_id,
-                    } = cli_id
-                    {
-                        return Some(Self::CommittedFile(CommittedFileIdRef {
-                            commit_id: *commit_id,
-                            path: path.as_ref(),
-                            id,
-                            change_id: change_id.as_ref(),
-                        }));
+                    if let CliId::CommittedFile(file) = cli_id {
+                        return Some(Self::CommittedFile(file.as_ref()));
                     }
                 }
                 MarkableRefDiscriminants::Branch => {

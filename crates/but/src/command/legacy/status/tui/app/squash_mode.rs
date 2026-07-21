@@ -373,18 +373,8 @@ impl App {
             CliId::UncommittedHunkOrFile(hunk) => {
                 self.start_with_source(SquashSource::UncommittedHunk(hunk.clone()));
             }
-            CliId::CommittedFile {
-                commit_id,
-                path,
-                id,
-                change_id,
-            } => {
-                self.start_with_source(SquashSource::CommittedFile(CommittedFileId {
-                    commit_id: *commit_id,
-                    path: path.clone(),
-                    id: id.clone(),
-                    change_id: change_id.clone(),
-                }));
+            CliId::CommittedFile(file) => {
+                self.start_with_source(SquashSource::CommittedFile(file.clone()));
             }
             CliId::PathPrefix { .. } | CliId::Stack { .. } => {}
         }

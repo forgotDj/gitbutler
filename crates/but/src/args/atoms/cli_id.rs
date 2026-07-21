@@ -80,17 +80,7 @@ impl CliIdArg {
                 ResolvedCliIdArg::UncommittedHunkOrFile(Box::new(uncommitted))
             }
             CliId::PathPrefix { .. } => ResolvedCliIdArg::PathPrefix,
-            CliId::CommittedFile {
-                commit_id,
-                path,
-                id,
-                change_id,
-            } => ResolvedCliIdArg::CommittedFile(CommittedFileId {
-                commit_id,
-                path,
-                id,
-                change_id,
-            }),
+            CliId::CommittedFile(file) => ResolvedCliIdArg::CommittedFile(file),
             CliId::Uncommitted { .. } => ResolvedCliIdArg::Uncommitted,
             CliId::Stack { .. } => ResolvedCliIdArg::Stack,
         }))

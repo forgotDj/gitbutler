@@ -27,6 +27,7 @@ use crate::{
             },
         },
     },
+    id::CommittedFileId,
     resolve_legacy_top_level_apply_branch_name,
     theme::Theme,
     utils::time::format_relative_time,
@@ -231,7 +232,8 @@ fn stack_id_for_line(
 
 fn stack_id_for_cli_id(cli_id: &CliId, status_lines: &[StatusOutputLine]) -> Option<StackId> {
     match cli_id {
-        CliId::CommittedFile { commit_id, .. } | CliId::Commit { commit_id, .. } => {
+        CliId::CommittedFile(CommittedFileId { commit_id, .. })
+        | CliId::Commit { commit_id, .. } => {
             status_lines.iter().find_map(|line| match &line.data {
                 StatusOutputLineData::Commit {
                     cli_id, stack_id, ..

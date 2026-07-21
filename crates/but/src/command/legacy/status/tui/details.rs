@@ -42,6 +42,7 @@ use crate::{
         mode::ModeDiscriminant,
         render::{RenderSingleLineSpans, available_lines_in_area},
     },
+    id::CommittedFileId,
     theme::{Rgb, Theme},
     utils::{
         DebugAsType,
@@ -319,12 +320,12 @@ impl Details {
                     },
                 )
             }
-            CliId::CommittedFile {
+            CliId::CommittedFile(CommittedFileId {
                 commit_id,
                 path,
                 id,
                 change_id: _,
-            } => {
+            }) => {
                 let commit = *commit_id;
                 let path = path.clone();
                 let id = id.clone();

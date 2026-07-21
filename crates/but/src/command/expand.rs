@@ -4,6 +4,7 @@ use serde::Serialize;
 use crate::{
     CliId, CliResult, IdMap,
     args::atoms::CliIdArg,
+    id::CommittedFileId,
     theme::Theme,
     utils::{CliOutput, CliOutputHuman, WriteWithUtils},
 };
@@ -149,9 +150,9 @@ fn resources_from_cli_id(cli_id: CliId) -> Vec<Resource> {
                     .unwrap_or_else(|| "<no hunk header>".to_string()),
             })
             .collect(),
-        CliId::CommittedFile {
+        CliId::CommittedFile(CommittedFileId {
             commit_id, path, ..
-        } => vec![Resource::CommittedFile {
+        }) => vec![Resource::CommittedFile {
             commit_id: commit_id.to_string(),
             path: path.to_string(),
         }],

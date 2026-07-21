@@ -26,6 +26,7 @@ use crate::{
             StackMode, find_jump_match,
         },
     },
+    id::CommittedFileId,
     theme::Theme,
 };
 
@@ -405,7 +406,7 @@ fn row_stack_ids(lines: &[StatusOutputLine]) -> Vec<Option<StackId>> {
             | StatusOutputLineData::EmptyCommitMessage => current_stack_id,
             StatusOutputLineData::Connector | StatusOutputLineData::BetweenStacks => None,
             StatusOutputLineData::File { cli_id } => match &**cli_id {
-                CliId::CommittedFile { commit_id, .. } => {
+                CliId::CommittedFile(CommittedFileId { commit_id, .. }) => {
                     let stack_id = commit_stack_ids
                         .get(commit_id)
                         .copied()

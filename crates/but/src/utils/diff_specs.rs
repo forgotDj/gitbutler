@@ -4,7 +4,7 @@ use but_core::{DiffSpec, HunkHeader};
 
 use crate::{
     CliId,
-    id::{ShortId, UncommittedHunkOrFile, WorktreeHunk},
+    id::{CommittedFileId, ShortId, UncommittedHunkOrFile, WorktreeHunk},
 };
 
 #[cfg(feature = "legacy")]
@@ -46,12 +46,12 @@ impl<'a> DiffSpecBuilder<'a> {
                 id,
                 hunk_assignments,
             } => self.push_changes_from_path_prefix(id, hunk_assignments),
-            CliId::CommittedFile {
+            CliId::CommittedFile(CommittedFileId {
                 commit_id,
                 path,
                 id: _,
                 change_id: _,
-            } => self.push_changes_from_committed_file(*commit_id, path.as_ref()),
+            }) => self.push_changes_from_committed_file(*commit_id, path.as_ref()),
             CliId::Branch { name, .. } => {
                 anyhow::bail!("Cannot compute diff specs for branch `{name}`")
             }

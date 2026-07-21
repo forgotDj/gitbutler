@@ -8,6 +8,7 @@ use crate::{
         StatusOutputLine,
         tui::{app::App, cursor::Cursor},
     },
+    id::CommittedFileId,
 };
 
 pub fn restore_selection(ctx: &Context, lines: &[StatusOutputLine]) -> Option<Cursor> {
@@ -71,11 +72,11 @@ fn line_id(id: &CliId) -> Option<String> {
     Some(match id {
         CliId::UncommittedHunkOrFile(hunk) => format!("hunk:{}", hunk.hunk_assignments.head.path),
         CliId::Branch { name, .. } => format!("branch:{name}"),
-        CliId::CommittedFile {
+        CliId::CommittedFile(CommittedFileId {
             commit_id,
             change_id,
             ..
-        }
+        })
         | CliId::Commit {
             commit_id,
             change_id,

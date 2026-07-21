@@ -25,6 +25,7 @@ use crate::{
         },
         open::{self, Openable},
     },
+    id::CommittedFileId,
     theme::Theme,
     tui::TerminalGuard,
 };
@@ -715,7 +716,7 @@ impl App {
                 };
 
                 if let Some(cli_id) = selection.data.cli_id()
-                    && let CliId::CommittedFile { commit_id, .. } = &**cli_id
+                    && let CliId::CommittedFile(CommittedFileId { commit_id, .. }) = &**cli_id
                     && *commit_id == object_id
                 {
                     // cursor is already within the file list
@@ -1270,7 +1271,7 @@ impl App {
                 change_id,
                 ..
             } => Cow::Owned(commit_identifier_to_copy(*commit_id, change_id.as_ref())),
-            CliId::CommittedFile { path, .. } => path.to_str_lossy(),
+            CliId::CommittedFile(CommittedFileId { path, .. }) => path.to_str_lossy(),
             CliId::UncommittedHunkOrFile(uncommitted) => {
                 Cow::Borrowed(&*uncommitted.hunk_assignments.first().path)
             }
@@ -1308,12 +1309,12 @@ impl App {
             CliId::UncommittedHunkOrFile(hunk) => {
                 copy_selection_picker::uncommitted_hunk_picker(hunk.clone(), self.theme)
             }
-            CliId::CommittedFile {
+            CliId::CommittedFile(CommittedFileId {
                 path,
                 id,
                 commit_id: _,
                 change_id: _,
-            } => copy_selection_picker::committed_file_picker(
+            }) => copy_selection_picker::committed_file_picker(
                 path.to_owned(),
                 id.to_owned(),
                 self.theme,
@@ -1351,7 +1352,7 @@ impl App {
             CliId::UncommittedHunkOrFile(uncommitted) => {
                 Openable::try_from_uncommitted(&*ctx.repo.get()?, uncommitted)?
             }
-            CliId::CommittedFile { path, .. } => {
+            CliId::CommittedFile(CommittedFileId { path, .. }) => {
                 Openable::try_from_relpath(&*ctx.repo.get()?, path.as_bstr())?
             }
             _ => {

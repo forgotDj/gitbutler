@@ -21,6 +21,7 @@ use crate::{
             },
         },
     },
+    id::CommittedFileId,
 };
 
 #[cfg(test)]
@@ -292,7 +293,8 @@ impl Cursor {
         lines: &[StatusOutputLine],
     ) -> Option<Self> {
         let idx = lines.iter().position(|line| {
-            if let Some(CliId::CommittedFile { commit_id, .. }) = line.data.cli_id().map(|id| &**id)
+            if let Some(CliId::CommittedFile(CommittedFileId { commit_id, .. })) =
+                line.data.cli_id().map(|id| &**id)
                 && *commit_id == object_id
             {
                 true
@@ -381,7 +383,7 @@ impl Cursor {
 
         if matches!(selected_line.data, StatusOutputLineData::File { .. }) {
             let file_is_visible = match selected_line.data.cli_id().map(|id| &**id) {
-                Some(CliId::CommittedFile { commit_id, .. }) => {
+                Some(CliId::CommittedFile(CommittedFileId { commit_id, .. })) => {
                     show_files.show_files_for(*commit_id)
                 }
                 Some(CliId::UncommittedHunkOrFile(..))
@@ -705,18 +707,18 @@ pub(super) fn same_entity_for_reload(previous: &CliId, current: &CliId) -> bool 
             .map(|(_, assignment)| assignment)
             .eq(current.iter().map(|(_, assignment)| assignment)),
         (
-            CliId::CommittedFile {
+            CliId::CommittedFile(CommittedFileId {
                 commit_id: previous_commit_id,
                 path: previous_path,
                 change_id: previous_change_id,
                 ..
-            },
-            CliId::CommittedFile {
+            }),
+            CliId::CommittedFile(CommittedFileId {
                 commit_id: current_commit_id,
                 path: current_path,
                 change_id: current_change_id,
                 ..
-            },
+            }),
         ) => {
             previous_path == current_path
                 && match (previous_change_id, current_change_id) {
@@ -762,7 +764,9 @@ pub(super) fn same_entity_for_reload(previous: &CliId, current: &CliId) -> bool 
 fn select_after_reload_for_cli_id(cli_id: &Arc<CliId>) -> SelectAfterReload {
     match &**cli_id {
         CliId::Commit { commit_id, .. } => SelectAfterReload::Commit(*commit_id),
-        CliId::CommittedFile { commit_id, .. } => SelectAfterReload::FirstFileInCommit(*commit_id),
+        CliId::CommittedFile(CommittedFileId { commit_id, .. }) => {
+            SelectAfterReload::FirstFileInCommit(*commit_id)
+        }
         CliId::Uncommitted { .. }
         | CliId::UncommittedHunkOrFile(..)
         | CliId::PathPrefix { .. }
@@ -936,7 +940,7 @@ pub fn is_selectable_in_mode(
                     let Some(id) = line.data.cli_id() else {
                         return false;
                     };
-                    let CliId::CommittedFile { commit_id, .. } = &**id else {
+                    let CliId::CommittedFile(CommittedFileId { commit_id, .. }) = &**id else {
                         return false;
                     };
                     if *commit_id != files.head.commit_id {
@@ -977,7 +981,7 @@ pub fn is_selectable_in_mode(
             FilesStatusFlag::None | FilesStatusFlag::All => true,
             FilesStatusFlag::Commit(object_id) => {
                 if let Some(cli_id) = line.data.cli_id()
-                    && let CliId::CommittedFile { commit_id, .. } = &**cli_id
+                    && let CliId::CommittedFile(CommittedFileId { commit_id, .. }) = &**cli_id
                 {
                     object_id == *commit_id
                 } else {
