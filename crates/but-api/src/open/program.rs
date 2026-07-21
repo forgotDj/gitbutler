@@ -109,6 +109,8 @@ enum CliArgumentSupplier {
     Custom(CustomCliArgumentSupplier),
     #[cfg(target_os = "macos")]
     Xcode,
+    /// For programs that don't support any special "open at" semantics
+    Default,
 }
 
 impl CliArgumentSupplier {
@@ -128,6 +130,7 @@ impl CliArgumentSupplier {
             Self::Xcode => cmd.arg("--line").arg(line_nr.to_string()).arg(path),
             Self::Neovim => cmd.arg(format!("+{line_nr}")).arg(path),
             Self::Custom(open_at_line) => open_at_line.open_at_line(cmd, path, line_nr),
+            Self::Default => cmd.arg(path),
         };
 
         Ok(cmd)
@@ -304,7 +307,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
         ProgramSpec {
             id: "thunar".into(),
             name: "Thunar".into(),
-            cli_arg_supplier: CliArgumentSupplier::Neovim,
+            cli_arg_supplier: CliArgumentSupplier::Default,
             executable: ExecutableProgram::ShellExecutable(ShellExecutable {
                 name_or_path: "thunar".into(),
                 requires_tty: false,
