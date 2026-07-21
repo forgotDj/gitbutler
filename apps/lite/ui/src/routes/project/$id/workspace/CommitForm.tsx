@@ -61,7 +61,8 @@ export const CommitForm: FC<{
 	projectId: string;
 	commitTarget: CommitTargetComboboxItem | null;
 	targetComboboxItems: Array<CommitTargetComboboxItem>;
-}> = ({ projectId, commitTarget, targetComboboxItems }) => {
+	className?: string;
+}> = ({ projectId, commitTarget, targetComboboxItems, className }) => {
 	const dispatch = useAppDispatch();
 	const { isPending: isCommitCreatePending, mutate: commitCreate } = useCommitCreate({
 		projectId,
@@ -188,7 +189,7 @@ export const CommitForm: FC<{
 	)}`;
 
 	return (
-		<form onSubmit={submit} className={styles.form}>
+		<form onSubmit={submit} className={classes(styles.form, className)}>
 			<textarea
 				id={commitMessageInputId}
 				ref={commitTextareaRef}

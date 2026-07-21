@@ -26,6 +26,8 @@ import { classes } from "#ui/components/classes.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
 import { BranchReference, Segment, Stack, PushStatus, WorkspaceState } from "@gitbutler/but-sdk";
+import uiStyles from "#ui/components/ui.module.css";
+
 import { useQuery } from "@tanstack/react-query";
 import { Match } from "effect";
 import { ComponentProps, createContext, FC, Fragment, use, useRef } from "react";
@@ -231,38 +233,46 @@ const UncommittedChanges: FC<{
 		<div className={styles.uncommittedChanges}>
 			<UncommittedChangesRow changes={worktreeChanges?.changes ?? []} projectId={projectId} />
 
-			<FilesTree
-				className={styles.uncommittedChangesTree}
-				data-selection-scope={"uncommitted-files" satisfies SelectionScope}
-				onFocus={() =>
-					dispatch(
-						projectSlice.actions.setDetailsSelectionScope({
-							projectId,
-							scope: "uncommitted-files",
-						}),
-					)
-				}
-				emptyLabel="Nothing to commit"
-				fileParent={uncommittedChangesFileParent}
-				items={fileRowItems}
-				navigationIndex={navigationIndex}
-				onFileSelection={(selection) =>
-					dispatch(projectSlice.actions.selectUncommittedFiles({ projectId, selection }))
-				}
-				projectId={projectId}
-				ref={(el) => {
-					// Don't steal focus if this component is mounted later on.
-					if (document.activeElement !== document.body) return;
+			<div
+				className={classes(
+					styles.uncommittedChangesTree,
+					uiStyles.scrollerWithSeparator,
+					uiStyles.overlayScrollbar,
+				)}
+			>
+				<FilesTree
+					data-selection-scope={"uncommitted-files" satisfies SelectionScope}
+					onFocus={() =>
+						dispatch(
+							projectSlice.actions.setDetailsSelectionScope({
+								projectId,
+								scope: "uncommitted-files",
+							}),
+						)
+					}
+					emptyLabel="Nothing to commit"
+					fileParent={uncommittedChangesFileParent}
+					items={fileRowItems}
+					navigationIndex={navigationIndex}
+					onFileSelection={(selection) =>
+						dispatch(projectSlice.actions.selectUncommittedFiles({ projectId, selection }))
+					}
+					projectId={projectId}
+					ref={(el) => {
+						// Don't steal focus if this component is mounted later on.
+						if (document.activeElement !== document.body) return;
 
-					el?.focus({ focusVisible: false });
-				}}
-				selection={fileSelection}
-			/>
+						el?.focus({ focusVisible: false });
+					}}
+					selection={fileSelection}
+				/>
+			</div>
 
 			<CommitForm
 				projectId={projectId}
 				commitTarget={commitTarget}
 				targetComboboxItems={targetComboboxItems}
+				className={styles.commitForm}
 			/>
 		</div>
 	);
@@ -686,14 +696,12 @@ export const OutlineTree: FC<
 									operand={uncommittedChangesOperand}
 									outline="inside"
 									render={
-										<div className={styles.panel}>
-											<UncommittedChanges
-												navigationIndex={uncommittedFilesNavigationIndex}
-												commitTarget={commitTarget}
-												projectId={projectId}
-												targetComboboxItems={commitTargetComboboxItems}
-											/>
-										</div>
+										<UncommittedChanges
+											navigationIndex={uncommittedFilesNavigationIndex}
+											commitTarget={commitTarget}
+											projectId={projectId}
+											targetComboboxItems={commitTargetComboboxItems}
+										/>
 									}
 								/>
 							}
@@ -702,7 +710,11 @@ export const OutlineTree: FC<
 
 					<Separator className={styles.resizeHandle} />
 
-					<Panel id={"stacks-panel" satisfies PanelId} className={styles.panel} minSize={120}>
+					<Panel
+						id={"stacks-panel" satisfies PanelId}
+						className={classes(styles.stacksPanel, uiStyles.overlayScrollbar)}
+						minSize={120}
+					>
 						<Stacks projectId={projectId} checkCommit={checkCommit} />
 					</Panel>
 				</Group>
