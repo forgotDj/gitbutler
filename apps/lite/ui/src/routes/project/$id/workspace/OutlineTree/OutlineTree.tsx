@@ -25,7 +25,7 @@ import { useAppDispatch, useAppSelector, useAppStore } from "#ui/store.ts";
 import { classes } from "#ui/components/classes.ts";
 import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import { mergeProps, Tooltip, useRender } from "@base-ui/react";
-import { BranchReference, RelativeTo, Segment, Stack, PushStatus, WorkspaceState } from "@gitbutler/but-sdk";
+import { BranchReference, Segment, Stack, PushStatus, WorkspaceState } from "@gitbutler/but-sdk";
 import uiStyles from "#ui/components/ui.module.css";
 
 import { useQuery } from "@tanstack/react-query";
@@ -710,13 +710,12 @@ export const OutlineTree: FC<
 
 					<Separator className={styles.resizeHandle} />
 
-			<Panel
-				id={"stacks-panel" satisfies PanelId}
-				className={classes(styles.stacksPanel, uiStyles.overlayScrollbar)}
-				minSize={120}
-			>
-				<Stacks projectId={projectId} checkCommit={checkCommit} />
-
+					<Panel
+						id={"stacks-panel" satisfies PanelId}
+						className={classes(styles.stacksPanel, uiStyles.overlayScrollbar)}
+						minSize={120}
+					>
+						<Stacks projectId={projectId} checkCommit={checkCommit} />
 					</Panel>
 				</Group>
 			</AbsorptionTargetCommitIdsContext>

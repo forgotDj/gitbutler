@@ -93,10 +93,10 @@
 }
 
 .segments {
-	padding-block-start: 6px;
-	padding-inline: 6px;
 	display: flex;
 	flex-direction: column;
+	padding-inline: 6px;
+	padding-block-start: 6px;
 }
 
 .segmentParentItemRow:last-child {
