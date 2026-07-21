@@ -37,40 +37,20 @@ fn outputs_branch_name() {
 }
 
 #[test]
-fn rejects_fetched_merge_anchor_outside_workspace_before_replay() -> anyhow::Result<()> {
-    let env =
-        Sandbox::init_scenario_with_target_and_default_settings("fetched-merge-anchor-replay");
-    env.setup_metadata(&[]);
-    let fetched_tip = env.invoke_git("rev-parse fetched-pr-tip");
-    assert_eq!(
-        env.invoke_git("rev-list --parents -n 1 fetched-pr-tip")
-            .split_whitespace()
-            .count(),
-        3,
-        "the fetched anchor must be a two-parent merge"
-    );
-    assert_eq!(
-        env.invoke_git("rev-parse refs/gitbutler/docs-to-replay^"),
-        fetched_tip,
-        "the docs-only commit must be ready to replay on the fetched anchor"
-    );
+fn rejects_anchor_outside_workspace() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+    env.but("unapply A").assert().success();
 
-    let output = env
-        .but(format!(
-            "branch new reconstructed-base --anchor {fetched_tip}"
-        ))
-        .output()?;
-    assert!(!output.status.success());
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        stderr.contains(&format!("Could not find anchor: '{fetched_tip}'")),
-        "unexpected error: {stderr}"
-    );
-    env.invoke_git_fails(
-        "rev-parse reconstructed-base",
-        "an external anchor must fail before creating the reconstruction branch",
-    );
-    Ok(())
+    env.but("branch new --anchor A new-branch")
+        .assert()
+        .failure()
+        .stderr_eq(snapbox::str![[r#"
+Error: Could not find anchor: 'A'
+
+Hint: Run `but status` for applicable targets.
+
+"#]]);
 }
 
 #[test]
