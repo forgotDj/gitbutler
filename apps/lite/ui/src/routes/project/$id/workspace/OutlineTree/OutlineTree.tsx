@@ -63,8 +63,10 @@ import {
 } from "./commitTargetComboboxItems.ts";
 
 const DryRunWorkspaceContext = createContext<WorkspaceState | null>(null);
+DryRunWorkspaceContext.displayName = "DryRunWorkspaceContext";
 
 const AbsorptionTargetCommitIdsContext = createContext<ReadonlySet<string> | null>(null);
+AbsorptionTargetCommitIdsContext.displayName = "AbsorptionTargetCommitIdsContext";
 
 // This must be unique as to not collide with other IDs, and stable because it's
 // stored in local storage.
