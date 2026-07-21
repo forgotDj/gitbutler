@@ -586,11 +586,9 @@ fn cannot_select_uncommitted_files_with_commits_marked() {
     tui.input(' ')
         .assert_current_line_eq(str!["┊✔︎   tpm add A"]);
 
-    // moving up selects the branch
-    tui.input('k').assert_current_line_eq(str![["┊╭┄g0 [A]"]]);
-
-    // cannot move further up, stays on the branch
-    tui.input('k').assert_current_line_eq(str![["┊╭┄g0 [A]"]]);
+    // cannot move futher up since the branch and files aren't selectable
+    tui.input('k')
+        .assert_current_line_eq(str!["┊✔︎   tpm add A"]);
 }
 
 #[test]

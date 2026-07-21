@@ -226,7 +226,9 @@ impl App {
                         Message::Commit(CommitMessage::Start),
                     ]);
                 }
-                MarksRef::Commits { .. } | MarksRef::CommittedFiles { .. } => {}
+                MarksRef::Commits { .. }
+                | MarksRef::CommittedFiles { .. }
+                | MarksRef::Branches { .. } => {}
             },
             _ => {}
         }

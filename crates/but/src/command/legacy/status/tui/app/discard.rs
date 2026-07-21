@@ -285,6 +285,7 @@ impl App {
 
             match &normal_mode.marks {
                 Marks::Empty | Marks::Commits(..) => None,
+                Marks::Branches(..) => return Ok(()),
                 Marks::Hunks(hunks) => {
                     for hunk in hunks {
                         builder.push_changes_from_uncommitted(hunk)?;

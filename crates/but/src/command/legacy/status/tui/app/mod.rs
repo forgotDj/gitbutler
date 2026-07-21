@@ -516,7 +516,7 @@ impl App {
                 self.handle_toggle_help();
             }
             Message::Mark => {
-                self.handle_mark(ctx)?;
+                self.handle_mark()?;
             }
             Message::ClearMarks => {
                 self.handle_clear_marks();

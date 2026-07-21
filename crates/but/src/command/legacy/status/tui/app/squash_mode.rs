@@ -8,7 +8,7 @@ use ratatui::{prelude::Backend, text::Span};
 
 use crate::{
     CliId, CliResultExt,
-    args::atoms::{BranchArg, CommittedFile, ResolvedCliIdArgRef},
+    args::atoms::{BranchArg, ResolvedCliIdArgRef},
     command::legacy::{
         reword2::RewordCommitOperation,
         squash2::{
@@ -26,7 +26,7 @@ use crate::{
             },
         },
     },
-    id::UncommittedHunkOrFile,
+    id::{BranchId, CommittedFileId, UncommittedHunkOrFile},
     tui::TerminalGuard,
 };
 
@@ -37,8 +37,8 @@ pub enum SquashSource {
     Uncommitted,
     Commit(NonEmpty<MarkedCommit>),
     UncommittedHunk(NonEmpty<UncommittedHunkOrFile>),
-    Branch(BranchArg),
-    CommittedFile(NonEmpty<CommittedFile>),
+    Branch(NonEmpty<BranchId>),
+    CommittedFile(NonEmpty<CommittedFileId>),
 }
 
 impl SquashSource {
@@ -47,12 +47,10 @@ impl SquashSource {
             SquashSource::Uncommitted => {
                 matches!(other, CliId::Uncommitted { .. })
             }
-            SquashSource::Branch(name) => match other {
-                CliId::Branch {
-                    name: target_name, ..
-                } => &name.0 == target_name,
-                _ => false,
-            },
+            SquashSource::Branch(branches) => {
+                let marks = MarksRef::from_branches(branches);
+                marks.contains_cli_id(other) || marks.contains_child_of(other)
+            }
             SquashSource::Commit(commits) => {
                 let marks = MarksRef::from_commits(commits);
                 marks.contains_cli_id(other) || marks.contains_child_of(other)
@@ -140,15 +138,16 @@ impl SquashSource {
                 }),
                 _ => None,
             },
-            SquashSource::Branch(source_branch) => {
-                if let CliId::Branch {
-                    name: target_branch,
-                    ..
-                } = target
-                    && &source_branch.0 == target_branch
+            SquashSource::Branch(source_branches) => {
+                if source_branches.len() == 1
+                    && let CliId::Branch {
+                        name: target_branch,
+                        ..
+                    } = target
+                    && &source_branches.head.name == target_branch
                 {
                     Some(SquashRoute::BranchToSelf {
-                        source: source_branch,
+                        source: &source_branches.head,
                     })
                 } else {
                     match target {
@@ -156,14 +155,14 @@ impl SquashSource {
                             commit_id: target_commit,
                             ..
                         } => Some(SquashRoute::BranchToCommit {
-                            source: source_branch,
+                            sources: source_branches,
                             target: *target_commit,
                         }),
                         CliId::Branch {
                             name: target_branch,
                             ..
                         } => Some(SquashRoute::BranchToBranch {
-                            source: source_branch,
+                            sources: source_branches,
                             target: target_branch,
                         }),
                         _ => None,
@@ -238,26 +237,26 @@ enum SquashRoute<'a> {
         target: &'a str,
     },
     BranchToCommit {
-        source: &'a BranchArg,
+        sources: &'a NonEmpty<BranchId>,
         target: ObjectId,
     },
     BranchToBranch {
-        source: &'a BranchArg,
+        sources: &'a NonEmpty<BranchId>,
         target: &'a str,
     },
     BranchToSelf {
-        source: &'a BranchArg,
+        source: &'a BranchId,
     },
     CommittedFileToCommit {
-        sources: &'a NonEmpty<CommittedFile>,
+        sources: &'a NonEmpty<CommittedFileId>,
         target: ObjectId,
     },
     CommittedFileToBranch {
-        sources: &'a NonEmpty<CommittedFile>,
+        sources: &'a NonEmpty<CommittedFileId>,
         target: &'a str,
     },
     CommittedFileToUncommitted {
-        sources: &'a NonEmpty<CommittedFile>,
+        sources: &'a NonEmpty<CommittedFileId>,
     },
 }
 
@@ -388,6 +387,12 @@ impl App {
                         tail: tail.to_vec(),
                     }));
                 }
+                MarksRef::Branches { head, tail } => {
+                    self.start_with_source(SquashSource::Branch(NonEmpty {
+                        head: head.clone(),
+                        tail: tail.to_vec(),
+                    }));
+                }
             },
             Mode::Details(details_mode) => match details_mode.return_mode.marks() {
                 MarksRef::Empty => {
@@ -411,7 +416,9 @@ impl App {
                         Message::Squash(SquashMessage::Start),
                     ]);
                 }
-                MarksRef::Commits { .. } | MarksRef::CommittedFiles { .. } => {}
+                MarksRef::Branches { .. }
+                | MarksRef::Commits { .. }
+                | MarksRef::CommittedFiles { .. } => {}
             },
             _ => {}
         }
@@ -422,8 +429,12 @@ impl App {
             CliId::Uncommitted { .. } => {
                 self.start_with_source(SquashSource::Uncommitted);
             }
-            CliId::Branch { name, .. } => {
-                self.start_with_source(SquashSource::Branch(BranchArg(name.clone())));
+            CliId::Branch { name, id, stack_id } => {
+                self.start_with_source(SquashSource::Branch(NonEmpty::new(BranchId {
+                    name: name.clone(),
+                    id: id.clone(),
+                    stack_id: *stack_id,
+                })));
             }
             CliId::Commit {
                 commit_id,
@@ -444,11 +455,13 @@ impl App {
                 path,
                 id,
             } => {
-                self.start_with_source(SquashSource::CommittedFile(NonEmpty::new(CommittedFile {
-                    commit_id: *commit_id,
-                    path: path.clone(),
-                    id: id.clone(),
-                })));
+                self.start_with_source(SquashSource::CommittedFile(NonEmpty::new(
+                    CommittedFileId {
+                        commit_id: *commit_id,
+                        path: path.clone(),
+                        id: id.clone(),
+                    },
+                )));
             }
             CliId::PathPrefix { .. } | CliId::Stack { .. } => {}
         }
@@ -601,8 +614,7 @@ fn resolve_squash_operation<'a>(
         },
         SquashRoute::UncommittedToBranch { target } => {
             let source = Vec::from([ResolvedCliIdArgRef::Uncommitted]);
-            let target_branch = target.to_owned();
-            let target = ResolvedCliIdArgRef::Branch(&BranchArg(target_branch));
+            let target = ResolvedCliIdArgRef::Branch(target);
             resolve_squash_operation_with_branch(source, target, reword, repo, ws, meta)?
         }
         SquashRoute::UncommittedHunkToCommit { sources, target } => ResolvedSquashArgsRef::Normal {
@@ -630,8 +642,7 @@ fn resolve_squash_operation<'a>(
                 .iter()
                 .map(ResolvedCliIdArgRef::UncommittedHunkOrFile)
                 .collect();
-            let target_branch = target.to_owned();
-            let target = ResolvedCliIdArgRef::Branch(&BranchArg(target_branch));
+            let target = ResolvedCliIdArgRef::Branch(target);
             resolve_squash_operation_with_branch(source, target, reword, repo, ws, meta)?
         }
         SquashRoute::CommitToCommit { sources, target } => ResolvedSquashArgsRef::Normal {
@@ -646,30 +657,21 @@ fn resolve_squash_operation<'a>(
                 reword,
             },
         },
-        SquashRoute::BranchToCommit { source, target } => {
-            let source = ResolvedCliIdArgRef::Branch(source);
+        SquashRoute::BranchToCommit { sources, target } => {
+            let sources = sources
+                .iter()
+                .map(|branch| ResolvedCliIdArgRef::Branch(&branch.name))
+                .collect();
             let target = ResolvedCliIdArgRef::Commit(target, None);
-            resolve_squash_operation_with_branch(
-                Vec::from([source]),
-                target,
-                reword,
-                repo,
-                ws,
-                meta,
-            )?
+            resolve_squash_operation_with_branch(sources, target, reword, repo, ws, meta)?
         }
-        SquashRoute::BranchToBranch { source, target } => {
-            let source = ResolvedCliIdArgRef::Branch(source);
-            let target_branch = target.to_owned();
-            let target = ResolvedCliIdArgRef::Branch(&BranchArg(target_branch));
-            resolve_squash_operation_with_branch(
-                Vec::from([source]),
-                target,
-                reword,
-                repo,
-                ws,
-                meta,
-            )?
+        SquashRoute::BranchToBranch { sources, target } => {
+            let sources = sources
+                .iter()
+                .map(|branch| ResolvedCliIdArgRef::Branch(&branch.name))
+                .collect();
+            let target = ResolvedCliIdArgRef::Branch(target);
+            resolve_squash_operation_with_branch(sources, target, reword, repo, ws, meta)?
         }
         SquashRoute::CommitToBranch { sources, target } => {
             let sources = sources
@@ -678,8 +680,7 @@ fn resolve_squash_operation<'a>(
                     ResolvedCliIdArgRef::Commit(source.commit_id, source.change_id.as_ref())
                 })
                 .collect();
-            let target_branch = target.to_owned();
-            let target = ResolvedCliIdArgRef::Branch(&BranchArg(target_branch));
+            let target = ResolvedCliIdArgRef::Branch(target);
             resolve_squash_operation_with_branch(sources, target, reword, repo, ws, meta)?
         }
         SquashRoute::CommittedFileToBranch { sources, target } => {
@@ -687,13 +688,12 @@ fn resolve_squash_operation<'a>(
                 .iter()
                 .map(ResolvedCliIdArgRef::CommittedFile)
                 .collect();
-            let target_branch = target.to_owned();
-            let target = ResolvedCliIdArgRef::Branch(&BranchArg(target_branch));
+            let target = ResolvedCliIdArgRef::Branch(target);
             resolve_squash_operation_with_branch(sources, target, reword, repo, ws, meta)?
         }
         SquashRoute::BranchToSelf { source } => {
             ResolvedSquashArgsRef::SingleBranchSourceAndTarget {
-                branch: source.clone(),
+                branch: BranchArg(source.name.clone()),
                 reword,
             }
         }

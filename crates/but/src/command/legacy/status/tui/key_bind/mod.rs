@@ -638,9 +638,11 @@ impl KeyBindsBuilder<'_> {
     }
 
     fn reverse_squash(&mut self) -> KeyBindsInModesBuilder<'_> {
-        self.key_bind("reverse squash", press().shift().code(KeyCode::Char('R')), || {
-            Message::Squash(SquashMessage::StartReverse)
-        })
+        self.key_bind(
+            "reverse squash",
+            press().shift().code(KeyCode::Char('R')),
+            || Message::Squash(SquashMessage::StartReverse),
+        )
         .long_description("Squash into selection")
         .hide_from_hotbar()
     }

@@ -18,15 +18,12 @@ use serde::Serialize;
 use crate::{
     CliError, CliResult, CliResultExt, IdMap,
     args::{
-        atoms::{
-            BranchArg, CliIdArg, CommittedFile, Priority, Purpose, ResolvedCliIdArg,
-            ResolvedCliIdArgRef,
-        },
+        atoms::{BranchArg, CliIdArg, Priority, Purpose, ResolvedCliIdArg, ResolvedCliIdArgRef},
         squash2::Platform,
     },
     bad_input,
     command::legacy::reword2::RewordCommitOperation,
-    id::{UNCOMMITTED, UncommittedHunkOrFile},
+    id::{CommittedFileId, UNCOMMITTED, UncommittedHunkOrFile},
     theme::{self, Theme},
     utils::{
         CliOutput, CliOutputHuman, IntermediateChannel, WriteWithUtils, diff_specs::DiffSpecBuilder,
@@ -386,7 +383,7 @@ pub fn resolve<'a>(
                     let mut source_paths = Vec::from([first.path.clone()]);
                     let source = first.commit_id;
                     for committed_file in committed_files.into_iter().skip(1) {
-                        let CommittedFile {
+                        let CommittedFileId {
                             commit_id,
                             path,
                             id: _,
@@ -570,8 +567,8 @@ pub fn resolve_target(
             commit: object_id,
             reword,
         }),
-        ResolvedCliIdArgRef::Branch(branch_arg) => {
-            let branch_name = branch_arg
+        ResolvedCliIdArgRef::Branch(branch_name) => {
+            let branch_name = BranchArg(branch_name.to_owned())
                 .resolve_local_branch_name()
                 .map_err(ResolveTargetError::Other)?;
 
@@ -789,14 +786,16 @@ enum Squashable<'a> {
     Branch(BranchArg),
     UncommittedHunkOrFile(&'a UncommittedHunkOrFile),
     Uncommitted(&'static str),
-    CommittedFile(CommittedFile),
+    CommittedFile(CommittedFileId),
 }
 
 impl<'a> Squashable<'a> {
     fn try_from_resolved_id(id: ResolvedCliIdArgRef<'a>) -> CliResult<Self> {
         let kind = match id {
             ResolvedCliIdArgRef::Commit(commit, _change_id) => return Ok(Self::Commit(commit)),
-            ResolvedCliIdArgRef::Branch(branch) => return Ok(Self::Branch(branch.clone())),
+            ResolvedCliIdArgRef::Branch(branch_name) => {
+                return Ok(Self::Branch(BranchArg(branch_name.to_owned())));
+            }
             ResolvedCliIdArgRef::UncommittedHunkOrFile(hunk) => {
                 return Ok(Self::UncommittedHunkOrFile(hunk));
             }
@@ -819,7 +818,7 @@ enum ClassifiedSquashables<'a> {
     Branches(NonEmpty<BranchArg>),
     UncommittedHunks(NonEmpty<&'a UncommittedHunkOrFile>),
     Uncommitted,
-    CommittedFiles(NonEmpty<CommittedFile>),
+    CommittedFiles(NonEmpty<CommittedFileId>),
 }
 
 impl<'a> ClassifiedSquashables<'a> {
@@ -828,7 +827,7 @@ impl<'a> ClassifiedSquashables<'a> {
         branch_sources: Vec<BranchArg>,
         hunk_sources: Vec<&'a UncommittedHunkOrFile>,
         uncommitted_sources: Vec<&'static str>,
-        committed_file_sources: Vec<CommittedFile>,
+        committed_file_sources: Vec<CommittedFileId>,
     ) -> CliResult<Self> {
         let has_commits = !commit_sources.is_empty();
         let has_branches = !branch_sources.is_empty();
