@@ -1,3 +1,12 @@
+/**
+ * @file Plan, dry run, and execute operations upon potentially multiple sources and a target.
+ *
+ * Operations are declarative representations of mutations that may be performed, organised by
+ * positional "placements".
+ *
+ * Executions upon operations may be previewed in terms of a dry run.
+ */
+
 import { Toast } from "@base-ui/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Match } from "effect";
