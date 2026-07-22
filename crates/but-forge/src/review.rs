@@ -1632,6 +1632,14 @@ pub struct ForgeReviewUpdate {
     pub target_branch: Option<String>,
 }
 
+/// Controls the managed GitButler stack block in review descriptions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReviewStackingDescription {
+    Bottom,
+    Top,
+    Disabled,
+}
+
 #[cfg(feature = "export-schema")]
 but_schemars::register_sdk_type!(ForgeReviewUpdate);
 
@@ -1665,6 +1673,7 @@ pub async fn sync_reviews(
     forge_repo_info: &crate::forge::ForgeRepoInfo,
     reviews: &[ForgeReviewUpdate],
     storage: &but_forge_storage::Controller,
+    description_mode: ReviewStackingDescription,
 ) -> Result<()> {
     let crate::forge::ForgeRepoInfo {
         forge, owner, repo, ..
@@ -1672,8 +1681,9 @@ pub async fn sync_reviews(
 
     let mut errors: Vec<String> = Vec::new();
 
-    // Skip body updates when no review has footer content (e.g. push-only target updates).
-    let has_footer_content = reviews.iter().any(|r| !r.unit_symbol.is_empty());
+    // A body can only be safely changed when supplied by the caller. Target updates remain
+    // independent so description failures never prevent base reconciliation.
+    let has_footer_content = reviews.iter().any(|r| r.body.is_some());
 
     match forge {
         ForgeName::GitHub => {
@@ -1681,12 +1691,13 @@ pub async fn sync_reviews(
             let pr_numbers: Vec<i64> = reviews.iter().map(|r| r.number).collect();
 
             for review in reviews {
-                let updated_body = if has_footer_content {
-                    Some(update_body(
+                let updated_body = if has_footer_content && review.body.is_some() {
+                    Some(update_body_with_mode(
                         review.body.as_deref(),
                         review.number,
                         &pr_numbers,
                         &review.unit_symbol,
+                        description_mode,
                     ))
                 } else {
                     None
@@ -1713,12 +1724,13 @@ pub async fn sync_reviews(
             let mr_iids: Vec<i64> = reviews.iter().map(|r| r.number).collect();
 
             for review in reviews {
-                let updated_body = if has_footer_content {
-                    Some(update_body(
+                let updated_body = if has_footer_content && review.body.is_some() {
+                    Some(update_body_with_mode(
                         review.body.as_deref(),
                         review.number,
                         &mr_iids,
                         &review.unit_symbol,
+                        description_mode,
                     ))
                 } else {
                     None
@@ -1745,12 +1757,13 @@ pub async fn sync_reviews(
             let pr_ids: Vec<i64> = reviews.iter().map(|r| r.number).collect();
 
             for review in reviews {
-                let updated_body = if has_footer_content {
-                    Some(update_body(
+                let updated_body = if has_footer_content && review.body.is_some() {
+                    Some(update_body_with_mode(
                         review.body.as_deref(),
                         review.number,
                         &pr_ids,
                         &review.unit_symbol,
+                        description_mode,
                     ))
                 } else {
                     None
@@ -1831,33 +1844,70 @@ pub fn compute_review_target_updates(
 ///
 /// # Returns
 /// The updated body with the footer replaced, inserted, or removed
+#[cfg(test)]
 fn update_body(body: Option<&str>, pr_number: i64, all_pr_numbers: &[i64], symbol: &str) -> String {
-    let body = body.unwrap_or("");
-    let head = body
-        .split(STACKING_FOOTER_BOUNDARY_TOP)
-        .next()
-        .unwrap_or("")
-        .trim();
-    let tail = body
-        .split(STACKING_FOOTER_BOUNDARY_BOTTOM)
-        .nth(1)
-        .unwrap_or("")
-        .trim();
+    update_body_with_mode(
+        body,
+        pr_number,
+        all_pr_numbers,
+        symbol,
+        ReviewStackingDescription::Bottom,
+    )
+}
 
-    // If there's only one PR, don't add a footer
-    if all_pr_numbers.len() == 1 {
-        if tail.is_empty() {
-            return head.to_string();
-        }
-        return format!("{head}\n\n{tail}");
+fn update_body_with_mode(
+    body: Option<&str>,
+    pr_number: i64,
+    all_pr_numbers: &[i64],
+    symbol: &str,
+    mode: ReviewStackingDescription,
+) -> String {
+    let body = body.unwrap_or("");
+    let Some((head, tail)) = split_managed_footer(body) else {
+        // Never infer a boundary from an incomplete marker: it may be user content.
+        return match (all_pr_numbers.len(), mode) {
+            (0 | 1, _) | (_, ReviewStackingDescription::Disabled) => body.to_string(),
+            (_, ReviewStackingDescription::Bottom) => compose_body(
+                body,
+                &generate_footer(pr_number, all_pr_numbers, symbol),
+                "",
+            ),
+            (_, ReviewStackingDescription::Top) => compose_body(
+                "",
+                &generate_footer(pr_number, all_pr_numbers, symbol),
+                body,
+            ),
+        };
+    };
+
+    if all_pr_numbers.len() <= 1 || mode == ReviewStackingDescription::Disabled {
+        return compose_body(head, "", tail);
     }
 
     let footer = generate_footer(pr_number, all_pr_numbers, symbol);
-    if tail.is_empty() {
-        format!("{head}\n\n{footer}")
-    } else {
-        format!("{head}\n\n{footer}\n\n{tail}")
+    match mode {
+        ReviewStackingDescription::Bottom => compose_body(head, &footer, tail),
+        ReviewStackingDescription::Top => compose_body("", &footer, &compose_body(head, "", tail)),
+        ReviewStackingDescription::Disabled => unreachable!("handled above"),
     }
+}
+
+fn split_managed_footer(body: &str) -> Option<(&str, &str)> {
+    let top = body.find(STACKING_FOOTER_BOUNDARY_TOP)?;
+    let after_top = top + STACKING_FOOTER_BOUNDARY_TOP.len();
+    let bottom = body[after_top..].find(STACKING_FOOTER_BOUNDARY_BOTTOM)? + after_top;
+    Some((
+        &body[..top],
+        &body[bottom + STACKING_FOOTER_BOUNDARY_BOTTOM.len()..],
+    ))
+}
+
+fn compose_body(head: &str, footer: &str, tail: &str) -> String {
+    [head.trim(), footer.trim(), tail.trim()]
+        .into_iter()
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
 /// Generates a footer for use in pull request descriptions when part of a stack.

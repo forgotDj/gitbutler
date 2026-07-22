@@ -1,5 +1,5 @@
 mod git {
-    use but_core::{GitConfigSettings, RepositoryExt};
+    use but_core::{GitConfigSettings, RepositoryExt, ReviewStackingDescription};
     use but_testsupport::gix_testtools;
 
     #[test]
@@ -22,6 +22,7 @@ mod git {
         let expected = GitConfigSettings {
             gitbutler_sign_commits: Some(true),
             gitbutler_gerrit_mode: Some(false),
+            gitbutler_review_stacking_description: None,
             gitbutler_forge_review_template_path: None,
             gitbutler_gitlab_project_id: None,
             gitbutler_gitlab_upstream_project_id: None,
@@ -82,6 +83,7 @@ mod git {
         repo.set_git_settings(&GitConfigSettings {
             gitbutler_sign_commits: Some(true),
             gitbutler_gerrit_mode: Some(false),
+            gitbutler_review_stacking_description: None,
             gitbutler_forge_review_template_path: Some("template.md".into()),
             gitbutler_gitlab_project_id: Some("project-id".into()),
             gitbutler_gitlab_upstream_project_id: Some("upstream-project-id".into()),
@@ -94,6 +96,7 @@ mod git {
         repo.set_git_settings(&GitConfigSettings {
             gitbutler_sign_commits: Some(true),
             gitbutler_gerrit_mode: Some(false),
+            gitbutler_review_stacking_description: None,
             gitbutler_forge_review_template_path: Some("".into()),
             gitbutler_gitlab_project_id: Some(String::new()),
             gitbutler_gitlab_upstream_project_id: Some(String::new()),
@@ -143,6 +146,31 @@ mod git {
             "expected empty gpg ssh program to remove the config key"
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn review_stacking_description_round_trips() -> anyhow::Result<()> {
+        for value in [
+            ReviewStackingDescription::Bottom,
+            ReviewStackingDescription::Top,
+            ReviewStackingDescription::Disabled,
+        ] {
+            let tmp = gix_testtools::tempfile::TempDir::new()?;
+            gix::init(tmp.path())?;
+            let repo = gix::open_opts(tmp.path(), gix::open::Options::isolated())?;
+            repo.set_git_settings(&GitConfigSettings {
+                gitbutler_review_stacking_description: Some(value),
+                ..Default::default()
+            })?;
+
+            let repo = but_testsupport::open_repo(repo.path())?;
+            assert_eq!(
+                repo.git_settings()?.gitbutler_review_stacking_description,
+                Some(value),
+                "the configured review stacking description should round-trip"
+            );
+        }
         Ok(())
     }
 }

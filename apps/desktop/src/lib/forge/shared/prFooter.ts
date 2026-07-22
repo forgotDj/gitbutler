@@ -26,14 +26,14 @@ export async function updatePrDescriptionTables(
 		const prs = await Promise.all(
 			prNumbers.map(async (id) => await prService.fetch(projectId, id)),
 		);
-		const updates = prs.filter(isDefined).map((pr) => ({
-			prNumber: pr.number,
-			description: updateBody(pr.body, pr.number, prNumbers, unitSymbol),
-		}));
-		await Promise.all(
-			updates.map(async ({ prNumber, description }) => {
-				await prService.update(projectId, prNumber, { description });
-			}),
+		await prService.updateReviewFooters(
+			projectId,
+			prs.filter(isDefined).map((pr) => ({
+				number: pr.number,
+				body: pr.body ?? null,
+				unitSymbol,
+				targetBranch: null,
+			})),
 		);
 	}
 }
@@ -41,7 +41,7 @@ export async function updatePrDescriptionTables(
 type PrUpdate = {
 	prNumber: number;
 	targetBase: string;
-	description: string;
+	body: string | null;
 };
 
 export async function updateStackPrs(
@@ -52,7 +52,6 @@ export async function updateStackPrs(
 	unitSymbol = "#",
 ) {
 	if (branchDetails.length <= 1) return;
-	const allPrNumbers = branchDetails.map((b) => b.metadata?.review.pullRequest).filter(isDefined);
 	const updates: PrUpdate[] = [];
 	let prevBranch: string | undefined = undefined;
 
@@ -75,17 +74,21 @@ export async function updateStackPrs(
 
 		updates.push({
 			prNumber,
-			description: updateBody(pr.body, pr.number, allPrNumbers, unitSymbol),
+			body: pr.body ?? null,
 			targetBase: prevBranch ?? baseBranchName,
 		});
 		prevBranch = branchName;
 	}
 
 	if (updates.length > 0) {
-		await Promise.all(
-			updates.map(async ({ prNumber, targetBase, description }) => {
-				await prService.update(projectId, prNumber, { description, targetBase });
-			}),
+		await prService.updateReviewFooters(
+			projectId,
+			updates.map(({ prNumber, targetBase, body }) => ({
+				number: prNumber,
+				body,
+				unitSymbol,
+				targetBranch: targetBase,
+			})),
 		);
 	}
 }
@@ -103,17 +106,16 @@ export async function unstackPRs(
 		const prs = await Promise.all(
 			prNumbers.map(async (id) => await prService.fetch(projectId, id)),
 		);
-		const updates = prs.filter(isDefined).map((pr) => ({
-			prNumber: pr.number,
-			description: clearFooter(pr.body),
-		}));
-
 		await Promise.all(
-			updates.map(async ({ prNumber, description }) => {
-				await prService.update(projectId, prNumber, {
-					description,
-					targetBase: baseBranchName,
-				});
+			prs.filter(isDefined).map(async (pr) => {
+				await prService.updateReviewFooters(projectId, [
+					{
+						number: pr.number,
+						body: pr.body ?? null,
+						unitSymbol: "",
+						targetBranch: baseBranchName,
+					},
+				]);
 			}),
 		);
 	}
