@@ -1,10 +1,14 @@
-use but_api::open::{list_program_specs, program::open_in_program_unchecked};
+use but_api::open::{
+    list_program_specs,
+    program::open_in_program_unchecked,
+};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignment;
 use gix::utils::AsBStr;
+use itertools::Itertools;
 
 use crate::{
-    CliResult, IdMap,
+    CliError, CliResult, IdMap,
     args::atoms::{CliIdArg, Purpose, ResolvedCliIdArg},
     bad_input,
 };
@@ -47,20 +51,22 @@ pub(crate) fn open(
             }
         };
 
-    let program = if let Some(program_id) = program_id {
-        match list_program_specs().iter().find(|ps| ps.id == program_id) {
-            Some(program) => program,
-            None => {
-                return Err(bad_input("No such program")
-                    .arg_name("--program-id")
-                    .arg_value(program_id)
-                    .into());
-            }
-        }
-    } else {
-        list_program_specs()
+    let program = match program_id {
+        Some(program_id) => list_program_specs()
+            .iter()
+            .find(|ps| ps.id == program_id)
+            .ok_or_else(|| {
+                let all_programs = list_program_specs().iter().map(|ps| format!("id='{}', name='{}'", ps.id, ps.name)).join("\n");
+
+                CliError::from(
+                    bad_input(format!("No such program found. Available programs: \n\n{all_programs}"))
+                        .arg_name("--program-id")
+                        .arg_value(program_id),
+                )
+            })?,
+        None => list_program_specs()
             .first()
-            .expect("The list of programs cannot be empty")
+            .expect("BUG: The internal list of programs should not be empty"),
     };
 
     open_in_program_unchecked(program, &path, line_nr)?;

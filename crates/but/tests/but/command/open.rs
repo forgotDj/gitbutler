@@ -23,7 +23,6 @@ Created new independent branch 'a-branch-1'
 #[test]
 fn open_uncommitted_file_with_() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
-    env.setup_metadata(&["A"]);
 
     env.file("new-file.txt", "content");
 
@@ -206,6 +205,7 @@ Hint: Run `but status` for applicable targets.
 #[test]
 fn cannot_open_committed_changes() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
 
     env.but("status -f")
         .assert()
@@ -245,6 +245,26 @@ Error: Expected uncommitted file or hunk, got a commit
         .failure()
         .stderr_eq(snapbox::str![[r#"
 Error: Expected uncommitted file or hunk, got a committed file
+
+"#]]);
+}
+
+#[test]
+fn cannot_open_with_unknown_program() {
+    let env = setup_multi_hunk_uncommitted_changes("file.txt");
+    env.but("_open file.txt -p nosuchprogram").assert().failure().stderr_eq(snapbox::str![[r#"
+Error: Bad input 'nosuchprogram' for '--program-id'
+
+No such program found. Available programs: 
+
+id='nvim', name='Neovim'
+id='cursor', name='Cursor'
+id='sublime', name='Sublime Text'
+id='vscode', name='VS Code'
+id='zed', name='Zed'
+id='echo', name='echo'
+id='thunar', name='Thunar'
+id='nvim-remote', name='Neovim Remote'
 
 "#]]);
 }
