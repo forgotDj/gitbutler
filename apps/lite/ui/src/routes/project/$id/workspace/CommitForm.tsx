@@ -333,6 +333,7 @@ export const CommitForm: FC<{
 								});
 								setIsExpanded(false);
 								setOpen(false);
+								focusSelectionScope("uncommitted-files");
 							}}
 							render={
 								<Button focusableWhenDisabled disabled={isCommitOrAmendPending} type="button" />
