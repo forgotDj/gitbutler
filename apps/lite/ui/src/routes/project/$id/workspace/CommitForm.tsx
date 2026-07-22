@@ -191,12 +191,8 @@ export const CommitForm: FC<{
 			const form = formRef.current;
 			if (!form || !form.contains(document.activeElement)) return;
 
-			const isTextareaFocused = document.activeElement === commitTextareaRef.current;
-			const keepExpanded = isTextareaFocused && (commitTextareaRef.current?.value ?? "") !== "";
-			if (!keepExpanded) {
-				setIsExpanded(false);
-				setOpen(false);
-			}
+			setIsExpanded(false);
+			setOpen(false);
 			focusSelectionScope("uncommitted-files");
 		},
 		{
