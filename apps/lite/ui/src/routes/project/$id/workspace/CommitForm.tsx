@@ -191,7 +191,10 @@ export const CommitForm: FC<{
 
 			const isTextareaFocused = document.activeElement === commitTextareaRef.current;
 			const keepExpanded = isTextareaFocused && (commitTextareaRef.current?.value ?? "") !== "";
-			if (!keepExpanded) setIsExpanded(false);
+			if (!keepExpanded) {
+				setIsExpanded(false);
+				setOpen(false);
+			}
 			focusSelectionScope("uncommitted-files");
 		},
 		{
@@ -288,7 +291,10 @@ export const CommitForm: FC<{
 					<Tooltip.Root>
 						<Tooltip.Trigger
 							className={getButtonClassName({ variant: "outline" })}
-							onClick={() => setIsExpanded(false)}
+							onClick={() => {
+								setIsExpanded(false);
+								setOpen(false);
+							}}
 							render={<Button focusableWhenDisabled disabled={isCommitOrAmendPending} />}
 						>
 							Cancel
