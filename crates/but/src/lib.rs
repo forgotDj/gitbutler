@@ -497,8 +497,6 @@ async fn match_subcommand(
             Ok(())
         }
         Subcommands::_Expand { cli_id } => {
-            use crate::utils::OutputChannelExt;
-
             let ctx = but_ctx::Context::discover(&args.current_dir)?;
             let outcome = command::expand::handle(&ctx, cli_id).emit_metrics(metrics_ctx)?;
             out.print_cli_output(outcome)?;
@@ -1163,7 +1161,7 @@ async fn match_subcommand(
         }
         #[cfg(feature = "legacy")]
         Subcommands::_Commit2(commit_args) => {
-            use crate::utils::{IntermediateChannel, OutputChannelExt};
+            use crate::utils::IntermediateChannel;
 
             let status_after = args.status_after;
             let mut ctx = setup::init_ctx(
@@ -1187,7 +1185,7 @@ async fn match_subcommand(
         }
         #[cfg(feature = "legacy")]
         Subcommands::_Squash2(squash_args) => {
-            use crate::utils::{IntermediateChannel, OutputChannelExt};
+            use crate::utils::IntermediateChannel;
 
             let status_after = args.status_after;
             let mut ctx = setup::init_ctx(
@@ -1211,7 +1209,7 @@ async fn match_subcommand(
         }
         #[cfg(feature = "legacy")]
         Subcommands::_Move2(move_args) => {
-            use crate::utils::{IntermediateChannel, OutputChannelExt};
+            use crate::utils::IntermediateChannel;
 
             let status_after = args.status_after;
             let mut ctx = setup::init_ctx(
@@ -1232,7 +1230,7 @@ async fn match_subcommand(
         }
         #[cfg(feature = "legacy")]
         Subcommands::_Diff2(diff_args) => {
-            use crate::utils::{IntermediateChannel, OutputChannelExt};
+            use crate::utils::IntermediateChannel;
 
             let status_after = args.status_after;
             let mut ctx = setup::init_ctx(
