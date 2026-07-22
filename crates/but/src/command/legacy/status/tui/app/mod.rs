@@ -1290,6 +1290,7 @@ impl App {
                 path,
                 id,
                 commit_id: _,
+                change_id: _,
             } => copy_selection_picker::committed_file_picker(
                 path.to_owned(),
                 id.to_owned(),
