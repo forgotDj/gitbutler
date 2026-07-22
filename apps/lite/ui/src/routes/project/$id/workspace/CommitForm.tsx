@@ -265,7 +265,11 @@ export const CommitForm: FC<{
 				// oxlint-disable-next-line jsx_a11y/no-autofocus
 				autoFocus
 				id={commitMessageInputId}
-				ref={commitTextareaRef}
+				ref={(el) => {
+					commitTextareaRef.current = el;
+					// Place the caret at the end of the restored draft message.
+					el?.setSelectionRange(el.value.length, el.value.length);
+				}}
 				aria-label={commitTextareaLabel}
 				disabled={!isDefaultMode}
 				readOnly={isCommitOrAmendPending}
