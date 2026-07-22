@@ -636,7 +636,7 @@ fn resolve_squash_operation<'a>(
         },
     };
 
-    let op = squash2::resolve(resolved_args, ws).into_internal_error()?;
+    let op = squash2::resolve(resolved_args, ws, repo).into_internal_error()?;
 
     Ok(Some(op))
 }

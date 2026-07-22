@@ -1,5 +1,5 @@
 use anyhow::Context as _;
-use bstr::BString;
+use bstr::{BString, ByteSlice as _};
 use but_api::json::HexHash;
 use but_core::{DiffSpec, DryRun, RefMetadata, sync::RepoExclusive};
 use but_ctx::Context;
@@ -172,7 +172,7 @@ pub fn squash(
     let resolved_args = resolve_args(&repo, args, &id_map, &head_info)?;
     let resolved_args = resolved_args.as_ref();
 
-    let squash_op = resolve(resolved_args, &ws)?;
+    let squash_op = resolve(resolved_args, &ws, &repo)?;
 
     drop(repo);
     drop(ws);
@@ -313,6 +313,7 @@ pub enum ResolvedSquashArgsRef<'a> {
 pub fn resolve<'a>(
     args: ResolvedSquashArgsRef<'a>,
     ws: &Workspace,
+    repo: &gix::Repository,
 ) -> CliResult<SquashOperation<'a>> {
     let resolved_squash = match args {
         ResolvedSquashArgsRef::Normal { sources, target } => {
@@ -425,7 +426,7 @@ pub fn resolve<'a>(
         }
     };
 
-    let squash_op = match resolved_squash {
+    let mut squash_op = match resolved_squash {
         ResolvedSquash::Commits { target, sources } => match target {
             SquashTarget::Commit {
                 commit: target,
@@ -479,6 +480,8 @@ pub fn resolve<'a>(
         },
     };
 
+    fix_up_unnecessary_reword_via_editor(&mut squash_op, repo)?;
+
     Ok(squash_op)
 }
 
@@ -486,6 +489,95 @@ fn cannot_uncommit_uncommitted_changes_error() -> CliError {
     bad_input("Cannot uncommit uncommitted changes")
         .hint("When squashing uncommitted changes the --target must be a commit or a branch")
         .into()
+}
+
+/// Changes how the operation rewords the target to avoid unnecessarily opening the editor.
+///
+/// For example if none of the sources have a message then we should always pick the target
+/// message, and vice versa.
+///
+/// If no editor would have been opened then this function does nothing. So we still respect
+/// `--use-source-message` and `--use-target-message` flags.
+fn fix_up_unnecessary_reword_via_editor(
+    op: &mut SquashOperation,
+    repo: &gix::Repository,
+) -> anyhow::Result<()> {
+    fn obvious_final_message<I>(
+        commits: I,
+        repo: &gix::Repository,
+    ) -> anyhow::Result<Option<String>>
+    where
+        I: IntoIterator<Item = gix::ObjectId>,
+    {
+        let mut out = None;
+        let mut seen = Vec::new();
+        for commit in commits {
+            if seen.contains(&commit) {
+                continue;
+            } else {
+                seen.push(commit);
+            }
+
+            let commit = repo.find_commit(commit)?;
+            let msg = commit.message_raw()?;
+            if msg.is_empty() {
+                continue;
+            }
+            if out.is_some() {
+                return Ok(None);
+            }
+            if let Ok(msg) = msg.to_str() {
+                out = Some(msg.to_owned());
+            } else {
+                // make sure we don't remove non utf-8 messages
+                return Ok(None);
+            }
+        }
+        if let Some(out) = out {
+            Ok(Some(out))
+        } else {
+            // none of the commits have messages so just keep an empty message and dont open an
+            // editor
+            Ok(Some(String::new()))
+        }
+    }
+
+    if !op.will_open_editor() {
+        return Ok(());
+    }
+
+    match op {
+        SquashOperation::Commits(op) => {
+            let commits = op.sources.iter().copied().chain([op.target]);
+            if let Some(msg) = obvious_final_message(commits, repo)? {
+                op.reword = HowToRewordTarget::Reword(RewordCommitOperation::Message(msg));
+            }
+        }
+        SquashOperation::Branch(op) => {
+            let commits = op.sources.iter().copied().chain([op.target]);
+            if let Some(msg) = obvious_final_message(commits, repo)? {
+                op.reword = HowToRewordTarget::Reword(RewordCommitOperation::Message(msg));
+            }
+        }
+        SquashOperation::UncommittedHunks(op) => {
+            if let Some(msg) = obvious_final_message([op.target], repo)? {
+                op.reword = HowToRewordTargetNoSource::Reword(RewordCommitOperation::Message(msg));
+            }
+        }
+        SquashOperation::Uncommitted { target, reword, .. } => {
+            if let Some(msg) = obvious_final_message([*target], repo)? {
+                *reword = HowToRewordTargetNoSource::Reword(RewordCommitOperation::Message(msg));
+            }
+        }
+        SquashOperation::MoveCommittedFiles { target, reword, .. } => {
+            if let Some(msg) = obvious_final_message([*target], repo)? {
+                *reword = HowToRewordTargetNoSource::Reword(RewordCommitOperation::Message(msg));
+            }
+        }
+        SquashOperation::Uncommit(..) | SquashOperation::UncommitCommittedFiles(..) => {}
+    }
+
+    Ok(())
 }
 
 #[derive(Debug)]
