@@ -925,7 +925,7 @@ fn print_upstream_state(
             upstream_summary.push(Span::raw(" "));
             upstream_summary.push(Span::styled(last_checked_text.clone(), t.hint));
         }
-        output.upstream_changes(Vec::from([Span::raw("┊╭┄")]), upstream_summary)?;
+        output.upstream_changes(Vec::from([Span::raw("┊╭┄ ")]), upstream_summary)?;
 
         // Display detailed list of upstream commits
         if let Some(base_branch) = &status_ctx.base_branch
@@ -1123,7 +1123,7 @@ fn print_assignments(
             })?;
 
         output.staged_changes(
-            Vec::from([Span::raw("┊  ╭┄")]),
+            Vec::from([Span::raw("┊  ╭┄ ")]),
             [
                 id,
                 Span::raw(" ["),
@@ -1340,7 +1340,11 @@ fn print_group(
             };
 
             output.branch(
-                Vec::from([Span::raw("┊"), Span::raw(format!("{notch}┄"))]),
+                Vec::from([
+                    Span::raw("┊"),
+                    Span::raw(format!("{notch}┄")),
+                    Span::raw(" "),
+                ]),
                 BranchLineContent {
                     id: Vec::from([Span::styled(segment.short_id.clone(), t.cli_id)]),
                     decoration_start: Vec::from([Span::raw(decoration_start)]),
@@ -1372,7 +1376,7 @@ fn print_group(
                     .unwrap_or(b"unknown");
                 output.connector(Vec::from([Span::raw("┊┊")]))?;
                 output.upstream_changes(
-                    Vec::from([Span::raw("┊╭┄┄")]),
+                    Vec::from([Span::raw("┊╭┄┄ ")]),
                     Vec::from([Span::styled(
                         format!("(upstream: on {})", BStr::new(tracking_branch)),
                         t.attention,
@@ -1447,7 +1451,7 @@ fn print_group(
                 Vec::new()
             },
         };
-        output.unstaged_changes(Vec::from([Span::raw("╭┄")]), line, cli_id.clone())?;
+        output.unstaged_changes(Vec::from([Span::raw("╭┄ ")]), line, cli_id.clone())?;
         if !assignments.is_empty() {
             print_assignments(&repo, status_ctx, None, None, assignments, true, output)?;
         }

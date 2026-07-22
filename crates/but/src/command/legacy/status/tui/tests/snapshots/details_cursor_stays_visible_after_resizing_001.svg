@@ -7,9 +7,9 @@
   <rect x="10" y="172" width="88" height="18" fill="#FFA500" />
   <g font-family="Menlo, Monaco, 'Courier New', monospace" font-size="14" xml:space="preserve">
     <text x="10 18" y="24" style="fill:#CCCCCC;">╭┄</text>
-    <text x="26 34" y="24" style="fill:#0000AA;font-weight:bold;">zz</text>
-    <text x="50" y="24" style="fill:#CCCCCC;">[</text>
-    <text x="58 66 74 82 90 98 106 114 122 130" y="24" style="fill:#00AAAA;">uncommitte</text>
+    <text x="34 42" y="24" style="fill:#0000AA;font-weight:bold;">zz</text>
+    <text x="58" y="24" style="fill:#CCCCCC;">[</text>
+    <text x="66 74 82 90 98 106 114 122 130" y="24" style="fill:#00AAAA;">uncommitt</text>
     <text x="138" y="24" style="fill:#FFA500;">▌</text>
     <text x="146 154 162 170 178 186 194 202 210 218 226 234 242 250 258 266 274" y="24" style="fill:#555555;">────────────────╮</text>
     <text x="642" y="24" style="fill:#555555;">█</text>
@@ -30,10 +30,10 @@
     <text x="10" y="78" style="fill:#CCCCCC;">┊</text>
     <text x="138" y="78" style="fill:#FFA500;">▌</text>
     <text x="10 18 26" y="96" style="fill:#CCCCCC;">┊╭┄</text>
-    <text x="34 42" y="96" style="fill:#0000AA;font-weight:bold;">g0</text>
-    <text x="58" y="96" style="fill:#CCCCCC;">[</text>
-    <text x="66" y="96" style="fill:#00AA00;">A</text>
-    <text x="74" y="96" style="fill:#CCCCCC;">]</text>
+    <text x="42 50" y="96" style="fill:#0000AA;font-weight:bold;">g0</text>
+    <text x="66" y="96" style="fill:#CCCCCC;">[</text>
+    <text x="74" y="96" style="fill:#00AA00;">A</text>
+    <text x="82" y="96" style="fill:#CCCCCC;">]</text>
     <text x="138" y="96" style="fill:#FFA500;">▌</text>
     <text x="146 154" y="96" style="fill:#CCCCCC;opacity:0.75;">@@</text>
     <text x="170 178 186 194" y="96" style="fill:#CCCCCC;opacity:0.75;">-1,0</text>
