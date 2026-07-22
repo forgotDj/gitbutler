@@ -164,6 +164,7 @@ where
             MarkableRef::Uncommitted(hunk) => marks.insert_mark(hunk.clone()).unwrap(),
             MarkableRef::Commit(commit) => marks.insert_mark(commit.to_owned()).unwrap(),
             MarkableRef::CommittedFile(file) => marks.insert_mark(file.to_owned()).unwrap(),
+            MarkableRef::Branch(branch) => marks.insert_mark(branch.to_owned()).unwrap(),
         }
     }
     marks
@@ -1408,6 +1409,50 @@ fn move_down_does_not_move_when_no_selectable_line_below() {
     }
 
     assert_eq!(cursor, Cursor(0));
+}
+
+#[test]
+fn move_after_mark_moves_between_branches() {
+    let lines = vec![
+        branch_line("current", "b0"),
+        commit_line("1111111111111111111111111111111111111111", "c0"),
+        branch_line("next", "b1"),
+        commit_line("2222222222222222222222222222222222222222", "c1"),
+    ];
+    let mode = Mode::Normal(NormalMode {
+        marks: marks([markable(lines[0].data.cli_id().unwrap())]),
+    });
+
+    assert_eq!(
+        Cursor(0).move_after_mark(&lines, &mode, FilesStatusFlag::All),
+        Some(Cursor(2)),
+        "marking a branch should move to the next branch"
+    );
+}
+
+#[test]
+fn move_up_within_section_stops_at_previous_section() {
+    let lines = vec![
+        branch_line("previous", "b0"),
+        commit_line("1111111111111111111111111111111111111111", "c0"),
+        branch_line("current", "b1"),
+        commit_line("2222222222222222222222222222222222222222", "c1"),
+        commit_line("3333333333333333333333333333333333333333", "c2"),
+    ];
+    let mode = Mode::Normal(NormalMode {
+        marks: marks([markable(lines[4].data.cli_id().unwrap())]),
+    });
+
+    assert_eq!(
+        Cursor(4).move_up_within_section(&lines, &mode, FilesStatusFlag::All),
+        Some(Cursor(3)),
+        "upward movement should find a selectable commit in the current branch"
+    );
+    assert_eq!(
+        Cursor(3).move_up_within_section(&lines, &mode, FilesStatusFlag::All),
+        None,
+        "upward movement should not cross into the previous branch"
+    );
 }
 
 #[test]

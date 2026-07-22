@@ -541,6 +541,9 @@ fn render_status_list_item(
             for (idx, span) in connector.iter().enumerate() {
                 if idx == 1 {
                     line.render(mark_symbol.span());
+                    if connector.len() == 2 {
+                        line.render(Span::raw(" ").style(app.theme.tui_mark));
+                    }
                 } else if idx == 2 {
                     // after the indicator is a bunch of spaces
                     for (c_idx, c) in span.content.chars().enumerate() {
