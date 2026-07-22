@@ -127,38 +127,6 @@ fn marking_section_edge_moves_only_when_neighbor_differs() {
 }
 
 #[test]
-fn multi_squash_marked_commits_into_selected_marked_target() {
-    let env = Sandbox::init_scenario_with_target_and_default_settings("two-stacks");
-    env.setup_metadata(&["A", "B"]);
-
-    let mut tui = test_tui(env);
-
-    tui.input([KeyCode::Down, KeyCode::Down])
-        .assert_current_line_eq(str!["┊●   tpm add A"]);
-
-    tui.input(' ')
-        .assert_current_line_eq(str!["┊✔︎   tpm add A"]);
-
-    tui.input((KeyModifiers::SHIFT, 'J'))
-        .assert_current_line_eq(str!["┊╭┄h0 [B]"]);
-
-    tui.input(KeyCode::Down)
-        .assert_current_line_eq(str!["┊●   lrm add B"]);
-
-    tui.input(' ')
-        .assert_current_line_eq(str!["┊✔︎   lrm add B"]);
-
-    tui.input('r')
-        .assert_current_line_eq(str!["┊✔︎   << source >> << squash >> lrm add B"]);
-
-    tui.input(KeyCode::Enter)
-        .assert_current_line_eq(str!["┊●   lrm add B"])
-        .assert_rendered_term_svg_eq(file![
-            "snapshots/multi_squash_marked_commits_into_selected_marked_target_final.svg"
-        ]);
-}
-
-#[test]
 fn marks_still_show_in_split_details() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
     env.setup_metadata(&[]);

@@ -4,12 +4,6 @@ use snapbox::file;
 
 use crate::command::legacy::status::tui::tests::utils::{Shift, test_tui};
 
-mod binds {
-    use crate::command::legacy::status::tui::tests::utils::Shift;
-
-    pub const SQUASH: Shift = Shift('s');
-}
-
 #[test]
 fn squash_uncommitted_into_commit() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
@@ -21,7 +15,7 @@ fn squash_uncommitted_into_commit() {
 
     tui.input(Shift('f'))
         .assert_rendered_term_svg_eq(file!["snapshots/squash_uncommitted_into_commit_001.svg"]);
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_uncommitted_into_commit_002.svg"]);
     tui.input('j');
     tui.input('j')
@@ -49,7 +43,7 @@ fn squash_branch_into_commit_on_same_branch() {
     ]);
 
     tui.input('k');
-    tui.input(binds::SQUASH).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squash_branch_into_commit_on_same_branch_002.svg"
     ]);
     tui.input('j');
@@ -72,7 +66,7 @@ fn squash_branch_into_commit_on_different_branch() {
 
     tui.input(Shift('f'));
     tui.input('j');
-    tui.input(binds::SQUASH).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squash_branch_into_commit_on_different_branch_001.svg"
     ]);
     tui.input('j');
@@ -103,7 +97,7 @@ fn squash_branch_into_self() {
     tui.input(KeyCode::Enter);
 
     tui.input('k');
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_branch_into_self_001.svg"]);
     tui.input('u');
 
@@ -126,7 +120,7 @@ fn squash_branch_into_other_branch() {
 
     tui.input(Shift('f'));
     tui.input('j');
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_branch_into_other_branch_001.svg"]);
     tui.input('u');
     tui.input('j');
@@ -145,7 +139,7 @@ fn squash_with_target_message() {
 
     tui.input(Shift('f'));
     tui.input('j');
-    tui.input(binds::SQUASH);
+    tui.input('r');
     tui.input('u')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_with_target_message_001.svg"]);
     tui.input('j');
@@ -165,7 +159,7 @@ fn squash_commit_into_commit() {
     tui.input(Shift('f'));
     tui.input('j');
     tui.input('j');
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_commit_into_commit_001.svg"]);
     tui.input('j');
     tui.input('j');
@@ -185,7 +179,7 @@ fn squash_uncommitted_hunk_to_commit() {
 
     tui.input(Shift('f'));
     tui.input('j');
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_uncommitted_hunk_to_commit_001.svg"]);
     tui.input('j');
     tui.input('j');
@@ -206,7 +200,7 @@ fn squash_uncommitted_hunk_to_branch() {
 
     tui.input(Shift('f'));
     tui.input('j');
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_uncommitted_hunk_to_branch_001.svg"]);
     tui.input('j');
     tui.input('u')
@@ -225,7 +219,7 @@ fn squash_commit_to_branch() {
     tui.input(Shift('f'));
     tui.input('j');
     tui.input('j');
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_commit_to_branch_001.svg"]);
     tui.input('j');
     tui.input('u')
@@ -245,7 +239,7 @@ fn squash_committed_file_to_commit() {
     tui.input('j');
     tui.input('j');
     tui.input('j');
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_committed_file_to_commit_001.svg"]);
     tui.input('j');
     tui.input('j');
@@ -266,7 +260,7 @@ fn squash_committed_file_to_branch() {
     tui.input('j');
     tui.input('j');
     tui.input('j');
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_committed_file_to_branch_001.svg"]);
     tui.input('j');
     tui.input('u')
@@ -285,7 +279,7 @@ fn squash_uncommit_commit() {
     tui.input(Shift('f'));
     tui.input('j');
     tui.input('j');
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_uncommit_commit_001.svg"]);
     tui.input('k');
     tui.input('k')
@@ -305,7 +299,7 @@ fn squash_uncommit_committed_file() {
     tui.input('j');
     tui.input('j');
     tui.input('j');
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_uncommit_committed_file_001.svg"]);
     tui.input('k');
     tui.input('k');
@@ -329,7 +323,7 @@ fn squash_marked_uncommitted_files_to_commit() {
     tui.input('j');
     tui.input(' ');
     tui.input(' ');
-    tui.input(binds::SQUASH).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squash_marked_uncommitted_files_to_commit_001.svg"
     ]);
     tui.input('j');
@@ -365,7 +359,7 @@ fn squash_marked_commits_to_commit() {
     tui.input(' ');
     tui.input(' ');
 
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_marked_commits_to_commit_001.svg"]);
     tui.input('u')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_marked_commits_to_commit_002.svg"]);
@@ -391,7 +385,7 @@ fn squash_marked_committed_files_to_commit_via_global_file_list() {
     tui.input('j');
     tui.input(' ');
     tui.input(' ');
-    tui.input(binds::SQUASH).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squash_marked_committed_files_to_commit_via_global_file_list_001.svg"
     ]);
     tui.input('j');
@@ -422,7 +416,7 @@ fn squash_marked_committed_files_to_commit_via_local_file_list() {
     tui.input('f');
     tui.input(' ');
     tui.input(' ');
-    tui.input(binds::SQUASH).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squash_marked_committed_files_to_commit_via_local_file_list_001.svg"
     ]);
     tui.input('j');
@@ -446,7 +440,7 @@ fn squash_uncommitted_to_branch() {
 
     let mut tui = test_tui(env);
 
-    tui.input(binds::SQUASH)
+    tui.input('r')
         .assert_rendered_term_svg_eq(file!["snapshots/squash_uncommitted_to_branch_001.svg"]);
     tui.input('j');
     tui.input('u')

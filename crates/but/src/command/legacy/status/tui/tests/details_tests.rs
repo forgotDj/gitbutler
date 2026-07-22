@@ -20,8 +20,6 @@ mod binds {
 
     pub const NEXT_HUNK: Shift = Shift('j');
     pub const PREV_HUNK: Shift = Shift('k');
-
-    pub const SQUASH: Shift = Shift('s');
 }
 
 #[test]
@@ -1447,7 +1445,7 @@ fn squashing_marks_from_split_details_view() {
     tui.input('l').assert_rendered_term_svg_eq(file![
         "snapshots/squashing_marks_from_split_details_view_001.svg"
     ]);
-    tui.input(binds::SQUASH).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squashing_marks_from_split_details_view_002.svg"
     ]);
     tui.input('j');
@@ -1476,7 +1474,7 @@ fn squashing_marks_from_full_screen_details_view() {
     tui.input(Shift('d')).assert_rendered_term_svg_eq(file![
         "snapshots/squashing_marks_from_full_screen_details_view_001.svg"
     ]);
-    tui.input(binds::SQUASH).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squashing_marks_from_full_screen_details_view_002.svg"
     ]);
     tui.input('j');
@@ -1506,7 +1504,7 @@ fn squashing_selection_from_split_details_view() {
         .assert_rendered_term_svg_eq(file![
             "snapshots/squashing_selection_from_split_details_view_001.svg"
         ]);
-    tui.input(binds::SQUASH).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squashing_selection_from_split_details_view_002.svg"
     ]);
     tui.input('j');
@@ -1535,7 +1533,7 @@ fn squashing_selection_from_full_screen_details_view() {
         .assert_rendered_term_svg_eq(file![
             "snapshots/squashing_selection_from_full_screen_details_view_001.svg"
         ]);
-    tui.input(binds::SQUASH).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squashing_selection_from_full_screen_details_view_002.svg"
     ]);
     tui.input('j');
@@ -1727,7 +1725,7 @@ fn squash_source_without_marks_is_selectable() {
 
     tui.input('l');
     tui.input('j');
-    tui.input(binds::SQUASH).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squash_source_without_marks_is_selectable_001.svg"
     ]);
 }
@@ -1745,7 +1743,7 @@ fn squash_source_with_marks_is_selectable() {
     tui.input('l');
     tui.input('j');
     tui.input(' ');
-    tui.input(Shift('s')).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squash_source_with_marks_is_selectable_001.svg"
     ]);
 }
@@ -1774,7 +1772,7 @@ fn squash_source_with_partial_marks_is_selectable() {
     tui.input('l');
     tui.input('j');
     tui.input(' ');
-    tui.input(Shift('s')).assert_rendered_term_svg_eq(file![
+    tui.input('r').assert_rendered_term_svg_eq(file![
         "snapshots/squash_source_with_partial_marks_is_selectable_001.svg"
     ]);
 }

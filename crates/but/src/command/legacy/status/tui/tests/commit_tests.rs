@@ -359,10 +359,13 @@ fn commit_mode_from_staged_changes_stays_within_current_stack() {
         .assert_current_line_eq(str!["┊   vo A test.txt"]);
 
     tui.input('r')
-        .assert_current_line_eq(str!["┊   << source >> << noop >> vo A test.txt"]);
+        .assert_current_line_eq(str!["┊   << source >> vo A test.txt"]);
 
+    tui.input(KeyCode::Down);
     tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊●   << amend >> tpm add A"]);
+
+    tui.input('u');
 
     tui.input(KeyCode::Enter)
         .assert_current_line_eq(str!["┊●   tpm add A"]);

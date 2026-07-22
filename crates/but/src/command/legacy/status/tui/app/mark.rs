@@ -641,7 +641,6 @@ impl App {
                 id: _,
                 stack_id,
             } => {
-                // you cannot select branches in rub mode so we don't need to care about that
                 if let Some(stack_id) = *stack_id {
                     match self
                         .mode
@@ -651,8 +650,7 @@ impl App {
                             handle_mark_branch(marks, ctx, stack_id, name)?;
                         }
                         Mode::PickChanges(..) => {}
-                        Mode::Rub(..)
-                        | Mode::Squash(..)
+                        Mode::Squash(..)
                         | Mode::InlineReword(..)
                         | Mode::Command(..)
                         | Mode::Commit(..)
@@ -665,7 +663,6 @@ impl App {
                 }
             }
             CliId::Uncommitted { .. } => {
-                // you cannot select uncommitted changes in rub mode so we don't need to care about that
                 match self
                     .mode
                     .get_mut_and_i_promise_not_to_switch_to_a_different_state()
@@ -676,8 +673,7 @@ impl App {
                     Mode::PickChanges(PickChangesMode { marks }) => {
                         handle_mark_uncommitted(marks, &self.status_lines)?;
                     }
-                    Mode::Rub(..)
-                    | Mode::Squash(..)
+                    Mode::Squash(..)
                     | Mode::InlineReword(..)
                     | Mode::Command(..)
                     | Mode::Commit(..)
@@ -726,8 +722,7 @@ impl App {
                 }
                 true
             }
-            Mode::Rub(..)
-            | Mode::Squash(..)
+            Mode::Squash(..)
             | Mode::InlineReword(..)
             | Mode::Commit(..)
             | Mode::Move(..)
@@ -762,7 +757,6 @@ fn handle_mark_cli_id(commit: &CliId, mode: &mut Mode) -> anyhow::Result<bool> {
             toggle_markables(&mut pick_uncommitted_mode.marks, [markable.to_owned()])?;
         }
         Mode::InlineReword(..)
-        | Mode::Rub(..)
         | Mode::Squash(..)
         | Mode::Command(..)
         | Mode::Commit(..)
