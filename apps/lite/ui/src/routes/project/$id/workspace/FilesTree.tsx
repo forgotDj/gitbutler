@@ -51,6 +51,7 @@ const useFilesTreeHotkeys = ({
 	});
 	const { mutate: openInEditor } = useOpenInEditor();
 
+	const store = useAppStore();
 	const dispatch = useAppDispatch();
 
 	const selectedChangesFile = fileParent._tag === "UncommittedChanges" ? selection : null;
@@ -117,7 +118,14 @@ const useFilesTreeHotkeys = ({
 		selection,
 		ref,
 		getKey: (path) => path,
-		operationSourcesForItem: (path) => [fileOperand({ parent: fileParent, path })],
+		operationSourcesForItem: (path) => {
+			const operand = fileOperand({ parent: fileParent, path });
+			const checkedOperands = projectSlice.selectors.selectCheckedOperands(
+				store.getState(),
+				projectId,
+			);
+			return checkedOperands.length > 0 ? checkedOperands : [operand];
+		},
 	});
 };
 

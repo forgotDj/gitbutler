@@ -39,7 +39,7 @@ export const OperationSourceC: FC<
 	);
 	// We don't necessarily wrap in an array here in order to preserve reference identity.
 	const dragSource = useAppSelector((state) => {
-		if (source._tag !== "Commit") return source;
+		if (source._tag !== "Commit" && source._tag !== "File") return source;
 
 		const isChecked = projectSlice.selectors.selectOperandChecked(state, projectId, source);
 		if (!isChecked) return source;

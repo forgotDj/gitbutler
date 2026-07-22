@@ -78,6 +78,7 @@ export const projectSlice = createSlice({
 		selectHighlightedCommitIds: fromProject(projectSelectors.selectHighlightedCommitIds),
 		selectOperandChecked: fromProject(projectSelectors.selectOperandChecked),
 		selectCheckedOperands: fromProject(projectSelectors.selectCheckedOperands),
+		selectCheckedOperandKeys: fromProject(projectSelectors.selectCheckedOperandKeys),
 		selectCheckedCommitIds: fromProject(projectSelectors.selectCheckedCommitIds),
 		selectCheckedOperandCount: fromProject(projectSelectors.selectCheckedOperandCount),
 		selectHasCheckedOperands: fromProject(projectSelectors.selectHasCheckedOperands),

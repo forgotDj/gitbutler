@@ -54,7 +54,7 @@ export const commitOperand = ({
 	commitId,
 });
 
-export const fileOperand = ({ parent, path }: FileOperand): Operand => ({
+export const fileOperand = ({ parent, path }: FileOperand): Extract<Operand, { _tag: "File" }> => ({
 	_tag: "File",
 	parent,
 	path,
