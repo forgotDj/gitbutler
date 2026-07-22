@@ -1,6 +1,7 @@
-import { updatePrDescriptionTables } from "$lib/forge/shared/prFooter";
+import { unstackPRs, updatePrDescriptionTables, updateStackPrs } from "$lib/forge/shared/prFooter";
 import { describe, expect, test, vi } from "vitest";
 import type { PrService } from "$lib/forge/prService.svelte";
+import type { Segment } from "@gitbutler/but-sdk";
 
 function mockPrService(bodies: Record<number, string | null> = {}) {
 	const fetch = vi.fn(async (_projectId: string, number: number) => ({
@@ -10,6 +11,13 @@ function mockPrService(bodies: Record<number, string | null> = {}) {
 	const updateReviewFooters = vi.fn(async () => undefined);
 	const service = { fetch, updateReviewFooters } as unknown as PrService;
 	return { service, fetch, updateReviewFooters };
+}
+
+function segment(name: string, review?: number): Segment {
+	return {
+		refName: { displayName: name },
+		metadata: { review: { pullRequest: review } },
+	} as Segment;
 }
 
 describe("updatePrDescriptionTables", () => {
@@ -23,9 +31,27 @@ describe("updatePrDescriptionTables", () => {
 
 		expect(fetch.mock.calls.map(([, number]) => number)).toEqual([100, 101, 102]);
 		expect(updateReviewFooters).toHaveBeenCalledWith("project", [
-			{ number: 100, body: "Base description", unitSymbol: "#", targetBranch: null },
-			{ number: 101, body: null, unitSymbol: "#", targetBranch: null },
-			{ number: 102, body: "Top description", unitSymbol: "#", targetBranch: null },
+			{
+				number: 100,
+				body: "Base description",
+				updateDescription: true,
+				unitSymbol: "#",
+				targetBranch: null,
+			},
+			{
+				number: 101,
+				body: null,
+				updateDescription: true,
+				unitSymbol: "#",
+				targetBranch: null,
+			},
+			{
+				number: 102,
+				body: "Top description",
+				updateDescription: true,
+				unitSymbol: "#",
+				targetBranch: null,
+			},
 		]);
 	});
 
@@ -45,5 +71,102 @@ describe("updatePrDescriptionTables", () => {
 		await expect(updatePrDescriptionTables(service, "project", [101, 100])).rejects.toThrow(
 			"forge update failed",
 		);
+	});
+});
+
+describe("updateStackPrs", () => {
+	test("sends reviews base-to-top with chained target branches", async () => {
+		const { service, updateReviewFooters } = mockPrService({
+			100: "Base",
+			101: "Middle",
+			102: "Top",
+		});
+
+		await updateStackPrs(
+			service,
+			"project",
+			[segment("top", 102), segment("middle", 101), segment("base", 100)],
+			"main",
+		);
+
+		expect(updateReviewFooters).toHaveBeenCalledWith("project", [
+			{
+				number: 100,
+				body: "Base",
+				updateDescription: true,
+				unitSymbol: "#",
+				targetBranch: "main",
+			},
+			{
+				number: 101,
+				body: "Middle",
+				updateDescription: true,
+				unitSymbol: "#",
+				targetBranch: "base",
+			},
+			{
+				number: 102,
+				body: "Top",
+				updateDescription: true,
+				unitSymbol: "#",
+				targetBranch: "middle",
+			},
+		]);
+	});
+
+	test("uses an unpublished branch as the next published review target", async () => {
+		const { service, updateReviewFooters } = mockPrService();
+
+		await updateStackPrs(
+			service,
+			"project",
+			[segment("top", 102), segment("unpublished"), segment("base", 100)],
+			"main",
+		);
+
+		expect(updateReviewFooters).toHaveBeenCalledWith("project", [
+			{
+				number: 100,
+				body: null,
+				updateDescription: true,
+				unitSymbol: "#",
+				targetBranch: "main",
+			},
+			{
+				number: 102,
+				body: null,
+				updateDescription: true,
+				unitSymbol: "#",
+				targetBranch: "unpublished",
+			},
+		]);
+	});
+});
+
+describe("unstackPRs", () => {
+	test("submits each former stack member as a one-review cleanup batch", async () => {
+		const { service, updateReviewFooters } = mockPrService({ 100: "Base", 101: "Top" });
+
+		await unstackPRs(service, "project", [100, 101], "main");
+
+		expect(updateReviewFooters).toHaveBeenCalledTimes(2);
+		expect(updateReviewFooters).toHaveBeenCalledWith("project", [
+			{
+				number: 100,
+				body: "Base",
+				updateDescription: true,
+				unitSymbol: "",
+				targetBranch: "main",
+			},
+		]);
+		expect(updateReviewFooters).toHaveBeenCalledWith("project", [
+			{
+				number: 101,
+				body: "Top",
+				updateDescription: true,
+				unitSymbol: "",
+				targetBranch: "main",
+			},
+		]);
 	});
 });

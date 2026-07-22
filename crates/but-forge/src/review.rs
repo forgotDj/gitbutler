@@ -1626,6 +1626,10 @@ pub struct ForgeReviewUpdate {
     pub number: i64,
     /// The current body/description of the review, which may be None if no description is set.
     pub body: Option<String>,
+    /// Whether the description should be synchronized. If false, the current description is
+    /// fetched from the forge before applying the configured stacking policy.
+    #[serde(default)]
+    pub update_description: bool,
     /// The platform-specific symbol for this review type (e.g., "#" for GitHub pull requests and "!" for MRs).
     pub unit_symbol: String,
     /// If set, update the base/target branch of this review to the given value.
@@ -1648,6 +1652,7 @@ impl From<ForgeReview> for ForgeReviewUpdate {
         ForgeReviewUpdate {
             number: review.number,
             body: review.body,
+            update_description: true,
             unit_symbol: review.unit_symbol,
             target_branch: Some(review.target_branch),
         }
@@ -1659,6 +1664,7 @@ impl From<ForgeReviewTargetUpdate> for ForgeReviewUpdate {
         ForgeReviewUpdate {
             number: update.number,
             body: None,
+            update_description: false,
             unit_symbol: String::new(),
             target_branch: Some(update.target_branch),
         }
@@ -1687,10 +1693,9 @@ pub async fn sync_reviews(
             let pr_numbers: Vec<i64> = reviews.iter().map(|r| r.number).collect();
 
             for review in reviews {
-                // An empty symbol identifies target-only callers. Hydrate those descriptions so
-                // policy changes are still applied on the next stack sync. A failed read must not
-                // prevent the independent target update below.
-                let current_body = if review.unit_symbol.is_empty() {
+                // Hydrate target-only callers so policy changes are still applied on the next
+                // stack sync. A failed read must not prevent the independent target update below.
+                let current_body = if !review.update_description {
                     match but_github::pr::get(
                         preferred_account,
                         owner,
@@ -1740,7 +1745,7 @@ pub async fn sync_reviews(
             let mr_iids: Vec<i64> = reviews.iter().map(|r| r.number).collect();
 
             for review in reviews {
-                let current_body = if review.unit_symbol.is_empty() {
+                let current_body = if !review.update_description {
                     match but_gitlab::mr::get(
                         preferred_account,
                         project_id.clone(),
@@ -1789,7 +1794,7 @@ pub async fn sync_reviews(
             let pr_ids: Vec<i64> = reviews.iter().map(|r| r.number).collect();
 
             for review in reviews {
-                let current_body = if review.unit_symbol.is_empty() {
+                let current_body = if !review.update_description {
                     match but_bitbucket::pr::get(
                         preferred_account,
                         owner,
@@ -1912,8 +1917,8 @@ fn update_body_with_mode(
     mode: ReviewStackingDescription,
 ) -> String {
     let body = body.unwrap_or("");
-    let (head, tail) = match split_managed_footer(body) {
-        ManagedFooter::Complete { head, tail } => (head, tail),
+    let user_body = match strip_managed_footers(body) {
+        ManagedFooter::Complete { user_body } => user_body,
         ManagedFooter::Malformed => {
             // Never infer a boundary from incomplete or out-of-order markers: they may be user
             // content. In particular, don't add another managed block alongside them.
@@ -1937,39 +1942,63 @@ fn update_body_with_mode(
     };
 
     if all_pr_numbers.len() <= 1 || mode == ReviewStackingDescription::Disabled {
-        return compose_body(head, "", tail);
+        return user_body;
     }
 
     let footer = generate_footer(pr_number, all_pr_numbers, symbol);
     match mode {
-        ReviewStackingDescription::Bottom => compose_body(head, tail, &footer),
-        ReviewStackingDescription::Top => compose_body(&footer, head, tail),
+        ReviewStackingDescription::Bottom => compose_body(&user_body, &footer, ""),
+        ReviewStackingDescription::Top => compose_body("", &footer, &user_body),
         ReviewStackingDescription::Disabled => unreachable!("handled above"),
     }
 }
 
-enum ManagedFooter<'a> {
+enum ManagedFooter {
     Absent,
-    Complete { head: &'a str, tail: &'a str },
+    Complete { user_body: String },
     Malformed,
 }
 
-fn split_managed_footer(body: &str) -> ManagedFooter<'_> {
-    let Some(top) = body.find(STACKING_FOOTER_BOUNDARY_TOP) else {
-        return if body.contains(STACKING_FOOTER_BOUNDARY_BOTTOM) {
-            ManagedFooter::Malformed
-        } else {
-            ManagedFooter::Absent
-        };
-    };
-    let after_top = top + STACKING_FOOTER_BOUNDARY_TOP.len();
-    let Some(bottom) = body[after_top..].find(STACKING_FOOTER_BOUNDARY_BOTTOM) else {
-        return ManagedFooter::Malformed;
-    };
-    let bottom = bottom + after_top;
-    ManagedFooter::Complete {
-        head: &body[..top],
-        tail: &body[bottom + STACKING_FOOTER_BOUNDARY_BOTTOM.len()..],
+fn strip_managed_footers(body: &str) -> ManagedFooter {
+    let mut remainder = body;
+    let mut user_parts = Vec::new();
+    let mut found = false;
+
+    loop {
+        let top = remainder.find(STACKING_FOOTER_BOUNDARY_TOP);
+        let bottom = remainder.find(STACKING_FOOTER_BOUNDARY_BOTTOM);
+        match (top, bottom) {
+            (None, None) => {
+                if !found {
+                    return ManagedFooter::Absent;
+                }
+                user_parts.push(remainder);
+                return ManagedFooter::Complete {
+                    user_body: user_parts
+                        .into_iter()
+                        .map(str::trim)
+                        .filter(|part| !part.is_empty())
+                        .collect::<Vec<_>>()
+                        .join("\n\n"),
+                };
+            }
+            (None, Some(_)) => return ManagedFooter::Malformed,
+            (Some(top), Some(bottom)) if bottom < top => {
+                return ManagedFooter::Malformed;
+            }
+            (Some(top), _) => {
+                let after_top = top + STACKING_FOOTER_BOUNDARY_TOP.len();
+                let Some(bottom) = remainder[after_top..]
+                    .find(STACKING_FOOTER_BOUNDARY_BOTTOM)
+                    .map(|bottom| bottom + after_top)
+                else {
+                    return ManagedFooter::Malformed;
+                };
+                user_parts.push(&remainder[..top]);
+                remainder = &remainder[bottom + STACKING_FOOTER_BOUNDARY_BOTTOM.len()..];
+                found = true;
+            }
+        }
     }
 }
 
@@ -2651,6 +2680,31 @@ mod tests {
         }
     }
 
+    #[test]
+    fn update_body_collapses_duplicate_managed_blocks() {
+        let first = generate_footer(100, &[100, 101], "#");
+        let second = generate_footer(100, &[100, 101, 102], "#");
+        let body = format!("Head\n\n{first}\n\nMiddle\n\n{second}\n\nTail");
+
+        let result = update_body_with_mode(
+            Some(&body),
+            100,
+            &[100, 101, 102],
+            "#",
+            ReviewStackingDescription::Bottom,
+        );
+
+        assert!(
+            result.starts_with("Head\n\nMiddle\n\nTail"),
+            "content around duplicate blocks is preserved in order"
+        );
+        assert_eq!(
+            result.matches(STACKING_FOOTER_BOUNDARY_TOP).count(),
+            1,
+            "synchronization repairs duplicate managed blocks"
+        );
+    }
+
     // --- compute_review_target_updates tests ---
 
     fn heads(specs: &[(&str, Option<i64>)]) -> Vec<(String, Option<i64>)> {
@@ -2698,6 +2752,22 @@ mod tests {
         assert_eq!(result[1].target_branch, "branch-a");
         assert_eq!(result[2].number, 3);
         assert_eq!(result[2].target_branch, "branch-b");
+    }
+
+    #[test]
+    fn target_updates_request_remote_description_hydration() {
+        let update: ForgeReviewUpdate = ForgeReviewTargetUpdate {
+            number: 42,
+            target_branch: "parent".to_string(),
+        }
+        .into();
+
+        assert!(
+            !update.update_description,
+            "target-only updates ask sync_reviews to hydrate the remote description"
+        );
+        assert_eq!(update.body, None);
+        assert_eq!(update.target_branch.as_deref(), Some("parent"));
     }
 
     #[test]

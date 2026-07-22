@@ -33,6 +33,7 @@ export async function updatePrDescriptionTables(
 			prs.filter(isDefined).map((pr) => ({
 				number: pr.number,
 				body: pr.body ?? null,
+				updateDescription: true,
 				unitSymbol,
 				targetBranch: null,
 			})),
@@ -88,6 +89,7 @@ export async function updateStackPrs(
 			updates.map(({ prNumber, targetBase, body }) => ({
 				number: prNumber,
 				body,
+				updateDescription: true,
 				unitSymbol,
 				targetBranch: targetBase,
 			})),
@@ -114,6 +116,7 @@ export async function unstackPRs(
 					{
 						number: pr.number,
 						body: pr.body ?? null,
+						updateDescription: true,
 						unitSymbol: "",
 						targetBranch: baseBranchName,
 					},
