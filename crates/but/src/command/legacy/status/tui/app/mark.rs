@@ -1,7 +1,6 @@
 use std::{convert::Infallible, ops::Deref};
 
 use anyhow::Context as _;
-use bstr::{BStr, BString};
 use but_core::{ChangeId, ref_metadata::StackId};
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignment;
@@ -10,6 +9,7 @@ use strum::VariantArray;
 
 use crate::{
     CliId, IdMap,
+    args::atoms::{CommittedFile, CommittedFileRef},
     command::legacy::status::{
         StatusOutputLine,
         output::StatusOutputLineData,
@@ -29,7 +29,7 @@ pub enum Marks {
     Empty,
     Hunks(NonEmpty<UncommittedHunkOrFile>),
     Commits(NonEmpty<MarkedCommit>),
-    CommittedFiles(NonEmpty<MarkedCommittedFile>),
+    CommittedFiles(NonEmpty<CommittedFile>),
 }
 
 impl Marks {
@@ -51,7 +51,7 @@ impl Marks {
         }
     }
 
-    pub fn as_committed_files(&self) -> Option<&NonEmpty<MarkedCommittedFile>> {
+    pub fn as_committed_files(&self) -> Option<&NonEmpty<CommittedFile>> {
         match self {
             Self::CommittedFiles(files) => Some(files),
             _ => None,
@@ -92,8 +92,8 @@ pub enum MarksRef<'a> {
         tail: &'a [MarkedCommit],
     },
     CommittedFiles {
-        head: &'a MarkedCommittedFile,
-        tail: &'a [MarkedCommittedFile],
+        head: &'a CommittedFile,
+        tail: &'a [CommittedFile],
     },
 }
 
@@ -120,7 +120,7 @@ impl<'a> MarksRef<'a> {
         }
     }
 
-    pub fn from_committed_files(commits: &'a NonEmpty<MarkedCommittedFile>) -> Self {
+    pub fn from_committed_files(commits: &'a NonEmpty<CommittedFile>) -> Self {
         Self::CommittedFiles {
             head: &commits.head,
             tail: &commits.tail,
@@ -345,15 +345,15 @@ impl MarkStore<MarkedCommit> for Marks {
     }
 }
 
-impl MarkStore<MarkedCommittedFile> for Marks {
+impl MarkStore<CommittedFile> for Marks {
     type Error = anyhow::Error;
 
-    fn contains_mark(&self, mark: &MarkedCommittedFile) -> bool {
+    fn contains_mark(&self, mark: &CommittedFile) -> bool {
         self.as_committed_files()
             .is_some_and(|files| files.iter().any(|file| file == mark))
     }
 
-    fn insert_mark(&mut self, mark: MarkedCommittedFile) -> Result<(), Self::Error> {
+    fn insert_mark(&mut self, mark: CommittedFile) -> Result<(), Self::Error> {
         if self.contains_mark(&mark) {
             return Ok(());
         }
@@ -370,7 +370,7 @@ impl MarkStore<MarkedCommittedFile> for Marks {
         Ok(())
     }
 
-    fn remove_mark(&mut self, mark: &MarkedCommittedFile) {
+    fn remove_mark(&mut self, mark: &CommittedFile) {
         let Self::CommittedFiles(files) = self else {
             return;
         };
@@ -454,7 +454,7 @@ fn remove_from_non_empty<T>(items: &mut NonEmpty<T>, predicate: impl Fn(&T) -> b
 pub enum Markable {
     Uncommitted(UncommittedHunkOrFile),
     Commit(MarkedCommit),
-    CommittedFile(MarkedCommittedFile),
+    CommittedFile(CommittedFile),
 }
 
 impl Markable {
@@ -472,7 +472,7 @@ impl Markable {
                 id,
                 change_id,
             },
-            Markable::CommittedFile(MarkedCommittedFile {
+            Markable::CommittedFile(CommittedFile {
                 commit_id,
                 path,
                 id,
@@ -515,7 +515,7 @@ impl MarkedCommit {
 pub enum MarkableRef<'a> {
     Uncommitted(&'a UncommittedHunkOrFile),
     Commit(MarkedCommitRef<'a>),
-    CommittedFile(MarkedCommittedFileRef<'a>),
+    CommittedFile(CommittedFileRef<'a>),
 }
 
 impl<'a> MarkableRef<'a> {
@@ -555,7 +555,7 @@ impl<'a> MarkableRef<'a> {
                         id,
                     } = cli_id
                     {
-                        return Some(Self::CommittedFile(MarkedCommittedFileRef {
+                        return Some(Self::CommittedFile(CommittedFileRef {
                             commit_id: *commit_id,
                             path: path.as_ref(),
                             id,
@@ -610,40 +610,6 @@ impl MarkedCommitRef<'_> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct MarkedCommittedFile {
-    pub commit_id: gix::ObjectId,
-    pub path: BString,
-    pub id: ShortId,
-}
-
-impl MarkedCommittedFile {
-    pub fn as_ref(&self) -> MarkedCommittedFileRef<'_> {
-        MarkedCommittedFileRef {
-            commit_id: self.commit_id,
-            path: self.path.as_ref(),
-            id: &self.id,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct MarkedCommittedFileRef<'a> {
-    pub commit_id: gix::ObjectId,
-    pub path: &'a BStr,
-    pub id: &'a str,
-}
-
-impl MarkedCommittedFileRef<'_> {
-    pub fn to_owned(self) -> MarkedCommittedFile {
-        MarkedCommittedFile {
-            commit_id: self.commit_id,
-            path: self.path.to_owned(),
-            id: self.id.to_owned(),
-        }
-    }
-}
-
 impl App {
     pub fn handle_mark(&mut self, ctx: &mut Context) -> anyhow::Result<()> {
         let Some(selection) = self
@@ -686,6 +652,7 @@ impl App {
                         }
                         Mode::PickChanges(..) => {}
                         Mode::Rub(..)
+                        | Mode::Squash(..)
                         | Mode::InlineReword(..)
                         | Mode::Command(..)
                         | Mode::Commit(..)
@@ -710,6 +677,7 @@ impl App {
                         handle_mark_uncommitted(marks, &self.status_lines)?;
                     }
                     Mode::Rub(..)
+                    | Mode::Squash(..)
                     | Mode::InlineReword(..)
                     | Mode::Command(..)
                     | Mode::Commit(..)
@@ -759,6 +727,7 @@ impl App {
                 true
             }
             Mode::Rub(..)
+            | Mode::Squash(..)
             | Mode::InlineReword(..)
             | Mode::Commit(..)
             | Mode::Move(..)
@@ -794,6 +763,7 @@ fn handle_mark_cli_id(commit: &CliId, mode: &mut Mode) -> anyhow::Result<bool> {
         }
         Mode::InlineReword(..)
         | Mode::Rub(..)
+        | Mode::Squash(..)
         | Mode::Command(..)
         | Mode::Commit(..)
         | Mode::Move(..)

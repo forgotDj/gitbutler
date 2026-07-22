@@ -6,7 +6,7 @@ use serde::Serialize;
 use crate::{
     CliResult, IdMap,
     args::{
-        atoms::{Purpose, ResolvedCliIdArg},
+        atoms::{CommittedFile, Purpose, ResolvedCliIdArg},
         diff2::Platform,
     },
     bad_input,
@@ -217,11 +217,11 @@ fn resolve(ctx: &Context, id_map: &IdMap, args: Platform) -> CliResult<DiffOpera
         ResolvedCliIdArg::UncommittedHunkOrFile(hunk) => {
             Ok(DiffOperation::UncommittedHunkOrFile { hunk })
         }
-        ResolvedCliIdArg::CommittedFile {
+        ResolvedCliIdArg::CommittedFile(CommittedFile {
             commit_id,
             path,
             id,
-        } => Ok(DiffOperation::CommittedFile {
+        }) => Ok(DiffOperation::CommittedFile {
             commit_id,
             path,
             id,

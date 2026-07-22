@@ -162,6 +162,7 @@ impl App {
             Mode::Details(..) => return,
             mode @ (Mode::Normal(..)
             | Mode::Rub(..)
+            | Mode::Squash(..)
             | Mode::InlineReword(..)
             | Mode::Command(..)
             | Mode::Commit(..)

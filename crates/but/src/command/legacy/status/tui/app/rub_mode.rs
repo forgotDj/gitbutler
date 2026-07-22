@@ -14,7 +14,10 @@ use crate::{
             output::StatusOutputLineData,
             tui::{
                 App, DetailsLayoutMessage, Message, NOOP, ReloadCause, SelectAfterReload,
-                app::mark::{MarkedCommit, Marks, MarksRef, hunk_is_child_of},
+                app::{
+                    MoveCursorDiration,
+                    mark::{MarkedCommit, Marks, MarksRef, hunk_is_child_of},
+                },
                 cursor,
                 mode::Mode,
                 nonempty_from_refs, operations,
@@ -324,7 +327,7 @@ impl App {
             return;
         }
 
-        self.ensure_cursor_is_on_selectable_line();
+        self.ensure_cursor_is_on_selectable_line(MoveCursorDiration::Down);
     }
 
     fn handle_rub_start_reverse(&mut self, ctx: &mut Context) -> anyhow::Result<()> {

@@ -14,7 +14,7 @@ use nonempty::NonEmpty;
 use crate::{
     CliResult, IdMap,
     args::{
-        atoms::{BranchArg, BranchOrCommit, CliIdArg, Purpose, ResolvedCliIdArg},
+        atoms::{BranchArg, BranchOrCommit, CliIdArg, CommittedFile, Purpose, ResolvedCliIdArg},
         move2::Platform,
     },
     bad_input,
@@ -609,11 +609,11 @@ fn resolve_sources(
             ResolvedCliIdArg::Commit(source_commit_id, _change_id) => {
                 commit_sources.push(source_commit_id)
             }
-            ResolvedCliIdArg::CommittedFile {
+            ResolvedCliIdArg::CommittedFile(CommittedFile {
                 commit_id,
                 path,
                 id: _,
-            } => {
+            }) => {
                 file_sources.push((commit_id, path));
             }
             ResolvedCliIdArg::Branch(branch) => {

@@ -25,6 +25,7 @@ mod jump_tests;
 mod marking_tests;
 mod move_tests;
 mod rub_tests;
+mod squash_tests;
 mod stack_tests;
 mod utils;
 

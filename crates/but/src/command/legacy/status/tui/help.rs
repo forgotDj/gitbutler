@@ -51,6 +51,7 @@ impl Help {
                     ModeDiscriminant::PickChanges => continue,
                     ModeDiscriminant::Normal
                     | ModeDiscriminant::Rub
+                    | ModeDiscriminant::Squash
                     | ModeDiscriminant::InlineReword
                     | ModeDiscriminant::Command
                     | ModeDiscriminant::Commit

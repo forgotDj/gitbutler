@@ -88,6 +88,7 @@ impl App {
                 Mode::Normal(..)
                 | Mode::PickChanges(..)
                 | Mode::Rub(..)
+                | Mode::Squash(..)
                 | Mode::InlineReword(..)
                 | Mode::Command(..)
                 | Mode::Commit(..)
@@ -141,6 +142,7 @@ impl App {
                     Mode::Details(details_mode) => details_mode.return_mode,
                     Mode::Normal(normal_mode) => DetailsReturnMode::Normal(normal_mode),
                     Mode::Rub(..)
+                    | Mode::Squash(..)
                     | Mode::InlineReword(..)
                     | Mode::Command(..)
                     | Mode::Commit(..)
@@ -190,6 +192,7 @@ impl App {
                 }
             }
             Mode::Rub(..)
+            | Mode::Squash(..)
             | Mode::InlineReword(..)
             | Mode::Command(..)
             | Mode::Commit(..)

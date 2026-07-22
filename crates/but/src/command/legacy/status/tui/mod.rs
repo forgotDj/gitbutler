@@ -23,7 +23,8 @@ use crate::{
         tui::{
             app::{
                 CommandMessage, CommandModeKind, CommitMessage, JumpMessage, MoveMessage,
-                NormalMode, PickChangesMode, RewordMessage, RubMessage, StackMessage,
+                NormalMode, PickChangesMode, RewordMessage, RubMessage, SquashMessage,
+                StackMessage,
             },
             backstack::{Backstack, BackstackEntry},
             confirm::ConfirmMessage,
@@ -394,6 +395,7 @@ fn event_to_messages(ev: Event, app: &App, terminal_area: Rect, messages: &mut V
                         Mode::Normal(..)
                         | Mode::Details(..)
                         | Mode::Rub(..)
+                        | Mode::Squash(..)
                         | Mode::Commit(..)
                         | Mode::Stack(..)
                         | Mode::PickChanges(..)
@@ -429,6 +431,7 @@ fn event_to_messages(ev: Event, app: &App, terminal_area: Rect, messages: &mut V
                 Mode::Normal(..)
                 | Mode::Details(..)
                 | Mode::Rub(..)
+                | Mode::Squash(..)
                 | Mode::Commit(..)
                 | Mode::Stack(..)
                 | Mode::PickChanges(..)
@@ -589,6 +592,7 @@ enum Message {
     // Features
     Commit(CommitMessage),
     Rub(RubMessage),
+    Squash(SquashMessage),
     Reword(RewordMessage),
     Command(CommandMessage),
     Files(FilesMessage),
@@ -766,6 +770,12 @@ fn dedup_mutation_messages(messages: &mut Vec<Message>, other_messages: &mut Vec
                 | RubMessage::StartReverse
                 | RubMessage::UseTargetMessage
                 | RubMessage::UseSourceMessage => false,
+            },
+            Message::Squash(message) => match message {
+                SquashMessage::Confirm => true,
+                SquashMessage::Start
+                | SquashMessage::StartWith(..)
+                | SquashMessage::UseTargetMessage => false,
             },
             Message::Reword(message) => match message {
                 RewordMessage::WithEditor

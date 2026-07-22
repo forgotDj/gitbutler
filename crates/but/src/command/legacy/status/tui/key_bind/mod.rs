@@ -8,7 +8,7 @@ use crate::{
     command::legacy::status::tui::{
         CommandMessage, ConfirmMessage, DetailsLayoutMessage, FuzzyPickerMessage, JumpMessage,
         Message, RubMessage, StackMessage,
-        app::{CommitMessageComposer, RewordMessage},
+        app::{CommitMessageComposer, RewordMessage, SquashMessage},
         details::DetailsMessage,
         help::HelpMessage,
         mode::{Mode, ModeDiscriminant},
@@ -40,6 +40,11 @@ pub fn default_key_binds() -> KeyBinds {
                 builder.rub_confirm().register();
                 builder.rub_use_target_message().register();
                 builder.rub_use_source_message().register();
+                register_non_mode_specific_key_binds(&mut builder, WithFocusDetails::No);
+            }
+            ModeDiscriminant::Squash => {
+                builder.squash_confirm().register();
+                builder.squash_use_target_message().register();
                 register_non_mode_specific_key_binds(&mut builder, WithFocusDetails::No);
             }
             ModeDiscriminant::Commit => {
@@ -80,6 +85,12 @@ pub fn default_key_binds() -> KeyBinds {
 
                 builder
                     .commit()
+                    .condition(KeyBindCondition::SelectionIsUncommitted.and(
+                        &KeyBindCondition::Not(&KeyBindCondition::DetailsReturnModeIsPickChanges),
+                    ))
+                    .register();
+                builder
+                    .squash()
                     .condition(KeyBindCondition::SelectionIsUncommitted.and(
                         &KeyBindCondition::Not(&KeyBindCondition::DetailsReturnModeIsPickChanges),
                     ))
@@ -631,6 +642,29 @@ impl KeyBindsBuilder<'_> {
         .long_description("Fuzzy search for branches")
     }
 
+    fn squash(&mut self) -> KeyBindsInModesBuilder<'_> {
+        self.key_bind("squash", press().shift().code(KeyCode::Char('S')), || {
+            Message::Squash(SquashMessage::Start)
+        })
+        .long_description("Squash, amend, or undo commits")
+    }
+
+    fn squash_use_target_message(&mut self) -> KeyBindsInModesBuilder<'_> {
+        self.key_bind(
+            "use target message",
+            press().code(KeyCode::Char('u')),
+            || Message::Squash(SquashMessage::UseTargetMessage),
+        )
+        .long_description("When squashing use target message and discard source message")
+    }
+
+    fn squash_confirm(&mut self) -> KeyBindsInModesBuilder<'_> {
+        self.key_bind("confirm", press().code(KeyCode::Enter), || {
+            Message::Squash(SquashMessage::Confirm)
+        })
+        .long_description("Squash target into selection")
+    }
+
     fn rub(&mut self) -> KeyBindsInModesBuilder<'_> {
         self.key_bind("rub", press().code(KeyCode::Char('r')), || {
             Message::Rub(RubMessage::Start)
@@ -1028,6 +1062,7 @@ fn register_normal_mode_key_binds(builder: &mut KeyBindsBuilder<'_>, without_mar
     builder.jump_down().register();
 
     builder.rub().register();
+    builder.squash().register();
 
     if without_marks {
         builder.reverse_rub().register();
