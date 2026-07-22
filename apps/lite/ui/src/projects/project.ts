@@ -373,6 +373,7 @@ export const projectSelectors = {
 		);
 		return selection !== null && operandEquals(selection, operand);
 	},
+	selectPrimaryOutlineSelection: (state: ProjectState) => state.workspace.selection.outline,
 	selectSelectionOutline: (state: ProjectState, navigationIndex: NavigationIndex<Operand>) =>
 		resolveNavigationIndexSelection(
 			navigationIndex,
