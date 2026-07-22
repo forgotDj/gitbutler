@@ -373,12 +373,9 @@ export const useOutlineTreeHotkeys = ({
 		selection,
 		getKey: operandIdentityKey,
 		operationSourcesForItem: (operand) => {
-			if (!headInfoIndex) return [operand];
-
 			const checkedCommits = projectSlice.selectors.selectCheckedCommitOperands(
 				store.getState(),
 				projectId,
-				headInfoIndex,
 			);
 			return checkedCommits.length > 0 ? checkedCommits : [operand];
 		},

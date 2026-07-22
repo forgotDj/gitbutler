@@ -1,4 +1,3 @@
-import type { HeadInfoIndex } from "#ui/api/ref-info.ts";
 import {
 	branchOperand,
 	commitOperand,
@@ -341,13 +340,7 @@ export const projectReducers = {
 
 const selectCheckedCommits = createSelector(
 	(state: ProjectState) => state.workspace.checkedCommitIds,
-	(_state: ProjectState, headInfoIndex: HeadInfoIndex) => headInfoIndex,
-	(checkedCommitIds, headInfoIndex) =>
-		new Set(
-			Object.keys(checkedCommitIds).filter(
-				(commitId) => headInfoIndex.commitContextById(commitId) !== undefined,
-			),
-		),
+	(checkedCommitIdsRec) => new Set(Object.keys(checkedCommitIdsRec)),
 );
 
 const selectCheckedCommitOperands = createSelector(selectCheckedCommits, (checkedCommitIds) =>
@@ -404,8 +397,6 @@ export const projectSelectors = {
 		state.workspace.checkedCommitIds[commitId] === true,
 	selectCheckedCommits,
 	selectCheckedCommitOperands,
-	selectCheckedCommitCount: (state: ProjectState, headInfoIndex: HeadInfoIndex) =>
-		selectCheckedCommits(state, headInfoIndex).size,
-	selectHasCheckedCommits: (state: ProjectState, headInfoIndex: HeadInfoIndex) =>
-		selectCheckedCommits(state, headInfoIndex).size > 0,
+	selectCheckedCommitCount: (state: ProjectState) => selectCheckedCommits(state).size,
+	selectHasCheckedCommits: (state: ProjectState) => selectCheckedCommits(state).size > 0,
 };

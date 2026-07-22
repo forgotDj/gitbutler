@@ -624,9 +624,7 @@ export const OutlineTree: FC<
 		outlineSelection,
 	});
 	const hasCheckedCommits = useAppSelector((state) =>
-		headInfoIndex
-			? projectSlice.selectors.selectHasCheckedCommits(state, projectId, headInfoIndex)
-			: false,
+		projectSlice.selectors.selectHasCheckedCommits(state, projectId),
 	);
 	const store = useAppStore();
 	const dispatch = useAppDispatch();
@@ -642,12 +640,9 @@ export const OutlineTree: FC<
 	const getCheckedRange = checkedRange(rangeResolver);
 
 	const checkCommit = ({ commitId, shiftKey }: { commitId: string; shiftKey: boolean }): void => {
-		if (!headInfoIndex) return;
-
 		const checkedCommitIds = projectSlice.selectors.selectCheckedCommits(
 			store.getState(),
 			projectId,
-			headInfoIndex,
 		);
 		const nextCommitRange = getCheckedRange({
 			checked: checkedCommitIds,

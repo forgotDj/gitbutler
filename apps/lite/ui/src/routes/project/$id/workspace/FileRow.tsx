@@ -1,4 +1,3 @@
-import type { HeadInfoIndex } from "#ui/api/ref-info.ts";
 import { FileIcon } from "#ui/components/FileIcon.tsx";
 import rowStyles from "./Row.module.css";
 import { showNativeContextMenu, showNativeMenuFromTrigger } from "#ui/native-menu.ts";
@@ -24,9 +23,8 @@ export const FileRow: FC<
 		projectId: string;
 		fileParent: FileParent;
 		branchNameByCommitId: (commitId: string) => string | undefined;
-		headInfoIndex: HeadInfoIndex | undefined;
 	} & Omit<ComponentProps<typeof Row>, "projectId">
-> = ({ item, projectId, fileParent, branchNameByCommitId, headInfoIndex, id, ...restProps }) => {
+> = ({ item, projectId, fileParent, branchNameByCommitId, id, ...restProps }) => {
 	const relativePath = item._tag === "Change" ? item.change.path : item.path;
 
 	const isDefaultMode = useAppSelector(
@@ -40,9 +38,7 @@ export const FileRow: FC<
 	});
 
 	const hasCheckedCommits = useAppSelector((state) =>
-		headInfoIndex
-			? projectSlice.selectors.selectHasCheckedCommits(state, projectId, headInfoIndex)
-			: false,
+		projectSlice.selectors.selectHasCheckedCommits(state, projectId),
 	);
 
 	const lastSepIdx = relativePath.lastIndexOf("/");
