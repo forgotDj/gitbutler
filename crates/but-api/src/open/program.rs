@@ -112,7 +112,7 @@ impl From<UserDefinedShellExecutable> for ExecutableProgram {
     fn from(value: UserDefinedShellExecutable) -> Self {
         ExecutableProgram::ShellExecutable(ShellExecutable {
             name_or_path: value.name_or_path,
-            requires_tty: value.requires_tty,
+            requires_tty: value.requires_terminal,
         })
     }
 }
@@ -554,11 +554,11 @@ pub struct UserDefinedProgramSpec {
 pub struct UserDefinedShellExecutable {
     /// Name of the executable on the PATH, or a qualified path to it.
     pub name_or_path: String,
-    /// Whether the program requires an attached TTY or not.
+    /// Whether the program requires an attached terminal or not.
     ///
     /// If this is true, it means that this program cannot be launched reliably from a GUI client,
     /// and also needs the TUI to suspend in order for the editor to take over the terminal.
-    pub requires_tty: bool,
+    pub requires_terminal: bool,
 }
 
 /// Program category.

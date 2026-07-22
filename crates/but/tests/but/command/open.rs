@@ -293,7 +293,7 @@ fn user_defined_program_shell_executable_handles_shell_metacharacters() {
      "name": "Test Program",
      "executable": {
        "nameOrPath": "echo",
-       "requiresTty": true
+       "requiresTerminal": true
      },
      "category": "other",
      "openArgs": [
@@ -376,7 +376,7 @@ fn user_defined_program_defaults_to_default_open_args() {
      "name": "Test Program No Args",
      "executable": {
        "nameOrPath": "echo",
-       "requiresTty": true
+       "requiresTerminal": true
      },
      "category": "other"
    },
@@ -385,7 +385,7 @@ fn user_defined_program_defaults_to_default_open_args() {
      "name": "Test Program Only Open Args",
      "executable": {
        "nameOrPath": "echo",
-       "requiresTty": true
+       "requiresTerminal": true
      },
      "category": "other",
      "openArgs": [
@@ -397,7 +397,7 @@ fn user_defined_program_defaults_to_default_open_args() {
      "name": "Test Program Only Open At Args",
      "executable": {
        "nameOrPath": "echo",
-       "requiresTty": true
+       "requiresTerminal": true
      },
      "category": "other",
      "openAtLineArgs": [
@@ -560,7 +560,7 @@ fn user_defined_program_derives_id_from_name_if_id_is_omitted() {
      "name": "Test Program",
      "executable": {
        "nameOrPath": "echo",
-       "requiresTty": true
+       "requiresTerminal": true
      },
      "category": "other",
      "openArgs": [
