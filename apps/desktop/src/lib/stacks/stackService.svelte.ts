@@ -31,7 +31,6 @@ import type {
 	AbsorptionTarget,
 	BranchIntegrationStrategy,
 	DiffSpec,
-	InitialBranchIntegration,
 	IntegrateBranchResult,
 	InteractiveIntegration,
 	Stack,
@@ -753,19 +752,6 @@ export class StackService {
 			integration: args.integration,
 			dryRun: true,
 		});
-	}
-
-	async fetchInitialBranchIntegration(
-		projectId: string,
-		branchRef: string,
-		strategy: BranchIntegrationStrategy | null,
-	): Promise<InitialBranchIntegration> {
-		// Force fresh for the same reason as the reactive query above: a plan
-		// cached under this template from a previous open could be stale.
-		return await this.backendApi.endpoints.getInitialBranchIntegration.fetch(
-			{ projectId, branchRef, strategy },
-			{ forceRefetch: true },
-		);
 	}
 
 	get branchApply() {
