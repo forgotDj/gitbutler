@@ -37,10 +37,6 @@ export const FileRow: FC<
 		change: item._tag === "Change" ? item.change : undefined,
 	});
 
-	const hasCheckedCommits = useAppSelector((state) =>
-		projectSlice.selectors.selectHasCheckedCommits(state, projectId),
-	);
-
 	const lastSepIdx = relativePath.lastIndexOf("/");
 	const directoryPath = lastSepIdx !== -1 ? relativePath.slice(0, lastSepIdx) : null;
 	const fileName = lastSepIdx !== -1 ? relativePath.slice(lastSepIdx + 1) : relativePath;
@@ -70,7 +66,7 @@ export const FileRow: FC<
 						disableHoverablePopup
 					>
 						<RowCheckbox
-							disabled={hasCheckedCommits || !isDefaultMode}
+							disabled={!isDefaultMode}
 							aria-label={`Check file ${relativePath}`}
 							className={styles.checkbox}
 							nativeButton
