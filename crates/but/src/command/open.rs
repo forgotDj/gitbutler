@@ -4,7 +4,6 @@ use but_api::open::{
 use but_ctx::Context;
 use but_hunk_assignment::HunkAssignment;
 use gix::utils::AsBStr;
-use itertools::Itertools;
 
 use crate::{
     CliError, CliResult, IdMap,
