@@ -1,4 +1,4 @@
-//! Experimental output used by new (but-2) CLI commands.
+//! Experimental output used by new CLI commands.
 //!
 //! Still very much in flux and will change as we implement and dog food the new commands.
 
@@ -29,7 +29,6 @@ impl<'out> WriteWithUtils for IntermediateChannel<'out> {
 }
 
 impl<'out> IntermediateChannel<'out> {
-    #[cfg_attr(not(feature = "but-2"), expect(dead_code))]
     pub fn new(out: &'out mut OutputChannel) -> Self {
         Self { out }
     }

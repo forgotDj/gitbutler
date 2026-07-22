@@ -224,7 +224,7 @@ pub async fn handle_args(args: impl Iterator<Item = OsString>) -> Result<()> {
         out.request_pager();
     }
 
-    #[cfg(all(feature = "legacy", feature = "but-2"))]
+    #[cfg(feature = "legacy")]
     if matches!(&args.cmd, Some(Subcommands::_Diff2(_))) {
         out.request_pager();
     }
@@ -416,10 +416,7 @@ async fn match_subcommand(
         cmd => cmd,
     };
 
-    #[cfg(feature = "but-2")]
     let is_expand = matches!(&cmd, Subcommands::_Expand { .. });
-    #[cfg(not(feature = "but-2"))]
-    let is_expand = false;
     let show_agent_skill_notice = out.format().is_human_text()
         && !out.can_prompt()
         && !is_expand
@@ -476,7 +473,6 @@ async fn match_subcommand(
                 .emit_metrics(metrics_ctx)
                 .map_err(CliError::from)
         }
-        #[cfg(feature = "but-2")]
         Subcommands::_Open { id, program_id } => {
             let mut ctx = setup::init_ctx(
                 &args,
@@ -500,7 +496,6 @@ async fn match_subcommand(
             command::help::print(out, topic)?;
             Ok(())
         }
-        #[cfg(feature = "but-2")]
         Subcommands::_Expand { cli_id } => {
             use crate::utils::OutputChannelExt;
 
@@ -1166,7 +1161,7 @@ async fn match_subcommand(
             maybe_run_status_after(status_after, &result, &mut ctx, out).await;
             result
         }
-        #[cfg(all(feature = "legacy", feature = "but-2"))]
+        #[cfg(feature = "legacy")]
         Subcommands::_Commit2(commit_args) => {
             use crate::utils::{IntermediateChannel, OutputChannelExt};
 
@@ -1190,7 +1185,7 @@ async fn match_subcommand(
             out.print_cli_output(outcome)?;
             Ok(())
         }
-        #[cfg(all(feature = "legacy", feature = "but-2"))]
+        #[cfg(feature = "legacy")]
         Subcommands::_Squash2(squash_args) => {
             use crate::utils::{IntermediateChannel, OutputChannelExt};
 
@@ -1214,7 +1209,7 @@ async fn match_subcommand(
             out.print_cli_output(outcome)?;
             Ok(())
         }
-        #[cfg(all(feature = "legacy", feature = "but-2"))]
+        #[cfg(feature = "legacy")]
         Subcommands::_Move2(move_args) => {
             use crate::utils::{IntermediateChannel, OutputChannelExt};
 
@@ -1235,7 +1230,7 @@ async fn match_subcommand(
             out.print_cli_output_human(outcome)?;
             Ok(())
         }
-        #[cfg(all(feature = "legacy", feature = "but-2"))]
+        #[cfg(feature = "legacy")]
         Subcommands::_Diff2(diff_args) => {
             use crate::utils::{IntermediateChannel, OutputChannelExt};
 
