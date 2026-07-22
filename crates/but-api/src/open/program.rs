@@ -15,8 +15,11 @@ use serde::{Deserialize, Serialize};
 /// Name of the user-defined programs file
 pub const USER_DEFINED_PROGRAMS_FILENAME: &str = "programs.json";
 
-const FILEPATH_PLACEHOLDER: &str = "{{filepath}}";
-const LINE_NUMBER_PLACEHOLDER: &str = "{{line_number}}";
+/// Placeholder used for filepath interpolation.
+pub const FILEPATH_PLACEHOLDER: &str = "{{filepath}}";
+
+/// Placeholder used for line number.
+pub const LINE_NUMBER_PLACEHOLDER: &str = "{{line_number}}";
 
 /// Program category to classify an openable program.
 #[derive(Clone, Debug, PartialEq)]

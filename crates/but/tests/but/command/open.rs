@@ -311,10 +311,10 @@ fn user_defined_program_shell_executable_handles_shell_metacharacters() {
     .unwrap();
 
     env.but("status -f").assert().success().stdout_eq(snapbox::str![[r#"
-╭┄zz [uncommitted]
+╭┄ zz [uncommitted]
 ┊   pv M file with some $meta; cat A > new-file.txt; spaces in it.txt
 ┊
-┊╭┄br [a-branch-1]
+┊╭┄ br [a-branch-1]
 ┊●   1 Add file
 ┊│     1:p A file with some $meta; cat A > new-file.txt; spaces in it.txt
 ├╯
@@ -410,10 +410,10 @@ fn user_defined_program_defaults_to_default_open_args() {
     .unwrap();
 
     env.but("status -f").assert().success().stdout_eq(snapbox::str![[r#"
-╭┄zz [uncommitted]
+╭┄ zz [uncommitted]
 ┊   uv M file.txt
 ┊
-┊╭┄br [a-branch-1]
+┊╭┄ br [a-branch-1]
 ┊●   1 Add file
 ┊│     1:u A file.txt
 ├╯
