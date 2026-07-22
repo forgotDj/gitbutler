@@ -73,9 +73,14 @@
 	];
 	const VISIBLE_TEMPLATE_COUNT = 2;
 	let selectedTemplate = $state<BranchIntegrationStrategy>(DEFAULT_TEMPLATE);
+	const modalOpen = $derived(modalRef?.imports.open ?? false);
 	// Deliberately keyed on the default template only: switching templates is
 	// handled imperatively in `selectTemplate` so the modal body (current-state
 	// graph) doesn't re-enter a loading state and flicker on every selection.
+	//
+	// Only read while the modal is open (both the body and the init effect gate on
+	// `modalOpen`), so the query stays unsubscribed while closed and refetches
+	// fresh on each open — no need to invalidate it on every workspace mutation.
 	const initialBranchIntegration = $derived(
 		stackService.initialBranchIntegration(projectId, branchRef, DEFAULT_TEMPLATE),
 	);
@@ -208,7 +213,6 @@
 	}
 
 	$effect(() => {
-		const modalOpen = modalRef?.imports.open ?? false;
 		if (!modalOpen) {
 			initializedFrom = undefined;
 			selectedTemplate = DEFAULT_TEMPLATE;
@@ -222,9 +226,14 @@
 	});
 
 	$effect(() => {
-		const modalOpen = modalRef?.imports.open ?? false;
-		const initial = initialBranchIntegration.response;
-		if (!modalOpen || !initial || initial === initializedFrom) return;
+		// Reading the query is what subscribes it, so gate on the modal being open —
+		// that keeps the plan unsubscribed while closed. Also skip while a fetch is
+		// in flight: on open the query refetches, and `.data` keeps serving the
+		// previous open's plan until the fresh one lands. Building drafts off it
+		// would briefly enable Apply on a stale plan.
+		const query = modalOpen ? initialBranchIntegration.result : undefined;
+		const initial = query && !query.isLoading ? query.data : undefined;
+		if (!initial || initial === initializedFrom) return;
 		initializedFrom = initial;
 
 		const nextStepDrafts = buildIntegrationStepDrafts(initial.integration);

@@ -729,11 +729,13 @@ export class StackService {
 		branchRef: string,
 		strategy: BranchIntegrationStrategy | null,
 	) {
-		return this.backendApi.endpoints.getInitialBranchIntegration.useQuery({
-			projectId,
-			branchRef,
-			strategy,
-		});
+		return this.backendApi.endpoints.getInitialBranchIntegration.useQuery(
+			{ projectId, branchRef, strategy },
+			// The modal only subscribes while it's open (see BranchIntegrationModal),
+			// so refetch on every open to guarantee the plan reflects current state
+			// rather than serving a cached plan from a previous open.
+			{ forceRefetch: true },
+		);
 	}
 
 	get applyBranchIntegration() {
@@ -758,11 +760,12 @@ export class StackService {
 		branchRef: string,
 		strategy: BranchIntegrationStrategy | null,
 	): Promise<InitialBranchIntegration> {
-		return await this.backendApi.endpoints.getInitialBranchIntegration.fetch({
-			projectId,
-			branchRef,
-			strategy,
-		});
+		// Force fresh for the same reason as the reactive query above: a plan
+		// cached under this template from a previous open could be stale.
+		return await this.backendApi.endpoints.getInitialBranchIntegration.fetch(
+			{ projectId, branchRef, strategy },
+			{ forceRefetch: true },
+		);
 	}
 
 	get branchApply() {
