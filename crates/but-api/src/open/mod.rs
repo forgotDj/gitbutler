@@ -635,9 +635,18 @@ pub fn show_in_finder(path: String) -> Result<()> {
 #[but_api(napi)]
 #[instrument(err(Debug))]
 pub fn list_editors() -> anyhow::Result<Vec<Editor>> {
-    Ok(PROGRAMS
+    let user_defined_programs = match list_user_defined_program_specs() {
+        Ok(programs) => programs,
+        Err(err) => {
+            tracing::warn!(?err, "Failed to fetch user defined programs");
+            vec![]
+        }
+    };
+
+    Ok(user_defined_programs
         .iter()
-        .filter(|program| program.is_gui_editor())
+        .chain(PROGRAMS.iter())
+        .filter(|p| p.is_gui_editor())
         .map(Into::into)
         .collect())
 }
@@ -697,7 +706,11 @@ pub fn open_in_editor(
         bail_precondition!("{path:?} is inside repository .git directory at {git_dir_path:?}");
     }
 
-    if let Some(editor) = PROGRAMS.iter().find(|editor| editor.id == editor_id)
+    if let Some(editor) = list_user_defined_program_specs()
+        .unwrap_or_default()
+        .iter()
+        .chain(PROGRAMS.iter())
+        .find(|editor| editor.id == editor_id)
         && editor.is_gui_editor()
     {
         open_in_program_unchecked(editor, &resolved_path, line_nr)
