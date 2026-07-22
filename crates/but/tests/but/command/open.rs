@@ -260,16 +260,7 @@ fn cannot_open_with_unknown_program() {
         .stderr_eq(snapbox::str![[r#"
 Error: Bad input 'nosuchprogram' for '--program-id'
 
-No such program found. Available programs: 
-
-id='nvim', name='Neovim'
-id='cursor', name='Cursor'
-id='sublime', name='Sublime Text'
-id='vscode', name='VS Code'
-id='zed', name='Zed'
-id='echo', name='echo'
-id='thunar', name='Thunar'
-id='nvim-remote', name='Neovim Remote'
+No such program found
 
 "#]]);
 }
@@ -521,16 +512,7 @@ fn ignores_malformed_user_defined_programs_file() {
         .stderr_eq(snapbox::str![[r#"
 Error: Bad input 'test-program' for '--program-id'
 
-No such program found. Available programs: 
-
-id='nvim', name='Neovim'
-id='cursor', name='Cursor'
-id='sublime', name='Sublime Text'
-id='vscode', name='VS Code'
-id='zed', name='Zed'
-id='echo', name='echo'
-id='thunar', name='Thunar'
-id='nvim-remote', name='Neovim Remote'
+No such program found
 
 "#]]);
 

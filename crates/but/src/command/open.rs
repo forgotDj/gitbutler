@@ -52,31 +52,22 @@ pub(crate) fn open(
 
     let builtin_program_specs = list_builtin_program_specs();
     let user_defined_program_specs = list_user_defined_program_specs();
-    let all_program_specs: Vec<_> = user_defined_program_specs
+    let mut all_program_specs = user_defined_program_specs
         .iter()
-        .chain(builtin_program_specs)
-        .collect();
+        .chain(builtin_program_specs);
 
     let program = match program_id {
         Some(program_id) => all_program_specs
-            .iter()
             .find(|ps| ps.id == program_id)
             .ok_or_else(|| {
-                let all_programs = all_program_specs
-                    .iter()
-                    .map(|ps| format!("id='{}', name='{}'", ps.id, ps.name))
-                    .join("\n");
-
                 CliError::from(
-                    bad_input(format!(
-                        "No such program found. Available programs: \n\n{all_programs}"
-                    ))
-                    .arg_name("--program-id")
-                    .arg_value(program_id),
+                    bad_input("No such program found")
+                        .arg_name("--program-id")
+                        .arg_value(program_id),
                 )
             })?,
-        None => builtin_program_specs
-            .first()
+        None => all_program_specs
+            .next()
             .expect("BUG: The internal list of programs should not be empty"),
     };
 
