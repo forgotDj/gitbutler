@@ -8,7 +8,7 @@ use tracing::instrument;
 use url::Url;
 
 use crate::open::{
-    program::{Editor, PROGRAMS, ProgramSpec, open_in_program_unchecked},
+    program::{Editor, PROGRAMS, ProgramSpec, UserDefinedProgramSpec, open_in_program_unchecked},
     spawn::spawn_and_reap,
 };
 
@@ -642,9 +642,30 @@ pub fn list_editors() -> anyhow::Result<Vec<Editor>> {
         .collect())
 }
 
-/// List all supported programs.
-pub fn list_program_specs() -> &'static [ProgramSpec] {
+/// List all built-in supported programs.
+pub fn list_builtin_program_specs() -> &'static [ProgramSpec] {
     PROGRAMS.as_slice()
+}
+
+/// List all user-defined programs.
+pub fn list_user_defined_program_specs() -> anyhow::Result<Vec<ProgramSpec>> {
+    let Ok(config_dir) = but_path::app_config_dir() else {
+        return Ok(vec![]);
+    };
+
+    let user_defined_programs_file = config_dir.join("programs.json");
+
+    if !user_defined_programs_file.is_file() {
+        return Ok(vec![]);
+    }
+
+    let content = std::fs::read_to_string(user_defined_programs_file)?;
+    let user_defined_program_specs: Vec<UserDefinedProgramSpec> = serde_json::from_str(&content)?;
+
+    Ok(user_defined_program_specs
+        .into_iter()
+        .map(Into::into)
+        .collect())
 }
 
 /// Open `path` within the given project's workdir using the editor specified by `editor_id`.

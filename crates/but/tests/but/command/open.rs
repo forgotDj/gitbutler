@@ -161,12 +161,12 @@ filepath='/[..]/file-with-mixed.txt' line_number='2'
 #[test]
 fn open_uncommitted_hunk_in_file_that_contains_spaces_and_shell_metacharacters() {
     let env = setup_multi_hunk_uncommitted_changes(
-        "file with some $meta; cat A > new-file.txt; spaces/in it.txt",
+        "file with some $meta; cat A > new-file.txt; spaces in it.txt",
     );
 
     env.but("status").assert().success().stdout_eq(snapbox::str![[r#"
 ╭┄ zz [uncommitted]
-┊   pr M file with some $meta; cat A > new-file.txt; spaces/in it.txt
+┊   pv M file with some $meta; cat A > new-file.txt; spaces in it.txt
 ┊
 ┊╭┄ br [a-branch-1]
 ┊●   1 Add file
@@ -178,11 +178,11 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 
 "#]]);
 
-    env.but("_open pr:4 -p echo")
+    env.but("_open pv:4 -p echo")
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-filepath='/[..]/file with some $meta; cat A > new-file.txt; spaces/in it.txt' line_number='11'
+filepath='/tmp/.tmpI7AHQU/file with some $meta; cat A > new-file.txt; spaces in it.txt' line_number='11'
 
 "#]]);
 }
@@ -252,7 +252,10 @@ Error: Expected uncommitted file or hunk, got a committed file
 #[test]
 fn cannot_open_with_unknown_program() {
     let env = setup_multi_hunk_uncommitted_changes("file.txt");
-    env.but("_open file.txt -p nosuchprogram").assert().failure().stderr_eq(snapbox::str![[r#"
+    env.but("_open file.txt -p nosuchprogram")
+        .assert()
+        .failure()
+        .stderr_eq(snapbox::str![[r#"
 Error: Bad input 'nosuchprogram' for '--program-id'
 
 No such program found. Available programs: 
@@ -265,6 +268,86 @@ id='zed', name='Zed'
 id='echo', name='echo'
 id='thunar', name='Thunar'
 id='nvim-remote', name='Neovim Remote'
+
+"#]]);
+}
+
+#[test]
+fn user_defined_program_shell_executable_handles_shell_metacharacters() {
+    let env = setup_multi_hunk_uncommitted_changes(
+        "file with some $meta; cat A > new-file.txt; spaces in it.txt",
+    );
+
+    let programs_json = env.app_data_dir().join("gitbutler").join("programs.json");
+
+    std::fs::write(
+        programs_json,
+        r#"[
+   {
+     "id": "test-program",
+     "displayName": "Test Program",
+     "executable": {
+       "nameOrPath": "echo",
+       "requiresTty": true
+     },
+     "category": "other",
+     "openArgs": [
+       "Test Program - Open File:",
+       "filepath='{{filepath}}'"
+     ],
+     "openAtLineArgs": [
+       "Test Program - Open File At Line:",
+       "line_number='{{line_number}}'",
+       "filepath='{{filepath}}'"
+     ]
+   }
+]"#,
+    )
+    .unwrap();
+
+    env.but("status -f").assert().success().stdout_eq(snapbox::str![[r#"
+╭┄zz [uncommitted]
+┊   pv M file with some $meta; cat A > new-file.txt; spaces in it.txt
+┊
+┊╭┄br [a-branch-1]
+┊●   1 Add file
+┊│     1:p A file with some $meta; cat A > new-file.txt; spaces in it.txt
+├╯
+┊
+┴ 0dc3733 (common base) 2000-01-02 add M
+
+Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "message" --changes <id>` to commit them
+
+"#]]);
+
+    env.but("_open pv -p test-program").assert().success().stdout_eq(snapbox::str![[r#"
+Test Program - Open File: filepath='/tmp/.tmphACMwH/file with some $meta; cat A > new-file.txt; spaces in it.txt'
+
+"#]]);
+
+    env.but("diff")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+─────────────────────────────────────────────────────────────────╮
+pv:7 file with some $meta; cat A > new-file.txt; spaces in it.txt│
+─────────────────────────────────────────────────────────────────╯
+     1│+new first
+   1 2│ this
+   2 3│ is
+   3 4│ some
+─────────────────────────────────────────────────────────────────╮
+pv:4 file with some $meta; cat A > new-file.txt; spaces in it.txt│
+─────────────────────────────────────────────────────────────────╯
+    7  8│ with
+    8  9│ added
+    9 10│ lines
+      11│+new last
+
+"#]]);
+
+    env.but("_open pv:4 -p test-program ").assert().success().stdout_eq(snapbox::str![[r#"
+Test Program - Open File At Line: line_number='11' filepath='/tmp/.tmphACMwH/file with some $meta; cat A > new-file.txt; spaces in it.txt'
 
 "#]]);
 }
