@@ -290,7 +290,7 @@ fn user_defined_program_shell_executable_handles_shell_metacharacters() {
         r#"[
    {
      "id": "test-program",
-     "displayName": "Test Program",
+     "name": "Test Program",
      "executable": {
        "nameOrPath": "echo",
        "requiresTty": true
@@ -373,7 +373,7 @@ fn user_defined_program_defaults_to_default_open_args() {
         r#"[
    {
      "id": "test-program-no-args",
-     "displayName": "Test Program No Args",
+     "name": "Test Program No Args",
      "executable": {
        "nameOrPath": "echo",
        "requiresTty": true
@@ -382,7 +382,7 @@ fn user_defined_program_defaults_to_default_open_args() {
    },
    {
      "id": "test-program-only-open-args",
-     "displayName": "Test Program Only Open Args",
+     "name": "Test Program Only Open Args",
      "executable": {
        "nameOrPath": "echo",
        "requiresTty": true
@@ -394,7 +394,7 @@ fn user_defined_program_defaults_to_default_open_args() {
    },
    {
      "id": "test-program-only-open-at-args",
-     "displayName": "Test Program Only Open At Args",
+     "name": "Test Program Only Open At Args",
      "executable": {
        "nameOrPath": "echo",
        "requiresTty": true
@@ -508,7 +508,7 @@ fn ignores_malformed_user_defined_programs_file() {
         r#"[
    {
      "id": "test-program",
-     "displayName": "Test Program",
+     "name": "Test Program",
      "executable": {
        "nameOrPath": "echo",
    "#,
@@ -531,6 +531,58 @@ id='zed', name='Zed'
 id='echo', name='echo'
 id='thunar', name='Thunar'
 id='nvim-remote', name='Neovim Remote'
+
+"#]]);
+
+    // Can still successfully use built-ins
+    env.but("_open file.txt -p echo")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='/[..]/file.txt'
+
+"#]]);
+}
+
+#[test]
+fn user_defined_program_derives_id_from_name_if_id_is_omitted() {
+    let env = setup_multi_hunk_uncommitted_changes("file.txt");
+
+    let programs_json = env
+        .app_data_dir()
+        .join("gitbutler")
+        .join(USER_DEFINED_PROGRAMS_FILENAME);
+
+    std::fs::write(
+        programs_json,
+        r#"[
+   {
+     "name": "Test Program",
+     "executable": {
+       "nameOrPath": "echo",
+       "requiresTty": true
+     },
+     "category": "other",
+     "openArgs": [
+       "Test Program - Open File:",
+       "filepath='{{filepath}}'"
+     ],
+     "openAtLineArgs": [
+       "Test Program - Open File At Line:",
+       "line_number='{{line_number}}'",
+       "filepath='{{filepath}}'"
+     ]
+   }
+]
+   "#,
+    )
+    .unwrap();
+
+    env.but("_open file.txt -p 'Test Program'")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+Test Program - Open File: filepath='/tmp/.tmpbzRQkQ/file.txt'
 
 "#]]);
 

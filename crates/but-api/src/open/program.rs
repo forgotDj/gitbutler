@@ -74,8 +74,8 @@ impl ProgramSpec {
 impl From<UserDefinedProgramSpec> for ProgramSpec {
     fn from(value: UserDefinedProgramSpec) -> Self {
         ProgramSpec {
-            id: value.id,
-            name: value.display_name,
+            id: value.id.unwrap_or_else(|| value.name.clone()),
+            name: value.name,
             cli_arg_supplier: CliArgumentSupplier::Custom(CustomCliArgumentSupplier {
                 open_args: value.open_args,
                 open_at_line_args: value.open_at_line_args,
@@ -524,9 +524,11 @@ fn open_in_macos_application(
 #[serde(rename_all = "camelCase")]
 pub struct UserDefinedProgramSpec {
     /// Identifier used to refer to the program.
-    pub id: String,
+    ///
+    /// If left empty, the ID is derived from [`Self::name`] instead.
+    pub id: Option<String>,
     /// The display name of the program.
-    pub display_name: String,
+    pub name: String,
     /// The exuctable to invoke to start the program.
     pub executable: UserDefinedShellExecutable,
     /// The kind of the program.
