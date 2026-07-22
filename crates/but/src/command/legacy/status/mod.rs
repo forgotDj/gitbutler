@@ -115,6 +115,7 @@ pub enum StatusRenderMode {
 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct TuiLaunchOptions {
+    pub remember_selection: bool,
     pub debug: bool,
     pub quit_after: Option<u64>,
     pub headless: bool,
@@ -1690,6 +1691,7 @@ fn print_commit(
                         commit_id: commit.id,
                         path: inner.path.clone(),
                         id: short_id.to_owned(),
+                        change_id: change_id.map(|change_id| change_id.change_id.clone()),
                     };
 
                     let display_id = displayed_file_id(padded_file_id_prefix.as_deref(), short_id);

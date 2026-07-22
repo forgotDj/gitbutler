@@ -12,7 +12,7 @@ use crate::command::legacy::status::tui::tests::utils::{
     TestTuiOptions, test_tui, test_tui_with_options,
 };
 use crate::command::legacy::status::tui::{BackstackEntry, Message, ReloadCause};
-use crate::command::legacy::status::{TuiOutcome, TuiRunOptions};
+use crate::command::legacy::status::{TuiLaunchOptions, TuiOutcome, TuiRunOptions};
 
 mod branch_picker_tests;
 mod branch_tests;
@@ -1169,4 +1169,78 @@ fn maintains_selection_using_change_id() {
     // undo the reword, this shouldn't change the selection
     tui.input('u')
         .assert_current_line_eq(str!["┊●   1 (no commit message) (no changes)"]);
+}
+
+#[test]
+fn remember_selection() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    let launch_options = TuiLaunchOptions {
+        remember_selection: true,
+        ..Default::default()
+    };
+
+    let mut tui = test_tui_with_options(
+        env,
+        TestTuiOptions {
+            launch_options,
+            ..Default::default()
+        },
+    );
+
+    tui.input('j');
+    tui.input('j')
+        .assert_current_line_eq(str![["┊●   tpm add A"]]);
+    tui.input('q');
+
+    let env = tui.into_env();
+
+    let mut tui = test_tui_with_options(
+        env,
+        TestTuiOptions {
+            launch_options,
+            ..Default::default()
+        },
+    );
+
+    tui.reload()
+        .assert_current_line_eq(str![["┊●   tpm add A"]]);
+}
+
+#[test]
+fn remember_selection_with_file_name_conflicting_with_branch() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    env.file("A", "");
+
+    let launch_options = TuiLaunchOptions {
+        remember_selection: true,
+        ..Default::default()
+    };
+
+    let mut tui = test_tui_with_options(
+        env,
+        TestTuiOptions {
+            launch_options,
+            ..Default::default()
+        },
+    );
+
+    tui.input('j');
+    tui.input('j').assert_current_line_eq(str![["┊╭┄ g0 [A]"]]);
+    tui.input('q');
+
+    let env = tui.into_env();
+
+    let mut tui = test_tui_with_options(
+        env,
+        TestTuiOptions {
+            launch_options,
+            ..Default::default()
+        },
+    );
+
+    tui.reload().assert_current_line_eq(str![["┊╭┄ g0 [A]"]]);
 }
