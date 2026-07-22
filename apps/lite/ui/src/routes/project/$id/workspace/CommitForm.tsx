@@ -99,7 +99,6 @@ export const CommitForm: FC<{
 
 	const [open, setOpen] = useState(false);
 	const [isExpanded, setIsExpanded] = useState(false);
-	const [isButtonExiting, setIsButtonExiting] = useState(false);
 
 	const selectBranch = (option: CommitTargetComboboxItem | null) => {
 		if (option)
@@ -216,16 +215,9 @@ export const CommitForm: FC<{
 					className={classes(
 						getButtonClassName({ variant: "pop" }),
 						styles.startCommitButton,
-						isButtonExiting && styles.startCommitButtonExiting,
 						className,
 					)}
-					onClick={() => setIsButtonExiting(true)}
-					onAnimationEnd={() => {
-						if (!isButtonExiting) return;
-
-						setIsButtonExiting(false);
-						setIsExpanded(true);
-					}}
+					onClick={() => setIsExpanded(true)}
 					render={<Button focusableWhenDisabled disabled={!isDefaultMode} />}
 				>
 					Start commit
