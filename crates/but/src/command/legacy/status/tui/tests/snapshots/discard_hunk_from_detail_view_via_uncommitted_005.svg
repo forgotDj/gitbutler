@@ -49,9 +49,9 @@
     <text x="450" y="168" style="fill:#00AA00;">1</text>
     <text x="466" y="168" style="fill:#555555;">│</text>
     <text x="482" y="168" style="fill:#CCCCCC;">+</text>
-    <text x="490 498 506 514 522 530 538" y="168" style="fill:#F8F8F2;">content</text>
-    <text x="554 562" y="168" style="fill:#F8F8F2;">of</text>
-    <text x="578 586 594" y="168" style="fill:#F8F8F2;">one</text>
+    <text x="490 498 506 514 522 530 538" y="168" style="fill:#CDD6F4;">content</text>
+    <text x="554 562" y="168" style="fill:#CDD6F4;">of</text>
+    <text x="578 586 594" y="168" style="fill:#CDD6F4;">one</text>
     <text x="410" y="186" style="fill:#555555;">│</text>
     <text x="410" y="204" style="fill:#555555;">│</text>
     <text x="410" y="222" style="fill:#555555;">│</text>
