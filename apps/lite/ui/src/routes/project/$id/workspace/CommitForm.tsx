@@ -254,9 +254,11 @@ export const CommitForm: FC<{
 		<form
 			ref={formRef}
 			onSubmit={submit}
-			onBlur={() =>
-				persistDraftMessage({ projectId, message: commitTextareaRef.current?.value ?? "" })
-			}
+			onBlur={(e) => {
+				const next = e.relatedTarget;
+				if (next instanceof Node && e.currentTarget.contains(next)) return;
+				persistDraftMessage({ projectId, message: commitTextareaRef.current?.value ?? "" });
+			}}
 			className={classes(styles.form, className)}
 		>
 			<textarea
