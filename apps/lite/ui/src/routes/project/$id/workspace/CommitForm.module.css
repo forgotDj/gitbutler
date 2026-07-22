@@ -2,6 +2,11 @@
 	flex-shrink: 0;
 }
 
+.startCommitButtonExiting {
+	animation: commit-button-exit 80ms ease forwards;
+	pointer-events: none;
+}
+
 .form {
 	display: flex;
 	row-gap: 10px;
@@ -11,6 +16,7 @@
 	outline: 1px solid var(--border-2);
 	outline-offset: -1px;
 	background: var(--bg-1);
+	animation: commit-form-enter 100ms ease-out;
 
 	&:not(:has(.textarea[disabled])) {
 		&:hover {
@@ -19,6 +25,31 @@
 		&:focus-within {
 			outline: var(--focus-ring);
 		}
+	}
+}
+
+@keyframes commit-button-exit {
+	to {
+		opacity: 0.1;
+		transform: translateY(4px) ;
+	}
+}
+
+@keyframes commit-form-enter {
+	from {
+		opacity: 0.3;
+		transform: translateY(4px);
+	}
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+	.form,
+	.footer {
+		animation: none;
+	}
+	.startCommitButtonExiting {
+		animation-duration: 0.01ms;
 	}
 }
 

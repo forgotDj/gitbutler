@@ -77,6 +77,7 @@ export const CommitForm: FC<{
 	const { data: worktreeChanges } = useQuery(changesInWorktreeQueryOptions(projectId));
 
 	const commitTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+	const formRef = useRef<HTMLFormElement | null>(null);
 
 	const isDefaultMode = useAppSelector(
 		(state) => projectSlice.selectors.selectOutlineModeState(state, projectId)._tag === "Default",
@@ -98,6 +99,7 @@ export const CommitForm: FC<{
 
 	const [open, setOpen] = useState(false);
 	const [isExpanded, setIsExpanded] = useState(false);
+	const [isButtonExiting, setIsButtonExiting] = useState(false);
 
 	const selectBranch = (option: CommitTargetComboboxItem | null) => {
 		if (option)
@@ -183,15 +185,23 @@ export const CommitForm: FC<{
 		},
 	]);
 
+	// Note we deliberately don't scope this hotkey with `target` refs. The form
+	// is conditionally rendered, so the refs are `null` on mount, and the hook
+	// would never register the listener.
 	useHotkey(
 		"Escape",
 		() => {
-			if ((commitTextareaRef.current?.value ?? "") === "") setIsExpanded(false);
+			const form = formRef.current;
+			if (!form || !form.contains(document.activeElement)) return;
+
+			const isTextareaFocused = document.activeElement === commitTextareaRef.current;
+			const keepExpanded = isTextareaFocused && (commitTextareaRef.current?.value ?? "") !== "";
+			if (!keepExpanded) setIsExpanded(false);
 			focusSelectionScope("uncommitted-files");
 		},
 		{
-			target: commitTextareaRef,
 			conflictBehavior: "allow",
+			enabled: isExpanded,
 		},
 	);
 
@@ -201,23 +211,40 @@ export const CommitForm: FC<{
 
 	if (!isExpanded) {
 		return (
-			<Button
-				id={startCommitButtonId}
-				disabled={!isDefaultMode}
-				className={classes(
-					getButtonClassName({ variant: "pop" }),
-					styles.startCommitButton,
-					className,
-				)}
-				onClick={() => setIsExpanded(true)}
-			>
-				Start commit
-			</Button>
+			<Tooltip.Root>
+				<Tooltip.Trigger
+					className={classes(
+						getButtonClassName({ variant: "pop" }),
+						styles.startCommitButton,
+						isButtonExiting && styles.startCommitButtonExiting,
+						className,
+					)}
+					onClick={() => setIsButtonExiting(true)}
+					onAnimationEnd={() => {
+						if (!isButtonExiting) return;
+
+						setIsButtonExiting(false);
+						setIsExpanded(true);
+					}}
+					render={<Button focusableWhenDisabled disabled={!isDefaultMode} />}
+				>
+					Start commit
+				</Tooltip.Trigger>
+				<Tooltip.Portal>
+					<Tooltip.Positioner sideOffset={4}>
+						<Tooltip.Popup
+							render={<TooltipPopup kbd={outlineHotkeys.composeCommitMessage.hotkey} />}
+						>
+							Compose commit message
+						</Tooltip.Popup>
+					</Tooltip.Positioner>
+				</Tooltip.Portal>
+			</Tooltip.Root>
 		);
 	}
 
 	return (
-		<form onSubmit={submit} className={classes(styles.form, className)}>
+		<form ref={formRef} onSubmit={submit} className={classes(styles.form, className)}>
 			<textarea
 				// The form is only rendered expanded after interacting with the
 				// "Start commit" trigger, so focusing the input is expected.
@@ -280,14 +307,20 @@ export const CommitForm: FC<{
 				</Combobox.Root>
 
 				<div className={styles.commitActions}>
-					<Button
-						focusableWhenDisabled
-						disabled={isCommitOrAmendPending}
-						className={getButtonClassName({ variant: "outline" })}
-						onClick={() => setIsExpanded(false)}
-					>
-						Cancel
-					</Button>
+					<Tooltip.Root>
+						<Tooltip.Trigger
+							className={getButtonClassName({ variant: "outline" })}
+							onClick={() => setIsExpanded(false)}
+							render={<Button focusableWhenDisabled disabled={isCommitOrAmendPending} />}
+						>
+							Cancel
+						</Tooltip.Trigger>
+						<Tooltip.Portal>
+							<Tooltip.Positioner sideOffset={4}>
+								<Tooltip.Popup render={<TooltipPopup kbd="Escape" />}>Cancel</Tooltip.Popup>
+							</Tooltip.Positioner>
+						</Tooltip.Portal>
+					</Tooltip.Root>
 
 					<div className={styles.dropdownButton}>
 						<Tooltip.Root>
