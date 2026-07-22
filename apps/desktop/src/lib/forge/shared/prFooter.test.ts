@@ -1,7 +1,16 @@
-import { unstackPRs, updatePrDescriptionTables, updateStackPrs } from "$lib/forge/shared/prFooter";
+import {
+	syncStackAfterReviewCreation,
+	unstackPRs,
+	updatePrDescriptionTables,
+	updateStackPrs,
+} from "$lib/forge/shared/prFooter";
+import { showWarning } from "$lib/notifications/toasts";
 import { describe, expect, test, vi } from "vitest";
+import type { PullRequest } from "$lib/forge/interface/types";
 import type { PrService } from "$lib/forge/prService.svelte";
 import type { Segment } from "@gitbutler/but-sdk";
+
+vi.mock("$lib/notifications/toasts", () => ({ showWarning: vi.fn() }));
 
 function mockPrService(bodies: Record<number, string | null> = {}) {
 	const fetch = vi.fn(async (_projectId: string, number: number) => ({
@@ -70,6 +79,29 @@ describe("updatePrDescriptionTables", () => {
 
 		await expect(updatePrDescriptionTables(service, "project", [101, 100])).rejects.toThrow(
 			"forge update failed",
+		);
+	});
+});
+
+describe("syncStackAfterReviewCreation", () => {
+	test("returns the created review and warns when stack synchronization fails", async () => {
+		const { service, updateReviewFooters } = mockPrService();
+		const createdReview = { number: 101 } as PullRequest;
+		updateReviewFooters.mockRejectedValueOnce(new Error("forge update failed"));
+		vi.spyOn(console, "error").mockImplementationOnce(() => undefined);
+
+		const result = await syncStackAfterReviewCreation(
+			service,
+			"project",
+			createdReview,
+			[101, 100],
+			"#",
+		);
+
+		expect(result).toBe(createdReview);
+		expect(showWarning).toHaveBeenCalledWith(
+			"Pull request created with incomplete stack information",
+			"PR #101 was created, but its stack information could not be synchronized. forge update failed",
 		);
 	});
 });

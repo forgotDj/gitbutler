@@ -162,7 +162,7 @@
 
 		{#snippet caption()}
 			Choose where GitButler-managed stack information appears. Changes apply on the next review
-			sync.
+			sync. The default is Bottom.
 		{/snippet}
 
 		<div data-testid="review-stacking-description-select">

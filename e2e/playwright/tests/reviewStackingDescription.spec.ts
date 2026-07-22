@@ -10,6 +10,7 @@ import {
 	waitForTestId,
 } from "../src/util.ts";
 import { expect, type Page } from "@playwright/test";
+import { readFileSync, writeFileSync } from "node:fs";
 import type { FakeGitHubReview, FakeGitHubServer } from "../src/fakeGithub.ts";
 
 const FOOTER_TOP = "<!-- GitButler Footer Boundary Top -->";
@@ -75,6 +76,74 @@ test("review stack descriptions follow the per-project policy", async ({
 			"branch3",
 		]);
 	});
+});
+
+test("pushing one of multiple stacks keeps review descriptions stack-local", async ({
+	page,
+	gitbutler,
+	fakeGithub,
+}) => {
+	const server = await fakeGithub({
+		headRepoPath: gitbutler.pathInWorkdir("remote-project"),
+		isFork: false,
+		listed: false,
+	});
+	await gitbutler.runScript("project-with-stacks.sh", [server.repositoryUrl]);
+	await storeFakeGitHubEnterprisePat(page, server);
+	mirrorFakeCredentialForCli(gitbutler);
+	await applyUpstream(gitbutler, "branch1", "branch2", "branch3", "branch4");
+	await mockForge(page, {
+		get_review_merge_status: mergeStatus(),
+		get_repo_info: repoInfo(),
+		list_ci_checks: [],
+	});
+	await openWorkspace(page);
+
+	const branchHeaders = page.getByTestId("branch-header");
+	for (const [branch, parent, remainingStacks] of [
+		["branch2", "branch1", 3],
+		["branch4", "branch3", 2],
+	] as const) {
+		await dragAndDropByLocator(
+			page,
+			branchHeaders.filter({ hasText: branch }),
+			branchHeaders.filter({ hasText: parent }),
+			{ force: true, position: { x: 120, y: -10 } },
+		);
+		await expect(stack(page)).toHaveCount(remainingStacks);
+	}
+
+	await publishReview(page, "branch1", "Description for branch1");
+	server.setListed(true);
+	await publishReview(page, "branch2", "Description for branch2");
+	await publishReview(page, "branch3", "Description for branch3");
+	await publishReview(page, "branch4", "Description for branch4");
+
+	await expectReviews(server, 4, (reviews) => {
+		expectStackMembership(reviews[0], [42, 43], [44, 45]);
+		expectStackMembership(reviews[1], [42, 43], [44, 45]);
+		expectStackMembership(reviews[2], [44, 45], [42, 43]);
+		expectStackMembership(reviews[3], [44, 45], [42, 43]);
+	});
+	const reviewUpdatesBeforePush = server.getReviewUpdateCount();
+
+	writeFileSync(
+		gitbutler.pathInWorkdir("local-clone/d_file"),
+		"branch4 change after publishing reviews\n",
+		{ flag: "a" },
+	);
+	const branch4Stack = stack(page, "branch4");
+	await branch4Stack.getByTestId("start-commit-button").click();
+	await page.getByTestId("commit-drawer-title-input").fill("branch4: post-review change");
+	await page.getByTestId("commit-drawer-action-button").click();
+	await gitbutler.runScript("push-branch.sh", ["branch4"]);
+	await expect.poll(() => server.getReviewUpdateCount()).toBeGreaterThan(reviewUpdatesBeforePush);
+
+	const reviews = server.getReviews();
+	expectStackMembership(reviews[0], [42, 43], [44, 45]);
+	expectStackMembership(reviews[1], [42, 43], [44, 45]);
+	expectStackMembership(reviews[2], [44, 45], [42, 43]);
+	expectStackMembership(reviews[3], [44, 45], [42, 43]);
 });
 
 async function combineBranchesIntoStack(page: Page) {
@@ -161,6 +230,25 @@ function expectStackOrder(reviews: FakeGitHubReview[], topToBase: number[]) {
 	}
 }
 
+function expectStackMembership(
+	review: FakeGitHubReview,
+	expectedReviewNumbers: number[],
+	unrelatedReviewNumbers: number[],
+) {
+	const body = review.body ?? "";
+	for (const number of expectedReviewNumbers) {
+		expect(body, `review #${review.number} should include stack peer #${number}`).toContain(
+			`#${number}`,
+		);
+	}
+	for (const number of unrelatedReviewNumbers) {
+		expect(
+			body,
+			`review #${review.number} should not include unrelated review #${number}`,
+		).not.toContain(`#${number}`);
+	}
+}
+
 async function storeFakeGitHubEnterprisePat(page: Page, server: FakeGitHubServer) {
 	const response = await page.request.post(
 		`http://localhost:${getButlerPort()}/store_github_enterprise_pat`,
@@ -169,6 +257,13 @@ async function storeFakeGitHubEnterprisePat(page: Page, server: FakeGitHubServer
 		},
 	);
 	expect(response.ok()).toBe(true);
+}
+
+function mirrorFakeCredentialForCli(gitbutler: GitButler) {
+	const credentialPath = gitbutler.pathInWorkdir("../config/git-credentials");
+	const serverCredential = readFileSync(credentialPath, "utf8");
+	const cliCredential = serverCredential.replace("development-", "com.gitbutler.app.dev-");
+	writeFileSync(credentialPath, `${serverCredential.trimEnd()}\n${cliCredential}`);
 }
 
 function escapeRegExp(value: string): string {

@@ -1,4 +1,6 @@
+import { showWarning } from "$lib/notifications/toasts";
 import { isDefined } from "@gitbutler/ui/utils/typeguards";
+import type { PullRequest } from "$lib/forge/interface/types";
 import type { PrService } from "$lib/forge/prService.svelte";
 import type { Segment } from "@gitbutler/but-sdk";
 
@@ -39,6 +41,31 @@ export async function updatePrDescriptionTables(
 			})),
 		);
 	}
+}
+
+/**
+ * Synchronizes stack descriptions after a review has been created. The review creation is already
+ * durable at this point, so synchronization failures are reported as partial success.
+ */
+export async function syncStackAfterReviewCreation(
+	prService: PrService,
+	projectId: string,
+	createdReview: PullRequest,
+	prNumbers: number[],
+	unitSymbol = "#",
+): Promise<PullRequest> {
+	try {
+		await updatePrDescriptionTables(prService, projectId, prNumbers, unitSymbol);
+	} catch (error) {
+		console.error(error);
+		const message = error instanceof Error ? error.message : String(error);
+		showWarning(
+			"Pull request created with incomplete stack information",
+			`PR ${unitSymbol}${createdReview.number} was created, but its stack information could not be synchronized. ${message}`,
+		);
+	}
+
+	return createdReview;
 }
 
 type PrUpdate = {

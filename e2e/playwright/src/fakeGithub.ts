@@ -35,6 +35,7 @@ export type FakeGitHubServer = {
 	setListed: (listed: boolean) => void;
 	getReview: (number: number) => FakeGitHubReview | undefined;
 	getReviews: () => FakeGitHubReview[];
+	getReviewUpdateCount: () => number;
 	close: () => Promise<void>;
 };
 
@@ -79,6 +80,7 @@ export async function startFakeGitHubServer({
 	};
 	const reviews = new Map<number, FakeGitHubReview>([[reviewNumber, pullRequestPayload(options)]]);
 	let nextReviewNumber = reviewNumber;
+	let reviewUpdateCount = 0;
 	let isListed = listed;
 
 	const sockets = new Set<Socket>();
@@ -112,6 +114,7 @@ export async function startFakeGitHubServer({
 			updateReview(number, input) {
 				const current = reviews.get(number);
 				if (!current) return undefined;
+				reviewUpdateCount += 1;
 				const updated = {
 					...current,
 					title: input.title ?? current.title,
@@ -157,6 +160,7 @@ export async function startFakeGitHubServer({
 			[...reviews.values()]
 				.sort((a, b) => a.number - b.number)
 				.map((review) => structuredClone(review)),
+		getReviewUpdateCount: () => reviewUpdateCount,
 		close: async () =>
 			await new Promise<void>((resolve, reject) => {
 				server.close((error) => (error ? reject(error) : resolve()));
