@@ -205,6 +205,10 @@
 			backend.listen(`project://${projectId}/hunk-assignment-update`, () => {
 				stackService.invalidateStacksAndDetails();
 			}),
+			// A symbolic HEAD change can switch branches without changing the commit SHA.
+			backend.listen(`project://${projectId}/git/head`, () => {
+				stackService.invalidateStacksAndDetails();
+			}),
 			backend.listen(`project://${projectId}/worktree_changes`, () => {
 				clientState.dispatch(
 					clientState.backendApi.util.invalidateTags([invalidatesList(ReduxTag.Diff)]),
