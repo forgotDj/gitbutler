@@ -84,17 +84,19 @@ export const CommitForm: FC<{
 		select: getHeadInfoIndex,
 	});
 	const isCommitOrAmendPending = isCommitCreatePending || isCommitAmendPending;
+
+	const [open, setOpen] = useState(false);
+	const [isExpanded, setIsExpanded] = useState(false);
+
 	const canCommitOrAmendBase = isDefaultMode && commitTarget !== null && !isCommitOrAmendPending;
-	const canCommit = canCommitOrAmendBase;
+	const canCommit = canCommitOrAmendBase && isExpanded;
 	const canAmend =
 		canCommitOrAmendBase &&
+		isExpanded &&
 		worktreeChanges &&
 		worktreeChanges.changes.length > 0 &&
 		headInfoIndex &&
 		resolveRelativeTo({ headInfoIndex, relativeTo: commitTarget.relativeTo }) !== null;
-
-	const [open, setOpen] = useState(false);
-	const [isExpanded, setIsExpanded] = useState(false);
 
 	const selectBranch = (option: CommitTargetComboboxItem | null) => {
 		if (option)
@@ -295,7 +297,9 @@ export const CommitForm: FC<{
 								setIsExpanded(false);
 								setOpen(false);
 							}}
-							render={<Button focusableWhenDisabled disabled={isCommitOrAmendPending} />}
+							render={
+								<Button focusableWhenDisabled disabled={isCommitOrAmendPending} type="button" />
+							}
 						>
 							Cancel
 						</Tooltip.Trigger>
