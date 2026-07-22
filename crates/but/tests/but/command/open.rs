@@ -321,7 +321,7 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
 "#]]);
 
     env.but("_open pv -p test-program").assert().success().stdout_eq(snapbox::str![[r#"
-Test Program - Open File: filepath='/tmp/.tmphACMwH/file with some $meta; cat A > new-file.txt; spaces in it.txt'
+Test Program - Open File: filepath='/[..]/file with some $meta; cat A > new-file.txt; spaces in it.txt'
 
 "#]]);
 
@@ -347,7 +347,141 @@ pv:4 file with some $meta; cat A > new-file.txt; spaces in it.txt│
 "#]]);
 
     env.but("_open pv:4 -p test-program ").assert().success().stdout_eq(snapbox::str![[r#"
-Test Program - Open File At Line: line_number='11' filepath='/tmp/.tmphACMwH/file with some $meta; cat A > new-file.txt; spaces in it.txt'
+Test Program - Open File At Line: line_number='11' filepath='/[..]/file with some $meta; cat A > new-file.txt; spaces in it.txt'
+
+"#]]);
+}
+
+/// For most programs, you get something usable by just defining the executable and passing the file
+/// as the first argument.
+#[test]
+fn user_defined_program_defaults_to_default_open_args() {
+    let env = setup_multi_hunk_uncommitted_changes("file.txt");
+
+    let programs_json = env.app_data_dir().join("gitbutler").join("programs.json");
+
+    std::fs::write(
+        programs_json,
+        r#"[
+   {
+     "id": "test-program-no-args",
+     "displayName": "Test Program No Args",
+     "executable": {
+       "nameOrPath": "echo",
+       "requiresTty": true
+     },
+     "category": "other"
+   },
+   {
+     "id": "test-program-only-open-args",
+     "displayName": "Test Program Only Open Args",
+     "executable": {
+       "nameOrPath": "echo",
+       "requiresTty": true
+     },
+     "category": "other",
+     "openArgs": [
+       "filepath='{{filepath}}'"
+     ]
+   },
+   {
+     "id": "test-program-only-open-at-args",
+     "displayName": "Test Program Only Open At Args",
+     "executable": {
+       "nameOrPath": "echo",
+       "requiresTty": true
+     },
+     "category": "other",
+     "openAtLineArgs": [
+       "line_number='{{line_number}}'",
+       "filepath='{{filepath}}'"
+     ]
+   }
+]"#,
+    )
+    .unwrap();
+
+    env.but("status -f").assert().success().stdout_eq(snapbox::str![[r#"
+╭┄zz [uncommitted]
+┊   uv M file.txt
+┊
+┊╭┄br [a-branch-1]
+┊●   1 Add file
+┊│     1:u A file.txt
+├╯
+┊
+┴ 0dc3733 (common base) 2000-01-02 add M
+
+Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "message" --changes <id>` to commit them
+
+"#]]);
+
+    env.but("diff")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+─────────────╮
+uv:7 file.txt│
+─────────────╯
+     1│+new first
+   1 2│ this
+   2 3│ is
+   3 4│ some
+─────────────╮
+uv:4 file.txt│
+─────────────╯
+    7  8│ with
+    8  9│ added
+    9 10│ lines
+      11│+new last
+
+"#]]);
+
+    // No-args program, should always only get the filepath passed by the default CLI arg supplier
+    env.but("_open uv -p test-program-no-args")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+/[..]/file.txt
+
+"#]]);
+    env.but("_open uv:4 -p test-program-no-args")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+/[..]/file.txt
+
+"#]]);
+
+    // Open args defined, should get the custom open args both for open and open at line
+    env.but("_open uv -p test-program-only-open-args")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='/[..]/file.txt'
+
+"#]]);
+    env.but("_open uv:4 -p test-program-only-open-args")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='/[..]/file.txt'
+
+"#]]);
+
+    // Open at line args defined, should get default open and custom open at line
+    env.but("_open uv -p test-program-only-open-at-args")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+/[..]/file.txt
+
+"#]]);
+    env.but("_open uv:4 -p test-program-only-open-at-args")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+line_number='11' filepath='/[..]/file.txt'
 
 "#]]);
 }

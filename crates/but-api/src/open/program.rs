@@ -189,7 +189,7 @@ struct CustomCliArgumentSupplier {
     /// * [`FILEPATH_PLACEHOLDER`] is substituted for the filepath
     ///
     /// TODO should not assume utf8 for args
-    open_args: Vec<String>,
+    open_args: Option<Vec<String>>,
     /// Arguments to pass to the executable when invoked to open at a specific line.
     ///
     /// Recognized placeholders:
@@ -198,12 +198,16 @@ struct CustomCliArgumentSupplier {
     /// * [`LINE_NUMBER_PLACEHOLDER`] is substituted for the line number
     ///
     /// TODO should not assume utf8 for args
-    open_at_line_args: Vec<String>,
+    open_at_line_args: Option<Vec<String>>,
 }
 
 impl CustomCliArgumentSupplier {
     fn open_at_line<'a>(&self, cmd: &'a mut Command, path: &Path, line_nr: i32) -> &'a mut Command {
-        for arg in &self.open_at_line_args {
+        let Some(open_at_line_args) = &self.open_at_line_args else {
+            return self.open(cmd, path);
+        };
+
+        for arg in open_at_line_args {
             // TODO should not assume utf8 for path
             cmd.arg(
                 arg.replace(FILEPATH_PLACEHOLDER, &path.to_string_lossy())
@@ -214,7 +218,12 @@ impl CustomCliArgumentSupplier {
     }
 
     fn open<'a>(&self, cmd: &'a mut Command, path: &Path) -> &'a mut Command {
-        for arg in &self.open_args {
+        let Some(open_args) = &self.open_args else {
+            cmd.arg(path);
+            return cmd;
+        };
+
+        for arg in open_args {
             // TODO should not assume utf8 for path
             cmd.arg(arg.replace(FILEPATH_PLACEHOLDER, &path.to_string_lossy()));
         }
@@ -326,11 +335,11 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             id: "echo".into(),
             name: "echo".into(),
             cli_arg_supplier: CliArgumentSupplier::Custom(CustomCliArgumentSupplier {
-                open_at_line_args: vec![
+                open_at_line_args: Some(vec![
                     "filepath='{{filepath}}'".into(),
                     "line_number='{{line_number}}'".into(),
-                ],
-                open_args: vec!["filepath='{{filepath}}'".into()],
+                ]),
+                open_args: Some(vec!["filepath='{{filepath}}'".into()]),
             }),
             executable: ExecutableProgram::ShellExecutable(ShellExecutable {
                 name_or_path: "echo".into(),
@@ -354,18 +363,18 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             id: "nvim-remote".into(),
             name: "Neovim Remote".into(),
             cli_arg_supplier: CliArgumentSupplier::Custom(CustomCliArgumentSupplier {
-                open_at_line_args: vec![
+                open_at_line_args: Some(vec![
                     "--server".into(),
                     "/tmp/nvim-server.pipe".into(),
                     "--remote-expr".into(),
                     "execute('edit +{{line_number}} ' . fnameescape('{{filepath}}'))".into(),
-                ],
-                open_args: vec![
+                ]),
+                open_args: Some(vec![
                     "--server".into(),
                     "/tmp/nvim-server.pipe".into(),
                     "--remote-expr".into(),
                     "execute('edit ' . fnameescape('{{filepath}}'))".into(),
-                ],
+                ]),
             }),
             executable: ExecutableProgram::ShellExecutable(ShellExecutable {
                 name_or_path: "nvim".into(),
@@ -524,14 +533,14 @@ pub struct UserDefinedProgramSpec {
     /// Recognized placeholders:
     ///
     /// * [`FILEPATH_PLACEHOLDER`] is substituted for the filepath
-    pub open_args: Vec<String>,
+    pub open_args: Option<Vec<String>>,
     /// Arguments to pass to the executable when invoked to open at a specific line.
     ///
     /// Recognized placeholders:
     ///
     /// * [`FILEPATH_PLACEHOLDER`] is substituted for the filepath
     /// * [`LINE_NUMBER_PLACEHOLDER`] is substituted for the line number
-    pub open_at_line_args: Vec<String>,
+    pub open_at_line_args: Option<Vec<String>>,
 }
 
 /// A user defined executable.
