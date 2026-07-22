@@ -23,8 +23,10 @@ export async function updatePrDescriptionTables(
 	unitSymbol = "#",
 ) {
 	if (prService && prNumbers.length > 1) {
+		// Review creation tracks segments top-to-base; the Rust API accepts base-to-top.
+		const baseToTopPrNumbers = [...prNumbers].reverse();
 		const prs = await Promise.all(
-			prNumbers.map(async (id) => await prService.fetch(projectId, id)),
+			baseToTopPrNumbers.map(async (id) => await prService.fetch(projectId, id)),
 		);
 		await prService.updateReviewFooters(
 			projectId,
@@ -119,63 +121,4 @@ export async function unstackPRs(
 			}),
 		);
 	}
-}
-
-/**
- * Replaces or inserts a new footer into an existing body of text.
- *
- * If there is only one PR in the stack there is no stack to advertise, so we add
- * no footer and strip any existing one - mirroring the single-PR guard in
- * `update_body` in `but-forge`. A body without a footer is returned untouched so
- * we don't needlessly rewrite PRs (including ones not opened through GitButler).
- */
-export function updateBody(
-	body: string | undefined,
-	prNumber: number,
-	allPrNumbers: number[],
-	symbol: string,
-) {
-	if (allPrNumbers.length <= 1) {
-		return clearFooter(body) ?? "";
-	}
-	return composeBody(body, generateFooter(prNumber, allPrNumbers, symbol));
-}
-
-/**
- * Remove the footer from an existing body of text.
- */
-function clearFooter(body: string | undefined) {
-	if (!body?.includes(STACKING_FOOTER_BOUNDARY_TOP)) return body;
-	if (!body.includes(STACKING_FOOTER_BOUNDARY_BOTTOM)) return body;
-	return composeBody(body);
-}
-
-/**
- * Rebuild a PR body from its parts: the text before any existing footer, an
- * optional new footer, and the text after any existing footer. Omitting the
- * footer removes it.
- */
-function composeBody(body: string | undefined, footer?: string): string {
-	const head = (body?.split(STACKING_FOOTER_BOUNDARY_TOP).at(0) || "").trim();
-	const tail = (body?.split(STACKING_FOOTER_BOUNDARY_BOTTOM).at(1) || "").trim();
-	return [head, footer, tail].filter(Boolean).join("\n\n");
-}
-
-/**
- * Generates a footer for use in pull request descriptions when part of a stack.
- */
-export function generateFooter(forPrNumber: number, allPrNumbers: number[], symbol: string) {
-	const stackLength = allPrNumbers.length;
-	const stackIndex = allPrNumbers.findIndex((number) => number === forPrNumber);
-	const nth = stackLength - stackIndex;
-	let footer = "";
-	footer += STACKING_FOOTER_BOUNDARY_TOP + "\n";
-	footer += "---\n";
-	footer += `This is **part ${nth} of ${stackLength} in a stack** made with GitButler:\n`;
-	allPrNumbers.forEach((prNumber, i) => {
-		const current = i === stackIndex;
-		footer += `- <kbd>&nbsp;${stackLength - i}&nbsp;</kbd> ${symbol}${prNumber} ${current ? "👈 " : ""}\n`;
-	});
-	footer += STACKING_FOOTER_BOUNDARY_BOTTOM;
-	return footer;
 }
