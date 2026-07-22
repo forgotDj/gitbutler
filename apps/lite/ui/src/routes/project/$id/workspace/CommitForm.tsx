@@ -5,13 +5,9 @@ import { getHeadInfoIndex, resolveRelativeTo } from "#ui/api/ref-info.ts";
 import { getButtonClassName } from "#ui/components/Button.tsx";
 import { classes } from "#ui/components/classes.ts";
 import { Icon } from "#ui/components/Icon.tsx";
+import { Kbd } from "#ui/components/Kbd.tsx";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
-import {
-	changesHotkeys,
-	formatForDisplaySorted,
-	outlineHotkeys,
-	toElectronAccelerator,
-} from "#ui/hotkeys.ts";
+import { changesHotkeys, outlineHotkeys, toElectronAccelerator } from "#ui/hotkeys.ts";
 import { nativeMenuItem, showNativeMenuFromTrigger, type NativeMenuItem } from "#ui/native-menu.ts";
 import { operandEquals, operandIdentityKey, type Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
@@ -204,34 +200,24 @@ export const CommitForm: FC<{
 		},
 	);
 
-	const commitTextareaLabel = `Compose commit message ${formatForDisplaySorted(
-		outlineHotkeys.composeCommitMessage.hotkey,
-	)}`;
+	const commitTextareaLabel = "Compose commit message";
 
 	if (!isExpanded) {
 		return (
-			<Tooltip.Root>
-				<Tooltip.Trigger
-					className={classes(
-						getButtonClassName({ variant: "pop" }),
-						styles.startCommitButton,
-						className,
-					)}
-					onClick={() => setIsExpanded(true)}
-					render={<Button focusableWhenDisabled disabled={!isDefaultMode} />}
-				>
-					Start commit
-				</Tooltip.Trigger>
-				<Tooltip.Portal>
-					<Tooltip.Positioner sideOffset={4}>
-						<Tooltip.Popup
-							render={<TooltipPopup kbd={outlineHotkeys.composeCommitMessage.hotkey} />}
-						>
-							Compose commit message
-						</Tooltip.Popup>
-					</Tooltip.Positioner>
-				</Tooltip.Portal>
-			</Tooltip.Root>
+			<Button
+				className={classes(
+					getButtonClassName({ variant: "pop" }),
+					styles.startCommitButton,
+					className,
+				)}
+				id={startCommitButtonId}
+				onClick={() => setIsExpanded(true)}
+				focusableWhenDisabled
+				disabled={!isDefaultMode}
+			>
+				Start commit
+				<Kbd hotkey={outlineHotkeys.composeCommitMessage.hotkey} variant="button" />
+			</Button>
 		);
 	}
 
@@ -315,23 +301,15 @@ export const CommitForm: FC<{
 					</Tooltip.Root>
 
 					<div className={styles.dropdownButton}>
-						<Tooltip.Root>
-							<Tooltip.Trigger
-								className={getButtonClassName({ variant: "pop" })}
-								// We pass `disabled` here because we want to disable the button, not
-								// the tooltip. Other props should be passed above.
-								render={<Button focusableWhenDisabled type="submit" disabled={!canCommit} />}
-							>
-								Commit
-							</Tooltip.Trigger>
-							<Tooltip.Portal>
-								<Tooltip.Positioner sideOffset={4}>
-									<Tooltip.Popup render={<TooltipPopup kbd={changesHotkeys.commit.hotkey} />}>
-										{changesHotkeys.commit.meta.name}
-									</Tooltip.Popup>
-								</Tooltip.Positioner>
-							</Tooltip.Portal>
-						</Tooltip.Root>
+						<Button
+							className={getButtonClassName({ variant: "pop" })}
+							focusableWhenDisabled
+							type="submit"
+							disabled={!canCommit}
+						>
+							Commit
+							<Kbd hotkey={changesHotkeys.commit.hotkey} variant="button" />
+						</Button>
 						<div aria-hidden className={styles.dropdownButtonSeparator} />
 						<Button
 							focusableWhenDisabled
