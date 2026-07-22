@@ -51,7 +51,7 @@ pub(crate) fn open(
         };
 
     let builtin_program_specs = list_builtin_program_specs();
-    let user_defined_program_specs = list_user_defined_program_specs()?;
+    let user_defined_program_specs = list_user_defined_program_specs();
     let all_program_specs: Vec<_> = user_defined_program_specs
         .iter()
         .chain(builtin_program_specs)

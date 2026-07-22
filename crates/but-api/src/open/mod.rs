@@ -8,7 +8,10 @@ use tracing::instrument;
 use url::Url;
 
 use crate::open::{
-    program::{Editor, PROGRAMS, ProgramSpec, UserDefinedProgramSpec, open_in_program_unchecked},
+    program::{
+        Editor, PROGRAMS, ProgramSpec, USER_DEFINED_PROGRAMS_FILENAME, UserDefinedProgramSpec,
+        open_in_program_unchecked,
+    },
     spawn::spawn_and_reap,
 };
 
@@ -635,15 +638,7 @@ pub fn show_in_finder(path: String) -> Result<()> {
 #[but_api(napi)]
 #[instrument(err(Debug))]
 pub fn list_editors() -> anyhow::Result<Vec<Editor>> {
-    let user_defined_programs = match list_user_defined_program_specs() {
-        Ok(programs) => programs,
-        Err(err) => {
-            tracing::warn!(?err, "Failed to fetch user defined programs");
-            vec![]
-        }
-    };
-
-    Ok(user_defined_programs
+    Ok(list_user_defined_program_specs()
         .iter()
         .chain(PROGRAMS.iter())
         .filter(|p| p.is_gui_editor())
@@ -657,24 +652,40 @@ pub fn list_builtin_program_specs() -> &'static [ProgramSpec] {
 }
 
 /// List all user-defined programs.
-pub fn list_user_defined_program_specs() -> anyhow::Result<Vec<ProgramSpec>> {
-    let Ok(config_dir) = but_path::app_config_dir() else {
-        return Ok(vec![]);
+///
+/// This function never fails, it only logs errors as warnings if something goes wrong.
+pub fn list_user_defined_program_specs() -> Vec<ProgramSpec> {
+    let Ok(user_defined_programs_file) =
+        but_path::app_config_dir().map(|dir| dir.join(USER_DEFINED_PROGRAMS_FILENAME))
+    else {
+        return vec![];
     };
 
-    let user_defined_programs_file = config_dir.join("programs.json");
+    let content = match std::fs::read_to_string(&user_defined_programs_file) {
+        Ok(content) => content,
+        Err(err) => {
+            tracing::debug!(
+                ?err,
+                ?user_defined_programs_file,
+                "Failed to read from user-defined programs file"
+            );
+            return vec![];
+        }
+    };
 
-    if !user_defined_programs_file.is_file() {
-        return Ok(vec![]);
-    }
+    let user_defined_program_specs: Vec<UserDefinedProgramSpec> =
+        match serde_json::from_str(&content) {
+            Ok(specs) => specs,
+            Err(err) => {
+                tracing::warn!(?err, "Failed to decode user-defined programs file");
+                vec![]
+            }
+        };
 
-    let content = std::fs::read_to_string(user_defined_programs_file)?;
-    let user_defined_program_specs: Vec<UserDefinedProgramSpec> = serde_json::from_str(&content)?;
-
-    Ok(user_defined_program_specs
+    user_defined_program_specs
         .into_iter()
         .map(Into::into)
-        .collect())
+        .collect()
 }
 
 /// Open `path` within the given project's workdir using the editor specified by `editor_id`.
@@ -707,7 +718,6 @@ pub fn open_in_editor(
     }
 
     if let Some(editor) = list_user_defined_program_specs()
-        .unwrap_or_default()
         .iter()
         .chain(PROGRAMS.iter())
         .find(|editor| editor.id == editor_id)

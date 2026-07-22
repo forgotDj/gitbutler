@@ -1,3 +1,5 @@
+use but_api::open::program::USER_DEFINED_PROGRAMS_FILENAME;
+
 use crate::utils::Sandbox;
 
 fn setup_multi_hunk_uncommitted_changes(path: &str) -> Sandbox {
@@ -182,7 +184,7 @@ Hint: run `but diff` to see uncommitted changes and `but commit <branch> -m "mes
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-filepath='/tmp/.tmpI7AHQU/file with some $meta; cat A > new-file.txt; spaces in it.txt' line_number='11'
+filepath='/[..]/file with some $meta; cat A > new-file.txt; spaces in it.txt' line_number='11'
 
 "#]]);
 }
@@ -278,7 +280,10 @@ fn user_defined_program_shell_executable_handles_shell_metacharacters() {
         "file with some $meta; cat A > new-file.txt; spaces in it.txt",
     );
 
-    let programs_json = env.app_data_dir().join("gitbutler").join("programs.json");
+    let programs_json = env
+        .app_data_dir()
+        .join("gitbutler")
+        .join(USER_DEFINED_PROGRAMS_FILENAME);
 
     std::fs::write(
         programs_json,
@@ -358,7 +363,10 @@ Test Program - Open File At Line: line_number='11' filepath='/[..]/file with som
 fn user_defined_program_defaults_to_default_open_args() {
     let env = setup_multi_hunk_uncommitted_changes("file.txt");
 
-    let programs_json = env.app_data_dir().join("gitbutler").join("programs.json");
+    let programs_json = env
+        .app_data_dir()
+        .join("gitbutler")
+        .join(USER_DEFINED_PROGRAMS_FILENAME);
 
     std::fs::write(
         programs_json,
@@ -482,6 +490,56 @@ filepath='/[..]/file.txt'
         .success()
         .stdout_eq(snapbox::str![[r#"
 line_number='11' filepath='/[..]/file.txt'
+
+"#]]);
+}
+
+#[test]
+fn ignores_malformed_user_defined_programs_file() {
+    let env = setup_multi_hunk_uncommitted_changes("file.txt");
+
+    let programs_json = env
+        .app_data_dir()
+        .join("gitbutler")
+        .join(USER_DEFINED_PROGRAMS_FILENAME);
+
+    std::fs::write(
+        programs_json,
+        r#"[
+   {
+     "id": "test-program",
+     "displayName": "Test Program",
+     "executable": {
+       "nameOrPath": "echo",
+   "#,
+    )
+    .unwrap();
+
+    env.but("_open file.txt -p test-program")
+        .assert()
+        .failure()
+        .stderr_eq(snapbox::str![[r#"
+Error: Bad input 'test-program' for '--program-id'
+
+No such program found. Available programs: 
+
+id='nvim', name='Neovim'
+id='cursor', name='Cursor'
+id='sublime', name='Sublime Text'
+id='vscode', name='VS Code'
+id='zed', name='Zed'
+id='echo', name='echo'
+id='thunar', name='Thunar'
+id='nvim-remote', name='Neovim Remote'
+
+"#]]);
+
+    // Can still successfully use built-ins
+    env.but("_open file.txt -p echo")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='/[..]/file.txt'
 
 "#]]);
 }
