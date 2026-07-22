@@ -41,18 +41,11 @@ export const OperationSourceC: FC<
 	const dragSource = useAppSelector((state) => {
 		if (source._tag !== "Commit") return source;
 
-		const isCheckedCommit = projectSlice.selectors.selectCommitChecked(
-			state,
-			projectId,
-			source.commitId,
-		);
-		if (!isCheckedCommit) return source;
+		const isChecked = projectSlice.selectors.selectOperandChecked(state, projectId, source);
+		if (!isChecked) return source;
 
-		const checkedCommitOperands = projectSlice.selectors.selectCheckedCommitOperands(
-			state,
-			projectId,
-		);
-		return checkedCommitOperands.length > 0 ? checkedCommitOperands : source;
+		const checkedOperands = projectSlice.selectors.selectCheckedOperands(state, projectId);
+		return checkedOperands.length > 0 ? checkedOperands : source;
 	});
 	const dragSources = Array.isArray(dragSource) ? dragSource : [dragSource];
 

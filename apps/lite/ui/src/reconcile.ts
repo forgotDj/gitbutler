@@ -54,18 +54,17 @@ export const useStateReconciler = (): void => {
 		},
 	);
 
-	const checkedCommitIds = useAppSelector((state) =>
-		projectSlice.selectors.selectCheckedCommits(state, projectId),
+	const checkedOperands = useAppSelector((state) =>
+		projectSlice.selectors.selectCheckedOperands(state, projectId),
 	);
-	const reconcileCheckedCommits = useEffectEvent((headInfoIndex: HeadInfoIndex) => {
-		const invalidated = checkedCommitIds
-			.values()
-			.filter((commitId) => !headInfoIndex.commitContextById(commitId))
-			.toArray();
+	const reconcileCheckedOperands = useEffectEvent((headInfoIndex: HeadInfoIndex) => {
+		const invalidated = checkedOperands.filter(
+			(operand) => !headInfoIndex.commitContextById(operand.commitId),
+		);
 
 		if (invalidated.length > 0) {
 			dispatch(
-				projectSlice.actions.checkCommits({ projectId, commitIds: invalidated, checked: false }),
+				projectSlice.actions.checkOperands({ projectId, operands: invalidated, checked: false }),
 			);
 		}
 	});
@@ -73,7 +72,7 @@ export const useStateReconciler = (): void => {
 	useLayoutEffect(() => {
 		if (!headInfoIndex) return;
 
-		reconcileCheckedCommits(headInfoIndex);
+		reconcileCheckedOperands(headInfoIndex);
 		reconcileSelectedCommit(headInfoIndex, prevHeadInfoIndexRef.current);
 
 		prevHeadInfoIndexRef.current = headInfoIndex;

@@ -47,7 +47,9 @@ export const branchOperand = ({ branchRef }: BranchOperand): Operand => ({
 	branchRef,
 });
 
-export const commitOperand = ({ commitId }: CommitOperand): Operand => ({
+export const commitOperand = ({
+	commitId,
+}: CommitOperand): Extract<Operand, { _tag: "Commit" }> => ({
 	_tag: "Commit",
 	commitId,
 });
