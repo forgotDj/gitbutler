@@ -31,7 +31,7 @@ fn open_uncommitted_file_with_() {
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [uncommitted]
+╭┄ zz [uncommitted]
 ┊   xk A new-file.txt
 ┊
 ┴ 0dc3733 (common base) 2000-01-02 add M
@@ -166,10 +166,10 @@ fn open_uncommitted_hunk_in_file_that_contains_spaces_and_shell_metacharacters()
     );
 
     env.but("status").assert().success().stdout_eq(snapbox::str![[r#"
-╭┄zz [uncommitted]
+╭┄ zz [uncommitted]
 ┊   pr M file with some $meta; cat A > new-file.txt; spaces/in it.txt
 ┊
-┊╭┄br [a-branch-1]
+┊╭┄ br [a-branch-1]
 ┊●   1 Add file
 ├╯
 ┊
@@ -211,9 +211,9 @@ fn cannot_open_committed_changes() {
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-╭┄zz [uncommitted] (no changes)
+╭┄ zz [uncommitted] (no changes)
 ┊
-┊╭┄g0 [A]
+┊╭┄ g0 [A]
 ┊●   tpm add A
 ┊│     tpm:t A A
 ├╯
