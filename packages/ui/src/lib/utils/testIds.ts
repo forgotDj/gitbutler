@@ -164,8 +164,6 @@ export enum TestId {
 	ChromeSideBarProjectSettingsButton = "chrome-sidebar-project-settings-button",
 	NotOnGitButlerBranchView = "not-on-gitbutler-branch-view",
 	ProjectSettingsModal = "project-settings-modal",
-	ReviewStackingDescriptionSelect = "review-stacking-description-select",
-	ReviewStackingDescriptionOption = "review-stacking-description-option",
 	GeneralSettingsModal = "general-settings-modal",
 	SyncButton = "sync-button",
 	EditMode = "edit-mode",

@@ -23,7 +23,7 @@
 	import { PROJECTS_SERVICE } from "$lib/project/projectsService";
 	import { inject } from "@gitbutler/core/context";
 	import { reactive } from "@gitbutler/shared/reactiveUtils.svelte";
-	import { CardGroup, Select, SelectItem, TestId } from "@gitbutler/ui";
+	import { CardGroup, Select, SelectItem } from "@gitbutler/ui";
 
 	import type { Project } from "$lib/project/project";
 	import type {
@@ -165,7 +165,7 @@
 			sync.
 		{/snippet}
 
-		<div data-testid={TestId.ReviewStackingDescriptionSelect}>
+		<div data-testid="review-stacking-description-select">
 			<Select
 				value={reviewStackingDescription}
 				options={[
@@ -177,7 +177,7 @@
 				onselect={(value) => updateReviewStackingDescription(value as ReviewStackingDescription)}
 			>
 				{#snippet itemSnippet({ item, highlighted })}
-					<div data-testid={`${TestId.ReviewStackingDescriptionOption}-${item.value}`}>
+					<div data-testid={`review-stacking-description-option-${item.value}`}>
 						<SelectItem selected={item.value === reviewStackingDescription} {highlighted}>
 							{item.label}
 						</SelectItem>
