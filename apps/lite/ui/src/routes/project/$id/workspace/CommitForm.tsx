@@ -16,7 +16,8 @@ import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { Button, Combobox, Tooltip } from "@base-ui/react";
 import type { RelativeTo } from "@gitbutler/but-sdk";
 import { useHotkey, useHotkeys } from "@tanstack/react-hotkeys";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
+import * as idb from "idb-keyval";
 import { type FC, type SubmitEventHandler, useRef, useState } from "react";
 import styles from "./CommitForm.module.css";
 
@@ -31,6 +32,25 @@ export const commitMessageInputId = "commit-message-input";
 
 // oxlint-disable-next-line react/only-export-components -- TODO: move
 export const startCommitButtonId = "start-commit-button";
+
+const draftCommitMessageKey = (projectId: string): string => `commit_message_draft:v1:${projectId}`;
+
+const draftCommitMessageQueryOptions = (projectId: string) =>
+	queryOptions({
+		queryKey: ["commitMessageDraft", projectId],
+		queryFn: async () => (await idb.get<string>(draftCommitMessageKey(projectId))) ?? "",
+	});
+
+const usePersistDraftCommitMessage = () =>
+	useMutation({
+		mutationFn: ({ projectId, message }: { projectId: string; message: string }) =>
+			idb.set(draftCommitMessageKey(projectId), message),
+		onSuccess: (_data, input, _res, ctx) =>
+			ctx.client.setQueryData(
+				draftCommitMessageQueryOptions(input.projectId).queryKey,
+				input.message,
+			),
+	});
 
 const CommitTargetComboboxPopup: FC = () => (
 	<Combobox.Popup className={classes(uiStyles.popup, "text-13", styles.targetPopup)}>
@@ -75,6 +95,9 @@ export const CommitForm: FC<{
 	const commitTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 	const formRef = useRef<HTMLFormElement | null>(null);
 
+	const { data: draftMessage } = useQuery(draftCommitMessageQueryOptions(projectId));
+	const { mutate: persistDraftMessage } = usePersistDraftCommitMessage();
+
 	const isDefaultMode = useAppSelector(
 		(state) => projectSlice.selectors.selectOutlineModeState(state, projectId)._tag === "Default",
 	);
@@ -114,8 +137,10 @@ export const CommitForm: FC<{
 			},
 			{
 				onSuccess: (response) => {
-					if (response.newCommit !== null && commitTextareaRef.current)
+					if (response.newCommit !== null && commitTextareaRef.current) {
 						commitTextareaRef.current.value = "";
+						persistDraftMessage({ projectId, message: "" });
+					}
 				},
 			},
 		);
@@ -191,6 +216,8 @@ export const CommitForm: FC<{
 			const form = formRef.current;
 			if (!form || !form.contains(document.activeElement)) return;
 
+			// Persist the draft before the textarea unmounts.
+			persistDraftMessage({ projectId, message: commitTextareaRef.current?.value ?? "" });
 			setIsExpanded(false);
 			setOpen(false);
 			focusSelectionScope("uncommitted-files");
@@ -223,7 +250,15 @@ export const CommitForm: FC<{
 	}
 
 	return (
-		<form ref={formRef} onSubmit={submit} className={classes(styles.form, className)}>
+		// oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Used for persistence, not UI per se.
+		<form
+			ref={formRef}
+			onSubmit={submit}
+			onBlur={() =>
+				persistDraftMessage({ projectId, message: commitTextareaRef.current?.value ?? "" })
+			}
+			className={classes(styles.form, className)}
+		>
 			<textarea
 				// The form is only rendered expanded after interacting with the
 				// "Start commit" trigger, so focusing the input is expected.
@@ -235,6 +270,7 @@ export const CommitForm: FC<{
 				disabled={!isDefaultMode}
 				readOnly={isCommitOrAmendPending}
 				placeholder={commitTextareaLabel}
+				defaultValue={draftMessage ?? ""}
 				className={classes("text-13", "text-body", styles.textarea)}
 			/>
 
@@ -290,6 +326,11 @@ export const CommitForm: FC<{
 						<Tooltip.Trigger
 							className={getButtonClassName({ variant: "outline" })}
 							onClick={() => {
+								// Persist the draft before the textarea unmounts.
+								persistDraftMessage({
+									projectId,
+									message: commitTextareaRef.current?.value ?? "",
+								});
 								setIsExpanded(false);
 								setOpen(false);
 							}}
