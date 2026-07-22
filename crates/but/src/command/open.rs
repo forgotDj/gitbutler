@@ -75,7 +75,7 @@ pub(crate) fn open(
                     .arg_value(program_id),
                 )
             })?,
-        None => list_builtin_program_specs()
+        None => builtin_program_specs
             .first()
             .expect("BUG: The internal list of programs should not be empty"),
     };

@@ -582,7 +582,7 @@ fn user_defined_program_derives_id_from_name_if_id_is_omitted() {
         .assert()
         .success()
         .stdout_eq(snapbox::str![[r#"
-Test Program - Open File: filepath='/tmp/.tmpbzRQkQ/file.txt'
+Test Program - Open File: filepath='/[..]/file.txt'
 
 "#]]);
 
