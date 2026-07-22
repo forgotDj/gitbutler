@@ -115,6 +115,7 @@ pub enum StatusRenderMode {
 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct TuiLaunchOptions {
+    pub remember_selection: bool,
     pub debug: bool,
     pub quit_after: Option<u64>,
     pub headless: bool,
