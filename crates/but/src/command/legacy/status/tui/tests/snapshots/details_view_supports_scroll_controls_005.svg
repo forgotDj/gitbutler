@@ -59,7 +59,7 @@
     <text x="466" y="150" style="fill:#00AA00;">1</text>
     <text x="482" y="150" style="fill:#555555;">│</text>
     <text x="498" y="150" style="fill:#CCCCCC;">+</text>
-    <text x="506 514 522 530 538 546 554 562" y="150" style="fill:#F8F8F2;">line-001</text>
+    <text x="506 514 522 530 538 546 554 562" y="150" style="fill:#CDD6F4;">line-001</text>
     <text x="10" y="168" style="fill:#CCCCCC;">┴</text>
     <text x="26 34 42 50 58 66 74" y="168" style="fill:#CCCCCC;opacity:0.75;">0dc3733</text>
     <text x="90 98 106 114 122 130 138" y="168" style="fill:#CCCCCC;">(common</text>
@@ -72,19 +72,19 @@
     <text x="466" y="168" style="fill:#00AA00;">2</text>
     <text x="482" y="168" style="fill:#555555;">│</text>
     <text x="498" y="168" style="fill:#CCCCCC;">+</text>
-    <text x="506 514 522 530 538 546 554 562" y="168" style="fill:#F8F8F2;">line-002</text>
+    <text x="506 514 522 530 538 546 554 562" y="168" style="fill:#CDD6F4;">line-002</text>
     <text x="410" y="186" style="fill:#FFA500;">▌</text>
     <text x="434" y="186" style="fill:#555555;">┊</text>
     <text x="466" y="186" style="fill:#00AA00;">3</text>
     <text x="482" y="186" style="fill:#555555;">│</text>
     <text x="498" y="186" style="fill:#CCCCCC;">+</text>
-    <text x="506 514 522 530 538 546 554 562" y="186" style="fill:#F8F8F2;">line-003</text>
+    <text x="506 514 522 530 538 546 554 562" y="186" style="fill:#CDD6F4;">line-003</text>
     <text x="410" y="204" style="fill:#FFA500;">▌</text>
     <text x="434" y="204" style="fill:#555555;">┊</text>
     <text x="466" y="204" style="fill:#00AA00;">4</text>
     <text x="482" y="204" style="fill:#555555;">│</text>
     <text x="498" y="204" style="fill:#CCCCCC;">+</text>
-    <text x="506 514 522 530 538 546 554 562" y="204" style="fill:#F8F8F2;">line-004</text>
+    <text x="506 514 522 530 538 546 554 562" y="204" style="fill:#CDD6F4;">line-004</text>
     <text x="26 34 42 50 58 66 74" y="222" style="fill:#000000;">details</text>
     <text x="106 114 122" y="222" style="fill:#0000AA;">↓/j</text>
     <text x="138 146 154 162" y="222" style="fill:#CCCCCC;opacity:0.75;">next</text>

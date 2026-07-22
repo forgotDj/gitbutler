@@ -61,19 +61,19 @@
     <text x="458" y="168" style="fill:#00AA00;">1</text>
     <text x="474" y="168" style="fill:#555555;">│</text>
     <text x="490" y="168" style="fill:#CCCCCC;">+</text>
-    <text x="498 506 514 522 530 538 546 554" y="168" style="fill:#F8F8F2;">line-001</text>
+    <text x="498 506 514 522 530 538 546 554" y="168" style="fill:#CDD6F4;">line-001</text>
     <text x="410" y="186" style="fill:#555555;">│</text>
     <text x="434" y="186" style="fill:#555555;">┊</text>
     <text x="458" y="186" style="fill:#00AA00;">2</text>
     <text x="474" y="186" style="fill:#555555;">│</text>
     <text x="490" y="186" style="fill:#CCCCCC;">+</text>
-    <text x="498 506 514 522 530 538 546 554" y="186" style="fill:#F8F8F2;">line-002</text>
+    <text x="498 506 514 522 530 538 546 554" y="186" style="fill:#CDD6F4;">line-002</text>
     <text x="410" y="204" style="fill:#555555;">│</text>
     <text x="434" y="204" style="fill:#555555;">┊</text>
     <text x="458" y="204" style="fill:#00AA00;">3</text>
     <text x="474" y="204" style="fill:#555555;">│</text>
     <text x="490" y="204" style="fill:#CCCCCC;">+</text>
-    <text x="498 506 514 522 530 538 546 554" y="204" style="fill:#F8F8F2;">line-003</text>
+    <text x="498 506 514 522 530 538 546 554" y="204" style="fill:#CDD6F4;">line-003</text>
     <text x="26 34 42 50 58 66" y="222" style="fill:#FFFFFF;">normal</text>
     <text x="98 106 114" y="222" style="fill:#0000AA;">↑/k</text>
     <text x="130 138" y="222" style="fill:#CCCCCC;opacity:0.75;">up</text>

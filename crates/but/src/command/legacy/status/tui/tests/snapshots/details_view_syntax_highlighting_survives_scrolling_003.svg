@@ -64,49 +64,49 @@
     <text x="466" y="168" style="fill:#00AA00;">1</text>
     <text x="482" y="168" style="fill:#555555;">│</text>
     <text x="498" y="168" style="fill:#CCCCCC;">+</text>
-    <text x="506 514" y="168" style="fill:#66D9EF;">fn</text>
-    <text x="530 538 546 554 562 570 578 586 594 602 610 618" y="168" style="fill:#A6E22E;">function_001</text>
-    <text x="626" y="168" style="fill:#F8F8F2;">(</text>
-    <text x="634 642 650 658 666" y="168" style="fill:#FD971F;">value</text>
-    <text x="674" y="168" style="fill:#F8F8F2;">:</text>
-    <text x="690 698 706" y="168" style="fill:#66D9EF;">i32</text>
-    <text x="714" y="168" style="fill:#F8F8F2;">)</text>
-    <text x="730 738" y="168" style="fill:#F8F8F2;">-&gt;</text>
-    <text x="754 762 770" y="168" style="fill:#66D9EF;">i32</text>
-    <text x="786" y="168" style="fill:#F8F8F2;">{</text>
-    <text x="802" y="168" style="fill:#66D9EF;">l</text>
+    <text x="506 514" y="168" style="fill:#CBA6F7;">fn</text>
+    <text x="530 538 546 554 562 570 578 586 594 602 610 618" y="168" style="fill:#89B4FA;">function_001</text>
+    <text x="626" y="168" style="fill:#9399B2;">(</text>
+    <text x="634 642 650 658 666" y="168" style="fill:#EBA0AC;">value</text>
+    <text x="674" y="168" style="fill:#9399B2;">:</text>
+    <text x="690 698 706" y="168" style="fill:#CBA6F7;">i32</text>
+    <text x="714" y="168" style="fill:#9399B2;">)</text>
+    <text x="730 738" y="168" style="fill:#9399B2;">-&gt;</text>
+    <text x="754 762 770" y="168" style="fill:#CBA6F7;">i32</text>
+    <text x="786" y="168" style="fill:#9399B2;">{</text>
+    <text x="802" y="168" style="fill:#CBA6F7;">l</text>
     <text x="410" y="186" style="fill:#FFA500;">▌</text>
     <text x="434" y="186" style="fill:#555555;">┊</text>
     <text x="466" y="186" style="fill:#00AA00;">2</text>
     <text x="482" y="186" style="fill:#555555;">│</text>
     <text x="498" y="186" style="fill:#CCCCCC;">+</text>
-    <text x="506 514" y="186" style="fill:#66D9EF;">fn</text>
-    <text x="530 538 546 554 562 570 578 586 594 602 610 618" y="186" style="fill:#A6E22E;">function_002</text>
-    <text x="626" y="186" style="fill:#F8F8F2;">(</text>
-    <text x="634 642 650 658 666" y="186" style="fill:#FD971F;">value</text>
-    <text x="674" y="186" style="fill:#F8F8F2;">:</text>
-    <text x="690 698 706" y="186" style="fill:#66D9EF;">i32</text>
-    <text x="714" y="186" style="fill:#F8F8F2;">)</text>
-    <text x="730 738" y="186" style="fill:#F8F8F2;">-&gt;</text>
-    <text x="754 762 770" y="186" style="fill:#66D9EF;">i32</text>
-    <text x="786" y="186" style="fill:#F8F8F2;">{</text>
-    <text x="802" y="186" style="fill:#66D9EF;">l</text>
+    <text x="506 514" y="186" style="fill:#CBA6F7;">fn</text>
+    <text x="530 538 546 554 562 570 578 586 594 602 610 618" y="186" style="fill:#89B4FA;">function_002</text>
+    <text x="626" y="186" style="fill:#9399B2;">(</text>
+    <text x="634 642 650 658 666" y="186" style="fill:#EBA0AC;">value</text>
+    <text x="674" y="186" style="fill:#9399B2;">:</text>
+    <text x="690 698 706" y="186" style="fill:#CBA6F7;">i32</text>
+    <text x="714" y="186" style="fill:#9399B2;">)</text>
+    <text x="730 738" y="186" style="fill:#9399B2;">-&gt;</text>
+    <text x="754 762 770" y="186" style="fill:#CBA6F7;">i32</text>
+    <text x="786" y="186" style="fill:#9399B2;">{</text>
+    <text x="802" y="186" style="fill:#CBA6F7;">l</text>
     <text x="410" y="204" style="fill:#FFA500;">▌</text>
     <text x="434" y="204" style="fill:#555555;">┊</text>
     <text x="466" y="204" style="fill:#00AA00;">3</text>
     <text x="482" y="204" style="fill:#555555;">│</text>
     <text x="498" y="204" style="fill:#CCCCCC;">+</text>
-    <text x="506 514" y="204" style="fill:#66D9EF;">fn</text>
-    <text x="530 538 546 554 562 570 578 586 594 602 610 618" y="204" style="fill:#A6E22E;">function_003</text>
-    <text x="626" y="204" style="fill:#F8F8F2;">(</text>
-    <text x="634 642 650 658 666" y="204" style="fill:#FD971F;">value</text>
-    <text x="674" y="204" style="fill:#F8F8F2;">:</text>
-    <text x="690 698 706" y="204" style="fill:#66D9EF;">i32</text>
-    <text x="714" y="204" style="fill:#F8F8F2;">)</text>
-    <text x="730 738" y="204" style="fill:#F8F8F2;">-&gt;</text>
-    <text x="754 762 770" y="204" style="fill:#66D9EF;">i32</text>
-    <text x="786" y="204" style="fill:#F8F8F2;">{</text>
-    <text x="802" y="204" style="fill:#66D9EF;">l</text>
+    <text x="506 514" y="204" style="fill:#CBA6F7;">fn</text>
+    <text x="530 538 546 554 562 570 578 586 594 602 610 618" y="204" style="fill:#89B4FA;">function_003</text>
+    <text x="626" y="204" style="fill:#9399B2;">(</text>
+    <text x="634 642 650 658 666" y="204" style="fill:#EBA0AC;">value</text>
+    <text x="674" y="204" style="fill:#9399B2;">:</text>
+    <text x="690 698 706" y="204" style="fill:#CBA6F7;">i32</text>
+    <text x="714" y="204" style="fill:#9399B2;">)</text>
+    <text x="730 738" y="204" style="fill:#9399B2;">-&gt;</text>
+    <text x="754 762 770" y="204" style="fill:#CBA6F7;">i32</text>
+    <text x="786" y="204" style="fill:#9399B2;">{</text>
+    <text x="802" y="204" style="fill:#CBA6F7;">l</text>
     <text x="26 34 42 50 58 66 74" y="222" style="fill:#000000;">details</text>
     <text x="106 114 122" y="222" style="fill:#0000AA;">↓/j</text>
     <text x="138 146 154 162" y="222" style="fill:#CCCCCC;opacity:0.75;">next</text>
