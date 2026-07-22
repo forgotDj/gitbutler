@@ -33,6 +33,9 @@ export type CommitTargetComboboxItem = {
 // oxlint-disable-next-line react/only-export-components -- TODO: move
 export const commitMessageInputId = "commit-message-input";
 
+// oxlint-disable-next-line react/only-export-components -- TODO: move
+export const startCommitButtonId = "start-commit-button";
+
 const CommitTargetComboboxPopup: FC = () => (
 	<Combobox.Popup className={classes(uiStyles.popup, "text-13", styles.targetPopup)}>
 		<Combobox.Input
@@ -94,6 +97,7 @@ export const CommitForm: FC<{
 		resolveRelativeTo({ headInfoIndex, relativeTo: commitTarget.relativeTo }) !== null;
 
 	const [open, setOpen] = useState(false);
+	const [isExpanded, setIsExpanded] = useState(false);
 
 	const selectBranch = (option: CommitTargetComboboxItem | null) => {
 		if (option)
@@ -179,18 +183,46 @@ export const CommitForm: FC<{
 		},
 	]);
 
-	useHotkey("Escape", () => focusSelectionScope("uncommitted-files"), {
-		target: commitTextareaRef,
-		conflictBehavior: "allow",
-	});
+	useHotkey(
+		"Escape",
+		() => {
+			if ((commitTextareaRef.current?.value ?? "") === "") setIsExpanded(false);
+			focusSelectionScope("uncommitted-files");
+		},
+		{
+			target: commitTextareaRef,
+			conflictBehavior: "allow",
+		},
+	);
 
 	const commitTextareaLabel = `Compose commit message ${formatForDisplaySorted(
 		outlineHotkeys.composeCommitMessage.hotkey,
 	)}`;
 
+	if (!isExpanded) {
+		return (
+			<Button
+				id={startCommitButtonId}
+				disabled={!isDefaultMode}
+				className={classes(
+					getButtonClassName({ variant: "pop" }),
+					styles.startCommitButton,
+					className,
+				)}
+				onClick={() => setIsExpanded(true)}
+			>
+				Start commit
+			</Button>
+		);
+	}
+
 	return (
 		<form onSubmit={submit} className={classes(styles.form, className)}>
 			<textarea
+				// The form is only rendered expanded after interacting with the
+				// "Start commit" trigger, so focusing the input is expected.
+				// oxlint-disable-next-line jsx_a11y/no-autofocus
+				autoFocus
 				id={commitMessageInputId}
 				ref={commitTextareaRef}
 				aria-label={commitTextareaLabel}
@@ -247,36 +279,47 @@ export const CommitForm: FC<{
 					</Combobox.Portal>
 				</Combobox.Root>
 
-				<div className={styles.dropdownButton}>
-					<Tooltip.Root>
-						<Tooltip.Trigger
-							className={getButtonClassName({ variant: "pop" })}
-							// We pass `disabled` here because we want to disable the button, not
-							// the tooltip. Other props should be passed above.
-							render={<Button focusableWhenDisabled type="submit" disabled={!canCommit} />}
-						>
-							Commit
-						</Tooltip.Trigger>
-						<Tooltip.Portal>
-							<Tooltip.Positioner sideOffset={4}>
-								<Tooltip.Popup render={<TooltipPopup kbd={changesHotkeys.commit.hotkey} />}>
-									{changesHotkeys.commit.meta.name}
-								</Tooltip.Popup>
-							</Tooltip.Positioner>
-						</Tooltip.Portal>
-					</Tooltip.Root>
-					<div aria-hidden className={styles.dropdownButtonSeparator} />
+				<div className={styles.commitActions}>
 					<Button
 						focusableWhenDisabled
-						disabled={!(canAmend || canCommit)}
-						aria-label="Commit options"
-						className={getButtonClassName({ variant: "pop", iconOnly: true })}
-						onClick={(event) => {
-							void showNativeMenuFromTrigger(event.currentTarget, commitMenuItems);
-						}}
+						disabled={isCommitOrAmendPending}
+						className={getButtonClassName({ variant: "outline" })}
+						onClick={() => setIsExpanded(false)}
 					>
-						<Icon name="chevron-down" />
+						Cancel
 					</Button>
+
+					<div className={styles.dropdownButton}>
+						<Tooltip.Root>
+							<Tooltip.Trigger
+								className={getButtonClassName({ variant: "pop" })}
+								// We pass `disabled` here because we want to disable the button, not
+								// the tooltip. Other props should be passed above.
+								render={<Button focusableWhenDisabled type="submit" disabled={!canCommit} />}
+							>
+								Commit
+							</Tooltip.Trigger>
+							<Tooltip.Portal>
+								<Tooltip.Positioner sideOffset={4}>
+									<Tooltip.Popup render={<TooltipPopup kbd={changesHotkeys.commit.hotkey} />}>
+										{changesHotkeys.commit.meta.name}
+									</Tooltip.Popup>
+								</Tooltip.Positioner>
+							</Tooltip.Portal>
+						</Tooltip.Root>
+						<div aria-hidden className={styles.dropdownButtonSeparator} />
+						<Button
+							focusableWhenDisabled
+							disabled={!(canAmend || canCommit)}
+							aria-label="Commit options"
+							className={getButtonClassName({ variant: "pop", iconOnly: true })}
+							onClick={(event) => {
+								void showNativeMenuFromTrigger(event.currentTarget, commitMenuItems);
+							}}
+						>
+							<Icon name="chevron-down" />
+						</Button>
+					</div>
 				</div>
 			</div>
 		</form>
