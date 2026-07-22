@@ -27,6 +27,7 @@ pub enum ProgramCategory {
     FileManager,
     /// Anything that doesn't fit within other types and is not worthwhile to add a new type for.
     Other,
+    #[cfg(debug_assertions)]
     /// Purely for testing, should not be included in production builds.
     Test,
 }
@@ -334,6 +335,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             }),
             category: ProgramCategory::Editor,
         },
+        #[cfg(debug_assertions)]
         ProgramSpec {
             id: "echo".into(),
             name: "echo".into(),
