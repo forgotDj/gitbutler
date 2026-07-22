@@ -1628,12 +1628,16 @@ pub struct ForgeReviewUpdate {
     pub body: Option<String>,
     /// Whether the description should be synchronized. If false, the current description is
     /// fetched from the forge before applying the configured stacking policy.
-    #[serde(default)]
+    #[serde(default = "default_update_description")]
     pub update_description: bool,
     /// The platform-specific symbol for this review type (e.g., "#" for GitHub pull requests and "!" for MRs).
     pub unit_symbol: String,
     /// If set, update the base/target branch of this review to the given value.
     pub target_branch: Option<String>,
+}
+
+fn default_update_description() -> bool {
+    true
 }
 
 /// Controls the managed GitButler stack block in review descriptions.
@@ -2768,6 +2772,34 @@ mod tests {
         );
         assert_eq!(update.body, None);
         assert_eq!(update.target_branch.as_deref(), Some("parent"));
+    }
+
+    #[test]
+    fn review_update_defaults_to_description_sync_when_field_is_omitted() {
+        let omitted: ForgeReviewUpdate = serde_json::from_value(serde_json::json!({
+            "number": 42,
+            "body": "Caller-provided description",
+            "unitSymbol": "#",
+            "targetBranch": null
+        }))
+        .expect("an update from an older caller should deserialize");
+        let explicit_false: ForgeReviewUpdate = serde_json::from_value(serde_json::json!({
+            "number": 42,
+            "body": null,
+            "updateDescription": false,
+            "unitSymbol": "",
+            "targetBranch": "parent"
+        }))
+        .expect("a target-only update should deserialize");
+
+        assert!(
+            omitted.update_description,
+            "older callers that omit the field should synchronize their provided description"
+        );
+        assert!(
+            !explicit_false.update_description,
+            "target-only callers should still be able to request remote hydration"
+        );
     }
 
     #[test]
