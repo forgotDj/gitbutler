@@ -329,3 +329,31 @@ fn cannot_mark_and_discard_commit_and_move_multiple_branches_yet() {
         "snapshots/cannot_mark_and_discard_commit_and_move_multiple_branches_yet_001.svg"
     ]);
 }
+
+#[test]
+fn fix_backstack_with_marks_in_squash_mode_from_commit_file_list() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    let mut tui = test_tui(env);
+
+    tui.input('j');
+    tui.input('j');
+    tui.input('f');
+    tui.input(' ');
+    tui.input('r').assert_backstack_eq([
+        BackstackEntry::LeaveNormalMode,
+        BackstackEntry::Mark,
+        BackstackEntry::ShowFileList,
+    ]);
+
+    tui.input('k').assert_backstack_eq([
+        BackstackEntry::LeaveNormalMode,
+        BackstackEntry::Mark,
+        BackstackEntry::ShowFileList,
+    ]);
+
+    tui.input(KeyCode::Esc)
+        .assert_backstack_eq([BackstackEntry::Mark, BackstackEntry::ShowFileList])
+        .assert_current_line_eq(str![["┊✔︎     t:t A A"]]);
+}

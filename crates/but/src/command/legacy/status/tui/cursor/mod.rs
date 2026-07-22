@@ -12,7 +12,7 @@ use crate::{
             Mode, NormalMode, PickChangesMode, SelectAfterReload,
             app::{
                 CommitSource, SquashMode,
-                mark::{MarkableRef, Marks, MarksRef},
+                mark::{MarkableRef, Marks},
                 prefix_match,
             },
             mode::ModeRef,
@@ -923,9 +923,20 @@ pub fn is_selectable_in_mode(
                     return false;
                 }
             }
-            Marks::CommittedFiles(..) => {
+            Marks::CommittedFiles(files) => {
                 if !matches!(&line.data, StatusOutputLineData::File { .. }) {
                     return false;
+                }
+                if let FilesStatusFlag::All = show_files_flag {
+                    let Some(id) = line.data.cli_id() else {
+                        return false;
+                    };
+                    let CliId::CommittedFile { commit_id, .. } = &**id else {
+                        return false;
+                    };
+                    if *commit_id != files.head.commit_id {
+                        return false;
+                    }
                 }
             }
             Marks::Branches(..) => {
@@ -954,20 +965,6 @@ pub fn is_selectable_in_mode(
         | ModeRef::MoveStack(..)
         | ModeRef::Jump(..)
         | ModeRef::Stack(..) => {}
-    }
-
-    if let FilesStatusFlag::All = show_files_flag
-        && let MarksRef::CommittedFiles { head, .. } = mode.marks_ref()
-    {
-        let Some(id) = line.data.cli_id() else {
-            return false;
-        };
-        let CliId::CommittedFile { commit_id, .. } = &**id else {
-            return false;
-        };
-        if *commit_id != head.commit_id {
-            return false;
-        }
     }
 
     match mode {

@@ -140,6 +140,7 @@ impl<'a> ModeRef<'a> {
         match self {
             ModeRef::Normal(normal_mode) => normal_mode.marks.as_ref(),
             ModeRef::Squash(SquashMode { source, reword: _ }) => match source {
+                SquashSource::Marks(marks) => marks.as_ref(),
                 SquashSource::Uncommitted
                 | SquashSource::Branch(..)
                 | SquashSource::Commit(..)

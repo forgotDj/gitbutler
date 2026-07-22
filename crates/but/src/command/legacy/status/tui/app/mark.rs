@@ -119,18 +119,24 @@ impl<'a> MarksRef<'a> {
         }
     }
 
-    #[expect(dead_code)]
-    pub fn from_hunk_slice(hunks: &'a [UncommittedHunkOrFile]) -> Self {
-        let Some((head, tail)) = hunks.split_first() else {
-            return Self::Empty;
-        };
-        Self::Hunks { head, tail }
+    pub fn from_hunk_ref(hunk: &'a UncommittedHunkOrFile) -> Self {
+        Self::Hunks {
+            head: hunk,
+            tail: &[],
+        }
     }
 
     pub fn from_commits(commits: &'a NonEmpty<MarkedCommit>) -> Self {
         Self::Commits {
             head: &commits.head,
             tail: &commits.tail,
+        }
+    }
+
+    pub fn from_commit_ref(hunk: &'a MarkedCommit) -> Self {
+        Self::Commits {
+            head: hunk,
+            tail: &[],
         }
     }
 
@@ -141,10 +147,24 @@ impl<'a> MarksRef<'a> {
         }
     }
 
+    pub fn from_committed_file_ref(commit: &'a CommittedFileId) -> Self {
+        Self::CommittedFiles {
+            head: commit,
+            tail: &[],
+        }
+    }
+
     pub fn from_branches(branches: &'a NonEmpty<BranchId>) -> Self {
         Self::Branches {
             head: &branches.head,
             tail: &branches.tail,
+        }
+    }
+
+    pub fn from_branch_ref(branch: &'a BranchId) -> Self {
+        Self::Branches {
+            head: branch,
+            tail: &[],
         }
     }
 
