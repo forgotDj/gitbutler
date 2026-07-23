@@ -415,7 +415,7 @@ impl App {
             Message::CopyToClipboard(text) => {
                 self.clipboard.set_text(text)?;
             }
-            Message::PickProgramThenOpen => self.handle_pick_program_then_open(ctx, messages)?,
+            Message::PickProgramThenOpen => self.handle_pick_program_then_open(ctx)?,
             Message::OpenInProgram(program, to_open) => {
                 self.handle_open_in_program(&program, &to_open, terminal_guard, messages)?;
             }
@@ -1332,11 +1332,7 @@ impl App {
         Ok(())
     }
 
-    fn handle_pick_program_then_open(
-        &mut self,
-        ctx: &Context,
-        messages: &mut Vec<Message>,
-    ) -> anyhow::Result<()> {
+    fn handle_pick_program_then_open(&mut self, ctx: &Context) -> anyhow::Result<()> {
         let selection = if matches!(&*self.mode, Mode::Details(..)) {
             self.details.selected_section_cli_id()
         } else {
@@ -1346,10 +1342,6 @@ impl App {
         };
 
         let Some(selection) = selection else {
-            messages.push(Message::ShowToast {
-                kind: ToastKind::Error,
-                text: "Cannot open that, select a file or hunk".into(),
-            });
             return Ok(());
         };
 
@@ -1361,10 +1353,6 @@ impl App {
                 Openable::try_from_relpath(&*ctx.repo.get()?, path.as_bstr())?
             }
             _ => {
-                messages.push(Message::ShowToast {
-                    kind: ToastKind::Error,
-                    text: "Cannot open that, select a file or hunk".into(),
-                });
                 return Ok(());
             }
         };

@@ -130,7 +130,6 @@ fn cannot_open_uncommitted_area() {
     let app_data_dir = tui.env().projects_root().display().to_string();
     with_var("E2E_TEST_APP_DATA_DIR", Some(app_data_dir), || {
         tui.input('o')
-            .assert_rendered_contains("Cannot open that, select a file or hunk")
             .assert_rendered_term_svg_eq(file!["snapshots/cannot_open_uncommitted_area.svg"]);
     });
 }
@@ -147,7 +146,6 @@ fn cannot_open_branch() {
     let app_data_dir = tui.env().projects_root().display().to_string();
     with_var("E2E_TEST_APP_DATA_DIR", Some(app_data_dir), || {
         tui.input('o')
-            .assert_rendered_contains("Cannot open that, select a file or hunk")
             .assert_rendered_term_svg_eq(file!["snapshots/cannot_open_branch.svg"]);
     });
 }
@@ -164,7 +162,6 @@ fn cannot_open_commit() {
     let app_data_dir = tui.env().projects_root().display().to_string();
     with_var("E2E_TEST_APP_DATA_DIR", Some(app_data_dir), || {
         tui.input('o')
-            .assert_rendered_contains("Cannot open that, select a file or hunk")
             .assert_rendered_term_svg_eq(file!["snapshots/cannot_open_commit.svg"]);
     });
 }
@@ -181,7 +178,6 @@ fn cannot_open_common_base() {
     let app_data_dir = tui.env().projects_root().display().to_string();
     with_var("E2E_TEST_APP_DATA_DIR", Some(app_data_dir), || {
         tui.input('o')
-            .assert_rendered_contains("Cannot open that, select a file or hunk")
             .assert_rendered_term_svg_eq(file!["snapshots/cannot_open_common_base.svg"]);
     });
 }
