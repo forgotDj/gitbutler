@@ -174,7 +174,7 @@ fn try_parse_range(
     }
 
     // Valid range — resolve positions in display order
-    let all_files = get_all_files_in_display_order(ctx, id_map)?;
+    let all_files = get_all_files_in_display_order(id_map)?;
     let start_pos = all_files.iter().position(|id| id == &start_matches[0]);
     let end_pos = all_files.iter().position(|id| id == &end_matches[0]);
 
@@ -189,31 +189,15 @@ fn try_parse_range(
     }
 }
 
-fn get_all_files_in_display_order(ctx: &mut Context, id_map: &IdMap) -> anyhow::Result<Vec<CliId>> {
-    // First, files assigned to branches (they appear first in status display),
-    // then uncommitted files (they appear last in status display)
-    let (_guard, _, workspace, _) = ctx.workspace_and_db()?;
-    let stack_ids: Vec<Option<but_core::Id<'S'>>> =
-        workspace.stacks.iter().map(|stack| stack.id).collect();
-    let mut positioned_files: Vec<(usize, &BStr, CliId)> = id_map
+fn get_all_files_in_display_order(id_map: &IdMap) -> anyhow::Result<Vec<CliId>> {
+    let mut files: Vec<(&BStr, CliId)> = id_map
         .uncommitted_files
         .values()
-        .flat_map(|uncommitted_file| {
-            let position = match uncommitted_file.stack_id() {
-                Some(stack_id) => stack_ids.iter().position(|e| *e == Some(stack_id))?,
-                None => usize::MAX,
-            };
-            Some((position, uncommitted_file.path(), uncommitted_file.to_id()))
-        })
+        .map(|uncommitted_file| (uncommitted_file.path(), uncommitted_file.to_id()))
         .collect();
-    positioned_files.sort_by(|(a_pos, a_path, _), (b_pos, b_path, _)| {
-        a_pos.cmp(b_pos).then_with(|| a_path.cmp(b_path))
-    });
+    files.sort_by(|(a_path, _), (b_path, _)| a_path.cmp(b_path));
 
-    Ok(positioned_files
-        .into_iter()
-        .map(|(_, _, cli_id)| cli_id)
-        .collect())
+    Ok(files.into_iter().map(|(_, cli_id)| cli_id).collect())
 }
 
 /// Internal helper for parsing sources with disambiguation prompts.
