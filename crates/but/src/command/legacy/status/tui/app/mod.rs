@@ -6,6 +6,7 @@ use std::{
 };
 
 use bstr::{BStr, ByteSlice};
+use but_api::open::{list_builtin_program_specs, list_user_defined_program_specs};
 use but_ctx::Context;
 use crossterm::event::Event;
 use gitbutler_operating_modes::OperatingMode;
@@ -15,11 +16,14 @@ use ratatui::prelude::*;
 
 use crate::{
     CliId,
-    command::legacy::status::{
-        FilesStatusFlag, StatusFlags, StatusOutputLine, TuiLaunchOptions, TuiOutcome,
-        TuiRunOptions,
-        output::StatusOutputLineData,
-        tui::{copy_selection_picker::Clipboard, details::Details, remember_selection},
+    command::{
+        legacy::status::{
+            FilesStatusFlag, StatusFlags, StatusOutputLine, TuiLaunchOptions, TuiOutcome,
+            TuiRunOptions,
+            output::StatusOutputLineData,
+            tui::{copy_selection_picker::Clipboard, details::Details, remember_selection},
+        },
+        open::{self, Openable},
     },
     theme::Theme,
     tui::TerminalGuard,
@@ -407,6 +411,9 @@ impl App {
             }
             Message::CopyToClipboard(text) => {
                 self.clipboard.set_text(text)?;
+            }
+            Message::OpenInProgram => {
+                self.handle_open_in_program(ctx, terminal_guard)?;
             }
             Message::ShowToast { kind, text } => {
                 self.toasts.insert(kind, text);
@@ -1311,6 +1318,47 @@ impl App {
         });
 
         Ok(())
+    }
+
+    fn handle_open_in_program<T>(
+        &mut self,
+        ctx: &Context,
+        terminal_guard: &mut T,
+    ) -> anyhow::Result<()>
+    where
+        T: TerminalGuard,
+    {
+        let Some(selection) = self
+            .cursor
+            .selected_line(&self.status_lines)
+            .and_then(|selection| selection.data.cli_id())
+        else {
+            return Ok(());
+        };
+
+        let to_open = match &**selection {
+            CliId::UncommittedHunkOrFile(uncommitted) => {
+                let repo = ctx.repo.get()?;
+                Openable::try_from_uncommitted(&repo, uncommitted)?
+            }
+            _ => return Ok(()),
+        };
+
+        let builtin_program_specs = list_builtin_program_specs();
+        let user_defined_program_specs = list_user_defined_program_specs();
+        let mut all_program_specs = user_defined_program_specs
+            .iter()
+            .chain(builtin_program_specs);
+
+        let program = all_program_specs.next().expect("BUG: No programs :(");
+
+        let _suspend_guard = if program.requires_terminal() {
+            Some(terminal_guard.suspend()?)
+        } else {
+            None
+        };
+
+        open::run(program, to_open)
     }
 
     /// Returns the currently selected commit id when the selected line is a commit.

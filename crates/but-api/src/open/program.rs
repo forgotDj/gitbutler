@@ -63,15 +63,18 @@ pub struct ProgramSpec {
 impl ProgramSpec {
     /// True if this is a GUI editor.
     pub fn is_gui_editor(&self) -> bool {
-        let requires_terminal = match &self.executable {
+        self.category == ProgramCategory::Editor && !self.requires_terminal()
+    }
+
+    /// True if this program requires control over the current terminal to execute.
+    pub fn requires_terminal(&self) -> bool {
+        match &self.executable {
             ExecutableProgram::ShellExecutable(ShellExecutable { requires_tty, .. }) => {
                 *requires_tty
             }
             #[cfg(target_os = "macos")]
             ExecutableProgram::MacosApplication(_) => false,
-        };
-
-        !requires_terminal && self.category == ProgramCategory::Editor
+        }
     }
 }
 
@@ -163,7 +166,7 @@ impl CliArgumentSupplier {
         &self,
         cmd: &'a mut Command,
         path: &Path,
-        line_nr: i32,
+        line_nr: u32,
     ) -> anyhow::Result<&'a mut Command> {
         match self {
             Self::VSCodeLike => cmd.arg("--goto").arg(self.path_with_line_nr(path, line_nr)),
@@ -179,7 +182,7 @@ impl CliArgumentSupplier {
         Ok(cmd)
     }
 
-    fn path_with_line_nr(&self, path: &Path, line_nr: i32) -> OsString {
+    fn path_with_line_nr(&self, path: &Path, line_nr: u32) -> OsString {
         let mut arg = path.as_os_str().to_owned();
         arg.push(":");
         arg.push(line_nr.to_string());
@@ -209,7 +212,7 @@ struct CustomCliArgumentSupplier {
 }
 
 impl CustomCliArgumentSupplier {
-    fn open_at_line<'a>(&self, cmd: &'a mut Command, path: &Path, line_nr: i32) -> &'a mut Command {
+    fn open_at_line<'a>(&self, cmd: &'a mut Command, path: &Path, line_nr: u32) -> &'a mut Command {
         let Some(open_at_line_args) = &self.open_at_line_args else {
             return self.open(cmd, path);
         };
@@ -378,7 +381,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
 pub fn open_in_program_unchecked(
     program: &ProgramSpec,
     path: &Path,
-    line_nr: Option<i32>,
+    line_nr: Option<u32>,
 ) -> anyhow::Result<()> {
     match &program.executable {
         ExecutableProgram::ShellExecutable(shell_executable) => {
@@ -395,7 +398,7 @@ fn open_in_shell_executable(
     shell_executable: &ShellExecutable,
     cli_arg_supplier: &CliArgumentSupplier,
     path: &Path,
-    line_nr: Option<i32>,
+    line_nr: Option<u32>,
 ) -> anyhow::Result<()> {
     let mut cmd = Command::new(&shell_executable.name_or_path);
 
@@ -471,7 +474,7 @@ fn open_in_macos_application(
     app: &MacosApplication,
     cli_arg_supplier: &CliArgumentSupplier,
     path: &Path,
-    line_nr: Option<i32>,
+    line_nr: Option<u32>,
 ) -> anyhow::Result<()> {
     if let Some(line_nr) = line_nr {
         let cli_abspath = app.resolve_cli_wrapper_abspath()?;
