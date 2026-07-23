@@ -69,9 +69,7 @@ impl ProgramSpec {
     /// True if this program requires control over the current terminal to execute.
     pub fn requires_terminal(&self) -> bool {
         match &self.executable {
-            ExecutableProgram::ShellExecutable(ShellExecutable { requires_tty, .. }) => {
-                *requires_tty
-            }
+            ExecutableProgram::PathExecutable(PathExecutable { requires_tty, .. }) => *requires_tty,
             #[cfg(target_os = "macos")]
             ExecutableProgram::MacosApplication(_) => false,
         }
@@ -93,9 +91,9 @@ impl From<UserDefinedProgramSpec> for ProgramSpec {
     }
 }
 
-/// A named executable that can be invoked from a shell.
+/// An executable that can be invoked by name or path.
 #[derive(Clone, Debug, PartialEq)]
-pub struct ShellExecutable {
+pub struct PathExecutable {
     /// Name of the executable on the PATH, or a qualified path to it.
     pub name_or_path: String,
     /// Whether the program requires an attached TTY or not.
@@ -108,8 +106,8 @@ pub struct ShellExecutable {
 /// The executable to invoke for a program.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExecutableProgram {
-    /// A program that can be executed from a shell.
-    ShellExecutable(ShellExecutable),
+    /// A program that can be executed by name or path.
+    PathExecutable(PathExecutable),
     /// A macOS application installed s.t. it has a bundle identifier.
     #[cfg(target_os = "macos")]
     MacosApplication(MacosApplication),
@@ -118,8 +116,8 @@ pub enum ExecutableProgram {
 impl From<UserDefinedExecutableProgram> for ExecutableProgram {
     fn from(value: UserDefinedExecutableProgram) -> Self {
         match value {
-            UserDefinedExecutableProgram::ShellExecutable(shell_executable) => {
-                Self::ShellExecutable(shell_executable.into())
+            UserDefinedExecutableProgram::PathExecutable(path_executable) => {
+                Self::PathExecutable(path_executable.into())
             }
             #[cfg(target_os = "macos")]
             UserDefinedExecutableProgram::MacosApplication(macos_app) => {
@@ -129,8 +127,8 @@ impl From<UserDefinedExecutableProgram> for ExecutableProgram {
     }
 }
 
-impl From<UserDefinedShellExecutable> for ShellExecutable {
-    fn from(value: UserDefinedShellExecutable) -> Self {
+impl From<UserDefinedPathExecutable> for PathExecutable {
+    fn from(value: UserDefinedPathExecutable) -> Self {
         Self {
             name_or_path: value.name_or_path,
             requires_tty: value.requires_terminal,
@@ -276,7 +274,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             id: "nvim".into(),
             name: "Neovim".into(),
             cli_arg_supplier: CliArgumentSupplier::Neovim,
-            executable: ExecutableProgram::ShellExecutable(ShellExecutable {
+            executable: ExecutableProgram::PathExecutable(PathExecutable {
                 name_or_path: "nvim".into(),
                 requires_tty: true,
             }),
@@ -287,7 +285,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             name: "Cursor".into(),
             cli_arg_supplier: CliArgumentSupplier::VSCodeLike,
             #[cfg(not(target_os = "macos"))]
-            executable: ExecutableProgram::ShellExecutable(ShellExecutable {
+            executable: ExecutableProgram::PathExecutable(PathExecutable {
                 #[cfg(target_os = "linux")]
                 name_or_path: "cursor".into(),
                 #[cfg(target_os = "windows")]
@@ -307,7 +305,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             name: "Sublime Text".into(),
             cli_arg_supplier: CliArgumentSupplier::Sublime,
             #[cfg(not(target_os = "macos"))]
-            executable: ExecutableProgram::ShellExecutable(ShellExecutable {
+            executable: ExecutableProgram::PathExecutable(PathExecutable {
                 #[cfg(target_os = "linux")]
                 name_or_path: "subl".into(),
                 #[cfg(target_os = "windows")]
@@ -326,7 +324,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             name: "VS Code".into(),
             cli_arg_supplier: CliArgumentSupplier::VSCodeLike,
             #[cfg(not(target_os = "macos"))]
-            executable: ExecutableProgram::ShellExecutable(ShellExecutable {
+            executable: ExecutableProgram::PathExecutable(PathExecutable {
                 #[cfg(target_os = "linux")]
                 name_or_path: "code".into(),
                 #[cfg(target_os = "windows")]
@@ -356,7 +354,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             name: "Zed".into(),
             cli_arg_supplier: CliArgumentSupplier::Zed,
             #[cfg(not(target_os = "macos"))]
-            executable: ExecutableProgram::ShellExecutable(ShellExecutable {
+            executable: ExecutableProgram::PathExecutable(PathExecutable {
                 #[cfg(target_os = "linux")]
                 name_or_path: "zed".into(),
                 #[cfg(target_os = "windows")]
@@ -381,7 +379,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
                 ]),
                 open_args: Some(vec!["filepath='{{filepath}}'".into()]),
             }),
-            executable: ExecutableProgram::ShellExecutable(ShellExecutable {
+            executable: ExecutableProgram::PathExecutable(PathExecutable {
                 name_or_path: "echo".into(),
                 requires_tty: true,
             }),
@@ -395,7 +393,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
                 open_args: Some(vec!["{{filepath}}.touch".into()]),
                 open_at_line_args: Some(vec!["{{filepath}}.touch.{{line_number}}".into()]),
             }),
-            executable: ExecutableProgram::ShellExecutable(ShellExecutable {
+            executable: ExecutableProgram::PathExecutable(PathExecutable {
                 name_or_path: "touch".into(),
                 requires_tty: true,
             }),
@@ -406,7 +404,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             id: "thunar".into(),
             name: "Thunar".into(),
             cli_arg_supplier: CliArgumentSupplier::Default,
-            executable: ExecutableProgram::ShellExecutable(ShellExecutable {
+            executable: ExecutableProgram::PathExecutable(PathExecutable {
                 name_or_path: "thunar".into(),
                 requires_tty: false,
             }),
@@ -427,8 +425,8 @@ pub fn open_in_program_unchecked(
     line_nr: Option<u32>,
 ) -> anyhow::Result<()> {
     match &program.executable {
-        ExecutableProgram::ShellExecutable(shell_executable) => {
-            open_in_shell_executable(shell_executable, &program.cli_arg_supplier, path, line_nr)
+        ExecutableProgram::PathExecutable(path_executable) => {
+            open_in_path_executable(path_executable, &program.cli_arg_supplier, path, line_nr)
         }
         #[cfg(target_os = "macos")]
         ExecutableProgram::MacosApplication(macos_application) => {
@@ -437,13 +435,13 @@ pub fn open_in_program_unchecked(
     }
 }
 
-fn open_in_shell_executable(
-    shell_executable: &ShellExecutable,
+fn open_in_path_executable(
+    path_executable: &PathExecutable,
     cli_arg_supplier: &CliArgumentSupplier,
     path: &Path,
     line_nr: Option<u32>,
 ) -> anyhow::Result<()> {
-    let mut cmd = Command::new(&shell_executable.name_or_path);
+    let mut cmd = Command::new(&path_executable.name_or_path);
 
     if let Some(line_nr) = line_nr {
         cli_arg_supplier.open_at_line(&mut cmd, path, line_nr)?
@@ -453,14 +451,14 @@ fn open_in_shell_executable(
         cmd.arg(path)
     };
 
-    if shell_executable.requires_tty {
+    if path_executable.requires_tty {
         cmd.stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .stdin(Stdio::inherit())
             .status()?;
     } else {
         cmd.stdout(Stdio::null()).stderr(Stdio::null());
-        spawn_and_reap(cmd, &shell_executable.name_or_path, &path.to_string_lossy())?;
+        spawn_and_reap(cmd, &path_executable.name_or_path, &path.to_string_lossy())?;
     }
 
     Ok(())
@@ -578,8 +576,8 @@ pub struct UserDefinedProgramSpec {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", untagged)]
 pub enum UserDefinedExecutableProgram {
-    /// A program that can be executed from a shell.
-    ShellExecutable(UserDefinedShellExecutable),
+    /// A program that can be executed by name or path.
+    PathExecutable(UserDefinedPathExecutable),
     /// A macOS application installed s.t. it has a bundle identifier.
     #[cfg(target_os = "macos")]
     MacosApplication(UserDefinedMacosApplication),
@@ -588,7 +586,7 @@ pub enum UserDefinedExecutableProgram {
 /// A user defined executable.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UserDefinedShellExecutable {
+pub struct UserDefinedPathExecutable {
     /// Name of the executable on the PATH, or a qualified path to it.
     pub name_or_path: String,
     /// Whether the program requires an attached terminal or not.

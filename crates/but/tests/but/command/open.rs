@@ -266,7 +266,7 @@ No such program found
 }
 
 #[test]
-fn user_defined_program_shell_executable_handles_shell_metacharacters() {
+fn user_defined_program_path_executable_handles_shell_metacharacters() {
     let env = setup_multi_hunk_uncommitted_changes(
         "file with some $meta; cat A > new-file.txt; spaces in it.txt",
     );
