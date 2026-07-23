@@ -46,7 +46,7 @@ impl From<UserDefinedProgramCategory> for ProgramCategory {
 }
 
 /// Supported program to open a file or directory in.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ProgramSpec {
     /// Identifier used to refer to the program.
     pub id: String,
@@ -94,7 +94,7 @@ impl From<UserDefinedProgramSpec> for ProgramSpec {
 }
 
 /// A named executable that can be invoked from a shell.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ShellExecutable {
     /// Name of the executable on the PATH, or a qualified path to it.
     pub name_or_path: String,
@@ -106,7 +106,7 @@ pub struct ShellExecutable {
 }
 
 /// The executable to invoke for a program.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ExecutableProgram {
     /// A program that can be executed from a shell.
     ShellExecutable(ShellExecutable),
@@ -115,12 +115,36 @@ pub enum ExecutableProgram {
     MacosApplication(MacosApplication),
 }
 
-impl From<UserDefinedShellExecutable> for ExecutableProgram {
+impl From<UserDefinedExecutableProgram> for ExecutableProgram {
+    fn from(value: UserDefinedExecutableProgram) -> Self {
+        match value {
+            UserDefinedExecutableProgram::ShellExecutable(shell_executable) => {
+                Self::ShellExecutable(shell_executable.into())
+            }
+            #[cfg(target_os = "macos")]
+            UserDefinedExecutableProgram::MacosApplication(macos_app) => {
+                Self::MacosApplication(macos_app.into())
+            }
+        }
+    }
+}
+
+impl From<UserDefinedShellExecutable> for ShellExecutable {
     fn from(value: UserDefinedShellExecutable) -> Self {
-        ExecutableProgram::ShellExecutable(ShellExecutable {
+        Self {
             name_or_path: value.name_or_path,
             requires_tty: value.requires_terminal,
-        })
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl From<UserDefinedMacosApplication> for MacosApplication {
+    fn from(value: UserDefinedMacosApplication) -> Self {
+        Self {
+            bundle_identifier: value.bundle_id,
+            cli_wrapper_path: value.cli_wrapper_path,
+        }
     }
 }
 
@@ -145,7 +169,7 @@ impl From<&ProgramSpec> for Editor {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum CliArgumentSupplier {
     VSCodeLike,
     Zed,
@@ -190,7 +214,7 @@ impl CliArgumentSupplier {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct CustomCliArgumentSupplier {
     /// Arguments to pass to the executable when invoked to open a file.
     ///
@@ -444,7 +468,7 @@ fn open_in_shell_executable(
 
 /// A canonically installed macOS application with a bundle ID and an optional CLI wrapper.
 #[cfg(target_os = "macos")]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct MacosApplication {
     /// macOS bundle identifier for the application.
     pub bundle_identifier: String,
@@ -495,8 +519,7 @@ fn open_in_macos_application(
     path: &Path,
     line_nr: Option<u32>,
 ) -> anyhow::Result<()> {
-    if let Some(line_nr) = line_nr {
-        let cli_abspath = app.resolve_cli_wrapper_abspath()?;
+    if let (Some(line_nr), Ok(cli_abspath)) = (line_nr, app.resolve_cli_wrapper_abspath()) {
         let mut cmd = Command::new(cli_abspath);
         cli_arg_supplier.open_at_line(&mut cmd, path, line_nr)?;
         cmd.stdout(Stdio::null()).stderr(Stdio::null());
@@ -533,7 +556,7 @@ pub struct UserDefinedProgramSpec {
     /// The display name of the program.
     pub name: String,
     /// The exuctable to invoke to start the program.
-    pub executable: UserDefinedShellExecutable,
+    pub executable: UserDefinedExecutableProgram,
     /// The kind of the program.
     pub category: UserDefinedProgramCategory,
     /// Arguments to pass to the executable when invoked to open a file.
@@ -549,6 +572,17 @@ pub struct UserDefinedProgramSpec {
     /// * [`FILEPATH_PLACEHOLDER`] is substituted for the filepath
     /// * [`LINE_NUMBER_PLACEHOLDER`] is substituted for the line number
     pub open_at_line_args: Option<Vec<String>>,
+}
+
+/// The executable to invoke for a program.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", untagged)]
+pub enum UserDefinedExecutableProgram {
+    /// A program that can be executed from a shell.
+    ShellExecutable(UserDefinedShellExecutable),
+    /// A macOS application installed s.t. it has a bundle identifier.
+    #[cfg(target_os = "macos")]
+    MacosApplication(UserDefinedMacosApplication),
 }
 
 /// A user defined executable.
@@ -574,4 +608,54 @@ pub enum UserDefinedProgramCategory {
     FileManager,
     /// Anything else.
     Other,
+}
+
+/// A canonically installed macOS application with a bundle ID and an optional CLI wrapper.
+#[cfg(target_os = "macos")]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserDefinedMacosApplication {
+    /// macOS bundle identifier for the application.
+    pub bundle_id: String,
+    /// Location of the CLI wrapper inside the application bundle, if it exists.
+    pub cli_wrapper_path: Option<String>,
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn user_defined_macos_application_deserializes_into_program_spec() {
+        let spec: UserDefinedProgramSpec = serde_json::from_str(
+            r#"{
+                "name": "Visual Studio Code",
+                "executable": {
+                    "bundleId": "com.microsoft.VSCode",
+                    "cliWrapperPath": "Contents/Resources/app/bin/code"
+                },
+                "category": "editor"
+            }"#,
+        )
+        .expect("macOS application should deserialize");
+
+        let spec: ProgramSpec = spec.into();
+        assert_eq!(
+            spec,
+            ProgramSpec {
+                id: "Visual Studio Code".into(),
+                name: "Visual Studio Code".into(),
+                cli_arg_supplier: CliArgumentSupplier::Custom(CustomCliArgumentSupplier {
+                    open_args: None,
+                    open_at_line_args: None,
+                }),
+                executable: ExecutableProgram::MacosApplication(MacosApplication {
+                    bundle_identifier: "com.microsoft.VSCode".into(),
+                    cli_wrapper_path: Some("Contents/Resources/app/bin/code".into()),
+                }),
+                category: ProgramCategory::Editor,
+            },
+            "JSON should convert to expected internal program specification"
+        );
+    }
 }
