@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use bstr::BStr;
 use but_api::open::{
     list_builtin_program_specs, list_user_defined_program_specs,
-    program::{ProgramSpec, open_in_program_unchecked},
+    program::{OpenSpec, ProgramSpec, open_in_program_unchecked},
 };
 use but_ctx::Context;
 use gix::utils::AsBStr;
@@ -32,6 +32,7 @@ pub(crate) struct Hunk {
 #[derive(Debug)]
 pub(crate) enum Openable {
     File(PathBuf),
+    Files(Vec<PathBuf>),
     Hunk(Hunk),
 }
 
@@ -123,18 +124,22 @@ pub(crate) fn open(ctx: &Context, cli_id: CliIdArg, program_id: Option<String>) 
             .expect("BUG: The internal list of programs should not be empty"),
     };
 
-    run(program, &to_open)?;
+    run(program, to_open)?;
 
     Ok(())
 }
 
-pub(crate) fn run(program: &ProgramSpec, to_open: &Openable) -> anyhow::Result<()> {
-    let (path, line_number) = match to_open {
-        Openable::Hunk(hunk) => (&hunk.path, Some(compute_line_number_to_open_at(hunk))),
-        Openable::File(path) => (path, None),
+pub(crate) fn run(program: &ProgramSpec, to_open: Openable) -> anyhow::Result<()> {
+    let open_spec = match to_open {
+        Openable::Hunk(hunk) => {
+            let line_number = compute_line_number_to_open_at(&hunk);
+            OpenSpec::FileAtLine(hunk.path, line_number)
+        }
+        Openable::File(path) => OpenSpec::File(path),
+        Openable::Files(paths) => OpenSpec::Files(paths),
     };
 
-    open_in_program_unchecked(program, path, line_number)
+    open_in_program_unchecked(program, open_spec)
 }
 
 /// Compute the line to place the cursor at, going through a priority order of additions ->

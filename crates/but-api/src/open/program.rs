@@ -1,12 +1,9 @@
 use std::{
     ffi::OsString,
-    path::Path,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::LazyLock,
 };
-
-#[cfg(target_os = "macos")]
-use std::path::PathBuf;
 
 use crate::open::spawn::spawn_and_reap;
 
@@ -183,14 +180,8 @@ enum CliArgumentSupplier {
 }
 
 impl CliArgumentSupplier {
-    /// Add argument(s) to `cmd` to open the file on the specific line, or error if it's not
-    /// supported.
-    fn open_at_line<'a>(
-        &self,
-        cmd: &'a mut Command,
-        path: &Path,
-        line_nr: u32,
-    ) -> anyhow::Result<&'a mut Command> {
+    /// Add argument(s) to `cmd` to open the file on the specific line.
+    fn open_at_line<'a>(&self, cmd: &'a mut Command, path: &Path, line_nr: u32) -> &'a mut Command {
         match self {
             Self::VSCodeLike => cmd.arg("--goto").arg(self.path_with_line_nr(path, line_nr)),
             Self::Zed => cmd.arg(self.path_with_line_nr(path, line_nr)),
@@ -198,11 +189,33 @@ impl CliArgumentSupplier {
             #[cfg(all(target_os = "macos", not(debug_assertions)))]
             Self::Xcode => cmd.arg("--line").arg(line_nr.to_string()).arg(path),
             Self::Neovim => cmd.arg(format!("+{line_nr}")).arg(path),
-            Self::Custom(open_at_line) => open_at_line.open_at_line(cmd, path, line_nr),
+            Self::Custom(custom) => custom.open_at_line(cmd, path, line_nr),
             Self::Default => cmd.arg(path),
         };
 
-        Ok(cmd)
+        cmd
+    }
+
+    /// Add argument(s) to `cmd` to open the file.
+    fn open<'a>(&self, cmd: &'a mut Command, path: &Path) -> &'a mut Command {
+        match self {
+            Self::Custom(custom) => custom.open(cmd, path),
+            _ => cmd.arg(path),
+        };
+        cmd
+    }
+
+    /// Add argument(s) to `cmd` to open all files.
+    fn open_many<'a, P: AsRef<Path>>(&self, cmd: &'a mut Command, paths: &[P]) -> &'a mut Command {
+        match self {
+            Self::Custom(custom) => custom.open_many(cmd, paths),
+            _ => {
+                for path in paths {
+                    cmd.arg(path.as_ref());
+                }
+                cmd
+            }
+        }
     }
 
     fn path_with_line_nr(&self, path: &Path, line_nr: u32) -> OsString {
@@ -260,6 +273,24 @@ impl CustomCliArgumentSupplier {
             // TODO should not assume utf8 for path
             cmd.arg(arg.replace(FILEPATH_PLACEHOLDER, &path.to_string_lossy()));
         }
+        cmd
+    }
+
+    fn open_many<'a, P: AsRef<Path>>(&self, cmd: &'a mut Command, paths: &[P]) -> &'a mut Command {
+        let Some(open_args) = &self.open_args else {
+            return CliArgumentSupplier::Default.open_many(cmd, paths);
+        };
+
+        for arg in open_args {
+            if arg.contains(FILEPATH_PLACEHOLDER) {
+                for path in paths {
+                    cmd.arg(arg.replace(FILEPATH_PLACEHOLDER, &path.as_ref().to_string_lossy()));
+                }
+            } else {
+                cmd.arg(arg);
+            }
+        }
+
         cmd
     }
 }
@@ -414,24 +445,30 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
     ])
 });
 
+/// Specification to open.
+pub enum OpenSpec {
+    /// A single file.
+    File(PathBuf),
+    /// Multiple files.
+    Files(Vec<PathBuf>),
+    /// A single file at a specific line.
+    FileAtLine(PathBuf, u32),
+}
+
 /// Low-level API to open a `path` with a specified `program`.
 ///
 /// # WARNING
 /// It is up to the caller to assure that the `path` is safe to open and that the `program` is safe
 /// to use. Therefore, this should never be exposed to an untrusted context, such as the GUI
 /// renderer.
-pub fn open_in_program_unchecked(
-    program: &ProgramSpec,
-    path: &Path,
-    line_nr: Option<u32>,
-) -> anyhow::Result<()> {
+pub fn open_in_program_unchecked(program: &ProgramSpec, open_spec: OpenSpec) -> anyhow::Result<()> {
     match &program.executable {
         ExecutableProgram::PathExecutable(path_executable) => {
-            open_in_path_executable(path_executable, &program.cli_arg_supplier, path, line_nr)
+            open_in_path_executable(path_executable, &program.cli_arg_supplier, open_spec)
         }
         #[cfg(target_os = "macos")]
         ExecutableProgram::MacosApplication(macos_application) => {
-            open_in_macos_application(macos_application, &program.cli_arg_supplier, path, line_nr)
+            open_in_macos_application(macos_application, &program.cli_arg_supplier, open_spec)
         }
     }
 }
@@ -439,17 +476,16 @@ pub fn open_in_program_unchecked(
 fn open_in_path_executable(
     path_executable: &PathExecutable,
     cli_arg_supplier: &CliArgumentSupplier,
-    path: &Path,
-    line_nr: Option<u32>,
+    open_spec: OpenSpec,
 ) -> anyhow::Result<()> {
     let mut cmd = Command::new(&path_executable.name_or_path);
 
-    if let Some(line_nr) = line_nr {
-        cli_arg_supplier.open_at_line(&mut cmd, path, line_nr)?
-    } else if let CliArgumentSupplier::Custom(custom_cli_arg_supplier) = cli_arg_supplier {
-        custom_cli_arg_supplier.open(&mut cmd, path)
-    } else {
-        cmd.arg(path)
+    match open_spec {
+        OpenSpec::File(path) => cli_arg_supplier.open(&mut cmd, &path),
+        OpenSpec::Files(paths) => cli_arg_supplier.open_many(&mut cmd, &paths),
+        OpenSpec::FileAtLine(path, line_nr) => {
+            cli_arg_supplier.open_at_line(&mut cmd, &path, line_nr)
+        }
     };
 
     if path_executable.requires_tty {
@@ -459,7 +495,11 @@ fn open_in_path_executable(
             .status()?;
     } else {
         cmd.stdout(Stdio::null()).stderr(Stdio::null());
-        spawn_and_reap(cmd, &path_executable.name_or_path, &path.to_string_lossy())?;
+        spawn_and_reap(
+            cmd,
+            &path_executable.name_or_path,
+            &path_executable.name_or_path,
+        )?;
     }
 
     Ok(())
@@ -515,30 +555,42 @@ impl MacosApplication {
 fn open_in_macos_application(
     app: &MacosApplication,
     cli_arg_supplier: &CliArgumentSupplier,
-    path: &Path,
-    line_nr: Option<u32>,
+    open_spec: OpenSpec,
 ) -> anyhow::Result<()> {
-    if let (Some(line_nr), Ok(cli_abspath)) = (line_nr, app.resolve_cli_wrapper_abspath()) {
-        let mut cmd = Command::new(cli_abspath);
-        cli_arg_supplier.open_at_line(&mut cmd, path, line_nr)?;
-        cmd.stdout(Stdio::null()).stderr(Stdio::null());
-        spawn_and_reap(cmd, &app.bundle_identifier, &path.to_string_lossy())?;
-    } else {
-        let mut cmd = Command::new("/usr/bin/open");
-        let status = cmd
-            .arg("-b")
-            .arg(&app.bundle_identifier)
-            .arg(path)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()?;
+    match open_spec {
+        OpenSpec::FileAtLine(path, line_nr) => match app.resolve_cli_wrapper_abspath() {
+            Ok(cli_abspath) => {
+                let mut cmd = Command::new(cli_abspath);
+                cli_arg_supplier.open_at_line(&mut cmd, &path, line_nr);
+                cmd.stdout(Stdio::null()).stderr(Stdio::null());
+                spawn_and_reap(cmd, &app.bundle_identifier, &path.to_string_lossy())
+            }
+            Err(_) => open_macos_application_via_open(app, &[path]),
+        },
+        OpenSpec::File(path) => open_macos_application_via_open(app, &[path]),
+        OpenSpec::Files(paths) => open_macos_application_via_open(app, &paths),
+    }
+}
 
-        if !status.success() {
-            anyhow::bail!(
-                "failed to open {path:?} with app bundle identifier '{}'",
-                app.bundle_identifier
-            );
-        }
+#[cfg(target_os = "macos")]
+fn open_macos_application_via_open(
+    app: &MacosApplication,
+    paths: &[PathBuf],
+) -> anyhow::Result<()> {
+    let mut cmd = Command::new("/usr/bin/open");
+    cmd.arg("-b").arg(&app.bundle_identifier);
+
+    for path in paths {
+        cmd.arg(path);
+    }
+
+    let status = cmd.stdout(Stdio::null()).stderr(Stdio::null()).status()?;
+
+    if !status.success() {
+        anyhow::bail!(
+            "failed to open {paths:?} with app bundle identifier '{}'",
+            app.bundle_identifier
+        );
     }
 
     Ok(())
