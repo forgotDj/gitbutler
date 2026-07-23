@@ -366,30 +366,6 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             }),
             category: ProgramCategory::FileManager,
         },
-        #[cfg(unix)]
-        ProgramSpec {
-            id: "nvim-remote".into(),
-            name: "Neovim Remote".into(),
-            cli_arg_supplier: CliArgumentSupplier::Custom(CustomCliArgumentSupplier {
-                open_at_line_args: Some(vec![
-                    "--server".into(),
-                    "/tmp/nvim-server.pipe".into(),
-                    "--remote-expr".into(),
-                    "execute('edit +{{line_number}} ' . fnameescape('{{filepath}}'))".into(),
-                ]),
-                open_args: Some(vec![
-                    "--server".into(),
-                    "/tmp/nvim-server.pipe".into(),
-                    "--remote-expr".into(),
-                    "execute('edit ' . fnameescape('{{filepath}}'))".into(),
-                ]),
-            }),
-            executable: ExecutableProgram::ShellExecutable(ShellExecutable {
-                name_or_path: "nvim".into(),
-                requires_tty: false,
-            }),
-            category: ProgramCategory::Editor,
-        },
     ])
 });
 
