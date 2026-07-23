@@ -277,7 +277,7 @@ export const CommitForm: FC<{
 				readOnly={isCommitOrAmendPending}
 				placeholder={commitTextareaLabel}
 				defaultValue={draftMessage ?? ""}
-				className={classes("text-13", "text-body", styles.textarea)}
+				className={classes("text-13", "text-body", styles.textarea, uiStyles.overlayScrollbar)}
 			/>
 
 			<div className={styles.footer}>
