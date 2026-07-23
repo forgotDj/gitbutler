@@ -1640,6 +1640,35 @@ fn default_update_description() -> bool {
     true
 }
 
+/// The best-effort result of synchronizing review descriptions and target branches after a
+/// durable operation such as a push or review creation.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
+#[serde(tag = "status", rename_all = "camelCase")]
+pub enum ReviewSyncOutcome {
+    /// There were no remote ref updates or no associated reviews in the selected ref slice.
+    NotNeeded,
+    /// Every associated review in the selected ref slice was synchronized.
+    Succeeded,
+    /// The durable operation succeeded, but one or more review updates failed.
+    Failed { message: String },
+}
+
+#[cfg(feature = "export-schema")]
+but_schemars::register_sdk_type!(ReviewSyncOutcome);
+
+/// A newly-created review together with the best-effort stack synchronization result.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
+#[serde(rename_all = "camelCase")]
+pub struct PublishReviewOutcome {
+    pub review: ForgeReview,
+    pub review_sync: ReviewSyncOutcome,
+}
+
+#[cfg(feature = "export-schema")]
+but_schemars::register_sdk_type!(PublishReviewOutcome);
+
 /// Controls the managed GitButler stack block in review descriptions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReviewStackingDescription {
@@ -1868,8 +1897,9 @@ pub struct ForgeReviewTargetUpdate {
 }
 
 /// Compute the expected target branch for each review in a stack.
-/// Walks branches bottom-to-top; each review targets the preceding branch
-/// (or `base_branch` for the bottom-most).
+/// Walks branches bottom-to-top; each review targets the preceding reviewed branch
+/// (or `base_branch` for the bottom-most review). Branches without reviews are skipped:
+/// they are part of the Git stack, but cannot be valid forge review targets.
 pub fn compute_review_target_updates(
     heads: &[(String, Option<i64>)],
     base_branch: &str,
@@ -1883,8 +1913,8 @@ pub fn compute_review_target_updates(
                 number: *number,
                 target_branch: current_target.to_string(),
             });
+            current_target = branch_name;
         }
-        current_target = branch_name;
     }
     updates
 }
@@ -2880,17 +2910,17 @@ mod tests {
 
     #[test]
     fn target_updates_skips_branches_without_reviews() {
-        // branch-a has no review, branch-b does — b should target a (not main)
+        // branch-a has no review, so branch-b must target the trunk.
         let h = heads(&[("branch-a", None), ("branch-b", Some(5))]);
         let result = compute_review_target_updates(&h, "main");
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].number, 5);
-        assert_eq!(result[0].target_branch, "branch-a");
+        assert_eq!(result[0].target_branch, "main");
     }
 
     #[test]
     fn target_updates_gap_in_middle() {
-        // a(PR) -> b(no PR) -> c(PR): c should target b, a should target main
+        // a(PR) -> b(no PR) -> c(PR): c should skip b and target a.
         let h = heads(&[
             ("branch-a", Some(1)),
             ("branch-b", None),
@@ -2901,7 +2931,7 @@ mod tests {
         assert_eq!(result[0].number, 1);
         assert_eq!(result[0].target_branch, "main");
         assert_eq!(result[1].number, 3);
-        assert_eq!(result[1].target_branch, "branch-b");
+        assert_eq!(result[1].target_branch, "branch-a");
     }
 
     #[test]

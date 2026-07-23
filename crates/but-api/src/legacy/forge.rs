@@ -689,6 +689,29 @@ pub fn list_ci_checks_for_ref(
 pub async fn publish_review(
     ctx: ThreadSafeContext,
     params: but_forge::CreateForgeReviewParams,
+) -> Result<but_forge::PublishReviewOutcome> {
+    let mut params = params;
+    let branch = {
+        let ctx = ctx.clone().into_thread_local();
+        let branch =
+            gix::refs::Category::LocalBranch.to_full_name(params.source_branch.as_str())?;
+        params.target_branch = review_creation_target(&ctx, branch.as_ref())?;
+        branch
+    };
+    let review = publish_review_only(ctx.clone(), params).await?;
+    let review_sync = sync_review_stack_after_review_creation(ctx, branch).await;
+    Ok(but_forge::PublishReviewOutcome {
+        review,
+        review_sync,
+    })
+}
+
+/// Create and cache a review without synchronizing the surrounding reviewed ref slice.
+///
+/// Batch review creation uses this primitive and synchronizes once after all reviews exist.
+pub async fn publish_review_only(
+    ctx: ThreadSafeContext,
+    params: but_forge::CreateForgeReviewParams,
 ) -> Result<but_forge::ForgeReview> {
     // Kept for the optimistic cache insert after the (non-`Send`) forge call.
     let cache_ctx = ctx.clone();
@@ -907,6 +930,387 @@ pub async fn update_review_footers(
         description_mode,
     )
     .await
+}
+
+/// Synchronize every review in the workspace stack containing `branch`.
+///
+/// The branch identifies the affected stack, but does not bound the reviews that are updated.
+/// Failures are returned as a partial-success outcome because callers invoke this only after an
+/// irreversible operation.
+pub async fn sync_review_stack_for_branch(
+    ctx: ThreadSafeContext,
+    branch: gix::refs::FullName,
+) -> but_forge::ReviewSyncOutcome {
+    let updates = {
+        let ctx = ctx.clone().into_thread_local();
+        review_updates_for_branch(&ctx, branch.as_ref())
+    };
+    sync_review_updates(ctx, updates).await
+}
+
+async fn sync_review_updates(
+    ctx: ThreadSafeContext,
+    updates: Result<Vec<but_forge::ForgeReviewUpdate>>,
+) -> but_forge::ReviewSyncOutcome {
+    sync_review_update_groups(ctx, updates.map(|updates| vec![updates])).await
+}
+
+async fn sync_review_update_groups(
+    ctx: ThreadSafeContext,
+    update_groups: Result<Vec<Vec<but_forge::ForgeReviewUpdate>>>,
+) -> but_forge::ReviewSyncOutcome {
+    let update_groups = match update_groups {
+        Ok(update_groups) => update_groups,
+        Err(err) => {
+            return but_forge::ReviewSyncOutcome::Failed {
+                message: err.to_string(),
+            };
+        }
+    };
+
+    let mut updated = false;
+    for updates in update_groups {
+        if updates.is_empty() {
+            continue;
+        }
+        updated = true;
+        if let Err(err) = update_review_footers(ctx.clone(), updates).await {
+            return but_forge::ReviewSyncOutcome::Failed {
+                message: err.to_string(),
+            };
+        }
+    }
+    if updated {
+        but_forge::ReviewSyncOutcome::Succeeded
+    } else {
+        but_forge::ReviewSyncOutcome::NotNeeded
+    }
+}
+
+/// Synchronize every review stack affected by a successful push.
+///
+/// Updating only unreviewed refs cannot change review topology and does not contact the forge.
+/// A reviewed ref that was connected to a pushed ref immediately before the push is also affected:
+/// it may have moved into another workspace stack and need its old stack metadata removed.
+pub async fn sync_review_stacks_after_push(
+    ctx: ThreadSafeContext,
+    branch: gix::refs::FullName,
+    pushed_branches: Vec<(String, String, String)>,
+) -> but_forge::ReviewSyncOutcome {
+    let updates = {
+        let ctx = ctx.clone().into_thread_local();
+        review_updates_after_push(&ctx, branch.as_ref(), &pushed_branches)
+    };
+    sync_review_update_groups(ctx, updates).await
+}
+
+/// Find the local ref associated with `review_number` and synchronize its complete review stack.
+pub async fn sync_review_stack_for_review(
+    ctx: ThreadSafeContext,
+    review_number: i64,
+) -> but_forge::ReviewSyncOutcome {
+    let branch = {
+        let ctx = ctx.clone().into_thread_local();
+        local_branch_for_review(&ctx, review_number)
+    };
+    match branch {
+        Ok(branch) => sync_review_stack_for_branch(ctx, branch).await,
+        Err(err) => but_forge::ReviewSyncOutcome::Failed {
+            message: err.to_string(),
+        },
+    }
+}
+
+/// Synchronize the complete workspace review stack containing a newly-created review.
+pub async fn sync_review_stack_after_review_creation(
+    ctx: ThreadSafeContext,
+    branch: gix::refs::FullName,
+) -> but_forge::ReviewSyncOutcome {
+    sync_review_stack_for_branch(ctx, branch).await
+}
+
+fn review_updates_after_push(
+    ctx: &Context,
+    branch: &gix::refs::FullNameRef,
+    pushed_branches: &[(String, String, String)],
+) -> Result<Vec<Vec<but_forge::ForgeReviewUpdate>>> {
+    let info = crate::legacy::workspace::head_info(ctx)?;
+    let selected_stack_index = info
+        .stacks
+        .iter()
+        .position(|stack| {
+            stack.segments.iter().any(|segment| {
+                segment
+                    .ref_info
+                    .as_ref()
+                    .is_some_and(|ref_info| ref_info.ref_name.as_ref() == branch)
+            })
+        })
+        .with_context(|| {
+            format!(
+                "Branch `{}` is not part of the current workspace",
+                branch.shorten()
+            )
+        })?;
+
+    let reviewed_branches = info
+        .stacks
+        .iter()
+        .flat_map(|stack| &stack.segments)
+        .filter(|segment| review_number(segment).is_some())
+        .filter_map(|segment| {
+            segment
+                .ref_info
+                .as_ref()?
+                .ref_name
+                .shorten()
+                .to_str()
+                .ok()
+                .map(ToOwned::to_owned)
+        })
+        .collect::<std::collections::HashSet<_>>();
+    let previous_review_tips = pushed_branches
+        .iter()
+        .filter(|(name, _, _)| reviewed_branches.contains(name))
+        .map(|(_, before, _)| before.parse::<gix::ObjectId>())
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .filter(|tip| !tip.is_null())
+        .collect::<Vec<_>>();
+    if previous_review_tips.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let repo = ctx.repo.get()?;
+    let mut affected_stack_indices = std::collections::BTreeSet::from([selected_stack_index]);
+    for (stack_index, stack) in info.stacks.iter().enumerate() {
+        'segments: for segment in &stack.segments {
+            if review_number(segment).is_none() {
+                continue;
+            }
+            let Ok(head) = remote_head(&repo, segment) else {
+                continue;
+            };
+            for previous_tip in &previous_review_tips {
+                if remote_contains(&repo, *previous_tip, head.remote_tip)?
+                    || remote_contains(&repo, head.remote_tip, *previous_tip)?
+                {
+                    affected_stack_indices.insert(stack_index);
+                    break 'segments;
+                }
+            }
+        }
+    }
+
+    let base_branch = {
+        let guard = ctx.shared_worktree_access();
+        gitbutler_branch_actions::base::get_base_branch_data(ctx, guard.read_permission())?
+            .short_name
+    };
+    Ok(affected_stack_indices
+        .into_iter()
+        .map(|index| {
+            review_updates_for_stack(&info.stacks[index], &base_branch)
+                .into_iter()
+                .map(Into::into)
+                .collect()
+        })
+        .collect())
+}
+
+fn review_updates_for_branch(
+    ctx: &Context,
+    branch: &gix::refs::FullNameRef,
+) -> Result<Vec<but_forge::ForgeReviewUpdate>> {
+    let base_branch = {
+        let guard = ctx.shared_worktree_access();
+        gitbutler_branch_actions::base::get_base_branch_data(ctx, guard.read_permission())?
+            .short_name
+    };
+    let info = crate::legacy::workspace::head_info(ctx)?;
+    let (stack, _) = stack_and_segment_for_branch(&info, branch)?;
+    Ok(review_updates_for_stack(stack, &base_branch)
+        .into_iter()
+        .map(Into::into)
+        .collect())
+}
+
+fn review_updates_for_stack(
+    stack: &but_workspace::branch::Stack,
+    base_branch: &str,
+) -> Vec<but_forge::ForgeReviewTargetUpdate> {
+    let heads = stack
+        .segments
+        .iter()
+        .rev()
+        .filter_map(|segment| {
+            let ref_name = segment
+                .ref_info
+                .as_ref()?
+                .ref_name
+                .shorten()
+                .to_str()
+                .ok()?;
+            let review = segment
+                .metadata
+                .as_ref()
+                .and_then(|metadata| metadata.review.pull_request)
+                .map(|number| number as i64);
+            Some((ref_name.to_owned(), review))
+        })
+        .collect::<Vec<_>>();
+    but_forge::compute_review_target_updates(&heads, base_branch)
+}
+
+fn review_creation_target(ctx: &Context, branch: &gix::refs::FullNameRef) -> Result<String> {
+    let base_branch = {
+        let guard = ctx.shared_worktree_access();
+        gitbutler_branch_actions::base::get_base_branch_data(ctx, guard.read_permission())?
+            .short_name
+    };
+    let info = crate::legacy::workspace::head_info(ctx)?;
+    let (stack, selected_index) = stack_and_segment_for_branch(&info, branch)?;
+    let repo = ctx.repo.get()?;
+
+    let mut reviewed_ancestors = stack.segments[selected_index + 1..]
+        .iter()
+        .rev()
+        .filter(|segment| review_number(segment).is_some())
+        .map(|segment| remote_head(&repo, segment))
+        .collect::<Result<Vec<_>>>()?;
+    let selected = remote_head(&repo, &stack.segments[selected_index])?;
+
+    for pair in reviewed_ancestors
+        .iter()
+        .map(|head| head.remote_tip)
+        .chain(std::iter::once(selected.remote_tip))
+        .collect::<Vec<_>>()
+        .windows(2)
+    {
+        if !remote_contains(&repo, pair[0], pair[1])? {
+            anyhow::bail!(
+                "Branch `{}` is pushed, but its remote ancestry does not match the reviewed workspace stack; push it and its ancestors before creating a review",
+                branch.shorten()
+            );
+        }
+    }
+
+    Ok(reviewed_ancestors
+        .pop()
+        .map(|head| head.branch_name)
+        .unwrap_or(base_branch))
+}
+
+#[derive(Debug)]
+struct RemoteHead {
+    branch_name: String,
+    remote_tip: gix::ObjectId,
+}
+
+fn stack_and_segment_for_branch<'a>(
+    info: &'a but_workspace::RefInfo,
+    branch: &gix::refs::FullNameRef,
+) -> Result<(&'a but_workspace::branch::Stack, usize)> {
+    info.stacks
+        .iter()
+        .find_map(|stack| {
+            stack
+                .segments
+                .iter()
+                .position(|segment| {
+                    segment
+                        .ref_info
+                        .as_ref()
+                        .is_some_and(|ref_info| ref_info.ref_name.as_ref() == branch)
+                })
+                .map(|index| (stack, index))
+        })
+        .with_context(|| {
+            format!(
+                "Branch `{}` is not part of the current workspace",
+                branch.shorten()
+            )
+        })
+}
+
+fn review_number(segment: &but_workspace::ref_info::Segment) -> Option<i64> {
+    segment
+        .metadata
+        .as_ref()
+        .and_then(|metadata| metadata.review.pull_request)
+        .map(|number| number as i64)
+}
+
+fn remote_head(
+    repo: &gix::Repository,
+    segment: &but_workspace::ref_info::Segment,
+) -> Result<RemoteHead> {
+    let branch_name = segment
+        .ref_info
+        .as_ref()
+        .context("Workspace segment has no local branch")?
+        .ref_name
+        .shorten()
+        .to_str()
+        .context("Workspace branch name is not valid UTF-8")?
+        .to_owned();
+    let remote_ref = segment.remote_tracking_ref_name.as_ref().with_context(|| {
+        format!("Branch `{branch_name}` must be pushed before creating a review")
+    })?;
+    let remote_tip = repo
+        .find_reference(remote_ref.as_ref())
+        .with_context(|| {
+            format!(
+                "Remote-tracking ref `{}` for branch `{branch_name}` was not found",
+                remote_ref.shorten()
+            )
+        })?
+        .peel_to_id()?
+        .detach();
+    Ok(RemoteHead {
+        branch_name,
+        remote_tip,
+    })
+}
+
+fn remote_contains(
+    repo: &gix::Repository,
+    ancestor: gix::ObjectId,
+    descendant: gix::ObjectId,
+) -> Result<bool> {
+    if ancestor == descendant {
+        return Ok(true);
+    }
+    match repo.merge_base(ancestor, descendant) {
+        Ok(base) => Ok(base.detach() == ancestor),
+        Err(gix::repository::merge_base::Error::FindMergeBase(_))
+        | Err(gix::repository::merge_base::Error::NotFound { .. }) => Ok(false),
+        Err(err) => Err(err.into()),
+    }
+}
+
+fn local_branch_for_review(ctx: &Context, review_number: i64) -> Result<gix::refs::FullName> {
+    let info = crate::legacy::workspace::head_info(ctx)?;
+    info.stacks
+        .iter()
+        .flat_map(|stack| &stack.segments)
+        .find_map(|segment| {
+            let associated_review = segment
+                .metadata
+                .as_ref()
+                .and_then(|metadata| metadata.review.pull_request)?;
+            if associated_review as i64 == review_number {
+                segment
+                    .ref_info
+                    .as_ref()
+                    .map(|ref_info| ref_info.ref_name.clone())
+            } else {
+                None
+            }
+        })
+        .with_context(|| {
+            format!("Review #{review_number} is not associated with a local workspace branch")
+        })
 }
 
 #[but_api(napi)]

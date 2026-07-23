@@ -24,7 +24,6 @@
 	import { type PullRequest } from "$lib/forge/interface/types";
 	import { PrPersistedStore } from "$lib/forge/prContents";
 	import { PR_SERVICE } from "$lib/forge/prService.svelte";
-	import { syncStackAfterReviewCreation } from "$lib/forge/shared/prFooter";
 	import { showToast } from "$lib/notifications/toasts";
 	import { SETTINGS_SERVICE } from "$lib/settings/appSettings";
 	import { requiresPush } from "$lib/stacks/stack";
@@ -48,7 +47,6 @@
 		branchIndex: number;
 		parent: Segment | undefined;
 		withForce: boolean;
-		stackPrNumbers: (number | undefined)[];
 		reviewId?: string;
 		onClose: () => void;
 	};
@@ -61,7 +59,6 @@
 		branchIndex,
 		parent,
 		withForce,
-		stackPrNumbers,
 		onClose,
 	}: Props = $props();
 
@@ -247,10 +244,6 @@
 	}
 
 	async function createPr(params: CreatePrParams): Promise<PullRequest | undefined> {
-		// Local mutable copy of pre-computed pr numbers so we can splice in
-		// the newly-created pr number below.
-		const prNumbers = [...stackPrNumbers];
-
 		try {
 			if (!baseBranchName) {
 				chipToasts.error("No base branch name determined");
@@ -293,14 +286,11 @@
 			// backend optimistically caches the just-created review), so there is
 			// no longer any PR number to persist onto branch metadata here.
 
-			// If we now have two or more pull requests we add a stack table to the description.
-			prNumbers[currentIndex] = pr.number;
-			const definedPrNumbers = prNumbers.filter(isDefined);
 			const unit = forgeInfo?.unit.abbr || "PR";
 			const symbol = forgeInfo?.unit.symbol || "#";
 			chipToasts.success(`${unit} ${symbol}${pr.number} created successfully`);
 
-			return await syncStackAfterReviewCreation(prService, projectId, pr, definedPrNumbers, symbol);
+			return pr;
 		} catch (err: any) {
 			console.error(err);
 			const toast = mapErrorToToast(err);

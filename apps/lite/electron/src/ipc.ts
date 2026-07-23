@@ -30,6 +30,7 @@ import type {
 	MessageCombinationStrategy,
 	PushResult,
 	ProjectForFrontend,
+	PublishReviewOutcome,
 	RelativeTo,
 	RefInfo,
 	RepoInfo,
@@ -476,7 +477,7 @@ export interface LiteElectronApi {
 	openInWebBrowser: (url: string) => Promise<void>;
 	openInEditor: (params: OpenInEditorParams) => Promise<void>;
 	pathJoin: (...paths: Array<string>) => Promise<string>;
-	publishReview: (params: PublishReviewParams) => Promise<ForgeReview>;
+	publishReview: (params: PublishReviewParams) => Promise<PublishReviewOutcome>;
 	updateBranchName: (params: UpdateBranchNameParams) => Promise<UpdateBranchNameResult>;
 	updateReview: (params: UpdateReviewParams) => Promise<void>;
 	tearOffBranch: (params: TearOffBranchParams) => Promise<MoveBranchResult>;
