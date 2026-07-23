@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use bstr::BStr;
 use but_api::open::{
     list_builtin_program_specs, list_user_defined_program_specs,
     program::{ProgramSpec, open_in_program_unchecked},
@@ -72,6 +73,14 @@ impl Openable {
         };
 
         Ok(openable)
+    }
+
+    /// Try to create an [`Openable`] from a repository-relative path. Does NOT validate the path
+    /// exists in the repository.
+    pub fn try_from_relpath(repo: &gix::Repository, relpath: &BStr) -> anyhow::Result<Self> {
+        repo.workdir_path(relpath)
+            .map(Openable::File)
+            .ok_or_else(|| anyhow::anyhow!("Failed to resolve path"))
     }
 }
 

@@ -241,6 +241,11 @@ impl CustomCliArgumentSupplier {
     }
 }
 
+/// The built-in supported programs.
+///
+/// IMPORTANT: Platform-specific programs are not allowed in tests, as it makes any tests that
+/// snapshot the list platform-dependent. Ensure that `not(debug_assertions)` is specified for any
+/// program that is in any way dependent on platform.
 pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
     Vec::from([
         ProgramSpec {
@@ -311,7 +316,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             }),
             category: ProgramCategory::Editor,
         },
-        #[cfg(target_os = "macos")]
+        #[cfg(all(target_os = "macos", not(debug_assertions)))]
         ProgramSpec {
             id: "xcode".into(),
             name: "Xcode".into(),
@@ -358,7 +363,21 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
             }),
             category: ProgramCategory::Test,
         },
-        #[cfg(target_os = "linux")]
+        #[cfg(debug_assertions)]
+        ProgramSpec {
+            id: "touch".into(),
+            name: "touch".into(),
+            cli_arg_supplier: CliArgumentSupplier::Custom(CustomCliArgumentSupplier {
+                open_args: Some(vec!["{{filepath}}.touch".into()]),
+                open_at_line_args: Some(vec!["{{filepath}}.touch.{{line_number}}".into()]),
+            }),
+            executable: ExecutableProgram::ShellExecutable(ShellExecutable {
+                name_or_path: "touch".into(),
+                requires_tty: true,
+            }),
+            category: ProgramCategory::Test,
+        },
+        #[cfg(all(target_os = "linux", not(debug_assertions)))]
         ProgramSpec {
             id: "thunar".into(),
             name: "Thunar".into(),

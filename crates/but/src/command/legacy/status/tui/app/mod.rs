@@ -413,9 +413,7 @@ impl App {
             Message::CopyToClipboard(text) => {
                 self.clipboard.set_text(text)?;
             }
-            Message::PickProgramThenOpen => {
-                self.handle_pick_program_then_open()?
-            }
+            Message::PickProgramThenOpen => self.handle_pick_program_then_open()?,
             Message::OpenInProgram(program_id) => {
                 self.handle_open_in_program(ctx, program_id, terminal_guard)?;
             }
@@ -1388,8 +1386,10 @@ impl App {
 
         let to_open = match &**selection {
             CliId::UncommittedHunkOrFile(uncommitted) => {
-                let repo = ctx.repo.get()?;
-                Openable::try_from_uncommitted(&repo, uncommitted)?
+                Openable::try_from_uncommitted(&*ctx.repo.get()?, uncommitted)?
+            }
+            CliId::CommittedFile { path, .. } => {
+                Openable::try_from_relpath(&*ctx.repo.get()?, path.as_bstr())?
             }
             _ => return Ok(()),
         };
@@ -1402,7 +1402,7 @@ impl App {
 
         let program = all_program_specs
             .find(|ps| ps.id == program_id)
-            .expect(&format!("BUG: No program with ID '{program_id}'"));
+            .expect("BUG: No program with ID '{program_id}'");
 
         let _suspend_guard = if program.requires_terminal() {
             Some(terminal_guard.suspend()?)
