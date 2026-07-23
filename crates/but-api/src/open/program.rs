@@ -574,7 +574,7 @@ pub struct UserDefinedProgramSpec {
 
 /// The executable to invoke for a program.
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase", untagged)]
+#[serde(rename_all = "camelCase", tag = "type")]
 pub enum UserDefinedExecutableProgram {
     /// A program that can be executed by name or path.
     PathExecutable(UserDefinedPathExecutable),
@@ -629,6 +629,7 @@ mod tests {
             r#"{
                 "name": "Visual Studio Code",
                 "executable": {
+                    "type": "macosApplication",
                     "bundleId": "com.microsoft.VSCode",
                     "cliWrapperPath": "Contents/Resources/app/bin/code"
                 },
