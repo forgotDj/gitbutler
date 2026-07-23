@@ -1,6 +1,6 @@
 import { classes } from "#ui/components/classes.ts";
 import { Match } from "effect";
-import { type ComponentProps, type FC } from "react";
+import type { ComponentProps, FC } from "react";
 import styles from "./Badge.module.css";
 
 export type BadgeVariant = "fillGray" | "lightGray" | "safe" | "warn" | "danger";
