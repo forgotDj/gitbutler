@@ -1933,12 +1933,22 @@ fn update_body_with_mode(
                 (0 | 1, _) | (_, ReviewStackingDescription::Disabled) => body.to_string(),
                 (_, ReviewStackingDescription::Bottom) => compose_body(
                     body,
-                    &generate_footer(pr_number, all_pr_numbers, symbol),
+                    &generate_footer_with_mode(
+                        pr_number,
+                        all_pr_numbers,
+                        symbol,
+                        ReviewStackingDescription::Bottom,
+                    ),
                     "",
                 ),
                 (_, ReviewStackingDescription::Top) => compose_body(
                     "",
-                    &generate_footer(pr_number, all_pr_numbers, symbol),
+                    &generate_footer_with_mode(
+                        pr_number,
+                        all_pr_numbers,
+                        symbol,
+                        ReviewStackingDescription::Top,
+                    ),
                     body,
                 ),
             };
@@ -1949,7 +1959,7 @@ fn update_body_with_mode(
         return user_body;
     }
 
-    let footer = generate_footer(pr_number, all_pr_numbers, symbol);
+    let footer = generate_footer_with_mode(pr_number, all_pr_numbers, symbol, mode);
     match mode {
         ReviewStackingDescription::Bottom => compose_body(&user_body, &footer, ""),
         ReviewStackingDescription::Top => compose_body("", &footer, &user_body),
@@ -2023,7 +2033,22 @@ fn compose_body(head: &str, footer: &str, tail: &str) -> String {
 ///
 /// # Returns
 /// A formatted markdown footer string with stack information
+#[cfg(test)]
 fn generate_footer(for_pr_number: i64, all_pr_numbers: &[i64], symbol: &str) -> String {
+    generate_footer_with_mode(
+        for_pr_number,
+        all_pr_numbers,
+        symbol,
+        ReviewStackingDescription::Bottom,
+    )
+}
+
+fn generate_footer_with_mode(
+    for_pr_number: i64,
+    all_pr_numbers: &[i64],
+    symbol: &str,
+    mode: ReviewStackingDescription,
+) -> String {
     let stack_length = all_pr_numbers.len();
     let stack_index = all_pr_numbers
         .iter()
@@ -2034,7 +2059,9 @@ fn generate_footer(for_pr_number: i64, all_pr_numbers: &[i64], symbol: &str) -> 
     let mut footer = String::new();
     footer.push_str(STACKING_FOOTER_BOUNDARY_TOP);
     footer.push('\n');
-    footer.push_str("---\n");
+    if mode == ReviewStackingDescription::Bottom {
+        footer.push_str("---\n");
+    }
     footer.push_str(&format!(
         "This is **part {nth} of {stack_length} in a stack** made with GitButler:\n"
     ));
@@ -2052,6 +2079,9 @@ fn generate_footer(for_pr_number: i64, all_pr_numbers: &[i64], symbol: &str) -> 
         ));
     }
 
+    if mode == ReviewStackingDescription::Top {
+        footer.push_str("---\n");
+    }
     footer.push_str(STACKING_FOOTER_BOUNDARY_BOTTOM);
     footer
 }
@@ -2592,6 +2622,52 @@ mod tests {
         assert!(
             result.ends_with("User description"),
             "top mode preserves user content after the managed block"
+        );
+    }
+
+    #[test]
+    fn update_body_bottom_produces_stack_information_after_user_content() {
+        let result = update_body_with_mode(
+            Some("User description"),
+            101,
+            &[100, 101],
+            "#",
+            ReviewStackingDescription::Bottom,
+        );
+
+        assert_eq!(
+            result,
+            "User description\n\n\
+             <!-- GitButler Footer Boundary Top -->\n\
+             ---\n\
+             This is **part 2 of 2 in a stack** made with GitButler:\n\
+             - <kbd>&nbsp;2&nbsp;</kbd> #101 👈 \n\
+             - <kbd>&nbsp;1&nbsp;</kbd> #100\n\
+             <!-- GitButler Footer Boundary Bottom -->",
+            "bottom mode separates user content from the complete stack information section"
+        );
+    }
+
+    #[test]
+    fn update_body_top_produces_stack_information_before_user_content() {
+        let result = update_body_with_mode(
+            Some("User description"),
+            101,
+            &[100, 101],
+            "#",
+            ReviewStackingDescription::Top,
+        );
+
+        assert_eq!(
+            result,
+            "<!-- GitButler Footer Boundary Top -->\n\
+             This is **part 2 of 2 in a stack** made with GitButler:\n\
+             - <kbd>&nbsp;2&nbsp;</kbd> #101 👈 \n\
+             - <kbd>&nbsp;1&nbsp;</kbd> #100\n\
+             ---\n\
+             <!-- GitButler Footer Boundary Bottom -->\n\n\
+             User description",
+            "top mode puts the separator below the complete stack information section"
         );
     }
 
