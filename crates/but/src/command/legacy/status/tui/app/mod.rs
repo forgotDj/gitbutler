@@ -216,6 +216,7 @@ impl App {
             Some(Modal::GotoBranchPicker { key_binds, .. })
             | Some(Modal::ApplyStackPicker { key_binds, .. })
             | Some(Modal::CopySelectionPicker { key_binds, .. })
+            | Some(Modal::ProgramPicker { key_binds, .. })
             | Some(Modal::Help { key_binds, .. }) => key_binds,
             None => {
                 if let Mode::Normal(NormalMode { marks }) = &*self.mode
@@ -412,8 +413,11 @@ impl App {
             Message::CopyToClipboard(text) => {
                 self.clipboard.set_text(text)?;
             }
-            Message::OpenInProgram => {
-                self.handle_open_in_program(ctx, terminal_guard)?;
+            Message::PickProgramThenOpen => {
+                self.handle_pick_program_then_open()?
+            }
+            Message::OpenInProgram(program_id) => {
+                self.handle_open_in_program(ctx, program_id, terminal_guard)?;
             }
             Message::ShowToast { kind, text } => {
                 self.toasts.insert(kind, text);
@@ -455,6 +459,14 @@ impl App {
                         }
                         Modal::Confirm { .. } | Modal::Help { .. } => {
                             self.modal = Some(modal);
+                        }
+                        Modal::ProgramPicker { picker, key_binds } => {
+                            self.modal = picker
+                                .handle_message(fuzzy_picker_message, ctx, messages)?
+                                .map(|picker| Modal::ProgramPicker {
+                                    picker: Box::new(picker),
+                                    key_binds,
+                                });
                         }
                     }
                 }
@@ -1320,9 +1332,43 @@ impl App {
         Ok(())
     }
 
+    fn handle_pick_program_then_open(&mut self) -> anyhow::Result<()> {
+        let builtin_program_specs = list_builtin_program_specs();
+        let user_defined_program_specs = list_user_defined_program_specs();
+        let mut all_program_specs = user_defined_program_specs
+            .iter()
+            .chain(builtin_program_specs)
+            .map(|ps| ProgramItem {
+                id: ps.id.clone(),
+                name: ps.name.clone(),
+            });
+
+        let mut items = NonEmpty::new(
+            all_program_specs
+                .next()
+                .expect("BUG: Program specs cannot be empty"),
+        );
+        items.extend(all_program_specs);
+
+        self.modal = Some(Modal::ProgramPicker {
+            picker: Box::new(FuzzyPicker::new(
+                items,
+                self.theme,
+                |item, _ctx, messages| {
+                    messages.push(Message::OpenInProgram(item.id));
+                    Ok(())
+                },
+            )),
+            key_binds: fuzzy_picker_key_binds(),
+        });
+
+        Ok(())
+    }
+
     fn handle_open_in_program<T>(
         &mut self,
         ctx: &Context,
+        program_id: String,
         terminal_guard: &mut T,
     ) -> anyhow::Result<()>
     where
@@ -1337,7 +1383,7 @@ impl App {
         };
 
         let Some(selection) = selection else {
-            return Ok(())
+            return Ok(());
         };
 
         let to_open = match &**selection {
@@ -1354,7 +1400,9 @@ impl App {
             .iter()
             .chain(builtin_program_specs);
 
-        let program = all_program_specs.next().expect("BUG: No programs :(");
+        let program = all_program_specs
+            .find(|ps| ps.id == program_id)
+            .expect(&format!("BUG: No program with ID '{program_id}'"));
 
         let _suspend_guard = if program.requires_terminal() {
             Some(terminal_guard.suspend()?)
@@ -1580,6 +1628,10 @@ pub enum Modal {
         picker: Box<FuzzyPicker<ApplyBranchItem>>,
         key_binds: KeyBinds,
     },
+    ProgramPicker {
+        picker: Box<FuzzyPicker<ProgramItem>>,
+        key_binds: KeyBinds,
+    },
     Help {
         help: Box<Help>,
         key_binds: KeyBinds,
@@ -1591,7 +1643,8 @@ impl Modal {
         match self {
             Modal::CopySelectionPicker { .. }
             | Modal::GotoBranchPicker { .. }
-            | Modal::ApplyStackPicker { .. } => {
+            | Modal::ApplyStackPicker { .. }
+            | Modal::ProgramPicker { .. } => {
                 Some(Message::FuzzyPicker(FuzzyPickerMessage::Input(event)))
             }
             Modal::Help { help, .. } if help.is_search_focused() => {
@@ -1666,6 +1719,31 @@ impl FuzzyPickerItem for GotoBranchItem {
             Self::Branch(..) => theme.local_branch,
             Self::Uncommitted => theme.info,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProgramItem {
+    id: String,
+    name: String,
+}
+
+impl FuzzyPickerItem for ProgramItem {
+    fn columns(&self, searchable: SearchableToken) -> impl IntoIterator<Item = Col<'_>> {
+        [
+            Col {
+                text: self.id.clone().into(),
+                searchable: None,
+            },
+            Col {
+                text: self.name.clone().into(),
+                searchable: Some(searchable),
+            },
+        ]
+    }
+
+    fn style(&self, theme: &'static Theme) -> Style {
+        theme.info
     }
 }
 

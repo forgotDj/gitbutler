@@ -802,7 +802,7 @@ impl KeyBindsBuilder<'_> {
 
     fn open_in_program(&mut self) -> KeyBindsInModesBuilder<'_> {
         self.key_bind("open", press().code(KeyCode::Char('o')), || {
-            Message::OpenInProgram
+            Message::PickProgramThenOpen
         })
         .long_description("Open selection in program")
     }
