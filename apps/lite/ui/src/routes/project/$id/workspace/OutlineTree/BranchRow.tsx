@@ -75,8 +75,8 @@ const CIBubble: FC<{ checks: AggregateCIChecks }> = (p) => {
 		}
 		case "cancelled":
 			return (
-				<Badge aria-label="CI checks cancelled" variant="warn">
-					<Icon name="warning" size={12} />
+				<Badge aria-label="CI checks cancelled" variant="lightGray">
+					<Icon name="cross" size={12} />
 				</Badge>
 			);
 		case "action_required":
@@ -87,8 +87,8 @@ const CIBubble: FC<{ checks: AggregateCIChecks }> = (p) => {
 			);
 		case "unknown":
 			return (
-				<Badge aria-label="CI checks status unknown" variant="warn">
-					<Icon name="warning" size={12} />
+				<Badge aria-label="CI checks status unknown" variant="lightGray">
+					<Icon name="question" size={12} />
 				</Badge>
 			);
 	}

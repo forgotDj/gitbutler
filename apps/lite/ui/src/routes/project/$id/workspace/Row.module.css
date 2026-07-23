@@ -158,10 +158,18 @@
 	--badge-fillGray-fg: var(--fill-gray-bg);
 	--badge-lightGray-bg: light-dark(hsl(0 0% 0% / 0.5), hsl(0 0% 83.9% / 0.45));
 	--badge-lightGray-fg: var(--text-1-invert);
-	--badge-safe-bg: color-mix(in srgb, light-dark(var(--clr-safe-50), var(--clr-safe-30)) 37%, transparent);
+	--badge-safe-bg: color-mix(
+		in srgb,
+		light-dark(var(--clr-safe-50), var(--clr-safe-30)) 37%,
+		transparent
+	);
 	--badge-safe-fg: light-dark(var(--clr-safe-70), var(--clr-safe-30));
 	--badge-warn-bg: color-mix(in srgb, var(--clr-warn-50) 22%, transparent);
 	--badge-warn-fg: var(--clr-warn-60);
-	--badge-danger-bg: color-mix(in srgb, light-dark(var(--clr-danger-50), var(--clr-danger-30)) 40%, transparent);
+	--badge-danger-bg: color-mix(
+		in srgb,
+		light-dark(var(--clr-danger-50), var(--clr-danger-30)) 40%,
+		transparent
+	);
 	--badge-danger-fg: light-dark(var(--clr-danger-70), var(--clr-danger-30));
 }

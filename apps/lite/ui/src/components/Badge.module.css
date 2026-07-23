@@ -14,7 +14,10 @@
 }
 
 .lightGray {
-	background-color: var(--badge-lightGray-bg, light-dark(hsl(0 0% 83.9% / 0.45), hsl(0 0% 0% / 0.5)));
+	background-color: var(
+		--badge-lightGray-bg,
+		light-dark(hsl(0 0% 83.9% / 0.45), hsl(0 0% 0% / 0.5))
+	);
 	color: var(--badge-lightGray-fg, var(--text-1));
 }
 

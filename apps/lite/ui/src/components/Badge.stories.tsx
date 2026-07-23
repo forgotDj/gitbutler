@@ -58,9 +58,9 @@ export const CIChecks = meta.story({
 					{ label: "failure", variant: "danger", icon: "cross" },
 					{ label: "in progress", variant: "lightGray", icon: "spinner" },
 					{ label: "in progress (some failed)", variant: "danger", icon: "spinner" },
-					{ label: "cancelled", variant: "warn", icon: "warning" },
+					{ label: "cancelled", variant: "lightGray", icon: "cross" },
 					{ label: "action required", variant: "warn", icon: "warning" },
-					{ label: "unknown", variant: "warn", icon: "warning" },
+					{ label: "unknown", variant: "lightGray", icon: "question" },
 				] as Array<{ label: string; variant: BadgeVariant; icon: string }>
 			).map(({ label, variant, icon }) => (
 				<div key={label} style={{ display: "flex", gap: 8, alignItems: "center" }}>
