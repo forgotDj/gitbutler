@@ -51,6 +51,22 @@ filepath='/[..]/new-file.txt'
 }
 
 #[test]
+fn open_multiple_uncommitted_files() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+
+    env.file("first.txt", "first");
+    env.file("second.txt", "second");
+
+    env.but("_open first.txt second.txt -p echo")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='/[..]/first.txt' filepath='/[..]/second.txt'
+
+"#]]);
+}
+
+#[test]
 fn open_uncommitted_hunk() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
     env.setup_metadata(&["A"]);
@@ -156,6 +172,19 @@ filepath='/[..]/file-with-deletions.txt' line_number='7'
         .success()
         .stdout_eq(snapbox::str![[r#"
 filepath='/[..]/file-with-mixed.txt' line_number='2'
+
+"#]]);
+}
+
+#[test]
+fn cannot_open_hunk_with_multiple_sources() {
+    let env = setup_multi_hunk_uncommitted_changes("file.txt");
+
+    env.but("_open file.txt uv:4 -p echo")
+        .assert()
+        .failure()
+        .stderr_eq(snapbox::str![[r#"
+Error: Only entire files can be opened when multiple sources are provided; 'uv:4' is a hunk
 
 "#]]);
 }

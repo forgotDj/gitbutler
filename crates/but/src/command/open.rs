@@ -85,21 +85,24 @@ impl Openable {
     }
 }
 
-pub(crate) fn open(ctx: &Context, cli_id: CliIdArg, program_id: Option<String>) -> CliResult<()> {
+pub(crate) fn open(
+    ctx: &Context,
+    sources: Vec<CliIdArg>,
+    program_id: Option<String>,
+) -> CliResult<()> {
     let guard = ctx.shared_worktree_access();
     let id_map = IdMap::new_from_context(ctx, None, guard.read_permission())?;
     let (repo, _ws, _db) = ctx.workspace_and_db_with_perm(guard.read_permission())?;
 
-    let to_open = match cli_id.resolve_in_workspace(&repo, &id_map, Purpose::Uncommitted, None)? {
-        ResolvedCliIdArg::UncommittedHunkOrFile(uncommitted) => {
-            Openable::try_from_uncommitted(&repo, &uncommitted)?
-        }
-        resolved_id => {
-            return Err(bad_input(format!(
-                "Expected uncommitted file or hunk, got {}",
-                resolved_id.kind_for_humans()
-            ))
-            .into());
+    let to_open = match sources.as_slice() {
+        [] => return Err(bad_input("At least one source is required").into()),
+        [source] => resolve_source(&repo, &id_map, source)?,
+        sources => {
+            let paths = sources
+                .iter()
+                .map(|source| resolve_file_source(&repo, &id_map, source))
+                .collect::<CliResult<Vec<_>>>()?;
+            Openable::Files(paths)
         }
     };
 
@@ -127,6 +130,53 @@ pub(crate) fn open(ctx: &Context, cli_id: CliIdArg, program_id: Option<String>) 
     run(program, to_open)?;
 
     Ok(())
+}
+
+fn resolve_source(
+    repo: &gix::Repository,
+    id_map: &IdMap,
+    source: &CliIdArg,
+) -> CliResult<Openable> {
+    match source.resolve_in_workspace(repo, id_map, Purpose::Uncommitted, None)? {
+        ResolvedCliIdArg::UncommittedHunkOrFile(uncommitted) => {
+            Ok(Openable::try_from_uncommitted(repo, &uncommitted)?)
+        }
+        resolved_id => Err(unexpected_source_kind(resolved_id)),
+    }
+}
+
+fn resolve_file_source(
+    repo: &gix::Repository,
+    id_map: &IdMap,
+    source: &CliIdArg,
+) -> CliResult<PathBuf> {
+    match source.resolve_in_workspace(repo, id_map, Purpose::Uncommitted, None)? {
+        ResolvedCliIdArg::UncommittedHunkOrFile(uncommitted) => {
+            if !uncommitted.is_entire_file {
+                return Err(bad_input(format!(
+                    "Only entire files can be opened when multiple sources are provided; \
+                     '{source}' is a hunk"
+                ))
+                .into());
+            }
+
+            match Openable::try_from_uncommitted(repo, &uncommitted)? {
+                Openable::File(path) => Ok(path),
+                Openable::Hunk(_) | Openable::Files(_) => {
+                    unreachable!("entire-file source must resolve to one file")
+                }
+            }
+        }
+        resolved_id => Err(unexpected_source_kind(resolved_id)),
+    }
+}
+
+fn unexpected_source_kind(resolved_id: ResolvedCliIdArg) -> CliError {
+    bad_input(format!(
+        "Expected uncommitted file or hunk, got {}",
+        resolved_id.kind_for_humans()
+    ))
+    .into()
 }
 
 pub(crate) fn run(program: &ProgramSpec, to_open: Openable) -> anyhow::Result<()> {
