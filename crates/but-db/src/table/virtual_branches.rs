@@ -1,10 +1,9 @@
 use crate::{DbHandle, M, SchemaVersion, Transaction};
 
-pub(crate) const M: &[M<'static>] = &[
-    M::up(
-        20260219130000,
-        SchemaVersion::Zero,
-        "CREATE TABLE `vb_state`(
+pub(crate) const M: &[M<'static>] = &[M::up(
+    20260219130000,
+    SchemaVersion::Zero,
+    "CREATE TABLE `vb_state`(
 	`id` INTEGER PRIMARY KEY CHECK (`id` = 1),
 	`initialized` INTEGER NOT NULL DEFAULT 0,
 	`default_target_remote_name` TEXT,
@@ -61,21 +60,7 @@ CREATE INDEX `idx_vb_stacks_sort_order` ON `vb_stacks`(`sort_order`);
 CREATE INDEX `idx_vb_stacks_in_workspace` ON `vb_stacks`(`in_workspace`);
 CREATE INDEX `idx_vb_stack_heads_stack_id` ON `vb_stack_heads`(`stack_id`);
 ",
-    ),
-    M::up(
-        20260722120000,
-        // Older binaries still select these columns, so physically removing them crosses the
-        // forward-compatibility boundary even though the data has no remaining runtime consumer.
-        SchemaVersion::One,
-        "DROP TABLE `vb_branch_targets`;
-ALTER TABLE `vb_state` DROP COLUMN `default_target_remote_name`;
-ALTER TABLE `vb_state` DROP COLUMN `default_target_branch_name`;
-ALTER TABLE `vb_state` DROP COLUMN `default_target_remote_url`;
-ALTER TABLE `vb_state` DROP COLUMN `default_target_sha`;
-ALTER TABLE `vb_state` DROP COLUMN `default_target_push_remote_name`;
-",
-    ),
-];
+)];
 
 /// One-row state table for virtual branches metadata (`vb_state`).
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
