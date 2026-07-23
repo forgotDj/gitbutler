@@ -417,7 +417,7 @@ impl App {
             }
             Message::PickProgramThenOpen => self.handle_pick_program_then_open(ctx, messages)?,
             Message::OpenInProgram(program, to_open) => {
-                self.handle_open_in_program(&program, &to_open, terminal_guard)?;
+                self.handle_open_in_program(&program, &to_open, terminal_guard, messages)?;
             }
             Message::ShowToast { kind, text } => {
                 self.toasts.insert(kind, text);
@@ -1403,6 +1403,7 @@ impl App {
         program: &ProgramSpec,
         to_open: &Openable,
         terminal_guard: &mut T,
+        messages: &mut Vec<Message>,
     ) -> anyhow::Result<()>
     where
         T: TerminalGuard,
@@ -1413,7 +1414,16 @@ impl App {
             None
         };
 
-        open::run(program, to_open)
+        open::run(program, to_open)?;
+
+        if !program.requires_terminal() {
+            messages.push(Message::ShowToast {
+                kind: ToastKind::Info,
+                text: format!("File opened in {} in the background", program.name).into(),
+            });
+        }
+
+        Ok(())
     }
 
     /// Returns the currently selected commit id when the selected line is a commit.
