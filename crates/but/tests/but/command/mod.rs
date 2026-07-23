@@ -59,8 +59,6 @@ mod squash;
 #[cfg(feature = "legacy")]
 mod squash2;
 #[cfg(feature = "legacy")]
-mod stage;
-#[cfg(feature = "legacy")]
 mod status;
 mod r#switch;
 #[cfg(feature = "legacy")]
@@ -69,8 +67,6 @@ mod teardown;
 mod uncommit;
 #[cfg(feature = "legacy")]
 mod undo;
-#[cfg(feature = "legacy")]
-mod unstage;
 #[cfg(feature = "legacy")]
 mod worktree;
 
