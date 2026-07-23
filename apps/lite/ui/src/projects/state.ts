@@ -71,6 +71,7 @@ export const projectSlice = createSlice({
 		selectDetailsSelectionScope: fromProject(projectSelectors.selectDetailsSelectionScope),
 		selectSelectionUncommittedFiles: fromProject(projectSelectors.selectSelectionUncommittedFiles),
 		selectIsSelectedOutline: fromProject(projectSelectors.selectIsSelectedOutline),
+		selectPrimaryOutlineSelection: fromProject(projectSelectors.selectPrimaryOutlineSelection),
 		selectSelectionOutline: fromProject(projectSelectors.selectSelectionOutline),
 		selectSelectionFiles: fromProject(projectSelectors.selectSelectionFiles),
 		selectSelectionDiff: fromProject(projectSelectors.selectSelectionDiff),

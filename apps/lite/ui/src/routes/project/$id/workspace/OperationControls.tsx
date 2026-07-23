@@ -357,9 +357,7 @@ export const OperationControls: FC<{ outlineNavigationIndex: NavigationIndex<Ope
 		select: getHeadInfoIndex,
 	});
 	const checkedCommitCount = useAppSelector((state) =>
-		headInfoIndex
-			? projectSlice.selectors.selectCheckedCommitCount(state, projectId, headInfoIndex)
-			: 0,
+		projectSlice.selectors.selectCheckedCommitCount(state, projectId),
 	);
 
 	return Match.value(outlineMode).pipe(
