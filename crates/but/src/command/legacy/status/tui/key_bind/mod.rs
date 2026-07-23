@@ -100,6 +100,7 @@ pub fn default_key_binds() -> KeyBinds {
                 builder.details_top().register();
                 builder.details_bottom().register();
                 builder.toggle_full_screen_details().register();
+                builder.open_in_program().register();
 
                 builder
                     .key_bind("hide details", press().code(KeyCode::Char('d')), || {

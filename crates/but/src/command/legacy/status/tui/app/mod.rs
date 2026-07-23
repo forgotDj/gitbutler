@@ -1328,12 +1328,16 @@ impl App {
     where
         T: TerminalGuard,
     {
-        let Some(selection) = self
-            .cursor
-            .selected_line(&self.status_lines)
-            .and_then(|selection| selection.data.cli_id())
-        else {
-            return Ok(());
+        let selection = if matches!(&*self.mode, Mode::Details(..)) {
+            self.details.selected_section_cli_id()
+        } else {
+            self.cursor
+                .selected_line(&self.status_lines)
+                .and_then(|selection| selection.data.cli_id())
+        };
+
+        let Some(selection) = selection else {
+            return Ok(())
         };
 
         let to_open = match &**selection {
