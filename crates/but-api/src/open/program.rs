@@ -174,7 +174,7 @@ enum CliArgumentSupplier {
     Neovim,
     Sublime,
     Custom(CustomCliArgumentSupplier),
-    #[cfg(target_os = "macos")]
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
     Xcode,
     /// For programs that don't support any special "open at" semantics
     #[allow(dead_code)]
@@ -194,7 +194,7 @@ impl CliArgumentSupplier {
             Self::VSCodeLike => cmd.arg("--goto").arg(self.path_with_line_nr(path, line_nr)),
             Self::Zed => cmd.arg(self.path_with_line_nr(path, line_nr)),
             Self::Sublime => cmd.arg(self.path_with_line_nr(path, line_nr)),
-            #[cfg(target_os = "macos")]
+            #[cfg(all(target_os = "macos", not(debug_assertions)))]
             Self::Xcode => cmd.arg("--line").arg(line_nr.to_string()).arg(path),
             Self::Neovim => cmd.arg(format!("+{line_nr}")).arg(path),
             Self::Custom(open_at_line) => open_at_line.open_at_line(cmd, path, line_nr),
