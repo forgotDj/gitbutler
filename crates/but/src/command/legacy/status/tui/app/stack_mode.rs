@@ -231,10 +231,6 @@ fn stack_id_for_line(
 
 fn stack_id_for_cli_id(cli_id: &CliId, status_lines: &[StatusOutputLine]) -> Option<StackId> {
     match cli_id {
-        CliId::UncommittedHunkOrFile(uncommitted) => uncommitted.hunk_assignments.first().stack_id,
-        CliId::PathPrefix {
-            hunk_assignments, ..
-        } => hunk_assignments.first().1.stack_id,
         CliId::CommittedFile { commit_id, .. } | CliId::Commit { commit_id, .. } => {
             status_lines.iter().find_map(|line| match &line.data {
                 StatusOutputLineData::Commit {
@@ -272,7 +268,9 @@ fn stack_id_for_cli_id(cli_id: &CliId, status_lines: &[StatusOutputLine]) -> Opt
         }
         CliId::Branch { stack_id, .. } => *stack_id,
         CliId::Stack { stack_id, .. } => Some(*stack_id),
-        CliId::Uncommitted { .. } => None,
+        CliId::UncommittedHunkOrFile(..) | CliId::PathPrefix { .. } | CliId::Uncommitted { .. } => {
+            None
+        }
     }
 }
 

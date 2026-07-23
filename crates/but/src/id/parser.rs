@@ -195,7 +195,7 @@ fn get_all_files_in_display_order(id_map: &IdMap) -> anyhow::Result<Vec<CliId>> 
         .values()
         .map(|uncommitted_file| (uncommitted_file.path(), uncommitted_file.to_id()))
         .collect();
-    files.sort_by(|(a_path, _), (b_path, _)| a_path.cmp(b_path));
+    files.sort_by_key(|(a_path, _)| *a_path);
 
     Ok(files.into_iter().map(|(_, cli_id)| cli_id).collect())
 }

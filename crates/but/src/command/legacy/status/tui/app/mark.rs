@@ -1,7 +1,6 @@
 use std::{convert::Infallible, ops::Deref};
 
 use but_core::ChangeId;
-use but_hunk_assignment::HunkAssignment;
 use nonempty::NonEmpty;
 use strum::VariantArray;
 
@@ -19,6 +18,7 @@ use crate::{
     },
     id::{
         BranchId, BranchIdRef, CommittedFileId, CommittedFileIdRef, ShortId, UncommittedHunkOrFile,
+        WorktreeHunk,
     },
 };
 
@@ -627,13 +627,6 @@ impl<'a> MarkableRef<'a> {
             match variant {
                 MarkableRefDiscriminants::Uncommitted => {
                     if let CliId::UncommittedHunkOrFile(uncommitted) = cli_id {
-                        if uncommitted
-                            .hunk_assignments
-                            .iter()
-                            .any(|hunk| hunk.stack_id.is_some())
-                        {
-                            return None;
-                        }
                         return Some(Self::Uncommitted(uncommitted));
                     }
                 }
@@ -880,7 +873,7 @@ fn handle_mark_cli_id(commit: &CliId, mode: &mut Mode) -> anyhow::Result<bool> {
 fn synthetic_hunk(
     base_id: &str,
     idx: usize,
-    hunk_assignments: NonEmpty<HunkAssignment>,
+    hunk_assignments: NonEmpty<WorktreeHunk>,
     is_entire_file: bool,
 ) -> UncommittedHunkOrFile {
     UncommittedHunkOrFile {
@@ -893,7 +886,7 @@ fn synthetic_hunk(
 pub fn synthetic_parent_hunk(
     base_id: &str,
     idx: usize,
-    hunk_assignments: NonEmpty<HunkAssignment>,
+    hunk_assignments: NonEmpty<WorktreeHunk>,
 ) -> UncommittedHunkOrFile {
     synthetic_hunk(base_id, idx, hunk_assignments, true)
 }
@@ -901,7 +894,7 @@ pub fn synthetic_parent_hunk(
 pub fn synthetic_child_hunk(
     base_id: &str,
     idx: usize,
-    hunk_assignments: NonEmpty<HunkAssignment>,
+    hunk_assignments: NonEmpty<WorktreeHunk>,
 ) -> UncommittedHunkOrFile {
     synthetic_hunk(base_id, idx, hunk_assignments, false)
 }

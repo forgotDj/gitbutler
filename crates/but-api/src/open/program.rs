@@ -175,6 +175,7 @@ enum CliArgumentSupplier {
     Sublime,
     Custom(CustomCliArgumentSupplier),
     #[cfg(all(target_os = "macos", not(debug_assertions)))]
+    #[allow(dead_code)]
     Xcode,
     /// For programs that don't support any special "open at" semantics
     #[allow(dead_code)]
