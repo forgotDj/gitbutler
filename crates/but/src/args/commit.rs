@@ -21,9 +21,6 @@ pub struct Platform {
     /// Insert the commit after this commit or branch.
     #[clap(long, conflicts_with = "before")]
     pub after: Option<CliIdArg>,
-    /// Only commit staged files, not unstaged files
-    #[clap(short = 'o', long = "only")]
-    pub only: bool,
     /// No-op compatibility flag for `git commit -a`.
     #[clap(short = 'a', long = "all")]
     pub all: bool,

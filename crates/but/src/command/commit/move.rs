@@ -349,6 +349,8 @@ fn route_move_operation<'a>(
 mod tests {
     use bstr::BString;
 
+    use crate::id::WorktreeHunk;
+
     use super::*;
 
     // Helper to create test CliIds
@@ -371,13 +373,11 @@ mod tests {
     fn uncommitted_id() -> CliId {
         CliId::UncommittedHunkOrFile(crate::id::UncommittedHunkOrFile {
             id: "uc".to_string(),
-            hunk_assignments: nonempty::NonEmpty::new(but_hunk_assignment::HunkAssignment {
+            hunk_assignments: nonempty::NonEmpty::new(WorktreeHunk {
                 id: None,
                 hunk_header: None,
                 path: "test.txt".to_string(),
                 path_bytes: BString::from("test.txt"),
-                stack_id: None,
-                branch_ref_bytes: None,
                 line_nums_added: None,
                 line_nums_removed: None,
                 diff: None,

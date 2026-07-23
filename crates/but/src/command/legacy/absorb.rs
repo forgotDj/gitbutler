@@ -17,6 +17,7 @@ use crate::{
     id::{UncommittedHunkOrFile, parser::parse_sources},
     utils::OutputChannel,
 };
+
 /// Amends changes into the appropriate commits where they belong.
 ///
 /// The semantic for finding "the appropriate commit" is as follows
@@ -74,7 +75,9 @@ pub(crate) fn handle(
             }) => {
                 // Absorb this particular file
                 AbsorptionTarget::HunkAssignments {
-                    assignments: hunk_assignments.into(),
+                    assignments: hunk_assignments
+                        .map(|hunk| hunk.into_hunk_assignment_ignoring_stack_assignments())
+                        .into(),
                 }
             }
             CliId::Branch { name, .. } => {

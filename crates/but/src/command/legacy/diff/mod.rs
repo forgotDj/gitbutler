@@ -6,9 +6,6 @@ use crate::{CliId, IdMap, command::legacy::diff::show::Filter, utils::OutputChan
 mod display;
 mod show;
 
-// Note: To use the DiffDisplay trait in other modules,
-// import it with: use crate::command::diff::display::DiffDisplay;
-
 pub fn handle_tui(ctx: &mut Context, target_str: Option<&str>) -> anyhow::Result<()> {
     use crate::tui::diff_viewer::{DiffFileEntry, WorktreeFilter};
 
@@ -33,8 +30,8 @@ pub fn handle_tui(ctx: &mut Context, target_str: Option<&str>) -> anyhow::Result
             CliId::Uncommitted { .. } => {
                 DiffFileEntry::from_worktree(&id_map, Some(&WorktreeFilter::UncommittedArea))
             }
-            CliId::Stack { stack_id, .. } => {
-                DiffFileEntry::from_worktree(&id_map, Some(&WorktreeFilter::Stack(stack_id)))
+            CliId::Stack { .. } => {
+                DiffFileEntry::from_worktree(&id_map, Some(&WorktreeFilter::UncommittedArea))
             }
             CliId::CommittedFile {
                 commit_id, path, ..
@@ -81,9 +78,7 @@ pub fn handle(
             } => show::commit(ctx, out, commit_id, Some(path)),
             CliId::Branch { name, .. } => show::branch(ctx, out, name),
             CliId::Commit { commit_id: id, .. } => show::commit(ctx, out, id, None),
-            CliId::Stack { id: _, stack_id } => {
-                show::worktree(id_map, out, Some(Filter::Stack(stack_id)))
-            }
+            CliId::Stack { .. } => show::worktree(id_map, out, Some(Filter::UncommittedArea)),
         }
     } else {
         show::worktree(id_map, out, None)
