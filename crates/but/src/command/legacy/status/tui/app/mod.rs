@@ -6,7 +6,9 @@ use std::{
 };
 
 use bstr::{BStr, ByteSlice};
-use but_api::open::{list_builtin_program_specs, list_user_defined_program_specs};
+use but_api::open::{
+    list_builtin_program_specs, list_user_defined_program_specs, program::ProgramSpec,
+};
 use but_ctx::Context;
 use crossterm::event::Event;
 use gitbutler_operating_modes::OperatingMode;
@@ -413,9 +415,9 @@ impl App {
             Message::CopyToClipboard(text) => {
                 self.clipboard.set_text(text)?;
             }
-            Message::PickProgramThenOpen => self.handle_pick_program_then_open()?,
-            Message::OpenInProgram(program_id) => {
-                self.handle_open_in_program(ctx, program_id, terminal_guard)?;
+            Message::PickProgramThenOpen => self.handle_pick_program_then_open(ctx, messages)?,
+            Message::OpenInProgram(program, to_open) => {
+                self.handle_open_in_program(&program, &to_open, terminal_guard)?;
             }
             Message::ShowToast { kind, text } => {
                 self.toasts.insert(kind, text);
@@ -1330,16 +1332,49 @@ impl App {
         Ok(())
     }
 
-    fn handle_pick_program_then_open(&mut self) -> anyhow::Result<()> {
+    fn handle_pick_program_then_open(
+        &mut self,
+        ctx: &Context,
+        messages: &mut Vec<Message>,
+    ) -> anyhow::Result<()> {
+        let selection = if matches!(&*self.mode, Mode::Details(..)) {
+            self.details.selected_section_cli_id()
+        } else {
+            self.cursor
+                .selected_line(&self.status_lines)
+                .and_then(|selection| selection.data.cli_id())
+        };
+
+        let Some(selection) = selection else {
+            messages.push(Message::ShowToast {
+                kind: ToastKind::Error,
+                text: "Cannot open that, select a file or hunk".into(),
+            });
+            return Ok(());
+        };
+
+        let to_open = match &**selection {
+            CliId::UncommittedHunkOrFile(uncommitted) => {
+                Openable::try_from_uncommitted(&*ctx.repo.get()?, uncommitted)?
+            }
+            CliId::CommittedFile { path, .. } => {
+                Openable::try_from_relpath(&*ctx.repo.get()?, path.as_bstr())?
+            }
+            _ => {
+                messages.push(Message::ShowToast {
+                    kind: ToastKind::Error,
+                    text: "Cannot open that, select a file or hunk".into(),
+                });
+                return Ok(());
+            }
+        };
+
         let builtin_program_specs = list_builtin_program_specs();
         let user_defined_program_specs = list_user_defined_program_specs();
         let mut all_program_specs = user_defined_program_specs
             .iter()
             .chain(builtin_program_specs)
-            .map(|ps| ProgramItem {
-                id: ps.id.clone(),
-                name: ps.name.clone(),
-            });
+            .cloned();
 
         let mut items = NonEmpty::new(
             all_program_specs
@@ -1353,7 +1388,7 @@ impl App {
                 items,
                 self.theme,
                 |item, _ctx, messages| {
-                    messages.push(Message::OpenInProgram(item.id));
+                    messages.push(Message::OpenInProgram(item, to_open));
                     Ok(())
                 },
             )),
@@ -1365,45 +1400,13 @@ impl App {
 
     fn handle_open_in_program<T>(
         &mut self,
-        ctx: &Context,
-        program_id: String,
+        program: &ProgramSpec,
+        to_open: &Openable,
         terminal_guard: &mut T,
     ) -> anyhow::Result<()>
     where
         T: TerminalGuard,
     {
-        let selection = if matches!(&*self.mode, Mode::Details(..)) {
-            self.details.selected_section_cli_id()
-        } else {
-            self.cursor
-                .selected_line(&self.status_lines)
-                .and_then(|selection| selection.data.cli_id())
-        };
-
-        let Some(selection) = selection else {
-            return Ok(());
-        };
-
-        let to_open = match &**selection {
-            CliId::UncommittedHunkOrFile(uncommitted) => {
-                Openable::try_from_uncommitted(&*ctx.repo.get()?, uncommitted)?
-            }
-            CliId::CommittedFile { path, .. } => {
-                Openable::try_from_relpath(&*ctx.repo.get()?, path.as_bstr())?
-            }
-            _ => return Ok(()),
-        };
-
-        let builtin_program_specs = list_builtin_program_specs();
-        let user_defined_program_specs = list_user_defined_program_specs();
-        let mut all_program_specs = user_defined_program_specs
-            .iter()
-            .chain(builtin_program_specs);
-
-        let program = all_program_specs
-            .find(|ps| ps.id == program_id)
-            .expect("BUG: No program with ID '{program_id}'");
-
         let _suspend_guard = if program.requires_terminal() {
             Some(terminal_guard.suspend()?)
         } else {
@@ -1629,7 +1632,7 @@ pub enum Modal {
         key_binds: KeyBinds,
     },
     ProgramPicker {
-        picker: Box<FuzzyPicker<ProgramItem>>,
+        picker: Box<FuzzyPicker<ProgramSpec>>,
         key_binds: KeyBinds,
     },
     Help {
@@ -1722,13 +1725,7 @@ impl FuzzyPickerItem for GotoBranchItem {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ProgramItem {
-    id: String,
-    name: String,
-}
-
-impl FuzzyPickerItem for ProgramItem {
+impl FuzzyPickerItem for ProgramSpec {
     fn columns(&self, searchable: SearchableToken) -> impl IntoIterator<Item = Col<'_>> {
         [
             Col {

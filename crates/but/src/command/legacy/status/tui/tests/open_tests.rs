@@ -13,8 +13,6 @@ fn open_uncommitted_file_in_program() {
     env.file("open-me.txt", "I have new content");
 
     let mut tui = test_tui(env);
-
-    tui.reload();
     tui.input('g');
     tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊   ps A open-me.txt"]);
@@ -98,8 +96,6 @@ fn open_committed_file_in_program() {
     env.setup_metadata(&["A"]);
 
     let mut tui = test_tui(env);
-
-    tui.reload();
     tui.input([KeyCode::Down, KeyCode::Down])
         .assert_current_line_eq(str!["┊●   tpm add A"]);
     tui.input('f')
@@ -120,4 +116,72 @@ fn open_committed_file_in_program() {
     tui.input(["f", "g"]);
     tui.input(KeyCode::Down)
         .assert_current_line_eq(str!["┊   rx A A.touch"]);
+}
+
+#[test]
+fn cannot_open_uncommitted_area() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    let mut tui = test_tui(env);
+    tui.reload()
+        .assert_current_line_eq(str!["╭┄ zz [uncommitted] (no changes)"]);
+
+    let app_data_dir = tui.env().projects_root().display().to_string();
+    with_var("E2E_TEST_APP_DATA_DIR", Some(app_data_dir), || {
+        tui.input('o')
+            .assert_rendered_contains("Cannot open that, select a file or hunk")
+            .assert_rendered_term_svg_eq(file!["snapshots/cannot_open_uncommitted_area.svg"]);
+    });
+}
+
+#[test]
+fn cannot_open_branch() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    let mut tui = test_tui(env);
+    tui.input(KeyCode::Down)
+        .assert_current_line_eq(str!["┊╭┄ g0 [A]"]);
+
+    let app_data_dir = tui.env().projects_root().display().to_string();
+    with_var("E2E_TEST_APP_DATA_DIR", Some(app_data_dir), || {
+        tui.input('o')
+            .assert_rendered_contains("Cannot open that, select a file or hunk")
+            .assert_rendered_term_svg_eq(file!["snapshots/cannot_open_branch.svg"]);
+    });
+}
+
+#[test]
+fn cannot_open_commit() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    let mut tui = test_tui(env);
+    tui.input([KeyCode::Down, KeyCode::Down])
+        .assert_current_line_eq(str!["┊●   tpm add A"]);
+
+    let app_data_dir = tui.env().projects_root().display().to_string();
+    with_var("E2E_TEST_APP_DATA_DIR", Some(app_data_dir), || {
+        tui.input('o')
+            .assert_rendered_contains("Cannot open that, select a file or hunk")
+            .assert_rendered_term_svg_eq(file!["snapshots/cannot_open_commit.svg"]);
+    });
+}
+
+#[test]
+fn cannot_open_common_base() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("one-stack");
+    env.setup_metadata(&["A"]);
+
+    let mut tui = test_tui(env);
+    tui.input((KeyModifiers::SHIFT, 'G'))
+        .assert_current_line_eq(str!["┴ 0dc3733 (common base) 2000-01-02 add M"]);
+
+    let app_data_dir = tui.env().projects_root().display().to_string();
+    with_var("E2E_TEST_APP_DATA_DIR", Some(app_data_dir), || {
+        tui.input('o')
+            .assert_rendered_contains("Cannot open that, select a file or hunk")
+            .assert_rendered_term_svg_eq(file!["snapshots/cannot_open_common_base.svg"]);
+    });
 }

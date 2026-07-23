@@ -7,6 +7,7 @@ use std::{
 
 use anyhow::Context as _;
 use bstr::BString;
+use but_api::open::program::ProgramSpec;
 use but_core::ref_metadata::StackId;
 use but_ctx::Context;
 use but_settings::AppSettingsWithDiskSync;
@@ -17,28 +18,31 @@ use ratatui::prelude::*;
 
 use crate::{
     CliId,
-    command::legacy::status::{
-        StatusFlags, StatusOutputLine, TuiLaunchOptions, TuiOutcome, TuiRunOptions,
-        tui::{
-            app::{
-                CommandMessage, CommandModeKind, CommitMessage, JumpMessage, MoveMessage,
-                NormalMode, PickChangesMode, RewordMessage, SquashMessage, StackMessage,
+    command::{
+        legacy::status::{
+            StatusFlags, StatusOutputLine, TuiLaunchOptions, TuiOutcome, TuiRunOptions,
+            tui::{
+                app::{
+                    CommandMessage, CommandModeKind, CommitMessage, JumpMessage, MoveMessage,
+                    NormalMode, PickChangesMode, RewordMessage, SquashMessage, StackMessage,
+                },
+                backstack::{Backstack, BackstackEntry},
+                confirm::ConfirmMessage,
+                copy_selection_picker::Clipboard,
+                cursor::Cursor,
+                details::{DetailsMessage, ScrollDirection},
+                event_polling::{CrosstermEventPolling, EventPolling, NoopEventPolling},
+                fuzzy_picker::{
+                    Col, FuzzyPicker, FuzzyPickerItem, FuzzyPickerMessage, SearchableToken,
+                },
+                help::HelpMessage,
+                key_bind::{KeyBinds, fuzzy_picker_key_binds},
+                mode::Mode,
+                remember_selection::save_selection_to_disk,
+                toast::ToastKind,
             },
-            backstack::{Backstack, BackstackEntry},
-            confirm::ConfirmMessage,
-            copy_selection_picker::Clipboard,
-            cursor::Cursor,
-            details::{DetailsMessage, ScrollDirection},
-            event_polling::{CrosstermEventPolling, EventPolling, NoopEventPolling},
-            fuzzy_picker::{
-                Col, FuzzyPicker, FuzzyPickerItem, FuzzyPickerMessage, SearchableToken,
-            },
-            help::HelpMessage,
-            key_bind::{KeyBinds, fuzzy_picker_key_binds},
-            mode::Mode,
-            remember_selection::save_selection_to_disk,
-            toast::ToastKind,
         },
+        open::Openable,
     },
     tui::{CrosstermTerminalGuard, HeadlessTerminalGuard, TerminalGuard},
     utils::{InputOutputChannel, WriteWithUtils},
@@ -619,7 +623,7 @@ enum Message {
     },
     #[allow(dead_code)]
     Debug(&'static str),
-    OpenInProgram(String),
+    OpenInProgram(ProgramSpec, Openable),
     PickProgramThenOpen,
 }
 
