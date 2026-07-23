@@ -419,7 +419,7 @@ export const BranchRow: FC<
 								onClick={(evt) => void openPRInBrowser(evt)}
 								className={classes(rowStyles.fadedText, styles.labelMetaItem)}
 							>
-								<Icon name="pr" />
+								<Icon name="pr" size={14} />
 								PR
 							</a>
 						)}
