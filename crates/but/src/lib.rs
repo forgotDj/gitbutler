@@ -721,7 +721,7 @@ async fn match_subcommand(
                         out,
                     )
                     .map_err(CliError::from);
-                    maybe_run_status_after(status_after, &result, &mut ctx, out).await;
+                    maybe_run_status_after(status_after, &result, &mut ctx, out);
                     result
                 }
                 Some(branch::Subcommands::Move { .. }) => Err(bad_input(
@@ -824,7 +824,7 @@ async fn match_subcommand(
                 },
             )
             .emit_metrics(metrics_ctx);
-            maybe_run_status_after(status_after, &result, &mut ctx, out).await;
+            maybe_run_status_after(status_after, &result, &mut ctx, out);
             result.map_err(CliError::from)
         }
         #[cfg(feature = "legacy")]
@@ -872,7 +872,6 @@ async fn match_subcommand(
                 flags,
                 command::legacy::status::StatusRenderMode::Oneshot,
             )
-            .await
             .emit_metrics(metrics_ctx)
             .map_err(CliError::from)
         }
@@ -930,7 +929,6 @@ async fn match_subcommand(
                 StatusFlags::for_tui(),
                 StatusRenderMode::Tui(_options),
             )
-            .await
             .emit_metrics(metrics_ctx)
             .map_err(CliError::from)
         }
@@ -957,7 +955,7 @@ async fn match_subcommand(
             )
             .context("Rubbed the wrong way.")
             .emit_metrics(metrics_ctx);
-            maybe_run_status_after(status_after, &result, &mut ctx, out).await;
+            maybe_run_status_after(status_after, &result, &mut ctx, out);
             result.show_root_cause_error_then_exit_without_destructors(output)
         }
         #[cfg(feature = "legacy")]
@@ -1156,7 +1154,7 @@ async fn match_subcommand(
                 }
             };
 
-            maybe_run_status_after(status_after, &result, &mut ctx, out).await;
+            maybe_run_status_after(status_after, &result, &mut ctx, out);
             result
         }
         #[cfg(feature = "legacy")]
@@ -1345,7 +1343,7 @@ async fn match_subcommand(
             out.begin_status_after(status_after);
             let result = command::legacy::absorb::handle(&mut ctx, out, source.as_deref(), dry_run)
                 .emit_metrics(metrics_ctx);
-            maybe_run_status_after(status_after, &result, &mut ctx, out).await;
+            maybe_run_status_after(status_after, &result, &mut ctx, out);
             result.map_err(CliError::from)
         }
         #[cfg(feature = "legacy")]
@@ -1622,7 +1620,7 @@ async fn match_subcommand(
                 }
             }
             let result = result.emit_metrics(metrics_ctx);
-            maybe_run_status_after(status_after, &result, &mut ctx, out).await;
+            maybe_run_status_after(status_after, &result, &mut ctx, out);
             result.show_root_cause_error_then_exit_without_destructors(output)
         }
         #[cfg(feature = "legacy")]
@@ -1667,7 +1665,7 @@ async fn match_subcommand(
             let result = command::legacy::rub::handle_amend(&mut ctx, out, files, commit)
                 .context("Failed to amend.")
                 .emit_metrics(metrics_ctx);
-            maybe_run_status_after(status_after, &result, &mut ctx, out).await;
+            maybe_run_status_after(status_after, &result, &mut ctx, out);
             result.show_root_cause_error_then_exit_without_destructors(output)
         }
         #[cfg(feature = "legacy")]
@@ -1756,7 +1754,7 @@ async fn match_subcommand(
             )
             .context("Failed to squash commits.")
             .emit_metrics(metrics_ctx);
-            maybe_run_status_after(status_after, &result, &mut ctx, out).await;
+            maybe_run_status_after(status_after, &result, &mut ctx, out);
             result.show_root_cause_error_then_exit_without_destructors(output)
         }
         #[cfg(feature = "legacy")]
@@ -1784,7 +1782,7 @@ async fn match_subcommand(
             out.begin_status_after(status_after);
             let result = command::r#move::handle(&mut ctx, out, &source, &target, after)
                 .emit_metrics(metrics_ctx);
-            maybe_run_status_after(status_after, &result, &mut ctx, out).await;
+            maybe_run_status_after(status_after, &result, &mut ctx, out);
             result.show_root_cause_error_then_exit_without_destructors(output)
         }
         #[cfg(feature = "legacy")]
@@ -1937,7 +1935,7 @@ fn is_not_in_git_repository_error(err: &anyhow::Error) -> bool {
 /// Errors from the status query itself are logged to stderr but never mask
 /// the mutation's success.
 #[cfg(feature = "legacy")]
-async fn maybe_run_status_after<T, E>(
+fn maybe_run_status_after<T, E>(
     status_after: bool,
     result: &Result<T, E>,
     ctx: &mut but_ctx::Context,
@@ -1948,7 +1946,7 @@ async fn maybe_run_status_after<T, E>(
     }
     if result.is_ok() {
         let mutation_json = out.take_json_buffer();
-        run_status_after(ctx, out, mutation_json).await;
+        run_status_after(ctx, out, mutation_json);
     } else {
         // Mutation failed — don't drain the buffer here. OutputChannel::drop
         // will flush any buffered JSON (e.g. structured illegal_move details)
@@ -1958,7 +1956,7 @@ async fn maybe_run_status_after<T, E>(
 
 /// Ignore mutation status output in non-legacy builds until a non-legacy status command exists.
 #[cfg(not(feature = "legacy"))]
-async fn maybe_run_status_after<T, E>(
+fn maybe_run_status_after<T, E>(
     _status_after: bool,
     _result: &Result<T, E>,
     _ctx: &mut but_ctx::Context,
@@ -1979,7 +1977,7 @@ async fn maybe_run_status_after<T, E>(
 /// always emitted (with a `"status_error"` field on failure); in human mode
 /// a warning is printed to stderr.
 #[cfg(feature = "legacy")]
-async fn run_status_after(
+fn run_status_after(
     ctx: &mut but_ctx::Context,
     out: &mut OutputChannel,
     mutation_json: Option<serde_json::Value>,
@@ -1999,8 +1997,7 @@ async fn run_status_after(
             out,
             StatusFlags::all_false(),
             command::legacy::status::StatusRenderMode::Oneshot,
-        )
-        .await;
+        );
         let status_json = out.take_json_buffer().unwrap_or(serde_json::Value::Null);
 
         let mut combined = match status_result {
@@ -2044,7 +2041,6 @@ async fn run_status_after(
             },
             command::legacy::status::StatusRenderMode::Oneshot,
         )
-        .await
         {
             eprintln!(
                 "warning: status after mutation failed: {err:#}. Run 'but status' separately to check workspace state."
