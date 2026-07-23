@@ -61,11 +61,11 @@ export const CIChecks = meta.story({
 					{ label: "cancelled", variant: "lightGray", icon: "cross" },
 					{ label: "action required", variant: "warn", icon: "warning" },
 					{ label: "unknown", variant: "lightGray", icon: "question" },
-				] as Array<{ label: string; variant: BadgeVariant; icon: string }>
+				] satisfies ReadonlyArray<{ label: string; variant: BadgeVariant; icon: Parameters<typeof Icon>[0]["name"] }>
 			).map(({ label, variant, icon }) => (
 				<div key={label} style={{ display: "flex", gap: 8, alignItems: "center" }}>
 					<Badge variant={variant}>
-						<Icon name={icon as never} size={12} />
+						<Icon name={icon} size={12} />
 					</Badge>
 					<span style={{ fontSize: 12 }}>{label}</span>
 				</div>
