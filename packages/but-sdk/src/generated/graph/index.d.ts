@@ -452,7 +452,7 @@ export declare function openInEditor(projectId: string, editorId: string, path: 
  */
 export declare function peelRestoreSnapshot(projectId: string, sha: string): Promise<Snapshot | null>
 
-export declare function publishReview(projectId: string, params: CreateForgeReviewParams): Promise<ForgeReview>
+export declare function publishReview(projectId: string, params: PublishReviewInput): Promise<PublishReviewOutcome>
 
 /**
  * Remove a branch from a stack.
@@ -1397,14 +1397,6 @@ export type ConflictingStack = {
   refName: FullRefName;
   /** The shortened tip branch name, matching CLI display. */
   shortName: string;
-};
-
-export type CreateForgeReviewParams = {
-  title: string;
-  body: string;
-  sourceBranch: string;
-  targetBranch: string;
-  draft: boolean;
 };
 
 /** A linear run of detailed graph rows. */
@@ -2445,6 +2437,26 @@ export type ProjectForFrontend = {
   is_open: boolean;
 };
 
+/**
+ * Parameters for creating a review through the public API.
+ *
+ * `local_branch` identifies the workspace ref whose reviewed stack determines the target branch.
+ * `source_branch` is the possibly-different remote head sent to the forge.
+ */
+export type PublishReviewInput = {
+  title: string;
+  body: string;
+  localBranch: string;
+  sourceBranch: string;
+  draft: boolean;
+};
+
+/** A newly-created review together with the best-effort stack synchronization result. */
+export type PublishReviewOutcome = {
+  review: ForgeReview;
+  reviewSync: ReviewSyncOutcome;
+};
+
 export type PullRequestMinimal = {
   id: number;
   number: number;
@@ -2480,6 +2492,8 @@ export type PushResult = {
    * Format: (branch_name, before_sha, after_sha)
    */
   branchShaUpdates: Array<[string, string, string]>;
+  /** Best-effort synchronization of the complete review stack affected by the push. */
+  reviewSync: ReviewSyncOutcome;
 };
 
 /** Represents the pushable status for the current stack. */
@@ -2650,6 +2664,19 @@ export type ReviewMergeStatus = {
 export type ReviewStackingDescription = "bottom" | "top" | "disabled";
 
 export type ReviewState = "open" | "closed";
+
+/**
+ * The best-effort result of synchronizing review descriptions and target branches after a
+ * durable operation such as a push or review creation.
+ */
+export type ReviewSyncOutcome = {
+  status: "notNeeded";
+} | {
+  status: "succeeded";
+} | {
+  message: string;
+  status: "failed";
+};
 
 /** Information about the project's review template. */
 export type ReviewTemplateInfo = {

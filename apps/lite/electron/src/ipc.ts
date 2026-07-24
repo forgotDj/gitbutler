@@ -30,6 +30,8 @@ import type {
 	MessageCombinationStrategy,
 	PushResult,
 	ProjectForFrontend,
+	PublishReviewInput,
+	PublishReviewOutcome,
 	RelativeTo,
 	RefInfo,
 	RepoInfo,
@@ -41,7 +43,6 @@ import type {
 	CommitMoveResult,
 	CommitRewordResult,
 	CommitSquashResult,
-	CreateForgeReviewParams,
 	MoveBranchResult,
 	MoveChangesResult,
 	PushFlag,
@@ -285,7 +286,7 @@ export interface PeelRestoreSnapshotParams {
 
 export interface PublishReviewParams {
 	projectId: string;
-	params: CreateForgeReviewParams;
+	params: PublishReviewInput;
 }
 
 export interface WorkspaceBranchAndAncestorsPushParams {
@@ -476,7 +477,7 @@ export interface LiteElectronApi {
 	openInWebBrowser: (url: string) => Promise<void>;
 	openInEditor: (params: OpenInEditorParams) => Promise<void>;
 	pathJoin: (...paths: Array<string>) => Promise<string>;
-	publishReview: (params: PublishReviewParams) => Promise<ForgeReview>;
+	publishReview: (params: PublishReviewParams) => Promise<PublishReviewOutcome>;
 	updateBranchName: (params: UpdateBranchNameParams) => Promise<UpdateBranchNameResult>;
 	updateReview: (params: UpdateReviewParams) => Promise<void>;
 	tearOffBranch: (params: TearOffBranchParams) => Promise<MoveBranchResult>;
