@@ -539,6 +539,25 @@ async fn match_subcommand(
                         .emit_metrics(metrics_ctx)
                         .map_err(CliError::from)
                 }
+                #[cfg(feature = "legacy")]
+                Some(args::config::Subcommands::Forge {
+                    cmd: Some(args::config::ForgeSubcommand::GithubStacks { .. }),
+                }) => {
+                    // Repository-local setting; handled below after project setup.
+                    let mut ctx = setup::init_ctx(
+                        &args,
+                        InitCtxOptions {
+                            background_sync: BackgroundSync::Disabled,
+                            target_requirement: TargetRequirement::Optional,
+                            ..Default::default()
+                        },
+                        out,
+                    )?;
+                    command::config::exec(&mut ctx, out, cmd)
+                        .await
+                        .emit_metrics(metrics_ctx)
+                        .map_err(CliError::from)
+                }
                 Some(args::config::Subcommands::Forge { cmd: forge_cmd }) => {
                     command::config::forge_config(out, forge_cmd.clone())
                         .await
