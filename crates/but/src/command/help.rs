@@ -124,8 +124,6 @@ fn print_grouped_with_truncation(
 
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Commit => Group::BranchingAndCommitting,
-                #[cfg(feature = "legacy")]
-                SubcommandDiscriminant::_Commit2 => Group::BranchingAndCommitting,
                 SubcommandDiscriminant::Branch => Group::BranchingAndCommitting,
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Discard => Group::BranchingAndCommitting,
@@ -163,10 +161,7 @@ fn print_grouped_with_truncation(
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Squash => Group::EditingCommits,
                 #[cfg(feature = "legacy")]
-                SubcommandDiscriminant::_Squash2 => Group::EditingCommits,
                 SubcommandDiscriminant::Move => Group::EditingCommits,
-                #[cfg(feature = "legacy")]
-                SubcommandDiscriminant::_Move2 => Group::EditingCommits,
 
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Oplog => Group::OperationHistory,
@@ -380,7 +375,7 @@ Inspection:
   show         Shows detailed information about a commit or branch
 
 Branching and Committing:
-  commit       Commit changes to a stack
+  commit       Create a commit
   branch       Commands for managing branches
   discard      Discard uncommitted changes from the worktree
   resolve      Resolve conflicts in a commit
@@ -390,13 +385,13 @@ Branching and Committing:
   pick         Cherry-pick a commit from an unapplied branch into an applied v…
 
 Editing Commits:
+  squash       Squash commits, branches, or changes
+  move         Move commits and changes around
   rub          Combines two entities together to perform an operation like ame…
   absorb       Amends changes into the appropriate commits where they belong
   reword       Edit the commit message of the specified commit
   uncommit     Uncommit changes from a commit or file-in-commit to the unstage…
   amend        Amend one or more file changes into a specific commit and rebas…
-  squash       Squash commits together
-  move         Move a commit or branch to a different location
 
 Operation History:
   oplog        Commands for viewing and managing operation history
@@ -484,9 +479,6 @@ Checkout the full docs here: https://docs.gitbutler.com/cli-overview
 
 Branching and Committing:
   branch       Commands for managing branches
-
-Editing Commits:
-  move         Move a commit or branch to a different location
 
 Other Commands:
   gui          Open the GitButler GUI for the current project

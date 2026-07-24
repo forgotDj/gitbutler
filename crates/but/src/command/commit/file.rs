@@ -5,42 +5,6 @@ use bstr::ByteSlice;
 use but_core::{DryRun, sync::RepoExclusive};
 use but_ctx::Context;
 
-pub fn commited_file_to_another_commit_with_perm(
-    ctx: &mut Context,
-    path: &BStr,
-    source_id: gix::ObjectId,
-    target_id: gix::ObjectId,
-    out: &mut OutputChannel,
-    perm: &mut RepoExclusive,
-) -> Result<()> {
-    let relevant_changes = {
-        let context_lines = ctx.settings.context_lines;
-        let (repo, ws, mut db) = ctx.workspace_and_db_mut_with_perm(perm.read_permission())?;
-        let mut builder = DiffSpecBuilder::new(&mut db, &repo, &ws, context_lines);
-        builder.push_changes_from_path_in_commit(path, source_id, "First parent")?;
-        builder.into_diff_specs()
-    };
-
-    but_api::commit::move_changes::commit_move_changes_between_only_with_perm(
-        ctx,
-        source_id,
-        target_id,
-        relevant_changes,
-        DryRun::No,
-        perm,
-    )?;
-
-    legacy_update_workspace_commit(ctx)?;
-
-    if let Some(out) = out.for_human() {
-        writeln!(out, "Moved files between commits!")?;
-    } else if let Some(out) = out.for_json() {
-        out.write_value(serde_json::json!({"ok": true}))?;
-    }
-
-    Ok(())
-}
-
 pub fn uncommit_file_and_discard(
     ctx: &mut Context,
     path: &BStr,

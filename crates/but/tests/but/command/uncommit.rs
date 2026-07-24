@@ -118,9 +118,9 @@ fn uncommit_different_files_from_different_commits_same_branch() -> anyhow::Resu
 
     // Two commits on branch A, each introducing a different file.
     env.file("c1.txt", "c1 content\n");
-    env.but("commit A -m 'add c1'").assert().success();
+    env.but("commit -b A -m 'add c1'").assert().success();
     env.file("c2.txt", "c2 content\n");
-    env.but("commit A -m 'add c2'").assert().success();
+    env.but("commit -b A -m 'add c2'").assert().success();
 
     env.but("stf")
         .assert()
@@ -226,7 +226,7 @@ fn uncommit_different_files_from_the_same_commit() -> anyhow::Result<()> {
     // committed-file ids into one source for that commit.
     env.file("c1.txt", "c1 content\n");
     env.file("c2.txt", "c2 content\n");
-    env.but("commit A -m 'add c1 and c2'").assert().success();
+    env.but("commit -b A -m 'add c1 and c2'").assert().success();
 
     env.but("stf")
         .assert()
@@ -326,11 +326,11 @@ fn uncommit_same_file_from_different_commits_same_branch() -> anyhow::Result<()>
 
     // Different lengths prevent racy-clean false negatives on coarse-mtime filesystems.
     env.file("f.txt", "v1\n");
-    env.but("commit A -m 'write v1'").assert().success();
+    env.but("commit -b A -m 'write v1'").assert().success();
     env.file("f.txt", "v22\n");
-    env.but("commit A -m 'write v2'").assert().success();
+    env.but("commit -b A -m 'write v2'").assert().success();
     env.file("f.txt", "v333\n");
-    env.but("commit A -m 'write v3'").assert().success();
+    env.but("commit -b A -m 'write v3'").assert().success();
 
     env.but("stf")
         .assert()
@@ -438,9 +438,9 @@ fn uncommit_different_files_from_different_commits_different_branches() -> anyho
 
     // One commit on each of the two parallel stacks, each adding its own file.
     env.file("fa.txt", "a content\n");
-    env.but("commit A -m 'add fa'").assert().success();
+    env.but("commit -b A -m 'add fa'").assert().success();
     env.file("fb.txt", "b content\n");
-    env.but("commit B -m 'add fb'").assert().success();
+    env.but("commit -b B -m 'add fb'").assert().success();
 
     env.but("stf")
         .assert()

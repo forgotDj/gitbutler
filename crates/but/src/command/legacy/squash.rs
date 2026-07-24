@@ -19,7 +19,7 @@ use crate::{
     CliError, CliResult, CliResultExt, IdMap,
     args::{
         atoms::{BranchArg, CliIdArg, Priority, Purpose, ResolvedCliIdArg, ResolvedCliIdArgRef},
-        squash2::Platform,
+        squash::Platform,
     },
     bad_input,
     command::legacy::reword2::RewordCommitOperation,

@@ -31,8 +31,6 @@ use crate::{
 };
 
 mod amend;
-pub(crate) mod squash;
-mod undo;
 
 /// A description of a set of hunks.
 type Description = String;

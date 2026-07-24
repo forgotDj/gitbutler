@@ -2,6 +2,7 @@
 //!
 //! Ideally they *show* the initial state, and the *post* state, to validate the commands actually do what they claim.
 //! **Only** test the *happy path* of a typical user journey, while keeping details in unit tests with private module access.
+
 #[cfg(feature = "legacy")]
 mod absorb;
 mod agent;
@@ -14,8 +15,6 @@ mod branch;
 mod clean;
 #[cfg(feature = "legacy")]
 mod commit;
-#[cfg(feature = "legacy")]
-mod commit2;
 mod config;
 #[cfg(feature = "legacy")]
 mod diff;
@@ -34,8 +33,6 @@ mod help;
 mod land;
 #[cfg(feature = "legacy")]
 mod r#move;
-#[cfg(feature = "legacy")]
-mod move2;
 mod onboarding;
 #[cfg(feature = "legacy")]
 mod open;
@@ -57,8 +54,6 @@ mod skill;
 #[cfg(feature = "legacy")]
 mod squash;
 #[cfg(feature = "legacy")]
-mod squash2;
-#[cfg(feature = "legacy")]
 mod status;
 mod r#switch;
 #[cfg(feature = "legacy")]
@@ -72,11 +67,6 @@ mod worktree;
 
 #[cfg(feature = "legacy")]
 mod util {
-    use std::{
-        collections::BTreeMap,
-        path::{Path, PathBuf},
-    };
-
     use anyhow::Context as _;
 
     use crate::utils::{CommandExt as _, Sandbox};
@@ -101,7 +91,7 @@ mod util {
             format!("{first_line}\n{}last\n", "line\n".repeat(context_distance)),
         );
         env.but(format!(
-            "_commit2 -b {branch} -m 'create {filename1} and {filename2}'"
+            "commit -b {branch} -m 'create {filename1} and {filename2}'"
         ))
         .assert()
         .success();
@@ -118,7 +108,7 @@ mod util {
             filename,
             format!("first\n{}last\n", "line\n".repeat(context_distance)),
         );
-        env.but(format!("commit {branch} -m {filename}"))
+        env.but(format!("commit -b {branch} -m {filename} {filename}"))
             .assert()
             .success();
         env.file(
@@ -201,86 +191,6 @@ mod util {
         cmd
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub enum SnapshotFileContents {
-        Text(String),
-        Binary(Vec<u8>),
-    }
-
-    pub type WorkingDirectorySnapshot = BTreeMap<PathBuf, SnapshotFileContents>;
-
-    /// Capture all regular files from the working directory recursively, excluding `.git`.
-    pub fn working_directory_snapshot(env: &Sandbox) -> anyhow::Result<WorkingDirectorySnapshot> {
-        let root = env.projects_root();
-        let mut snapshot = WorkingDirectorySnapshot::new();
-        collect_files_recursively(root, root, &mut snapshot)?;
-        Ok(snapshot)
-    }
-
-    fn collect_files_recursively(
-        root: &Path,
-        dir: &Path,
-        out: &mut WorkingDirectorySnapshot,
-    ) -> anyhow::Result<()> {
-        for entry in std::fs::read_dir(dir)
-            .with_context(|| format!("failed to read directory '{}'", dir.display()))?
-        {
-            let entry = entry.with_context(|| {
-                format!("failed to read directory entry in '{}'", dir.display())
-            })?;
-            let path = entry.path();
-            let file_name = entry.file_name();
-
-            if file_name.to_string_lossy() == ".git" {
-                continue;
-            }
-
-            let file_type = entry
-                .file_type()
-                .with_context(|| format!("failed to determine type for '{}'", path.display()))?;
-            if file_type.is_dir() {
-                collect_files_recursively(root, &path, out)?;
-                continue;
-            }
-            if !file_type.is_file() {
-                continue;
-            }
-
-            let relative_path = path
-                .strip_prefix(root)
-                .with_context(|| {
-                    format!(
-                        "expected '{}' to be under root '{}'",
-                        path.display(),
-                        root.display()
-                    )
-                })?
-                .to_path_buf();
-            let contents = std::fs::read(&path)
-                .with_context(|| format!("failed to read file '{}'", path.display()))?;
-            out.insert(relative_path, snapshot_file_contents(contents));
-        }
-        Ok(())
-    }
-
-    fn snapshot_file_contents(contents: Vec<u8>) -> SnapshotFileContents {
-        if is_printable_text(&contents) {
-            // Safe because `is_printable_text` verifies valid UTF-8 first.
-            SnapshotFileContents::Text(String::from_utf8(contents).expect("validated utf-8"))
-        } else {
-            SnapshotFileContents::Binary(contents)
-        }
-    }
-
-    fn is_printable_text(contents: &[u8]) -> bool {
-        let Ok(text) = std::str::from_utf8(contents) else {
-            return false;
-        };
-
-        text.chars()
-            .all(|ch| !ch.is_control() || matches!(ch, '\n' | '\r' | '\t'))
-    }
-
     /// Find a branch by name in `status` output.
     pub fn find_branch<'a>(
         status: &'a serde_json::Value,
@@ -305,12 +215,12 @@ mod util {
         env.but("branch new branchB").assert().success();
 
         env.file("test-file.txt", "line 1\nline 2\nline 3\n");
-        env.but("commit -m 'first commit' branchB")
+        env.but("commit -m 'first commit' -b branchB")
             .assert()
             .success();
 
         env.file("test-file.txt", "line 1\nline 2\nline 3\nline 4\n");
-        env.but("commit -m 'second commit' branchB")
+        env.but("commit -m 'second commit' -b branchB")
             .assert()
             .success();
 

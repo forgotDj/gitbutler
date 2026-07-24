@@ -405,6 +405,7 @@ fn branches_touching_path(
 /// workspace branch, name that branch and the stacking recovery instead of
 /// letting internal cherry-pick errors surface. Returns `None` when no other
 /// branch can be blamed, so the caller keeps the original error.
+#[expect(dead_code)]
 pub fn commit_failure_error(
     repo: &gix::Repository,
     ws: &Workspace,

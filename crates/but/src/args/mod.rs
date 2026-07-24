@@ -289,44 +289,17 @@ pub enum Subcommands {
         verbose: bool,
     },
 
-    /// Commit changes to a stack.
-    ///
-    /// The `but commit` command allows you to create a new commit
-    /// on a specified branch (stack) with the current uncommitted changes.
-    ///
-    /// If there is only one branch applied, it will commit to that branch by default.
-    ///
-    /// If there are multiple branches applied, you must specify which branch to
-    /// commit to, or if in interactive mode, you will be prompted to select one.
-    ///
-    /// By default, all uncommitted changes and all changes already staged to that
-    /// branch will be included in the commit. If you only want to commit the changes
-    /// that are already staged to that branch, you can use the `--only` flag.
-    ///
-    /// It will not commit changes staged to other branches.
-    ///
-    /// Use `but commit empty --before <target>` or `but commit empty --after <target>`
-    /// to insert a blank commit. This is useful for creating a placeholder
-    /// commit that you can amend changes into later using `but rub` or `but absorb`.
-    ///
     #[cfg(feature = "legacy")]
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
     Commit(commit::Platform),
 
     #[cfg(feature = "legacy")]
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
-    #[clap(hide = true, name = "_commit2")]
-    _Commit2(commit2::Platform),
+    Squash(squash::Platform),
 
     #[cfg(feature = "legacy")]
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
-    #[clap(hide = true, name = "_squash2")]
-    _Squash2(squash2::Platform),
-
-    #[cfg(feature = "legacy")]
-    #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
-    #[clap(hide = true, name = "_move2")]
-    _Move2(move2::Platform),
+    Move(r#move::Platform),
 
     #[cfg(feature = "legacy")]
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
@@ -729,105 +702,6 @@ pub enum Subcommands {
         /// Can be specified multiple times or as comma-separated values.
         #[clap(long = "changes", short = 'p', value_delimiter = ',')]
         changes: Vec<String>,
-    },
-
-    /// Squash commits together.
-    ///
-    /// Can be invoked in three ways:
-    /// 1. Using commit identifiers: `but squash <commit1> <commit2>` or `but squash <commit1> <commit2> <commit3>...`
-    ///    - Squashes all commits except the last into the last commit
-    /// 2. Using a commit range: `but squash <commit1>..<commit4>`
-    ///    - Squashes all commits in the range into the last commit in the range
-    /// 3. Using a branch name: `but squash <branch>`
-    ///    - Squashes all commits in the branch into the bottom-most commit
-    #[cfg(feature = "legacy")]
-    #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
-    Squash {
-        /// Commit identifiers, a range (commit1..commit2), or a branch name
-        commits: Vec<String>,
-        /// Drop source commit messages and keep only the target commit's message
-        #[clap(long, short = 'd', group = "message_opts")]
-        drop_message: bool,
-        /// Provide a new commit message for the resulting commit
-        #[clap(long, short = 'm', group = "message_opts")]
-        message: Option<String>,
-        /// Generate commit message using AI with optional user summary or instructions.
-        /// Use --ai by itself or --ai="your instructions" (equals sign required for value)
-        #[clap(long, short = 'i', group = "message_opts", num_args = 0..=1, require_equals = true)]
-        ai: Option<Option<String>>,
-    },
-
-    /// Move a commit or branch to a different location.
-    ///
-    /// Commit moves:
-    /// - By default, commits are moved to be before (below) the target.
-    /// - Use `--after` to move the commit after (above) the target instead.
-    /// - Use comma-separated commit IDs to move multiple commits together.
-    /// - When moving to a branch, the commit is placed at the top of that branch's stack.
-    ///
-    /// Branch moves:
-    /// - Move one branch on top of another to stack them.
-    /// - Move a branch to `zz` to tear it off (unstack it).
-    ///
-    /// ## Examples
-    ///
-    /// Move a commit before another commit:
-    ///
-    /// ```text
-    /// but move abc123 def456
-    /// ```
-    ///
-    /// Move multiple commits before another commit:
-    ///
-    /// ```text
-    /// but move abc123,789abc def456
-    /// ```
-    ///
-    /// Move a commit after another commit:
-    ///
-    /// ```text
-    /// but move abc123 def456 --after
-    /// ```
-    ///
-    /// Move multiple commits after another commit:
-    ///
-    /// ```text
-    /// but move abc123,789abc def456 --after
-    /// ```
-    ///
-    /// Move a commit to a different branch (places at top):
-    ///
-    /// ```text
-    /// but move abc123 my-feature-branch
-    /// ```
-    ///
-    /// Move multiple commits to a different branch (places at top):
-    ///
-    /// ```text
-    /// but move abc123,789abc my-feature-branch
-    /// ```
-    ///
-    /// Stack one branch on top of another:
-    ///
-    /// ```text
-    /// but move feature/frontend feature/backend
-    /// ```
-    ///
-    /// Tear off (unstack) a branch:
-    ///
-    /// ```text
-    /// but move feature/frontend zz
-    /// ```
-    #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
-    Move {
-        /// Commit/branch identifier to move. Use comma-separated commit IDs for multi-commit moves.
-        source: String,
-        /// Target commit/branch identifier, or `zz` to unstack a branch
-        target: String,
-        /// Move the commit after (above) the target instead of before (below).
-        /// Only valid for commit-to-commit moves.
-        #[clap(short = 'a', long = "after")]
-        after: bool,
     },
 
     /// Commands for viewing and managing operation history.
@@ -1431,16 +1305,14 @@ pub mod agent;
 pub mod alias;
 #[cfg(feature = "legacy")]
 pub mod commit;
-#[cfg(feature = "legacy")]
-pub mod commit2;
 pub mod config;
 #[cfg(feature = "legacy")]
 pub mod diff2;
 #[cfg(feature = "legacy")]
-pub mod move2;
+pub mod r#move;
 pub mod skill;
 #[cfg(feature = "legacy")]
-pub mod squash2;
+pub mod squash;
 pub mod update;
 
 pub mod actions {

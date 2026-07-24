@@ -147,12 +147,7 @@ impl Subcommands {
             Subcommands::Gui { .. } => Gui,
             Subcommands::_Open { .. } => Open,
             #[cfg(feature = "legacy")]
-            Subcommands::Commit(crate::args::commit::Platform { cmd, .. }) => match cmd {
-                None => Commit,
-                Some(crate::args::commit::Subcommands::Empty { .. }) => CommitEmpty,
-            },
-            #[cfg(feature = "legacy")]
-            Subcommands::_Commit2(..) => Commit2,
+            Subcommands::Commit(..) => Commit,
             #[cfg(feature = "legacy")]
             Subcommands::Push(_) => Push,
             #[cfg(feature = "legacy")]
@@ -227,14 +222,11 @@ impl Subcommands {
             #[cfg(feature = "legacy")]
             Subcommands::Amend { .. } => Amend,
             #[cfg(feature = "legacy")]
-            Subcommands::Squash { .. } => Squash,
+            Subcommands::Squash(..) => Squash,
             #[cfg(feature = "legacy")]
-            Subcommands::_Squash2(..) => Squash2,
-            #[cfg(feature = "legacy")]
-            Subcommands::_Move2(..) => Move2,
+            Subcommands::Move(..) => Move,
             #[cfg(feature = "legacy")]
             Subcommands::Land { .. } => Land,
-            Subcommands::Move { .. } => Move,
             #[cfg(feature = "legacy")]
             Subcommands::Pick { .. } => Pick,
             Subcommands::Skill(skill::Platform { cmd }) => match cmd {
@@ -278,12 +270,12 @@ impl Subcommands {
                 push_prop(&mut props, "targetKind", "commit");
             }
             #[cfg(feature = "legacy")]
-            #[cfg(feature = "legacy")]
-            Subcommands::Squash { .. } => {
+            Subcommands::Squash(..) => {
                 push_prop(&mut props, "sourceKind", "commitOrBranch");
                 push_prop(&mut props, "targetKind", "commit");
             }
-            Subcommands::Move { .. } => {
+            #[cfg(feature = "legacy")]
+            Subcommands::Move(..) => {
                 push_prop(&mut props, "sourceKind", "commitOrBranch");
                 push_prop(&mut props, "targetKind", "commitOrBranchOrUnassigned");
             }
@@ -781,6 +773,9 @@ mod tests {
         bad_input,
     };
 
+    #[cfg(feature = "legacy")]
+    use crate::args::atoms::CliIdArg;
+
     fn prop<'a>(
         props: &'a [(String, serde_json::Value)],
         key: &str,
@@ -872,12 +867,15 @@ mod tests {
             Subcommands::Agent(agent::Platform { cmd: None }),
             "agentSetup",
         );
+        #[cfg(feature = "legacy")]
         assert_command(
-            Subcommands::Move {
-                source: "c1".into(),
-                target: "main".into(),
-                after: false,
-            },
+            Subcommands::Move(crate::args::r#move::Platform {
+                branch: Some(Some(CliIdArg("main".to_owned()))),
+                above: None,
+                below: None,
+                unstack: false,
+                sources: Vec::from([CliIdArg("ci".to_owned())]),
+            }),
             "move",
         );
 
@@ -906,23 +904,25 @@ mod tests {
 
     #[test]
     fn extra_props_keep_useful_source_and_target_kinds() {
-        let moved = Subcommands::Move {
-            source: "c1".into(),
-            target: "main".into(),
-            after: false,
-        };
-        let props = moved.to_metrics_extra_props();
-        assert_eq!(
-            prop(&props, "sourceKind"),
-            Some(&serde_json::json!("commitOrBranch"))
-        );
-        assert_eq!(
-            prop(&props, "targetKind"),
-            Some(&serde_json::json!("commitOrBranchOrUnassigned"))
-        );
-
         #[cfg(feature = "legacy")]
         {
+            let moved = Subcommands::Move(crate::args::r#move::Platform {
+                branch: Some(Some(CliIdArg("main".to_owned()))),
+                above: None,
+                below: None,
+                unstack: false,
+                sources: Vec::from([CliIdArg("ci".to_owned())]),
+            });
+            let props = moved.to_metrics_extra_props();
+            assert_eq!(
+                prop(&props, "sourceKind"),
+                Some(&serde_json::json!("commitOrBranch"))
+            );
+            assert_eq!(
+                prop(&props, "targetKind"),
+                Some(&serde_json::json!("commitOrBranchOrUnassigned"))
+            );
+
             let discard = Subcommands::Uncommit {
                 source: "c1".into(),
                 discard: true,
