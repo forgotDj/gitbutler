@@ -123,7 +123,7 @@ fn create_reverse_hex_id(path_bytes: &[u8]) -> anyhow::Result<ChangeId> {
     let object_id = hasher.try_finalize()?;
     let mut change_id = ChangeId::from_bytes(object_id.as_bytes());
     if path_bytes.iter().all(|c| b'k' <= *c && *c <= b'z') {
-        change_id.prefix_with(path_bytes.iter().copied());
+        change_id = change_id.prefixed_with(path_bytes.iter().copied());
     }
     Ok(change_id)
 }
