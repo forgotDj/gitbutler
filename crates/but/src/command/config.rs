@@ -694,6 +694,8 @@ pub(crate) async fn github_stacks_config(
                     gitbutler_github_stacking_mode: Some(mode),
                     ..Default::default()
                 })?;
+                drop(repo);
+                ctx.repo.take();
                 mode
             }
             None => repo
