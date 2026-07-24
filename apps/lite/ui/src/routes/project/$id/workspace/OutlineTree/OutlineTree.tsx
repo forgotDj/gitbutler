@@ -280,6 +280,8 @@ const UncommittedChanges: FC<{
 				projectId={projectId}
 				commitTarget={commitTarget}
 				targetComboboxItems={targetComboboxItems}
+				startCommitButtonId={startCommitButtonId}
+				commitMessageInputId={commitMessageInputId}
 				className={styles.commitForm}
 			/>
 		</div>
@@ -522,6 +524,17 @@ const StackC: FC<{
 	);
 };
 
+const startCommitButtonId = "start-commit-button";
+const commitMessageInputId = "commit-message-input";
+
+const focusCommitMessageInput = () => {
+	const input = document.getElementById(commitMessageInputId);
+	if (input) input.focus();
+	// The commit form may be collapsed; clicking the trigger expands it and
+	// focuses the message input.
+	else document.getElementById(startCommitButtonId)?.click();
+};
+
 const Stacks: FC<{
 	projectId: string;
 	checkCommit: (evt: { commitId: string; shiftKey: boolean }) => void;
@@ -571,6 +584,7 @@ const Stacks: FC<{
 		projectId,
 		ref: hotkeysRef,
 		checkCommit,
+		focusCommitMessageInput,
 	});
 
 	return (
