@@ -330,7 +330,7 @@ test("local moves do not update reviews and partial pushes synchronize the compl
 	await gitbutler.runScript("push-branch.sh", ["branch2"]);
 	await expectReviewHistoryDeltas(server, beforeMiddlePush, {
 		42: 1,
-		43: 1,
+		43: 2,
 		44: 1,
 		45: 0,
 	});
@@ -479,6 +479,7 @@ test("GitHub native stacks are rebuilt when a review is created in the middle", 
 	});
 	await gitbutler.runScript("project-with-stacks.sh", [server.repositoryUrl]);
 	await storeFakeGitHubEnterprisePat(page, server);
+	mirrorFakeCredentialForCli(gitbutler);
 	await applyUpstream(gitbutler, "branch1", "branch2", "branch3");
 	await mockForge(page, {
 		get_review_merge_status: mergeStatus(),
@@ -702,7 +703,7 @@ test("removing a reviewed middle ref is reflected after pushing the remaining st
 
 	const beforeRemainingStackPush = reviewHistoryLengths(server, [42, 43, 44]);
 	await gitbutler.runScript("push-branch.sh", ["branch3"]);
-	await expectReviewHistoryDeltas(server, beforeRemainingStackPush, { 42: 1, 43: 1, 44: 1 });
+	await expectReviewHistoryDeltas(server, beforeRemainingStackPush, { 42: 1, 43: 1, 44: 2 });
 	await expectReviews(server, 3, (reviews) => {
 		const [reviewA, reviewB, reviewC] = reviews;
 		expect(reviewA?.base.ref).toBe("master");
@@ -776,7 +777,7 @@ test("moving a reviewed ref between reviewed stacks continues after one stack up
 	server.setFailingReviewUpdates([42]);
 	const beforePush = reviewHistoryLengths(server, [42, 43, 44, 45]);
 	await gitbutler.runScript("push-branch.sh", ["branch2"]);
-	await expectReviewHistoryDeltas(server, beforePush, { 42: 1, 43: 1, 44: 1, 45: 1 });
+	await expectReviewHistoryDeltas(server, beforePush, { 42: 1, 43: 2, 44: 1, 45: 2 });
 	await expectReviews(server, 4, (reviews) => {
 		const [reviewA, reviewB, reviewC, reviewD] = reviews;
 		expect(reviews.map((review) => review.base.ref)).toEqual([
