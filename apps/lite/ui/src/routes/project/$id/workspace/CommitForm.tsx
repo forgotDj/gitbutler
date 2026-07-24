@@ -96,10 +96,9 @@ export const CommitForm: FC<{
 	const [isExpanded, setIsExpanded] = useState(false);
 
 	const canCommitOrAmendBase = isDefaultMode && commitTarget !== null && !isCommitOrAmendPending;
-	const canCommit = canCommitOrAmendBase && isExpanded;
+	const canCommit = canCommitOrAmendBase;
 	const canAmend =
 		canCommitOrAmendBase &&
-		isExpanded &&
 		worktreeChanges &&
 		worktreeChanges.changes.length > 0 &&
 		headInfoIndex &&
@@ -116,15 +115,16 @@ export const CommitForm: FC<{
 
 		commitCreate(
 			{
-				message: commitTextareaRef.current?.value ?? "",
+				message: commitTextareaRef.current?.value ?? draftMessage ?? "",
 				relativeTo: commitTarget.relativeTo,
 			},
 			{
 				onSuccess: (response) => {
-					if (response.newCommit !== null && commitTextareaRef.current) {
-						commitTextareaRef.current.value = "";
-						persistDraftMessage({ projectId, message: "" });
-					}
+					if (response.newCommit === null) return;
+
+					if (commitTextareaRef.current) commitTextareaRef.current.value = "";
+
+					persistDraftMessage({ projectId, message: "" });
 				},
 			},
 		);
