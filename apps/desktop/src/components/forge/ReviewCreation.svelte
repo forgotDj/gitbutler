@@ -14,7 +14,6 @@
 	import MessageEditorInput from "$components/editor/MessageEditorInput.svelte";
 	import PrTemplateSection from "$components/forge/PrTemplateSection.svelte";
 	import { AI_SERVICE } from "$lib/ai/service";
-	import { BASE_BRANCH_SERVICE } from "$lib/baseBranch/baseBranchService.svelte";
 	import { getBranchNameFromRef } from "$lib/branches/branchUtils";
 	import { splitMessage } from "$lib/commits/commitMessage";
 	import { projectAiGenEnabled, projectRunCommitHooks } from "$lib/config/config";
@@ -51,21 +50,8 @@
 		onClose: () => void;
 	};
 
-	const {
-		projectId,
-		stackId,
-		branchName,
-		segment,
-		branchIndex,
-		parent,
-		withForce,
-		onClose,
-	}: Props = $props();
+	const { projectId, stackId, branchName, segment, withForce, onClose }: Props = $props();
 
-	const baseBranchService = inject(BASE_BRANCH_SERVICE);
-	const baseBranchQuery = $derived(baseBranchService.baseBranch(projectId));
-	const baseBranch = $derived(baseBranchQuery.response);
-	const baseBranchName = $derived(baseBranch?.shortName);
 	const prService = inject(PR_SERVICE);
 	const forgeInfoService = inject(FORGE_INFO_SERVICE);
 	const forgeInfoQuery = $derived(forgeInfoService.get(projectId));
@@ -79,9 +65,6 @@
 
 	const [pushStack, stackPush] = stackService.pushStack;
 
-	const branchParentName = $derived(parent?.refName?.displayName);
-	const branchParentPrNumber = $derived(parent?.metadata?.review.pullRequest);
-	const branchParentDetails = $derived(parent);
 	const branchDetails = $derived(segment);
 	const commits = $derived(segment.commits);
 	const runHooks = $derived(projectRunCommitHooks(projectId));
@@ -196,7 +179,7 @@
 			return [upstreamBranchName, pushQuery];
 		}
 
-		return [branchName, undefined];
+		return [branchDetails?.remoteTrackingRefName?.displayName ?? branchName, undefined];
 	}
 
 	export async function createReview() {
@@ -245,39 +228,16 @@
 
 	async function createPr(params: CreatePrParams): Promise<PullRequest | undefined> {
 		try {
-			if (!baseBranchName) {
-				chipToasts.error("No base branch name determined");
-				return;
-			}
-
 			if (!params.upstreamBranchName) {
 				chipToasts.error("No upstream branch name determined");
 				return;
-			}
-
-			const currentIndex = branchIndex;
-			if (currentIndex === -1) {
-				throw new Error("Branch index not found.");
-			}
-
-			// Use base branch as base unless it's part of stack and should be be pointing
-			// to the preceding branch. Ensuring we're not using `archived` branches as base.
-			let base = baseBranch?.shortName || "master";
-
-			if (
-				branchParentName &&
-				branchParentPrNumber &&
-				branchParentDetails &&
-				branchParentDetails.pushStatus !== "integrated"
-			) {
-				base = branchParentName;
 			}
 
 			const pr = await prService.createPr(projectId, {
 				title: params.title,
 				body: params.body,
 				draft: params.draft,
-				baseBranchName: base,
+				localBranchName: params.branchName,
 				upstreamName: params.upstreamBranchName,
 				posthogLabel: forgeInfo?.posthogLabel,
 			});

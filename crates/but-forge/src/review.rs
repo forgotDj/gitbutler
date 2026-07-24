@@ -1499,7 +1499,6 @@ pub async fn set_review_draftiness(
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "camelCase")]
 pub struct CreateForgeReviewParams {
     pub title: String,
@@ -1508,9 +1507,6 @@ pub struct CreateForgeReviewParams {
     pub target_branch: String,
     pub draft: bool,
 }
-
-#[cfg(feature = "export-schema")]
-but_schemars::register_sdk_type!(CreateForgeReviewParams);
 
 fn github_head_owner_and_repo<'a>(
     forge_repo_info: &'a crate::forge::ForgeRepoInfo,

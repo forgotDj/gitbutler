@@ -688,15 +688,19 @@ pub fn list_ci_checks_for_ref(
 #[instrument(err(Debug))]
 pub async fn publish_review(
     ctx: ThreadSafeContext,
-    params: but_forge::CreateForgeReviewParams,
+    params: PublishReviewInput,
 ) -> Result<but_forge::PublishReviewOutcome> {
-    let mut params = params;
-    let branch = {
+    let branch = gix::refs::Category::LocalBranch.to_full_name(params.local_branch.as_str())?;
+    let target_branch = {
         let ctx = ctx.clone().into_thread_local();
-        let branch =
-            gix::refs::Category::LocalBranch.to_full_name(params.source_branch.as_str())?;
-        params.target_branch = review_creation_target(&ctx, branch.as_ref())?;
-        branch
+        review_creation_target(&ctx, branch.as_ref())?
+    };
+    let params = but_forge::CreateForgeReviewParams {
+        title: params.title,
+        body: params.body,
+        source_branch: params.source_branch,
+        target_branch,
+        draft: params.draft,
     };
     let review = publish_review_only(ctx.clone(), params).await?;
     let review_sync = sync_review_stack_after_review_creation(ctx, branch).await;
@@ -705,6 +709,24 @@ pub async fn publish_review(
         review_sync,
     })
 }
+
+/// Parameters for creating a review through the public API.
+///
+/// `local_branch` identifies the workspace ref whose reviewed stack determines the target branch.
+/// `source_branch` is the possibly-different remote head sent to the forge.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "export-schema", derive(schemars::JsonSchema))]
+#[serde(rename_all = "camelCase")]
+pub struct PublishReviewInput {
+    pub title: String,
+    pub body: String,
+    pub local_branch: String,
+    pub source_branch: String,
+    pub draft: bool,
+}
+
+#[cfg(feature = "export-schema")]
+but_schemars::register_sdk_type!(PublishReviewInput);
 
 /// Create and cache a review without synchronizing the surrounding reviewed ref slice.
 ///
@@ -969,18 +991,21 @@ async fn sync_review_update_groups(
     };
 
     let mut updated = false;
-    for updates in update_groups {
+    let mut errors = Vec::new();
+    for (index, updates) in update_groups.into_iter().enumerate() {
         if updates.is_empty() {
             continue;
         }
         updated = true;
         if let Err(err) = update_review_footers(ctx.clone(), updates).await {
-            return but_forge::ReviewSyncOutcome::Failed {
-                message: err.to_string(),
-            };
+            errors.push(format!("Review stack {}: {err}", index + 1));
         }
     }
-    if updated {
+    if !errors.is_empty() {
+        but_forge::ReviewSyncOutcome::Failed {
+            message: errors.join("\n"),
+        }
+    } else if updated {
         but_forge::ReviewSyncOutcome::Succeeded
     } else {
         but_forge::ReviewSyncOutcome::NotNeeded

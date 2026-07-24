@@ -30,6 +30,7 @@ import type {
 	MessageCombinationStrategy,
 	PushResult,
 	ProjectForFrontend,
+	PublishReviewInput,
 	PublishReviewOutcome,
 	RelativeTo,
 	RefInfo,
@@ -42,7 +43,6 @@ import type {
 	CommitMoveResult,
 	CommitRewordResult,
 	CommitSquashResult,
-	CreateForgeReviewParams,
 	MoveBranchResult,
 	MoveChangesResult,
 	PushFlag,
@@ -286,7 +286,7 @@ export interface PeelRestoreSnapshotParams {
 
 export interface PublishReviewParams {
 	projectId: string;
-	params: CreateForgeReviewParams;
+	params: PublishReviewInput;
 }
 
 export interface WorkspaceBranchAndAncestorsPushParams {

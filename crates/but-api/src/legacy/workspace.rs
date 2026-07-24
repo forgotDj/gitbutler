@@ -438,17 +438,22 @@ pub async fn workspace_branch_and_ancestors_push(
 ) -> Result<WorkspaceBranchAndAncestorsPushOutcome> {
     let branch: gix::refs::FullName = branch.try_into()?;
     let sync_ctx = ctx.clone();
-    let result = {
+    let push_branch = branch.clone();
+    // This API also awaits forge synchronization, but the Git push remains synchronous and may
+    // perform network I/O, hooks, and credential handling. Keep it off Tokio's async worker pool.
+    let result = tokio::task::spawn_blocking(move || {
         let mut ctx = ctx.into_thread_local();
         workspace_branch_and_ancestors_push_only(
             &mut ctx,
             with_force,
             skip_force_push_protection,
-            branch.as_ref(),
+            push_branch.as_ref(),
             run_hooks,
             push_opts,
-        )?
-    };
+        )
+    })
+    .await
+    .context("Push task failed")??;
     let review_sync = if !push_needs_review_sync(&result) {
         but_forge::ReviewSyncOutcome::NotNeeded
     } else {

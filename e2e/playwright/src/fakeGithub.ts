@@ -40,6 +40,7 @@ export type FakeGitHubServer = {
 	getReviewUpdateCount: () => number;
 	getReviewUpdateHistory: (number: number) => ReviewMutation[];
 	setReviewUpdatesFailing: (failing: boolean) => void;
+	setFailingReviewUpdates: (numbers: number[]) => void;
 	setGitPushesFailing: (failing: boolean) => void;
 	close: () => Promise<void>;
 };
@@ -91,6 +92,7 @@ export async function startFakeGitHubServer({
 	const reviewUpdateHistory = new Map<number, ReviewMutation[]>();
 	let isListed = listed;
 	let reviewUpdatesFailing = failReviewUpdates;
+	let failingReviewUpdates = new Set<number>();
 	let gitPushesFailing = failGitPushes;
 
 	const sockets = new Set<Socket>();
@@ -129,7 +131,9 @@ export async function startFakeGitHubServer({
 				const history = reviewUpdateHistory.get(number) ?? [];
 				history.push(structuredClone(input));
 				reviewUpdateHistory.set(number, history);
-				if (reviewUpdatesFailing) return { status: "failed" as const };
+				if (reviewUpdatesFailing || failingReviewUpdates.has(number)) {
+					return { status: "failed" as const };
+				}
 				const current = reviews.get(number);
 				if (!current) return { status: "notFound" as const };
 				const updated = {
@@ -182,6 +186,9 @@ export async function startFakeGitHubServer({
 			(reviewUpdateHistory.get(number) ?? []).map((update) => structuredClone(update)),
 		setReviewUpdatesFailing: (failing) => {
 			reviewUpdatesFailing = failing;
+		},
+		setFailingReviewUpdates: (numbers) => {
+			failingReviewUpdates = new Set(numbers);
 		},
 		setGitPushesFailing: (failing) => {
 			gitPushesFailing = failing;

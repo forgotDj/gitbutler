@@ -10,6 +10,7 @@ import {
 	waitForTestId,
 } from "../src/util.ts";
 import { expect, type Page } from "@playwright/test";
+import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import type { FakeGitHubReview, FakeGitHubServer } from "../src/fakeGithub.ts";
 
@@ -48,6 +49,7 @@ test("review stack descriptions follow the per-project policy", async ({
 	await gitbutler.runScript("push-branch.sh", ["branch4"]);
 
 	await publishReview(page, "branch1", "Description for branch1");
+	await expect(page.getByText("PR #42 created successfully")).toBeVisible();
 	server.setListed(true);
 	await publishReview(page, "branch2", "Description for branch2");
 
@@ -136,6 +138,45 @@ test("review creation stays successful when stack synchronization fails", async 
 			.getByTestId("toast-info-message")
 			.filter({ hasText: "Push succeeded with incomplete review synchronization" }),
 	).toHaveCount(0);
+});
+
+test("review creation distinguishes a local branch from its differently named remote head", async ({
+	page,
+	gitbutler,
+	fakeGithub,
+}) => {
+	const server = await fakeGithub({
+		headRepoPath: gitbutler.pathInWorkdir("remote-project"),
+		isFork: false,
+		listed: false,
+	});
+	await gitbutler.runScript("project-with-stacks.sh", [server.repositoryUrl]);
+	await storeFakeGitHubEnterprisePat(page, server);
+	mirrorFakeCredentialForCli(gitbutler);
+	await applyUpstream(gitbutler, "branch1");
+
+	const worktree = gitbutler.pathInWorkdir("local-clone");
+	const branchTip = git(worktree, ["rev-parse", "refs/heads/branch1"]);
+	git(gitbutler.pathInWorkdir("remote-project"), [
+		"update-ref",
+		"refs/heads/users/alice/feature",
+		branchTip,
+	]);
+	git(worktree, ["update-ref", "refs/remotes/origin/users/alice/feature", branchTip]);
+	git(worktree, ["config", "branch.branch1.remote", "origin"]);
+	git(worktree, ["config", "branch.branch1.merge", "refs/heads/users/alice/feature"]);
+
+	await mockForge(page, {
+		get_review_merge_status: mergeStatus(),
+		get_repo_info: repoInfo(),
+		list_ci_checks: [],
+	});
+	await openWorkspace(page);
+	await publishReview(page, "branch1", "Review with renamed upstream");
+
+	await expect(page.getByText("PR #42 created successfully")).toBeVisible();
+	expect(server.getReview(42)?.head.ref).toBe("users/alice/feature");
+	expect(server.getReview(42)?.base.ref).toBe("master");
 });
 
 test("local moves do not update reviews and partial pushes synchronize the complete review stack", async ({
@@ -543,7 +584,7 @@ test("removing a reviewed middle ref is reflected after pushing the remaining st
 	});
 });
 
-test("moving a reviewed ref between reviewed stacks synchronizes both stacks", async ({
+test("moving a reviewed ref between reviewed stacks continues after one stack update fails", async ({
 	page,
 	gitbutler,
 	fakeGithub,
@@ -601,6 +642,7 @@ test("moving a reviewed ref between reviewed stacks synchronizes both stacks", a
 		})
 		.toBe(beforeMove);
 
+	server.setFailingReviewUpdates([42]);
 	const beforePush = reviewHistoryLengths(server, [42, 43, 44, 45]);
 	await gitbutler.runScript("push-branch.sh", ["branch2"]);
 	await expectReviewHistoryDeltas(server, beforePush, { 42: 1, 43: 1, 44: 1, 45: 1 });
@@ -612,11 +654,12 @@ test("moving a reviewed ref between reviewed stacks synchronizes both stacks", a
 			"master",
 			"branch3",
 		]);
-		expectStackMembership(reviewA, [], [43, 44, 45]);
+		// The configured failure leaves the first stack's previous footer intact,
+		// while the remaining affected stack still converges.
+		expectStackMembership(reviewA, [42, 43], [44, 45]);
 		expectStackMembership(reviewB, [43, 44, 45], [42]);
 		expectStackMembership(reviewC, [43, 44, 45], [42]);
 		expectStackMembership(reviewD, [43, 44, 45], [42]);
-		expect(reviewA?.body).toBe("Description for branch1");
 		expectStackOrder([reviewB, reviewC, reviewD], [43, 45, 44]);
 	});
 });
@@ -643,6 +686,7 @@ test("CLI push reports succeeded, notNeeded, and failed review synchronization",
 	await openWorkspace(page);
 
 	await publishReview(page, "branch1", "Description for branch1");
+	await expect(page.getByText("PR #42 created successfully")).toBeVisible();
 	server.setListed(true);
 
 	writeFileSync(gitbutler.pathInWorkdir("local-clone/a_file"), "successful sync push\n", {
@@ -749,6 +793,10 @@ async function expectBranchHeaderOrder(page: Page, expected: string[]) {
 					),
 		)
 		.toEqual(expected);
+}
+
+function git(worktree: string, args: string[]) {
+	return execFileSync("git", args, { cwd: worktree, encoding: "utf8" }).trim();
 }
 
 function readPushOutcome(path: string): PushOutcome {

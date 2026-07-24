@@ -439,7 +439,7 @@ export declare function openInEditor(projectId: string, editorId: string, path: 
  */
 export declare function peelRestoreSnapshot(projectId: string, sha: string): Promise<Snapshot | null>
 
-export declare function publishReview(projectId: string, params: CreateForgeReviewParams): Promise<PublishReviewOutcome>
+export declare function publishReview(projectId: string, params: PublishReviewInput): Promise<PublishReviewOutcome>
 
 /**
  * Remove a branch from a stack.
@@ -1383,14 +1383,6 @@ export type ConflictingStack = {
   shortName: string;
 };
 
-export type CreateForgeReviewParams = {
-  title: string;
-  body: string;
-  sourceBranch: string;
-  targetBranch: string;
-  draft: boolean;
-};
-
 /** A linear run of detailed graph rows. */
 export type DetailedGraphLinearSegment = {
   /** The reference row that starts this run, if any. */
@@ -2324,6 +2316,20 @@ export type ProjectForFrontend = {
   forge_review_template_path: string | null;
   /** Tell if the project is known to be open in a Window in the frontend. */
   is_open: boolean;
+};
+
+/**
+ * Parameters for creating a review through the public API.
+ *
+ * `local_branch` identifies the workspace ref whose reviewed stack determines the target branch.
+ * `source_branch` is the possibly-different remote head sent to the forge.
+ */
+export type PublishReviewInput = {
+  title: string;
+  body: string;
+  localBranch: string;
+  sourceBranch: string;
+  draft: boolean;
 };
 
 /** A newly-created review together with the best-effort stack synchronization result. */

@@ -12,7 +12,11 @@ import { writable } from "svelte/store";
 import type { BackendApi } from "$lib/state/backendApi";
 import type { QueryOptions } from "$lib/state/butlerModule";
 import type { PostHogWrapper } from "$lib/telemetry/posthog";
-import type { PublishReviewOutcome, ReviewMergeStatus } from "@gitbutler/but-sdk";
+import type {
+	PublishReviewOutcome,
+	PublishReviewInput,
+	ReviewMergeStatus,
+} from "@gitbutler/but-sdk";
 import type { StartQueryActionCreatorOptions } from "@reduxjs/toolkit/query";
 
 export const PR_SERVICE = new InjectionToken<PrService>("PrService");
@@ -51,7 +55,7 @@ export class PrService {
 			title,
 			body,
 			draft,
-			baseBranchName,
+			localBranchName,
 			upstreamName,
 			posthogLabel,
 		}: CreatePullRequestArgs & { posthogLabel?: string },
@@ -63,8 +67,8 @@ export class PrService {
 				params: {
 					title,
 					body,
+					localBranch: localBranchName,
 					sourceBranch: upstreamName,
-					targetBranch: baseBranchName,
 					draft,
 				},
 			});
@@ -207,13 +211,7 @@ function injectBackendEndpoints(api: BackendApi) {
 				PublishReviewOutcome,
 				{
 					projectId: string;
-					params: {
-						title: string;
-						body: string;
-						sourceBranch: string;
-						targetBranch: string;
-						draft: boolean;
-					};
+					params: PublishReviewInput;
 				}
 			>({
 				extraOptions: { command: "publish_review" },
