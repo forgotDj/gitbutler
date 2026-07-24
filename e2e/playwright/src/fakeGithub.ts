@@ -16,6 +16,7 @@ export type FakeGitHubOptions = {
 	isFork?: boolean;
 	listed?: boolean;
 	failReviewUpdates?: boolean;
+	failGitPushes?: boolean;
 };
 
 type ResolvedFakeGitHubOptions = {
@@ -39,6 +40,7 @@ export type FakeGitHubServer = {
 	getReviewUpdateCount: () => number;
 	getReviewUpdateHistory: (number: number) => ReviewMutation[];
 	setReviewUpdatesFailing: (failing: boolean) => void;
+	setGitPushesFailing: (failing: boolean) => void;
 	close: () => Promise<void>;
 };
 
@@ -65,6 +67,7 @@ export async function startFakeGitHubServer({
 	isFork = true,
 	listed = true,
 	failReviewUpdates = false,
+	failGitPushes = false,
 }: FakeGitHubOptions): Promise<FakeGitHubServer> {
 	const reviewRepoPath = headRepoPath ?? forkRepoPath;
 	if (!reviewRepoPath) {
@@ -88,12 +91,16 @@ export async function startFakeGitHubServer({
 	const reviewUpdateHistory = new Map<number, ReviewMutation[]>();
 	let isListed = listed;
 	let reviewUpdatesFailing = failReviewUpdates;
+	let gitPushesFailing = failGitPushes;
 
 	const sockets = new Set<Socket>();
 	const server = http.createServer((request, response) => {
 		handleRequest(request, response, options, {
 			get listed() {
 				return isListed;
+			},
+			get gitPushesFailing() {
+				return gitPushesFailing;
 			},
 			listReviews() {
 				return [...reviews.values()].sort((a, b) => a.number - b.number);
@@ -176,6 +183,9 @@ export async function startFakeGitHubServer({
 		setReviewUpdatesFailing: (failing) => {
 			reviewUpdatesFailing = failing;
 		},
+		setGitPushesFailing: (failing) => {
+			gitPushesFailing = failing;
+		},
 		close: async () =>
 			await new Promise<void>((resolve, reject) => {
 				server.close((error) => (error ? reject(error) : resolve()));
@@ -190,6 +200,7 @@ async function handleRequest(
 	options: ResolvedFakeGitHubOptions,
 	state: {
 		readonly listed: boolean;
+		readonly gitPushesFailing: boolean;
 		listReviews: () => FakeGitHubReview[];
 		getReview: (number: number) => FakeGitHubReview | undefined;
 		createReview: (input: ReviewMutation) => FakeGitHubReview;
@@ -244,6 +255,16 @@ async function handleRequest(
 
 	const repositoryPath = `/${options.owner}/${options.repo}.git`;
 	if (url.pathname === repositoryPath || url.pathname.startsWith(`${repositoryPath}/`)) {
+		if (
+			state.gitPushesFailing &&
+			request.method === "POST" &&
+			url.pathname === `${repositoryPath}/git-receive-pack`
+		) {
+			request.resume();
+			response.writeHead(500, { Connection: "close", "Content-Type": "text/plain" });
+			response.end("Configured Git push failure");
+			return;
+		}
 		return await serveGitRequest(request, response, url, repositoryPath, options.baseRepoPath);
 	}
 

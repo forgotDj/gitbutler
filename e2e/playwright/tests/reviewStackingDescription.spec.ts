@@ -17,6 +17,13 @@ const FOOTER_TOP = "<!-- GitButler Footer Boundary Top -->";
 const FOOTER_BOTTOM = "<!-- GitButler Footer Boundary Bottom -->";
 const POLICY_KEY = "gitbutler.reviewStackingDescription";
 
+type PushOutcome = {
+	reviewSync:
+		| { status: "notNeeded" }
+		| { status: "succeeded" }
+		| { status: "failed"; message: string };
+};
+
 test("review stack descriptions follow the per-project policy", async ({
 	page,
 	gitbutler,
@@ -179,6 +186,12 @@ test("local moves do not update reviews and partial pushes synchronize the compl
 		expectStackMembership(reviews[1], [42, 43, 44], [45]);
 		expectStackMembership(reviews[2], [42, 43, 44], [45]);
 		expectStackMembership(reviews[3], [], [42, 43, 44]);
+		expect(reviews.map((review) => review.base.ref)).toEqual([
+			"master",
+			"branch1",
+			"branch2",
+			"master",
+		]);
 		expect(reviews[3]?.body).toBe("Description for branch4");
 	});
 
@@ -214,8 +227,13 @@ test("local moves do not update reviews and partial pushes synchronize the compl
 		expectStackMembership(reviews[1], [42, 43], [44, 45]);
 		expectStackMembership(reviews[2], [], [42, 43, 44, 45]);
 		expect(reviews[2]?.body).toBe("Description for branch3");
-		expect(reviews[2]?.base.ref).toBe("master");
 		expectStackMembership(reviews[3], [], [42, 43, 44]);
+		expect(reviews.map((review) => review.base.ref)).toEqual([
+			"master",
+			"branch1",
+			"master",
+			"master",
+		]);
 	});
 
 	const reviewUpdatesBeforeReattach = server.getReviewUpdateCount();
@@ -252,6 +270,12 @@ test("local moves do not update reviews and partial pushes synchronize the compl
 		expectStackMembership(reviews[1], [42, 43, 44], [45]);
 		expectStackMembership(reviews[2], [42, 43, 44], [45]);
 		expectStackMembership(reviews[3], [], [42, 43, 44]);
+		expect(reviews.map((review) => review.base.ref)).toEqual([
+			"master",
+			"branch1",
+			"branch2",
+			"master",
+		]);
 		expect(reviews[3]?.body).toBe("Description for branch4");
 	});
 
@@ -275,6 +299,12 @@ test("local moves do not update reviews and partial pushes synchronize the compl
 	expectStackMembership(reviews[1], [42, 43, 44], [45]);
 	expectStackMembership(reviews[2], [42, 43, 44], [45]);
 	expectStackMembership(reviews[3], [], [42, 43, 44]);
+	expect(reviews.map((review) => review.base.ref)).toEqual([
+		"master",
+		"branch1",
+		"branch2",
+		"master",
+	]);
 	expect(reviews[3]?.body).toBe("Description for branch4");
 });
 
@@ -366,6 +396,329 @@ test("creating a review in the middle synchronizes the complete review stack", a
 	});
 });
 
+test("reordering reviewed refs updates every target after a partial push", async ({
+	page,
+	gitbutler,
+	fakeGithub,
+}) => {
+	const server = await fakeGithub({
+		headRepoPath: gitbutler.pathInWorkdir("remote-project"),
+		isFork: false,
+		listed: false,
+	});
+	await gitbutler.runScript("project-with-stacks.sh", [server.repositoryUrl]);
+	await storeFakeGitHubEnterprisePat(page, server);
+	mirrorFakeCredentialForCli(gitbutler);
+	await applyUpstream(gitbutler, "branch1", "branch2", "branch3");
+	await mockForge(page, {
+		get_review_merge_status: mergeStatus(),
+		get_repo_info: repoInfo(),
+		list_ci_checks: [],
+	});
+	await openWorkspace(page);
+
+	const branchHeaders = page.getByTestId("branch-header");
+	for (const [branch, parent, remainingStacks] of [
+		["branch2", "branch1", 2],
+		["branch3", "branch2", 1],
+	] as const) {
+		await dragAndDropByLocator(
+			page,
+			branchHeaders.filter({ hasText: branch }),
+			branchHeaders.filter({ hasText: parent }),
+			{ force: true, position: { x: 120, y: -10 } },
+		);
+		await expect(stack(page)).toHaveCount(remainingStacks);
+	}
+	await gitbutler.runScript("push-branch.sh", ["branch3"]);
+
+	await publishReview(page, "branch1", "Description for branch1");
+	server.setListed(true);
+	await publishReview(page, "branch2", "Description for branch2");
+	await publishReview(page, "branch3", "Description for branch3");
+	await expect(page.getByText("PR #44 created successfully")).toBeVisible();
+	await expectBranchHeaderOrder(page, ["branch3", "branch2", "branch1"]);
+
+	const beforeReorder = server.getReviewUpdateCount();
+	await dragAndDropByLocator(
+		page,
+		branchHeaders.filter({ hasText: "branch2" }),
+		branchHeaders.filter({ hasText: "branch3" }),
+		{ force: true, position: { x: 120, y: -10 } },
+	);
+	await expectBranchHeaderOrder(page, ["branch2", "branch3", "branch1"]);
+	await expect
+		.poll(() => server.getReviewUpdateCount(), {
+			message: "reordering reviewed refs locally must not contact the forge",
+		})
+		.toBe(beforeReorder);
+
+	const beforePartialPush = reviewHistoryLengths(server, [42, 43, 44]);
+	await gitbutler.runScript("push-branch.sh", ["branch3"]);
+	await expectReviewHistoryDeltas(server, beforePartialPush, { 42: 1, 43: 1, 44: 1 });
+	await expectReviews(server, 3, (reviews) => {
+		expect(reviews.map((review) => review.base.ref)).toEqual(["master", "branch3", "branch1"]);
+		for (const review of reviews) {
+			expectStackMembership(review, [42, 43, 44], []);
+		}
+		expectStackOrder(reviews, [43, 44, 42]);
+	});
+
+	const beforeTopPush = reviewHistoryLengths(server, [42, 43, 44]);
+	await gitbutler.runScript("push-branch.sh", ["branch2"]);
+	await expectReviewHistoryDeltas(server, beforeTopPush, { 42: 1, 43: 1, 44: 1 });
+	await expectReviews(server, 3, (reviews) => {
+		expect(reviews.map((review) => review.base.ref)).toEqual(["master", "branch3", "branch1"]);
+		expectStackOrder(reviews, [43, 44, 42]);
+	});
+});
+
+test("removing a reviewed middle ref is reflected after pushing the remaining stack", async ({
+	page,
+	gitbutler,
+	fakeGithub,
+}) => {
+	const server = await fakeGithub({
+		headRepoPath: gitbutler.pathInWorkdir("remote-project"),
+		isFork: false,
+		listed: false,
+	});
+	await gitbutler.runScript("project-with-stacks.sh", [server.repositoryUrl]);
+	await storeFakeGitHubEnterprisePat(page, server);
+	mirrorFakeCredentialForCli(gitbutler);
+	await applyUpstream(gitbutler, "branch1", "branch2", "branch3");
+	await mockForge(page, {
+		get_review_merge_status: mergeStatus(),
+		get_repo_info: repoInfo(),
+		list_ci_checks: [],
+	});
+	await openWorkspace(page);
+
+	const branchHeaders = page.getByTestId("branch-header");
+	for (const [branch, parent, remainingStacks] of [
+		["branch2", "branch1", 2],
+		["branch3", "branch2", 1],
+	] as const) {
+		await dragAndDropByLocator(
+			page,
+			branchHeaders.filter({ hasText: branch }),
+			branchHeaders.filter({ hasText: parent }),
+			{ force: true, position: { x: 120, y: -10 } },
+		);
+		await expect(stack(page)).toHaveCount(remainingStacks);
+	}
+	await gitbutler.runScript("push-branch.sh", ["branch3"]);
+
+	await publishReview(page, "branch1", "Description for branch1");
+	server.setListed(true);
+	await publishReview(page, "branch2", "Description for branch2");
+	await publishReview(page, "branch3", "Description for branch3");
+	await expect(page.getByText("PR #44 created successfully")).toBeVisible();
+
+	const beforeRemoval = server.getReviewUpdateCount();
+	const stackDropzone = await waitForTestId(page, "stack-offlane-dropzone");
+	await dragAndDropByLocator(page, branchHeaders.filter({ hasText: "branch2" }), stackDropzone, {
+		force: true,
+		position: { x: 10, y: 10 },
+	});
+	await expect(stack(page)).toHaveCount(2);
+	await expect
+		.poll(() => server.getReviewUpdateCount(), {
+			message: "removing a reviewed middle ref locally must not contact the forge",
+		})
+		.toBe(beforeRemoval);
+
+	const beforeRemainingStackPush = reviewHistoryLengths(server, [42, 43, 44]);
+	await gitbutler.runScript("push-branch.sh", ["branch3"]);
+	await expectReviewHistoryDeltas(server, beforeRemainingStackPush, { 42: 1, 43: 1, 44: 1 });
+	await expectReviews(server, 3, (reviews) => {
+		const [reviewA, reviewB, reviewC] = reviews;
+		expect(reviewA?.base.ref).toBe("master");
+		expect(reviewB?.base.ref).toBe("master");
+		expect(reviewC?.base.ref).toBe("branch1");
+		expectStackMembership(reviewA, [42, 44], [43]);
+		expectStackMembership(reviewB, [], [42, 44]);
+		expectStackMembership(reviewC, [42, 44], [43]);
+		expect(reviewB?.body).toBe("Description for branch2");
+	});
+});
+
+test("moving a reviewed ref between reviewed stacks synchronizes both stacks", async ({
+	page,
+	gitbutler,
+	fakeGithub,
+}) => {
+	const server = await fakeGithub({
+		headRepoPath: gitbutler.pathInWorkdir("remote-project"),
+		isFork: false,
+		listed: false,
+	});
+	await gitbutler.runScript("project-with-stacks.sh", [server.repositoryUrl]);
+	await storeFakeGitHubEnterprisePat(page, server);
+	mirrorFakeCredentialForCli(gitbutler);
+	await applyUpstream(gitbutler, "branch1", "branch2", "branch3", "branch4");
+	await mockForge(page, {
+		get_review_merge_status: mergeStatus(),
+		get_repo_info: repoInfo(),
+		list_ci_checks: [],
+	});
+	await openWorkspace(page);
+
+	const branchHeaders = page.getByTestId("branch-header");
+	for (const [branch, parent, remainingStacks] of [
+		["branch2", "branch1", 3],
+		["branch4", "branch3", 2],
+	] as const) {
+		await dragAndDropByLocator(
+			page,
+			branchHeaders.filter({ hasText: branch }),
+			branchHeaders.filter({ hasText: parent }),
+			{ force: true, position: { x: 120, y: -10 } },
+		);
+		await expect(stack(page)).toHaveCount(remainingStacks);
+	}
+	await gitbutler.runScript("push-branch.sh", ["branch2"]);
+	await gitbutler.runScript("push-branch.sh", ["branch4"]);
+
+	await publishReview(page, "branch1", "Description for branch1");
+	server.setListed(true);
+	await publishReview(page, "branch2", "Description for branch2");
+	await publishReview(page, "branch3", "Description for branch3");
+	await publishReview(page, "branch4", "Description for branch4");
+	await expect(page.getByText("PR #45 created successfully")).toBeVisible();
+
+	const beforeMove = server.getReviewUpdateCount();
+	await dragAndDropByLocator(
+		page,
+		branchHeaders.filter({ hasText: "branch2" }),
+		branchHeaders.filter({ hasText: "branch4" }),
+		{ force: true, position: { x: 120, y: -10 } },
+	);
+	await expect(stack(page)).toHaveCount(2);
+	await expect
+		.poll(() => server.getReviewUpdateCount(), {
+			message: "moving a reviewed ref between stacks locally must not contact the forge",
+		})
+		.toBe(beforeMove);
+
+	const beforePush = reviewHistoryLengths(server, [42, 43, 44, 45]);
+	await gitbutler.runScript("push-branch.sh", ["branch2"]);
+	await expectReviewHistoryDeltas(server, beforePush, { 42: 1, 43: 1, 44: 1, 45: 1 });
+	await expectReviews(server, 4, (reviews) => {
+		const [reviewA, reviewB, reviewC, reviewD] = reviews;
+		expect(reviews.map((review) => review.base.ref)).toEqual([
+			"master",
+			"branch4",
+			"master",
+			"branch3",
+		]);
+		expectStackMembership(reviewA, [], [43, 44, 45]);
+		expectStackMembership(reviewB, [43, 44, 45], [42]);
+		expectStackMembership(reviewC, [43, 44, 45], [42]);
+		expectStackMembership(reviewD, [43, 44, 45], [42]);
+		expect(reviewA?.body).toBe("Description for branch1");
+		expectStackOrder([reviewB, reviewC, reviewD], [43, 45, 44]);
+	});
+});
+
+test("CLI push reports succeeded, notNeeded, and failed review synchronization", async ({
+	page,
+	gitbutler,
+	fakeGithub,
+}) => {
+	const server = await fakeGithub({
+		headRepoPath: gitbutler.pathInWorkdir("remote-project"),
+		isFork: false,
+		listed: false,
+	});
+	await gitbutler.runScript("project-with-stacks.sh", [server.repositoryUrl]);
+	await storeFakeGitHubEnterprisePat(page, server);
+	mirrorFakeCredentialForCli(gitbutler);
+	await applyUpstream(gitbutler, "branch1");
+	await mockForge(page, {
+		get_review_merge_status: mergeStatus(),
+		get_repo_info: repoInfo(),
+		list_ci_checks: [],
+	});
+	await openWorkspace(page);
+
+	await publishReview(page, "branch1", "Description for branch1");
+	server.setListed(true);
+
+	writeFileSync(gitbutler.pathInWorkdir("local-clone/a_file"), "successful sync push\n", {
+		flag: "a",
+	});
+	await gitbutler.runScript("commit-branch.sh", ["branch1", "branch1: successful sync"]);
+	const succeededPath = gitbutler.pathInWorkdir("succeeded-push.json");
+	const beforeSucceeded = reviewHistoryLengths(server, [42]);
+	await gitbutler.runScript("push-branch-json.sh", ["branch1", succeededPath]);
+	expect(readPushOutcome(succeededPath).reviewSync).toEqual({ status: "succeeded" });
+	await expectReviewHistoryDeltas(server, beforeSucceeded, { 42: 1 });
+
+	const notNeededPath = gitbutler.pathInWorkdir("not-needed-push.json");
+	const beforeNoOp = reviewHistoryLengths(server, [42]);
+	await gitbutler.runScript("push-branch-json.sh", ["branch1", notNeededPath]);
+	expect(readPushOutcome(notNeededPath).reviewSync).toEqual({ status: "notNeeded" });
+	await expectReviewHistoryDeltas(server, beforeNoOp, { 42: 0 });
+
+	server.setReviewUpdatesFailing(true);
+	writeFileSync(gitbutler.pathInWorkdir("local-clone/a_file"), "failed sync push\n", {
+		flag: "a",
+	});
+	await gitbutler.runScript("commit-branch.sh", ["branch1", "branch1: failed sync"]);
+	const failedPath = gitbutler.pathInWorkdir("failed-push.json");
+	const beforeFailed = reviewHistoryLengths(server, [42]);
+	await gitbutler.runScript("push-branch-json.sh", ["branch1", failedPath]);
+	const failed = readPushOutcome(failedPath).reviewSync;
+	expect(failed.status).toBe("failed");
+	if (failed.status !== "failed") {
+		throw new Error(`Expected failed review synchronization, received ${failed.status}`);
+	}
+	expect(failed.message).toEqual(expect.any(String));
+	expect(failed.message).not.toBe("");
+	await expectReviewHistoryDeltas(server, beforeFailed, { 42: 1 });
+});
+
+test("a Git push failure does not start review synchronization", async ({
+	page,
+	gitbutler,
+	fakeGithub,
+}) => {
+	const server = await fakeGithub({
+		headRepoPath: gitbutler.pathInWorkdir("remote-project"),
+		isFork: false,
+		listed: false,
+	});
+	await gitbutler.runScript("project-with-stacks.sh", [server.repositoryUrl]);
+	await storeFakeGitHubEnterprisePat(page, server);
+	mirrorFakeCredentialForCli(gitbutler);
+	await applyUpstream(gitbutler, "branch1");
+	await mockForge(page, {
+		get_review_merge_status: mergeStatus(),
+		get_repo_info: repoInfo(),
+		list_ci_checks: [],
+	});
+	await openWorkspace(page);
+
+	await publishReview(page, "branch1", "Description for branch1");
+	server.setListed(true);
+	writeFileSync(gitbutler.pathInWorkdir("local-clone/a_file"), "rejected Git push\n", {
+		flag: "a",
+	});
+	await gitbutler.runScript("commit-branch.sh", ["branch1", "branch1: rejected push"]);
+
+	const beforeFailedPush = server.getReviewUpdateCount();
+	server.setGitPushesFailing(true);
+	await expect(gitbutler.runScript("push-branch.sh", ["branch1"])).rejects.toThrow(
+		"Command failed with exit code",
+	);
+	await expect
+		.poll(() => server.getReviewUpdateCount(), {
+			message: "review synchronization must not start after the Git push fails",
+		})
+		.toBe(beforeFailedPush);
+});
+
 async function combineBranchesIntoStack(page: Page) {
 	const branchHeaders = page.getByTestId("branch-header");
 	await expect(stack(page)).toHaveCount(4);
@@ -383,6 +736,23 @@ async function combineBranchesIntoStack(page: Page) {
 		);
 		await expect(stack(page)).toHaveCount(remainingStacks);
 	}
+}
+
+async function expectBranchHeaderOrder(page: Page, expected: string[]) {
+	await expect
+		.poll(
+			async () =>
+				await page
+					.getByTestId("branch-header")
+					.evaluateAll((headers) =>
+						headers.map((header) => header.getAttribute("data-testid-branch-header")),
+					),
+		)
+		.toEqual(expected);
+}
+
+function readPushOutcome(path: string): PushOutcome {
+	return JSON.parse(readFileSync(path, "utf8")) as PushOutcome;
 }
 
 async function publishReview(page: Page, branch: string, description: string) {
