@@ -31,7 +31,6 @@ import { type UseHotkeyDefinition, useHotkeys } from "@tanstack/react-hotkeys";
 import { useQuery } from "@tanstack/react-query";
 import { Match } from "effect";
 import type { RefObject } from "react";
-import { commitMessageInputId, startCommitButtonId } from "../CommitForm.tsx";
 import { selectAfterDiscardedCommit } from "./selectAfterDiscardedCommit.ts";
 import { downstackPushStatusDisabled, downstackPushStatusFromSegments } from "#ui/segment.ts";
 
@@ -58,24 +57,18 @@ const pushContextForSegment = ({
 	};
 };
 
-const focusCommitMessageInput = () => {
-	const input = document.getElementById(commitMessageInputId);
-	if (input) input.focus();
-	// The commit form may be collapsed; clicking the trigger expands it and
-	// focuses the message input.
-	else document.getElementById(startCommitButtonId)?.click();
-};
-
 export const useOutlineTreeHotkeys = ({
 	navigationIndex,
 	projectId,
 	ref,
 	checkCommit,
+	focusCommitMessageInput,
 }: {
 	navigationIndex: NavigationIndex<Operand>;
 	projectId: string;
 	ref: RefObject<HTMLElement | null>;
 	checkCommit: (evt: { commitId: string; shiftKey: boolean }) => void;
+	focusCommitMessageInput: () => void;
 }) => {
 	const { data: headInfoIndex } = useQuery({
 		...headInfoQueryOptions(projectId),
@@ -400,9 +393,7 @@ export const useOutlineTreeHotkeys = ({
 		},
 		{
 			hotkey: outlineHotkeys.composeCommitMessage.hotkey,
-			callback: () => {
-				focusCommitMessageInput();
-			},
+			callback: focusCommitMessageInput,
 			options: {
 				conflictBehavior: "allow",
 			},

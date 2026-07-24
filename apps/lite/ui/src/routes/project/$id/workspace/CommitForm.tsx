@@ -27,12 +27,6 @@ export type CommitTargetComboboxItem = {
 	relativeTo: RelativeTo;
 };
 
-// oxlint-disable-next-line react/only-export-components -- TODO: move
-export const commitMessageInputId = "commit-message-input";
-
-// oxlint-disable-next-line react/only-export-components -- TODO: move
-export const startCommitButtonId = "start-commit-button";
-
 const draftCommitMessageKey = (projectId: string): string => `commit_message_draft:v1:${projectId}`;
 
 const draftCommitMessageQueryOptions = (projectId: string) =>
@@ -80,8 +74,17 @@ export const CommitForm: FC<{
 	projectId: string;
 	commitTarget: CommitTargetComboboxItem | null;
 	targetComboboxItems: Array<CommitTargetComboboxItem>;
+	startCommitButtonId: string;
+	commitMessageInputId: string;
 	className?: string;
-}> = ({ projectId, commitTarget, targetComboboxItems, className }) => {
+}> = ({
+	projectId,
+	commitTarget,
+	targetComboboxItems,
+	startCommitButtonId,
+	commitMessageInputId,
+	className,
+}) => {
 	const dispatch = useAppDispatch();
 	const { isPending: isCommitCreatePending, mutate: commitCreate } = useCommitCreate({
 		projectId,
