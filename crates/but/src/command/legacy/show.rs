@@ -71,9 +71,9 @@ pub(crate) fn show_commit(
     } else {
         match &cli_ids[0] {
             CliId::Commit { commit_id, .. } => *commit_id,
-            CliId::Branch { name, .. } => {
+            CliId::Branch(branch) => {
                 // This is a branch identified by CLI ID, show the branch
-                return show_branch(ctx, out, &name.to_string(), verbose, &id_map);
+                return show_branch(ctx, out, &branch.name, verbose, &id_map);
             }
             _ => {
                 bail!(

@@ -45,12 +45,12 @@ pub(crate) fn handle(
             let entity = &matches[0];
 
             // Check if it's a branch - if so, squash all commits in the branch
-            if let CliId::Branch { name, stack_id, .. } = entity {
+            if let CliId::Branch(branch) = entity {
                 return squash_branch_commits(
                     ctx,
                     out,
-                    name,
-                    *stack_id,
+                    &branch.name,
+                    branch.stack_id,
                     drop_message,
                     custom_message,
                     ai,

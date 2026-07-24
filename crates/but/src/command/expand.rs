@@ -133,7 +133,10 @@ fn resources_from_cli_id(cli_id: CliId) -> Vec<Resource> {
             change_id: change_id.map(|id| id.to_string()),
             commit_id: commit_id.to_string(),
         }],
-        CliId::Branch { name, id, .. } => vec![Resource::Branch { short_id: id, name }],
+        CliId::Branch(branch) => vec![Resource::Branch {
+            short_id: branch.id,
+            name: branch.name,
+        }],
         CliId::UncommittedHunkOrFile(uncommitted) if uncommitted.is_entire_file => {
             vec![Resource::UncommittedFile {
                 path: uncommitted.hunk_assignments.first().path_bytes.to_string(),

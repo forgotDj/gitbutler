@@ -100,8 +100,9 @@ impl ModeRender for MoveStackMode {
 impl ReorderStackSource {
     pub fn matches(&self, id: &CliId) -> bool {
         match id {
-            CliId::Branch { name, stack_id, .. } => {
-                stack_id.is_some_and(|stack| self.stack == stack) && self.branch == *name
+            CliId::Branch(branch) => {
+                branch.stack_id.is_some_and(|stack| self.stack == stack)
+                    && self.branch == branch.name
             }
             CliId::Stack { .. }
             | CliId::UncommittedHunkOrFile(..)
@@ -193,13 +194,11 @@ pub fn stack_ids_in_display_order(status_lines: &[StatusOutputLine]) -> Vec<Stac
     let mut stack_ids = Vec::new();
     for line in status_lines {
         if let StatusOutputLineData::Branch { cli_id, .. } = &line.data
-            && let CliId::Branch {
-                stack_id: Some(stack_id),
-                ..
-            } = &**cli_id
-            && !stack_ids.contains(stack_id)
+            && let CliId::Branch(branch) = &**cli_id
+            && let Some(stack_id) = branch.stack_id
+            && !stack_ids.contains(&stack_id)
         {
-            stack_ids.push(*stack_id);
+            stack_ids.push(stack_id);
         }
     }
     stack_ids
@@ -245,7 +244,7 @@ fn stack_id_for_cli_id(cli_id: &CliId, status_lines: &[StatusOutputLine]) -> Opt
                     CliId::UncommittedHunkOrFile(..)
                     | CliId::PathPrefix { .. }
                     | CliId::CommittedFile { .. }
-                    | CliId::Branch { .. }
+                    | CliId::Branch(..)
                     | CliId::Commit { .. }
                     | CliId::Uncommitted { .. }
                     | CliId::Stack { .. } => None,
@@ -268,7 +267,7 @@ fn stack_id_for_cli_id(cli_id: &CliId, status_lines: &[StatusOutputLine]) -> Opt
                 | StatusOutputLineData::NoAssignmentsUnstaged => None,
             })
         }
-        CliId::Branch { stack_id, .. } => *stack_id,
+        CliId::Branch(branch) => branch.stack_id,
         CliId::Stack { stack_id, .. } => Some(*stack_id),
         CliId::UncommittedHunkOrFile(..) | CliId::PathPrefix { .. } | CliId::Uncommitted { .. } => {
             None
@@ -438,13 +437,13 @@ impl App {
         };
 
         let (stack_id, name) = match &**selection {
-            CliId::Branch {
-                stack_id: Some(stack_id),
-                name,
-                ..
-            } => (*stack_id, name),
-            CliId::Branch { .. }
-            | CliId::UncommittedHunkOrFile(..)
+            CliId::Branch(branch) => {
+                let Some(stack_id) = branch.stack_id else {
+                    return Ok(());
+                };
+                (stack_id, &branch.name)
+            }
+            CliId::UncommittedHunkOrFile(..)
             | CliId::PathPrefix { .. }
             | CliId::CommittedFile { .. }
             | CliId::Commit { .. }
@@ -461,11 +460,9 @@ impl App {
                 self.status_lines
                     .iter()
                     .filter_map(|line| match line.data.cli_id().map(|id| &**id) {
-                        Some(CliId::Branch {
-                            name,
-                            stack_id: Some(candidate),
-                            ..
-                        }) if *candidate == next_stack_id => Some(name.to_owned()),
+                        Some(CliId::Branch(branch)) if branch.stack_id == Some(next_stack_id) => {
+                            Some(branch.name.to_owned())
+                        }
                         _ => None,
                     })
                     .next_back()
@@ -494,19 +491,17 @@ impl App {
         let Some(selection) = self.cursor.selected_line(&self.status_lines) else {
             return;
         };
-        let Some(CliId::Branch {
-            name,
-            stack_id: Some(stack),
-            ..
-        }) = selection.data.cli_id().map(|id| &**id)
-        else {
+        let Some(CliId::Branch(branch)) = selection.data.cli_id().map(|id| &**id) else {
+            return;
+        };
+        let Some(stack) = branch.stack_id else {
             return;
         };
         self.mode
             .update_and_push_leave_normal_mode(&mut self.backstack, |mode| {
                 let source = ReorderStackSource {
-                    stack: *stack,
-                    branch: name.to_owned(),
+                    stack,
+                    branch: branch.name.to_owned(),
                 };
                 *mode = Mode::MoveStack(MoveStackMode { source });
             });

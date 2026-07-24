@@ -406,15 +406,12 @@ fn find_stack_by_target(
     // Try parsing as CLI ID first
     if let Ok(cli_ids) = id_map.parse_using_context(target, ctx) {
         for cli_id in &cli_ids {
-            if let CliId::Branch {
-                stack_id: Some(stack_id),
-                name,
-                ..
-            } = cli_id
+            if let CliId::Branch(branch) = cli_id
+                && let Some(stack_id) = branch.stack_id
             {
                 // Verify the stack is in our list of applied stacks
-                if stacks.iter().any(|stack| stack.id == Some(*stack_id)) {
-                    return Ok((*stack_id, name.clone()));
+                if stacks.iter().any(|stack| stack.id == Some(stack_id)) {
+                    return Ok((stack_id, branch.name.clone()));
                 }
             }
         }

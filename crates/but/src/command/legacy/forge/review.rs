@@ -444,7 +444,7 @@ fn get_branch_names(project: &Project, branch_id: &str) -> anyhow::Result<Vec<St
         .parse_using_context(branch_id, &ctx)?
         .iter()
         .filter_map(|clid| match clid {
-            CliId::Branch { name, .. } => Some(name.clone()),
+            CliId::Branch(branch) => Some(branch.name.clone()),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -1237,11 +1237,13 @@ fn resolve_cli_ids_to_review_ids(
         .unwrap_or_default()
         .into_iter()
         .filter_map(|cli_id| match cli_id {
-            CliId::Branch { name, stack_id, .. } => applied_stacks
+            CliId::Branch(branch) => applied_stacks
                 .iter()
                 .find_map(|stack| {
-                    if stack.id == stack_id {
-                        stack.branch(&name).and_then(|branch| branch.review_id)
+                    if stack.id == branch.stack_id {
+                        stack
+                            .branch(&branch.name)
+                            .and_then(|branch| branch.review_id)
                     } else {
                         None
                     }

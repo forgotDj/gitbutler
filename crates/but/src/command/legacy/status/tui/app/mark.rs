@@ -201,17 +201,12 @@ impl<'a> MarksRef<'a> {
                 std::iter::once(head).chain(tail).any(|file| other == file)
             }
             MarksRef::Branches { head, tail } => {
-                let CliId::Branch {
-                    name,
-                    id: _,
-                    stack_id: _,
-                } = cli_id
-                else {
+                let CliId::Branch(other) = cli_id else {
                     return false;
                 };
                 std::iter::once(head)
                     .chain(tail)
-                    .any(|branch| &branch.name == name)
+                    .any(|branch| branch == other)
             }
         }
     }
@@ -561,9 +556,7 @@ impl Markable {
                 change_id,
             },
             Markable::CommittedFile(file) => CliId::CommittedFile(file),
-            Markable::Branch(BranchId { name, id, stack_id }) => {
-                CliId::Branch { name, id, stack_id }
-            }
+            Markable::Branch(branch) => CliId::Branch(branch),
         }
     }
 
@@ -632,12 +625,8 @@ impl<'a> MarkableRef<'a> {
                     }
                 }
                 MarkableRefDiscriminants::Branch => {
-                    if let CliId::Branch { name, id, stack_id } = cli_id {
-                        return Some(Self::Branch(BranchIdRef {
-                            name,
-                            id,
-                            stack_id: *stack_id,
-                        }));
+                    if let CliId::Branch(branch) = cli_id {
+                        return Some(Self::Branch(branch.as_ref()));
                     }
                 }
             }
@@ -700,7 +689,7 @@ impl App {
         };
 
         match &**selection {
-            CliId::Branch { .. }
+            CliId::Branch(..)
             | CliId::Commit { .. }
             | CliId::UncommittedHunkOrFile(..)
             | CliId::CommittedFile { .. } => {

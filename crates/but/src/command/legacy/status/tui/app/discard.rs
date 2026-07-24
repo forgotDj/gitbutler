@@ -137,10 +137,10 @@ impl App {
                         },
                     )
                 }
-                CliId::Branch { name, .. } => {
+                CliId::Branch(branch) => {
                     let commits = {
                         let (_guard, _, ws, _) = ctx.workspace_and_db()?;
-                        let ref_name = Category::LocalBranch.to_full_name(&**name)?;
+                        let ref_name = Category::LocalBranch.to_full_name(&*branch.name)?;
                         let Some((_, segment)) =
                             ws.find_segment_and_stack_by_refname(ref_name.as_ref())
                         else {
@@ -153,7 +153,7 @@ impl App {
                             .collect::<Vec<_>>()
                     };
 
-                    let name = name.to_owned();
+                    let name = branch.name.to_owned();
 
                     self.to_be_discarded = Vec::from([Arc::clone(cli_id)]);
                     let select_after_reload = self

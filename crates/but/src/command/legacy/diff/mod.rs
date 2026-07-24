@@ -39,7 +39,7 @@ pub fn handle_tui(ctx: &mut Context, target_str: Option<&str>) -> anyhow::Result
                 commit_id, path, ..
             }) => DiffFileEntry::from_commit(ctx, commit_id, Some(path))?,
             CliId::Commit { commit_id, .. } => DiffFileEntry::from_commit(ctx, commit_id, None)?,
-            CliId::Branch { name, .. } => DiffFileEntry::from_branch(ctx, name)?,
+            CliId::Branch(branch) => DiffFileEntry::from_branch(ctx, branch.name)?,
         }
     } else {
         DiffFileEntry::from_worktree(&id_map, None)
@@ -78,7 +78,7 @@ pub fn handle(
             CliId::CommittedFile(CommittedFileId {
                 commit_id, path, ..
             }) => show::commit(ctx, out, commit_id, Some(path)),
-            CliId::Branch { name, .. } => show::branch(ctx, out, name),
+            CliId::Branch(branch) => show::branch(ctx, out, branch.name),
             CliId::Commit { commit_id: id, .. } => show::commit(ctx, out, id, None),
             CliId::Stack { .. } => show::worktree(id_map, out, Some(Filter::UncommittedArea)),
         }

@@ -48,7 +48,6 @@ pub enum MoveSource {
     },
     Branch {
         name: String,
-        id: ShortId,
         stack_id: Option<StackId>,
     },
 }
@@ -123,16 +122,10 @@ impl MoveSource {
             }
             MoveSource::Branch {
                 name: name_lhs,
-                id: id_lhs,
                 stack_id: stack_id_lhs,
             } => {
-                if let CliId::Branch {
-                    name: name_rhs,
-                    id: id_rhs,
-                    stack_id: stack_id_rhs,
-                } = other
-                {
-                    name_lhs == name_rhs && id_lhs == id_rhs && stack_id_lhs == stack_id_rhs
+                if let CliId::Branch(rhs) = other {
+                    name_lhs == &rhs.name && stack_id_lhs == &rhs.stack_id
                 } else {
                     false
                 }
@@ -146,7 +139,10 @@ impl TryFrom<CliId> for MoveSource {
 
     fn try_from(id: CliId) -> Result<Self, Self::Error> {
         match id {
-            CliId::Branch { name, id, stack_id } => Ok(Self::Branch { name, id, stack_id }),
+            CliId::Branch(branch) => Ok(Self::Branch {
+                name: branch.name,
+                stack_id: branch.stack_id,
+            }),
             CliId::Commit {
                 commit_id,
                 id,
@@ -286,8 +282,8 @@ impl App {
 
         let target = match &selection.data {
             StatusOutputLineData::Branch { cli_id, .. } => {
-                if let CliId::Branch { name, .. } = &**cli_id {
-                    MoveTarget::Branch { name }
+                if let CliId::Branch(branch) = &**cli_id {
+                    MoveTarget::Branch { name: &branch.name }
                 } else {
                     return Ok(());
                 }

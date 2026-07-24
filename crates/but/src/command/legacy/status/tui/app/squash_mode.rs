@@ -110,11 +110,8 @@ impl SquashSource {
                 } => Some(SquashRoute::UncommittedToCommit {
                     target: *target_commit,
                 }),
-                CliId::Branch {
-                    name: target_branch,
-                    ..
-                } => Some(SquashRoute::UncommittedToBranch {
-                    target: target_branch,
+                CliId::Branch(branch) => Some(SquashRoute::UncommittedToBranch {
+                    target: &branch.name,
                 }),
                 _ => None,
             },
@@ -352,12 +349,8 @@ impl App {
             CliId::Uncommitted { .. } => {
                 self.start_with_source(SquashSource::Uncommitted);
             }
-            CliId::Branch { name, id, stack_id } => {
-                self.start_with_source(SquashSource::Branch(BranchId {
-                    name: name.clone(),
-                    id: id.clone(),
-                    stack_id: *stack_id,
-                }));
+            CliId::Branch(branch) => {
+                self.start_with_source(SquashSource::Branch(branch.clone()));
             }
             CliId::Commit {
                 commit_id,
@@ -735,12 +728,9 @@ fn squash_route_from_commit<'a>(
                 })
             }
         }
-        CliId::Branch {
-            name: target_branch,
-            ..
-        } => Some(SquashRoute::CommitToBranch {
+        CliId::Branch(branch) => Some(SquashRoute::CommitToBranch {
             sources: source_commits,
-            target: target_branch,
+            target: &branch.name,
         }),
         CliId::Uncommitted { .. } => Some(SquashRoute::CommitToUncommitted {
             sources: source_commits,
@@ -754,11 +744,8 @@ fn squash_route_from_branch<'a>(
     target: &'a CliId,
 ) -> Option<SquashRoute<'a>> {
     if source_branches.len() == 1
-        && let CliId::Branch {
-            name: target_branch,
-            ..
-        } = target
-        && &source_branches.first().name == target_branch
+        && let CliId::Branch(target_branch) = target
+        && source_branches.first() == target_branch
     {
         Some(SquashRoute::BranchToSelf {
             source: source_branches.first(),
@@ -772,12 +759,9 @@ fn squash_route_from_branch<'a>(
                 sources: source_branches,
                 target: *target_commit,
             }),
-            CliId::Branch {
-                name: target_branch,
-                ..
-            } => Some(SquashRoute::BranchToBranch {
+            CliId::Branch(branch) => Some(SquashRoute::BranchToBranch {
                 sources: source_branches,
-                target: target_branch,
+                target: &branch.name,
             }),
             _ => None,
         }
@@ -796,12 +780,9 @@ fn squash_route_from_uncommitted_hunk<'a>(
             sources: source_hunks,
             target: *target_commit,
         }),
-        CliId::Branch {
-            name: target_branch,
-            ..
-        } => Some(SquashRoute::UncommittedHunkToBranch {
+        CliId::Branch(branch) => Some(SquashRoute::UncommittedHunkToBranch {
             sources: source_hunks,
-            target: target_branch,
+            target: &branch.name,
         }),
         _ => None,
     }
@@ -819,12 +800,9 @@ fn squash_route_from_committed_file<'a>(
             sources: source_files,
             target: *target_commit,
         }),
-        CliId::Branch {
-            name: target_branch,
-            ..
-        } => Some(SquashRoute::CommittedFileToBranch {
+        CliId::Branch(branch) => Some(SquashRoute::CommittedFileToBranch {
             sources: source_files,
-            target: target_branch,
+            target: &branch.name,
         }),
         CliId::Uncommitted { .. } => Some(SquashRoute::CommittedFileToUncommitted {
             sources: source_files,

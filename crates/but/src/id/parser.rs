@@ -423,8 +423,8 @@ pub fn prompt_for_disambiguation(
                         &commit_id.to_string()[..7]
                     )
                 }
-                CliId::Branch { name, .. } => {
-                    format!("{short_id} - {kind} (branch '{name}')")
+                CliId::Branch(branch) => {
+                    format!("{short_id} - {kind} (branch '{}')", branch.name)
                 }
                 CliId::CommittedFile(CommittedFileId {
                     path, commit_id, ..

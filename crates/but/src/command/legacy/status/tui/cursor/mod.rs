@@ -270,14 +270,14 @@ impl Cursor {
         };
 
         for line in lines.iter().skip(self.0 + 1) {
-            if let Some(CliId::Branch { name, .. }) = line.data.cli_id().map(|id| &**id) {
-                return Some(SelectAfterReload::Branch(name.clone()));
+            if let Some(CliId::Branch(branch)) = line.data.cli_id().map(|id| &**id) {
+                return Some(SelectAfterReload::Branch(branch.name.clone()));
             }
         }
 
         for line in lines.iter().take(self.0).rev() {
-            if let Some(CliId::Branch { name, .. }) = line.data.cli_id().map(|id| &**id) {
-                return Some(SelectAfterReload::Branch(name.clone()));
+            if let Some(CliId::Branch(branch)) = line.data.cli_id().map(|id| &**id) {
+                return Some(SelectAfterReload::Branch(branch.name.clone()));
             }
         }
 
@@ -308,8 +308,8 @@ impl Cursor {
     /// Select the first line that points to the given branch name.
     pub fn select_branch(branch_name: &str, lines: &[StatusOutputLine]) -> Option<Self> {
         let idx = lines.iter().position(|line| {
-            if let Some(CliId::Branch { name, .. }) = line.data.cli_id().map(|id| &**id)
-                && *name == branch_name
+            if let Some(CliId::Branch(branch)) = line.data.cli_id().map(|id| &**id)
+                && branch.name == branch_name
             {
                 true
             } else {
@@ -388,7 +388,7 @@ impl Cursor {
                 }
                 Some(CliId::UncommittedHunkOrFile(..))
                 | Some(CliId::PathPrefix { .. })
-                | Some(CliId::Branch { .. })
+                | Some(CliId::Branch(..))
                 | Some(CliId::Commit { .. })
                 | Some(CliId::Uncommitted { .. })
                 | Some(CliId::Stack { .. }) => matches!(show_files, FilesStatusFlag::All),
@@ -728,9 +728,7 @@ pub(super) fn same_entity_for_reload(previous: &CliId, current: &CliId) -> bool 
                     }
                 }
         }
-        (CliId::Branch { name: previous, .. }, CliId::Branch { name: current, .. }) => {
-            previous == current
-        }
+        (CliId::Branch(previous), CliId::Branch(current)) => previous == current,
         (
             CliId::Commit {
                 commit_id: previous_commit_id,
@@ -770,7 +768,7 @@ fn select_after_reload_for_cli_id(cli_id: &Arc<CliId>) -> SelectAfterReload {
         CliId::Uncommitted { .. }
         | CliId::UncommittedHunkOrFile(..)
         | CliId::PathPrefix { .. }
-        | CliId::Branch { .. }
+        | CliId::Branch(..)
         | CliId::Stack { .. } => SelectAfterReload::CliId(Box::new((**cli_id).clone())),
     }
 }
@@ -1006,7 +1004,7 @@ pub fn is_selectable_in_mode(
                     CliId::UncommittedHunkOrFile(..) | CliId::Uncommitted { .. } => true,
                     CliId::PathPrefix { .. }
                     | CliId::CommittedFile { .. }
-                    | CliId::Branch { .. }
+                    | CliId::Branch(..)
                     | CliId::Commit { .. }
                     | CliId::Stack { .. } => false,
                 }

@@ -276,8 +276,8 @@ impl Details {
                     },
                 )
             }
-            CliId::Branch { name, .. } => {
-                let name = name.to_owned();
+            CliId::Branch(branch) => {
+                let name = branch.name.to_owned();
                 self.poll_render_thread(
                     ctx,
                     None,
@@ -1198,7 +1198,7 @@ impl Details {
             CliId::UncommittedHunkOrFile(..) | CliId::Uncommitted { .. } => true,
             CliId::PathPrefix { .. }
             | CliId::CommittedFile { .. }
-            | CliId::Branch { .. }
+            | CliId::Branch(..)
             | CliId::Commit { .. }
             | CliId::Stack { .. } => false,
         }

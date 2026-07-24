@@ -52,8 +52,8 @@ impl<'a> DiffSpecBuilder<'a> {
                 id: _,
                 change_id: _,
             }) => self.push_changes_from_committed_file(*commit_id, path.as_ref()),
-            CliId::Branch { name, .. } => {
-                anyhow::bail!("Cannot compute diff specs for branch `{name}`")
+            CliId::Branch(branch) => {
+                anyhow::bail!("Cannot compute diff specs for branch `{}`", branch.name)
             }
             CliId::Commit {
                 commit_id,

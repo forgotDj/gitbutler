@@ -498,12 +498,12 @@ pub(crate) fn route_operation<'a>(
                 destination: *destination,
                 how_to_combine_messages,
             })),
-            (Commit { commit_id, .. }, Branch { name, .. }) => Some(
-                RubOperation::MoveCommitToBranch(MoveCommitToBranchOperation {
+            (Commit { commit_id, .. }, Branch(branch)) => Some(RubOperation::MoveCommitToBranch(
+                MoveCommitToBranchOperation {
                     oid: *commit_id,
-                    name,
-                }),
-            ),
+                    name: &branch.name,
+                },
+            )),
             // Branch -> *
             // CommittedFile -> *
             (
@@ -554,7 +554,7 @@ pub(crate) fn route_operation<'a>(
                         UncommittedHunkOrFile(..)
                         | PathPrefix { .. }
                         | CommittedFile { .. }
-                        | Branch { .. }
+                        | Branch(..)
                         | Uncommitted { .. }
                         | Stack { .. } => None,
                     })
@@ -583,7 +583,7 @@ pub(crate) fn route_operation<'a>(
             | Stack { .. }
             | PathPrefix { .. }
             | CommittedFile { .. }
-            | Branch { .. } => None,
+            | Branch(..) => None,
         }
     }
 }

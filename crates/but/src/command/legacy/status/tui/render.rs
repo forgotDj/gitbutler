@@ -415,7 +415,7 @@ fn row_stack_ids(lines: &[StatusOutputLine]) -> Vec<Option<StackId>> {
                     stack_id
                 }
                 CliId::UncommittedHunkOrFile(..) | CliId::PathPrefix { .. } => current_stack_id,
-                CliId::Branch { .. }
+                CliId::Branch(..)
                 | CliId::Commit { .. }
                 | CliId::Uncommitted { .. }
                 | CliId::Stack { .. } => None,
@@ -457,7 +457,7 @@ fn row_stack_ids(lines: &[StatusOutputLine]) -> Vec<Option<StackId>> {
 
 fn stack_id_from_cli_id(cli_id: &CliId) -> Option<StackId> {
     match cli_id {
-        CliId::Branch { stack_id, .. } => *stack_id,
+        CliId::Branch(branch) => branch.stack_id,
         CliId::Stack { stack_id, .. } => Some(*stack_id),
         CliId::UncommittedHunkOrFile(..)
         | CliId::PathPrefix { .. }
@@ -702,13 +702,13 @@ fn render_status_list_item(
                 line.extend(decoration_start);
 
                 if let Some(id) = data.cli_id()
-                    && let CliId::Branch { name, .. } = &**id
+                    && let CliId::Branch(branch) = &**id
                     && let Mode::InlineReword(InlineRewordMode::Branch {
                         textarea,
                         name: source,
                         ..
                     }) = &*app.mode
-                    && name == source
+                    && branch.name == *source
                 {
                     line.render_textarea(textarea);
                 } else {
@@ -1338,10 +1338,10 @@ pub fn stack_operation_display(
     let StackMode { stack_heads } = mode;
     match data {
         StatusOutputLineData::Branch { cli_id, .. } => {
-            let CliId::Branch { name, .. } = &**cli_id else {
+            let CliId::Branch(branch) = &**cli_id else {
                 return None;
             };
-            if stack_heads.iter().any(|head| head.shorten() == name) {
+            if stack_heads.iter().any(|head| head.shorten() == branch.name) {
                 Some("stack")
             } else {
                 None

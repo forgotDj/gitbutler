@@ -21,7 +21,7 @@ pub(crate) fn handle_resolved_with_perm(
     // Validate --after flag usage
     if after {
         // Check if target is a branch (--after only makes sense for commit-to-commit moves)
-        if matches!(target_id, CliId::Branch { .. }) {
+        if matches!(target_id, CliId::Branch(..)) {
             bail!(
                 "The {} flag only makes sense when moving a commit to another commit.\n\
                 When moving to a branch, the commit is placed at the top of the stack by default.",
@@ -81,7 +81,7 @@ pub(crate) fn handle_multiple_resolved_with_perm(
         CliId::Commit { commit_id, .. } => {
             move_commit_to_commit_with_perm(ctx, sources, *commit_id, after, out, perm)
         }
-        CliId::Branch { name, .. } => {
+        CliId::Branch(branch) => {
             if after {
                 bail!(
                     "The {} flag only makes sense when moving a commit to another commit.\n\
@@ -89,7 +89,7 @@ pub(crate) fn handle_multiple_resolved_with_perm(
                     "--after"
                 );
             }
-            move_commit_to_branch_with_perm(ctx, sources, name, out, perm)
+            move_commit_to_branch_with_perm(ctx, sources, &branch.name, out, perm)
         }
         _ => bail!(
             "Cannot move multiple commits to {} ({}).\n\
@@ -320,10 +320,10 @@ fn route_move_operation<'a>(
             Commit {
                 commit_id: source, ..
             },
-            Branch { name, .. },
+            Branch(branch),
         ) => Some(MoveOperation::CommitToBranch {
             source: *source,
-            target_branch: name,
+            target_branch: &branch.name,
         }),
         // CommittedFile -> Commit: move a file from one commit to another
         (
@@ -350,7 +350,7 @@ fn route_move_operation<'a>(
 mod tests {
     use bstr::BString;
 
-    use crate::id::WorktreeHunk;
+    use crate::id::{BranchId, WorktreeHunk};
 
     use super::*;
 
@@ -364,11 +364,11 @@ mod tests {
     }
 
     fn branch_id(name: &str) -> CliId {
-        CliId::Branch {
+        CliId::Branch(BranchId {
             name: name.to_string(),
             id: "br".to_string(),
             stack_id: None,
-        }
+        })
     }
 
     fn uncommitted_id() -> CliId {

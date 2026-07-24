@@ -1322,7 +1322,7 @@ fn print_group(
                 &status_ctx.id_map,
                 &repo,
                 &segment.short_id,
-                |id| matches!(id, CliId::Branch { .. }),
+                |id| matches!(id, CliId::Branch(..)),
                 "branch",
             )?;
             let mut branch_suffix = Vec::new();

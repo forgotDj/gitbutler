@@ -21,7 +21,7 @@ use crate::{
             },
         },
     },
-    id::{CommittedFileId, UncommittedHunkOrFile, WorktreeHunk},
+    id::{BranchId, CommittedFileId, UncommittedHunkOrFile, WorktreeHunk},
 };
 
 fn line(data: StatusOutputLineData) -> StatusOutputLine {
@@ -66,11 +66,11 @@ fn committed_file_cli_id(hex: &str, path: &str, id: &str) -> Arc<CliId> {
 }
 
 fn branch_cli_id(name: &str, id: &str, stack_id: Option<StackId>) -> Arc<CliId> {
-    Arc::new(CliId::Branch {
+    Arc::new(CliId::Branch(BranchId {
         name: name.into(),
         id: id.into(),
         stack_id,
-    })
+    }))
 }
 
 fn branch_line(name: &str, id: &str) -> StatusOutputLine {
@@ -133,7 +133,7 @@ fn uncommitted_source(cli_ids: &[Arc<CliId>]) -> CommitSource {
             CliId::Uncommitted { .. }
             | CliId::PathPrefix { .. }
             | CliId::CommittedFile { .. }
-            | CliId::Branch { .. }
+            | CliId::Branch(BranchId { .. })
             | CliId::Stack { .. }
             | CliId::Commit { .. } => panic!("test cli ID should be uncommitted"),
         }
@@ -241,11 +241,11 @@ fn restore_returns_matching_branch_after_short_ids_change() {
         branch_line("other", "b0"),
     ];
 
-    let selected_cli_id = CliId::Branch {
+    let selected_cli_id = CliId::Branch(BranchId {
         name: "main".into(),
         id: "b0".into(),
         stack_id: None,
-    };
+    });
 
     assert_eq!(
         Cursor::restore(&selected_cli_id, &lines),
@@ -340,11 +340,11 @@ fn restore_returns_none_when_cli_id_is_not_present() {
 
     assert_eq!(
         Cursor::restore(
-            &CliId::Branch {
+            &CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "b0".into(),
                 stack_id: None,
-            },
+            }),
             &lines
         ),
         None
@@ -373,11 +373,11 @@ fn select_finds_commit_line_by_object_id() {
     let wanted = "1111111111111111111111111111111111111111";
     let lines = vec![
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "b0".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
         line(StatusOutputLineData::Commit {
@@ -504,7 +504,7 @@ fn select_after_discarded_commit_selects_branch_when_commit_is_only_one_in_branc
     assert!(matches!(
         Cursor(1).select_after_discarded_commit(&lines),
         Some(SelectAfterReload::CliId(cli_id))
-            if matches!(&*cli_id, CliId::Branch { id, .. } if id == "b0")
+            if matches!(&*cli_id, CliId::Branch(BranchId { id, .. }) if id == "b0")
     ));
 }
 
@@ -658,7 +658,7 @@ fn select_after_discarded_commits_selects_branch_when_all_commits_in_section_are
     assert!(matches!(
         Cursor(1).select_after_discarded_commits(&lines, &[commit_id(top), commit_id(bottom)]),
         Some(SelectAfterReload::CliId(cli_id))
-            if matches!(&*cli_id, CliId::Branch { id, .. } if id == "b0")
+            if matches!(&*cli_id, CliId::Branch(BranchId { id, .. }) if id == "b0")
     ));
 }
 
@@ -985,11 +985,11 @@ fn select_branch_finds_branch_line_by_name() {
             classification: CommitClassification::LocalOnly,
         }),
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "b0".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
     ];
@@ -1000,11 +1000,11 @@ fn select_branch_finds_branch_line_by_name() {
 #[test]
 fn select_branch_returns_none_when_branch_is_missing() {
     let lines = vec![line(StatusOutputLineData::Branch {
-        cli_id: Arc::new(CliId::Branch {
+        cli_id: Arc::new(CliId::Branch(BranchId {
             name: "main".into(),
             id: "b0".into(),
             stack_id: None,
-        }),
+        })),
         is_merged_upstream: false,
     })];
 
@@ -1015,19 +1015,19 @@ fn select_branch_returns_none_when_branch_is_missing() {
 fn select_branch_uses_first_matching_line_when_branch_appears_multiple_times() {
     let lines = vec![
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "b0".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
         line(StatusOutputLineData::StagedChanges {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "b0".into(),
                 stack_id: None,
-            }),
+            })),
         }),
     ];
 
@@ -1038,11 +1038,11 @@ fn select_branch_uses_first_matching_line_when_branch_appears_multiple_times() {
 fn select_uncommitted_finds_uncommitted_line() {
     let lines = vec![
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "b0".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
         line(StatusOutputLineData::UncommittedChanges {
@@ -1070,11 +1070,11 @@ fn select_uncommitted_uses_first_matching_line() {
 #[test]
 fn select_uncommitted_returns_none_when_missing() {
     let lines = vec![line(StatusOutputLineData::Branch {
-        cli_id: Arc::new(CliId::Branch {
+        cli_id: Arc::new(CliId::Branch(BranchId {
             name: "main".into(),
             id: "b0".into(),
             stack_id: None,
-        }),
+        })),
         is_merged_upstream: false,
     })];
 
@@ -1085,11 +1085,11 @@ fn select_uncommitted_returns_none_when_missing() {
 fn select_merge_base_finds_merge_base_line() {
     let lines = vec![
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "b0".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
         line(StatusOutputLineData::MergeBase),
@@ -1101,11 +1101,11 @@ fn select_merge_base_finds_merge_base_line() {
 #[test]
 fn select_merge_base_returns_none_when_missing() {
     let lines = vec![line(StatusOutputLineData::Branch {
-        cli_id: Arc::new(CliId::Branch {
+        cli_id: Arc::new(CliId::Branch(BranchId {
             name: "main".into(),
             id: "b0".into(),
             stack_id: None,
-        }),
+        })),
         is_merged_upstream: false,
     })];
 
@@ -1157,11 +1157,11 @@ fn selected_line_returns_line_when_cursor_is_in_bounds() {
 
 #[test]
 fn selection_cli_id_for_reload_uses_parent_when_file_is_selected_and_files_are_hidden() {
-    let parent = Arc::new(CliId::Branch {
+    let parent = Arc::new(CliId::Branch(BranchId {
         name: "main".into(),
         id: "b0".into(),
         stack_id: None,
-    });
+    }));
     let lines = vec![
         line(StatusOutputLineData::Hint),
         line(StatusOutputLineData::Branch {
@@ -1206,11 +1206,11 @@ fn selection_cli_id_for_reload_returns_none_when_file_has_no_parent_section() {
 
 #[test]
 fn selection_cli_id_for_reload_uses_selected_cli_id_for_non_file_lines() {
-    let selected = Arc::new(CliId::Branch {
+    let selected = Arc::new(CliId::Branch(BranchId {
         name: "main".into(),
         id: "b0".into(),
         stack_id: None,
-    });
+    }));
     let lines = vec![line(StatusOutputLineData::Branch {
         cli_id: selected.clone(),
         is_merged_upstream: false,
@@ -1225,11 +1225,11 @@ fn selection_cli_id_for_reload_uses_selected_cli_id_for_non_file_lines() {
 #[test]
 fn selection_cli_id_for_reload_returns_none_when_cursor_is_out_of_bounds() {
     let lines = vec![line(StatusOutputLineData::Branch {
-        cli_id: Arc::new(CliId::Branch {
+        cli_id: Arc::new(CliId::Branch(BranchId {
             name: "main".into(),
             id: "b0".into(),
             stack_id: None,
-        }),
+        })),
         is_merged_upstream: false,
     })];
 
@@ -1251,11 +1251,11 @@ fn selection_cli_id_for_reload_returns_none_for_non_file_lines_without_cli_id() 
 
 #[test]
 fn selection_cli_id_for_reload_uses_nearest_parent_section_for_file() {
-    let first_parent = Arc::new(CliId::Branch {
+    let first_parent = Arc::new(CliId::Branch(BranchId {
         name: "main".into(),
         id: "b0".into(),
         stack_id: None,
-    });
+    }));
     let nearest_parent = uncommitted_area("u0");
     let lines = vec![
         line(StatusOutputLineData::Branch {
@@ -1538,11 +1538,11 @@ fn movement_does_not_panic_or_move_when_cursor_is_out_of_bounds() {
 fn move_next_section_moves_to_next_jump_target() {
     let lines = vec![
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "a0".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
         line(StatusOutputLineData::Commit {
@@ -1551,11 +1551,11 @@ fn move_next_section_moves_to_next_jump_target() {
             classification: CommitClassification::LocalOnly,
         }),
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "other".into(),
                 id: "a1".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
         line(StatusOutputLineData::Commit {
@@ -1604,11 +1604,11 @@ fn move_next_section_does_not_move_when_no_jump_target_below() {
 fn move_previous_section_moves_to_current_section_header_when_cursor_is_inside_it() {
     let lines = vec![
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "a0".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
         line(StatusOutputLineData::Commit {
@@ -1617,11 +1617,11 @@ fn move_previous_section_moves_to_current_section_header_when_cursor_is_inside_i
             classification: CommitClassification::LocalOnly,
         }),
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "other".into(),
                 id: "a1".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
         line(StatusOutputLineData::Commit {
@@ -1719,11 +1719,11 @@ fn move_previous_section_does_not_move_when_on_first_jump_target() {
 fn move_next_section_skips_non_jump_targets_like_commits() {
     let lines = vec![
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "b0".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
         line(StatusOutputLineData::Commit {
@@ -1732,11 +1732,11 @@ fn move_next_section_skips_non_jump_targets_like_commits() {
             classification: CommitClassification::LocalOnly,
         }),
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "other".into(),
                 id: "a0".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
     ];
@@ -1757,11 +1757,11 @@ fn move_next_section_skips_non_jump_targets_like_commits() {
 fn move_next_section_can_jump_to_merge_base_line() {
     let lines = vec![
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "b0".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
         line(StatusOutputLineData::Commit {
@@ -1788,11 +1788,11 @@ fn move_next_section_can_jump_to_merge_base_line() {
 fn move_previous_section_can_jump_from_merge_base_line() {
     let lines = vec![
         line(StatusOutputLineData::Branch {
-            cli_id: Arc::new(CliId::Branch {
+            cli_id: Arc::new(CliId::Branch(BranchId {
                 name: "main".into(),
                 id: "b0".into(),
                 stack_id: None,
-            }),
+            })),
             is_merged_upstream: false,
         }),
         line(StatusOutputLineData::Commit {

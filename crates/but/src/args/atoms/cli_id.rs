@@ -70,7 +70,7 @@ impl CliIdArg {
             return Ok(None);
         };
         Ok(Some(match id {
-            CliId::Branch { name, .. } => ResolvedCliIdArg::Branch(BranchArg(name)),
+            CliId::Branch(branch) => ResolvedCliIdArg::Branch(BranchArg(branch.name)),
             CliId::Commit {
                 commit_id,
                 change_id,
@@ -164,7 +164,7 @@ impl CliIdArg {
             return Ok(None);
         };
         match id {
-            CliId::Branch { name, .. } => Ok(Some(BranchArg(name))),
+            CliId::Branch(branch) => Ok(Some(BranchArg(branch.name))),
             _ => Ok(None),
         }
     }
@@ -229,7 +229,7 @@ impl CliIdArg {
     #[expect(dead_code)]
     fn wrong_kind_error(&self, id: &CliId, expected: &'static str) -> CliError {
         let kind = match id {
-            CliId::Branch { .. } => "a branch",
+            CliId::Branch(..) => "a branch",
             CliId::Commit { .. } => "a commit",
             CliId::UncommittedHunkOrFile(..) => "an uncommitted change",
             CliId::PathPrefix { .. } => "a path",
@@ -288,7 +288,7 @@ fn try_resolve_cli_id(
         let mut uncommitted = Vec::new();
         for id in std::iter::once(target).chain(target_ids) {
             match id {
-                CliId::Branch { .. } => branches.push(id),
+                CliId::Branch(..) => branches.push(id),
                 CliId::Commit { .. } => commits.push(id),
                 CliId::UncommittedHunkOrFile(..) => uncommitted.push(id),
                 CliId::PathPrefix { .. }

@@ -897,7 +897,7 @@ impl App {
                                             }
                                             CliId::PathPrefix { .. }
                                             | CliId::CommittedFile { .. }
-                                            | CliId::Branch { .. }
+                                            | CliId::Branch(..)
                                             | CliId::Commit { .. }
                                             | CliId::Stack { .. }
                                             | CliId::Uncommitted { .. } => None,
@@ -942,7 +942,7 @@ impl App {
                         }
                         CliId::PathPrefix { .. }
                         | CliId::CommittedFile { .. }
-                        | CliId::Branch { .. }
+                        | CliId::Branch(..)
                         | CliId::Commit { .. }
                         | CliId::Stack { .. } => {
                             messages.push(Message::Reload(
@@ -1168,11 +1168,12 @@ impl App {
 
         match &selection.data {
             StatusOutputLineData::Branch { cli_id, .. } => {
-                let CliId::Branch { name, .. } = &**cli_id else {
+                let CliId::Branch(branch) = &**cli_id else {
                     return Ok(());
                 };
 
-                let commit_result = operations::create_empty_commit_relative_to_branch(ctx, name)?;
+                let commit_result =
+                    operations::create_empty_commit_relative_to_branch(ctx, &branch.name)?;
 
                 messages.push(Message::Reload(
                     Some(SelectAfterReload::Commit(commit_result.new_commit)),
@@ -1223,10 +1224,10 @@ impl App {
 
         let new_name = match &selection.data {
             StatusOutputLineData::Branch { cli_id, .. } => {
-                let CliId::Branch { name, .. } = &**cli_id else {
+                let CliId::Branch(branch) = &**cli_id else {
                     return Ok(());
                 };
-                operations::create_branch_anchored_legacy(ctx, name.to_owned())?
+                operations::create_branch_anchored_legacy(ctx, branch.name.to_owned())?
             }
             StatusOutputLineData::UncommittedChanges { .. }
             | StatusOutputLineData::MergeBase
@@ -1265,7 +1266,7 @@ impl App {
         };
 
         let what_to_copy = match &**cli_id {
-            CliId::Branch { name, .. } => Cow::Borrowed(&**name),
+            CliId::Branch(branch) => Cow::Borrowed(branch.name.as_str()),
             CliId::Commit {
                 commit_id,
                 change_id,
@@ -1302,8 +1303,8 @@ impl App {
                 let commit_id = *commit_id;
                 copy_selection_picker::commit_picker(commit_id, self.theme)
             }
-            CliId::Branch { name, .. } => {
-                let branch = Category::LocalBranch.to_full_name(&**name)?;
+            CliId::Branch(branch) => {
+                let branch = Category::LocalBranch.to_full_name(&*branch.name)?;
                 copy_selection_picker::branch_picker(branch, self.theme)
             }
             CliId::UncommittedHunkOrFile(hunk) => {
@@ -1466,10 +1467,8 @@ impl App {
                     .iter()
                     .find(|line| {
                         if let Some(id) = line.data.cli_id()
-                            && let CliId::Branch {
-                                name: name_on_line, ..
-                            } = &**id
-                            && name_on_line == name.shorten()
+                            && let CliId::Branch(branch) = &**id
+                            && branch.name == name.shorten()
                         {
                             true
                         } else {
