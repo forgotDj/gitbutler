@@ -27,7 +27,7 @@ use crate::{
             },
         },
     },
-    id::CommittedFileId,
+    id::{BranchId, CommittedFileId},
     resolve_legacy_top_level_apply_branch_name,
     theme::Theme,
     utils::time::format_relative_time,
@@ -45,8 +45,7 @@ pub struct MoveStackMode {
 
 #[derive(Debug, Clone)]
 pub struct ReorderStackSource {
-    pub stack: StackId,
-    pub branch: String,
+    pub branch: BranchId,
 }
 
 impl ModeRender for StackMode {
@@ -100,10 +99,7 @@ impl ModeRender for MoveStackMode {
 impl ReorderStackSource {
     pub fn matches(&self, id: &CliId) -> bool {
         match id {
-            CliId::Branch(branch) => {
-                branch.stack_id.is_some_and(|stack| self.stack == stack)
-                    && self.branch == branch.name
-            }
+            CliId::Branch(branch) => self.branch == *branch,
             CliId::Stack { .. }
             | CliId::UncommittedHunkOrFile(..)
             | CliId::PathPrefix { .. }
@@ -494,14 +490,13 @@ impl App {
         let Some(CliId::Branch(branch)) = selection.data.cli_id().map(|id| &**id) else {
             return;
         };
-        let Some(stack) = branch.stack_id else {
+        if branch.stack_id.is_none() {
             return;
-        };
+        }
         self.mode
             .update_and_push_leave_normal_mode(&mut self.backstack, |mode| {
                 let source = ReorderStackSource {
-                    stack,
-                    branch: branch.name.to_owned(),
+                    branch: branch.clone(),
                 };
                 *mode = Mode::MoveStack(MoveStackMode { source });
             });
@@ -534,10 +529,13 @@ impl App {
             return Ok(());
         }
 
+        let Some(source_stack_id) = source.branch.stack_id else {
+            return Ok(());
+        };
         let current_stack_order = stack_ids_in_display_order(&self.status_lines);
         let Some(source_index) = current_stack_order
             .iter()
-            .position(|stack| *stack == source.stack)
+            .position(|stack| *stack == source_stack_id)
         else {
             return Ok(());
         };
@@ -571,7 +569,7 @@ impl App {
         messages.extend([
             Message::EnterNormalModeAfterConfirmingOperation,
             Message::Reload(
-                Some(SelectAfterReload::Branch(source.branch.clone())),
+                Some(SelectAfterReload::Branch(source.branch.name.clone())),
                 ReloadCause::Mutation,
             ),
         ]);

@@ -844,7 +844,7 @@ fn selected_operation_extension<'a>(
             {
                 let source_is_commit = match &*mode.source {
                     MoveSource::Marks(..) | MoveSource::Commit { .. } => true,
-                    MoveSource::Branch { .. } => false,
+                    MoveSource::Branch(..) => false,
                 };
                 Some(OperationExtension::Move {
                     mode,
@@ -1284,7 +1284,7 @@ pub fn move_operation_display(
             | StatusOutputLineData::Hint
             | StatusOutputLineData::NoAssignmentsUnstaged => None,
         },
-        MoveSource::Branch { .. } => match data {
+        MoveSource::Branch(..) => match data {
             StatusOutputLineData::Branch { .. } => Some("stack branch"),
             StatusOutputLineData::MergeBase => Some("unstack branch"),
             StatusOutputLineData::UpdateNotice

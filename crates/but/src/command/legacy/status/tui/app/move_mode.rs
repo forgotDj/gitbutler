@@ -26,7 +26,7 @@ use crate::{
             },
         },
     },
-    id::{CommittedFileId, ShortId},
+    id::{BranchId, CommittedFileId, ShortId},
     utils::targeting,
 };
 
@@ -46,10 +46,7 @@ pub enum MoveSource {
         commit_id: gix::ObjectId,
         id: ShortId,
     },
-    Branch {
-        name: String,
-        stack_id: Option<StackId>,
-    },
+    Branch(BranchId),
 }
 
 enum MoveTarget<'a> {
@@ -120,15 +117,8 @@ impl MoveSource {
                     false
                 }
             }
-            MoveSource::Branch {
-                name: name_lhs,
-                stack_id: stack_id_lhs,
-            } => {
-                if let CliId::Branch(rhs) = other {
-                    name_lhs == &rhs.name && stack_id_lhs == &rhs.stack_id
-                } else {
-                    false
-                }
+            MoveSource::Branch(lhs) => {
+                matches!(other, CliId::Branch(rhs) if lhs == rhs)
             }
         }
     }
@@ -139,10 +129,7 @@ impl TryFrom<CliId> for MoveSource {
 
     fn try_from(id: CliId) -> Result<Self, Self::Error> {
         match id {
-            CliId::Branch(branch) => Ok(Self::Branch {
-                name: branch.name,
-                stack_id: branch.stack_id,
-            }),
+            CliId::Branch(branch) => Ok(Self::Branch(branch)),
             CliId::Commit {
                 commit_id,
                 id,
@@ -329,12 +316,8 @@ impl App {
                     target: move_target(target, *insert_side)?,
                 })
             }
-            MoveSource::Branch {
-                name: source_branch_name,
-                ..
-            } => {
-                let source_branch =
-                    Category::LocalBranch.to_full_name(source_branch_name.as_str())?;
+            MoveSource::Branch(source) => {
+                let source_branch = Category::LocalBranch.to_full_name(source.name.as_str())?;
                 match target {
                     MoveTarget::Branch {
                         name: target_branch_name,

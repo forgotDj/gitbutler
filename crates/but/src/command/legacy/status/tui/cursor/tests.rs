@@ -1886,8 +1886,11 @@ fn move_stack_skips_noop_target_above_source() {
     ];
     let mode = Mode::MoveStack(MoveStackMode {
         source: ReorderStackSource {
-            stack: stack_b,
-            branch: "B".into(),
+            branch: BranchId {
+                name: "B".into(),
+                id: "b1".into(),
+                stack_id: Some(stack_b),
+            },
         },
     });
 
@@ -1913,8 +1916,11 @@ fn move_stack_skips_noop_target_below_source() {
     ];
     let mode = Mode::MoveStack(MoveStackMode {
         source: ReorderStackSource {
-            stack: stack_b,
-            branch: "B".into(),
+            branch: BranchId {
+                name: "B".into(),
+                id: "b1".into(),
+                stack_id: Some(stack_b),
+            },
         },
     });
 

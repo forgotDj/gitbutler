@@ -846,10 +846,13 @@ fn is_noop_move_stack_target(idx: usize, lines: &[StatusOutputLine], mode: &Mode
         return false;
     }
 
+    let Some(source_stack_id) = move_mode.source.branch.stack_id else {
+        return false;
+    };
     let current_stack_order = super::app::stack_ids_in_display_order(lines);
     let Some(source_index) = current_stack_order
         .iter()
-        .position(|stack| *stack == move_mode.source.stack)
+        .position(|stack| *stack == source_stack_id)
     else {
         return false;
     };
