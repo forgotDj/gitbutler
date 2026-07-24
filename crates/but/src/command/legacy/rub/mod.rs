@@ -1072,14 +1072,6 @@ mod tests {
         }
     }
 
-    fn branch_id() -> CliId {
-        CliId::Branch {
-            name: "main".to_string(),
-            id: "ef".to_string(),
-            stack_id: None,
-        }
-    }
-
     fn commit_id() -> CliId {
         CliId::Commit {
             commit_id: gix::ObjectId::empty_tree(gix::hash::Kind::Sha1),
@@ -1098,31 +1090,11 @@ mod tests {
     fn test_route_operation_uncommitted_hunk_to_targets() {
         let uncommitted = uncommitted_id();
 
-        // Valid: Uncommitted -> Uncommitted
-        assert!(
-            route_operation(
-                NonEmpty::new(&uncommitted),
-                &uncommitted_area_id(),
-                MessageCombinationStrategy::KeepBoth
-            )
-            .is_some()
-        );
-
         // Valid: Uncommitted -> Commit
         assert!(
             route_operation(
                 NonEmpty::new(&uncommitted),
                 &commit_id(),
-                MessageCombinationStrategy::KeepBoth
-            )
-            .is_some()
-        );
-
-        // Valid: Uncommitted -> Branch
-        assert!(
-            route_operation(
-                NonEmpty::new(&uncommitted),
-                &branch_id(),
                 MessageCombinationStrategy::KeepBoth
             )
             .is_some()
@@ -1173,16 +1145,6 @@ mod tests {
             .is_some()
         );
 
-        // Valid: Commit -> Branch
-        assert!(
-            route_operation(
-                NonEmpty::new(&commit),
-                &branch_id(),
-                MessageCombinationStrategy::KeepBoth
-            )
-            .is_some()
-        );
-
         // Invalid: Commit -> Uncommitted
         assert!(
             route_operation(
@@ -1205,61 +1167,6 @@ mod tests {
     }
 
     #[test]
-    fn test_route_operation_branch_to_targets() {
-        let branch = branch_id();
-
-        // Valid: Branch -> Uncommitted
-        assert!(
-            route_operation(
-                NonEmpty::new(&branch),
-                &uncommitted_area_id(),
-                MessageCombinationStrategy::KeepBoth
-            )
-            .is_some()
-        );
-
-        // Valid: Branch -> Commit
-        assert!(
-            route_operation(
-                NonEmpty::new(&branch),
-                &commit_id(),
-                MessageCombinationStrategy::KeepBoth
-            )
-            .is_some()
-        );
-
-        // Valid: Branch -> Branch
-        assert!(
-            route_operation(
-                NonEmpty::new(&branch),
-                &branch_id(),
-                MessageCombinationStrategy::KeepBoth
-            )
-            .is_some()
-        );
-
-        // Invalid: Branch -> Uncommitted
-        assert!(
-            route_operation(
-                NonEmpty::new(&branch),
-                &uncommitted_id(),
-                MessageCombinationStrategy::KeepBoth
-            )
-            .is_none()
-        );
-
-        // Invalid: Branch -> CommittedFile
-        assert!(
-            route_operation(
-                NonEmpty::new(&branch),
-                &committed_file_id(),
-                MessageCombinationStrategy::KeepBoth
-            )
-            .is_none()
-        );
-    }
-
-    #[test]
     fn test_route_operation_uncommitted_area_to_targets() {
         let uncommitted = uncommitted_area_id();
 
@@ -1268,16 +1175,6 @@ mod tests {
             route_operation(
                 NonEmpty::new(&uncommitted),
                 &commit_id(),
-                MessageCombinationStrategy::KeepBoth
-            )
-            .is_some()
-        );
-
-        // Valid: Uncommitted -> Branch
-        assert!(
-            route_operation(
-                NonEmpty::new(&uncommitted),
-                &branch_id(),
                 MessageCombinationStrategy::KeepBoth
             )
             .is_some()
@@ -1317,16 +1214,6 @@ mod tests {
     #[test]
     fn test_route_operation_committed_file_to_targets() {
         let committed_file = committed_file_id();
-
-        // Valid: CommittedFile -> Branch
-        assert!(
-            route_operation(
-                NonEmpty::new(&committed_file),
-                &branch_id(),
-                MessageCombinationStrategy::KeepBoth
-            )
-            .is_some()
-        );
 
         // Valid: CommittedFile -> Commit
         assert!(

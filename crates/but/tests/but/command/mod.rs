@@ -101,7 +101,7 @@ mod util {
             format!("{first_line}\n{}last\n", "line\n".repeat(context_distance)),
         );
         env.but(format!(
-            "commit {branch} -m 'create {filename1} and {filename2}'"
+            "_commit2 -b {branch} -m 'create {filename1} and {filename2}'"
         ))
         .assert()
         .success();
