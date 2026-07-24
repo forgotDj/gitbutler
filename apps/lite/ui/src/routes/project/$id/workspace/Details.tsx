@@ -24,6 +24,7 @@ import {
 	treeChangeDiffsQueryOptions,
 } from "#ui/api/queries.ts";
 import { decodeBytes } from "#ui/api/bytes.ts";
+import { branchDetailsSelector } from "#ui/branch.ts";
 import { commitBody, commitTitle, shortCommitId } from "#ui/commit.ts";
 import {
 	branchFileParent,
@@ -699,9 +700,7 @@ const Title: FC<{
 				<SuspenseQuery
 					{...branchDetailsQueryOptions({
 						projectId,
-						// https://linear.app/gitbutler/issue/GB-1226/unify-branch-identifiers
-						branchName: decodeBytes(branchRef).replace(/^refs\/heads\//, ""),
-						remote: null,
+						...branchDetailsSelector(decodeBytes(branchRef)),
 					})}
 				>
 					{({ data: branchDetails }) => (

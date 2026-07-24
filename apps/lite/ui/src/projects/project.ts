@@ -65,13 +65,23 @@ const createInitialWorkspaceState = (): WorkspaceState => ({
 	selection: createInitialSelectionState(),
 });
 
+export type OutlineTab = "workspace" | "branches";
+
 export type ProjectState = {
 	filesVisible: boolean;
+	outlineTab: OutlineTab;
+	/** Whether the branches tab also lists branches holding no commits. */
+	showEmptyBranches: boolean;
+	/** Branches in the branches tab with their commits unfolded, keyed by full ref name. */
+	unfoldedBranches: Record<string, true>;
 	workspace: WorkspaceState;
 };
 
 export const createInitialProjectState = (): ProjectState => ({
 	filesVisible: false,
+	outlineTab: "workspace",
+	showEmptyBranches: false,
+	unfoldedBranches: {},
 	workspace: createInitialWorkspaceState(),
 });
 
@@ -359,6 +369,22 @@ export const projectReducers = {
 	toggleFiles: (state: ProjectState) => {
 		state.filesVisible = !state.filesVisible;
 	},
+	setOutlineTab: (state: ProjectState, { tab }: { tab: OutlineTab }) => {
+		if (state.outlineTab === tab) return;
+
+		state.outlineTab = tab;
+		state.workspace.mode = defaultOutlineMode;
+		// The branches tab has no uncommitted changes panel, so its selection
+		// cannot drive the details pane.
+		state.workspace.detailsSelectionScope = "outline";
+	},
+	toggleBranchUnfolded: (state: ProjectState, { branchRef }: { branchRef: string }) => {
+		if (state.unfoldedBranches[branchRef]) delete state.unfoldedBranches[branchRef];
+		else state.unfoldedBranches[branchRef] = true;
+	},
+	toggleShowEmptyBranches: (state: ProjectState) => {
+		state.showEmptyBranches = !state.showEmptyBranches;
+	},
 };
 
 const selectCheckedOperands = createSelector(
@@ -391,6 +417,11 @@ const selectHasCheckedOperands = createSelector(
 
 export const projectSelectors = {
 	selectFilesVisible: (state: ProjectState) => state.filesVisible,
+	selectOutlineTab: (state: ProjectState) => state.outlineTab,
+	selectShowEmptyBranches: (state: ProjectState) => state.showEmptyBranches,
+	selectUnfoldedBranches: (state: ProjectState) => state.unfoldedBranches,
+	selectBranchUnfolded: (state: ProjectState, branchRef: string) =>
+		state.unfoldedBranches[branchRef] === true,
 	selectCanShowFiles: (state: ProjectState) =>
 		state.workspace.detailsSelectionScope !== "uncommitted-files",
 	selectDetailsSelectionScope: (state: ProjectState) => state.workspace.detailsSelectionScope,
@@ -422,6 +453,8 @@ export const projectSelectors = {
 			state.workspace.selection.outline,
 			operandIdentityKey,
 		),
+	/** The selection as stored, without resolving it against a navigation index. */
+	selectStoredSelectionOutline: (state: ProjectState) => state.workspace.selection.outline,
 	selectSelectionFiles: (state: ProjectState, navigationIndex: NavigationIndex<string>) =>
 		resolveNavigationIndexSelection(
 			navigationIndex,
