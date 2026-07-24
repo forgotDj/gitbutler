@@ -7,6 +7,7 @@ use but_api::open::{
 };
 use but_ctx::Context;
 use gix::utils::AsBStr;
+use nonempty::NonEmpty;
 
 use crate::{
     CliError, CliResult, IdMap,
@@ -32,7 +33,7 @@ pub(crate) struct Hunk {
 #[derive(Debug)]
 pub(crate) enum Openable {
     File(PathBuf),
-    Files(Vec<PathBuf>),
+    Files(NonEmpty<PathBuf>),
     Hunk(Hunk),
 }
 
@@ -97,11 +98,11 @@ pub(crate) fn open(
     let to_open = match sources.as_slice() {
         [] => return Err(bad_input("At least one source is required").into()),
         [source] => resolve_source(&repo, &id_map, source)?,
-        sources => {
-            let paths = sources
-                .iter()
-                .map(|source| resolve_file_source(&repo, &id_map, source))
-                .collect::<CliResult<Vec<_>>>()?;
+        [first_source, tail @ ..] => {
+            let mut paths = NonEmpty::new(resolve_file_source(&repo, &id_map, first_source)?);
+            for source in tail {
+                paths.push(resolve_file_source(&repo, &id_map, source)?);
+            }
             Openable::Files(paths)
         }
     };
@@ -118,9 +119,15 @@ pub(crate) fn open(
                         .arg_value(program_id),
                 )
             })?,
-        None => program_specs
-            .first()
-            .expect("BUG: The program list cannot be empty"),
+        None => {
+            if program_specs.len() == 1 {
+                &program_specs[0]
+            } else {
+                return Err(bad_input("Could not automatically choose program")
+                    .hint("Specify a program with `--program-id`")
+                    .into());
+            }
+        }
     };
 
     run(program, to_open)?;
@@ -131,7 +138,7 @@ pub(crate) fn open(
 pub(crate) fn list_program_specs_for_openable(openable: &Openable) -> Vec<ProgramSpec> {
     let path: &Path = match openable {
         Openable::File(path) => path,
-        Openable::Files(paths) => paths.first().unwrap(),
+        Openable::Files(paths) => paths.first(),
         Openable::Hunk(hunk) => &hunk.path,
     };
 

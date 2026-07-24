@@ -7,6 +7,7 @@ use std::{
 
 use crate::open::spawn::spawn_and_reap;
 
+use nonempty::NonEmpty;
 use serde::{Deserialize, Serialize};
 
 /// Name of the user-defined programs file
@@ -197,7 +198,7 @@ impl CliArgumentSupplier {
     }
 
     /// Add argument(s) to `cmd` to open all files.
-    fn open_many<'a, P: AsRef<Path>>(&self, cmd: &'a mut Command, paths: &[P]) -> &'a mut Command {
+    fn open_many<'a, P: AsRef<Path>>(&self, cmd: &'a mut Command, paths: &NonEmpty<P>) -> &'a mut Command {
         match self {
             Self::Custom(custom) => custom.open_many(cmd, paths),
             _ => {
@@ -267,7 +268,7 @@ impl CustomCliArgumentSupplier {
         cmd
     }
 
-    fn open_many<'a, P: AsRef<Path>>(&self, cmd: &'a mut Command, paths: &[P]) -> &'a mut Command {
+    fn open_many<'a, P: AsRef<Path>>(&self, cmd: &'a mut Command, paths: &NonEmpty<P>) -> &'a mut Command {
         let Some(open_args) = &self.open_args else {
             return CliArgumentSupplier::Default.open_many(cmd, paths);
         };
@@ -450,7 +451,7 @@ pub enum OpenSpec {
     /// A single file.
     File(PathBuf),
     /// Multiple files.
-    Files(Vec<PathBuf>),
+    Files(NonEmpty<PathBuf>),
     /// A single file at a specific line.
     FileAtLine(PathBuf, u32),
 }

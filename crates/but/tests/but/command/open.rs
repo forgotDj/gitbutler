@@ -34,7 +34,23 @@ fn setup_multi_file_uncommitted_changes(paths: &[&str]) -> Sandbox {
 }
 
 #[test]
-fn open_uncommitted_file_with_() {
+fn open_with_ambiguous_program() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.file("new-file.txt", "content");
+
+    env.but("_open new-file.txt")
+        .assert()
+        .failure()
+        .stderr_eq(snapbox::str![[r#"
+Error: Could not automatically choose program
+
+Hint: Specify a program with `--program-id`
+
+"#]]);
+}
+
+#[test]
+fn open_uncommitted_file_with() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
 
     env.file("new-file.txt", "content");

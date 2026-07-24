@@ -1017,6 +1017,7 @@ dependencies = [
  "itertools",
  "napi",
  "napi-derive",
+ "nonempty",
  "objc2-app-kit",
  "objc2-foundation",
  "open",
