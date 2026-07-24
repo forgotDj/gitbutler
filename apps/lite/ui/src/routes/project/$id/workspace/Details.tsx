@@ -115,6 +115,11 @@ import type { IconName } from "#ui/components/iconNames.ts";
 import { draftPRQueryOptions, usePersistDraftPR } from "#ui/pr.ts";
 import { combineHashes, hash } from "#ui/hash.ts";
 import { assert } from "#ui/assert.ts";
+import {
+	type DiffLineContextMenuTarget,
+	useDiffLineContextMenu,
+} from "./diff-line-context-menu.ts";
+import { useHunkMenuItems } from "./useHunkMenuItems.ts";
 
 type BranchTab = "diff" | "pr";
 
@@ -362,6 +367,7 @@ const DiffContents: FC<{
 		select: (cfg) => cfg.theme,
 	});
 	const { mutate: openInEditor } = useOpenInEditor();
+	const hunkMenuItems = useHunkMenuItems({ projectId });
 
 	const diffSelection = useAppSelector((state) =>
 		projectSlice.selectors.selectSelectionDiff(state, projectId, navigationIndex),
@@ -492,6 +498,46 @@ const DiffContents: FC<{
 			}),
 		);
 	};
+
+	const handleLineContextMenu = ({
+		event,
+		itemId,
+		lineNumber,
+		side,
+	}: DiffLineContextMenuTarget): void => {
+		const file = fileByItemId.get(itemId);
+		if (file?.patch?.type !== "Patch") return;
+
+		const selection = contiguousSelectionByLine({
+			hunks: file.item.fileDiff.hunks,
+			line: lineNumber,
+			side,
+		});
+		if (!selection) return;
+
+		const operand: HunkOperand = {
+			parent: {
+				parent: fileParent,
+				path: file.change.path,
+			},
+			...selection,
+			isResultOfBinaryToTextConversion: file.patch.subject.isResultOfBinaryToTextConversion,
+		};
+
+		void showNativeContextMenu(
+			event,
+			hunkMenuItems({
+				change: file.change,
+				lineNumber,
+				operand,
+			}),
+		);
+	};
+
+	useDiffLineContextMenu({
+		viewerRef,
+		onContextMenu: handleLineContextMenu,
+	});
 
 	const handleSetCollapsed = (itemId: string) => (collapsed: boolean) => {
 		const s = new Set(collapsedItems);
