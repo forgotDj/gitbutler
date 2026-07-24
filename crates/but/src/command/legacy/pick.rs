@@ -17,6 +17,7 @@ use gix::{revision::walk::Sorting, traverse::commit::simple::CommitTimeOrder};
 use crate::{
     CliId, IdMap,
     command::legacy::workspace_target,
+    id::CommitId,
     utils::{OutputChannel, WriteWithUtils, shorten_hex_object_id, shorten_object_id},
 };
 
@@ -184,7 +185,7 @@ fn resolve_source_commits(
     let cli_ids = id_map.parse_using_context(source, ctx)?;
 
     for cli_id in &cli_ids {
-        if let CliId::Commit { commit_id, .. } = cli_id {
+        if let CliId::Commit(CommitId { commit_id, .. }) = cli_id {
             return Ok(vec![*commit_id]);
         }
     }

@@ -21,7 +21,7 @@ use crate::{
             },
         },
     },
-    id::{BranchId, CommittedFileId, UncommittedHunkOrFile, WorktreeHunk},
+    id::{BranchId, CommitId, CommittedFileId, UncommittedHunkOrFile, WorktreeHunk},
 };
 
 fn line(data: StatusOutputLineData) -> StatusOutputLine {
@@ -41,19 +41,19 @@ fn commit_id(hex: &str) -> gix::ObjectId {
 }
 
 fn commit_cli_id(hex: &str, id: &str) -> Arc<CliId> {
-    Arc::new(CliId::Commit {
+    Arc::new(CliId::Commit(CommitId {
         commit_id: commit_id(hex),
         id: id.into(),
         change_id: None,
-    })
+    }))
 }
 
 fn commit_cli_id_with_change_id(hex: &str, id: &str, change_id: u128) -> Arc<CliId> {
-    Arc::new(CliId::Commit {
+    Arc::new(CliId::Commit(CommitId {
         commit_id: commit_id(hex),
         id: id.into(),
         change_id: Some(ChangeId::from_number_for_testing(change_id)),
-    })
+    }))
 }
 
 fn committed_file_cli_id(hex: &str, path: &str, id: &str) -> Arc<CliId> {

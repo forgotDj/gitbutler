@@ -26,7 +26,7 @@ use crate::{
             StackMode, find_jump_match,
         },
     },
-    id::CommittedFileId,
+    id::{CommitId, CommittedFileId},
     theme::Theme,
 };
 
@@ -378,7 +378,7 @@ fn row_stack_ids(lines: &[StatusOutputLine]) -> Vec<Option<StackId>> {
             stack_id: Some(stack_id),
             ..
         } = &line.data
-            && let CliId::Commit { commit_id, .. } = &**cli_id
+            && let CliId::Commit(CommitId { commit_id, .. }) = &**cli_id
         {
             commit_stack_ids.insert(*commit_id, *stack_id);
         }
@@ -667,7 +667,7 @@ fn render_status_list_item(
                 line.extend(author);
 
                 if let Some(id) = data.cli_id()
-                    && let CliId::Commit { commit_id, .. } = &**id
+                    && let CliId::Commit(CommitId { commit_id, .. }) = &**id
                     && let Mode::InlineReword(InlineRewordMode::Commit {
                         textarea,
                         commit_id: source,

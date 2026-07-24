@@ -21,7 +21,7 @@ use crate::{
             },
         },
     },
-    id::CommittedFileId,
+    id::{CommitId, CommittedFileId},
 };
 
 #[cfg(test)]
@@ -106,7 +106,8 @@ impl Cursor {
 
     pub fn select_commit(object_id: gix::ObjectId, lines: &[StatusOutputLine]) -> Option<Self> {
         let idx = lines.iter().position(|line| {
-            if let Some(CliId::Commit { commit_id, .. }) = line.data.cli_id().map(|id| &**id)
+            if let Some(CliId::Commit(CommitId { commit_id, .. })) =
+                line.data.cli_id().map(|id| &**id)
                 && *commit_id == object_id
             {
                 true
@@ -122,7 +123,7 @@ impl Cursor {
         self,
         lines: &[StatusOutputLine],
     ) -> Option<SelectAfterReload> {
-        if let Some(CliId::Commit { commit_id, .. }) = lines
+        if let Some(CliId::Commit(CommitId { commit_id, .. })) = lines
             .get(self.0)
             .and_then(|line| line.data.cli_id())
             .map(|id| &**id)
@@ -212,7 +213,8 @@ impl Cursor {
             return None;
         }
 
-        if let Some(CliId::Commit { commit_id, .. }) = lines[self.0].data.cli_id().map(|id| &**id)
+        if let Some(CliId::Commit(CommitId { commit_id, .. })) =
+            lines[self.0].data.cli_id().map(|id| &**id)
             && !discarded_commits.contains(commit_id)
         {
             return Some(SelectAfterReload::Commit(*commit_id));
@@ -223,7 +225,8 @@ impl Cursor {
                 break;
             }
 
-            if let Some(CliId::Commit { commit_id, .. }) = line.data.cli_id().map(|id| &**id)
+            if let Some(CliId::Commit(CommitId { commit_id, .. })) =
+                line.data.cli_id().map(|id| &**id)
                 && !discarded_commits.contains(commit_id)
             {
                 return Some(SelectAfterReload::Commit(*commit_id));
@@ -235,7 +238,8 @@ impl Cursor {
                 break;
             }
 
-            if let Some(CliId::Commit { commit_id, .. }) = line.data.cli_id().map(|id| &**id)
+            if let Some(CliId::Commit(CommitId { commit_id, .. })) =
+                line.data.cli_id().map(|id| &**id)
                 && !discarded_commits.contains(commit_id)
             {
                 return Some(SelectAfterReload::Commit(*commit_id));
@@ -730,16 +734,16 @@ pub(super) fn same_entity_for_reload(previous: &CliId, current: &CliId) -> bool 
         }
         (CliId::Branch(previous), CliId::Branch(current)) => previous == current,
         (
-            CliId::Commit {
+            CliId::Commit(CommitId {
                 commit_id: previous_commit_id,
                 change_id: previous_change_id,
                 ..
-            },
-            CliId::Commit {
+            }),
+            CliId::Commit(CommitId {
                 commit_id: current_commit_id,
                 change_id: current_change_id,
                 ..
-            },
+            }),
         ) => match (previous_change_id, current_change_id) {
             (Some(previous), Some(current)) => previous == current,
             (Some(_), None) | (None, Some(_)) | (None, None) => {
@@ -761,7 +765,7 @@ pub(super) fn same_entity_for_reload(previous: &CliId, current: &CliId) -> bool 
 
 fn select_after_reload_for_cli_id(cli_id: &Arc<CliId>) -> SelectAfterReload {
     match &**cli_id {
-        CliId::Commit { commit_id, .. } => SelectAfterReload::Commit(*commit_id),
+        CliId::Commit(CommitId { commit_id, .. }) => SelectAfterReload::Commit(*commit_id),
         CliId::CommittedFile(CommittedFileId { commit_id, .. }) => {
             SelectAfterReload::FirstFileInCommit(*commit_id)
         }

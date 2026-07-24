@@ -8,7 +8,7 @@ use crate::{
         StatusOutputLine,
         tui::{app::App, cursor::Cursor},
     },
-    id::CommittedFileId,
+    id::{CommitId, CommittedFileId},
 };
 
 pub fn restore_selection(ctx: &Context, lines: &[StatusOutputLine]) -> Option<Cursor> {
@@ -77,11 +77,11 @@ fn line_id(id: &CliId) -> Option<String> {
             change_id,
             ..
         })
-        | CliId::Commit {
+        | CliId::Commit(CommitId {
             commit_id,
             change_id,
             ..
-        } => {
+        }) => {
             if let Some(change_id) = change_id {
                 format!("commit:{change_id}")
             } else {

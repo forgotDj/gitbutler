@@ -2,7 +2,10 @@ use but_ctx::Context;
 use serde::Serialize;
 
 use crate::{
-    CliId, IdMap, command::legacy::diff::show::Filter, id::CommittedFileId, utils::OutputChannel,
+    CliId, IdMap,
+    command::legacy::diff::show::Filter,
+    id::{CommitId, CommittedFileId},
+    utils::OutputChannel,
 };
 
 mod display;
@@ -38,7 +41,9 @@ pub fn handle_tui(ctx: &mut Context, target_str: Option<&str>) -> anyhow::Result
             CliId::CommittedFile(CommittedFileId {
                 commit_id, path, ..
             }) => DiffFileEntry::from_commit(ctx, commit_id, Some(path))?,
-            CliId::Commit { commit_id, .. } => DiffFileEntry::from_commit(ctx, commit_id, None)?,
+            CliId::Commit(CommitId { commit_id, .. }) => {
+                DiffFileEntry::from_commit(ctx, commit_id, None)?
+            }
             CliId::Branch(branch) => DiffFileEntry::from_branch(ctx, branch.name)?,
         }
     } else {
@@ -79,7 +84,7 @@ pub fn handle(
                 commit_id, path, ..
             }) => show::commit(ctx, out, commit_id, Some(path)),
             CliId::Branch(branch) => show::branch(ctx, out, branch.name),
-            CliId::Commit { commit_id: id, .. } => show::commit(ctx, out, id, None),
+            CliId::Commit(CommitId { commit_id: id, .. }) => show::commit(ctx, out, id, None),
             CliId::Stack { .. } => show::worktree(id_map, out, Some(Filter::UncommittedArea)),
         }
     } else {

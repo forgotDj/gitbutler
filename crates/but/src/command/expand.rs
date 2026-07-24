@@ -4,7 +4,7 @@ use serde::Serialize;
 use crate::{
     CliId, CliResult, IdMap,
     args::atoms::CliIdArg,
-    id::CommittedFileId,
+    id::{CommitId, CommittedFileId},
     theme::Theme,
     utils::{CliOutput, CliOutputHuman, WriteWithUtils},
 };
@@ -125,11 +125,11 @@ pub fn handle(ctx: &but_ctx::Context, cli_id: CliIdArg) -> CliResult<ExpandOutco
 
 fn resources_from_cli_id(cli_id: CliId) -> Vec<Resource> {
     match cli_id {
-        CliId::Commit {
+        CliId::Commit(CommitId {
             commit_id,
             change_id,
             ..
-        } => vec![Resource::Commit {
+        }) => vec![Resource::Commit {
             change_id: change_id.map(|id| id.to_string()),
             commit_id: commit_id.to_string(),
         }],

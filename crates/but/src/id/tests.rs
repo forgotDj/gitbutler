@@ -8,7 +8,7 @@ use snapbox::{assert_data_eq, prelude::*};
 
 use crate::{
     CliId, IdMap,
-    id::{BranchId, id_usage::UintId},
+    id::{BranchId, CommitId, id_usage::UintId},
 };
 
 #[test]
@@ -67,11 +67,11 @@ branches: [ no ]
         bail!("unexpected IDs {commit_id} {parent_id:?}");
     };
 
-    let expected = [CliId::Commit {
+    let expected = [CliId::Commit(CommitId {
         commit_id: id1,
         id: "0".to_string(),
         change_id: None,
-    }];
+    })];
     assert_eq!(
         id_map.parse("0", Box::new(changed_paths_fn))?,
         expected,
@@ -104,11 +104,13 @@ fn commit_id_appearing_multiple_times() -> anyhow::Result<()> {
         id_map.parse("01", Box::new(changed_paths_fn))?.to_debug(),
         snapbox::str![[r#"
 [
-    Commit {
-        commit_id: Sha1(0101010101010101010101010101010101010101),
-        id: "01",
-        change_id: None,
-    },
+    Commit(
+        CommitId {
+            commit_id: Sha1(0101010101010101010101010101010101010101),
+            id: "01",
+            change_id: None,
+        },
+    ),
 ]
 
 "#]]
@@ -136,21 +138,27 @@ branches: [ no ]
         id_map.all_ids().to_debug(),
         snapbox::str![[r#"
 [
-    Commit {
-        commit_id: Sha1(21aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa),
-        id: "21a",
-        change_id: None,
-    },
-    Commit {
-        commit_id: Sha1(21bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb),
-        id: "21bb",
-        change_id: None,
-    },
-    Commit {
-        commit_id: Sha1(21bccccccccccccccccccccccccccccccccccccc),
-        id: "21bc",
-        change_id: None,
-    },
+    Commit(
+        CommitId {
+            commit_id: Sha1(21aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa),
+            id: "21a",
+            change_id: None,
+        },
+    ),
+    Commit(
+        CommitId {
+            commit_id: Sha1(21bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb),
+            id: "21bb",
+            change_id: None,
+        },
+    ),
+    Commit(
+        CommitId {
+            commit_id: Sha1(21bccccccccccccccccccccccccccccccccccccc),
+            id: "21bc",
+            change_id: None,
+        },
+    ),
     Branch(
         BranchId {
             name: "not-important",
@@ -429,11 +437,13 @@ stacks: [ j0 ]
         id_map.all_ids().to_debug(),
         snapbox::str![[r#"
 [
-    Commit {
-        commit_id: Sha1(0202020202020202020202020202020202020202),
-        id: "0",
-        change_id: None,
-    },
+    Commit(
+        CommitId {
+            commit_id: Sha1(0202020202020202020202020202020202020202),
+            id: "0",
+            change_id: None,
+        },
+    ),
     Branch(
         BranchId {
             name: "h0",
@@ -593,11 +603,13 @@ uncommitted_hunks: [ ln:q ]
         id_map.parse("0a", Box::new(changed_paths_fn))?.to_debug(),
         snapbox::str![[r#"
 [
-    Commit {
-        commit_id: Sha1(0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a),
-        id: "0",
-        change_id: None,
-    },
+    Commit(
+        CommitId {
+            commit_id: Sha1(0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a),
+            id: "0",
+            change_id: None,
+        },
+    ),
 ]
 
 "#]]
@@ -2282,9 +2294,9 @@ fn commit_matches_are_deduplicated_by_commit_oid() -> anyhow::Result<()> {
     let matches = id_map.parse("02", Box::new(changed_paths_fn))?;
     assert_eq!(matches.len(), 1);
     assert!(
-        matches
-            .iter()
-            .any(|m| matches!(m, CliId::Commit { commit_id: id, .. } if *id == commit_id)),
+        matches.iter().any(
+            |m| matches!(m, CliId::Commit(CommitId { commit_id: id, .. }) if *id == commit_id)
+        ),
         "same commit reachable through local and remote views should not be ambiguous"
     );
 
@@ -2312,12 +2324,12 @@ fn dedupe_does_not_hide_ambiguity_between_distinct_commits() -> anyhow::Result<(
     assert!(
         matches
             .iter()
-            .any(|m| matches!(m, CliId::Commit { commit_id, .. } if *commit_id == id1))
+            .any(|m| matches!(m, CliId::Commit(CommitId { commit_id, .. }) if *commit_id == id1))
     );
     assert!(
         matches
             .iter()
-            .any(|m| matches!(m, CliId::Commit { commit_id, .. } if *commit_id == id2))
+            .any(|m| matches!(m, CliId::Commit(CommitId { commit_id, .. }) if *commit_id == id2))
     );
 
     Ok(())
@@ -2423,20 +2435,24 @@ branches: [ no ]
             .to_debug(),
         snapbox::str![[r#"
 [
-    Commit {
-        commit_id: Sha1(0101010101010101010101010101010101010101),
-        id: "01",
-        change_id: Some(
-            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
-        ),
-    },
-    Commit {
-        commit_id: Sha1(0202020202020202020202020202020202020202),
-        id: "02",
-        change_id: Some(
-            "swsrzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
-        ),
-    },
+    Commit(
+        CommitId {
+            commit_id: Sha1(0101010101010101010101010101010101010101),
+            id: "01",
+            change_id: Some(
+                "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+            ),
+        },
+    ),
+    Commit(
+        CommitId {
+            commit_id: Sha1(0202020202020202020202020202020202020202),
+            id: "02",
+            change_id: Some(
+                "swsrzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+            ),
+        },
+    ),
 ]
 
 "#]],
@@ -2449,13 +2465,15 @@ branches: [ no ]
             .to_debug(),
         snapbox::str![[r#"
 [
-    Commit {
-        commit_id: Sha1(0101010101010101010101010101010101010101),
-        id: "01",
-        change_id: Some(
-            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
-        ),
-    },
+    Commit(
+        CommitId {
+            commit_id: Sha1(0101010101010101010101010101010101010101),
+            id: "01",
+            change_id: Some(
+                "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+            ),
+        },
+    ),
 ]
 
 "#]],
@@ -2468,13 +2486,15 @@ branches: [ no ]
             .to_debug(),
         snapbox::str![[r#"
 [
-    Commit {
-        commit_id: Sha1(0202020202020202020202020202020202020202),
-        id: "02",
-        change_id: Some(
-            "swsrzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
-        ),
-    },
+    Commit(
+        CommitId {
+            commit_id: Sha1(0202020202020202020202020202020202020202),
+            id: "02",
+            change_id: Some(
+                "swsrzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+            ),
+        },
+    ),
 ]
 
 "#]],
@@ -2657,20 +2677,24 @@ branches: [ no ]
             .to_debug(),
         snapbox::str![[r#"
 [
-    Commit {
-        commit_id: Sha1(0101010101010101010101010101010101010101),
-        id: "01",
-        change_id: Some(
-            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
-        ),
-    },
-    Commit {
-        commit_id: Sha1(0202020202020202020202020202020202020202),
-        id: "02",
-        change_id: Some(
-            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
-        ),
-    },
+    Commit(
+        CommitId {
+            commit_id: Sha1(0101010101010101010101010101010101010101),
+            id: "01",
+            change_id: Some(
+                "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+            ),
+        },
+    ),
+    Commit(
+        CommitId {
+            commit_id: Sha1(0202020202020202020202020202020202020202),
+            id: "02",
+            change_id: Some(
+                "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+            ),
+        },
+    ),
 ]
 
 "#]],
@@ -2683,13 +2707,15 @@ branches: [ no ]
             .to_debug(),
         snapbox::str![[r#"
 [
-    Commit {
-        commit_id: Sha1(0101010101010101010101010101010101010101),
-        id: "01",
-        change_id: Some(
-            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
-        ),
-    },
+    Commit(
+        CommitId {
+            commit_id: Sha1(0101010101010101010101010101010101010101),
+            id: "01",
+            change_id: Some(
+                "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+            ),
+        },
+    ),
 ]
 
 "#]],
@@ -2702,13 +2728,15 @@ branches: [ no ]
             .to_debug(),
         snapbox::str![[r#"
 [
-    Commit {
-        commit_id: Sha1(0202020202020202020202020202020202020202),
-        id: "02",
-        change_id: Some(
-            "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
-        ),
-    },
+    Commit(
+        CommitId {
+            commit_id: Sha1(0202020202020202020202020202020202020202),
+            id: "02",
+            change_id: Some(
+                "swstzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+            ),
+        },
+    ),
 ]
 
 "#]],

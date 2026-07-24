@@ -4,7 +4,7 @@ use but_ctx::Context;
 
 use crate::{
     CliId, IdMap,
-    id::{CommittedFileId, SourceScope},
+    id::{CommitId, CommittedFileId, SourceScope},
     utils::OutputChannel,
 };
 
@@ -415,7 +415,7 @@ pub fn prompt_for_disambiguation(
 
             // Add additional context based on the type
             let label = match &id {
-                CliId::Commit { commit_id, .. } => {
+                CliId::Commit(CommitId { commit_id, .. }) => {
                     format!(
                         "{} - {} (commit {})",
                         short_id,

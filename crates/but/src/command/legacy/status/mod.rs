@@ -35,7 +35,8 @@ use crate::{
         workspace_target,
     },
     id::{
-        ChangeIdWithShortId, CommittedFileId, SegmentWithId, ShortId, StackWithId, TreeChangeWithId,
+        ChangeIdWithShortId, CommitId, CommittedFileId, SegmentWithId, ShortId, StackWithId,
+        TreeChangeWithId,
     },
     tui::text::truncate_text,
     utils::{
@@ -1598,7 +1599,7 @@ fn print_commit(
         &status_ctx.id_map,
         repo,
         &short_id,
-        |id| matches!(id, CliId::Commit { commit_id, .. } if *commit_id == commit.id),
+        |id| matches!(id, CliId::Commit(CommitId { commit_id, .. }) if *commit_id == commit.id),
         "commit",
     )?;
 

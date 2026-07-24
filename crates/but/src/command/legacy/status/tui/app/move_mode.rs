@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use but_core::ref_metadata::StackId;
 use but_ctx::Context;
 use but_rebase::graph_rebase::mutate::InsertSide;
 use gix::refs::Category;
@@ -18,7 +17,6 @@ use crate::{
             output::StatusOutputLineData,
             tui::{
                 App, Message, Mode, ReloadCause, SelectAfterReload,
-                app::mark::MarkedCommit,
                 render::{
                     ModeRender, RenderSingleLineSpans, render_move_operation_target_marker,
                     source_span,
@@ -26,7 +24,7 @@ use crate::{
             },
         },
     },
-    id::{BranchId, CommittedFileId, ShortId},
+    id::{BranchId, CommitId, CommittedFileId, ShortId},
     utils::targeting,
 };
 
@@ -41,7 +39,7 @@ pub struct MoveMode {
 /// A subset of [`CliId`] that supports being moved
 #[derive(Debug)]
 pub enum MoveSource {
-    Marks(NonEmpty<MarkedCommit>),
+    Marks(NonEmpty<CommitId>),
     Commit {
         commit_id: gix::ObjectId,
         id: ShortId,
@@ -89,15 +87,8 @@ impl MoveSource {
     pub fn contains(&self, other: &CliId) -> bool {
         match self {
             MoveSource::Marks(commits) => {
-                if let CliId::Commit {
-                    commit_id: rhs_commit_id,
-                    id: rhs_id,
-                    change_id: _,
-                } = other
-                {
-                    commits
-                        .iter()
-                        .any(|commit| commit.commit_id == *rhs_commit_id && commit.id == *rhs_id)
+                if let CliId::Commit(rhs) = other {
+                    commits.iter().any(|commit| commit == rhs)
                 } else {
                     false
                 }
@@ -106,11 +97,11 @@ impl MoveSource {
                 commit_id: commit_id_lhs,
                 id: id_lhs,
             } => {
-                if let CliId::Commit {
+                if let CliId::Commit(CommitId {
                     commit_id: commit_id_rhs,
                     id: id_rhs,
                     change_id: _,
-                } = other
+                }) = other
                 {
                     commit_id_lhs == commit_id_rhs && id_lhs == id_rhs
                 } else {
@@ -130,11 +121,11 @@ impl TryFrom<CliId> for MoveSource {
     fn try_from(id: CliId) -> Result<Self, Self::Error> {
         match id {
             CliId::Branch(branch) => Ok(Self::Branch(branch)),
-            CliId::Commit {
+            CliId::Commit(CommitId {
                 commit_id,
                 id,
                 change_id: _,
-            } => Ok(Self::Commit { commit_id, id }),
+            }) => Ok(Self::Commit { commit_id, id }),
             CliId::UncommittedHunkOrFile(uncommitted_cli_id) => {
                 anyhow::bail!("cannot move: {:?}", uncommitted_cli_id.id)
             }
@@ -276,7 +267,7 @@ impl App {
                 }
             }
             StatusOutputLineData::Commit { cli_id, .. } => {
-                if let CliId::Commit { commit_id, .. } = &**cli_id {
+                if let CliId::Commit(CommitId { commit_id, .. }) = &**cli_id {
                     MoveTarget::Commit {
                         commit_id: *commit_id,
                     }

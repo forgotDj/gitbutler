@@ -19,7 +19,7 @@ use crate::{
         mode::Mode,
         operations,
     },
-    id::CommittedFileId,
+    id::{CommitId, CommittedFileId},
     utils::diff_specs::DiffSpecBuilder,
 };
 
@@ -102,7 +102,7 @@ impl App {
                         },
                     )
                 }
-                CliId::Commit { commit_id, .. } => {
+                CliId::Commit(CommitId { commit_id, .. }) => {
                     self.to_be_discarded = Vec::from([Arc::clone(cli_id)]);
                     let commit_id = *commit_id;
                     let select_after_reload = self

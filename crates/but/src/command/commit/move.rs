@@ -1,6 +1,6 @@
 use crate::{
     CliId,
-    id::CommittedFileId,
+    id::{CommitId, CommittedFileId},
     theme::{self, Paint},
     utils::OutputChannel,
 };
@@ -69,7 +69,7 @@ pub(crate) fn handle_multiple_resolved_with_perm(
     let sources = source_ids
         .iter()
         .map(|id| match id {
-            CliId::Commit { commit_id, .. } => Ok(*commit_id),
+            CliId::Commit(CommitId { commit_id, .. }) => Ok(*commit_id),
             _ => bail!(
                 "Cannot move {} as part of a multi-commit operation. Only commits are supported.",
                 t.cli_id.paint(id.to_short_string())
@@ -78,7 +78,7 @@ pub(crate) fn handle_multiple_resolved_with_perm(
         .collect::<anyhow::Result<Vec<_>>>()?;
 
     match target_id {
-        CliId::Commit { commit_id, .. } => {
+        CliId::Commit(CommitId { commit_id, .. }) => {
             move_commit_to_commit_with_perm(ctx, sources, *commit_id, after, out, perm)
         }
         CliId::Branch(branch) => {
@@ -304,12 +304,12 @@ fn route_move_operation<'a>(
     match (source, target) {
         // Commit -> Commit: move commit to specific position
         (
-            Commit {
+            Commit(CommitId {
                 commit_id: source, ..
-            },
-            Commit {
+            }),
+            Commit(CommitId {
                 commit_id: target, ..
-            },
+            }),
         ) => Some(MoveOperation::CommitToCommit {
             source: *source,
             target: *target,
@@ -317,9 +317,9 @@ fn route_move_operation<'a>(
         }),
         // Commit -> Branch: move commit to top of branch
         (
-            Commit {
+            Commit(CommitId {
                 commit_id: source, ..
-            },
+            }),
             Branch(branch),
         ) => Some(MoveOperation::CommitToBranch {
             source: *source,
@@ -332,10 +332,10 @@ fn route_move_operation<'a>(
                 commit_id: source_commit,
                 ..
             }),
-            Commit {
+            Commit(CommitId {
                 commit_id: target_commit,
                 ..
-            },
+            }),
         ) => Some(MoveOperation::CommittedFileToCommit {
             path: path.as_ref(),
             source_commit: *source_commit,
@@ -350,17 +350,17 @@ fn route_move_operation<'a>(
 mod tests {
     use bstr::BString;
 
-    use crate::id::{BranchId, WorktreeHunk};
+    use crate::id::{BranchId, CommitId, WorktreeHunk};
 
     use super::*;
 
     // Helper to create test CliIds
     fn commit_id(id: &str) -> CliId {
-        CliId::Commit {
+        CliId::Commit(CommitId {
             commit_id: gix::ObjectId::empty_tree(gix::hash::Kind::Sha1),
             id: id.to_string(),
             change_id: None,
-        }
+        })
     }
 
     fn branch_id(name: &str) -> CliId {

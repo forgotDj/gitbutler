@@ -6,6 +6,7 @@ use but_ctx::access::RepoShared;
 
 use crate::{
     CLI_DATE, CliId, IdMap,
+    id::CommitId,
     theme::{self, Paint},
     utils::{
         OutputChannel, get_change_id_for_commit, shorten_object_id, time::format_relative_time,
@@ -70,7 +71,7 @@ pub(crate) fn show_commit(
         );
     } else {
         match &cli_ids[0] {
-            CliId::Commit { commit_id, .. } => *commit_id,
+            CliId::Commit(CommitId { commit_id, .. }) => *commit_id,
             CliId::Branch(branch) => {
                 // This is a branch identified by CLI ID, show the branch
                 return show_branch(ctx, out, &branch.name, verbose, &id_map);

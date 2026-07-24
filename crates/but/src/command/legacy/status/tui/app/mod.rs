@@ -25,7 +25,7 @@ use crate::{
         },
         open::{self, Openable},
     },
-    id::CommittedFileId,
+    id::{CommitId, CommittedFileId},
     theme::Theme,
     tui::TerminalGuard,
 };
@@ -808,7 +808,7 @@ impl App {
 
         if let Some(selection) = self.cursor.selected_line(&self.status_lines)
             && let Some(cli_id) = selection.data.cli_id()
-            && let CliId::Commit { commit_id, .. } = &**cli_id
+            && let CliId::Commit(CommitId { commit_id, .. }) = &**cli_id
         {
             if !operations::commit_is_empty(ctx, *commit_id)? {
                 let select_after_reload = match self.flags.show_files {
@@ -1181,7 +1181,7 @@ impl App {
                 ));
             }
             StatusOutputLineData::Commit { cli_id, .. } => {
-                let CliId::Commit { commit_id, .. } = &**cli_id else {
+                let CliId::Commit(CommitId { commit_id, .. }) = &**cli_id else {
                     return Ok(());
                 };
 
@@ -1267,11 +1267,11 @@ impl App {
 
         let what_to_copy = match &**cli_id {
             CliId::Branch(branch) => Cow::Borrowed(branch.name.as_str()),
-            CliId::Commit {
+            CliId::Commit(CommitId {
                 commit_id,
                 change_id,
                 ..
-            } => Cow::Owned(commit_identifier_to_copy(*commit_id, change_id.as_ref())),
+            }) => Cow::Owned(commit_identifier_to_copy(*commit_id, change_id.as_ref())),
             CliId::CommittedFile(CommittedFileId { path, .. }) => path.to_str_lossy(),
             CliId::UncommittedHunkOrFile(uncommitted) => {
                 Cow::Borrowed(&*uncommitted.hunk_assignments.first().path)
@@ -1299,7 +1299,7 @@ impl App {
         };
 
         let picker = match &**selection {
-            CliId::Commit { commit_id, .. } => {
+            CliId::Commit(CommitId { commit_id, .. }) => {
                 let commit_id = *commit_id;
                 copy_selection_picker::commit_picker(commit_id, self.theme)
             }
@@ -1425,7 +1425,7 @@ impl App {
             return None;
         };
 
-        let CliId::Commit { commit_id, .. } = &**cli_id else {
+        let CliId::Commit(CommitId { commit_id, .. }) = &**cli_id else {
             return None;
         };
 

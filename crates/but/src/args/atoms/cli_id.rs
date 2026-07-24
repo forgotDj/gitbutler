@@ -5,7 +5,7 @@ use crate::{
     CliError, CliId, CliResult, IdMap,
     args::atoms::BranchArg,
     bad_input,
-    id::{CommittedFileId, UncommittedHunkOrFile},
+    id::{CommitId, CommittedFileId, UncommittedHunkOrFile},
 };
 
 /// An argument atom for cli ids that can match multiple things like branches, commits, files, etc.
@@ -71,11 +71,11 @@ impl CliIdArg {
         };
         Ok(Some(match id {
             CliId::Branch(branch) => ResolvedCliIdArg::Branch(BranchArg(branch.name)),
-            CliId::Commit {
+            CliId::Commit(CommitId {
                 commit_id,
                 change_id,
                 ..
-            } => ResolvedCliIdArg::Commit(commit_id, change_id),
+            }) => ResolvedCliIdArg::Commit(commit_id, change_id),
             CliId::UncommittedHunkOrFile(uncommitted) => {
                 ResolvedCliIdArg::UncommittedHunkOrFile(Box::new(uncommitted))
             }
@@ -115,7 +115,7 @@ impl CliIdArg {
             return Ok(None);
         };
         match id {
-            CliId::Commit { commit_id, .. } => Ok(Some(commit_id)),
+            CliId::Commit(CommitId { commit_id, .. }) => Ok(Some(commit_id)),
             _ => Ok(None),
         }
     }

@@ -24,7 +24,7 @@ use crate::{
             },
         },
     },
-    id::{ShortId, UNCOMMITTED, UncommittedHunkOrFile},
+    id::{CommitId, ShortId, UNCOMMITTED, UncommittedHunkOrFile},
     tui::TerminalGuard,
     utils::targeting,
 };
@@ -333,7 +333,7 @@ impl App {
             CliId::Branch(branch) => commit2::CommitRelativeToTarget::BranchTip {
                 name: Category::LocalBranch.to_full_name(&*branch.name)?,
             },
-            CliId::Commit { commit_id, .. } => commit2::CommitRelativeToTarget::Commit {
+            CliId::Commit(CommitId { commit_id, .. }) => commit2::CommitRelativeToTarget::Commit {
                 commit_id: *commit_id,
                 side: targeting::Side::from(*insert_side),
             },

@@ -27,7 +27,7 @@ use crate::{
             },
         },
     },
-    id::{BranchId, CommittedFileId},
+    id::{BranchId, CommitId, CommittedFileId},
     resolve_legacy_top_level_apply_branch_name,
     theme::Theme,
     utils::time::format_relative_time,
@@ -226,17 +226,23 @@ fn stack_id_for_line(
 }
 
 fn stack_id_for_cli_id(cli_id: &CliId, status_lines: &[StatusOutputLine]) -> Option<StackId> {
+    let commit_matches = |other: &CommitId| match cli_id {
+        CliId::CommittedFile(CommittedFileId { commit_id, .. }) => other.commit_id == *commit_id,
+        CliId::Commit(commit) => other == commit,
+        CliId::UncommittedHunkOrFile(..)
+        | CliId::PathPrefix { .. }
+        | CliId::Branch(..)
+        | CliId::Uncommitted { .. }
+        | CliId::Stack { .. } => false,
+    };
+
     match cli_id {
-        CliId::CommittedFile(CommittedFileId { commit_id, .. })
-        | CliId::Commit { commit_id, .. } => {
+        CliId::CommittedFile(..) | CliId::Commit(..) => {
             status_lines.iter().find_map(|line| match &line.data {
                 StatusOutputLineData::Commit {
                     cli_id, stack_id, ..
                 } => match &**cli_id {
-                    CliId::Commit {
-                        commit_id: line_commit_id,
-                        ..
-                    } if line_commit_id == commit_id => *stack_id,
+                    CliId::Commit(commit) if commit_matches(commit) => *stack_id,
                     CliId::UncommittedHunkOrFile(..)
                     | CliId::PathPrefix { .. }
                     | CliId::CommittedFile { .. }

@@ -13,6 +13,7 @@ use crate::{
             App, Message, Mode, ReloadCause, SelectAfterReload, operations, render::ModeRender,
         },
     },
+    id::CommitId,
     tui::TerminalGuard,
 };
 
@@ -140,7 +141,7 @@ impl App {
                     textarea: Box::new(textarea),
                 }
             }
-            CliId::Commit { commit_id, .. } => {
+            CliId::Commit(CommitId { commit_id, .. }) => {
                 let current_message = operations::current_commit_message(ctx, *commit_id)?;
 
                 if operations::commit_message_has_multiple_lines_legacy(&current_message) {
