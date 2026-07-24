@@ -22,6 +22,17 @@ Created new independent branch 'a-branch-1'
     env
 }
 
+fn setup_multi_file_uncommitted_changes(paths: &[&str]) -> Sandbox {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    for path in paths {
+        env.file(path, "content");
+    }
+
+    env
+}
+
 #[test]
 fn open_uncommitted_file_with_() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
@@ -641,6 +652,85 @@ fn user_defined_programs_can_override_builtins() {
         .success()
         .stdout_eq(snapbox::str![[r#"
 CUSTOM OVERRIDE='/[..]/file.txt'
+
+"#]]);
+}
+
+#[test]
+fn user_defined_programs_list_can_set_extension_list_for_builtins() {
+    let env = setup_multi_file_uncommitted_changes(&["file.txt", "file.md"]);
+
+    let programs_json = env
+        .app_data_dir()
+        .join("gitbutler")
+        .join(USER_DEFINED_PROGRAMS_FILENAME);
+
+    std::fs::write(
+        programs_json,
+        r#"[
+   {
+     "name": "Sentinel to make sure we don't just pick the first definition",
+     "executable": {
+       "type": "pathExecutable",
+       "nameOrPath": "echo",
+       "requiresTerminal": true
+     },
+     "openArgs": [
+       "WRONG ROGRAM"
+     ]
+   },
+   {
+     "id": "echo",
+     "extensions": ["txt"]
+   },
+   {
+     "id": "touch",
+     "extensions": ["*"]
+   }
+]
+   "#,
+    )
+    .unwrap();
+
+    env.but("_open file.txt")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='/[..]/file.txt'
+
+"#]]);
+
+    env.but("status")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+╭┄ zz [uncommitted]
+┊   zn A file.md
+┊   uv A file.txt
+┊
+┴ 0dc3733 (common base) 2000-01-02 add M
+
+Hint: run `but branch new` to create a new branch to work on
+
+"#]]);
+
+    env.but("_open file.md")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#""#]]);
+
+    env.but("status")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+╭┄ zz [uncommitted]
+┊   zn A file.md
+┊   ul A file.md.touch
+┊   uv A file.txt
+┊
+┴ 0dc3733 (common base) 2000-01-02 add M
+
+Hint: run `but branch new` to create a new branch to work on
 
 "#]]);
 }

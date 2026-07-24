@@ -1,12 +1,14 @@
 //! In place of commands.rs
-use std::env;
+use std::{env, ffi::OsStr};
 
 use anyhow::{Context as _, Result, bail};
 use but_api_macros::but_api;
 use but_error::bail_precondition;
+use std::path::Path;
 use tracing::instrument;
 use url::Url;
 
+use crate::open::program::FILE_EXTENSION_WILDCARD;
 use crate::open::{
     program::{
         Editor, OpenSpec, PROGRAMS, ProgramSpec, USER_DEFINED_PROGRAMS_FILENAME,
@@ -509,8 +511,6 @@ pub fn open_in_terminal(terminal_id: String, path: String) -> Result<()> {
             cmd
         }
 
-        use std::path::Path;
-
         // Validate path exists and canonicalize it to proper Windows format
         let path_buf = Path::new(&path);
         if !path_buf.exists() {
@@ -703,6 +703,37 @@ pub fn list_program_specs() -> Vec<ProgramSpec> {
     }
 
     specs
+}
+
+/// List all programs that are suitable to use to open the file based on the file extension, or all
+/// programs if no specific ones are found.
+pub fn list_program_specs_for_file(path: &Path) -> Vec<ProgramSpec> {
+    let all_specs = list_program_specs();
+
+    let Some(ext) = path.extension().and_then(OsStr::to_str) else {
+        return all_specs;
+    };
+
+    let mut exact_extension_matches = vec![];
+    let mut wildcard_extension_matches = vec![];
+
+    for spec in &all_specs {
+        if let Some(extensions) = &spec.extensions {
+            if extensions.iter().any(|v| v == ext) {
+                exact_extension_matches.push(spec.clone());
+            } else if extensions.iter().any(|v| v == FILE_EXTENSION_WILDCARD) {
+                wildcard_extension_matches.push(spec.clone());
+            }
+        }
+    }
+
+    if !exact_extension_matches.is_empty() {
+        exact_extension_matches
+    } else if !wildcard_extension_matches.is_empty() {
+        wildcard_extension_matches
+    } else {
+        all_specs
+    }
 }
 
 /// Open `path` within the given project's workdir using the editor specified by `editor_id`.

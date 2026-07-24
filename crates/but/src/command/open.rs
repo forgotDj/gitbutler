@@ -1,8 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use bstr::BStr;
 use but_api::open::{
-    list_program_specs,
+    list_program_specs_for_file,
     program::{OpenSpec, ProgramSpec, open_in_program_unchecked},
 };
 use but_ctx::Context;
@@ -106,7 +106,7 @@ pub(crate) fn open(
         }
     };
 
-    let program_specs = list_program_specs();
+    let program_specs = list_program_specs_for_openable(&to_open);
     let program = match program_id {
         Some(program_id) => program_specs
             .iter()
@@ -126,6 +126,16 @@ pub(crate) fn open(
     run(program, to_open)?;
 
     Ok(())
+}
+
+pub(crate) fn list_program_specs_for_openable(openable: &Openable) -> Vec<ProgramSpec> {
+    let path: &Path = match openable {
+        Openable::File(path) => path,
+        Openable::Files(paths) => paths.first().unwrap(),
+        Openable::Hunk(hunk) => &hunk.path,
+    };
+
+    list_program_specs_for_file(path)
 }
 
 fn resolve_source(

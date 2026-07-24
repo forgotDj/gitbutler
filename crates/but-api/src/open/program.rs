@@ -18,6 +18,9 @@ pub const FILEPATH_PLACEHOLDER: &str = "{{filepath}}";
 /// Placeholder used for line number.
 pub const LINE_NUMBER_PLACEHOLDER: &str = "{{line_number}}";
 
+/// Wildcard used to match any file extension (even the empty one)
+pub const FILE_EXTENSION_WILDCARD: &str = "*";
+
 /// Program category to classify an openable program.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum ProgramCategory {
@@ -56,6 +59,8 @@ pub struct ProgramSpec {
     pub executable: ExecutableProgram,
     /// The category of the program.
     pub category: ProgramCategory,
+    /// Associated program extensions.
+    pub extensions: Option<Vec<String>>,
 }
 
 impl ProgramSpec {
@@ -297,6 +302,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
                 requires_tty: true,
             }),
             category: ProgramCategory::Editor,
+            extensions: None,
         },
         ProgramSpec {
             id: "cursor".into(),
@@ -317,6 +323,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
                 cli_wrapper_path: Some("Contents/Resources/app/bin/cursor".into()),
             }),
             category: ProgramCategory::Editor,
+            extensions: None,
         },
         ProgramSpec {
             id: "sublime".into(),
@@ -336,6 +343,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
                 cli_wrapper_path: Some("Contents/SharedSupport/bin/subl".into()),
             }),
             category: ProgramCategory::Editor,
+            extensions: None,
         },
         ProgramSpec {
             id: "vscode".into(),
@@ -355,6 +363,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
                 cli_wrapper_path: Some("Contents/Resources/app/bin/code".into()),
             }),
             category: ProgramCategory::Editor,
+            extensions: None,
         },
         #[cfg(all(target_os = "macos", not(debug_assertions)))]
         ProgramSpec {
@@ -366,6 +375,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
                 cli_wrapper_path: Some("Contents/Developer/usr/bin/xed".into()),
             }),
             category: ProgramCategory::Editor,
+            extensions: None,
         },
         ProgramSpec {
             id: "zed".into(),
@@ -385,6 +395,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
                 cli_wrapper_path: Some("Contents/MacOS/cli".into()),
             }),
             category: ProgramCategory::Editor,
+            extensions: None,
         },
         #[cfg(debug_assertions)]
         ProgramSpec {
@@ -402,6 +413,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
                 requires_tty: true,
             }),
             category: ProgramCategory::Test,
+            extensions: None,
         },
         #[cfg(debug_assertions)]
         ProgramSpec {
@@ -416,6 +428,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
                 requires_tty: true,
             }),
             category: ProgramCategory::Test,
+            extensions: None,
         },
         #[cfg(all(target_os = "linux", not(debug_assertions)))]
         ProgramSpec {
@@ -427,6 +440,7 @@ pub(crate) static PROGRAMS: LazyLock<Vec<ProgramSpec>> = LazyLock::new(|| {
                 requires_tty: false,
             }),
             category: ProgramCategory::FileManager,
+            extensions: None,
         },
     ])
 });
@@ -609,6 +623,8 @@ pub struct UserDefinedProgramSpec {
     /// * [`FILEPATH_PLACEHOLDER`] is substituted for the filepath
     /// * [`LINE_NUMBER_PLACEHOLDER`] is substituted for the line number
     pub open_at_line_args: Option<Vec<String>>,
+    /// File extensions to associate with this program.
+    pub extensions: Option<Vec<String>>,
 }
 
 impl UserDefinedProgramSpec {
@@ -620,6 +636,13 @@ impl UserDefinedProgramSpec {
             (None, Some(id)) => (id.clone(), id),
             (None, None) => anyhow::bail!("id or name must be specified"),
         };
+
+        let extensions = self.extensions.map(|extensions| {
+            extensions
+                .into_iter()
+                .map(|ext| ext.strip_prefix('.').unwrap_or(&ext).to_owned())
+                .collect()
+        });
 
         if let Some(builtin) = PROGRAMS.iter().find(|p| p.id == id) {
             // This is an override for a builtin - merge!
@@ -644,6 +667,7 @@ impl UserDefinedProgramSpec {
                     .map(Into::into)
                     .unwrap_or_else(|| builtin.category.clone()),
                 cli_arg_supplier,
+                extensions,
             })
         } else {
             let Some(executable) = self.executable else {
@@ -659,6 +683,7 @@ impl UserDefinedProgramSpec {
                     open_args: self.open_args,
                     open_at_line_args: self.open_at_line_args,
                 }),
+                extensions,
             })
         }
     }
@@ -746,6 +771,7 @@ mod tests {
                     cli_wrapper_path: Some("Contents/Resources/app/bin/code".into()),
                 }),
                 category: ProgramCategory::Editor,
+                extensions: None,
             },
             "JSON should convert to expected internal program specification"
         );
@@ -797,6 +823,50 @@ mod tests {
             spec,
             ProgramSpec {
                 category: ProgramCategory::FileManager,
+                ..builtin_echo.clone()
+            }
+        )
+    }
+
+    #[test]
+    fn user_defined_override_for_builtin_extensions_merges_with_builtin() {
+        let echo_override_spec: UserDefinedProgramSpec = serde_json::from_str(
+            r#"{
+                "id": "echo",
+                "extensions": ["txt"]
+            }"#,
+        )
+        .expect("must deserialize");
+
+        let builtin_echo = PROGRAMS.iter().find(|p| p.id == "echo").unwrap();
+
+        let spec: ProgramSpec = echo_override_spec.try_into_program_spec().unwrap();
+        assert_eq!(
+            spec,
+            ProgramSpec {
+                extensions: Some(vec!["txt".into()]),
+                ..builtin_echo.clone()
+            }
+        )
+    }
+
+    #[test]
+    fn user_defined_override_for_builtin_extensions_strips_periods_from_extensions() {
+        let echo_override_spec: UserDefinedProgramSpec = serde_json::from_str(
+            r#"{
+                "id": "echo",
+                "extensions": [".txt"]
+            }"#,
+        )
+        .expect("must deserialize");
+
+        let builtin_echo = PROGRAMS.iter().find(|p| p.id == "echo").unwrap();
+
+        let spec: ProgramSpec = echo_override_spec.try_into_program_spec().unwrap();
+        assert_eq!(
+            spec,
+            ProgramSpec {
+                extensions: Some(vec!["txt".into()]),
                 ..builtin_echo.clone()
             }
         )
