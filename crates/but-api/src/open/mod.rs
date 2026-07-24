@@ -638,9 +638,8 @@ pub fn show_in_finder(path: String) -> Result<()> {
 #[but_api(napi)]
 #[instrument(err(Debug))]
 pub fn list_editors() -> anyhow::Result<Vec<Editor>> {
-    Ok(list_user_defined_program_specs()
+    Ok(list_program_specs()
         .iter()
-        .chain(PROGRAMS.iter())
         .filter(|p| p.is_gui_editor())
         .map(Into::into)
         .collect())
