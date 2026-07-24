@@ -40,6 +40,7 @@ import { type ComponentProps, createContext, type FC, Fragment, use, useRef } fr
 import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import styles from "./OutlineTree.module.css";
 import { Row, RowLabel, RowLabelContainer } from "../Row.tsx";
+import { treeItemId } from "../Row-utils.ts";
 import { getOperation, type Placement, useDryRunOperation } from "#ui/operations/operation.ts";
 import { GraphSegment, type GraphSegmentStatus } from "#ui/components/GraphSegment.tsx";
 import { segmentBottomRelativeTo } from "#ui/api/stack.ts";
@@ -77,9 +78,6 @@ AbsorptionTargetCommitIdsContext.displayName = "AbsorptionTargetCommitIdsContext
 // This must be unique as to not collide with other IDs, and stable because it's
 // stored in local storage.
 type PanelId = "uncommitted-changes-panel" | "stacks-panel";
-
-const treeItemId = (operand: Operand): string =>
-	`outline-treeitem-${encodeURIComponent(operandIdentityKey(operand))}`;
 
 const TreeItem: FC<
 	{
