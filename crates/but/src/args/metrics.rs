@@ -22,7 +22,6 @@ pub enum CommandName {
     Show,
     Commit,
     CommitEmpty,
-    Commit2,
     Push,
     Reword,
     OplogList,

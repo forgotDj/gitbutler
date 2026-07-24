@@ -36,9 +36,9 @@ fn amend_reports_dependency_changes() -> anyhow::Result<()> {
 
     // Commit `first` to branch foo and an unrelated file to branch bar.
     env.file("first", "Some text");
-    env.but("commit -m 'add first' -c foo").assert().success();
+    env.but("commit -m 'add first' -b foo").assert().success();
     env.file("second", "Other text");
-    env.but("commit -m 'add second' -c bar").assert().success();
+    env.but("commit -m 'add second' -b bar").assert().success();
 
     // Change `first` (which depends on foo) and try to amend it into bar's
     // commit. It cannot land there, so amend should name the branch/commit it

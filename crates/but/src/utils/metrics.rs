@@ -147,12 +147,7 @@ impl Subcommands {
             Subcommands::Gui { .. } => Gui,
             Subcommands::_Open { .. } => Open,
             #[cfg(feature = "legacy")]
-            Subcommands::Commit(crate::args::commit::Platform { cmd, .. }) => match cmd {
-                None => Commit,
-                Some(crate::args::commit::Subcommands::Empty { .. }) => CommitEmpty,
-            },
-            #[cfg(feature = "legacy")]
-            Subcommands::_Commit2(..) => Commit2,
+            Subcommands::Commit(..) => Commit,
             #[cfg(feature = "legacy")]
             Subcommands::Push(_) => Push,
             #[cfg(feature = "legacy")]

@@ -52,9 +52,9 @@ fn one_branch_three_commits() -> Sandbox {
     env.file("two", "content of two");
     env.file("three", "content of three");
 
-    env.but("_commit2 -m 'add one' one").assert().success();
-    env.but("_commit2 -m 'add two' two").assert().success();
-    env.but("_commit2 -m 'add three' three").assert().success();
+    env.but("commit -m 'add one' one").assert().success();
+    env.but("commit -m 'add two' two").assert().success();
+    env.but("commit -m 'add three' three").assert().success();
 
     env
 }
@@ -68,17 +68,13 @@ fn two_branches() -> Sandbox {
     env.file("three", "content of three");
     env.file("four", "content of four");
 
-    env.but("_commit2 -b one -m 'add one' one")
-        .assert()
-        .success();
-    env.but("_commit2 -b one -m 'add two' two")
-        .assert()
-        .success();
+    env.but("commit -b one -m 'add one' one").assert().success();
+    env.but("commit -b one -m 'add two' two").assert().success();
 
-    env.but("_commit2 -b second -m 'add three' three")
+    env.but("commit -b second -m 'add three' three")
         .assert()
         .success();
-    env.but("_commit2 -b second -m 'add four' four")
+    env.but("commit -b second -m 'add four' four")
         .assert()
         .success();
 
@@ -93,7 +89,7 @@ fn scenario_with_uncommitted_changes() -> Sandbox {
     env.file("two", "content of two");
     env.file("three", "content of three");
 
-    env.but("_commit2 --empty --no-message").assert().success();
+    env.but("commit --empty --no-message").assert().success();
 
     env
 }
@@ -338,12 +334,12 @@ Hint: run `but help` for all commands
 fn squash_whole_branch_into_commit_on_other_branch() {
     let env = one_branch_three_commits();
 
-    env.but("_commit2 -b target-branch -m 'new commit on new branch'")
+    env.but("commit -b target-branch -m 'new commit on new branch'")
         .assert()
         .success();
 
     env.file("file", "new file");
-    env.but("_commit2 file -b add-file-branch -m 'add file'")
+    env.but("commit file -b add-file-branch -m 'add file'")
         .assert()
         .success();
 
@@ -416,15 +412,15 @@ Hint: run `but help` for all commands
 fn squash_multiple_branches_into_commit_on_one_of_the_branch_sources() {
     let env = one_branch_three_commits();
 
-    env.but("_commit2 -b target-branch -m 'target commit'")
+    env.but("commit -b target-branch -m 'target commit'")
         .assert()
         .success();
-    env.but("_commit2 -b target-branch -m 'random commit on target-branch'")
+    env.but("commit -b target-branch -m 'random commit on target-branch'")
         .assert()
         .success();
 
     env.file("file", "new file");
-    env.but("_commit2 file -b add-file-branch -m 'add file'")
+    env.but("commit file -b add-file-branch -m 'add file'")
         .assert()
         .success();
 
@@ -640,7 +636,7 @@ Error: When --target isn't used the source must be exactly one branch
 fn cannot_squash_multiple_branches_without_target() {
     let env = one_branch_three_commits();
 
-    env.but("_commit2 --no-message -b second-branch")
+    env.but("commit --no-message -b second-branch")
         .assert()
         .success();
 
@@ -659,7 +655,7 @@ fn cannot_squash_branch_with_just_one_commit() {
     env.setup_metadata(&[]);
 
     env.file("one", "content of one");
-    env.but("_commit2 -m 'add one' one -b the-branch")
+    env.but("commit -m 'add one' one -b the-branch")
         .assert()
         .success();
 
@@ -706,7 +702,7 @@ fn cannot_squash_empty_branch_into_commit() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
     env.setup_metadata(&[]);
 
-    env.but("_commit2 -m 'target commit'").assert().success();
+    env.but("commit -m 'target commit'").assert().success();
 
     env.but("branch new empty-branch").assert().success();
 
@@ -725,13 +721,13 @@ fn aborts_on_conflicts() {
     env.setup_metadata(&[]);
 
     env.file("file.txt", "file content");
-    env.but("_commit2 -m 'add file'").assert().success();
+    env.but("commit -m 'add file'").assert().success();
 
     env.file("file.txt", "changed file content");
-    env.but("_commit2 -m 'change file'").assert().success();
+    env.but("commit -m 'change file'").assert().success();
 
     env.remove_file("file.txt");
-    env.but("_commit2 -m 'remove file'").assert().success();
+    env.but("commit -m 'remove file'").assert().success();
 
     env.but("status -f")
         .assert()
@@ -1032,7 +1028,7 @@ fn amend_uncommitted_hunks_into_commits() {
     let lines = std::iter::repeat_n("line\n", 10).collect::<Vec<_>>();
     env.file("file", lines.concat());
 
-    env.but("_commit2 -b my-branch --no-message")
+    env.but("commit -b my-branch --no-message")
         .assert()
         .success();
 
@@ -1193,13 +1189,13 @@ fn cannot_amend_files_in_ways_that_cause_conflicts() {
     env.setup_metadata(&[]);
 
     env.file("file", "file content");
-    env.but("_commit2 -m 'add file'").assert().success();
+    env.but("commit -m 'add file'").assert().success();
 
     env.file("file", "changed");
-    env.but("_commit2 -m 'change file'").assert().success();
+    env.but("commit -m 'change file'").assert().success();
 
     env.remove_file("file");
-    env.but("_commit2 -m 'remove file'").assert().success();
+    env.but("commit -m 'remove file'").assert().success();
 
     env.but("status -f")
         .assert()
@@ -1301,7 +1297,7 @@ Error: --target cannot be an empty branch
 
 "#]]);
 
-    env.but("_commit2 --empty -b bottom --no-message")
+    env.but("commit --empty -b bottom --no-message")
         .assert()
         .success();
     env.but("status -f")
@@ -1451,13 +1447,13 @@ fn cannot_uncommit_files_in_ways_that_cause_conflicts() {
     env.setup_metadata(&[]);
 
     env.file("file", "file content");
-    env.but("_commit2 -m 'add file'").assert().success();
+    env.but("commit -m 'add file'").assert().success();
 
     env.file("file", "changed");
-    env.but("_commit2 -m 'change file'").assert().success();
+    env.but("commit -m 'change file'").assert().success();
 
     env.remove_file("file");
-    env.but("_commit2 -m 'remove file'").assert().success();
+    env.but("commit -m 'remove file'").assert().success();
 
     env.but("status -f")
         .assert()
@@ -1820,7 +1816,7 @@ fn uncommitted_to_commit_consumes_renames() -> anyhow::Result<()> {
         .join("\n")
         + "\n";
     env.file("rename-source.txt", &original);
-    env.but("commit A -m 'seed rename source'")
+    env.but("commit -b A -m 'seed rename source'")
         .assert()
         .success();
 
@@ -1865,7 +1861,7 @@ fn uncommitted_file_to_commit_consumes_renames() -> anyhow::Result<()> {
         .join("\n")
         + "\n";
     env.file("rename-source-single.txt", &original);
-    env.but("commit A -m 'seed rename source single'")
+    env.but("commit -b A -m 'seed rename source single'")
         .assert()
         .success();
 
@@ -1912,7 +1908,7 @@ fn uncommitted_deleted_file_to_commit_keeps_unrelated_deleted_file() -> anyhow::
     env.file("a.txt", "a\n");
     env.file("b.txt", "b\n");
     env.file("c.txt", "c\n");
-    env.but("commit A -m 'Add a.txt, b.txt, and c.txt'")
+    env.but("commit -b A -m 'Add a.txt, b.txt, and c.txt'")
         .assert()
         .success();
 
@@ -2029,7 +2025,7 @@ fn commit_without_message_to_commit() {
     env.setup_metadata(&["A"]);
 
     env.file("one.txt", "one.txt contents");
-    env.but("_commit2 -m 'add one.txt' one.txt")
+    env.but("commit -m 'add one.txt' one.txt")
         .assert()
         .success();
 
@@ -2048,7 +2044,7 @@ fn commit_without_message_to_commit() {
 
 "#]]);
 
-    env.but("_commit2 --empty --no-message").assert().success();
+    env.but("commit --empty --no-message").assert().success();
 
     env.but("status --no-hint")
         .assert()
@@ -2090,10 +2086,10 @@ fn commit_to_commit_without_message() -> anyhow::Result<()> {
     env.setup_metadata(&["A"]);
 
     env.file("one.txt", "one.txt contents");
-    env.but("_commit2 -m 'add one.txt' one.txt")
+    env.but("commit -m 'add one.txt' one.txt")
         .assert()
         .success();
-    env.but("_commit2 --empty --no-message").assert().success();
+    env.but("commit --empty --no-message").assert().success();
 
     env.but("_squash2 1#1 -t 1#0 --use-source-message")
         .assert()
@@ -2255,7 +2251,7 @@ fn doesnt_open_editor_if_no_sources_have_message() {
     let editor_path = env.projects_root().join(".git/editor.sh");
     let editor_command = format!("sh {}", editor_path.display());
 
-    env.but("_commit2 --empty --no-message").assert().success();
+    env.but("commit --empty --no-message").assert().success();
 
     env.but("status -f")
         .assert()
@@ -2307,7 +2303,7 @@ fn doesnt_open_editor_if_no_target_has_message() {
     let editor_path = env.projects_root().join(".git/editor.sh");
     let editor_command = format!("sh {}", editor_path.display());
 
-    env.but("_commit2 --empty --no-message").assert().success();
+    env.but("commit --empty --no-message").assert().success();
 
     env.but("status -f")
         .assert()
@@ -2359,8 +2355,8 @@ fn doesnt_open_editor_if_both_source_and_target_doesnt_have_a_message() {
     let editor_path = env.projects_root().join(".git/editor.sh");
     let editor_command = format!("sh {}", editor_path.display());
 
-    env.but("_commit2 --empty --no-message").assert().success();
-    env.but("_commit2 --empty --no-message").assert().success();
+    env.but("commit --empty --no-message").assert().success();
+    env.but("commit --empty --no-message").assert().success();
 
     env.but("status -f")
         .assert()

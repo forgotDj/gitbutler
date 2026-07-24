@@ -14,69 +14,6 @@ use crate::{
     utils::OutputChannel,
 };
 
-/// Generate a commit message using AI based on the unified diff and optional user summary.
-///
-/// This function uses an LLM (Large Language Model) to analyze the provided diff and generate
-/// a well-formatted commit message that follows best practices. The generated message will
-/// include a short summary line and a longer explanation of the changes.
-///
-/// # Arguments
-///
-/// * `out` - Output channel for displaying progress messages to the user.
-/// * `diff` - A unified diff string showing the changes to be committed. Should be in standard
-///   unified diff format with file headers and hunks.
-/// * `user_summary` - An optional user-provided summary that gives context about the changes.
-///   If provided, the AI will use this to generate a more accurate and contextual commit message.
-///   If `None`, the AI will generate the message based solely on the diff.
-///
-/// # Returns
-///
-/// Returns a formatted commit message string on success, or an error if:
-/// - The OpenAI LLM provider cannot be initialized (e.g., missing API credentials)
-/// - The AI request fails
-/// - The AI response cannot be parsed as a valid commit message
-pub fn generate_commit_message(
-    out: &mut OutputChannel,
-    diff: &str,
-    user_summary: Option<String>,
-) -> Result<String> {
-    let mut progress = out.progress_channel();
-
-    writeln!(
-        progress,
-        "{}",
-        theme::get().progress.paint("Generating commit message...")
-    )?;
-    let llm = LLMProvider::default_openai()
-        .ok_or_else(|| anyhow::anyhow!("Failed to initialize default OpenAI LLM provider"))?;
-    let system_message =
-        "You are a version control assistant that helps with Git branch committing.".to_string();
-    let summary = user_summary.unwrap_or_default();
-    let user_message = format!(
-        r#"Extract the git commit data from the user summary if provided and the diff output.
-Return the commit message. Determine from this user summary and diff output what the git commit data should be.
-
-{DEFAULT_COMMIT_MESSAGE_INSTRUCTIONS}
-
-Here is the data:
-
-User summary (optional): {summary}
-
-unified diff:
-```patch
-{diff}
-```
-"#
-    );
-
-    let chat_messages = vec![ChatMessage::User(user_message)];
-    let response = llm
-        .structured_output::<StructuredOutput>(&system_message, chat_messages, "gpt-5-mini")?
-        .context("Failed to generate structured content for commit message")?;
-
-    Ok(response.commit_message)
-}
-
 /// Generate an updated commit message when squashing multiple commits together.
 ///
 /// This function uses an LLM to create a cohesive commit message that combines the

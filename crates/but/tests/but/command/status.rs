@@ -277,10 +277,10 @@ fn uncommitted_and_committed_file_cli_ids() -> anyhow::Result<()> {
 
     env.file("a.txt", format!("first\n{}last\n", "line\n".repeat(100)));
     env.file("b.txt", "only\n");
-    env.but("commit A -m create-a-and-b").assert().success();
+    env.but("commit -b A -m create-a-and-b").assert().success();
     env.file("a.txt", format!("firsta\n{}lasta\n", "line\n".repeat(100)));
     env.file("b.txt", "onlya\n");
-    env.but("commit A -m edit-a-and-b").assert().success();
+    env.but("commit -b A -m edit-a-and-b").assert().success();
     env.file("a.txt", format!("firstb\n{}lastb\n", "line\n".repeat(100)));
     env.file("b.txt", "onlyb\n");
 
@@ -1148,7 +1148,7 @@ fn agent_status_explains_rewritten_commit_marker() {
     env.setup_metadata(&[]);
 
     env.file("one.txt", "one\n");
-    env.but("commit -m 'add one' -c A")
+    env.but("commit -m 'add one' -b A")
         .assert()
         .success()
         .stderr_eq(snapbox::str![]);
@@ -1270,7 +1270,7 @@ Hint: run `but help` for all commands
     // Committing composes the oplog snapshot and the pre-commit hook index swap;
     // both must tolerate the unmerged index, and the conflict must survive.
     env.file("other.txt", "unrelated\n");
-    env.but("commit A -m unrelated").assert().success();
+    env.but("commit -b A -m unrelated").assert().success();
     assert_eq!(
         env.invoke_git("ls-files --unmerged").lines().count(),
         3,

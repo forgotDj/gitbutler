@@ -17,7 +17,7 @@ fn repo_with_unpushed_branch() -> anyhow::Result<Sandbox> {
     env.but("apply branchB").assert().success();
 
     env.file("test-file.txt", "line 1\nline 2\nline 3\n");
-    env.but("commit -m 'first commit' branchB")
+    env.but("commit -m 'first commit' -b branchB")
         .assert()
         .success();
 
@@ -146,13 +146,13 @@ fn push_refuses_conflicted_commits() -> anyhow::Result<()> {
 
     // Create a file with initial content and commit it
     env.file("test-file.txt", "line 1\nline 2\nline 3\n");
-    env.but("commit -m 'first commit' branchB")
+    env.but("commit -m 'first commit' -b branchB")
         .assert()
         .success();
 
     // Add more content that depends on the first commit and commit again
     env.file("test-file.txt", "line 1\nline 2\nline 3\nline 4\n");
-    env.but("commit -m 'second commit' branchB")
+    env.but("commit -m 'second commit' -b branchB")
         .assert()
         .success();
 

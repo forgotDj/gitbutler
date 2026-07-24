@@ -10,7 +10,6 @@ pub mod ai;
 pub mod branch;
 pub mod clean;
 pub mod commit;
-pub mod commit2;
 pub mod commit_message_prep;
 pub mod diff;
 #[cfg(feature = "legacy")]

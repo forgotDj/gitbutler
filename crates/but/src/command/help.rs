@@ -124,8 +124,6 @@ fn print_grouped_with_truncation(
 
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Commit => Group::BranchingAndCommitting,
-                #[cfg(feature = "legacy")]
-                SubcommandDiscriminant::_Commit2 => Group::BranchingAndCommitting,
                 SubcommandDiscriminant::Branch => Group::BranchingAndCommitting,
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Discard => Group::BranchingAndCommitting,
@@ -380,7 +378,7 @@ Inspection:
   show         Shows detailed information about a commit or branch
 
 Branching and Committing:
-  commit       Commit changes to a stack
+  commit       Create a commit
   branch       Commands for managing branches
   discard      Discard uncommitted changes from the worktree
   resolve      Resolve conflicts in a commit

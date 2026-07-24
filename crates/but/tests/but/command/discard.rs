@@ -136,7 +136,7 @@ fn discard_reverts_simple_rename() -> anyhow::Result<()> {
     env.setup_metadata(&["A"]);
 
     env.file("src/rename-source.ts", "export const source = true;\n");
-    env.but("commit A -m 'seed rename source'")
+    env.but("commit -b A -m 'seed rename source'")
         .assert()
         .success();
 
@@ -174,7 +174,7 @@ fn discard_rename_does_not_discard_unrelated_changes() -> anyhow::Result<()> {
     env.setup_metadata(&["A"]);
 
     env.file("src/rename-source-only.ts", "export const source = 1;\n");
-    env.but("commit A -m 'seed rename source only'")
+    env.but("commit -b A -m 'seed rename source only'")
         .assert()
         .success();
 
@@ -232,7 +232,7 @@ fn discard_the_whole_uncommitted_changes() -> anyhow::Result<()> {
     env.setup_metadata(&["A"]);
 
     env.file("src/rename-source-only.ts", "export const source = 1;\n");
-    env.but("commit A -m 'seed rename source only'")
+    env.but("commit -b A -m 'seed rename source only'")
         .assert()
         .success();
 
@@ -285,7 +285,7 @@ fn discarding_multiple_hunks_in_a_file_works() -> anyhow::Result<()> {
     let file_path = "src/some_file.txt";
 
     env.file(file_path, content);
-    env.but("commit A -m 'seed rename source only'")
+    env.but("commit -b A -m 'seed rename source only'")
         .assert()
         .success();
 

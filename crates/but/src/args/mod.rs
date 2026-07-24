@@ -289,34 +289,9 @@ pub enum Subcommands {
         verbose: bool,
     },
 
-    /// Commit changes to a stack.
-    ///
-    /// The `but commit` command allows you to create a new commit
-    /// on a specified branch (stack) with the current uncommitted changes.
-    ///
-    /// If there is only one branch applied, it will commit to that branch by default.
-    ///
-    /// If there are multiple branches applied, you must specify which branch to
-    /// commit to, or if in interactive mode, you will be prompted to select one.
-    ///
-    /// By default, all uncommitted changes and all changes already staged to that
-    /// branch will be included in the commit. If you only want to commit the changes
-    /// that are already staged to that branch, you can use the `--only` flag.
-    ///
-    /// It will not commit changes staged to other branches.
-    ///
-    /// Use `but commit empty --before <target>` or `but commit empty --after <target>`
-    /// to insert a blank commit. This is useful for creating a placeholder
-    /// commit that you can amend changes into later using `but rub` or `but absorb`.
-    ///
     #[cfg(feature = "legacy")]
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
     Commit(commit::Platform),
-
-    #[cfg(feature = "legacy")]
-    #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
-    #[clap(hide = true, name = "_commit2")]
-    _Commit2(commit2::Platform),
 
     #[cfg(feature = "legacy")]
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
@@ -1431,8 +1406,6 @@ pub mod agent;
 pub mod alias;
 #[cfg(feature = "legacy")]
 pub mod commit;
-#[cfg(feature = "legacy")]
-pub mod commit2;
 pub mod config;
 #[cfg(feature = "legacy")]
 pub mod diff2;

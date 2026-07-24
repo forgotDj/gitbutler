@@ -1334,7 +1334,7 @@ fn move_file_should_be_order_independent() {
     env.setup_metadata(&[]);
 
     env.file("new", "Some data");
-    env.but("_commit2 -m 'Add new file'").assert().success();
+    env.but("commit -m 'Add new file'").assert().success();
     std::fs::rename(
         env.projects_root().join("new"),
         env.projects_root().join("moved"),
@@ -1342,9 +1342,7 @@ fn move_file_should_be_order_independent() {
     .unwrap();
     env.file("new/file", "Stuff");
     env.file("unrelated", "This should stay here :)");
-    env.but("_commit2 -m 'Prepare for moves!'")
-        .assert()
-        .success();
+    env.but("commit -m 'Prepare for moves!'").assert().success();
 
     env.but("status -f")
         .assert()

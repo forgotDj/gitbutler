@@ -14,8 +14,6 @@ mod branch;
 mod clean;
 #[cfg(feature = "legacy")]
 mod commit;
-#[cfg(feature = "legacy")]
-mod commit2;
 mod config;
 #[cfg(feature = "legacy")]
 mod diff;
@@ -101,7 +99,7 @@ mod util {
             format!("{first_line}\n{}last\n", "line\n".repeat(context_distance)),
         );
         env.but(format!(
-            "_commit2 -b {branch} -m 'create {filename1} and {filename2}'"
+            "commit -b {branch} -m 'create {filename1} and {filename2}'"
         ))
         .assert()
         .success();
@@ -118,7 +116,7 @@ mod util {
             filename,
             format!("first\n{}last\n", "line\n".repeat(context_distance)),
         );
-        env.but(format!("commit {branch} -m {filename}"))
+        env.but(format!("commit -b {branch} -m {filename} {filename}"))
             .assert()
             .success();
         env.file(
@@ -305,12 +303,12 @@ mod util {
         env.but("branch new branchB").assert().success();
 
         env.file("test-file.txt", "line 1\nline 2\nline 3\n");
-        env.but("commit -m 'first commit' branchB")
+        env.but("commit -m 'first commit' -b branchB")
             .assert()
             .success();
 
         env.file("test-file.txt", "line 1\nline 2\nline 3\nline 4\n");
-        env.but("commit -m 'second commit' branchB")
+        env.but("commit -m 'second commit' -b branchB")
             .assert()
             .success();
 

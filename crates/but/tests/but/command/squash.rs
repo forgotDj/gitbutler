@@ -13,7 +13,7 @@ fn setup_branch_with_commits(env: &Sandbox, branch: &str, num_commits: usize) {
             format!("{branch_prefix}-file{i}.txt"),
             format!("content for commit {i}\n"),
         );
-        env.but(format!("commit {branch} -m 'commit {i}'"))
+        env.but(format!("commit -b {branch} -m 'commit {i}'"))
             .assert()
             .success();
     }
@@ -593,7 +593,7 @@ fn squash_multiple_commits_from_different_branches_on_same_stack_succeeds() -> a
     env.setup_metadata(&["A", "B"]);
 
     env.file("c-extra.txt", "another change on C\n");
-    env.but("commit C -m 'extra on C'").assert().success();
+    env.but("commit -b C -m 'extra on C'").assert().success();
 
     let status_before = util::status_json(&env)?;
     let branch_b_before = util::find_branch(&status_before, "B")?;

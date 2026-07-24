@@ -3,8 +3,6 @@ use super::*;
 #[cfg(feature = "legacy")]
 mod amend;
 #[cfg(feature = "legacy")]
-mod commit;
-#[cfg(feature = "legacy")]
 mod reword;
 
 mod config_ai {
