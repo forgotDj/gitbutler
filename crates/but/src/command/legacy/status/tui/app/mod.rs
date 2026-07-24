@@ -6,7 +6,7 @@ use std::{
 };
 
 use bstr::{BStr, ByteSlice};
-use but_api::open::{list_program_specs, program::ProgramSpec};
+use but_api::open::program::ProgramSpec;
 use but_ctx::Context;
 use crossterm::event::Event;
 use gitbutler_operating_modes::OperatingMode;
@@ -413,7 +413,7 @@ impl App {
             Message::CopyToClipboard(text) => {
                 self.clipboard.set_text(text)?;
             }
-            Message::PickProgramThenOpen => self.handle_pick_program_then_open(ctx)?,
+            Message::PickProgramThenOpen => self.handle_pick_program_then_open(ctx, messages)?,
             Message::OpenInProgram(program, to_open) => {
                 self.handle_open_in_program(&program, to_open, terminal_guard, messages)?;
             }
@@ -1330,7 +1330,11 @@ impl App {
         Ok(())
     }
 
-    fn handle_pick_program_then_open(&mut self, ctx: &Context) -> anyhow::Result<()> {
+    fn handle_pick_program_then_open(
+        &mut self,
+        ctx: &Context,
+        messages: &mut Vec<Message>,
+    ) -> anyhow::Result<()> {
         let selection = if matches!(&*self.mode, Mode::Details(..)) {
             self.details.selected_section_cli_id()
         } else {
@@ -1355,12 +1359,17 @@ impl App {
             }
         };
 
-        let mut program_specs = list_program_specs().into_iter();
-        let mut items = NonEmpty::new(
-            program_specs
-                .next()
-                .expect("BUG: Program specs cannot be empty"),
-        );
+        let mut program_specs = open::list_program_specs_for_openable(&to_open).into_iter();
+        let first_program = program_specs
+            .next()
+            .expect("BUG: Program specs cannot be empty");
+        let Some(second_program) = program_specs.next() else {
+            messages.push(Message::OpenInProgram(first_program, to_open));
+            return Ok(());
+        };
+
+        let mut items = NonEmpty::new(first_program);
+        items.push(second_program);
         items.extend(program_specs);
 
         self.modal = Some(Modal::ProgramPicker {
