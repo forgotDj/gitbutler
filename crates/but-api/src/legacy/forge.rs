@@ -23,6 +23,25 @@ pub fn push_remote_url(project_meta: &ProjectMeta, repo: &gix::Repository) -> Re
     project_meta.push_remote_url(repo)
 }
 
+fn base_and_push_repo_info(
+    project_meta: &ProjectMeta,
+    repo: &gix::Repository,
+) -> Result<(but_forge::ForgeRepoInfo, Option<but_forge::ForgeRepoInfo>)> {
+    let base_remote_url = remote_url(project_meta, repo)?;
+    let push_remote_url = push_remote_url(project_meta, repo)?;
+    let forge_repo_info = but_forge::derive_forge_repo_info(&base_remote_url)
+        .context("No forge could be determined for this repository branch")?;
+    let forge_push_repo_info = if base_remote_url != push_remote_url {
+        Some(
+            but_forge::derive_forge_repo_info(&push_remote_url)
+                .context("Failed to derive forge information for the push repository")?,
+        )
+    } else {
+        None
+    };
+    Ok((forge_repo_info, forge_push_repo_info))
+}
+
 fn review_template_content(file: FileInfo) -> Result<String> {
     if file.size.is_none() {
         return Ok(String::new());
@@ -741,18 +760,8 @@ pub async fn publish_review_only(
         let ctx = ctx.into_thread_local();
         let project_meta = ctx.project_meta()?;
         let repo = ctx.repo.get()?;
-        let base_remote_url = remote_url(&project_meta, &repo)?;
-        let push_remote_url = push_remote_url(&project_meta, &repo)?;
-        let forge_repo_info = but_forge::derive_forge_repo_info(&base_remote_url)
-            .context("No forge could be determined for this repository branch")?;
-        let forge_push_repo_info = if base_remote_url != push_remote_url {
-            let info = but_forge::derive_forge_repo_info(&push_remote_url).context(
-                "Failed to derive forge repository information from the push remote URL.",
-            )?;
-            Some(info)
-        } else {
-            None
-        };
+        let (forge_repo_info, forge_push_repo_info) =
+            base_and_push_repo_info(&project_meta, &repo)?;
 
         (
             but_forge_storage::Controller::from_path(but_path::app_data_dir()?),
@@ -919,12 +928,21 @@ pub async fn update_review_footers(
     ctx: ThreadSafeContext,
     reviews: Vec<but_forge::ForgeReviewUpdate>,
 ) -> Result<()> {
-    let (storage, forge_repo_info, preferred_forge_user, description_mode) = {
+    let (
+        storage,
+        forge_repo_info,
+        forge_push_repo_info,
+        preferred_forge_user,
+        description_mode,
+        github_stacking_mode,
+    ) = {
         let ctx = ctx.into_thread_local();
         let project_meta = ctx.project_meta()?;
         let repo = ctx.repo.get()?;
-        let forge_repo_info = but_forge::derive_forge_repo_info(&remote_url(&project_meta, &repo)?);
-        let description_mode = match repo.git_settings()?.gitbutler_review_stacking_description {
+        let (forge_repo_info, forge_push_repo_info) =
+            base_and_push_repo_info(&project_meta, &repo)?;
+        let settings = repo.git_settings()?;
+        let description_mode = match settings.gitbutler_review_stacking_description {
             Some(but_core::ReviewStackingDescription::Top) => {
                 but_forge::ReviewStackingDescription::Top
             }
@@ -935,21 +953,30 @@ pub async fn update_review_footers(
                 but_forge::ReviewStackingDescription::Bottom
             }
         };
+        let github_stacking_mode = match settings.gitbutler_github_stacking_mode {
+            Some(but_core::GitHubStackingMode::Native) => but_forge::GitHubStackingMode::Native,
+            Some(but_core::GitHubStackingMode::Disabled) => but_forge::GitHubStackingMode::Disabled,
+            None => but_forge::GitHubStackingMode::Unconfigured,
+        };
 
         (
             but_forge_storage::Controller::from_path(but_path::app_data_dir()?),
             forge_repo_info,
+            forge_push_repo_info,
             ctx.legacy_project.preferred_forge_user.clone(),
             description_mode,
+            github_stacking_mode,
         )
     };
 
     but_forge::sync_reviews(
         &preferred_forge_user,
-        &forge_repo_info.context("No forge could be determined for this repository branch")?,
+        &forge_repo_info,
+        &forge_push_repo_info,
         &reviews,
         &storage,
         description_mode,
+        github_stacking_mode,
     )
     .await
 }
@@ -1052,6 +1079,46 @@ pub async fn sync_review_stack_after_review_creation(
     branch: gix::refs::FullName,
 ) -> but_forge::ReviewSyncOutcome {
     sync_review_stack_for_branch(ctx, branch).await
+}
+
+/// Synchronize every reviewed workspace stack.
+///
+/// This is used by explicit configuration changes because they are not coupled to a push or review
+/// creation event, but still need to migrate existing stack metadata immediately.
+pub async fn sync_all_review_stacks(ctx: ThreadSafeContext) -> but_forge::ReviewSyncOutcome {
+    let updates = {
+        let ctx = ctx.clone().into_thread_local();
+        review_updates_for_all_stacks(&ctx)
+    };
+    sync_review_update_groups(ctx, updates).await
+}
+
+fn review_updates_for_all_stacks(ctx: &Context) -> Result<Vec<Vec<but_forge::ForgeReviewUpdate>>> {
+    let info = crate::legacy::workspace::head_info(ctx)?;
+    if !info
+        .stacks
+        .iter()
+        .flat_map(|stack| &stack.segments)
+        .any(|segment| review_number(segment).is_some())
+    {
+        return Ok(Vec::new());
+    }
+    let base_branch = {
+        let guard = ctx.shared_worktree_access();
+        gitbutler_branch_actions::base::get_base_branch_data(ctx, guard.read_permission())?
+            .short_name
+    };
+    Ok(info
+        .stacks
+        .iter()
+        .map(|stack| {
+            review_updates_for_stack(stack, &base_branch)
+                .into_iter()
+                .map(Into::into)
+                .collect::<Vec<_>>()
+        })
+        .filter(|updates| !updates.is_empty())
+        .collect())
 }
 
 fn review_updates_after_push(

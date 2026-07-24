@@ -17,6 +17,7 @@ import type { FakeGitHubReview, FakeGitHubServer } from "../src/fakeGithub.ts";
 const FOOTER_TOP = "<!-- GitButler Footer Boundary Top -->";
 const FOOTER_BOTTOM = "<!-- GitButler Footer Boundary Bottom -->";
 const POLICY_KEY = "gitbutler.reviewStackingDescription";
+const GITHUB_STACKING_KEY = "gitbutler.githubStackingMode";
 
 type PushOutcome = {
 	reviewSync:
@@ -437,6 +438,111 @@ test("creating a review in the middle synchronizes the complete review stack", a
 	});
 });
 
+test("GitHub native stacks are rebuilt when a review is created in the middle", async ({
+	page,
+	gitbutler,
+	fakeGithub,
+}) => {
+	const server = await fakeGithub({
+		headRepoPath: gitbutler.pathInWorkdir("remote-project"),
+		isFork: false,
+		listed: false,
+		nativeStacks: true,
+	});
+	await gitbutler.runScript("project-with-stacks.sh", [server.repositoryUrl]);
+	await storeFakeGitHubEnterprisePat(page, server);
+	await applyUpstream(gitbutler, "branch1", "branch2", "branch3");
+	await mockForge(page, {
+		get_review_merge_status: mergeStatus(),
+		get_repo_info: repoInfo(),
+		list_ci_checks: [],
+	});
+	await openWorkspace(page);
+	await setGitHubStackingMode(page, gitbutler, "native");
+
+	const branchHeaders = page.getByTestId("branch-header");
+	await dragAndDropByLocator(
+		page,
+		branchHeaders.filter({ hasText: "branch2" }),
+		branchHeaders.filter({ hasText: "branch1" }),
+		{ force: true, position: { x: 120, y: -10 } },
+	);
+	await expect(stack(page)).toHaveCount(2);
+	await gitbutler.runScript("push-branch.sh", ["branch2"]);
+
+	await publishReview(page, "branch1", "Description for branch1");
+	server.setListed(true);
+	await publishReview(page, "branch2", "Description for branch2");
+	await expect(page.getByText("PR #43 created successfully")).toBeVisible();
+	await expect
+		.poll(() => server.getNativeStacks())
+		.toEqual([{ number: 1, pull_requests: [{ number: 42 }, { number: 43 }] }]);
+	await expectReviews(server, 2, (reviews) => {
+		expect(reviews.map((review) => review.base.ref)).toEqual(["master", "branch1"]);
+		for (const review of reviews) {
+			expect(review.body).not.toContain(FOOTER_TOP);
+			expect(review.body).not.toContain(FOOTER_BOTTOM);
+		}
+	});
+
+	await dragAndDropByLocator(
+		page,
+		branchHeaders.filter({ hasText: "branch3" }),
+		branchHeaders.filter({ hasText: "branch1" }),
+		{ force: true, position: { x: 120, y: 0 } },
+	);
+	await expect(stack(page)).toHaveCount(1);
+	await gitbutler.runScript("push-branch.sh", ["branch2"]);
+	expect(server.getNativeStackMutationHistory()).toEqual([
+		{ operation: "create", pullRequests: [42, 43] },
+	]);
+
+	await publishReview(page, "branch3", "Description for branch3");
+	await expect(page.getByText("PR #44 created successfully")).toBeVisible();
+	await expect
+		.poll(() => server.getNativeStacks())
+		.toEqual([
+			{
+				number: 2,
+				pull_requests: [{ number: 42 }, { number: 44 }, { number: 43 }],
+			},
+		]);
+	expect(server.getNativeStackMutationHistory()).toEqual([
+		{ operation: "create", pullRequests: [42, 43] },
+		{ operation: "unstack", stackNumber: 1 },
+		{ operation: "create", pullRequests: [42, 44, 43] },
+	]);
+	await expectReviews(server, 3, (reviews) => {
+		expect(reviews.map((review) => review.base.ref)).toEqual(["master", "branch3", "branch1"]);
+		for (const review of reviews) {
+			expect(review.body).not.toContain(FOOTER_TOP);
+			expect(review.body).not.toContain(FOOTER_BOTTOM);
+		}
+	});
+
+	await setGitHubStackingMode(page, gitbutler, "disabled");
+	writeFileSync(
+		gitbutler.pathInWorkdir("local-clone/b_file"),
+		"change after disabling native stacks\n",
+		{ flag: "a" },
+	);
+	await gitbutler.runScript("commit-branch.sh", ["branch2", "branch2: disable native stacks"]);
+	await gitbutler.runScript("push-branch.sh", ["branch2"]);
+	await expect.poll(() => server.getNativeStacks()).toEqual([]);
+	expect(server.getNativeStackMutationHistory()).toEqual([
+		{ operation: "create", pullRequests: [42, 43] },
+		{ operation: "unstack", stackNumber: 1 },
+		{ operation: "create", pullRequests: [42, 44, 43] },
+		{ operation: "unstack", stackNumber: 2 },
+	]);
+	await expectReviews(server, 3, (reviews) => {
+		for (const review of reviews) {
+			expect(review.body).toContain(FOOTER_TOP);
+			expect(review.body).toContain(FOOTER_BOTTOM);
+		}
+	});
+});
+
 test("reordering reviewed refs updates every target after a partial push", async ({
 	page,
 	gitbutler,
@@ -826,6 +932,23 @@ async function setDescriptionPolicy(page: Page, gitbutler: GitButler, policy: "t
 		.getByRole("button")
 		.click();
 	await assertGitConfigValue(POLICY_KEY, policy, gitbutler.pathInWorkdir("local-clone"));
+	await page.keyboard.press("Escape");
+	await expect(page.getByTestId("project-settings-modal")).toHaveCount(0);
+}
+
+async function setGitHubStackingMode(
+	page: Page,
+	gitbutler: GitButler,
+	mode: "disabled" | "native",
+) {
+	await clickByTestId(page, "chrome-sidebar-project-settings-button");
+	await waitForTestId(page, "project-settings-modal");
+	const select = page.getByTestId("github-stacking-mode-select");
+	await expect(select).toBeVisible();
+	await select.scrollIntoViewIfNeeded();
+	await select.click();
+	await page.getByTestId(`github-stacking-mode-option-${mode}`).getByRole("button").click();
+	await assertGitConfigValue(GITHUB_STACKING_KEY, mode, gitbutler.pathInWorkdir("local-clone"));
 	await page.keyboard.press("Escape");
 	await expect(page.getByTestId("project-settings-modal")).toHaveCount(0);
 }
