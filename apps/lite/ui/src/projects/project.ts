@@ -71,6 +71,8 @@ export type OutlineTab = "workspace" | "branches";
 export type ProjectState = {
 	filesVisible: boolean;
 	outlineTab: OutlineTab;
+	/** The selected branch or commit in the branches tab. */
+	branchesSelection: Operand | null;
 	/** Which branches the branches tab lists. */
 	branchFilters: BranchFilters;
 	/** The fuzzy filter query for the branches tab; empty means no filter. */
@@ -83,6 +85,7 @@ export type ProjectState = {
 export const createInitialProjectState = (): ProjectState => ({
 	filesVisible: false,
 	outlineTab: "workspace",
+	branchesSelection: null,
 	branchFilters: { showEmpty: false, onlyLocal: false, onlyStacks: false },
 	branchSearch: "",
 	unfoldedBranches: {},
@@ -126,6 +129,16 @@ export const projectReducers = {
 
 		if (!selection || !isValidOutlineModeForSelection({ mode: workspaceState.mode, selection }))
 			workspaceState.mode = defaultOutlineMode;
+	},
+	selectBranches: (state: ProjectState, { selection }: { selection: Operand | null }) => {
+		if (
+			selection === null
+				? state.branchesSelection === null
+				: state.branchesSelection !== null && operandEquals(state.branchesSelection, selection)
+		)
+			return;
+
+		state.branchesSelection = selection;
 	},
 	selectFiles: (state: ProjectState, { selection }: { selection: string | null }) => {
 		const workspaceState = state.workspace;
@@ -189,6 +202,12 @@ export const projectReducers = {
 			operandEquals(workspaceState.selection.outline, oldBranchOperand)
 		)
 			workspaceState.selection.outline = newBranchOperand;
+
+		if (
+			state.branchesSelection?._tag === "Branch" &&
+			operandEquals(state.branchesSelection, oldBranchOperand)
+		)
+			state.branchesSelection = newBranchOperand;
 
 		if (
 			workspaceState.mode._tag === "RenameBranch" &&
@@ -344,6 +363,11 @@ export const projectReducers = {
 				workspaceState.selection.outline = commitOperand({ commitId: newId });
 		}
 
+		if (state.branchesSelection?._tag === "Commit") {
+			const newId = replacedCommits[state.branchesSelection.commitId];
+			if (newId !== undefined) state.branchesSelection = commitOperand({ commitId: newId });
+		}
+
 		for (const [key, operand] of Object.entries(workspaceState.checkedOperands)) {
 			let newOperand: CheckableOperand | null = null;
 			if (operand._tag === "Commit") {
@@ -431,6 +455,10 @@ export const projectSelectors = {
 	selectUnfoldedBranches: (state: ProjectState) => state.unfoldedBranches,
 	selectBranchUnfolded: (state: ProjectState, branchRef: string) =>
 		state.unfoldedBranches[branchRef] === true,
+	/** The branches-tab selection as stored, without resolving it against a navigation index. */
+	selectPrimaryBranchesSelection: (state: ProjectState) => state.branchesSelection,
+	selectSelectionBranches: (state: ProjectState, navigationIndex: NavigationIndex<Operand>) =>
+		resolveNavigationIndexSelection(navigationIndex, state.branchesSelection, operandIdentityKey),
 	selectCanShowFiles: (state: ProjectState) =>
 		state.workspace.detailsSelectionScope !== "uncommitted-files",
 	selectDetailsSelectionScope: (state: ProjectState) => state.workspace.detailsSelectionScope,
