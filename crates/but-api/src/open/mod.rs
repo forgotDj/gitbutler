@@ -709,17 +709,16 @@ pub fn list_program_specs() -> Vec<ProgramSpec> {
 /// programs if no specific ones are found.
 pub fn list_program_specs_for_file(path: &Path) -> Vec<ProgramSpec> {
     let all_specs = list_program_specs();
-
-    let Some(ext) = path.extension().and_then(OsStr::to_str) else {
-        return all_specs;
-    };
+    let ext = path.extension().and_then(OsStr::to_str);
 
     let mut exact_extension_matches = vec![];
     let mut wildcard_extension_matches = vec![];
 
     for spec in &all_specs {
         if let Some(extensions) = &spec.extensions {
-            if extensions.iter().any(|v| v == ext) {
+            if let Some(ext) = ext
+                && extensions.iter().any(|v| v == ext)
+            {
                 exact_extension_matches.push(spec.clone());
             } else if extensions.iter().any(|v| v == FILE_EXTENSION_WILDCARD) {
                 wildcard_extension_matches.push(spec.clone());

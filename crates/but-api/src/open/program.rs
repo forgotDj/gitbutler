@@ -198,7 +198,11 @@ impl CliArgumentSupplier {
     }
 
     /// Add argument(s) to `cmd` to open all files.
-    fn open_many<'a, P: AsRef<Path>>(&self, cmd: &'a mut Command, paths: &NonEmpty<P>) -> &'a mut Command {
+    fn open_many<'a, P: AsRef<Path>>(
+        &self,
+        cmd: &'a mut Command,
+        paths: &NonEmpty<P>,
+    ) -> &'a mut Command {
         match self {
             Self::Custom(custom) => custom.open_many(cmd, paths),
             _ => {
@@ -268,7 +272,11 @@ impl CustomCliArgumentSupplier {
         cmd
     }
 
-    fn open_many<'a, P: AsRef<Path>>(&self, cmd: &'a mut Command, paths: &NonEmpty<P>) -> &'a mut Command {
+    fn open_many<'a, P: AsRef<Path>>(
+        &self,
+        cmd: &'a mut Command,
+        paths: &NonEmpty<P>,
+    ) -> &'a mut Command {
         let Some(open_args) = &self.open_args else {
             return CliArgumentSupplier::Default.open_many(cmd, paths);
         };

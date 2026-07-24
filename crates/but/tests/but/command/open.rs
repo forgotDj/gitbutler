@@ -674,7 +674,7 @@ CUSTOM OVERRIDE='/[..]/file.txt'
 
 #[test]
 fn user_defined_programs_list_can_set_extension_list_for_builtins() {
-    let env = setup_multi_file_uncommitted_changes(&["file.txt", "file.md"]);
+    let env = setup_multi_file_uncommitted_changes(&["file.txt", "file.md", "Dockerfile"]);
 
     let programs_json = env
         .app_data_dir()
@@ -721,6 +721,7 @@ filepath='/[..]/file.txt'
         .success()
         .stdout_eq(snapbox::str![[r#"
 ╭┄ zz [uncommitted]
+┊   tt A Dockerfile
 ┊   zn A file.md
 ┊   uv A file.txt
 ┊
@@ -740,6 +741,29 @@ Hint: run `but branch new` to create a new branch to work on
         .success()
         .stdout_eq(snapbox::str![[r#"
 ╭┄ zz [uncommitted]
+┊   tt A Dockerfile
+┊   zn A file.md
+┊   ul A file.md.touch
+┊   uv A file.txt
+┊
+┴ 0dc3733 (common base) 2000-01-02 add M
+
+Hint: run `but branch new` to create a new branch to work on
+
+"#]]);
+
+    env.but("_open Dockerfile")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#""#]]);
+
+    env.but("status")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+╭┄ zz [uncommitted]
+┊   tt A Dockerfile
+┊   mu A Dockerfile.touch
 ┊   zn A file.md
 ┊   ul A file.md.touch
 ┊   uv A file.txt
