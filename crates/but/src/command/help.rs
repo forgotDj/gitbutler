@@ -381,7 +381,6 @@ Inspection:
 
 Branching and Committing:
   commit       Commit changes to a stack
-  stage        Stages a file or hunk to a specific branch
   branch       Commands for managing branches
   discard      Discard uncommitted changes from the worktree
   resolve      Resolve conflicts in a commit
