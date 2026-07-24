@@ -119,6 +119,8 @@ import {
 	type DiffLineContextMenuTarget,
 	useDiffLineContextMenu,
 } from "./diff-line-context-menu.ts";
+import { useDiffHunkDrag } from "./diff-hunk-drag.ts";
+import type { DiffLineTarget } from "./diff-line-target.ts";
 import { useHunkMenuItems } from "./useHunkMenuItems.ts";
 
 type BranchTab = "diff" | "pr";
@@ -499,23 +501,22 @@ const DiffContents: FC<{
 		);
 	};
 
-	const handleLineContextMenu = ({
-		event,
+	const getHunkOperandAtLine = ({
 		itemId,
 		lineNumber,
 		side,
-	}: DiffLineContextMenuTarget): void => {
+	}: DiffLineTarget): HunkOperand | null => {
 		const file = fileByItemId.get(itemId);
-		if (file?.patch?.type !== "Patch") return;
+		if (file?.patch?.type !== "Patch") return null;
 
 		const selection = contiguousSelectionByLine({
 			hunks: file.item.fileDiff.hunks,
 			line: lineNumber,
 			side,
 		});
-		if (!selection) return;
+		if (!selection) return null;
 
-		const operand: HunkOperand = {
+		return {
 			parent: {
 				parent: fileParent,
 				path: file.change.path,
@@ -523,12 +524,19 @@ const DiffContents: FC<{
 			...selection,
 			isResultOfBinaryToTextConversion: file.patch.subject.isResultOfBinaryToTextConversion,
 		};
+	};
+
+	const handleLineContextMenu = ({ event, ...target }: DiffLineContextMenuTarget): void => {
+		const file = fileByItemId.get(target.itemId);
+		if (!file) return;
+		const operand = getHunkOperandAtLine(target);
+		if (!operand) return;
 
 		void showNativeContextMenu(
 			event,
 			hunkMenuItems({
 				change: file.change,
-				lineNumber,
+				lineNumber: target.lineNumber,
 				operand,
 			}),
 		);
@@ -537,6 +545,11 @@ const DiffContents: FC<{
 	useDiffLineContextMenu({
 		viewerRef,
 		onContextMenu: handleLineContextMenu,
+	});
+
+	const handleHunkPostRender = useDiffHunkDrag({
+		projectId,
+		getHunkOperand: getHunkOperandAtLine,
 	});
 
 	const handleSetCollapsed = (itemId: string) => (collapsed: boolean) => {
@@ -609,6 +622,7 @@ const DiffContents: FC<{
 				// as defined in the metrics. We'll see an additional set of logs if there are other issues
 				// with our metrics.
 				__devOnlyValidateItemHeights: false,
+				onPostRender: handleHunkPostRender,
 				itemMetrics: {
 					// Computed custom header height.
 					diffHeaderHeight: 38,

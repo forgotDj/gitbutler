@@ -1,24 +1,10 @@
-import type { SelectionSide } from "@pierre/diffs";
 import type { CodeViewHandle } from "@pierre/diffs/react";
 import { useEffectEvent, useLayoutEffect, type RefObject } from "react";
+import { diffLineTargetFromElement, type DiffLineTarget } from "./diff-line-target.ts";
 
 export type DiffLineContextMenuTarget = {
 	event: MouseEvent;
-	itemId: string;
-	lineNumber: number;
-	side: SelectionSide;
-};
-
-const selectionSideFromLineNumber = (element: HTMLElement): SelectionSide | null => {
-	switch (element.getAttribute("data-line-type")) {
-		case "change-addition":
-			return "additions";
-		case "change-deletion":
-			return "deletions";
-		default:
-			return null;
-	}
-};
+} & DiffLineTarget;
 
 const contextMenuTarget = (
 	event: MouseEvent,
@@ -34,27 +20,14 @@ const contextMenuTarget = (
 	);
 	if (!lineNumberElement) return null;
 
-	const side = selectionSideFromLineNumber(lineNumberElement);
-	if (side === null) return null;
-
-	const lineNumber = Number.parseInt(
-		lineNumberElement.getAttribute("data-column-number") ?? "",
-		10,
-	);
-	if (!Number.isFinite(lineNumber)) return null;
-
 	const item = viewerRef.current
 		?.getInstance()
 		?.getRenderedItems()
 		.find(({ element }) => path.includes(element));
 	if (item?.type !== "diff") return null;
 
-	return {
-		event,
-		itemId: item.id,
-		lineNumber,
-		side,
-	};
+	const target = diffLineTargetFromElement({ element: lineNumberElement, itemId: item.id });
+	return target ? { event, ...target } : null;
 };
 
 export const useDiffLineContextMenu = ({
