@@ -1,4 +1,3 @@
-import type { BranchFilters } from "#ui/branch.ts";
 import {
 	branchFileParent,
 	branchOperand,
@@ -26,11 +25,21 @@ import {
 	type OutlineMode,
 	type TransferMode,
 } from "#ui/outline/mode.ts";
-import { navigationIndexIncludes, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
+import {
+	resolveNavigationIndexSelection,
+	type NavigationIndex,
+} from "#ui/workspace/navigation-index.ts";
 import type { SelectionScope } from "#ui/selection-scopes.ts";
 import { createSelector } from "@reduxjs/toolkit";
 import type { AbsorptionTarget } from "@gitbutler/but-sdk";
 import { Match } from "effect";
+import {
+	branchesReducers,
+	createInitialBranchesState,
+	getBranchesSelectors,
+	type BranchFilter,
+	type BranchesState,
+} from "./branches.ts";
 
 export type SelectionState = {
 	uncommittedFiles: string | null;
@@ -71,35 +80,16 @@ export type OutlineTab = "workspace" | "branches";
 export type ProjectState = {
 	filesVisible: boolean;
 	outlineTab: OutlineTab;
-	/** The selected branch or commit in the branches tab. */
-	branchesSelection: Operand | null;
-	/** Which branches the branches tab lists. */
-	branchFilters: BranchFilters;
-	/** The fuzzy filter query for the branches tab; empty means no filter. */
-	branchSearch: string;
-	/** Branches in the branches tab with their commits unfolded, keyed by full ref name. */
-	unfoldedBranches: Record<string, true>;
+	branches: BranchesState;
 	workspace: WorkspaceState;
 };
 
 export const createInitialProjectState = (): ProjectState => ({
 	filesVisible: false,
 	outlineTab: "workspace",
-	branchesSelection: null,
-	branchFilters: { showEmpty: false, onlyLocal: false, onlyStacks: false },
-	branchSearch: "",
-	unfoldedBranches: {},
+	branches: createInitialBranchesState(),
 	workspace: createInitialWorkspaceState(),
 });
-
-const resolveNavigationIndexSelection = <T>(
-	navigationIndex: NavigationIndex<T>,
-	selection: T | null,
-	getKey: (item: T) => string,
-): T | null =>
-	selection !== null && navigationIndexIncludes(navigationIndex, selection, getKey)
-		? selection
-		: (navigationIndex.items[0] ?? null);
 
 const hunkOperandIdentityKey = (operand: HunkOperand): string =>
 	operandIdentityKey(hunkOperand(operand));
@@ -131,14 +121,7 @@ export const projectReducers = {
 			workspaceState.mode = defaultOutlineMode;
 	},
 	selectBranches: (state: ProjectState, { selection }: { selection: Operand | null }) => {
-		if (
-			selection === null
-				? state.branchesSelection === null
-				: state.branchesSelection !== null && operandEquals(state.branchesSelection, selection)
-		)
-			return;
-
-		state.branchesSelection = selection;
+		branchesReducers.select(state.branches, { selection });
 	},
 	selectFiles: (state: ProjectState, { selection }: { selection: string | null }) => {
 		const workspaceState = state.workspace;
@@ -203,11 +186,7 @@ export const projectReducers = {
 		)
 			workspaceState.selection.outline = newBranchOperand;
 
-		if (
-			state.branchesSelection?._tag === "Branch" &&
-			operandEquals(state.branchesSelection, oldBranchOperand)
-		)
-			state.branchesSelection = newBranchOperand;
+		branchesReducers.updateRewrittenBranchReferences(state.branches, { oldBranch, newBranch });
 
 		if (
 			workspaceState.mode._tag === "RenameBranch" &&
@@ -363,10 +342,7 @@ export const projectReducers = {
 				workspaceState.selection.outline = commitOperand({ commitId: newId });
 		}
 
-		if (state.branchesSelection?._tag === "Commit") {
-			const newId = replacedCommits[state.branchesSelection.commitId];
-			if (newId !== undefined) state.branchesSelection = commitOperand({ commitId: newId });
-		}
+		branchesReducers.updateRewrittenCommitReferences(state.branches, { replacedCommits });
 
 		for (const [key, operand] of Object.entries(workspaceState.checkedOperands)) {
 			let newOperand: CheckableOperand | null = null;
@@ -408,14 +384,13 @@ export const projectReducers = {
 		if (tab === "branches") state.workspace.detailsSelectionScope = "outline";
 	},
 	toggleBranchUnfolded: (state: ProjectState, { branchRef }: { branchRef: string }) => {
-		if (state.unfoldedBranches[branchRef]) delete state.unfoldedBranches[branchRef];
-		else state.unfoldedBranches[branchRef] = true;
+		branchesReducers.toggleUnfolded(state.branches, { branchRef });
 	},
 	setBranchSearch: (state: ProjectState, { search }: { search: string }) => {
-		state.branchSearch = search;
+		branchesReducers.setSearch(state.branches, { search });
 	},
-	toggleBranchFilter: (state: ProjectState, { filter }: { filter: keyof BranchFilters }) => {
-		state.branchFilters[filter] = !state.branchFilters[filter];
+	toggleBranchFilter: (state: ProjectState, { filter }: { filter: BranchFilter }) => {
+		branchesReducers.toggleFilter(state.branches, { filter });
 	},
 };
 
@@ -450,15 +425,6 @@ const selectHasCheckedOperands = createSelector(
 export const projectSelectors = {
 	selectFilesVisible: (state: ProjectState) => state.filesVisible,
 	selectOutlineTab: (state: ProjectState) => state.outlineTab,
-	selectBranchFilters: (state: ProjectState) => state.branchFilters,
-	selectBranchSearch: (state: ProjectState) => state.branchSearch,
-	selectUnfoldedBranches: (state: ProjectState) => state.unfoldedBranches,
-	selectBranchUnfolded: (state: ProjectState, branchRef: string) =>
-		state.unfoldedBranches[branchRef] === true,
-	/** The branches-tab selection as stored, without resolving it against a navigation index. */
-	selectPrimaryBranchesSelection: (state: ProjectState) => state.branchesSelection,
-	selectSelectionBranches: (state: ProjectState, navigationIndex: NavigationIndex<Operand>) =>
-		resolveNavigationIndexSelection(navigationIndex, state.branchesSelection, operandIdentityKey),
 	selectCanShowFiles: (state: ProjectState) =>
 		state.workspace.detailsSelectionScope !== "uncommitted-files",
 	selectDetailsSelectionScope: (state: ProjectState) => state.workspace.detailsSelectionScope,
@@ -512,4 +478,5 @@ export const projectSelectors = {
 	selectCheckedCommitIds,
 	selectCheckedOperandCount,
 	selectHasCheckedOperands,
+	...getBranchesSelectors((state: ProjectState) => state.branches),
 };
