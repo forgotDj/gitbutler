@@ -464,9 +464,24 @@ pub async fn workspace_branch_and_ancestors_push(
         )
     })
     .await
-    .context("Push task failed")??;
+    .context("Push task failed")
+    .and_then(|result| result);
+    let result = match result {
+        Ok(result) => result,
+        Err(push_err) => {
+            if let Some(flattening) = &flattened_review_targets
+                && let Err(restore_err) =
+                    crate::legacy::forge::restore_review_targets(sync_ctx, flattening).await
+            {
+                return Err(push_err.context(format!(
+                    "Additionally failed to restore review targets: {restore_err:#}"
+                )));
+            }
+            return Err(push_err);
+        }
+    };
     let review_sync = if !push_needs_review_sync(&result) {
-        if flattened_review_targets {
+        if flattened_review_targets.is_some() {
             crate::legacy::forge::sync_review_stack_for_branch(sync_ctx, branch).await
         } else {
             but_forge::ReviewSyncOutcome::NotNeeded

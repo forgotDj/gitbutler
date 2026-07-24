@@ -627,7 +627,7 @@ test("reordering reviewed refs updates every target after a partial push", async
 
 	const beforePartialPush = reviewHistoryLengths(server, [42, 43, 44]);
 	await gitbutler.runScript("push-branch.sh", ["branch3"]);
-	await expectReviewHistoryDeltas(server, beforePartialPush, { 42: 1, 43: 1, 44: 1 });
+	await expectReviewHistoryDeltas(server, beforePartialPush, { 42: 1, 43: 2, 44: 2 });
 	await expectReviews(server, 3, (reviews) => {
 		expect(reviews.map((review) => review.base.ref)).toEqual(["master", "branch3", "branch1"]);
 		for (const review of reviews) {
@@ -893,6 +893,66 @@ test("a Git push failure does not start review synchronization", async ({
 			message: "review synchronization must not start after the Git push fails",
 		})
 		.toBe(beforeFailedPush);
+});
+
+test("a failed reordered push restores temporarily flattened review targets", async ({
+	page,
+	gitbutler,
+	fakeGithub,
+}) => {
+	const server = await fakeGithub({
+		headRepoPath: gitbutler.pathInWorkdir("remote-project"),
+		isFork: false,
+		listed: false,
+	});
+	await gitbutler.runScript("project-with-stacks.sh", [server.repositoryUrl]);
+	await storeFakeGitHubEnterprisePat(page, server);
+	mirrorFakeCredentialForCli(gitbutler);
+	await applyUpstream(gitbutler, "branch1", "branch2", "branch3");
+	await mockForge(page, {
+		get_review_merge_status: mergeStatus(),
+		get_repo_info: repoInfo(),
+		list_ci_checks: [],
+	});
+	await openWorkspace(page);
+	const branchHeaders = page.getByTestId("branch-header");
+	for (const [branch, parent, remainingStacks] of [
+		["branch2", "branch1", 2],
+		["branch3", "branch2", 1],
+	] as const) {
+		await dragAndDropByLocator(
+			page,
+			branchHeaders.filter({ hasText: branch }),
+			branchHeaders.filter({ hasText: parent }),
+			{ force: true, position: { x: 120, y: -10 } },
+		);
+		await expect(stack(page)).toHaveCount(remainingStacks);
+	}
+	await gitbutler.runScript("push-branch.sh", ["branch3"]);
+
+	await publishReview(page, "branch1", "Description for branch1");
+	server.setListed(true);
+	await publishReview(page, "branch2", "Description for branch2");
+	await publishReview(page, "branch3", "Description for branch3");
+	await expect(page.getByText("PR #44 created successfully")).toBeVisible();
+
+	await dragAndDropByLocator(
+		page,
+		branchHeaders.filter({ hasText: "branch2" }),
+		branchHeaders.filter({ hasText: "branch3" }),
+		{ force: true, position: { x: 120, y: -10 } },
+	);
+	await expectBranchHeaderOrder(page, ["branch2", "branch3", "branch1"]);
+
+	const beforeFailedPush = reviewHistoryLengths(server, [42, 43, 44]);
+	server.setGitPushesFailing(true);
+	await expect(gitbutler.runScript("push-branch.sh", ["branch3"])).rejects.toThrow(
+		"Command failed with exit code",
+	);
+	await expectReviewHistoryDeltas(server, beforeFailedPush, { 42: 0, 43: 2, 44: 2 });
+	await expectReviews(server, 3, (reviews) => {
+		expect(reviews.map((review) => review.base.ref)).toEqual(["master", "branch1", "branch2"]);
+	});
 });
 
 async function combineBranchesIntoStack(page: Page) {
