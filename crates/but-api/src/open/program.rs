@@ -639,13 +639,6 @@ pub struct UserDefinedProgramSpec {
 impl UserDefinedProgramSpec {
     /// Try to transform this specification into a valid [`ProgramSpec`].
     pub fn try_into_program_spec(self) -> anyhow::Result<ProgramSpec> {
-        let (name, id) = match (self.name, self.id) {
-            (Some(name), Some(id)) => (name, id),
-            (Some(name), None) => (name.clone(), name),
-            (None, Some(id)) => (id.clone(), id),
-            (None, None) => anyhow::bail!("id or name must be specified"),
-        };
-
         let extensions = self.extensions.map(|extensions| {
             extensions
                 .into_iter()
@@ -653,7 +646,9 @@ impl UserDefinedProgramSpec {
                 .collect()
         });
 
-        if let Some(builtin) = PROGRAMS.iter().find(|p| p.id == id) {
+        if let Some(id) = &self.id
+            && let Some(builtin) = PROGRAMS.iter().find(|p| &p.id == id)
+        {
             // This is an override for a builtin - merge!
             let cli_arg_supplier = if self.open_args.is_some() || self.open_at_line_args.is_some() {
                 CliArgumentSupplier::Custom(CustomCliArgumentSupplier {
@@ -665,8 +660,8 @@ impl UserDefinedProgramSpec {
             };
 
             Ok(ProgramSpec {
-                id,
-                name,
+                id: id.clone(),
+                name: self.name.unwrap_or_else(|| builtin.name.clone()),
                 executable: self
                     .executable
                     .map(Into::into)
@@ -679,6 +674,13 @@ impl UserDefinedProgramSpec {
                 extensions,
             })
         } else {
+            let (name, id) = match (self.name, self.id) {
+                (Some(name), Some(id)) => (name, id),
+                (Some(name), None) => (name.clone(), name),
+                (None, Some(id)) => (id.clone(), id),
+                (None, None) => anyhow::bail!("id or name must be specified"),
+            };
+
             let Some(executable) = self.executable else {
                 anyhow::bail!("executable must be specified for non built-ins")
             };
@@ -788,9 +790,9 @@ mod tests {
 
     #[test]
     fn user_defined_override_for_builtin_executable_merges_with_builtin() {
-        let echo_override_spec: UserDefinedProgramSpec = serde_json::from_str(
+        let vscode_override_spec: UserDefinedProgramSpec = serde_json::from_str(
             r#"{
-                "id": "echo",
+                "id": "vscode",
                 "executable": {
                     "type": "pathExecutable",
                     "nameOrPath": "/overridden/path",
@@ -800,9 +802,9 @@ mod tests {
         )
         .expect("must deserialize");
 
-        let builtin_echo = PROGRAMS.iter().find(|p| p.id == "echo").unwrap();
+        let builtin_vscode = PROGRAMS.iter().find(|p| p.id == "vscode").unwrap();
 
-        let spec: ProgramSpec = echo_override_spec.try_into_program_spec().unwrap();
+        let spec: ProgramSpec = vscode_override_spec.try_into_program_spec().unwrap();
         assert_eq!(
             spec,
             ProgramSpec {
@@ -810,73 +812,73 @@ mod tests {
                     name_or_path: "/overridden/path".into(),
                     requires_tty: false
                 }),
-                ..builtin_echo.clone()
+                ..builtin_vscode.clone()
             }
         )
     }
 
     #[test]
     fn user_defined_override_for_builtin_category_merges_with_builtin() {
-        let echo_override_spec: UserDefinedProgramSpec = serde_json::from_str(
+        let vscode_override_spec: UserDefinedProgramSpec = serde_json::from_str(
             r#"{
-                "id": "echo",
+                "id": "vscode",
                 "category": "fileManager"
             }"#,
         )
         .expect("must deserialize");
 
-        let builtin_echo = PROGRAMS.iter().find(|p| p.id == "echo").unwrap();
+        let builtin_vscode = PROGRAMS.iter().find(|p| p.id == "vscode").unwrap();
 
-        let spec: ProgramSpec = echo_override_spec.try_into_program_spec().unwrap();
+        let spec: ProgramSpec = vscode_override_spec.try_into_program_spec().unwrap();
         assert_eq!(
             spec,
             ProgramSpec {
                 category: ProgramCategory::FileManager,
-                ..builtin_echo.clone()
+                ..builtin_vscode.clone()
             }
         )
     }
 
     #[test]
     fn user_defined_override_for_builtin_extensions_merges_with_builtin() {
-        let echo_override_spec: UserDefinedProgramSpec = serde_json::from_str(
+        let vscode_override_spec: UserDefinedProgramSpec = serde_json::from_str(
             r#"{
-                "id": "echo",
+                "id": "vscode",
                 "extensions": ["txt"]
             }"#,
         )
         .expect("must deserialize");
 
-        let builtin_echo = PROGRAMS.iter().find(|p| p.id == "echo").unwrap();
+        let builtin_vscode = PROGRAMS.iter().find(|p| p.id == "vscode").unwrap();
 
-        let spec: ProgramSpec = echo_override_spec.try_into_program_spec().unwrap();
+        let spec: ProgramSpec = vscode_override_spec.try_into_program_spec().unwrap();
         assert_eq!(
             spec,
             ProgramSpec {
                 extensions: Some(vec!["txt".into()]),
-                ..builtin_echo.clone()
+                ..builtin_vscode.clone()
             }
         )
     }
 
     #[test]
     fn user_defined_override_for_builtin_extensions_strips_periods_from_extensions() {
-        let echo_override_spec: UserDefinedProgramSpec = serde_json::from_str(
+        let vscode_override_spec: UserDefinedProgramSpec = serde_json::from_str(
             r#"{
-                "id": "echo",
+                "id": "vscode",
                 "extensions": [".txt"]
             }"#,
         )
         .expect("must deserialize");
 
-        let builtin_echo = PROGRAMS.iter().find(|p| p.id == "echo").unwrap();
+        let builtin_vscode = PROGRAMS.iter().find(|p| p.id == "vscode").unwrap();
 
-        let spec: ProgramSpec = echo_override_spec.try_into_program_spec().unwrap();
+        let spec: ProgramSpec = vscode_override_spec.try_into_program_spec().unwrap();
         assert_eq!(
             spec,
             ProgramSpec {
                 extensions: Some(vec!["txt".into()]),
-                ..builtin_echo.clone()
+                ..builtin_vscode.clone()
             }
         )
     }
