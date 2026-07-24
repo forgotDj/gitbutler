@@ -4,7 +4,7 @@ use crate::{
 };
 
 mod undo_commit;
-mod undo_move2;
+mod undo_move;
 mod undo_redo;
 mod undo_rub;
 mod undo_squash;

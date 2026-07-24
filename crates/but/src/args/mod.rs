@@ -299,8 +299,7 @@ pub enum Subcommands {
 
     #[cfg(feature = "legacy")]
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
-    #[clap(hide = true, name = "_move2")]
-    _Move2(move2::Platform),
+    Move(r#move::Platform),
 
     #[cfg(feature = "legacy")]
     #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
@@ -703,79 +702,6 @@ pub enum Subcommands {
         /// Can be specified multiple times or as comma-separated values.
         #[clap(long = "changes", short = 'p', value_delimiter = ',')]
         changes: Vec<String>,
-    },
-
-    /// Move a commit or branch to a different location.
-    ///
-    /// Commit moves:
-    /// - By default, commits are moved to be before (below) the target.
-    /// - Use `--after` to move the commit after (above) the target instead.
-    /// - Use comma-separated commit IDs to move multiple commits together.
-    /// - When moving to a branch, the commit is placed at the top of that branch's stack.
-    ///
-    /// Branch moves:
-    /// - Move one branch on top of another to stack them.
-    /// - Move a branch to `zz` to tear it off (unstack it).
-    ///
-    /// ## Examples
-    ///
-    /// Move a commit before another commit:
-    ///
-    /// ```text
-    /// but move abc123 def456
-    /// ```
-    ///
-    /// Move multiple commits before another commit:
-    ///
-    /// ```text
-    /// but move abc123,789abc def456
-    /// ```
-    ///
-    /// Move a commit after another commit:
-    ///
-    /// ```text
-    /// but move abc123 def456 --after
-    /// ```
-    ///
-    /// Move multiple commits after another commit:
-    ///
-    /// ```text
-    /// but move abc123,789abc def456 --after
-    /// ```
-    ///
-    /// Move a commit to a different branch (places at top):
-    ///
-    /// ```text
-    /// but move abc123 my-feature-branch
-    /// ```
-    ///
-    /// Move multiple commits to a different branch (places at top):
-    ///
-    /// ```text
-    /// but move abc123,789abc my-feature-branch
-    /// ```
-    ///
-    /// Stack one branch on top of another:
-    ///
-    /// ```text
-    /// but move feature/frontend feature/backend
-    /// ```
-    ///
-    /// Tear off (unstack) a branch:
-    ///
-    /// ```text
-    /// but move feature/frontend zz
-    /// ```
-    #[cfg_attr(feature = "raw-clap-docs", clap(verbatim_doc_comment))]
-    Move {
-        /// Commit/branch identifier to move. Use comma-separated commit IDs for multi-commit moves.
-        source: String,
-        /// Target commit/branch identifier, or `zz` to unstack a branch
-        target: String,
-        /// Move the commit after (above) the target instead of before (below).
-        /// Only valid for commit-to-commit moves.
-        #[clap(short = 'a', long = "after")]
-        after: bool,
     },
 
     /// Commands for viewing and managing operation history.
@@ -1383,7 +1309,7 @@ pub mod config;
 #[cfg(feature = "legacy")]
 pub mod diff2;
 #[cfg(feature = "legacy")]
-pub mod move2;
+pub mod r#move;
 pub mod skill;
 #[cfg(feature = "legacy")]
 pub mod squash;

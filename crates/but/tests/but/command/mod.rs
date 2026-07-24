@@ -33,8 +33,6 @@ mod help;
 mod land;
 #[cfg(feature = "legacy")]
 mod r#move;
-#[cfg(feature = "legacy")]
-mod move2;
 mod onboarding;
 #[cfg(feature = "legacy")]
 mod open;

@@ -160,9 +160,8 @@ fn print_grouped_with_truncation(
                 SubcommandDiscriminant::Amend => Group::EditingCommits,
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Squash => Group::EditingCommits,
-                SubcommandDiscriminant::Move => Group::EditingCommits,
                 #[cfg(feature = "legacy")]
-                SubcommandDiscriminant::_Move2 => Group::EditingCommits,
+                SubcommandDiscriminant::Move => Group::EditingCommits,
 
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Oplog => Group::OperationHistory,
@@ -387,12 +386,12 @@ Branching and Committing:
 
 Editing Commits:
   squash       Squash commits, branches, or changes
+  move         Move commits and changes around
   rub          Combines two entities together to perform an operation like ame…
   absorb       Amends changes into the appropriate commits where they belong
   reword       Edit the commit message of the specified commit
   uncommit     Uncommit changes from a commit or file-in-commit to the unstage…
   amend        Amend one or more file changes into a specific commit and rebas…
-  move         Move a commit or branch to a different location
 
 Operation History:
   oplog        Commands for viewing and managing operation history
@@ -480,9 +479,6 @@ Checkout the full docs here: https://docs.gitbutler.com/cli-overview
 
 Branching and Committing:
   branch       Commands for managing branches
-
-Editing Commits:
-  move         Move a commit or branch to a different location
 
 Other Commands:
   gui          Open the GitButler GUI for the current project

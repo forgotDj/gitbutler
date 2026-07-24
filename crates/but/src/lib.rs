@@ -1071,7 +1071,7 @@ async fn match_subcommand(
             Ok(())
         }
         #[cfg(feature = "legacy")]
-        Subcommands::_Move2(move_args) => {
+        Subcommands::Move(move_args) => {
             use crate::utils::IntermediateChannel;
 
             let status_after = args.status_after;
@@ -1086,7 +1086,7 @@ async fn match_subcommand(
             out.begin_status_after(status_after);
 
             let outcome =
-                command::legacy::move2::r#move(&mut ctx, IntermediateChannel::new(out), move_args)
+                command::legacy::r#move::r#move(&mut ctx, IntermediateChannel::new(out), move_args)
                     .emit_metrics(metrics_ctx)?;
             out.print_cli_output_human(outcome)?;
             run_status_after_if_requested(status_after, &mut ctx, out);
@@ -1539,26 +1539,6 @@ async fn match_subcommand(
                 .context("Failed to land branch.")
                 .emit_metrics(metrics_ctx)
                 .show_root_cause_error_then_exit_without_destructors(output)
-        }
-        Subcommands::Move {
-            source,
-            target,
-            after,
-        } => {
-            let status_after = args.status_after;
-            let mut ctx = setup::init_ctx(
-                &args,
-                InitCtxOptions {
-                    workspace_check: setup::WorkspaceCheck::Disabled,
-                    ..Default::default()
-                },
-                out,
-            )?;
-            out.begin_status_after(status_after);
-            let result = command::r#move::handle(&mut ctx, out, &source, &target, after)
-                .emit_metrics(metrics_ctx);
-            run_status_after_if_ok(status_after, &result, &mut ctx, out);
-            result.show_root_cause_error_then_exit_without_destructors(output)
         }
         #[cfg(feature = "legacy")]
         Subcommands::Pick {
