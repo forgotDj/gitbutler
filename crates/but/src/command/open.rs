@@ -1,12 +1,13 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use bstr::BStr;
 use but_api::open::{
-    list_builtin_program_specs, list_user_defined_program_specs,
+    list_program_specs, list_program_specs_for_file,
     program::{OpenSpec, ProgramSpec, open_in_program_unchecked},
 };
 use but_ctx::Context;
 use gix::utils::AsBStr;
+use nonempty::NonEmpty;
 
 use crate::{
     CliError, CliResult, IdMap,
@@ -32,7 +33,7 @@ pub(crate) struct Hunk {
 #[derive(Debug)]
 pub(crate) enum Openable {
     File(PathBuf),
-    Files(Vec<PathBuf>),
+    Files(NonEmpty<PathBuf>),
     Hunk(Hunk),
 }
 
@@ -97,39 +98,55 @@ pub(crate) fn open(
     let to_open = match sources.as_slice() {
         [] => return Err(bad_input("At least one source is required").into()),
         [source] => resolve_source(&repo, &id_map, source)?,
-        sources => {
-            let paths = sources
-                .iter()
-                .map(|source| resolve_file_source(&repo, &id_map, source))
-                .collect::<CliResult<Vec<_>>>()?;
+        [first_source, tail @ ..] => {
+            let mut paths = NonEmpty::new(resolve_file_source(&repo, &id_map, first_source)?);
+            for source in tail {
+                paths.push(resolve_file_source(&repo, &id_map, source)?);
+            }
             Openable::Files(paths)
         }
     };
 
-    let builtin_program_specs = list_builtin_program_specs();
-    let user_defined_program_specs = list_user_defined_program_specs();
-    let mut all_program_specs = user_defined_program_specs
-        .iter()
-        .chain(builtin_program_specs);
-
     let program = match program_id {
-        Some(program_id) => all_program_specs
-            .find(|ps| ps.id == program_id)
-            .ok_or_else(|| {
-                CliError::from(
-                    bad_input("No such program found")
-                        .arg_name("--program-id")
-                        .arg_value(program_id),
-                )
-            })?,
-        None => all_program_specs
-            .next()
-            .expect("BUG: The internal list of programs should not be empty"),
+        Some(program_id) => {
+            let program_specs = list_program_specs();
+            program_specs
+                .into_iter()
+                .find(|ps| ps.id == program_id)
+                .ok_or_else(|| {
+                    CliError::from(
+                        bad_input("No such program found")
+                            .arg_name("--program-id")
+                            .arg_value(program_id),
+                    )
+                })?
+        }
+        None => {
+            let program_specs = list_program_specs_for_openable(&to_open);
+            match TryInto::<[ProgramSpec; 1]>::try_into(program_specs) {
+                Ok([program_spec]) => program_spec,
+                _ => {
+                    return Err(bad_input("Could not automatically choose program")
+                        .hint("Specify a program with `--program-id`")
+                        .into());
+                }
+            }
+        }
     };
 
-    run(program, to_open)?;
+    run(&program, to_open)?;
 
     Ok(())
+}
+
+pub(crate) fn list_program_specs_for_openable(openable: &Openable) -> Vec<ProgramSpec> {
+    let path: &Path = match openable {
+        Openable::File(path) => path,
+        Openable::Files(paths) => paths.first(),
+        Openable::Hunk(hunk) => &hunk.path,
+    };
+
+    list_program_specs_for_file(path)
 }
 
 fn resolve_source(

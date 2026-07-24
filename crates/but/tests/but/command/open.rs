@@ -4,7 +4,7 @@ use crate::utils::Sandbox;
 
 fn setup_multi_hunk_uncommitted_changes(path: &str) -> Sandbox {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
-    env.setup_metadata(&["A"]);
+    env.setup_metadata(&[]);
 
     let original_content = "this\nis\nsome\ncontent\nto\ndiff\nwith\nadded\nlines\n";
     env.file(path, original_content);
@@ -22,8 +22,35 @@ Created new independent branch 'a-branch-1'
     env
 }
 
+fn setup_multi_file_uncommitted_changes(paths: &[&str]) -> Sandbox {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.setup_metadata(&[]);
+
+    for path in paths {
+        env.file(path, "content");
+    }
+
+    env
+}
+
 #[test]
-fn open_uncommitted_file_with_() {
+fn open_with_ambiguous_program() {
+    let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
+    env.file("new-file.txt", "content");
+
+    env.but("_open new-file.txt")
+        .assert()
+        .failure()
+        .stderr_eq(snapbox::str![[r#"
+Error: Could not automatically choose program
+
+Hint: Specify a program with `--program-id`
+
+"#]]);
+}
+
+#[test]
+fn open_uncommitted_file_with() {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
 
     env.file("new-file.txt", "content");
@@ -609,6 +636,162 @@ Test Program - Open File: filepath='/[..]/file.txt'
         .success()
         .stdout_eq(snapbox::str![[r#"
 filepath='/[..]/file.txt'
+
+"#]]);
+}
+
+#[test]
+fn user_defined_programs_can_override_builtins() {
+    let env = setup_multi_hunk_uncommitted_changes("file.txt");
+
+    let programs_json = env
+        .app_data_dir()
+        .join("gitbutler")
+        .join(USER_DEFINED_PROGRAMS_FILENAME);
+
+    std::fs::write(
+        programs_json,
+        r#"[
+   {
+     "id": "echo",
+     "openArgs": [
+       "CUSTOM OVERRIDE='{{filepath}}'"
+     ]
+   }
+]
+   "#,
+    )
+    .unwrap();
+
+    env.but("_open file.txt -p echo")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+CUSTOM OVERRIDE='/[..]/file.txt'
+
+"#]]);
+}
+
+#[test]
+fn user_defined_programs_list_can_set_extension_list_for_builtins() {
+    let env = setup_multi_file_uncommitted_changes(&["file.txt", "file.md", "Dockerfile"]);
+
+    let programs_json = env
+        .app_data_dir()
+        .join("gitbutler")
+        .join(USER_DEFINED_PROGRAMS_FILENAME);
+
+    std::fs::write(
+        programs_json,
+        r#"[
+   {
+     "name": "Sentinel to make sure we don't just pick the first definition",
+     "executable": {
+       "type": "pathExecutable",
+       "nameOrPath": "echo",
+       "requiresTerminal": true
+     },
+     "openArgs": [
+       "WRONG PROGRAM"
+     ]
+   },
+   {
+     "id": "echo",
+     "extensions": ["txt"]
+   },
+   {
+     "id": "touch",
+     "extensions": ["*"]
+   }
+]
+   "#,
+    )
+    .unwrap();
+
+    // should find echo
+    env.but("_open file.txt")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='/[..]/file.txt'
+
+"#]]);
+
+    env.but("status")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+╭┄ zz [uncommitted]
+┊   tt A Dockerfile
+┊   zn A file.md
+┊   uv A file.txt
+┊
+┴ 0dc3733 (common base) 2000-01-02 add M
+
+Hint: run `but branch new` to create a new branch to work on
+
+"#]]);
+
+    // should find touch by wildcard
+    env.but("_open file.md")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#""#]]);
+
+    env.but("status")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+╭┄ zz [uncommitted]
+┊   tt A Dockerfile
+┊   zn A file.md
+┊   ul A file.md.touch
+┊   uv A file.txt
+┊
+┴ 0dc3733 (common base) 2000-01-02 add M
+
+Hint: run `but branch new` to create a new branch to work on
+
+"#]]);
+
+    // should find touch by wildcard
+    env.but("_open Dockerfile")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#""#]]);
+
+    env.but("status")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+╭┄ zz [uncommitted]
+┊   tt A Dockerfile
+┊   mu A Dockerfile.touch
+┊   zn A file.md
+┊   ul A file.md.touch
+┊   uv A file.txt
+┊
+┴ 0dc3733 (common base) 2000-01-02 add M
+
+Hint: run `but branch new` to create a new branch to work on
+
+"#]]);
+
+    // should still be able to explicitly select a different handler
+    env.but("_open Dockerfile -p echo")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='/[..]/Dockerfile'
+
+"#]]);
+
+    // should select echo as it's handler for the first file
+    env.but("_open file.txt file.md Dockerfile")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='/[..]/file.txt' filepath='/[..]/file.md' filepath='/[..]/Dockerfile'
 
 "#]]);
 }

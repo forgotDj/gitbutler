@@ -147,6 +147,7 @@ gix = { workspace = true, features = ["worktree-mutation"] }
 open.workspace = true
 url.workspace = true
 which = "8.0.2"
+nonempty.workspace = true
 but-schemars.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
