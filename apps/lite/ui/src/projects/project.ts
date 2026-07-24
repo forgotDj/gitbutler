@@ -379,8 +379,9 @@ export const projectReducers = {
 		state.outlineTab = tab;
 		state.workspace.mode = defaultOutlineMode;
 		// The branches tab has no uncommitted changes panel, so its selection
-		// cannot drive the details pane.
-		state.workspace.detailsSelectionScope = "outline";
+		// cannot drive the details pane. Leave the scope alone on the way back,
+		// so returning to the workspace restores the panel it was showing.
+		if (tab === "branches") state.workspace.detailsSelectionScope = "outline";
 	},
 	toggleBranchUnfolded: (state: ProjectState, { branchRef }: { branchRef: string }) => {
 		if (state.unfoldedBranches[branchRef]) delete state.unfoldedBranches[branchRef];
