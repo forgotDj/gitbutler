@@ -404,6 +404,8 @@ export interface NativeMenuPosition {
 type NativeMenuPopupItemData = {
 	label: string;
 	accelerator?: string;
+	/** Renders the item as a checkbox in the given state. */
+	checked?: boolean;
 	enabled?: boolean;
 	itemId?: string;
 	submenu?: Array<NativeMenuPopupItem>;

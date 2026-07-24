@@ -315,6 +315,8 @@ const buildNativeMenuTemplate = (
 		return {
 			label: item.label,
 			accelerator: item.accelerator,
+			type: item.checked !== undefined ? "checkbox" : undefined,
+			checked: item.checked,
 			enabled: item.enabled,
 			click: itemId !== undefined ? () => onItem(itemId) : undefined,
 			submenu: item.submenu ? buildNativeMenuTemplate(item.submenu, onItem) : undefined,
