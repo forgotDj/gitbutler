@@ -659,10 +659,10 @@ fn list_user_defined_program_specs() -> Vec<ProgramSpec> {
     let content = match std::fs::read_to_string(&user_defined_programs_file) {
         Ok(content) => content,
         Err(err) => {
-            tracing::warn!(
+            tracing::info!(
                 ?err,
                 ?user_defined_programs_file,
-                "Failed to read from user-defined programs file"
+                "Failed to read from user-defined programs file, probably does not exist"
             );
             return vec![];
         }
