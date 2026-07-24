@@ -438,6 +438,17 @@ pub async fn workspace_branch_and_ancestors_push(
 ) -> Result<WorkspaceBranchAndAncestorsPushOutcome> {
     let branch: gix::refs::FullName = branch.try_into()?;
     let sync_ctx = ctx.clone();
+    let review_target_updates = {
+        let ctx = ctx.clone().into_thread_local();
+        crate::legacy::forge::review_target_updates_for_branch(&ctx, branch.as_ref())?
+    };
+    let review_targets = review_target_updates
+        .iter()
+        .map(|(_, desired, current)| (desired.clone(), current.clone()))
+        .collect::<Vec<_>>();
+    let flattened_review_targets =
+        crate::legacy::forge::flatten_review_targets_before_push(sync_ctx.clone(), &review_targets)
+            .await?;
     let push_branch = branch.clone();
     // This API also awaits forge synchronization, but the Git push remains synchronous and may
     // perform network I/O, hooks, and credential handling. Keep it off Tokio's async worker pool.
@@ -455,7 +466,11 @@ pub async fn workspace_branch_and_ancestors_push(
     .await
     .context("Push task failed")??;
     let review_sync = if !push_needs_review_sync(&result) {
-        but_forge::ReviewSyncOutcome::NotNeeded
+        if flattened_review_targets {
+            crate::legacy::forge::sync_review_stack_for_branch(sync_ctx, branch).await
+        } else {
+            but_forge::ReviewSyncOutcome::NotNeeded
+        }
     } else {
         crate::legacy::forge::sync_review_stacks_after_push(
             sync_ctx,

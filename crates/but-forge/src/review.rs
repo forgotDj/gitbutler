@@ -1681,6 +1681,47 @@ pub enum GitHubStackingMode {
     Native,
 }
 
+/// Remove conflicting native GitHub stack membership before changing review target branches.
+///
+/// The caller temporarily flattens reordered reviews onto trunk before pushing their refs. GitHub
+/// requires conflicting native stack membership to be removed before those target updates.
+pub async fn prepare_review_target_updates(
+    preferred_forge_user: &Option<crate::ForgeUser>,
+    forge_repo_info: &crate::forge::ForgeRepoInfo,
+    forge_push_repo_info: &Option<crate::forge::ForgeRepoInfo>,
+    reviews: &[ForgeReviewUpdate],
+    storage: &but_forge_storage::Controller,
+    github_stacking_mode: GitHubStackingMode,
+) -> Result<()> {
+    let crate::forge::ForgeRepoInfo {
+        forge, owner, repo, ..
+    } = forge_repo_info;
+    if *forge != ForgeName::GitHub
+        || github_stacking_mode != GitHubStackingMode::Native
+        || reviews.is_empty()
+    {
+        return Ok(());
+    }
+
+    let (_, head_repo) = github_head_owner_and_repo(forge_repo_info, forge_push_repo_info);
+    if head_repo.is_some() {
+        return Ok(());
+    }
+
+    let preferred_account = preferred_forge_user.as_ref().and_then(|user| user.github());
+    let pr_numbers = reviews
+        .iter()
+        .map(|review| review.number)
+        .collect::<Vec<_>>();
+    let prepared =
+        but_github::stacks::prepare(preferred_account, owner, repo, &pr_numbers, storage).await?;
+    if let but_github::stacks::Availability::Supported(plan) = prepared {
+        but_github::stacks::unstack_conflicting(preferred_account, owner, repo, &plan, storage)
+            .await?;
+    }
+    Ok(())
+}
+
 async fn github_review_bodies(
     preferred_account: Option<&but_github::GithubAccountIdentifier>,
     owner: &str,
@@ -1758,6 +1799,7 @@ async fn sync_github_native_reviews(
     reviews: &[ForgeReviewUpdate],
     pr_numbers: &[i64],
     storage: &but_forge_storage::Controller,
+    description_mode: ReviewStackingDescription,
 ) -> Result<but_github::stacks::Availability<Vec<String>>> {
     let prepared =
         but_github::stacks::prepare(preferred_account, owner, repo, pr_numbers, storage).await?;
@@ -1798,7 +1840,8 @@ async fn sync_github_native_reviews(
 
     but_github::stacks::finish(preferred_account, owner, repo, &plan, storage).await?;
 
-    // GitHub now renders the stack. Remove only GitButler's managed block and preserve user text.
+    // GitHub now renders the native stack. Independently honor the configured GitButler
+    // description mode and preserve user text.
     for (review, current_body) in reviews.iter().zip(bodies) {
         let Some(current_body) = current_body else {
             continue;
@@ -1808,7 +1851,7 @@ async fn sync_github_native_reviews(
             review.number,
             pr_numbers,
             "#",
-            ReviewStackingDescription::Disabled,
+            description_mode,
         );
         let params = but_github::UpdatePullRequestParams {
             owner,
@@ -1887,6 +1930,7 @@ pub async fn sync_reviews(
                     reviews,
                     &pr_numbers,
                     storage,
+                    description_mode,
                 )
                 .await
                 {

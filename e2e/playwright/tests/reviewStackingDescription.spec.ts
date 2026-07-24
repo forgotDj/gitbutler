@@ -479,10 +479,8 @@ test("GitHub native stacks are rebuilt when a review is created in the middle", 
 		.toEqual([{ number: 1, pull_requests: [{ number: 42 }, { number: 43 }] }]);
 	await expectReviews(server, 2, (reviews) => {
 		expect(reviews.map((review) => review.base.ref)).toEqual(["master", "branch1"]);
-		for (const review of reviews) {
-			expect(review.body).not.toContain(FOOTER_TOP);
-			expect(review.body).not.toContain(FOOTER_BOTTOM);
-		}
+		expectBottomFooter(reviews[0], "Description for branch1", "part 1 of 2");
+		expectBottomFooter(reviews[1], "Description for branch2", "part 2 of 2");
 	});
 
 	await dragAndDropByLocator(
@@ -514,10 +512,9 @@ test("GitHub native stacks are rebuilt when a review is created in the middle", 
 	]);
 	await expectReviews(server, 3, (reviews) => {
 		expect(reviews.map((review) => review.base.ref)).toEqual(["master", "branch3", "branch1"]);
-		for (const review of reviews) {
-			expect(review.body).not.toContain(FOOTER_TOP);
-			expect(review.body).not.toContain(FOOTER_BOTTOM);
-		}
+		expectBottomFooter(reviews[0], "Description for branch1", "part 1 of 3");
+		expectBottomFooter(reviews[1], "Description for branch2", "part 3 of 3");
+		expectBottomFooter(reviews[2], "Description for branch3", "part 2 of 3");
 	});
 
 	await setGitHubStackingMode(page, gitbutler, "disabled");
