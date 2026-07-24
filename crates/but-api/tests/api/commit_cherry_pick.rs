@@ -1,6 +1,7 @@
 use but_core::{DryRun, ref_metadata::ProjectMeta};
 use but_rebase::graph_rebase::mutate::{InsertSide, RelativeTo};
 use but_testsupport::{CommandExt, git_at_dir, open_repo};
+use gitbutler_oplog::OplogExt as _;
 
 use crate::support::write_file;
 
@@ -54,7 +55,8 @@ fn context_with_cherry_pick_history() -> anyhow::Result<(but_ctx::Context, tempf
 }
 
 #[test]
-fn cherry_pick_materializes_multiple_commits_and_returns_new_commit_ids() -> anyhow::Result<()> {
+fn cherry_pick_materializes_multiple_deduped_commits_and_returns_new_commit_ids()
+-> anyhow::Result<()> {
     let (mut ctx, _tmp) = context_with_cherry_pick_history()?;
     let (source_first, source_tip, main_tip) = {
         let repo = ctx.repo.get()?;
@@ -68,7 +70,7 @@ fn cherry_pick_materializes_multiple_commits_and_returns_new_commit_ids() -> any
 
     let result = but_api::commit::cherry_pick::commit_cherry_pick(
         &mut ctx,
-        vec![source_tip, source_first],
+        vec![source_tip, source_first, source_tip],
         RelativeTo::Reference(main_ref.clone()),
         InsertSide::Below,
         DryRun::No,
@@ -90,6 +92,23 @@ fn cherry_pick_materializes_multiple_commits_and_returns_new_commit_ids() -> any
             .expect("the copied commit has the old branch tip as parent")
             .detach(),
         main_tip
+    );
+
+    let snapshots = ctx
+        .snapshots_iter(None, Vec::new(), None)?
+        .collect::<Result<Vec<_>, _>>()?;
+    let cherry_pick = snapshots
+        .iter()
+        .find_map(|snapshot| {
+            snapshot
+                .details
+                .as_ref()
+                .filter(|details| details.operation == but_oplog::legacy::OperationKind::CherryPick)
+        })
+        .expect("the cherry-pick should record an oplog snapshot");
+    assert_eq!(
+        cherry_pick.title, "CherryPick (2)",
+        "the oplog title should count unique cherry-picked commits"
     );
     Ok(())
 }

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use but_api_macros::but_api;
 use but_core::{DryRun, sync::RepoExclusive};
 use but_oplog::legacy::{OperationKind, SnapshotDetails};
@@ -94,9 +96,10 @@ pub fn commit_cherry_pick_with_perm(
     dry_run: DryRun,
     perm: &mut RepoExclusive,
 ) -> anyhow::Result<CommitCherryPickResult> {
+    let source_commit_count = source_commit_ids.iter().collect::<HashSet<_>>().len();
     let maybe_oplog_entry = but_oplog::UnmaterializedOplogSnapshot::from_details_with_perm(
         ctx,
-        SnapshotDetails::new(OperationKind::CherryPick).with_count(source_commit_ids.len()),
+        SnapshotDetails::new(OperationKind::CherryPick).with_count(source_commit_count),
         perm.read_permission(),
         dry_run,
     );
