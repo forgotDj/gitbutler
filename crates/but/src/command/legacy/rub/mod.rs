@@ -19,10 +19,12 @@ use nonempty::NonEmpty;
 
 use crate::{
     CliId, IdMap,
-    id::WorktreeHunk,
-    id::parser::{
-        IdResolutionError, parse_sources_with_disambiguation,
-        parse_uncommitted_sources_with_disambiguation, prompt_for_disambiguation,
+    id::{
+        CommitId, CommittedFileId, WorktreeHunk,
+        parser::{
+            IdResolutionError, parse_sources_with_disambiguation,
+            parse_uncommitted_sources_with_disambiguation, prompt_for_disambiguation,
+        },
     },
     theme::{self, Paint},
     utils::{OutputChannel, diff_specs::DiffSpecBuilder, shorten_object_id},
@@ -416,7 +418,7 @@ fn commits_from_sources(sources: &NonEmpty<&CliId>) -> Option<NonEmpty<gix::Obje
     let commits = sources
         .iter()
         .map(|source| {
-            if let CliId::Commit { commit_id, .. } = source {
+            if let CliId::Commit(CommitId { commit_id, .. }) = source {
                 Some(*commit_id)
             } else {
                 None
@@ -442,7 +444,7 @@ pub(crate) fn route_operation<'a>(
         let source = sources.first();
         match (source, target) {
             // Uncommitted -> *
-            (UncommittedHunkOrFile(uncommitted), Commit { commit_id, .. }) => {
+            (UncommittedHunkOrFile(uncommitted), Commit(CommitId { commit_id, .. })) => {
                 let hunk_assignments = uncommitted.hunk_assignments.as_ref();
                 let description = uncommitted.describe();
                 Some(RubOperation::UncommittedToCommit(
@@ -458,7 +460,7 @@ pub(crate) fn route_operation<'a>(
                 PathPrefix {
                     hunk_assignments, ..
                 },
-                Commit { commit_id, .. },
+                Commit(CommitId { commit_id, .. }),
             ) => {
                 let hunk_assignments = hunk_assignments
                     .as_ref()
@@ -472,47 +474,47 @@ pub(crate) fn route_operation<'a>(
                 ))
             }
             // Uncommitted -> *
-            (Uncommitted { .. }, Commit { commit_id, .. }) => {
+            (Uncommitted { .. }, Commit(CommitId { commit_id, .. })) => {
                 Some(RubOperation::UncommittedAreaToCommit(
                     UncommittedAreaToCommitOperation { oid: *commit_id },
                 ))
             }
             // Commit -> *
-            (Commit { commit_id, .. }, Uncommitted { .. }) => Some(
+            (Commit(CommitId { commit_id, .. }), Uncommitted { .. }) => Some(
                 RubOperation::CommitToUncommittedArea(CommitToUncommittedAreaOperation {
                     commits: NonEmpty::new(*commit_id),
                 }),
             ),
             (
-                Commit {
+                Commit(CommitId {
                     commit_id: source, ..
-                },
-                Commit {
+                }),
+                Commit(CommitId {
                     commit_id: destination,
                     ..
-                },
+                }),
             ) => Some(RubOperation::SquashCommits(SquashCommitsOperation {
                 sources: NonEmpty::new(*source),
                 destination: *destination,
                 how_to_combine_messages,
             })),
-            (Commit { commit_id, .. }, Branch { name, .. }) => Some(
+            (Commit(CommitId { commit_id, .. }), Branch(branch)) => Some(
                 RubOperation::MoveCommitToBranch(MoveCommitToBranchOperation {
                     oid: *commit_id,
-                    name,
+                    name: &branch.name,
                 }),
             ),
             // Branch -> *
             // CommittedFile -> *
             (
-                CommittedFile {
+                CommittedFile(CommittedFileId {
                     path,
                     commit_id: source,
                     ..
-                },
-                Commit {
+                }),
+                Commit(CommitId {
                     commit_id: target, ..
-                },
+                }),
             ) => Some(RubOperation::CommittedFileToCommit(
                 CommittedFileToCommitOperation {
                     path: path.as_ref(),
@@ -521,9 +523,9 @@ pub(crate) fn route_operation<'a>(
                 },
             )),
             (
-                CommittedFile {
+                CommittedFile(CommittedFileId {
                     path, commit_id, ..
-                },
+                }),
                 Uncommitted { .. },
             ) => Some(RubOperation::CommittedFileToUncommittedArea(
                 CommittedFileToUncommittedAreaOperation {
@@ -536,23 +538,23 @@ pub(crate) fn route_operation<'a>(
         }
     } else {
         match target {
-            Commit {
+            Commit(CommitId {
                 commit_id: target_commit_id,
                 id: _,
                 change_id: _,
-            } => {
+            }) => {
                 if let Some(commits) = sources
                     .iter()
                     .map(|source| match source {
-                        Commit {
+                        Commit(CommitId {
                             commit_id,
                             id: _,
                             change_id: _,
-                        } => Some(*commit_id),
+                        }) => Some(*commit_id),
                         UncommittedHunkOrFile(..)
                         | PathPrefix { .. }
                         | CommittedFile { .. }
-                        | Branch { .. }
+                        | Branch(..)
                         | Uncommitted { .. }
                         | Stack { .. } => None,
                     })
@@ -581,7 +583,7 @@ pub(crate) fn route_operation<'a>(
             | Stack { .. }
             | PathPrefix { .. }
             | CommittedFile { .. }
-            | Branch { .. } => None,
+            | Branch(..) => None,
         }
     }
 }
@@ -775,7 +777,7 @@ pub(crate) fn handle_uncommit(
 
         for source in sources {
             match source {
-                CliId::Commit { commit_id, .. } => {
+                CliId::Commit(CommitId { commit_id, .. }) => {
                     but_api::commit::discard_commit::commit_discard(ctx, commit_id, DryRun::No)?;
 
                     if !json_mode && let Some(out) = out.for_human() {
@@ -791,9 +793,9 @@ pub(crate) fn handle_uncommit(
                         )?;
                     }
                 }
-                CliId::CommittedFile {
+                CliId::CommittedFile(CommittedFileId {
                     path, commit_id, ..
-                } => {
+                }) => {
                     crate::command::commit::file::uncommit_file_and_discard(
                         ctx,
                         path.as_ref(),
@@ -855,9 +857,9 @@ fn uncommit_committed_files(
     let mut commit_order = Vec::new();
     let mut paths_by_commit: HashMap<gix::ObjectId, Vec<&BStr>> = HashMap::new();
     for source in sources {
-        let CliId::CommittedFile {
+        let CliId::CommittedFile(CommittedFileId {
             commit_id, path, ..
-        } = source
+        }) = source
         else {
             unreachable!("uncommit_committed_files only handles committed files");
         };
@@ -1064,20 +1066,20 @@ mod tests {
     }
 
     fn committed_file_id() -> CliId {
-        CliId::CommittedFile {
+        CliId::CommittedFile(CommittedFileId {
             commit_id: gix::ObjectId::empty_tree(gix::hash::Kind::Sha1),
             path: BString::from("test.txt"),
             id: "cd".to_string(),
             change_id: None,
-        }
+        })
     }
 
     fn commit_id() -> CliId {
-        CliId::Commit {
+        CliId::Commit(CommitId {
             commit_id: gix::ObjectId::empty_tree(gix::hash::Kind::Sha1),
             id: "gh".to_string(),
             change_id: None,
-        }
+        })
     }
 
     fn uncommitted_area_id() -> CliId {

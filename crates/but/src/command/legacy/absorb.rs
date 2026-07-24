@@ -52,7 +52,7 @@ pub(crate) fn handle(
                 };
             let mut acceptable = resolved.into_iter().filter(|id| {
                 matches!(id, CliId::UncommittedHunkOrFile { .. })
-                    || matches!(id, CliId::Branch { .. })
+                    || matches!(id, CliId::Branch(..))
             });
             let first = acceptable.next().ok_or_else(|| {
                 anyhow::anyhow!(
@@ -80,10 +80,10 @@ pub(crate) fn handle(
                         .into(),
                 }
             }
-            CliId::Branch { name, .. } => {
+            CliId::Branch(branch) => {
                 // Absorb everything that is assigned to this lane
                 AbsorptionTarget::Branch {
-                    branch_name: name.clone(),
+                    branch_name: branch.name,
                 }
             }
             _ => {

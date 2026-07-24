@@ -380,8 +380,8 @@ fn select_target_branch<'a>(
             .or_else(|| {
                 if let Ok(cli_ids) = id_map.parse_using_context(branch_hint, ctx) {
                     for cli_id in cli_ids {
-                        if let CliId::Branch { name, .. } = cli_id
-                            && let Some(branch) = target_stack.branch(&name)
+                        if let CliId::Branch(branch_id) = cli_id
+                            && let Some(branch) = target_stack.branch(&branch_id.name)
                         {
                             return Some(branch);
                         }
@@ -838,9 +838,9 @@ fn find_stack_by_hint(id_map: &IdMap, stacks: &[TargetStack], hint: &str) -> Opt
         .parse(hint, Box::new(move |_, _| Ok(Vec::new())))
         .ok()?;
     for cli_id in cli_ids {
-        if let CliId::Branch { name, .. } = cli_id {
+        if let CliId::Branch(branch) = cli_id {
             for (stack_id, stack) in stacks {
-                if stack.contains_branch(&name) {
+                if stack.contains_branch(&branch.name) {
                     return Some((*stack_id, stack.clone()));
                 }
             }

@@ -1028,7 +1028,7 @@ fn resolve_branch_name(
         let branch_names: Vec<String> = cli_ids
             .iter()
             .filter_map(|id| match id {
-                CliId::Branch { name, .. } => Some(name.clone()),
+                CliId::Branch(branch) => Some(branch.name.clone()),
                 _ => None,
             })
             .collect();
@@ -1047,7 +1047,7 @@ fn resolve_branch_name(
     }
 
     match &cli_ids[0] {
-        CliId::Branch { name, .. } => Ok(name.clone()),
+        CliId::Branch(branch) => Ok(branch.name.clone()),
         _ => Err(anyhow::anyhow!(
             "Expected branch identifier, got {}. Please use a branch name or branch CLI ID.",
             cli_ids[0].kind_for_humans()

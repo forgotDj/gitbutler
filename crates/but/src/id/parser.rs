@@ -2,7 +2,11 @@ use anyhow::Context as _;
 use bstr::BStr;
 use but_ctx::Context;
 
-use crate::{CliId, IdMap, id::SourceScope, utils::OutputChannel};
+use crate::{
+    CliId, IdMap,
+    id::{CommitId, CommittedFileId, SourceScope},
+    utils::OutputChannel,
+};
 
 #[derive(Debug)]
 pub(crate) struct IdResolutionError(String);
@@ -411,7 +415,7 @@ pub fn prompt_for_disambiguation(
 
             // Add additional context based on the type
             let label = match &id {
-                CliId::Commit { commit_id, .. } => {
+                CliId::Commit(CommitId { commit_id, .. }) => {
                     format!(
                         "{} - {} (commit {})",
                         short_id,
@@ -419,12 +423,12 @@ pub fn prompt_for_disambiguation(
                         &commit_id.to_string()[..7]
                     )
                 }
-                CliId::Branch { name, .. } => {
-                    format!("{short_id} - {kind} (branch '{name}')")
+                CliId::Branch(branch) => {
+                    format!("{short_id} - {kind} (branch '{}')", branch.name)
                 }
-                CliId::CommittedFile {
+                CliId::CommittedFile(CommittedFileId {
                     path, commit_id, ..
-                } => {
+                }) => {
                     format!(
                         "{} - {} (file '{}' in commit {})",
                         short_id,

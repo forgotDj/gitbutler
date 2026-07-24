@@ -64,7 +64,7 @@ pub fn handle(ctx: &mut Context, out: &mut OutputChannel, id: &str) -> Result<()
                             .map(WorktreeHunk::from),
                     )?;
                 }
-                CliId::Branch { .. } => {
+                CliId::Branch(..) => {
                     bail!("Cannot discard a branch. Use a file or hunk ID instead.");
                 }
                 CliId::Commit { .. } => {
