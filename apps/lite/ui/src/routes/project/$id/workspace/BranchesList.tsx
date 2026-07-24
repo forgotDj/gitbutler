@@ -298,6 +298,12 @@ export const BranchesList: FC<
 	const showEmpty = useAppSelector((state) =>
 		projectSlice.selectors.selectShowEmptyBranches(state, projectId),
 	);
+	const onlyLocal = useAppSelector((state) =>
+		projectSlice.selectors.selectOnlyLocal(state, projectId),
+	);
+	const onlyStacks = useAppSelector((state) =>
+		projectSlice.selectors.selectOnlyStacks(state, projectId),
+	);
 	const search = useAppSelector((state) =>
 		projectSlice.selectors.selectBranchSearch(state, projectId),
 	);
@@ -339,10 +345,24 @@ export const BranchesList: FC<
 	const showFilterMenu = (trigger: HTMLElement) => {
 		void showNativeMenuFromTrigger(trigger, [
 			nativeMenuItem({
-				label: "Show Empty Branches",
+				label: "Include Empty Branches",
 				checked: showEmpty,
 				onSelect: () => {
 					dispatch(projectSlice.actions.toggleShowEmptyBranches({ projectId }));
+				},
+			}),
+			nativeMenuItem({
+				label: "Show Only Local Branches",
+				checked: onlyLocal,
+				onSelect: () => {
+					dispatch(projectSlice.actions.toggleOnlyLocal({ projectId }));
+				},
+			}),
+			nativeMenuItem({
+				label: "Show Only Stacks",
+				checked: onlyStacks,
+				onSelect: () => {
+					dispatch(projectSlice.actions.toggleOnlyStacks({ projectId }));
 				},
 			}),
 		]);

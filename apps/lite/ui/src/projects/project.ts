@@ -72,6 +72,10 @@ export type ProjectState = {
 	outlineTab: OutlineTab;
 	/** Whether the branches tab also lists branches holding no commits. */
 	showEmptyBranches: boolean;
+	/** Whether the branches tab drops branches that exist only on a remote. */
+	onlyLocal: boolean;
+	/** Whether the branches tab lists only multi-branch stacks. */
+	onlyStacks: boolean;
 	/** The fuzzy filter query for the branches tab; empty means no filter. */
 	branchSearch: string;
 	/** Branches in the branches tab with their commits unfolded, keyed by full ref name. */
@@ -83,6 +87,8 @@ export const createInitialProjectState = (): ProjectState => ({
 	filesVisible: false,
 	outlineTab: "workspace",
 	showEmptyBranches: false,
+	onlyLocal: false,
+	onlyStacks: false,
 	branchSearch: "",
 	unfoldedBranches: {},
 	workspace: createInitialWorkspaceState(),
@@ -391,6 +397,12 @@ export const projectReducers = {
 	toggleShowEmptyBranches: (state: ProjectState) => {
 		state.showEmptyBranches = !state.showEmptyBranches;
 	},
+	toggleOnlyLocal: (state: ProjectState) => {
+		state.onlyLocal = !state.onlyLocal;
+	},
+	toggleOnlyStacks: (state: ProjectState) => {
+		state.onlyStacks = !state.onlyStacks;
+	},
 };
 
 const selectCheckedOperands = createSelector(
@@ -425,6 +437,8 @@ export const projectSelectors = {
 	selectFilesVisible: (state: ProjectState) => state.filesVisible,
 	selectOutlineTab: (state: ProjectState) => state.outlineTab,
 	selectShowEmptyBranches: (state: ProjectState) => state.showEmptyBranches,
+	selectOnlyLocal: (state: ProjectState) => state.onlyLocal,
+	selectOnlyStacks: (state: ProjectState) => state.onlyStacks,
 	selectBranchSearch: (state: ProjectState) => state.branchSearch,
 	selectUnfoldedBranches: (state: ProjectState) => state.unfoldedBranches,
 	selectBranchUnfolded: (state: ProjectState, branchRef: string) =>

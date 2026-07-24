@@ -13,23 +13,34 @@ import Fuse from "fuse.js";
  */
 export const branchIsEmpty = (branch: ListedBranch): boolean => branch.commitCount === 0;
 
+type BranchFilters = {
+	/** Include branches holding no commits of their own. */
+	showEmpty: boolean;
+	/** Drop branches that exist only on a remote. */
+	onlyLocal: boolean;
+	/** Keep only stacks that still have more than one branch. */
+	onlyStacks: boolean;
+};
+
 /**
  * The stacks from the branch listing that are not applied to the workspace,
- * keeping the listing's most-recent-first order. Unless `showEmpty`, branches
- * holding no commits are dropped, along with stacks left empty by that.
+ * keeping the listing's most-recent-first order. `showEmpty`/`onlyLocal` prune
+ * branches within each stack; `onlyStacks` then keeps just the multi-branch
+ * stacks. Either way, stacks left with nothing to show are dropped.
  */
 export const unappliedStacks = (
 	stacks: Array<ListedStack>,
-	{ showEmpty }: { showEmpty: boolean },
+	{ showEmpty, onlyLocal, onlyStacks }: BranchFilters,
 ): Array<ListedStack> =>
 	stacks
 		.filter((stack) => stack.status === "unapplied" || stack.status === "standalone")
-		.map((stack) =>
-			showEmpty
-				? stack
-				: { ...stack, branches: stack.branches.filter((branch) => !branchIsEmpty(branch)) },
-		)
-		.filter((stack) => stack.branches.length > 0);
+		.map((stack) => ({
+			...stack,
+			branches: stack.branches.filter(
+				(branch) => (showEmpty || !branchIsEmpty(branch)) && (!onlyLocal || branch.hasLocal),
+			),
+		}))
+		.filter((stack) => stack.branches.length > (onlyStacks ? 1 : 0));
 
 /** One-character fuzzy queries match too much to be useful; treated as no filter. */
 const MIN_SEARCH_LENGTH = 2;

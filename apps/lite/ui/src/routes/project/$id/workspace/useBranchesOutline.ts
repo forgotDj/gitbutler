@@ -33,6 +33,12 @@ export const useBranchesOutline = (projectId: string): BranchesOutline => {
 	const showEmpty = useAppSelector((state) =>
 		projectSlice.selectors.selectShowEmptyBranches(state, projectId),
 	);
+	const onlyLocal = useAppSelector((state) =>
+		projectSlice.selectors.selectOnlyLocal(state, projectId),
+	);
+	const onlyStacks = useAppSelector((state) =>
+		projectSlice.selectors.selectOnlyStacks(state, projectId),
+	);
 	// Deferred so the fuzzy filter runs at low priority and typing stays
 	// responsive; the input itself is controlled by the non-deferred value.
 	const search = useDeferredValue(
@@ -67,7 +73,10 @@ export const useBranchesOutline = (projectId: string): BranchesOutline => {
 		...branchListQueryOptions(projectId),
 		enabled: active,
 		select: (listedStacks): BranchesOutline => {
-			const stacks = searchStacks(unappliedStacks(listedStacks, { showEmpty }), search);
+			const stacks = searchStacks(
+				unappliedStacks(listedStacks, { showEmpty, onlyLocal, onlyStacks }),
+				search,
+			);
 			const items = stacks.flatMap((stack) =>
 				stack.branches.flatMap(
 					(branch): Array<Operand> => [
