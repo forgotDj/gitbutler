@@ -1,6 +1,7 @@
 use crate::utils::{CommandExt as _, Sandbox};
 use snapbox::str;
 
+#[cfg(feature = "legacy")]
 #[test]
 fn github_stacks_configuration_is_repository_local() {
     let env = Sandbox::open_with_default_settings("repo-with-remote-and-head");
@@ -40,6 +41,7 @@ The repository must be enrolled in GitHub's stacked pull requests preview.
     );
 }
 
+#[cfg(feature = "legacy")]
 #[test]
 fn github_stacks_configuration_requires_a_repository() {
     Sandbox::empty()
