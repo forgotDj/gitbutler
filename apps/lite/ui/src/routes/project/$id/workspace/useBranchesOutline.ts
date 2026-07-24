@@ -18,9 +18,17 @@ import { useDeferredValue } from "react";
 export type BranchesOutline = {
 	stacks: Array<ListedStack>;
 	navigationIndex: NavigationIndex<Operand>;
+	/**
+	 * The listing query's state, so the tab can tell a genuinely empty result
+	 * apart from one that has not arrived or failed.
+	 */
+	isPending: boolean;
+	isError: boolean;
 };
 
-const emptyOutline: BranchesOutline = {
+type OutlineContent = Pick<BranchesOutline, "stacks" | "navigationIndex">;
+
+const emptyContent: OutlineContent = {
 	stacks: [],
 	navigationIndex: { items: [], indexByKey: new Map() },
 };
@@ -69,10 +77,14 @@ export const useBranchesOutline = (projectId: string): BranchesOutline => {
 	// input like `search` or `showEmpty` does. Deriving in render instead would
 	// rebuild the navigation index every pass and re-render every row that reads
 	// it through context.
-	const { data: outline = emptyOutline } = useQuery({
+	const {
+		data: content = emptyContent,
+		isPending,
+		isError,
+	} = useQuery({
 		...branchListQueryOptions(projectId),
 		enabled: active,
-		select: (listedStacks): BranchesOutline => {
+		select: (listedStacks): OutlineContent => {
 			const stacks = searchStacks(unappliedStacks(listedStacks, filters), search);
 			const items = stacks.flatMap((stack) =>
 				stack.branches.flatMap(
@@ -97,5 +109,5 @@ export const useBranchesOutline = (projectId: string): BranchesOutline => {
 		},
 	});
 
-	return outline;
+	return { ...content, isPending, isError };
 };

@@ -303,7 +303,7 @@ export const BranchesList: FC<
 	const dispatch = useAppDispatch();
 	// Derived once in WorkspacePage and passed down, so the rendered list and the
 	// navigation index that resolves selection are the same object.
-	const { stacks, navigationIndex } = outline;
+	const { stacks, navigationIndex, isPending, isError } = outline;
 	const filters = useAppSelector((state) =>
 		projectSlice.selectors.selectBranchFilters(state, projectId),
 	);
@@ -365,7 +365,7 @@ export const BranchesList: FC<
 			<div className={styles.toolbar}>
 				<button
 					type="button"
-					aria-label="Filter branches"
+					aria-label="Branch filters"
 					className={getButtonClassName({ iconOnly: true })}
 					onClick={(evt) => showFilterMenu(evt.currentTarget)}
 				>
@@ -392,7 +392,13 @@ export const BranchesList: FC<
 
 				{stacks.length === 0 && (
 					<p className={classes("text-13", styles.heading)}>
-						{search.trim() !== "" ? "No matching branches." : "No branches."}
+						{isPending
+							? "Loading branches…"
+							: isError
+								? "Unable to load branches."
+								: search.trim() !== ""
+									? "No matching branches."
+									: "No branches."}
 					</p>
 				)}
 
