@@ -592,6 +592,8 @@ const DiffContents: FC<{
           [data-column-number] {
             --mix-selection-light: 0%;
             --mix-selection-dark: 0%;
+
+            cursor: default;
           }
         `,
 			}}
