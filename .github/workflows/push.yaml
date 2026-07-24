@@ -269,9 +269,21 @@ jobs:
         run: cargo doc --workspace --no-deps --exclude gitbutler-tauri --exclude but-api-macros-tests
 
   rust-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-15 # [macOs, ARM64] - default target
+            nextest_platform: mac
+            nextest_checksum: 6141b22cb71970aed9bd44bb21e31170755db94a469603760df327ebb219a109
+          - platform: ubuntu-22.04 # [linux, x64]
+            nextest_platform: linux
+            nextest_checksum: a9f992321e8759818400d93abb9477b4b11422d18d216e8d208505bd73454103
+          #- platform: windows-latest # doesn't even remotely work at the moment
+
+    runs-on: ${{ matrix.platform }}
     needs: changes
     if: ${{ needs.changes.outputs.rust == 'true' }}
-    runs-on: ubuntu-latest
     env:
       CARGO_TERM_COLOR: always
       GITBUTLER_TESTS_NO_CLEANUP: "1"
@@ -289,20 +301,19 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
-          shared-key: cargo-test-no-tauri
+          shared-key: cargo-test-no-tauri-${{ matrix.platform }}
           save-if: ${{ github.ref == 'refs/heads/master' }}
       - name: Dependencies for 'keyring'
+        if: runner.os == 'Linux'
         run: sudo ./scripts/install-minimal-debian-dependencies.sh
       - name: Install cargo-nextest
         run: |
-
           # To update the version of cargo-nextest, replace the version specifier in the `curl` command and update the
-          # checksum.
+          # matrix checksums.
           #
-          # Checksums are available as artifacts on GitHub Release (https://github.com/nextest-rs/nextest/releases),
-          # should be called "cargo-nextest-<VERSION>-x86_64-unknown-linux-gnu.sha256"
-          curl -LsSf https://get.nexte.st/0.9.133/linux -o cargo-nextest.tar.gz
-          echo "a9f992321e8759818400d93abb9477b4b11422d18d216e8d208505bd73454103 cargo-nextest.tar.gz" | sha256sum -c -
+          # Checksums are available as artifacts on GitHub Release (https://github.com/nextest-rs/nextest/releases).
+          curl -LsSf https://get.nexte.st/0.9.133/${{ matrix.nextest_platform }} -o cargo-nextest.tar.gz
+          echo "${{ matrix.nextest_checksum }}  cargo-nextest.tar.gz" | shasum -a 256 -c -
           tar -xzf cargo-nextest.tar.gz -C ${CARGO_HOME:-~/.cargo}/bin
           rm cargo-nextest.tar.gz
       - name: Run workspace tests
