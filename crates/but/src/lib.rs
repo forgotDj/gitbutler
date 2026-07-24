@@ -473,7 +473,10 @@ async fn match_subcommand(
                 .emit_metrics(metrics_ctx)
                 .map_err(CliError::from)
         }
-        Subcommands::_Open { id, program_id } => {
+        Subcommands::_Open {
+            sources,
+            program_id,
+        } => {
             let ctx = setup::init_ctx(
                 &args,
                 InitCtxOptions {
@@ -482,7 +485,7 @@ async fn match_subcommand(
                 },
                 out,
             )?;
-            command::open::open(&ctx, id, program_id).emit_metrics(metrics_ctx)
+            command::open::open(&ctx, sources, program_id).emit_metrics(metrics_ctx)
         }
         Subcommands::Completions { shell } => command::completions::generate_completions(shell)
             .emit_metrics(metrics_ctx)

@@ -9,8 +9,8 @@ use url::Url;
 
 use crate::open::{
     program::{
-        Editor, PROGRAMS, ProgramSpec, USER_DEFINED_PROGRAMS_FILENAME, UserDefinedProgramSpec,
-        open_in_program_unchecked,
+        Editor, OpenSpec, PROGRAMS, ProgramSpec, USER_DEFINED_PROGRAMS_FILENAME,
+        UserDefinedProgramSpec, open_in_program_unchecked,
     },
     spawn::spawn_and_reap,
 };
@@ -723,7 +723,11 @@ pub fn open_in_editor(
         .find(|editor| editor.id == editor_id)
         && editor.is_gui_editor()
     {
-        open_in_program_unchecked(editor, &resolved_path, line_nr)
+        let open_spec = match line_nr {
+            Some(line_nr) => OpenSpec::FileAtLine(resolved_path, line_nr),
+            None => OpenSpec::File(resolved_path),
+        };
+        open_in_program_unchecked(editor, open_spec)
     } else {
         bail_precondition!("editor_id '{editor_id}' is not a GUI-compatible editor");
     }
