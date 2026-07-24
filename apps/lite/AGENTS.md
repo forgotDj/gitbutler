@@ -35,6 +35,16 @@ export const MyComponent: FC<Props> = (p) => {
 };
 ```
 
+# State
+
+Share machinery, not state: when a new surface (a tab, pane, or mode) has its
+own selection or lifecycle, give it its own sub-state with its own
+reducers/selectors (see `ui/src/projects/branches.ts`), even when it reuses the
+same operand/navigation machinery. Don't multiplex an existing state container
+behind mode conditionals — the tell is an `if (tab === ...)` guard, or a
+comment explaining a special case, in code that shouldn't know that mode
+exists.
+
 # Concluding your work
 
 Once the work is functionally complete, lint and format it with Oxlint, Oxfmt,
