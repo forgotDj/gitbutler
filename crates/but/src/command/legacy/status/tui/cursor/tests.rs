@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use bstr::BString;
 use but_core::{ChangeId, HunkHeader, ref_metadata::StackId};
-use but_hunk_assignment::HunkAssignment;
 use but_rebase::graph_rebase::mutate::InsertSide;
 use nonempty::NonEmpty;
 use ratatui_textarea::TextArea;
@@ -15,14 +14,14 @@ use crate::{
         output::{StatusOutputContent, StatusOutputLine, StatusOutputLineData},
         tui::{
             InlineRewordMode, Mode, NormalMode, SelectAfterReload,
-            app::mark::{MarkStore, MarkableRef, Marks},
             app::{
                 CommitMessageComposer, CommitMode, CommitSource, MoveMode, MoveSource,
                 MoveStackMode, ReorderStackSource, UncommittedAreaCommitSource,
+                mark::{MarkStore, MarkableRef, Marks},
             },
         },
     },
-    id::UncommittedHunkOrFile,
+    id::{UncommittedHunkOrFile, WorktreeHunk},
 };
 
 fn line(data: StatusOutputLineData) -> StatusOutputLine {
@@ -88,8 +87,8 @@ fn stack_branch_line(name: &str, id: &str, stack_id: StackId) -> StatusOutputLin
     })
 }
 
-fn hunk_assignment(path: &str, old_start: u32) -> HunkAssignment {
-    HunkAssignment {
+fn hunk_assignment(path: &str, old_start: u32) -> WorktreeHunk {
+    WorktreeHunk {
         id: None,
         hunk_header: Some(HunkHeader {
             old_start,
@@ -99,8 +98,6 @@ fn hunk_assignment(path: &str, old_start: u32) -> HunkAssignment {
         }),
         path: path.to_owned(),
         path_bytes: BString::from(path),
-        stack_id: None,
-        branch_ref_bytes: None,
         line_nums_added: None,
         line_nums_removed: None,
         diff: None,

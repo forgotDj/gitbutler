@@ -433,13 +433,13 @@ fn build_status_context<'a>(
         FileAssignment::get_assignments_by_file(&id_map);
     let mut stack_details: Vec<StackEntry> = Vec::new();
 
-    let uncommitted = assignment::filter_by_stack_id(assignments_by_file.values(), &None);
+    let uncommitted = assignments_by_file.values().cloned().collect();
     stack_details.push((None, (None, uncommitted)));
 
     for stack in stacks {
-        let assignments = assignment::filter_by_stack_id(assignments_by_file.values(), &stack.id);
-        stack_details.push((stack.id, (Some(stack.clone()), assignments)));
+        stack_details.push((stack.id, (Some(stack.clone()), Vec::new())));
     }
+
     let ci_map = ci_map(
         ctx,
         &cache_config,

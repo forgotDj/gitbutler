@@ -1063,8 +1063,8 @@ impl App {
                         .and_then(|cli_id| Cursor::restore(cli_id, &new_lines))
                         .or_else(|| Cursor::select_uncommitted(&new_lines))
                 }
-                SelectAfterReload::UncommittedFile { path, stack_id } => {
-                    Cursor::select_uncommitted_file(path.as_ref(), stack_id, &new_lines)
+                SelectAfterReload::UncommittedFile { path } => {
+                    Cursor::select_uncommitted_file(path.as_ref(), &new_lines)
                 }
                 SelectAfterReload::FirstFileInCommit(commit_id) => {
                     Cursor::select_first_file_in_commit(commit_id, &new_lines)

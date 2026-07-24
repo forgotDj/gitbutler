@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use bstr::BStr;
-use but_core::ref_metadata::StackId;
 
 use crate::{
     CliId,
@@ -319,17 +318,13 @@ impl Cursor {
     }
 
     /// Select the first uncommitted file line that points to the given path in the given stack.
-    pub fn select_uncommitted_file(
-        path: &BStr,
-        stack_id: Option<StackId>,
-        lines: &[StatusOutputLine],
-    ) -> Option<Self> {
+    pub fn select_uncommitted_file(path: &BStr, lines: &[StatusOutputLine]) -> Option<Self> {
         let idx = lines.iter().position(|line| {
             if let Some(CliId::UncommittedHunkOrFile(uncommitted)) =
                 line.data.cli_id().map(|id| &**id)
             {
                 let assignment = uncommitted.hunk_assignments.first();
-                &**assignment.path_bytes == path && assignment.stack_id == stack_id
+                &**assignment.path_bytes == path
             } else {
                 false
             }
@@ -691,7 +686,7 @@ pub(super) fn same_entity_for_reload(previous: &CliId, current: &CliId) -> bool 
             if previous.is_entire_file {
                 let previous = previous.hunk_assignments.first();
                 let current = current.hunk_assignments.first();
-                previous.path_bytes == current.path_bytes && previous.stack_id == current.stack_id
+                previous.path_bytes == current.path_bytes
             } else {
                 previous == current
             }

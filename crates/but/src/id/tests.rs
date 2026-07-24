@@ -444,13 +444,11 @@ stacks: [ j0 ]
         UncommittedHunkOrFile {
             id: "kv",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "uncommitted2.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -464,13 +462,11 @@ stacks: [ j0 ]
         UncommittedHunkOrFile {
             id: "kv:q",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "uncommitted2.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -484,29 +480,25 @@ stacks: [ j0 ]
         UncommittedHunkOrFile {
             id: "ro",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,2", "+1,2"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
                 },
                 tail: [
-                    HunkAssignment {
+                    WorktreeHunk {
                         id: None,
                         hunk_header: Some(
                             HunkHeader("-3,2", "+3,2"),
                         ),
                         path: "",
                         path_bytes: "uncommitted1.txt",
-                        stack_id: None,
-                        branch_ref_bytes: None,
                         line_nums_added: None,
                         line_nums_removed: None,
                         diff: None,
@@ -520,15 +512,13 @@ stacks: [ j0 ]
         UncommittedHunkOrFile {
             id: "ro:q#0-2",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,2", "+1,2"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -542,15 +532,13 @@ stacks: [ j0 ]
         UncommittedHunkOrFile {
             id: "ro:q#1-2",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-3,2", "+3,2"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -640,13 +628,11 @@ uncommitted_hunks: [ ln:q ]
         UncommittedHunkOrFile {
             id: "ln",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "uncommitted.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -718,13 +704,11 @@ fn uncommitted_files_disambiguate_between_themselves() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "kpo",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "foo242",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -738,13 +722,11 @@ fn uncommitted_files_disambiguate_between_themselves() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "kpr",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "foo23",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -767,13 +749,11 @@ fn uncommitted_files_disambiguate_between_themselves() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "kpo",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "foo242",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -795,13 +775,11 @@ fn uncommitted_files_disambiguate_between_themselves() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "kpr",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "foo23",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -881,13 +859,11 @@ fn uncommitted_files_disambiguate_with_branch() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "qsy",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "file",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -929,13 +905,11 @@ fn longer_id_is_ok() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "kp",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "foo23",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -977,13 +951,11 @@ fn reverse_hex_filename_is_its_own_id() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "kl",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "klmxyz",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1032,13 +1004,11 @@ fn branch_and_file_by_name() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "zo",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "foo",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1082,17 +1052,13 @@ fn colon_uncommitted_filename() -> anyhow::Result<()> {
 [
     UncommittedHunkOrFile(
         UncommittedHunkOrFile {
-            id: "mv",
+            id: "nv",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "assigned",
-                    stack_id: Some(
-                        00000000-0000-0000-0000-000000000001,
-                    ),
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1116,17 +1082,13 @@ fn colon_uncommitted_filename() -> anyhow::Result<()> {
 [
     UncommittedHunkOrFile(
         UncommittedHunkOrFile {
-            id: "mv",
+            id: "nv",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "assigned",
-                    stack_id: Some(
-                        00000000-0000-0000-0000-000000000001,
-                    ),
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1152,13 +1114,11 @@ fn colon_uncommitted_filename() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "pv",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "uncommitted",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1203,13 +1163,11 @@ fn uncommitted_path() -> anyhow::Result<()> {
         hunk_assignments: NonEmpty {
             head: (
                 "yz:q",
-                HunkAssignment {
+                WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "prefix/a",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1218,13 +1176,11 @@ fn uncommitted_path() -> anyhow::Result<()> {
             tail: [
                 (
                     "uo:q",
-                    HunkAssignment {
+                    WorktreeHunk {
                         id: None,
                         hunk_header: None,
                         path: "",
                         path_bytes: "prefix/b",
-                        stack_id: None,
-                        branch_ref_bytes: None,
                         line_nums_added: None,
                         line_nums_removed: None,
                         diff: None,
@@ -1383,13 +1339,11 @@ fn short_uncommitted_files_are_properly_reverse_hexed() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ky",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "k",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1412,13 +1366,11 @@ fn short_uncommitted_files_are_properly_reverse_hexed() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "klx",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "kl",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1441,13 +1393,11 @@ fn short_uncommitted_files_are_properly_reverse_hexed() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "klml",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "klm",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1498,15 +1448,13 @@ fn uncommitted_hunks_by_numeric_index() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:q#0-2",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,2", "+1,2"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1531,15 +1479,13 @@ fn uncommitted_hunks_by_numeric_index() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:q#0-2",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,2", "+1,2"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1564,15 +1510,13 @@ fn uncommitted_hunks_by_numeric_index() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:q#0-2",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,2", "+1,2"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1644,15 +1588,13 @@ fn uncommitted_hunks_by_id() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:3",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,6", "+1,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -1678,15 +1620,13 @@ fn uncommitted_hunks_by_id() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:f",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-23,6", "+24,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -1712,15 +1652,13 @@ fn uncommitted_hunks_by_id() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:1",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-60,6", "+62,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -1749,13 +1687,11 @@ fn uncommitted_hunks_by_id() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "wp:q",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: None,
                     path: "",
                     path_bytes: "hunk_without_diff.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: None,
@@ -1817,15 +1753,13 @@ fn uncommitted_hunks_by_id_increase_id_length_as_necessary() -> anyhow::Result<(
         UncommittedHunkOrFile {
             id: "ro:78",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,6", "+1,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -1853,15 +1787,13 @@ fn uncommitted_hunks_by_id_increase_id_length_as_necessary() -> anyhow::Result<(
         UncommittedHunkOrFile {
             id: "ro:79",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-23,6", "+24,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -1924,15 +1856,13 @@ fn uncommitted_hunks_overspecifying_id_prefix() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:7",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,6", "+1,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -2001,15 +1931,13 @@ fn uncommitted_hunks_overspecifying_id_prefix_with_collision_disambiguation() ->
         UncommittedHunkOrFile {
             id: "ro:3#0-2",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,6", "+1,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -2082,15 +2010,13 @@ fn underspecifying_hunk_ids() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:78#0-2",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,6", "+1,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -2106,15 +2032,13 @@ fn underspecifying_hunk_ids() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:79",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-23,6", "+24,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -2130,15 +2054,13 @@ fn underspecifying_hunk_ids() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:78#1-2",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-33,6", "+35,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -2167,15 +2089,13 @@ fn underspecifying_hunk_ids() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:78#0-2",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,6", "+1,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -2261,15 +2181,13 @@ fn uncommitted_hunks_by_id_collision_handling() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:3#0-2",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-1,6", "+1,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
@@ -2297,15 +2215,13 @@ fn uncommitted_hunks_by_id_collision_handling() -> anyhow::Result<()> {
         UncommittedHunkOrFile {
             id: "ro:3#1-2",
             hunk_assignments: NonEmpty {
-                head: HunkAssignment {
+                head: WorktreeHunk {
                     id: None,
                     hunk_header: Some(
                         HunkHeader("-23,6", "+24,7"),
                     ),
                     path: "",
                     path_bytes: "uncommitted1.txt",
-                    stack_id: None,
-                    branch_ref_bytes: None,
                     line_nums_added: None,
                     line_nums_removed: None,
                     diff: Some(
