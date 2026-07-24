@@ -6,7 +6,6 @@ use bstr::ByteSlice;
 
 pub mod absorb;
 pub mod actions;
-pub mod ai;
 pub mod branch;
 pub mod clean;
 pub mod commit;
@@ -30,7 +29,7 @@ pub mod reword2;
 pub mod rub;
 pub mod setup;
 pub mod show;
-pub mod squash2;
+pub mod squash;
 pub mod status;
 pub mod teardown;
 pub mod unapply;

@@ -222,9 +222,7 @@ impl Subcommands {
             #[cfg(feature = "legacy")]
             Subcommands::Amend { .. } => Amend,
             #[cfg(feature = "legacy")]
-            Subcommands::Squash { .. } => Squash,
-            #[cfg(feature = "legacy")]
-            Subcommands::_Squash2(..) => Squash2,
+            Subcommands::Squash(..) => Squash,
             #[cfg(feature = "legacy")]
             Subcommands::_Move2(..) => Move2,
             #[cfg(feature = "legacy")]
@@ -273,8 +271,7 @@ impl Subcommands {
                 push_prop(&mut props, "targetKind", "commit");
             }
             #[cfg(feature = "legacy")]
-            #[cfg(feature = "legacy")]
-            Subcommands::Squash { .. } => {
+            Subcommands::Squash(..) => {
                 push_prop(&mut props, "sourceKind", "commitOrBranch");
                 push_prop(&mut props, "targetKind", "commit");
             }

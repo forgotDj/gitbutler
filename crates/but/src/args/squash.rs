@@ -1,4 +1,4 @@
-//! Arguments for `squash2`.
+//! Arguments for `squash`.
 
 #![deny(missing_docs)]
 

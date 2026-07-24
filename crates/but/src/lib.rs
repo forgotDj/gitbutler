@@ -1046,7 +1046,7 @@ async fn match_subcommand(
             Ok(())
         }
         #[cfg(feature = "legacy")]
-        Subcommands::_Squash2(squash_args) => {
+        Subcommands::Squash(squash_args) => {
             use crate::utils::IntermediateChannel;
 
             let status_after = args.status_after;
@@ -1060,7 +1060,7 @@ async fn match_subcommand(
             )?;
             out.begin_status_after(status_after);
 
-            let outcome = command::legacy::squash2::squash(
+            let outcome = command::legacy::squash::squash(
                 &mut ctx,
                 IntermediateChannel::new(out),
                 squash_args,
@@ -1529,36 +1529,6 @@ async fn match_subcommand(
             let result = command::legacy::rub::handle_amend(&mut ctx, out, files, commit)
                 .context("Failed to amend.")
                 .emit_metrics(metrics_ctx);
-            run_status_after_if_ok(status_after, &result, &mut ctx, out);
-            result.show_root_cause_error_then_exit_without_destructors(output)
-        }
-        #[cfg(feature = "legacy")]
-        Subcommands::Squash {
-            commits,
-            drop_message,
-            message,
-            ai,
-        } => {
-            let status_after = args.status_after;
-            let mut ctx = setup::init_ctx(
-                &args,
-                InitCtxOptions {
-                    background_sync: BackgroundSync::Enabled { silent: false },
-                    ..Default::default()
-                },
-                out,
-            )?;
-            out.begin_status_after(status_after);
-            let result = command::legacy::rub::squash::handle(
-                &mut ctx,
-                out,
-                &commits,
-                drop_message,
-                message.as_deref(),
-                ai.clone(),
-            )
-            .context("Failed to squash commits.")
-            .emit_metrics(metrics_ctx);
             run_status_after_if_ok(status_after, &result, &mut ctx, out);
             result.show_root_cause_error_then_exit_without_destructors(output)
         }

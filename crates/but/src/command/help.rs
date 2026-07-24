@@ -160,8 +160,6 @@ fn print_grouped_with_truncation(
                 SubcommandDiscriminant::Amend => Group::EditingCommits,
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::Squash => Group::EditingCommits,
-                #[cfg(feature = "legacy")]
-                SubcommandDiscriminant::_Squash2 => Group::EditingCommits,
                 SubcommandDiscriminant::Move => Group::EditingCommits,
                 #[cfg(feature = "legacy")]
                 SubcommandDiscriminant::_Move2 => Group::EditingCommits,
@@ -388,12 +386,12 @@ Branching and Committing:
   pick         Cherry-pick a commit from an unapplied branch into an applied v…
 
 Editing Commits:
+  squash       Squash commits, branches, or changes
   rub          Combines two entities together to perform an operation like ame…
   absorb       Amends changes into the appropriate commits where they belong
   reword       Edit the commit message of the specified commit
   uncommit     Uncommit changes from a commit or file-in-commit to the unstage…
   amend        Amend one or more file changes into a specific commit and rebas…
-  squash       Squash commits together
   move         Move a commit or branch to a different location
 
 Operation History:

@@ -13,7 +13,6 @@ pub enum CommandName {
     Uncommit,
     Amend,
     Squash,
-    Squash2,
     Move,
     Move2,
     Diff,
