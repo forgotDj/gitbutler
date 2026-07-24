@@ -1,12 +1,13 @@
 import { branchDetailsQueryOptions, branchListQueryOptions } from "#ui/api/queries.ts";
 import { encodeBytes } from "#ui/api/bytes.ts";
-import { branchDetailsSelector, branchIsEmpty, unappliedStacks } from "#ui/branch.ts";
+import { branchDetailsSelector, branchIsEmpty, searchStacks, unappliedStacks } from "#ui/branch.ts";
 import { branchOperand, commitOperand, operandIdentityKey, type Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
 import { useAppSelector } from "#ui/store.ts";
 import { buildIndexByKey, type NavigationIndex } from "#ui/workspace/navigation-index.ts";
 import type { ListedStack } from "@gitbutler/but-sdk";
 import { useQueries, useQuery } from "@tanstack/react-query";
+import { useDeferredValue } from "react";
 
 export type BranchesOutline = {
 	stacks: Array<ListedStack>;
@@ -31,6 +32,11 @@ export const useBranchesOutline = (projectId: string): BranchesOutline => {
 	);
 	const showEmpty = useAppSelector((state) =>
 		projectSlice.selectors.selectShowEmptyBranches(state, projectId),
+	);
+	// Deferred so the fuzzy filter runs at low priority and typing stays
+	// responsive; the input itself is controlled by the non-deferred value.
+	const search = useDeferredValue(
+		useAppSelector((state) => projectSlice.selectors.selectBranchSearch(state, projectId)),
 	);
 	const unfoldedBranches = useAppSelector((state) =>
 		projectSlice.selectors.selectUnfoldedBranches(state, projectId),
@@ -61,7 +67,7 @@ export const useBranchesOutline = (projectId: string): BranchesOutline => {
 		...branchListQueryOptions(projectId),
 		enabled: active,
 		select: (listedStacks): BranchesOutline => {
-			const stacks = unappliedStacks(listedStacks, { showEmpty });
+			const stacks = searchStacks(unappliedStacks(listedStacks, { showEmpty }), search);
 			const items = stacks.flatMap((stack) =>
 				stack.branches.flatMap(
 					(branch): Array<Operand> => [

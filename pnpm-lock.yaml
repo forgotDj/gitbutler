@@ -455,6 +455,9 @@ importers:
       electron-updater:
         specifier: ^6.8.4
         version: 6.8.4
+      fuse.js:
+        specifier: ^7.1.0
+        version: 7.1.0
       idb-keyval:
         specifier: ^6.3.0
         version: 6.3.0

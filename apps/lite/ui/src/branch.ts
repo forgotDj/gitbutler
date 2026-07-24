@@ -1,5 +1,6 @@
 import type { BranchDetailsParams } from "#electron/ipc.ts";
 import type { ListedBranch, ListedStack } from "@gitbutler/but-sdk";
+import Fuse from "fuse.js";
 
 /**
  * Whether the branch holds no commits of its own — it was just created, or
@@ -29,6 +30,34 @@ export const unappliedStacks = (
 				: { ...stack, branches: stack.branches.filter((branch) => !branchIsEmpty(branch)) },
 		)
 		.filter((stack) => stack.branches.length > 0);
+
+/** One-character fuzzy queries match too much to be useful; treated as no filter. */
+const MIN_SEARCH_LENGTH = 2;
+
+/**
+ * The stacks with any branch fuzzily matching `query`, keeping matched stacks
+ * whole. A query shorter than {@link MIN_SEARCH_LENGTH} filters nothing. Runs on
+ * whatever the empty-branch filter left, so the two compose.
+ */
+export const searchStacks = (stacks: Array<ListedStack>, query: string): Array<ListedStack> => {
+	const trimmed = query.trim();
+	if (trimmed.length < MIN_SEARCH_LENGTH) return stacks;
+
+	const fuse = new Fuse(
+		stacks.flatMap((stack) => stack.branches),
+		{
+			keys: ["displayName", "lastAuthor.name", "lastAuthor.email", "review.title"],
+			// Desktop's branch-search calibration: forgiving of typos without
+			// returning half the list; ignoreLocation matches anywhere in the string.
+			threshold: 0.3,
+			ignoreLocation: true,
+		},
+	);
+	// fuse returns the branch objects we passed in, so match by identity.
+	const matched = new Set(fuse.search(trimmed).map((result) => result.item));
+
+	return stacks.filter((stack) => stack.branches.some((branch) => matched.has(branch)));
+};
 
 /**
  * Splits a full ref name into the branch name and remote as expected by the

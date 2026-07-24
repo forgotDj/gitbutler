@@ -72,6 +72,8 @@ export type ProjectState = {
 	outlineTab: OutlineTab;
 	/** Whether the branches tab also lists branches holding no commits. */
 	showEmptyBranches: boolean;
+	/** The fuzzy filter query for the branches tab; empty means no filter. */
+	branchSearch: string;
 	/** Branches in the branches tab with their commits unfolded, keyed by full ref name. */
 	unfoldedBranches: Record<string, true>;
 	workspace: WorkspaceState;
@@ -81,6 +83,7 @@ export const createInitialProjectState = (): ProjectState => ({
 	filesVisible: false,
 	outlineTab: "workspace",
 	showEmptyBranches: false,
+	branchSearch: "",
 	unfoldedBranches: {},
 	workspace: createInitialWorkspaceState(),
 });
@@ -382,6 +385,9 @@ export const projectReducers = {
 		if (state.unfoldedBranches[branchRef]) delete state.unfoldedBranches[branchRef];
 		else state.unfoldedBranches[branchRef] = true;
 	},
+	setBranchSearch: (state: ProjectState, { search }: { search: string }) => {
+		state.branchSearch = search;
+	},
 	toggleShowEmptyBranches: (state: ProjectState) => {
 		state.showEmptyBranches = !state.showEmptyBranches;
 	},
@@ -419,6 +425,7 @@ export const projectSelectors = {
 	selectFilesVisible: (state: ProjectState) => state.filesVisible,
 	selectOutlineTab: (state: ProjectState) => state.outlineTab,
 	selectShowEmptyBranches: (state: ProjectState) => state.showEmptyBranches,
+	selectBranchSearch: (state: ProjectState) => state.branchSearch,
 	selectUnfoldedBranches: (state: ProjectState) => state.unfoldedBranches,
 	selectBranchUnfolded: (state: ProjectState, branchRef: string) =>
 		state.unfoldedBranches[branchRef] === true,

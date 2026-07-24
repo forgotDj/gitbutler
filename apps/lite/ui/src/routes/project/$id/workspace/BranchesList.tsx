@@ -298,6 +298,9 @@ export const BranchesList: FC<
 	const showEmpty = useAppSelector((state) =>
 		projectSlice.selectors.selectShowEmptyBranches(state, projectId),
 	);
+	const search = useAppSelector((state) =>
+		projectSlice.selectors.selectBranchSearch(state, projectId),
+	);
 
 	const selection = useAppSelector((state) =>
 		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
@@ -357,12 +360,16 @@ export const BranchesList: FC<
 					<Icon name="filter" />
 				</button>
 
-				{/* Not implemented yet. */}
 				<FieldControlStyles
 					className={styles.filterInput}
 					aria-label="Filter branches"
 					placeholder="Filter branches…"
-					disabled
+					value={search}
+					onChange={(evt) =>
+						dispatch(
+							projectSlice.actions.setBranchSearch({ projectId, search: evt.currentTarget.value }),
+						)
+					}
 				/>
 			</div>
 
@@ -372,7 +379,9 @@ export const BranchesList: FC<
 				</h4>
 
 				{stacks.length === 0 && (
-					<p className={classes("text-13", styles.heading)}>No branches.</p>
+					<p className={classes("text-13", styles.heading)}>
+						{search.trim() !== "" ? "No matching branches." : "No branches."}
+					</p>
 				)}
 
 				<div
