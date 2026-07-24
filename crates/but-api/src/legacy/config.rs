@@ -1,7 +1,6 @@
 use anyhow::Result;
 use but_api_macros::but_api;
 use but_core::{RepositoryExt, settings::git::ui::GitConfigSettings};
-use but_ctx::ThreadSafeContext;
 use but_serde::bstring_lossy_opt;
 use gix::bstr::BString;
 use serde::Serialize;
@@ -16,24 +15,8 @@ pub fn get_gb_config(ctx: &but_ctx::Context) -> Result<GitConfigSettings> {
 
 #[but_api]
 #[instrument(err(Debug))]
-pub async fn set_gb_config(mut ctx: ThreadSafeContext, config: GitConfigSettings) -> Result<()> {
-    let sync_reviews = config.gitbutler_review_stacking_description.is_some()
-        || config.gitbutler_github_stacking_mode.is_some();
-    {
-        let ctx = ctx.clone().into_thread_local();
-        ctx.repo.get()?.set_git_settings(&config.into())?;
-    }
-    if sync_reviews
-        && let but_forge::ReviewSyncOutcome::Failed { message } =
-            crate::legacy::forge::sync_all_review_stacks({
-                ctx.repo = None;
-                ctx
-            })
-            .await
-    {
-        tracing::warn!(%message, "Could not synchronize reviews after updating stack settings");
-    }
-    Ok(())
+pub fn set_gb_config(ctx: &but_ctx::Context, config: GitConfigSettings) -> Result<()> {
+    ctx.repo.get()?.set_git_settings(&config.into())
 }
 
 #[but_api]

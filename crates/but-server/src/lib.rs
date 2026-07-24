@@ -801,7 +801,7 @@ pub async fn run(config: Config) -> anyhow::Result<()> {
         )
         .route(
             "/set_gb_config",
-            but_post_async(legacy::config::set_gb_config_cmd),
+            but_post(legacy::config::set_gb_config_cmd),
         )
         .route(
             "/store_author_globally_if_unset",

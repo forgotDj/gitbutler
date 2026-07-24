@@ -28,10 +28,7 @@ The repository must be enrolled in GitHub's stacked pull requests preview.
         .success()
         .stdout_eq(str![[r#"
 {
-  "mode": "disabled",
-  "reviewSync": {
-    "status": "notNeeded"
-  }
+  "mode": "disabled"
 }
 
 "#]]);

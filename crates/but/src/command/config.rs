@@ -107,7 +107,7 @@ pub async fn exec(
         #[cfg(feature = "legacy")]
         Some(Subcommands::Forge {
             cmd: Some(ForgeSubcommand::GithubStacks { status }),
-        }) => github_stacks_config(ctx, out, status).await,
+        }) => github_stacks_config(ctx, out, status),
         Some(Subcommands::Forge { cmd }) => forge_config(out, cmd).await,
         Some(Subcommands::Metrics { status }) => metrics_config(out, status).await,
         Some(Subcommands::Feature { flag, status }) => feature_config(out, flag, status),
@@ -684,7 +684,7 @@ pub(crate) async fn forge_config(
 }
 
 #[cfg(feature = "legacy")]
-pub(crate) async fn github_stacks_config(
+pub(crate) fn github_stacks_config(
     ctx: &mut Context,
     out: &mut OutputChannel,
     status: Option<GitHubStacksStatus>,
@@ -701,8 +701,6 @@ pub(crate) async fn github_stacks_config(
                     gitbutler_github_stacking_mode: Some(mode),
                     ..Default::default()
                 })?;
-                drop(repo);
-                ctx.repo.take();
                 mode
             }
             None => repo
@@ -710,11 +708,6 @@ pub(crate) async fn github_stacks_config(
                 .gitbutler_github_stacking_mode
                 .unwrap_or(GitHubStackingMode::Disabled),
         }
-    };
-    let review_sync = if status.is_some() {
-        Some(but_api::legacy::forge::sync_all_review_stacks(ctx.to_sync()).await)
-    } else {
-        None
     };
     let enabled = configured == GitHubStackingMode::Native;
     if let Some(out) = out.for_human() {
@@ -743,19 +736,11 @@ pub(crate) async fn github_stacks_config(
                 )
             )?;
         }
-        if let Some(but_forge::ReviewSyncOutcome::Failed { message }) = &review_sync {
-            writeln!(
-                out,
-                "{} Setting updated, but stack synchronization failed: {message}",
-                t.sym().warning
-            )?;
-        }
     } else if let Some(out) = out.for_shell() {
         writeln!(out, "{}", if enabled { "enabled" } else { "disabled" })?;
     } else if let Some(out) = out.for_json() {
         out.write_value(serde_json::json!({
             "mode": if enabled { "native" } else { "disabled" },
-            "reviewSync": review_sync,
         }))?;
     }
     Ok(())

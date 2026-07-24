@@ -1363,46 +1363,6 @@ pub async fn sync_review_stack_after_review_creation(
     sync_review_stack_for_branch(ctx, branch).await
 }
 
-/// Synchronize every reviewed workspace stack.
-///
-/// This is used by explicit configuration changes because they are not coupled to a push or review
-/// creation event, but still need to migrate existing stack metadata immediately.
-pub async fn sync_all_review_stacks(ctx: ThreadSafeContext) -> but_forge::ReviewSyncOutcome {
-    let updates = {
-        let ctx = ctx.clone().into_thread_local();
-        review_updates_for_all_stacks(&ctx)
-    };
-    sync_review_update_groups(ctx, updates).await
-}
-
-fn review_updates_for_all_stacks(ctx: &Context) -> Result<Vec<Vec<but_forge::ForgeReviewUpdate>>> {
-    let info = crate::legacy::workspace::head_info(ctx)?;
-    if !info
-        .stacks
-        .iter()
-        .flat_map(|stack| &stack.segments)
-        .any(|segment| review_number(segment).is_some())
-    {
-        return Ok(Vec::new());
-    }
-    let base_branch = {
-        let guard = ctx.shared_worktree_access();
-        gitbutler_branch_actions::base::get_base_branch_data(ctx, guard.read_permission())?
-            .short_name
-    };
-    Ok(info
-        .stacks
-        .iter()
-        .map(|stack| {
-            review_updates_for_stack(stack, &base_branch)
-                .into_iter()
-                .map(Into::into)
-                .collect::<Vec<_>>()
-        })
-        .filter(|updates| !updates.is_empty())
-        .collect())
-}
-
 fn review_updates_after_push(
     ctx: &Context,
     branch: &gix::refs::FullNameRef,
