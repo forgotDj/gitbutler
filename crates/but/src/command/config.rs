@@ -6,8 +6,10 @@
 use std::fmt::{Display, Write};
 
 use anyhow::{Context as _, Result};
+#[cfg(feature = "legacy")]
+use but_core::{GitConfigSettings, GitHubStackingMode};
 use but_core::{
-    GitConfigSettings, GitHubStackingMode, RepositoryExt,
+    RepositoryExt,
     git_config::{remove_config_value, set_config_value},
 };
 use but_ctx::Context;
@@ -28,10 +30,12 @@ use gix::bstr::ByteSlice as _;
 use serde::Serialize;
 
 use super::git_config::edit_git_config;
+#[cfg(feature = "legacy")]
+use crate::args::config::GitHubStacksStatus;
 use crate::{
     args::config::{
-        AiKeyOption, AiSubcommand, FeatureFlag, FeatureStatus, ForgeSubcommand, GitHubStacksStatus,
-        MetricsStatus, Subcommands, UiSubcommand, UserSubcommand,
+        AiKeyOption, AiSubcommand, FeatureFlag, FeatureStatus, ForgeSubcommand, MetricsStatus,
+        Subcommands, UiSubcommand, UserSubcommand,
     },
     theme::{self, Paint},
     tui,
@@ -100,6 +104,7 @@ pub async fn exec(
             push_remote,
         }) => target_config(ctx, out, branch, push_remote).await,
         Some(Subcommands::PushRemote { remote }) => push_remote_config(ctx, out, remote),
+        #[cfg(feature = "legacy")]
         Some(Subcommands::Forge {
             cmd: Some(ForgeSubcommand::GithubStacks { status }),
         }) => github_stacks_config(ctx, out, status).await,
@@ -670,6 +675,7 @@ pub(crate) async fn forge_config(
         Some(ForgeSubcommand::Auth) => forge_auth(out).await,
         Some(ForgeSubcommand::ListUsers) => forge_show_overview(out).await,
         Some(ForgeSubcommand::Forget { username }) => forge_forget(username, out).await,
+        #[cfg(feature = "legacy")]
         Some(ForgeSubcommand::GithubStacks { .. }) => {
             anyhow::bail!("GitHub stacks configuration requires a repository")
         }
@@ -677,6 +683,7 @@ pub(crate) async fn forge_config(
     }
 }
 
+#[cfg(feature = "legacy")]
 pub(crate) async fn github_stacks_config(
     ctx: &mut Context,
     out: &mut OutputChannel,

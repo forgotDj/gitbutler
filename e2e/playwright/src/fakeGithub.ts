@@ -30,6 +30,7 @@ type ResolvedFakeGitHubOptions = {
 	reviewNumber: number;
 	title: string;
 	isFork: boolean;
+	nativeStacks: boolean;
 };
 
 export type FakeGitHubServer = {
@@ -99,6 +100,7 @@ export async function startFakeGitHubServer({
 		reviewNumber,
 		title,
 		isFork,
+		nativeStacks,
 	};
 	const reviews = new Map<number, FakeGitHubReview>([[reviewNumber, pullRequestPayload(options)]]);
 	let nextReviewNumber = reviewNumber;
@@ -282,6 +284,11 @@ async function handleRequest(
 	const url = new URL(request.url ?? "/", "http://127.0.0.1");
 	const pullPath = `/api/v3/repos/${options.owner}/${options.repo}/pulls`;
 	const stacksPath = `/api/v3/repos/${options.owner}/${options.repo}/stacks`;
+	const stackMutation = nativeStackMutationFromPath(url.pathname, stacksPath);
+
+	if (!options.nativeStacks && (url.pathname === stacksPath || stackMutation !== undefined)) {
+		return json(response, { message: "Not Found" }, 404);
+	}
 
 	if (request.method === "GET" && url.pathname === "/api/v3/user") {
 		return json(response, {
@@ -333,7 +340,6 @@ async function handleRequest(
 		return json(response, state.createStack(input.pull_requests), 201);
 	}
 
-	const stackMutation = nativeStackMutationFromPath(url.pathname, stacksPath);
 	if (request.method === "POST" && stackMutation?.operation === "add") {
 		const input = JSON.parse(await readBody(request)) as { pull_requests: number[] };
 		const stack = state.addToStack(stackMutation.stackNumber, input.pull_requests);

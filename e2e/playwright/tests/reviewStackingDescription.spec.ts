@@ -26,6 +26,34 @@ type PushOutcome = {
 		| { status: "failed"; message: string };
 };
 
+test("GitHub native stack endpoints are unavailable when unsupported", async ({
+	gitbutler,
+	fakeGithub,
+}) => {
+	const server = await fakeGithub({
+		headRepoPath: gitbutler.pathInWorkdir("remote-project"),
+		nativeStacks: false,
+	});
+	const stacksUrl = `${server.apiBaseUrl}/repos/acme/widgets/stacks`;
+	const requests = [
+		fetch(stacksUrl),
+		fetch(stacksUrl, {
+			method: "POST",
+			body: JSON.stringify({ pull_requests: [42] }),
+		}),
+		fetch(`${stacksUrl}/1/add`, {
+			method: "POST",
+			body: JSON.stringify({ pull_requests: [42] }),
+		}),
+		fetch(`${stacksUrl}/1/unstack`, { method: "POST" }),
+	];
+
+	for (const response of await Promise.all(requests)) {
+		expect(response.status).toBe(404);
+	}
+	expect(server.getNativeStackMutationHistory()).toEqual([]);
+});
+
 test("review stack descriptions follow the per-project policy", async ({
 	page,
 	gitbutler,
