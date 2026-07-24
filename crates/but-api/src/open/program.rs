@@ -574,9 +574,9 @@ fn open_in_macos_application(
                 cmd.stdout(Stdio::null()).stderr(Stdio::null());
                 spawn_and_reap(cmd, &app.bundle_identifier, &path.to_string_lossy())
             }
-            Err(_) => open_macos_application_via_open(app, &[path]),
+            Err(_) => open_macos_application_via_open(app, &NonEmpty::new(path)),
         },
-        OpenSpec::File(path) => open_macos_application_via_open(app, &[path]),
+        OpenSpec::File(path) => open_macos_application_via_open(app, &NonEmpty::new(path)),
         OpenSpec::Files(paths) => open_macos_application_via_open(app, &paths),
     }
 }
@@ -584,7 +584,7 @@ fn open_in_macos_application(
 #[cfg(target_os = "macos")]
 fn open_macos_application_via_open(
     app: &MacosApplication,
-    paths: &[PathBuf],
+    paths: &NonEmpty<PathBuf>,
 ) -> anyhow::Result<()> {
     let mut cmd = Command::new("/usr/bin/open");
     cmd.arg("-b").arg(&app.bundle_identifier);
