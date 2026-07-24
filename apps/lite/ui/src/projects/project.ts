@@ -1,3 +1,4 @@
+import type { BranchFilters } from "#ui/branch.ts";
 import {
 	branchFileParent,
 	branchOperand,
@@ -70,12 +71,8 @@ export type OutlineTab = "workspace" | "branches";
 export type ProjectState = {
 	filesVisible: boolean;
 	outlineTab: OutlineTab;
-	/** Whether the branches tab also lists branches holding no commits. */
-	showEmptyBranches: boolean;
-	/** Whether the branches tab drops branches that exist only on a remote. */
-	onlyLocal: boolean;
-	/** Whether the branches tab lists only multi-branch stacks. */
-	onlyStacks: boolean;
+	/** Which branches the branches tab lists. */
+	branchFilters: BranchFilters;
 	/** The fuzzy filter query for the branches tab; empty means no filter. */
 	branchSearch: string;
 	/** Branches in the branches tab with their commits unfolded, keyed by full ref name. */
@@ -86,9 +83,7 @@ export type ProjectState = {
 export const createInitialProjectState = (): ProjectState => ({
 	filesVisible: false,
 	outlineTab: "workspace",
-	showEmptyBranches: false,
-	onlyLocal: false,
-	onlyStacks: false,
+	branchFilters: { showEmpty: false, onlyLocal: false, onlyStacks: false },
 	branchSearch: "",
 	unfoldedBranches: {},
 	workspace: createInitialWorkspaceState(),
@@ -394,14 +389,8 @@ export const projectReducers = {
 	setBranchSearch: (state: ProjectState, { search }: { search: string }) => {
 		state.branchSearch = search;
 	},
-	toggleShowEmptyBranches: (state: ProjectState) => {
-		state.showEmptyBranches = !state.showEmptyBranches;
-	},
-	toggleOnlyLocal: (state: ProjectState) => {
-		state.onlyLocal = !state.onlyLocal;
-	},
-	toggleOnlyStacks: (state: ProjectState) => {
-		state.onlyStacks = !state.onlyStacks;
+	toggleBranchFilter: (state: ProjectState, { filter }: { filter: keyof BranchFilters }) => {
+		state.branchFilters[filter] = !state.branchFilters[filter];
 	},
 };
 
@@ -436,9 +425,7 @@ const selectHasCheckedOperands = createSelector(
 export const projectSelectors = {
 	selectFilesVisible: (state: ProjectState) => state.filesVisible,
 	selectOutlineTab: (state: ProjectState) => state.outlineTab,
-	selectShowEmptyBranches: (state: ProjectState) => state.showEmptyBranches,
-	selectOnlyLocal: (state: ProjectState) => state.onlyLocal,
-	selectOnlyStacks: (state: ProjectState) => state.onlyStacks,
+	selectBranchFilters: (state: ProjectState) => state.branchFilters,
 	selectBranchSearch: (state: ProjectState) => state.branchSearch,
 	selectUnfoldedBranches: (state: ProjectState) => state.unfoldedBranches,
 	selectBranchUnfolded: (state: ProjectState, branchRef: string) =>

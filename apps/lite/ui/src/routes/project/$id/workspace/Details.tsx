@@ -24,7 +24,7 @@ import {
 	treeChangeDiffsQueryOptions,
 } from "#ui/api/queries.ts";
 import { decodeBytes } from "#ui/api/bytes.ts";
-import { branchDetailsSelector } from "#ui/branch.ts";
+import { branchDetailsParams } from "#ui/branch.ts";
 import { commitBody, commitTitle, shortCommitId } from "#ui/commit.ts";
 import {
 	branchFileParent,
@@ -700,7 +700,7 @@ const Title: FC<{
 				<SuspenseQuery
 					{...branchDetailsQueryOptions({
 						projectId,
-						...branchDetailsSelector(decodeBytes(branchRef)),
+						...branchDetailsParams(decodeBytes(branchRef)),
 					})}
 				>
 					{({ data: branchDetails }) => (

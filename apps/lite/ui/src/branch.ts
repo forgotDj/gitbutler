@@ -13,7 +13,19 @@ import Fuse from "fuse.js";
  */
 export const branchIsEmpty = (branch: ListedBranch): boolean => branch.commitCount === 0;
 
-type BranchFilters = {
+/**
+ * The commits the branch contributes itself, taken from a branch-details commit
+ * list.
+ *
+ * Branch details walk all the way down to the target, so for a stacked branch
+ * the list also holds the commits of the branches below it. The list is
+ * tip-first and `commitCount` is this branch's own contribution, so the head of
+ * the list is exactly that. An unknown count keeps everything.
+ */
+export const branchOwnCommits = <T>(branch: ListedBranch, commits: Array<T>): Array<T> =>
+	commits.slice(0, branch.commitCount ?? undefined);
+
+export type BranchFilters = {
 	/** Include branches holding no commits of their own. */
 	showEmpty: boolean;
 	/** Drop branches that exist only on a remote. */
@@ -75,7 +87,7 @@ export const searchStacks = (stacks: Array<ListedStack>, query: string): Array<L
  * branch details API.
  */
 // https://linear.app/gitbutler/issue/GB-1226/unify-branch-identifiers
-export const branchDetailsSelector = (
+export const branchDetailsParams = (
 	refName: string,
 ): Pick<BranchDetailsParams, "branchName" | "remote"> => {
 	const remoteMatch = /^refs\/remotes\/([^/]+)\/(.+)$/.exec(refName);

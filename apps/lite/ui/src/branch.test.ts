@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { branchDetailsSelector, branchIsEmpty, searchStacks, unappliedStacks } from "./branch.ts";
+import {
+	branchDetailsParams,
+	branchIsEmpty,
+	branchOwnCommits,
+	searchStacks,
+	unappliedStacks,
+} from "./branch.ts";
 import type { ListedBranch, ListedStack } from "@gitbutler/but-sdk";
 
 const branch = (overrides: Partial<ListedBranch> & { displayName: string }): ListedBranch => ({
@@ -40,6 +46,28 @@ describe("branchIsEmpty", () => {
 
 	it("treats an unknown count as not empty, since it may hold commits", () => {
 		expect(branchIsEmpty(branch({ displayName: "a", commitCount: null }))).toBe(false);
+	});
+});
+
+describe("branchOwnCommits", () => {
+	// Branch details are tip-first and run past this branch into the ones below.
+	const commits = ["tip", "middle", "below-1", "below-2"];
+
+	it("takes the branch's own commits off the tip", () => {
+		expect(branchOwnCommits(branch({ displayName: "a", commitCount: 2 }), commits)).toEqual([
+			"tip",
+			"middle",
+		]);
+	});
+
+	it("keeps everything when the count is unknown", () => {
+		expect(branchOwnCommits(branch({ displayName: "a", commitCount: null }), commits)).toEqual(
+			commits,
+		);
+	});
+
+	it("takes nothing from an empty branch", () => {
+		expect(branchOwnCommits(branch({ displayName: "a", commitCount: 0 }), commits)).toEqual([]);
 	});
 });
 
@@ -159,23 +187,23 @@ describe("searchStacks", () => {
 	});
 });
 
-describe("branchDetailsSelector", () => {
+describe("branchDetailsParams", () => {
 	it("strips the local ref prefix and reports no remote", () => {
-		expect(branchDetailsSelector("refs/heads/feature/login")).toEqual({
+		expect(branchDetailsParams("refs/heads/feature/login")).toEqual({
 			branchName: "feature/login",
 			remote: null,
 		});
 	});
 
 	it("splits a remote-tracking ref into remote and branch name", () => {
-		expect(branchDetailsSelector("refs/remotes/origin/feature/login")).toEqual({
+		expect(branchDetailsParams("refs/remotes/origin/feature/login")).toEqual({
 			branchName: "feature/login",
 			remote: "origin",
 		});
 	});
 
 	it("leaves a bare name untouched", () => {
-		expect(branchDetailsSelector("feature/login")).toEqual({
+		expect(branchDetailsParams("feature/login")).toEqual({
 			branchName: "feature/login",
 			remote: null,
 		});

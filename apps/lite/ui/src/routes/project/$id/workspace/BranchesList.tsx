@@ -4,7 +4,12 @@ import { useApply } from "#ui/api/mutations.ts";
 import { branchDetailsQueryOptions } from "#ui/api/queries.ts";
 import { encodeBytes } from "#ui/api/bytes.ts";
 import { assert } from "#ui/assert.ts";
-import { branchDetailsSelector, branchIsEmpty } from "#ui/branch.ts";
+import {
+	branchDetailsParams,
+	branchIsEmpty,
+	branchOwnCommits,
+	type BranchFilters,
+} from "#ui/branch.ts";
 import { commitIsDiverged, commitTitle } from "#ui/commit.ts";
 import { getButtonClassName } from "#ui/components/Button.tsx";
 import { classes } from "#ui/components/classes.ts";
@@ -44,6 +49,13 @@ import { Row, RowLabel, RowLabelContainer, RowLabelFooter, RowToolbar } from "./
 import { getRowButtonClassName, treeItemId } from "./Row-utils.ts";
 import type { BranchesOutline } from "./useBranchesOutline.ts";
 import styles from "./BranchesList.module.css";
+
+/** The filter menu, in the order it is shown. */
+const filterMenuLabels: Array<[keyof BranchFilters, string]> = [
+	["showEmpty", "Include Empty Branches"],
+	["onlyLocal", "Show Only Local Branches"],
+	["onlyStacks", "Show Only Stacks"],
+];
 
 /**
  * The graph has no remote-only state, so a branch that exists only on a remote
@@ -106,15 +118,12 @@ const CommitItem: FC<{ projectId: string; commit: Commit }> = ({ projectId, comm
 
 const BranchCommits: FC<{ projectId: string; branch: ListedBranch }> = ({ projectId, branch }) => {
 	const { data: branchDetails } = useQuery(
-		branchDetailsQueryOptions({ projectId, ...branchDetailsSelector(branch.refName.full) }),
+		branchDetailsQueryOptions({ projectId, ...branchDetailsParams(branch.refName.full) }),
 	);
 
 	if (!branchDetails) return <InertRow branch={branch} label="Loading…" />;
 
-	// branchDetails returns commits down to the target; show only this branch's
-	// own contribution (`commitCount`, tip-first) so a stack's lower commits
-	// don't also appear under the branch above them.
-	const commits = branchDetails.commits.slice(0, branch.commitCount ?? undefined);
+	const commits = branchOwnCommits(branch, branchDetails.commits);
 	if (commits.length === 0) return <InertRow branch={branch} label="No commits." />;
 
 	return commits.map((commit) => (
@@ -295,14 +304,8 @@ export const BranchesList: FC<
 	// Derived once in WorkspacePage and passed down, so the rendered list and the
 	// navigation index that resolves selection are the same object.
 	const { stacks, navigationIndex } = outline;
-	const showEmpty = useAppSelector((state) =>
-		projectSlice.selectors.selectShowEmptyBranches(state, projectId),
-	);
-	const onlyLocal = useAppSelector((state) =>
-		projectSlice.selectors.selectOnlyLocal(state, projectId),
-	);
-	const onlyStacks = useAppSelector((state) =>
-		projectSlice.selectors.selectOnlyStacks(state, projectId),
+	const filters = useAppSelector((state) =>
+		projectSlice.selectors.selectBranchFilters(state, projectId),
 	);
 	const search = useAppSelector((state) =>
 		projectSlice.selectors.selectBranchSearch(state, projectId),
@@ -343,29 +346,18 @@ export const BranchesList: FC<
 	});
 
 	const showFilterMenu = (trigger: HTMLElement) => {
-		void showNativeMenuFromTrigger(trigger, [
-			nativeMenuItem({
-				label: "Include Empty Branches",
-				checked: showEmpty,
-				onSelect: () => {
-					dispatch(projectSlice.actions.toggleShowEmptyBranches({ projectId }));
-				},
-			}),
-			nativeMenuItem({
-				label: "Show Only Local Branches",
-				checked: onlyLocal,
-				onSelect: () => {
-					dispatch(projectSlice.actions.toggleOnlyLocal({ projectId }));
-				},
-			}),
-			nativeMenuItem({
-				label: "Show Only Stacks",
-				checked: onlyStacks,
-				onSelect: () => {
-					dispatch(projectSlice.actions.toggleOnlyStacks({ projectId }));
-				},
-			}),
-		]);
+		void showNativeMenuFromTrigger(
+			trigger,
+			filterMenuLabels.map(([filter, label]) =>
+				nativeMenuItem({
+					label,
+					checked: filters[filter],
+					onSelect: () => {
+						dispatch(projectSlice.actions.toggleBranchFilter({ projectId, filter }));
+					},
+				}),
+			),
+		);
 	};
 
 	return (

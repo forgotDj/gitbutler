@@ -1,6 +1,12 @@
 import { branchDetailsQueryOptions, branchListQueryOptions } from "#ui/api/queries.ts";
 import { encodeBytes } from "#ui/api/bytes.ts";
-import { branchDetailsSelector, branchIsEmpty, searchStacks, unappliedStacks } from "#ui/branch.ts";
+import {
+	branchDetailsParams,
+	branchIsEmpty,
+	branchOwnCommits,
+	searchStacks,
+	unappliedStacks,
+} from "#ui/branch.ts";
 import { branchOperand, commitOperand, operandIdentityKey, type Operand } from "#ui/operands.ts";
 import { projectSlice } from "#ui/projects/state.ts";
 import { useAppSelector } from "#ui/store.ts";
@@ -30,14 +36,8 @@ export const useBranchesOutline = (projectId: string): BranchesOutline => {
 	const active = useAppSelector(
 		(state) => projectSlice.selectors.selectOutlineTab(state, projectId) === "branches",
 	);
-	const showEmpty = useAppSelector((state) =>
-		projectSlice.selectors.selectShowEmptyBranches(state, projectId),
-	);
-	const onlyLocal = useAppSelector((state) =>
-		projectSlice.selectors.selectOnlyLocal(state, projectId),
-	);
-	const onlyStacks = useAppSelector((state) =>
-		projectSlice.selectors.selectOnlyStacks(state, projectId),
+	const filters = useAppSelector((state) =>
+		projectSlice.selectors.selectBranchFilters(state, projectId),
 	);
 	// Deferred so the fuzzy filter runs at low priority and typing stays
 	// responsive; the input itself is controlled by the non-deferred value.
@@ -51,7 +51,7 @@ export const useBranchesOutline = (projectId: string): BranchesOutline => {
 	const unfoldedBranchRefs = active ? Object.keys(unfoldedBranches) : [];
 	const commitIdsByRef = useQueries({
 		queries: unfoldedBranchRefs.map((refName) =>
-			branchDetailsQueryOptions({ projectId, ...branchDetailsSelector(refName) }),
+			branchDetailsQueryOptions({ projectId, ...branchDetailsParams(refName) }),
 		),
 		combine: (results) =>
 			new Map<string, Array<string>>(
@@ -73,23 +73,18 @@ export const useBranchesOutline = (projectId: string): BranchesOutline => {
 		...branchListQueryOptions(projectId),
 		enabled: active,
 		select: (listedStacks): BranchesOutline => {
-			const stacks = searchStacks(
-				unappliedStacks(listedStacks, { showEmpty, onlyLocal, onlyStacks }),
-				search,
-			);
+			const stacks = searchStacks(unappliedStacks(listedStacks, filters), search);
 			const items = stacks.flatMap((stack) =>
 				stack.branches.flatMap(
 					(branch): Array<Operand> => [
 						branchOperand({ branchRef: encodeBytes(branch.refName.full) }),
-						// Matches the fold affordance in BranchesList: a branch with no
-						// commits of its own cannot be unfolded. branchDetails returns
-						// commits down to the target, so take only this branch's own
-						// contribution (`commitCount`, tip-first) to avoid duplicating a
-						// lower branch's commits under both rows.
+						// Matches what BranchesList renders: a branch with no commits of
+						// its own cannot be unfolded, and an unfolded one shows only the
+						// commits it contributes itself.
 						...(unfoldedBranches[branch.refName.full] && !branchIsEmpty(branch)
-							? (commitIdsByRef.get(branch.refName.full) ?? [])
-									.slice(0, branch.commitCount ?? undefined)
-									.map((commitId) => commitOperand({ commitId }))
+							? branchOwnCommits(branch, commitIdsByRef.get(branch.refName.full) ?? []).map(
+									(commitId) => commitOperand({ commitId }),
+								)
 							: []),
 					],
 				),
