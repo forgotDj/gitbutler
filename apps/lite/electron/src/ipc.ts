@@ -27,6 +27,7 @@ import type {
 	InsertSide,
 	IntegrateBranchResult,
 	InteractiveIntegration,
+	ListedStack,
 	MessageCombinationStrategy,
 	PushResult,
 	ProjectForFrontend,
@@ -433,6 +434,7 @@ export interface LiteElectronApi {
 	branchCreate: (params: BranchCreateParams) => Promise<BranchCreateResult>;
 	branchDetails: (params: BranchDetailsParams) => Promise<BranchDetails>;
 	branchDiff: (params: BranchDiffParams) => Promise<TreeChanges>;
+	branchList: (projectId: string) => Promise<Array<ListedStack>>;
 	changesInWorktree: (projectId: string) => Promise<WorktreeChanges>;
 	clipboardWriteText: (text: string) => Promise<void>;
 	commitAmend: (params: CommitAmendParams) => Promise<CommitCreateResult>;
@@ -525,6 +527,7 @@ export const liteIpcChannels = {
 	branchCreate: "workspace:branch-create",
 	branchDetails: "workspace:branch-details",
 	branchDiff: "workspace:branch-diff",
+	branchList: "workspace:branch-list",
 	changesInWorktree: "workspace:changes-in-worktree",
 	clipboardWriteText: "lite:clipboard-write-text",
 	commitAmend: "workspace:commit-amend",

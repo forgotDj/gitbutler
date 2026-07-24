@@ -13,12 +13,19 @@ export const handleWatcher = (
 				queryKey: ["workspaceFetchStatus" satisfies QueryKey, projectId],
 			});
 			void client.invalidateQueries({ queryKey: ["reviews" satisfies QueryKey, projectId] });
+			void client.invalidateQueries({ queryKey: ["branchList" satisfies QueryKey, projectId] });
+			// A fetch can advance a remote branch whose commits/diff are already
+			// cached (unfolded or selected in the Branches tab); this case does not
+			// fall through to the gitActivity invalidations below.
+			void client.invalidateQueries({ queryKey: ["branchDetails" satisfies QueryKey, projectId] });
+			void client.invalidateQueries({ queryKey: ["branchDiff" satisfies QueryKey, projectId] });
 			break;
 		case "gitActivity":
 		case "workspaceActivity": {
 			void client.invalidateQueries({ queryKey: ["absorptionPlan" satisfies QueryKey, projectId] });
 			void client.invalidateQueries({ queryKey: ["branches" satisfies QueryKey, projectId] });
 			void client.invalidateQueries({ queryKey: ["branchDetails" satisfies QueryKey, projectId] });
+			void client.invalidateQueries({ queryKey: ["branchList" satisfies QueryKey, projectId] });
 			void client.invalidateQueries({ queryKey: ["branchDiff" satisfies QueryKey, projectId] });
 			void client.invalidateQueries({
 				queryKey: ["changesInWorktree" satisfies QueryKey, projectId],

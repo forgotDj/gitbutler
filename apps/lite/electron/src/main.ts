@@ -69,6 +69,7 @@ import {
 	branchCreate,
 	branchDetails,
 	branchDiff,
+	branchList,
 	changesInWorktree,
 	commitAmend,
 	commitCreate,
@@ -405,6 +406,9 @@ const registerIpcHandlers = (): void => {
 	senderValidatingHandle(
 		liteIpcChannels.branchDiff,
 		(_e, { projectId, branch }: BranchDiffParams) => branchDiff(projectId, branch),
+	);
+	senderValidatingHandle(liteIpcChannels.branchList, (_e, projectId: string) =>
+		branchList(projectId),
 	);
 	senderValidatingHandle(liteIpcChannels.changesInWorktree, (_e, projectId: string) =>
 		changesInWorktree(projectId, true),

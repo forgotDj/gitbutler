@@ -28,6 +28,7 @@ import type {
 	MoveBranchResult,
 	MoveChangesResult,
 	InitialBranchIntegration,
+	ListedStack,
 	IntegrateBranchResult,
 	UnifiedPatch,
 	WatcherEvent,
@@ -87,6 +88,8 @@ const api: LiteElectronApi = {
 		ipcRenderer.invoke("workspace:branch-details", params) as Promise<BranchDetails>,
 	branchDiff: (params) =>
 		ipcRenderer.invoke("workspace:branch-diff", params) as Promise<TreeChanges>,
+	branchList: (projectId) =>
+		ipcRenderer.invoke("workspace:branch-list", projectId) as Promise<Array<ListedStack>>,
 	changesInWorktree: (projectId) =>
 		ipcRenderer.invoke("workspace:changes-in-worktree", projectId) as Promise<WorktreeChanges>,
 	clipboardWriteText: (text) =>
