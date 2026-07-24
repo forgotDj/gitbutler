@@ -73,7 +73,7 @@ const branchGraphStatus = (branch: ListedBranch): GraphSegmentStatus =>
  */
 const useIsSelected = (projectId: string, operand: Operand): boolean =>
 	useAppSelector((state) => {
-		const stored = projectSlice.selectors.selectStoredSelectionOutline(state, projectId);
+		const stored = projectSlice.selectors.selectPrimaryOutlineSelection(state, projectId);
 		return stored !== null && operandEquals(stored, operand);
 	});
 
@@ -315,7 +315,7 @@ export const BranchesList: FC<
 		projectSlice.selectors.selectSelectionOutline(state, projectId, navigationIndex),
 	);
 	const storedSelection = useAppSelector((state) =>
-		projectSlice.selectors.selectStoredSelectionOutline(state, projectId),
+		projectSlice.selectors.selectPrimaryOutlineSelection(state, projectId),
 	);
 
 	// Rows highlight by comparing against the stored selection (see

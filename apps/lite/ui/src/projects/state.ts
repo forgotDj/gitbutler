@@ -81,7 +81,6 @@ export const projectSlice = createSlice({
 		selectIsSelectedOutline: fromProject(projectSelectors.selectIsSelectedOutline),
 		selectPrimaryOutlineSelection: fromProject(projectSelectors.selectPrimaryOutlineSelection),
 		selectSelectionOutline: fromProject(projectSelectors.selectSelectionOutline),
-		selectStoredSelectionOutline: fromProject(projectSelectors.selectStoredSelectionOutline),
 		selectSelectionFiles: fromProject(projectSelectors.selectSelectionFiles),
 		selectSelectionDiff: fromProject(projectSelectors.selectSelectionDiff),
 		selectOutlineModeState: fromProject(projectSelectors.selectOutlineModeState),

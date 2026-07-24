@@ -454,6 +454,7 @@ export const projectSelectors = {
 		);
 		return selection !== null && operandEquals(selection, operand);
 	},
+	/** The selection as stored, without resolving it against a navigation index. */
 	selectPrimaryOutlineSelection: (state: ProjectState) => state.workspace.selection.outline,
 	selectSelectionOutline: (state: ProjectState, navigationIndex: NavigationIndex<Operand>) =>
 		resolveNavigationIndexSelection(
@@ -461,8 +462,6 @@ export const projectSelectors = {
 			state.workspace.selection.outline,
 			operandIdentityKey,
 		),
-	/** The selection as stored, without resolving it against a navigation index. */
-	selectStoredSelectionOutline: (state: ProjectState) => state.workspace.selection.outline,
 	selectSelectionFiles: (state: ProjectState, navigationIndex: NavigationIndex<string>) =>
 		resolveNavigationIndexSelection(
 			navigationIndex,
