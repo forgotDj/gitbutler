@@ -646,15 +646,10 @@ pub fn list_editors() -> anyhow::Result<Vec<Editor>> {
         .collect())
 }
 
-/// List all built-in supported programs.
-pub fn list_builtin_program_specs() -> &'static [ProgramSpec] {
-    PROGRAMS.as_slice()
-}
-
 /// List all user-defined programs.
 ///
 /// This function never fails, it only logs errors as warnings if something goes wrong.
-pub fn list_user_defined_program_specs() -> Vec<ProgramSpec> {
+fn list_user_defined_program_specs() -> Vec<ProgramSpec> {
     let Ok(user_defined_programs_file) =
         but_path::app_config_dir().map(|dir| dir.join(USER_DEFINED_PROGRAMS_FILENAME))
     else {
@@ -664,7 +659,7 @@ pub fn list_user_defined_program_specs() -> Vec<ProgramSpec> {
     let content = match std::fs::read_to_string(&user_defined_programs_file) {
         Ok(content) => content,
         Err(err) => {
-            tracing::debug!(
+            tracing::warn!(
                 ?err,
                 ?user_defined_programs_file,
                 "Failed to read from user-defined programs file"
@@ -684,8 +679,30 @@ pub fn list_user_defined_program_specs() -> Vec<ProgramSpec> {
 
     user_defined_program_specs
         .into_iter()
-        .map(Into::into)
+        .filter_map(|spec| match spec.try_into_program_spec() {
+            Ok(spec) => Some(spec),
+            Err(err) => {
+                tracing::warn!(?err, "Failed to decode user defined program specification");
+                None
+            }
+        })
         .collect()
+}
+
+/// List all program specifications.
+pub fn list_program_specs() -> Vec<ProgramSpec> {
+    let mut specs = list_user_defined_program_specs();
+
+    for builtin in PROGRAMS.iter() {
+        if !specs
+            .iter()
+            .any(|user_defined| user_defined.id == builtin.id)
+        {
+            specs.push(builtin.clone());
+        }
+    }
+
+    specs
 }
 
 /// Open `path` within the given project's workdir using the editor specified by `editor_id`.

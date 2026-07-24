@@ -6,9 +6,7 @@ use std::{
 };
 
 use bstr::{BStr, ByteSlice};
-use but_api::open::{
-    list_builtin_program_specs, list_user_defined_program_specs, program::ProgramSpec,
-};
+use but_api::open::{list_program_specs, program::ProgramSpec};
 use but_ctx::Context;
 use crossterm::event::Event;
 use gitbutler_operating_modes::OperatingMode;
@@ -1357,19 +1355,13 @@ impl App {
             }
         };
 
-        let builtin_program_specs = list_builtin_program_specs();
-        let user_defined_program_specs = list_user_defined_program_specs();
-        let mut all_program_specs = user_defined_program_specs
-            .iter()
-            .chain(builtin_program_specs)
-            .cloned();
-
+        let mut program_specs = list_program_specs().into_iter();
         let mut items = NonEmpty::new(
-            all_program_specs
+            program_specs
                 .next()
                 .expect("BUG: Program specs cannot be empty"),
         );
-        items.extend(all_program_specs);
+        items.extend(program_specs);
 
         self.modal = Some(Modal::ProgramPicker {
             picker: Box::new(FuzzyPicker::new(

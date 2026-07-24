@@ -4,7 +4,7 @@ use crate::utils::Sandbox;
 
 fn setup_multi_hunk_uncommitted_changes(path: &str) -> Sandbox {
     let env = Sandbox::init_scenario_with_target_and_default_settings("zero-stacks");
-    env.setup_metadata(&["A"]);
+    env.setup_metadata(&[]);
 
     let original_content = "this\nis\nsome\ncontent\nto\ndiff\nwith\nadded\nlines\n";
     env.file(path, original_content);
@@ -609,6 +609,38 @@ Test Program - Open File: filepath='/[..]/file.txt'
         .success()
         .stdout_eq(snapbox::str![[r#"
 filepath='/[..]/file.txt'
+
+"#]]);
+}
+
+#[test]
+fn user_defined_programs_can_override_builtins() {
+    let env = setup_multi_hunk_uncommitted_changes("file.txt");
+
+    let programs_json = env
+        .app_data_dir()
+        .join("gitbutler")
+        .join(USER_DEFINED_PROGRAMS_FILENAME);
+
+    std::fs::write(
+        programs_json,
+        r#"[
+   {
+     "id": "echo",
+     "openArgs": [
+       "CUSTOM OVERRIDE='{{filepath}}'"
+     ]
+   }
+]
+   "#,
+    )
+    .unwrap();
+
+    env.but("_open file.txt -p echo")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+CUSTOM OVERRIDE='/[..]/file.txt'
 
 "#]]);
 }

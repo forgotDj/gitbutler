@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use bstr::BStr;
 use but_api::open::{
-    list_builtin_program_specs, list_user_defined_program_specs,
+    list_program_specs,
     program::{OpenSpec, ProgramSpec, open_in_program_unchecked},
 };
 use but_ctx::Context;
@@ -106,14 +106,10 @@ pub(crate) fn open(
         }
     };
 
-    let builtin_program_specs = list_builtin_program_specs();
-    let user_defined_program_specs = list_user_defined_program_specs();
-    let mut all_program_specs = user_defined_program_specs
-        .iter()
-        .chain(builtin_program_specs);
-
+    let program_specs = list_program_specs();
     let program = match program_id {
-        Some(program_id) => all_program_specs
+        Some(program_id) => program_specs
+            .iter()
             .find(|ps| ps.id == program_id)
             .ok_or_else(|| {
                 CliError::from(
@@ -122,9 +118,9 @@ pub(crate) fn open(
                         .arg_value(program_id),
                 )
             })?,
-        None => all_program_specs
-            .next()
-            .expect("BUG: The internal list of programs should not be empty"),
+        None => program_specs
+            .first()
+            .expect("BUG: The program list cannot be empty"),
     };
 
     run(program, to_open)?;
