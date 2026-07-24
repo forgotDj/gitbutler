@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use bstr::BStr;
 use but_api::open::{
-    list_program_specs_for_file,
+    list_program_specs, list_program_specs_for_file,
     program::{OpenSpec, ProgramSpec, open_in_program_unchecked},
 };
 use but_ctx::Context;
@@ -107,30 +107,34 @@ pub(crate) fn open(
         }
     };
 
-    let program_specs = list_program_specs_for_openable(&to_open);
     let program = match program_id {
-        Some(program_id) => program_specs
-            .iter()
-            .find(|ps| ps.id == program_id)
-            .ok_or_else(|| {
-                CliError::from(
-                    bad_input("No such program found")
-                        .arg_name("--program-id")
-                        .arg_value(program_id),
-                )
-            })?,
+        Some(program_id) => {
+            let program_specs = list_program_specs();
+            program_specs
+                .into_iter()
+                .find(|ps| ps.id == program_id)
+                .ok_or_else(|| {
+                    CliError::from(
+                        bad_input("No such program found")
+                            .arg_name("--program-id")
+                            .arg_value(program_id),
+                    )
+                })?
+        }
         None => {
-            if program_specs.len() == 1 {
-                &program_specs[0]
-            } else {
-                return Err(bad_input("Could not automatically choose program")
-                    .hint("Specify a program with `--program-id`")
-                    .into());
+            let program_specs = list_program_specs_for_openable(&to_open);
+            match TryInto::<[ProgramSpec; 1]>::try_into(program_specs) {
+                Ok([program_spec]) => program_spec,
+                _ => {
+                    return Err(bad_input("Could not automatically choose program")
+                        .hint("Specify a program with `--program-id`")
+                        .into());
+                }
             }
         }
     };
 
-    run(program, to_open)?;
+    run(&program, to_open)?;
 
     Ok(())
 }

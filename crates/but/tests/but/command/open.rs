@@ -692,7 +692,7 @@ fn user_defined_programs_list_can_set_extension_list_for_builtins() {
        "requiresTerminal": true
      },
      "openArgs": [
-       "WRONG ROGRAM"
+       "WRONG PROGRAM"
      ]
    },
    {
@@ -708,6 +708,7 @@ fn user_defined_programs_list_can_set_extension_list_for_builtins() {
     )
     .unwrap();
 
+    // should find echo
     env.but("_open file.txt")
         .assert()
         .success()
@@ -731,6 +732,7 @@ Hint: run `but branch new` to create a new branch to work on
 
 "#]]);
 
+    // should find touch by wildcard
     env.but("_open file.md")
         .assert()
         .success()
@@ -752,6 +754,7 @@ Hint: run `but branch new` to create a new branch to work on
 
 "#]]);
 
+    // should find touch by wildcard
     env.but("_open Dockerfile")
         .assert()
         .success()
@@ -771,6 +774,24 @@ Hint: run `but branch new` to create a new branch to work on
 ┴ 0dc3733 (common base) 2000-01-02 add M
 
 Hint: run `but branch new` to create a new branch to work on
+
+"#]]);
+
+    // should still be able to explicitly select a different handler
+    env.but("_open Dockerfile -p echo")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='/[..]/Dockerfile'
+
+"#]]);
+
+    // should select echo as it's handler for the first file
+    env.but("_open file.txt file.md Dockerfile")
+        .assert()
+        .success()
+        .stdout_eq(snapbox::str![[r#"
+filepath='/[..]/file.txt' filepath='/[..]/file.md' filepath='/[..]/Dockerfile'
 
 "#]]);
 }
