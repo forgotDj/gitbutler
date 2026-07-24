@@ -7,6 +7,7 @@ import { classes } from "#ui/components/classes.ts";
 import { Icon } from "#ui/components/Icon.tsx";
 import { Kbd } from "#ui/components/Kbd.tsx";
 import { TooltipPopup } from "#ui/components/Tooltip.tsx";
+import { draftCommitMessageQueryOptions, usePersistDraftCommitMessage } from "#ui/draft.ts";
 import { changesHotkeys, outlineHotkeys, toElectronAccelerator } from "#ui/hotkeys.ts";
 import { nativeMenuItem, showNativeMenuFromTrigger, type NativeMenuItem } from "#ui/native-menu.ts";
 import { operandEquals, operandIdentityKey, type Operand } from "#ui/operands.ts";
@@ -16,8 +17,7 @@ import { useAppDispatch, useAppSelector } from "#ui/store.ts";
 import { Button, Combobox, Tooltip } from "@base-ui/react";
 import type { RelativeTo } from "@gitbutler/but-sdk";
 import { useHotkey, useHotkeys } from "@tanstack/react-hotkeys";
-import { queryOptions, useMutation, useQuery } from "@tanstack/react-query";
-import * as idb from "idb-keyval";
+import { useQuery } from "@tanstack/react-query";
 import { type FC, type SubmitEventHandler, useRef, useState } from "react";
 import styles from "./CommitForm.module.css";
 
@@ -26,25 +26,6 @@ export type CommitTargetComboboxItem = {
 	operand: Extract<Operand, { _tag: "Branch" | "Commit" }>;
 	relativeTo: RelativeTo;
 };
-
-const draftCommitMessageKey = (projectId: string): string => `commit_message_draft:v1:${projectId}`;
-
-const draftCommitMessageQueryOptions = (projectId: string) =>
-	queryOptions({
-		queryKey: ["commitMessageDraft", projectId],
-		queryFn: async () => (await idb.get<string>(draftCommitMessageKey(projectId))) ?? "",
-	});
-
-const usePersistDraftCommitMessage = () =>
-	useMutation({
-		mutationFn: ({ projectId, message }: { projectId: string; message: string }) =>
-			idb.set(draftCommitMessageKey(projectId), message),
-		onSuccess: (_data, input, _res, ctx) =>
-			ctx.client.setQueryData(
-				draftCommitMessageQueryOptions(input.projectId).queryKey,
-				input.message,
-			),
-	});
 
 const CommitTargetComboboxPopup: FC = () => (
 	<Combobox.Popup className={classes(uiStyles.popup, "text-13", styles.targetPopup)}>
